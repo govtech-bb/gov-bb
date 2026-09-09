@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-09-07",
+  "lastUpdated": "2026-09-09",
   "pharmacies": [
     {
       "slug": "winston-scott-polyclinic",
@@ -786,7 +786,8 @@
         {
           "fields": ["hours"],
           "source": "https://www.imartstores.com/about-us/",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 54, reviewed 2026-09-09. Existing independently reviewed hours retained. Supplied hours: Mon–Sat 8am–8pm, Sun 9am –2pm. The updated document contains repeated and misaligned schedules and does not override the existing hours or public holiday hours."
         }
       ]
     },
@@ -859,7 +860,8 @@
         {
           "fields": ["hours"],
           "source": "https://www.imartstores.com/about-us/",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 56, reviewed 2026-09-09. Existing independently reviewed hours retained. Supplied hours: Mon–Sat 9am–6pm, Sun closed. The updated document contains repeated and misaligned schedules and does not override the existing hours or public holiday hours."
         }
       ]
     },
@@ -943,7 +945,8 @@
         {
           "fields": ["hours"],
           "source": "https://www.imartstores.com/about-us/",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 58, reviewed 2026-09-09. Existing independently reviewed hours retained. Supplied hours: Mon–Sat 8am–8pm, Sun 9am –2pm. The updated document contains repeated and misaligned schedules and does not override the existing hours or public holiday hours."
         }
       ]
     },
@@ -1093,7 +1096,8 @@
         {
           "fields": ["hours"],
           "source": "https://www.imartstores.com/about-us/",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 60, reviewed 2026-09-09. Existing independently reviewed hours retained. Supplied hours: Mon–Sat 8am–8pm, Sun closed. The updated document contains repeated and misaligned schedules and does not override the existing hours or public holiday hours."
         }
       ]
     },
@@ -1120,7 +1124,7 @@
           "fields": ["hours"],
           "source": "GovTech pharmacy prototype dataset, 23 July 2026",
           "checkedOn": "2026-09-07",
-          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours."
+          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 61, reviewed 2026-09-09. Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm, Sun closed."
         }
       ],
       "notes": "Call to confirm pharmacy opening hours."
@@ -1204,7 +1208,8 @@
         {
           "fields": ["hours"],
           "source": "https://www.imartstores.com/about-us/",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 59, reviewed 2026-09-09. Existing independently reviewed hours retained. Supplied hours: Mon–Sat 8am–8pm, Sun 9am –2pm. The updated document contains repeated and misaligned schedules and does not override the existing hours or public holiday hours."
         }
       ]
     },
@@ -1270,7 +1275,8 @@
         {
           "fields": ["hours"],
           "source": "https://wplazawelches.com/service/i-mart-pharmacy/",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 55, reviewed 2026-09-09. Existing independently reviewed hours retained. Supplied hours: Mon–Sat 9am–6pm, Sun closed. The updated document contains repeated and misaligned schedules and does not override the existing hours or public holiday hours."
         }
       ]
     },
@@ -1289,6 +1295,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 52",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 57",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm, Sun 9am –2pm."
         }
       ]
     },
@@ -1340,6 +1352,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 41",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 45",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–8pm; Sat 8am–9pm; Sun closed."
         }
       ]
     },
@@ -1361,6 +1379,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 84",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 91",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 9am–8pm; Sun closed."
         }
       ]
     },
@@ -1384,6 +1408,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 36",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 40",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–4:30pm; Sat 9am–2pm; Sun closed."
         }
       ]
     },
@@ -1405,6 +1435,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 60",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 66",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–5:30pm; Sat 9am–2pm; Sun closed."
         }
       ]
     },
@@ -1426,6 +1462,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 2",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 3",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–5pm; Sat 8:30am–3pm; Sun closed. Review findings: https://www.cybo.com/BB-biz/acare-pharmacy: Search result: Mon–Fri 09:00–17:00; Sat 08:30–15:00; Sun closed. Opened page: Mon–Fri 08:30–17:00; Sat 08:30–15:00; Sun closed.. Same source URL produced differently aged versions; matching Gall Hill address and 428-3497. Linked apluscarepharmacy.com unavailable. Do not treat as clean corroboration."
         }
       ]
     },
@@ -1447,6 +1489,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 24",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 26",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm."
         }
       ]
     },
@@ -1512,6 +1560,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 22",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 24",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Thu 8am–5pm; Fri–Sun 8am–12pm."
         }
       ]
     },
@@ -1538,7 +1592,7 @@
           "fields": ["hours"],
           "source": "GovTech pharmacy prototype dataset, 23 July 2026",
           "checkedOn": "2026-09-07",
-          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours."
+          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 104, reviewed 2026-09-09. Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sun 8:30am–9pm."
         }
       ],
       "notes": "Call to confirm pharmacy opening hours."
@@ -1566,7 +1620,7 @@
           "fields": ["hours"],
           "source": "GovTech pharmacy prototype dataset, 23 July 2026",
           "checkedOn": "2026-09-07",
-          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours."
+          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 18, reviewed 2026-09-09. Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–5pm; Sun 9am–12:30pm."
         }
       ],
       "notes": "Call to confirm pharmacy opening hours."
@@ -1593,7 +1647,7 @@
           "fields": ["hours"],
           "source": "GovTech pharmacy prototype dataset, 23 July 2026",
           "checkedOn": "2026-09-07",
-          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours."
+          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 112, reviewed 2026-09-09. Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–3pm; Sat 9am–1pm; Sun closed."
         }
       ],
       "notes": "Call to confirm pharmacy opening hours."
@@ -1667,7 +1721,8 @@
         {
           "fields": ["hours"],
           "source": "https://oneuppharmacy.com/",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 86, reviewed 2026-09-09. Existing independently reviewed hours retained. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm. The updated document contains repeated and misaligned schedules and does not override the existing hours or public holiday hours."
         }
       ]
     },
@@ -1739,7 +1794,8 @@
         {
           "fields": ["hours"],
           "source": "https://oneuppharmacy.com/",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 85, reviewed 2026-09-09. Existing independently reviewed hours retained. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm. The updated document contains repeated and misaligned schedules and does not override the existing hours or public holiday hours."
         }
       ]
     },
@@ -1807,7 +1863,8 @@
         {
           "fields": ["hours"],
           "source": "https://oneuppharmacy.com/",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "note": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 87, reviewed 2026-09-09. Existing independently reviewed hours retained. Supplied hours: Mon–Sat 8am–8pm; Sun closed; bank holidays closed. The updated document contains repeated and misaligned schedules and does not override the existing hours or public holiday hours."
         }
       ]
     },
@@ -1902,7 +1959,7 @@
           "fields": ["hours"],
           "source": "GovTech pharmacy prototype dataset, 23 July 2026",
           "checkedOn": "2026-09-07",
-          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours."
+          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 21, reviewed 2026-09-09. Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Wed 8am–5pm; Thu–Fri 8am–6pm; Sat 9am–2pm; Sun closed."
         }
       ],
       "notes": "Call to confirm pharmacy opening hours."
@@ -1926,7 +1983,7 @@
           "fields": ["hours"],
           "source": "GovTech pharmacy prototype dataset, 23 July 2026",
           "checkedOn": "2026-09-07",
-          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours."
+          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 22, reviewed 2026-09-09. Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Thu 9am–5pm; Fri 9am–2:30pm; Sat–Sun 8:30am–2:30pm."
         }
       ],
       "notes": "Call to confirm pharmacy opening hours."
@@ -1945,6 +2002,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 31",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 35",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 9am–8pm; Sun closed."
         }
       ]
     },
@@ -1967,6 +2030,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 61",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 67",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–7pm; Sun 8am–4pm."
         }
       ]
     },
@@ -1984,6 +2053,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 82",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 89",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–5:30pm; Sat 9am–3pm; Sun 9am–12pm."
         }
       ]
     },
@@ -2010,7 +2085,7 @@
           "fields": ["hours"],
           "source": "GovTech pharmacy prototype dataset, 23 July 2026",
           "checkedOn": "2026-09-07",
-          "note": "Schedule withheld: opening days were assumed."
+          "note": "Schedule withheld: opening days were assumed. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 53, reviewed 2026-09-09. Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–4pm; Sat closed; Sun 9am–2pm."
         }
       ]
     },
@@ -2027,6 +2102,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 3",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 4",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sun 7am–6:30pm. Review findings: https://www.waze.com/live-map/directions/bb/saint-michael/bridgetown/ace-pharmacy%2C-dermatology-and-orthopaedic-clinic?to=place.ChIJz8eYK4T3Q4wRyUCg5ds9GSs: Mon–Sun 07:00–18:30. Exact name/address/228-2026 match; supports document but conflicts with other directories. https://www.findyello.com/barbados/ace-pharmacy/profile/3-10th-avenue/: Mon–Sun 07:00–20:00. Exact phone/address match, conflicts with document and Waze. No primary source found."
         }
       ]
     },
@@ -2069,6 +2150,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 18",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 20",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–4:30pm; Sun closed."
         }
       ]
     },
@@ -2089,6 +2176,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 21",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 23",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–6pm; Sat 9am–3:30pm; Sun closed."
         }
       ]
     },
@@ -2110,6 +2203,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 25",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 27",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 9am–6pm; Sun closed; bank holidays vary."
         }
       ]
     },
@@ -2130,6 +2229,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 27",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 29",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm."
         }
       ]
     },
@@ -2150,6 +2255,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 32",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 36",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–5pm; Sat 9am–2pm; Sun closed."
         }
       ]
     },
@@ -2176,6 +2287,12 @@
           "fields": ["contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 87",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 95",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–5pm; Sat 9am–2pm; Sun closed."
         }
       ]
     },
@@ -2196,6 +2313,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 37",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 41",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–4:30pm; Sat 8am–3:30pm; Sun closed."
         }
       ]
     },
@@ -2259,6 +2382,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 70",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 76",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–4:30pm; Sun closed."
         }
       ]
     },
@@ -2300,6 +2429,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 75",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 82",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm."
         }
       ]
     },
@@ -2359,6 +2494,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 85",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 93",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–5pm; Sat 8:30am–3pm; Sun closed."
         }
       ]
     },
@@ -2441,6 +2582,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 6",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 7",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8:30am–5:30pm; Sun closed. Review findings: https://www.findyello.com/barbados/alpha-pharmacy/profile/: No confirmed pharmacy schedule. Exact Sunnyside/426-3499 listing, no hours. Targeted searches found no current pharmacy-owned schedule."
         }
       ]
     },
@@ -2457,6 +2604,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 7",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 8",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–7pm; Sat 9am–5pm; Sun 9am–3pm. Review findings: https://www.findyello.com/barbados/apothec-pharmacy/profile/: No confirmed pharmacy schedule. Exact phone 436-6337 but directory address is older Dayrells Road; no hours. Document schedule happens to match Avida directory schedule, suggesting misassignment."
         }
       ]
     },
@@ -2473,8 +2626,53 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 10",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "https://www.avispharmacyltd.com/",
+          "checkedOn": "2026-09-09",
+          "note": "Pharmacy website hours used; the supplied document conflicts. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 11: Supplied hours: Mon–Sat 8am–7pm; Sun 8am–4pm."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "16:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "belleville-dispensary",
@@ -2512,6 +2710,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 15",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 16",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–5pm; Sun 9am–12:30pm. Review findings: https://www.todosbiz.com/en-BB/brittons-hill-medical-clinic-centre-and-246-429-5461: Table: Mon–Sat 09:00–13:00; Sun 08:00–13:00. Description: Pharmacy every day 09:00–13:00.. Exact 429-5461/Brittons medical complex; conflicts with document. Its own table/description mix clinic and pharmacy Sunday hours, so unsuitable for definite schedule."
         }
       ]
     },
@@ -2687,6 +2891,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 29",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 33",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–5:30pm; Sat 9am–3pm; Sun 9am–12pm."
         }
       ]
     },
@@ -2708,6 +2918,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 17",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 19",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–5pm; Sun 9am–12:30pm."
         }
       ]
     },
@@ -2812,6 +3028,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 42",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 46",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–7pm; Sun 9am–2pm."
         }
       ]
     },
@@ -2833,6 +3055,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 45",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 50",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–6:30pm; Sat 9am–4pm; Sun 9am–2pm."
         }
       ]
     },
@@ -2854,6 +3082,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 46",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 51",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–3pm & 6:45pm–9pm; Sat 8am–1:30pm; Sun 8am–12:30pm."
         }
       ]
     },
@@ -2919,6 +3153,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 59",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 65",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–6pm; Sat 8am–4pm; Sun closed."
         }
       ]
     },
@@ -2941,8 +3181,53 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 1",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "https://carib.guide/public/place/a-p-jones?c=barbados",
+          "checkedOn": "2026-09-09",
+          "note": "Supplied document hours corroborated against a public business directory with a matching pharmacy telephone number. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 2: Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–5pm; Sun closed. The directory does not state a schedule update date; checkedOn records this review. Public holiday hours remain unconfirmed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "premier-pharmacy",
@@ -2968,6 +3253,12 @@
           "fields": ["contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 90",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 98",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–5:30pm; Sat 8:30am–4:30pm; Sun closed."
         }
       ]
     },
@@ -3056,6 +3347,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 71",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 78",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Thu 9am–5pm; Fri 9am–2:30pm; Sat–Sun 8:30am–2:30pm."
         }
       ]
     },
@@ -3099,6 +3396,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 77",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 84",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 9am–8pm; Sun closed; bank holidays closed."
         }
       ]
     },
@@ -3120,6 +3423,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 83",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 90",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm."
         }
       ]
     },
@@ -3141,6 +3450,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 86",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 94",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–4pm; Sat 8am–1pm; Sun closed."
         }
       ]
     },
@@ -3184,6 +3499,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 89",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 97",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–4:30pm; Sat 8am–3:30pm; Sun closed."
         }
       ]
     },
@@ -3227,6 +3548,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 92",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 100",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–5pm; Sat 9am–1pm; Sun closed."
         }
       ]
     },
@@ -3292,6 +3619,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 23",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 25",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–5:30pm; Sat 8am–4pm; Sun closed."
         }
       ]
     },
@@ -3335,6 +3668,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 97",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 105",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–1pm; Sun closed."
         }
       ]
     },
@@ -3351,6 +3690,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 98",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 106",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–6:30pm; Sat 9am–4pm; Sun 9am–2pm."
         }
       ]
     },
@@ -3394,6 +3739,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 40",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 44",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–5pm; Sat 9am–1pm; Sun closed."
         }
       ]
     },
@@ -3458,9 +3809,56 @@
         {
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 109",
-          "checkedOn": "2026-09-07"
+          "checkedOn": "2026-09-07",
+          "note": "WhatsApp ordering confirmed at https://wholehealthpharmacybb.com/index on 2026-09-09; the pharmacy publishes its existing telephone number for Call / WhatsApp."
+        },
+        {
+          "fields": ["hours"],
+          "source": "https://carib.guide/place/whole-health-pharmacy",
+          "checkedOn": "2026-09-09",
+          "note": "Supplied document hours corroborated against a public business directory with a matching pharmacy telephone number. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 118: Supplied hours: Mon–Fri 8am–5pm; Sat 8am – 3pm; Sun closed; Bank Holidays Closed. The directory does not state a schedule update date; checkedOn records this review. Public holiday hours remain unconfirmed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:00",
+            "closes": "17:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "08:00",
+            "closes": "15:00"
+          }
+        ],
+        "sun": []
+      },
+      "whatsapp": "(246) 422-5207"
     },
     {
       "slug": "worrell-s-pharmacy-inc",
@@ -3523,6 +3921,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 66",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 72",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm."
         }
       ]
     },
@@ -3543,6 +3947,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 68",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 74",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm."
         }
       ]
     },
@@ -3563,6 +3973,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 63",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 69",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm."
         }
       ]
     },
@@ -3583,6 +3999,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 65",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 71",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–7pm; Sun 8am–1pm; bank holidays 8am–2pm."
         }
       ]
     },
@@ -3599,6 +4021,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 67",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 73",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm."
         }
       ]
     },
@@ -3619,6 +4047,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 64",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 70",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 8am–2pm."
         }
       ]
     },
@@ -3641,6 +4075,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 95",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 103",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–8pm; Sat 8am–4pm; Sun 8am–12pm."
         }
       ]
     },
@@ -3662,6 +4102,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 28",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 30",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm; bank holidays 10am–2pm."
         }
       ]
     },
@@ -3689,7 +4135,7 @@
           "fields": ["hours"],
           "source": "GovTech pharmacy prototype dataset, 23 July 2026",
           "checkedOn": "2026-09-07",
-          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours."
+          "note": "Schedule withheld: current pharmacy opening hours could not be confirmed from a primary source. Confirm before restoring hours. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 9, reviewed 2026-09-09. Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–6pm; Sat 8am–4pm; Sun closed. Review findings: https://www.aqua-pharmacy.com/LUX/Public/OSWelcome.asp: No confirmed pharmacy schedule. Pharmacy-owned site confirms Coral Sands/622-2782/233-3118 but no schedule available; homepage cookie gate. https://www.todosbiz.com/en-BB/aqua-pharmacy-246-622-2782: Mon–Sat 08:30–17:30; Sun closed. Exact address/phone; conflicts with document. https://carib.guide/place/aqua-pharmacy?c=barbados: Mon–Fri 08:30–17:00; Sat 09:00–14:00; Sun closed. Exact address/phone; also conflicts with document and other directories."
         }
       ]
     },
@@ -3707,6 +4153,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 13",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 14",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–5pm; Sat 8am–2pm; Sun closed. Review findings: https://www.todosbiz.com/en-BB/betterlife-pharmacy-246-571-3788: Mon–Fri 08:30–17:30; Sat 09:00–14:00; Sun closed. Exact Friendship Terrace/571-3788; conflicts with document. Linked pharmacy Facebook fetch unavailable. https://bb.near-place.com/betterlife-pharmacy-friendship-terrace-building-2-1-friendship-terrace-green-hill: Mon–Fri 08:30–18:00; Sat 09:00–14:00; Sun closed. Directory differs from document and TodosBiz."
         }
       ]
     },
@@ -3729,6 +4181,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 38",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 42",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–5:30pm; Sat 8:30am–4:30pm; Sun closed."
         }
       ]
     },
@@ -3770,6 +4228,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 69",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 75",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–5pm; Sun closed."
         }
       ]
     },
@@ -3786,8 +4250,48 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 4",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "https://www.findyello.com/barbados/advanced-care-pharmacy/profile/",
+          "checkedOn": "2026-09-09",
+          "note": "Supplied document hours corroborated against a public business directory with a matching pharmacy telephone number. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 5: Supplied hours: Mon–Fri 8:30am–4:30pm; Sat–Sun closed. The directory does not state a schedule update date; checkedOn records this review. Public holiday hours remain unconfirmed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "08:30",
+            "closes": "16:30"
+          }
+        ],
+        "sat": [],
+        "sun": []
+      }
     },
     {
       "slug": "allington-pharmacy",
@@ -3802,8 +4306,53 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 5",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "https://www.cybo.com/BB-biz/allington-pharmacy_1k",
+          "checkedOn": "2026-09-09",
+          "note": "Supplied document hours corroborated against a public business directory with a matching pharmacy telephone number. Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 6: Supplied hours: Mon 9am–6pm; Tue 9am–6pm; Wed 9am–6pm; Thu 9am–5pm; Fri 9am–6pm; Sat 9am–1:30pm; Sun closed. The directory does not state a schedule update date; checkedOn records this review. Public holiday hours remain unconfirmed."
         }
-      ]
+      ],
+      "hours": {
+        "mon": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "tue": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "wed": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "thu": [
+          {
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "fri": [
+          {
+            "opens": "09:00",
+            "closes": "18:00"
+          }
+        ],
+        "sat": [
+          {
+            "opens": "09:00",
+            "closes": "13:30"
+          }
+        ],
+        "sun": []
+      }
     },
     {
       "slug": "avida-pharmacy",
@@ -3818,6 +4367,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 9",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 10",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–5:30pm; Sat 9am–2pm; Sun closed. Review findings: https://www.findyello.com/barbados/avida-pharmacy/profile/: Mon–Fri 09:00–19:00; Sat 09:00–17:00; Sun 09:00–15:00. Exact Ellerton Building/Welches/537-0294; conflicts with document. TodosBiz independently displays same schedule; linked Instagram account unavailable. https://www.instagram.com/avida_pharmacy/: No confirmed pharmacy schedule. Pharmacy social account discovered through linked directory; fetch failed."
         }
       ]
     },
@@ -3834,6 +4389,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 11",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 12",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–3pm; Sun 9am–1pm. Review findings: https://mahabirsagencies.com/: Store Mon–Sat 08:30–18:00. Official Mahabirs retail groceries/vape site shares King Street/426-1699 ext1, but does not establish Batos pharmacy dispensing hours. Do not import retail schedule."
         }
       ]
     },
@@ -3851,6 +4412,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 12",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 13",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–4:30pm; Sat 8:30am–2pm; Sun 9am–1pm; bank holidays 9am–12pm."
         }
       ]
     },
@@ -3868,6 +4435,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 14",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 15",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 7am–7pm; Sat 8am–3:30pm; Sun closed."
         }
       ]
     },
@@ -3885,6 +4458,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 26",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 28",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 9am–8pm; Sun closed; bank holidays closed."
         }
       ]
     },
@@ -3902,6 +4481,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 30",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 34",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–8pm; Sun 9am–2pm."
         }
       ]
     },
@@ -3918,6 +4503,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 33",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 37",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–5pm; Sat 8:30am–3pm; Sun closed."
         }
       ]
     },
@@ -3934,6 +4525,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 34",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 38",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–4pm; Sat 8am–1pm; Sun closed."
         }
       ]
     },
@@ -3951,6 +4548,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 35",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 39",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–5pm; Sat 9am–2pm; Sun closed."
         }
       ]
     },
@@ -3968,6 +4571,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 39",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 43",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–4:30pm; Sat 9am–1:30pm; Sun closed."
         }
       ]
     },
@@ -3984,6 +4593,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 43",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 48",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sun 8:30am–9pm."
         }
       ]
     },
@@ -4000,6 +4615,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 44",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 49",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Thu 8am–5pm; Fri 8am–6pm; Sat 8am–1pm; Sun closed."
         }
       ]
     },
@@ -4016,6 +4637,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 47",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 52",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–5pm; Sat 8am–1:30pm; Sun 9am–12:30pm."
         }
       ]
     },
@@ -4033,6 +4660,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 57",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 63",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8:30am–5:30pm; Sun closed."
         }
       ]
     },
@@ -4050,6 +4683,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 58",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 64",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–7pm; Sat 9am–5pm; Sun 9am–3pm."
         }
       ]
     },
@@ -4066,6 +4705,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 62",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 68",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–7pm; Sun 9am–2pm; bank holidays 8am–2pm."
         }
       ]
     },
@@ -4082,6 +4727,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 72",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 79",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–6pm; Sat 9am–3:30pm; Sun closed."
         }
       ]
     },
@@ -4098,6 +4749,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 73",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 80",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Thu 8am–5pm; Fri–Sun 8am–12pm."
         }
       ]
     },
@@ -4114,6 +4771,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 74",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 81",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–5:30pm; Sat 8am–4pm; Sun closed."
         }
       ]
     },
@@ -4130,6 +4793,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 76",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 83",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 9am–6pm; Sun closed; bank holidays vary."
         }
       ]
     },
@@ -4146,6 +4815,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 88",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 96",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–4:30pm; Sat 9am–2pm; Sun closed."
         }
       ]
     },
@@ -4162,6 +4837,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 91",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 99",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–4:30pm; Sat 9am–1:30pm; Sun closed."
         }
       ]
     },
@@ -4179,6 +4860,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 93",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 101",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–8pm; Sat 8am–9pm; Sun closed."
         }
       ]
     },
@@ -4195,6 +4882,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 94",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 102",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sat 8am–7pm; Sun 9am–2pm."
         }
       ]
     },
@@ -4212,6 +4905,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 99",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 108",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–5pm; Sat 8am–1:30pm; Sun 9am–12:30pm."
         }
       ]
     },
@@ -4228,6 +4927,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 100",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 109",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–4pm; Sat closed; Sun 9am–2pm."
         }
       ]
     },
@@ -4245,6 +4950,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 101",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 110",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Sun 8am–8pm."
         }
       ]
     },
@@ -4265,6 +4976,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 102",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 111",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon 8am–5pm; Tue 8am–7pm; Wed 8am–5pm; Thu 8am–7pm; Fri 8am–5pm; Sat 9am–5pm; Sun closed."
         }
       ]
     },
@@ -4281,6 +4998,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 104",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 113",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–3pm; Sat 9am–1pm; Sun closed."
         }
       ]
     },
@@ -4298,6 +5021,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 105",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 114",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8am–4pm; Sat 8am–12pm; Sun closed."
         }
       ]
     },
@@ -4315,6 +5044,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 106",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 115",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 9am–5pm; Sat 9am–3pm; Sun closed."
         }
       ]
     },
@@ -4331,6 +5066,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 107",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 116",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30 am–6pm; Sat 8:30am – 3pm; Sun closed."
         }
       ]
     },
@@ -4347,6 +5088,12 @@
           "fields": ["ppp", "contacts"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 108",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["hours"],
+          "source": "Active Private Participating Pharmacies_Updated (Aug 2026).docx, table row 117",
+          "checkedOn": "2026-09-09",
+          "note": "Hours withheld: the updated document contains repeated and misaligned schedules; this branch needs independent confirmation. Supplied hours: Mon–Fri 8:30am–4:30pm; Sat–Sun closed."
         }
       ]
     }
