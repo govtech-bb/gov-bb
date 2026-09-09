@@ -11,18 +11,13 @@ export function ResultNotice({
   body: string
 }) {
   return (
-    <div className="space-y-4">
+    <div className="water-outages-page">
       <div
-        className={`rounded-md border-2 p-6 ${
-          tone === 'success'
-            ? 'border-green-40 bg-green-10'
-            : 'border-red-40 bg-red-10'
-        }`}
+        className="govbb-status-banner govbb-status-banner--rounded water-outages-result"
+        data-tone={tone}
       >
         <Heading as="h1">{title}</Heading>
-        <Text as="p" className="mt-2">
-          {body}
-        </Text>
+        <Text as="p">{body}</Text>
       </div>
       <Link href="/health-and-emergency-services/water-outages">
         Back to water outages
