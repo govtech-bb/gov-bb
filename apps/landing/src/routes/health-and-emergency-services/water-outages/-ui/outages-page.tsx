@@ -16,7 +16,7 @@ import {
   isPast,
   OUTAGE_TYPE_LABEL,
 } from '../-lib/outages'
-import type { Outage, OutageType } from '../-lib/outages'
+import type { Outage } from '../-lib/outages'
 import { findParish, PARISHES } from '../-lib/parishes'
 import type { WaterOutagesData } from '../-lib/water-alerts'
 import { SubscribeForm } from './subscribe-form'
@@ -27,7 +27,7 @@ export const DESCRIPTION =
 
 function MapUnavailable() {
   return (
-    <Text as="p" className="p-6">
+    <Text as="p" className="water-outages-map-message">
       The map could not load. Choose a parish above to see its notices.
     </Text>
   )
@@ -38,17 +38,10 @@ const OutageMap = lazy(() =>
 )
 
 const MAP_FALLBACK = (
-  <Text as="p" className="p-6">
+  <Text as="p" className="water-outages-map-message">
     Loading the parish map… You can also choose a parish above.
   </Text>
 )
-
-const TYPE_BADGE: Record<OutageType, string> = {
-  emergency: 'bg-red-20 text-red-90',
-  planned: 'bg-teal-20 text-teal-ink',
-  repair: 'bg-yellow-20 text-black-00',
-  notice: 'bg-blue-10 text-blue-90',
-}
 
 export function WaterOutagesPage({ data }: { data: WaterOutagesData }) {
   const { outages, checkedAt, now, failed } = data
@@ -74,13 +67,13 @@ export function WaterOutagesPage({ data }: { data: WaterOutagesData }) {
   // Honest "service unavailable" state — we never show made-up notices.
   if (failed) {
     return (
-      <div className="space-y-6">
+      <div className="water-outages-page">
         {heading}
         <StatusBanner variant="service">
           <Text as="p">
-            <span className="font-bold">
+            <strong>
               We can&apos;t reach the Barbados Water Authority right now.
-            </span>{' '}
+            </strong>{' '}
             To avoid showing out-of-date or made-up information, notices are
             paused for the moment. Please try again shortly, or check the{' '}
             <Link
@@ -167,26 +160,24 @@ export function WaterOutagesPage({ data }: { data: WaterOutagesData }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="water-outages-page">
       {heading}
 
       {/* Controls */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-        <div className="flex-1">
-          <Select
-            label="Choose a parish"
-            onChange={(e) => chooseParish(e.target.value)}
-            value={selected}
-          >
-            <option value="">All of Barbados</option>
-            {PARISHES.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-                {counts[p.value] ? ` (${counts[p.value]})` : ''}
-              </option>
-            ))}
-          </Select>
-        </div>
+      <div className="water-outages-controls">
+        <Select
+          label="Choose a parish"
+          onChange={(e) => chooseParish(e.target.value)}
+          value={selected}
+        >
+          <option value="">All of Barbados</option>
+          {PARISHES.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.label}
+              {counts[p.value] ? ` (${counts[p.value]})` : ''}
+            </option>
+          ))}
+        </Select>
         <Button
           aria-busy={locating}
           disabled={locating}
@@ -198,14 +189,16 @@ export function WaterOutagesPage({ data }: { data: WaterOutagesData }) {
         </Button>
       </div>
 
-      <Text as="p" className="text-grey-70" size="body-sm">
+      <Text as="p" className="govbb-hint" size="body-sm">
         We use your location to find your parish. We do not store it.
       </Text>
 
       <div
         aria-live="polite"
         aria-atomic="true"
-        className={locationError || locatedParish ? undefined : 'sr-only'}
+        className={
+          locationError || locatedParish ? undefined : 'govbb-visually-hidden'
+        }
       >
         {locationError && (
           <StatusBanner variant="service">
@@ -217,24 +210,20 @@ export function WaterOutagesPage({ data }: { data: WaterOutagesData }) {
         )}
 
         {locatedParish && selected === locatedParish && (
-          <div className="rounded-md bg-blue-10 p-4">
+          <div className="govbb-status-banner govbb-status-banner--rounded water-outages-note">
             <Text as="p">
               {locatedExact ? (
                 <>
                   Based on your location, you&apos;re in{' '}
-                  <span className="font-bold">
-                    {findParish(locatedParish)?.label}
-                  </span>
-                  . If that&apos;s not right, choose your parish above.
+                  <strong>{findParish(locatedParish)?.label}</strong>. If
+                  that&apos;s not right, choose your parish above.
                 </>
               ) : (
                 <>
                   We couldn&apos;t pin your exact parish, so we&apos;ve picked
                   the closest one:{' '}
-                  <span className="font-bold">
-                    {findParish(locatedParish)?.label}
-                  </span>
-                  . Please check it&apos;s right, or choose your parish above.
+                  <strong>{findParish(locatedParish)?.label}</strong>. Please
+                  check it&apos;s right, or choose your parish above.
                 </>
               )}
             </Text>
@@ -242,9 +231,9 @@ export function WaterOutagesPage({ data }: { data: WaterOutagesData }) {
         )}
       </div>
 
-      <figure className="space-y-3">
+      <figure className="water-outages-figure">
         <div
-          className="isolate h-[26.25rem] overflow-hidden rounded-md border-2 border-grey-20"
+          className="water-outages-map"
           role="region"
           aria-label="Water notices by parish"
         >
@@ -259,7 +248,7 @@ export function WaterOutagesPage({ data }: { data: WaterOutagesData }) {
           </ClientOnly>
         </div>
         <figcaption>
-          <Text as="p" className="text-grey-70" size="body-sm">
+          <Text as="p" className="govbb-hint" size="body-sm">
             Select a circle or choose a parish above. Red circles have current
             notices; blue-grey circles have none. A dark blue border marks your
             choice. Circles show parish centres, not the exact areas affected.
@@ -279,19 +268,19 @@ export function WaterOutagesPage({ data }: { data: WaterOutagesData }) {
 
       <SubscribeForm selectedArea={selected} selectedLabel={selectedLabel} />
 
-      <Text as="p" className="text-grey-70" size="body-sm">
+      <Text as="p" className="govbb-hint" size="body-sm">
         Notices published by the Barbados Water Authority.
         {checkedAt ? ` Last checked: ${formatCheckedAt(checkedAt)}.` : ''}
       </Text>
 
       {/* List */}
-      <div className="space-y-4">
+      <div className="water-outages-notices">
         <Heading as="h2">
           {selectedLabel ? `Notices for ${selectedLabel}` : 'Current notices'}
         </Heading>
 
         {visibleActive.length === 0 ? (
-          <div className="rounded-md bg-blue-10 p-6">
+          <div className="govbb-status-banner govbb-status-banner--rounded water-outages-note">
             <Text as="p">
               There are no current BWA notices
               {selectedLabel ? ` for ${selectedLabel}` : ''}.
@@ -309,7 +298,7 @@ export function WaterOutagesPage({ data }: { data: WaterOutagesData }) {
         {general.length > 0 && (
           <>
             <Heading as="h3">General notices</Heading>
-            <Text as="p" className="text-grey-70" size="body-sm">
+            <Text as="p" className="govbb-hint" size="body-sm">
               These affect areas the BWA did not tie to a single parish, so they
               may still apply to you.
             </Text>
@@ -319,7 +308,7 @@ export function WaterOutagesPage({ data }: { data: WaterOutagesData }) {
           </>
         )}
 
-        <div className="rounded-md bg-blue-10 p-4">
+        <div className="govbb-status-banner govbb-status-banner--rounded water-outages-note">
           <Text as="p">
             Water problem not listed here? A notice may not cover your exact
             area.{' '}
@@ -335,14 +324,12 @@ export function WaterOutagesPage({ data }: { data: WaterOutagesData }) {
 
         {visiblePast.length > 0 && (
           <ShowHide summary={`Past notices (${visiblePast.length})`}>
-            <div className="space-y-4 pt-2">
-              <Text as="p" className="text-grey-70" size="body-sm">
-                View notices that have ended.
-              </Text>
-              {visiblePast.map((o) => (
-                <OutageCard key={o.id} now={now} outage={o} />
-              ))}
-            </div>
+            <Text as="p" className="govbb-hint" size="body-sm">
+              View notices that have ended.
+            </Text>
+            {visiblePast.map((o) => (
+              <OutageCard key={o.id} now={now} outage={o} />
+            ))}
           </ShowHide>
         )}
       </div>
@@ -355,37 +342,33 @@ function OutageCard({ outage, now }: { outage: Outage; now: number }) {
   const over = fresh === 'Ended'
 
   return (
-    <div
-      className={`rounded-md border-2 border-grey-20 bg-white-00 p-5 shadow-sm ${
-        over ? 'opacity-70' : ''
-      }`}
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <span
-          className={`inline-flex items-center rounded-full px-3 py-0.5 text-sm font-semibold ${TYPE_BADGE[outage.type]}`}
+    <article className="water-outages-card">
+      <div className="water-outages-metadata">
+        <Text
+          as="span"
+          className="water-outages-badge"
+          data-type={outage.type}
+          size="body-sm"
+          weight="bold"
         >
           {OUTAGE_TYPE_LABEL[outage.type]}
-        </span>
-        <span
-          className={`inline-flex items-center rounded-full px-3 py-0.5 text-sm font-semibold ${
-            over ? 'bg-blue-10 text-grey-70' : 'bg-green-10 text-green-80'
-          }`}
+        </Text>
+        <Text
+          as="span"
+          className="water-outages-badge"
+          data-state={over ? 'ended' : 'active'}
+          size="body-sm"
+          weight="bold"
         >
           {fresh}
-        </span>
-        <Text as="span" className="text-grey-70" size="body-sm">
+        </Text>
+        <Text as="span" className="govbb-hint" size="body-sm">
           Posted {formatDate(outage.published)}
         </Text>
       </div>
-      <Heading as="h3" className="mt-2">
-        {outage.title}
-      </Heading>
-      {outage.summary && (
-        <Text as="p" className="mt-2">
-          {outage.summary}
-        </Text>
-      )}
-      <div className="mt-3">
+      <Heading as="h3">{outage.title}</Heading>
+      {outage.summary && <Text as="p">{outage.summary}</Text>}
+      <div>
         <Link
           aria-label={`Read the BWA notice about ${outage.title}`}
           external
@@ -394,7 +377,7 @@ function OutageCard({ outage, now }: { outage: Outage; now: number }) {
           Read the BWA notice
         </Link>
       </div>
-    </div>
+    </article>
   )
 }
 

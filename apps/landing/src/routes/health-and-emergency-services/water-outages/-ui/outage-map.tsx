@@ -1,4 +1,3 @@
-import 'leaflet/dist/leaflet.css'
 import { CircleMarker, MapContainer, TileLayer, Tooltip } from 'react-leaflet'
 import { PARISHES } from '../-lib/parishes'
 
@@ -14,7 +13,7 @@ export default function OutageMap({
   return (
     <MapContainer
       center={[13.19, -59.54]}
-      className="h-full w-full font-sans"
+      className="water-outages-map-canvas"
       scrollWheelZoom={false}
       zoom={11}
     >

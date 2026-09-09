@@ -1,5 +1,6 @@
 import {
   Button,
+  ButtonGroup,
   Input,
   Link,
   Select,
@@ -69,7 +70,8 @@ export function SubscribeForm({
   if (status === 'done') {
     return (
       <div
-        className="rounded-md border-2 border-green-40 bg-green-10 p-6"
+        className="govbb-status-banner govbb-status-banner--rounded water-outages-result"
+        data-tone="success"
         role="status"
       >
         <Text as="p">{doneMessage}</Text>
@@ -80,23 +82,23 @@ export function SubscribeForm({
   // Closed: the invitation card.
   if (!open) {
     return (
-      <div className="rounded-md border-2 border-blue-40 bg-blue-10 p-6">
-        <Text as="p" className="font-semibold">
+      <div className="govbb-status-banner govbb-status-banner--rounded water-outages-subscribe">
+        <Text as="p" weight="bold">
           Get email alerts
         </Text>
-        <Text as="p" className="mt-1">
+        <Text as="p">
           Get an email when the Barbados Water Authority publishes a water
           notice {headlinePlace}. We&apos;ll only use your email to send these
           alerts, and you can unsubscribe at any time.
         </Text>
-        <Text as="p" className="mt-2" size="body-sm">
+        <Text as="p" size="body-sm">
           <Link href="/terms-conditions#your-data">How we use your data</Link>
         </Text>
-        <div className="mt-4">
+        <ButtonGroup>
           <Button onClick={openForm} type="button" variant="primary">
             Get email alerts
           </Button>
-        </div>
+        </ButtonGroup>
       </div>
     )
   }
@@ -106,10 +108,10 @@ export function SubscribeForm({
     <form
       aria-busy={isPending}
       aria-label="Get email alerts"
-      className="space-y-4 rounded-md border-2 border-blue-40 bg-blue-10 p-6"
+      className="govbb-status-banner govbb-status-banner--rounded water-outages-subscribe"
       onSubmit={handleSubmit}
     >
-      <Text as="p" className="font-semibold">
+      <Text as="p" weight="bold">
         Get email alerts
       </Text>
 
@@ -141,7 +143,7 @@ export function SubscribeForm({
         ))}
       </Select>
 
-      <Text as="p" className="text-grey-70" size="body-sm">
+      <Text as="p" className="govbb-hint" size="body-sm">
         We&apos;ll only use your email to send these alerts. You can unsubscribe
         at any time.{' '}
         <Link href="/terms-conditions#your-data">How we use your data</Link>.
@@ -155,7 +157,7 @@ export function SubscribeForm({
         </StatusBanner>
       )}
 
-      <div className="flex gap-3">
+      <ButtonGroup>
         <Button disabled={isPending} type="submit" variant="primary">
           {isPending ? 'Sending…' : 'Get email alerts'}
         </Button>
@@ -167,7 +169,7 @@ export function SubscribeForm({
         >
           Cancel
         </Button>
-      </div>
+      </ButtonGroup>
     </form>
   )
 }
