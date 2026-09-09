@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toMinutes } from '../-lib/opening-hours'
+import { pharmacyStatus, toMinutes } from '../-lib/opening-hours'
 import { findPharmacyBySlug } from '../-lib/pharmacy-slug'
 import { PARISHES, PHARMACIES, WEEKDAYS } from './pharmacies.ts'
 import type { Pharmacy } from './pharmacies.ts'
@@ -16,6 +16,7 @@ describe('pharmacy dataset', () => {
   })
 
   it('includes every pharmacy, even without confirmed opening hours', () => {
+    expect(PHARMACIES).toHaveLength(163)
     expect(PHARMACIES).toEqual(ALL_PHARMACIES)
     for (const slug of [
       'market-hill-dispensary',
@@ -27,6 +28,38 @@ describe('pharmacy dataset', () => {
       expect(findPharmacyBySlug(slug)?.hours).toBeUndefined()
     }
     expect(findPharmacyBySlug('winston-scott-polyclinic')).toBeDefined()
+  })
+
+  it('adds corroborated hours while withholding inconsistent document schedules', () => {
+    expect(findPharmacyBySlug('avis-pharmacy')?.hours).toMatchObject({
+      mon: [{ opens: '08:00', closes: '18:00' }],
+      sat: [{ opens: '08:00', closes: '16:00' }],
+      sun: [],
+    })
+    expect(findPharmacyBySlug('allington-pharmacy')?.hours).toMatchObject({
+      thu: [{ opens: '09:00', closes: '17:00' }],
+      sat: [{ opens: '09:00', closes: '13:30' }],
+    })
+    expect(findPharmacyBySlug('whole-health-pharmacy')).toMatchObject({
+      hours: { sat: [{ opens: '08:00', closes: '15:00' }] },
+      whatsapp: '(246) 422-5207',
+    })
+
+    const sunday = new Date('2026-09-13T16:00:00Z')
+    expect(
+      pharmacyStatus(findPharmacyBySlug('avis-pharmacy')!, sunday)?.open,
+    ).toBe(false)
+    for (const slug of ['bt-pharmacy', 'joe-s-pharmacy', 'tdl-pharmacy']) {
+      const pharmacy = findPharmacyBySlug(slug)!
+      expect(pharmacy.hours).toBeUndefined()
+      expect(pharmacyStatus(pharmacy, sunday)).toBeNull()
+      expect(pharmacy.verification).toContainEqual(
+        expect.objectContaining({
+          fields: ['hours'],
+          note: expect.stringContaining('Hours withheld:'),
+        }),
+      )
+    }
   })
 
   it('has a unique, non-empty share slug per pharmacy', () => {
