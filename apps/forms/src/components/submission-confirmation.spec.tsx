@@ -66,11 +66,18 @@ describe("SubmissionConfirmation", () => {
           polyclinicContact:
             "Maurice Byer Polyclinic - [(246) 536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)",
         }}
-        markdownContent="## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n{polyclinicContact}"
+        markdownContent={
+          "## Contact\n\nIf you need help, contact your Environmental Health Service office.\n\n{polyclinicContact}"
+        }
       />,
     );
+    // react-markdown is stubbed in this project's vitest config, so what is
+    // asserted here is the *substitution* — the routed line reaching the
+    // renderer, and no other clinic's details with it. The rendered links and
+    // list shape are pinned where markdown really runs, in
+    // apps/api/src/email/email-body.builder.spec.ts.
     expect(container.textContent).toContain(
-      "Maurice Byer Polyclinic - [(246) 536-3214]",
+      "- Maurice Byer Polyclinic - [(246) 536-3214]",
     );
     expect(container.textContent).toContain("MBPC.apps@health.gov.bb");
     // Only the routed clinic's details — none of the others.
@@ -85,7 +92,7 @@ describe("SubmissionConfirmation", () => {
         serviceTitle="Temporary Restaurant Licence"
         stepTitle="Application submitted"
         submissionState={baseState}
-        markdownContent="## Contact\n\n{polyclinicContact}"
+        markdownContent={"## Contact\n\n{polyclinicContact}"}
       />,
     );
     // The all-clinics fallback lists every serving clinic (issue #254).

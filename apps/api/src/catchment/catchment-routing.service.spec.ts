@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { afterEach, describe, expect, it, beforeAll, vi } from "vitest";
 import { Logger } from "@nestjs/common";
-import { ALL_POLYCLINIC_CONTACTS } from "@govtech-bb/form-conditions";
+import { POLYCLINIC_CONTACTS } from "@govtech-bb/form-conditions";
 import { CatchmentRoutingService } from "./catchment-routing.service";
 import {
   CATCHMENT_CONTACT,
@@ -219,14 +219,11 @@ describe("CatchmentRoutingService", () => {
 
   it("resolves a {polyclinicContact} line for every serving catchment", () => {
     // Every clinic the router can name must have a contact line, and that line
-    // must begin with the same resolved clinic name the `{polyclinic}` token
-    // renders — so the confirmation body can't pair a name with a different
-    // clinic's contact details. It must also byte-match the shared
-    // `ALL_POLYCLINIC_CONTACTS` fallback so the routed single line and the
-    // all-clinics fallback can't drift (#254).
-    const CONTACT_BY_CLINIC = Object.fromEntries(
-      ALL_POLYCLINIC_CONTACTS.map((line) => [line.split(" - ")[0], line]),
-    );
+    // must *name that same clinic* — the confirmation body must never pair one
+    // clinic's name with another's contact details (#254). The line is taken
+    // from the shared `POLYCLINIC_CONTACTS`, which also derives the
+    // all-clinics fallback, so the two can't carry different digits; what this
+    // pins is that the key the router resolves by agrees with the row's text.
     for (const clinic of Object.keys(POINT_IN)) {
       const r = svc.resolve({
         formId: PERMIT_FORM,
@@ -234,8 +231,17 @@ describe("CatchmentRoutingService", () => {
         coordinates: POINT_IN[clinic],
       });
       expect(r?.polyclinic, clinic).toBe(clinic);
-      expect(r?.polyclinicContact, clinic).toBe(CONTACT_BY_CLINIC[clinic]);
+      expect(r?.polyclinicContact, clinic).toBe(POLYCLINIC_CONTACTS[clinic]);
+      expect(r?.polyclinicContact, clinic).toMatch(
+        new RegExp(`^${clinic.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} - `),
+      );
     }
+
+    // And POINT_IN covers the whole table — a new serving catchment must be
+    // added here rather than silently skipping this check.
+    expect(Object.keys(POINT_IN).sort()).toEqual(
+      Object.keys(POLYCLINIC_CONTACTS).sort(),
+    );
   });
 
   it("resolves the contact line for the clinic a coordinate actually hits", () => {

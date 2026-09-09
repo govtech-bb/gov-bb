@@ -107,11 +107,25 @@ describe("interpolateConfirmationMarkdown", () => {
   });
 
   it("substitutes the routed polyclinic's single contact line for {polyclinicContact}", () => {
+    // Bulleted, like the fallback: recipes put the token at column 0, so an
+    // unprefixed line would render as a paragraph while the fallback renders
+    // as a list — same section, two treatments depending on whether routing
+    // landed.
     expect(
       interpolateConfirmationMarkdown("Contact:\n\n{polyclinicContact}", {
         polyclinicContact: "Randal Phillips Polyclinic - [x](tel:1)",
       }),
-    ).toBe("Contact:\n\nRandal Phillips Polyclinic - [x](tel:1)");
+    ).toBe("Contact:\n\n- Randal Phillips Polyclinic - [x](tel:1)");
+  });
+
+  it("falls back to the full clinic list for an empty contact line", () => {
+    // An empty line would leave a bare "- " bullet, so it is rejected in
+    // favour of the list — unlike {polyclinic}, which preserves "".
+    expect(
+      interpolateConfirmationMarkdown("{polyclinicContact}", {
+        polyclinicContact: "",
+      }),
+    ).toBe(ALL_POLYCLINIC_CONTACTS_MARKDOWN);
   });
 
   it("falls back to the full clinic list when no polyclinic resolved", () => {

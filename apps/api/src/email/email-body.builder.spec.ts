@@ -1,6 +1,7 @@
 import type { Mocked } from "vitest";
 import { EmailBodyBuilder, type EmailField } from "./email-body.builder";
 import type { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
+import { POLYCLINIC_CONTACTS } from "@govtech-bb/form-conditions";
 import type { ServiceContract } from "@govtech-bb/form-types";
 import type { SubmissionCreatedEvent } from "../forms/submissions/submissions.types";
 import type { ConfigService } from "@nestjs/config";
@@ -515,12 +516,20 @@ describe("EmailBodyBuilder", () => {
         }),
       );
 
+      // This is the one surface in the change where markdown actually runs, so
+      // it is where the *rendered* shape gets pinned: the phone and email must
+      // come out as real links, and the routed line must render as the same
+      // bullet list the fallback does — one item instead of seven — not as a
+      // bare paragraph the confirmation page leaves unstyled.
       expect(ctx.markdownHtml).toContain("Randal Phillips Polyclinic");
-      expect(ctx.markdownHtml).toContain("(246) 536-4338");
-      expect(ctx.markdownHtml).toContain("RPPC.EHD@health.gov.bb");
+      expect(ctx.markdownHtml).toContain('href="tel:+12465364338"');
+      expect(ctx.markdownHtml).toContain(
+        'href="mailto:RPPC.EHD@health.gov.bb"',
+      );
+      expect(ctx.markdownHtml?.match(/<li>/g) ?? []).toHaveLength(1);
       // None of the other clinics' details.
       expect(ctx.markdownHtml).not.toContain("St. Philip Polyclinic");
-      expect(ctx.markdownHtml).not.toBe("{polyclinicContact}");
+      expect(ctx.markdownHtml).not.toContain("{polyclinicContact}");
     });
 
     it("falls back to the full clinic list for {polyclinicContact} when nothing resolved", async () => {
@@ -546,6 +555,11 @@ describe("EmailBodyBuilder", () => {
       expect(ctx.markdownHtml).toContain("St. Philip Polyclinic");
       expect(ctx.markdownHtml).toContain("Sir Winston Scott Polyclinic");
       expect(ctx.markdownHtml).toContain("Maurice Byer Polyclinic");
+      // One <li> per serving clinic — the same list construct the routed
+      // single line renders as.
+      expect(ctx.markdownHtml?.match(/<li>/g) ?? []).toHaveLength(
+        Object.keys(POLYCLINIC_CONTACTS).length,
+      );
       expect(ctx.markdownHtml).not.toContain("{polyclinicContact}");
     });
 

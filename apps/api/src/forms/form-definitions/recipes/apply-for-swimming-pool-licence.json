@@ -499,7 +499,7 @@
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "behaviours": [],
-      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n* Environmental Health will review your application and an officer will be assigned to your case.  \n* They must inspect the swimming pool before they can issue a licence. More than one visit may be required before the issuing of a licence.  \n\n**Obtaining your licence:**\n\n* If your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n{polyclinicContact}",
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n* Environmental Health will review your application and an officer will be assigned to your case.  \n* They must inspect the swimming pool before they can issue a licence. More than one visit may be required before the issuing of a licence.  \n\n**Obtaining your licence:**\n\n* If your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n## Contact\n\nIf you need help, contact your Environmental Health Service office.\n\n{polyclinicContact}",
       "elements": []
     }
   ],
@@ -547,7 +547,7 @@
     }
   ],
   "createdAt": "2026-08-25T00:10:51.219Z",
-  "updatedAt": "2026-09-08T18:25:19.526Z",
+  "updatedAt": "2026-09-09T23:42:12.289Z",
   "meta": {
     "visibility": "preview"
   },

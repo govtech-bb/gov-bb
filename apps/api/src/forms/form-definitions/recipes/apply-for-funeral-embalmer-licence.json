@@ -424,7 +424,7 @@
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "behaviours": [],
-      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\nYour application goes to the Environmental Health Service associated with your location. If additional information or documentation is required, you will be contacted by an Environmental Health Officer.\n\n### Obtaining your licence\n\nIf your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n{polyclinicContact}",
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\nYour application goes to the Environmental Health Service associated with your location. If additional information or documentation is required, you will be contacted by an Environmental Health Officer.\n\n### Obtaining your licence\n\nIf your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n## Contact\n\nIf you need help, contact your Environmental Health Service office.\n\n{polyclinicContact}",
       "elements": []
     }
   ],
@@ -472,7 +472,7 @@
     }
   ],
   "createdAt": "2026-08-25T14:05:29.888Z",
-  "updatedAt": "2026-09-08T18:25:19.527Z",
+  "updatedAt": "2026-09-09T23:42:12.289Z",
   "meta": {
     "visibility": "preview"
   },

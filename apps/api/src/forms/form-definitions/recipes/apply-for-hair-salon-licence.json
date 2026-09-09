@@ -443,7 +443,7 @@
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "behaviours": [],
-      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\nEnvironmental Health will review your application and inspect the business.\n\nDuring the inspection, you will need to show:\n\n-   your cleaning schedule of the premises and equipment\n-   the cleaning and sanitation process of the equipment including towels\n-   facilities with hot and cold water\n-   any staff medical certificates you did not upload\n\nIf you provide services from a vehicle, Environmental Health will need to arrange an inspection of the vehicle.\n\n**Obtaining your licence:**\n\n-   If your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n{polyclinicContact}",
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\nEnvironmental Health will review your application and inspect the business.\n\nDuring the inspection, you will need to show:\n\n-   your cleaning schedule of the premises and equipment\n-   the cleaning and sanitation process of the equipment including towels\n-   facilities with hot and cold water\n-   any staff medical certificates you did not upload\n\nIf you provide services from a vehicle, Environmental Health will need to arrange an inspection of the vehicle.\n\n**Obtaining your licence:**\n\n-   If your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n## Contact\n\nIf you need help, contact your Environmental Health Service office.\n\n{polyclinicContact}",
       "elements": []
     }
   ],
@@ -491,7 +491,7 @@
     }
   ],
   "createdAt": "2026-08-20T17:42:48.875Z",
-  "updatedAt": "2026-09-08T18:25:19.521Z",
+  "updatedAt": "2026-09-09T23:42:12.289Z",
   "meta": {
     "visibility": "preview"
   },

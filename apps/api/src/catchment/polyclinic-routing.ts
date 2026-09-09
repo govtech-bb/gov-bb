@@ -1,3 +1,5 @@
+import { POLYCLINIC_CONTACTS } from "@govtech-bb/form-conditions";
+
 /**
  * Routing data that is NOT geometry. The GeoJSON holds only the catchment
  * shapes + names; the serving-catchment redirects, the programme codes and the
@@ -5,7 +7,9 @@
  *
  * The per-catchment MDA inboxes used to live here too. They are now rows in
  * `catchment_contact` (see `CatchmentContactService`), so an environment can
- * hold its own real addresses and rotating one needs no deploy.
+ * hold its own real addresses and rotating one needs no deploy. That does not
+ * cover `CATCHMENT_CONTACT` below — a published citizen-facing contact line is
+ * a different thing from a private notification inbox; see its own note.
  */
 
 /**
@@ -79,24 +83,18 @@ export const PARISH_DEFAULTS: Record<string, string> = {
  * polyclinic the `{polyclinic}` token renders so the confirmation body can't
  * pair a name with another clinic's details (#254).
  *
- * These strings mirror `ALL_POLYCLINIC_CONTACTS` in `@govtech-bb/form-conditions`
- * (the shared `{polyclinicContact}` fallback); `catchment-routing.service.spec.ts`
- * cross-checks the resolution against that shared list so the routed single line
- * and the all-clinics fallback can't drift.
+ * Not restated here: this *is* `POLYCLINIC_CONTACTS` from
+ * `@govtech-bb/form-conditions`, which also derives the `{polyclinicContact}`
+ * all-clinics fallback from the same rows — the routed single line and the
+ * fallback are one table, so they cannot drift. Aliased under the local
+ * `CATCHMENT_*` name because `CatchmentRoutingService` validates it at boot
+ * alongside `CATCHMENT_SUFFIX` and against the same GeoJSON catchment names.
+ *
+ * Unlike the MDA inboxes this file gave up to `catchment_contact`, these are
+ * the *published* phone/email a citizen is told to call, not a private
+ * notification address, and they change on the Ministry's timescale rather than
+ * an environment's — so they stay in code and rotating one is a deploy. If that
+ * becomes the wrong trade they belong as columns on `catchment_contact`, read at
+ * response time the way `resolveMdaEmail` already is — tracked in #2661.
  */
-export const CATCHMENT_CONTACT: Record<string, string> = {
-  "Branford Taitt Polyclinic":
-    "Branford Taitt Polyclinic - [(246) 536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)",
-  "David Thompson Health & Social Services Complex":
-    "David Thompson Health & Social Services Complex - [(246) 536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)",
-  "Eunice Gibson Polyclinic":
-    "Eunice Gibson Polyclinic - [(246) 536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)",
-  "Maurice Byer Polyclinic":
-    "Maurice Byer Polyclinic - [(246) 536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)",
-  "Randal Phillips Polyclinic":
-    "Randal Phillips Polyclinic - [(246) 536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)",
-  "Sir Winston Scott Polyclinic":
-    "Sir Winston Scott Polyclinic - [(246) 536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)",
-  "St. Philip Polyclinic":
-    "St. Philip Polyclinic - [(246) 536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)",
-};
+export const CATCHMENT_CONTACT = POLYCLINIC_CONTACTS;

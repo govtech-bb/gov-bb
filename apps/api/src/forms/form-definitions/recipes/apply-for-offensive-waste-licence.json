@@ -455,7 +455,7 @@
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "behaviours": [],
-      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your request.\n- They will review it and may contact you if they need more information. \n- If your application is approved, you will receive a confirmation email and the Environment Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n**Obtaining your licence:**\n\nIf your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\nSubmitting an application does not mean that an offensive trades licence has been granted.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n{polyclinicContact}",
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your request.\n- They will review it and may contact you if they need more information. \n- If your application is approved, you will receive a confirmation email and the Environment Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n**Obtaining your licence:**\n\nIf your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\nSubmitting an application does not mean that an offensive trades licence has been granted.\n\n## Contact\n\nIf you need help, contact your Environmental Health Service office.\n\n{polyclinicContact}",
       "nextSteps": [
         {
           "title": "What happens next",
@@ -509,7 +509,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:33:15.101Z",
-  "updatedAt": "2026-09-08T18:25:19.524Z",
+  "updatedAt": "2026-09-09T23:42:12.289Z",
   "meta": {
     "visibility": "preview"
   },

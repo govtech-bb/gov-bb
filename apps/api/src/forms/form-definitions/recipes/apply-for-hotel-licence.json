@@ -1090,9 +1090,9 @@
       "title": "Application submitted",
       "elements": [],
       "behaviours": [],
-      "markdownContent": "A copy of your application has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your application.\n- They may contact you if they need more information.\n- Submitting an application does not mean that a Hotel Licence has been granted.\n\nKeep your reference number for any follow-up.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n{polyclinicContact}"
+      "markdownContent": "A copy of your application has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your application.\n- They may contact you if they need more information.\n- Submitting an application does not mean that a Hotel Licence has been granted.\n\nKeep your reference number for any follow-up.\n\n## Contact\n\nIf you need help, contact your Environmental Health Service office.\n\n{polyclinicContact}"
     }
   ],
   "createdAt": "2026-08-18T17:01:58.317Z",
-  "updatedAt": "2026-09-08T18:25:19.526Z"
+  "updatedAt": "2026-09-09T23:42:12.289Z"
 }

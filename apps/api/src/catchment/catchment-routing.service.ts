@@ -16,7 +16,7 @@ export interface CatchmentResolution {
    * on the confirmation page and in the applicant email. Optional because the
    * SQS message boundary may carry a resolution from an older deploy mid-rollout —
    * callers optional-chain and fall back to the shared all-clinics list. `resolve()`
-   * always set it (boot validation guarantees a row for every serving catchment).
+   * always sets it (boot validation guarantees a row for every serving catchment).
    */
   polyclinicContact?: string;
 }
@@ -36,6 +36,34 @@ interface CatchmentEntry {
   servedBy: string;
   /** Normalised to a list of polygons, each polygon a list of rings. */
   polygons: Ring[][];
+}
+
+/**
+ * A per-catchment lookup table must cover every serving catchment and name
+ * nothing else — catching both a typo'd key and a key left behind for a
+ * catchment now served by another polyclinic. Shared by every such table
+ * (`CATCHMENT_SUFFIX`, `CATCHMENT_CONTACT`) so a new one gets both halves of
+ * the check rather than only the one its author remembered.
+ */
+function assertKeyedByServingCatchments(
+  table: Record<string, string>,
+  servingNames: Set<string>,
+  label: string,
+): void {
+  for (const name of servingNames) {
+    if (!(name in table)) {
+      throw new Error(
+        `[catchment] ${label} has no entry for catchment "${name}"`,
+      );
+    }
+  }
+  for (const name of Object.keys(table)) {
+    if (!servingNames.has(name)) {
+      throw new Error(
+        `[catchment] ${label} has an entry for unknown catchment "${name}"`,
+      );
+    }
+  }
 }
 
 @Injectable()
@@ -99,41 +127,21 @@ export class CatchmentRoutingService implements OnModuleInit {
 
     // Programme codes are composed from the recipe's own programmeCode plus a
     // per-catchment suffix, so the suffix table must cover every serving
-    // catchment and name nothing else (catches both a typo'd key and a key left
-    // behind for a catchment that is now served by another polyclinic).
-    for (const name of servingNames) {
-      if (!(name in CATCHMENT_SUFFIX)) {
-        throw new Error(
-          `[catchment] CATCHMENT_SUFFIX has no suffix for catchment "${name}"`,
-        );
-      }
-    }
-    for (const name of Object.keys(CATCHMENT_SUFFIX)) {
-      if (!servingNames.has(name)) {
-        throw new Error(
-          `[catchment] CATCHMENT_SUFFIX has a suffix for unknown catchment "${name}"`,
-        );
-      }
-    }
+    // catchment and name nothing else.
+    assertKeyedByServingCatchments(
+      CATCHMENT_SUFFIX,
+      servingNames,
+      "CATCHMENT_SUFFIX",
+    );
 
-    // Every serving catchment must also carry a contact line, and a contact
-    // row must name a real serving catchment — a live submission routed to a
-    // catchment with no line would show a blank contact section, and a row for
-    // a defunct catchment is dead data (#254).
-    for (const name of servingNames) {
-      if (!(name in CATCHMENT_CONTACT)) {
-        throw new Error(
-          `[catchment] CATCHMENT_CONTACT has no contact line for catchment "${name}"`,
-        );
-      }
-    }
-    for (const name of Object.keys(CATCHMENT_CONTACT)) {
-      if (!servingNames.has(name)) {
-        throw new Error(
-          `[catchment] CATCHMENT_CONTACT has a contact for unknown catchment "${name}"`,
-        );
-      }
-    }
+    // Every serving catchment must also carry a contact line — a live
+    // submission routed to a catchment with no line would show a blank contact
+    // section (#254).
+    assertKeyedByServingCatchments(
+      CATCHMENT_CONTACT,
+      servingNames,
+      "CATCHMENT_CONTACT",
+    );
   }
 
   resolve(input: {
