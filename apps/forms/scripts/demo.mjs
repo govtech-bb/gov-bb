@@ -400,6 +400,7 @@ async function handle(req, res, next) {
 
 const server = await createServer({
   root,
+  mode: "demo",
   define: {
     "import.meta.env.VITE_API_URL": JSON.stringify(api),
     "import.meta.env.VITE_PAYMENT_ALLOWED_ORIGINS": JSON.stringify(
