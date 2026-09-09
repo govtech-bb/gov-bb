@@ -6,6 +6,7 @@ import './-ui/water-outages.css'
 export const Route = createFileRoute(
   '/health-and-emergency-services/water-outages',
 )({
+  staticData: { breadcrumbMode: 'location' },
   component: () => (
     <PageShell>
       <Outlet />
