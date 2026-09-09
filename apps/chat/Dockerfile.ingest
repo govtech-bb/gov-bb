@@ -18,6 +18,7 @@ RUN chown app:app /app
 USER app
 
 COPY --chown=app:app package.json pnpm-lock.yaml pnpm-workspace.yaml nx.json tsconfig.base.json ./
+COPY --chown=app:app patches/ ./patches/
 COPY --chown=app:app apps/chat/package.json apps/chat/
 COPY --chown=app:app packages/aws-secrets/package.json packages/aws-secrets/
 COPY --chown=app:app packages/content/package.json packages/content/

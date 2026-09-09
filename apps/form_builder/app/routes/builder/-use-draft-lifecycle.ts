@@ -1,28 +1,19 @@
 import type { Dispatch } from "react";
-import { serializeRecipeDraft } from "@govtech-bb/form-builder";
 import type {
   RecipeDraft,
-  RegistryCatalog,
   RecipeValidateResponse,
-  UnknownRef,
-  ValidationResult,
   ValidationIssue,
 } from "@govtech-bb/form-builder";
 import type {
   ServiceContract,
   ServiceContractRecipe,
 } from "@govtech-bb/form-types";
-import { validateRecipe } from "../../server/registry";
-import { buildLoadArgs, draftsEqual } from "./-apply-recipe";
 import { recipeReducer, firstStepId } from "./-recipe-reducer";
 import type { RecipeAction } from "./-recipe-reducer";
-import type { ApplyRecipeResult } from "./-ai-sidebar";
 
 interface UseDraftLifecycleParams {
   draft: RecipeDraft;
-  catalog: RegistryCatalog;
   savedDraft: RecipeDraft | null;
-  hasUnsavedChanges: boolean;
   dispatch: Dispatch<RecipeAction>;
   setSavedDraft: (draft: RecipeDraft | null) => void;
   setLoadedFromId: (id: string | null) => void;
@@ -52,9 +43,7 @@ interface UseDraftLifecycleParams {
  */
 export function useDraftLifecycle({
   draft,
-  catalog,
   savedDraft,
-  hasUnsavedChanges,
   dispatch,
   setSavedDraft,
   setLoadedFromId,
@@ -96,114 +85,19 @@ export function useDraftLifecycle({
     setLastSaveStatus("idle");
   };
 
-  // Apply a recipe the AI sidebar produced, in place, against the live draft:
-  // deserialize → (no-op guard) → collect non-blocking defects → confirm-if-dirty
-  // → LOAD_DRAFT → bump patch. Returns a result the sidebar surfaces. The draft
-  // is only ever replaced on the changed, confirmed path — an unchanged recipe
-  // or a structurally-unreadable one never clobbers good work.
-  //
-  // Recipe-level defects — unresolvable refs (flagged by convert against the
-  // full catalog), id collisions, and server contract-validation failures — are
-  // loaded-with-a-warning rather than rejected: the draft loads and the defects
-  // are surfaced (contract issues + unresolvable refs in the validation panel;
-  // id collisions in the always-on collision panel) so the author can fix the
-  // bad fields in place or steer with a follow-up prompt (#1051). Deploy/Save
-  // re-run their own hard checks, so an invalid form can never publish (#504).
-  //
-  // Only two cases stay hard errors (nothing to load): a structurally-unreadable
-  // recipe where buildLoadArgs throws, and the validate *request* itself failing
-  // (an infrastructure error, not a recipe defect — there's no issue to show).
-  const applyAiRecipe = async (
-    recipe: ServiceContractRecipe,
-    unresolvableRefs: UnknownRef[] = [],
-  ): Promise<ApplyRecipeResult> => {
-    let incoming: RecipeDraft;
-    try {
-      incoming = buildLoadArgs(recipe, catalog).draft;
-    } catch (e) {
-      return {
-        applied: false,
-        error: e instanceof Error ? e.message : "Could not read the AI recipe.",
-      };
-    }
-
-    // No-op guard first: a conversational tweak can echo the form back
-    // unchanged. Don't validate, don't prompt, don't bump — there's nothing to
-    // apply. (Equality ignores version, timestamps, and editor-only ids.)
-    if (draftsEqual(draft, incoming)) {
-      return { applied: false, reason: "unchanged" };
-    }
-
-    // Collect non-blocking defects to surface in the validation panel instead of
-    // rejecting. unresolvableRefs (from convert) map to the same issue shape.
-    const warnings: ValidationIssue[] = unresolvableRefs.map((r) => ({
-      path: r.path,
-      message: `Unknown component/block ref "${r.ref}" — fix this field before deploying.`,
-    }));
-
-    // Note: id collisions are *not* re-checked or collected here. Loading the
-    // draft is enough — the always-on collision panel (hasIdCollisions, computed
-    // from the live draft) surfaces them automatically, and Deploy/Save re-run
-    // findRecipeIdCollisions as their own hard gate, so a duplicate id can never
-    // be published. Collecting them into `warnings` too would render the same
-    // collision twice. (Was a hard reject before #1051.)
-
-    // Server validate → warn-and-load on contract failure. Skip when
-    // unresolvableRefs are already flagged: the gate would only fail on the very
-    // refs we're choosing to tolerate. The request *itself* throwing is an
-    // infrastructure error, not a recipe defect, so it stays a hard error.
-    if (unresolvableRefs.length === 0) {
-      try {
-        const serialized = serializeRecipeDraft(incoming);
-        const raw = (await validateRecipe({
-          data: { recipe: serialized },
-        })) as ValidationResult;
-        if (!raw.ok) {
-          warnings.push(
-            ...raw.issues.map((i) => ({
-              path: i.path ?? "",
-              message: i.message,
-            })),
-          );
-        }
-      } catch (e) {
-        return {
-          applied: false,
-          error: e instanceof Error ? e.message : "Validation request failed.",
-        };
-      }
-    }
-
-    // Guard against silently discarding unsaved work already in the editor.
-    // Gate on hasUnsavedChanges (not isDirty): replacing a clean, just-loaded
-    // form loses nothing (Discard reverts to the saved baseline), so only the
-    // presence of unsaved edits warrants a prompt. The message is explicit that
-    // the apply only updates the editor and isn't saved.
-    if (
-      hasUnsavedChanges &&
-      !window.confirm(
-        "Apply the AI changes to the editor? This replaces the current form and isn't saved — you can Discard to undo, or Save draft to keep it.",
-      )
-    ) {
-      return { applied: false, reason: "cancelled" };
-    }
-
+  const applyAiRecipe = (
+    incoming: RecipeDraft,
+    warnings: ValidationIssue[],
+  ) => {
     dispatch({ type: "LOAD_DRAFT", draft: incoming });
-    // Mirror handleLoad: open the first step of the freshly applied recipe.
     setSelectedStepId(firstStepId(incoming));
     setMainView("step");
-    // Surface any collected defects as non-blocking warnings in the existing
-    // validation panel; otherwise clear it.
-    if (warnings.length > 0) {
-      setValidateResult({ valid: false, issues: warnings });
-      setLastSaveStatus("error");
-    } else {
-      setValidateResult(null);
-      setLastSaveStatus("idle");
-    }
+    setValidateResult(
+      warnings.length ? { valid: false, issues: warnings } : null,
+    );
+    setLastSaveStatus(warnings.length ? "error" : "idle");
     setSubmitSuccess(false);
     setSubmitError(null);
-    return { applied: true };
   };
 
   const handleNew = () => {

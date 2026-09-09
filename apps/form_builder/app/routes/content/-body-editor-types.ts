@@ -1,3 +1,4 @@
+import type { AssistantRequest } from "../../components/ui/ai/prompt-bar";
 import type { StartLinkType } from "./-lib";
 
 export type BodyEditorProfile =
@@ -15,4 +16,5 @@ export interface BodyEditorProps {
   value: string;
   onChange: (next: string) => void;
   profile: BodyEditorProfile;
+  onAiAction?: (request: AssistantRequest) => void;
 }

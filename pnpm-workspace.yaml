@@ -86,3 +86,9 @@ minimumReleaseAgeExclude:
   - "@tanstack/openai-base@0.9.6"
   - "@govtech-bb/frontend@1.0.0-alpha.18||1.0.0-alpha.19||1.0.0-alpha.20||1.0.0-alpha.21||1.0.0-alpha.24||1.0.0-alpha.25||1.0.0-alpha.26||1.0.0-alpha.27||1.0.0-alpha.29"
   - brace-expansion@2.1.4
+
+# Docker contexts install workspace subsets; only the builder API uses this patch.
+allowUnusedPatches: true
+
+patchedDependencies:
+  '@tanstack/ai-bedrock@0.3.7': patches/@tanstack__ai-bedrock@0.3.7.patch

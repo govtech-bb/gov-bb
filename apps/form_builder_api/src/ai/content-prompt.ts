@@ -1,13 +1,4 @@
-/**
- * System prompt for the content CMS's "Generate with AI" action
- * (POST /builder/ai/content).
- *
- * PROMPT_BODY is the content-design ruleset (adapted from the content
- * designers' master prompt 10.8 — output-format/Word mechanics stripped, since
- * the editor consumes structured JSON). The output contract below it is
- * appended separately so iterating on the content rules can't break the
- * editor's JSON extraction.
- */
+// Government content-design rules shared by questions and reviewed page edits.
 
 const PROMPT_BODY = `# Role and purpose
 
@@ -333,35 +324,9 @@ Do not put "## Cost" before "## Complete the form" in the licence and applicatio
 Do not state that a service is free, or give a completion time, unless the source content supports it.
 Present the output as final copy, not notes about what you might do.`;
 
-// The editor parses the first fenced JSON block out of the reply and applies
-// only these keys to the draft. Everything else in the reply is shown to the
-// author as plain text.
-const OUTPUT_CONTRACT = `
-# Output format
-
-Always end your reply with a single fenced \`\`\`json code block containing only the page fields you are proposing (omit any field you are not changing):
-
-\`\`\`json
-{
-  "title": "Get a copy of a birth certificate",
-  "description": "Short summary shown in category listings and search.",
-  "body": "Markdown body of the page.",
-  "category": "a-known-category-slug",
-  "subcategory": "a-known-subcategory-slug",
-  "slug": "kebab-case-page-slug",
-  "linkType": "form" | "slug" | "external" | "none",
-  "linkHref": "internal /path or https:// URL when linkType is slug/external",
-  "visibility": "draft" | "preview" | "public"
-}
-\`\`\`
-
-All values are strings. How the fields map to the page:
-
-- "title" is the page's H1 — the site renders it. Never repeat the title as a heading in the body, and never use a top-level \`#\` heading there: section headings start at \`##\`. The body may open with the intro sentence before its first heading, as the worked example does.
-- The Start button is the literal marker \`<a data-start-link>Start now</a>\`. Use it at most once; the editor wires its destination. Place it on its own line, indented inside the online route's list item where the page lists more than one route. Set "linkType": "none" and omit the marker for purely informational pages.
-- "description" is the short summary shown in category listings and search, not part of the body.
-- Flags about missing information, page-pattern recommendations, and anything else for the author go in your prose reply before the JSON block — never inside the page body, and never as bracketed notes in the copy.`;
-
 export function getContentSystemPrompt(): string {
-  return `${PROMPT_BODY}\n${OUTPUT_CONTRACT}`;
+  return (
+    PROMPT_BODY +
+    "\nPropose changed page fields using apply_content_patch. Do not put JSON in the reply. The title is the page H1; body headings start at ##. Use <a data-start-link>Start now</a> at most once in the body and use linkType/linkHref for its destination. Missing information and recommendations belong in the reply, never in published copy."
+  );
 }

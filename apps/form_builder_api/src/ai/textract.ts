@@ -30,6 +30,7 @@ export async function startAnalysis(s3Key: string): Promise<{ jobId: string }> {
     new StartDocumentAnalysisCommand({
       DocumentLocation: { S3Object: { Bucket: bucket, Name: s3Key } },
       FeatureTypes: ["FORMS", "TABLES"],
+      ClientRequestToken: s3Key.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64),
     }),
   );
   if (!response.JobId) throw new Error("Textract did not return a JobId");
@@ -46,6 +47,7 @@ export type AnalysisResult =
 // merged result.
 export async function getAnalysisResult(
   jobId: string,
+  signal?: AbortSignal,
 ): Promise<AnalysisResult> {
   const blocks: Block[] = [];
   let nextToken: string | undefined;
@@ -53,6 +55,7 @@ export async function getAnalysisResult(
   do {
     const response = await getClient().send(
       new GetDocumentAnalysisCommand({ JobId: jobId, NextToken: nextToken }),
+      { abortSignal: signal },
     );
 
     if (!response.JobStatus) {

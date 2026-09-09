@@ -1,0 +1,378 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-09T21:41:38Z",
+  "title": "Design System: Gov BB authoring assistant",
+  "extensions": {
+    "colorMeta": {
+      "el-0": {
+        "role": "neutral",
+        "displayName": "Card surface",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-50": {
+        "role": "neutral",
+        "displayName": "Panel surface",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-100": {
+        "role": "neutral",
+        "displayName": "Inset surface",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-150": {
+        "role": "neutral",
+        "displayName": "User message and hover surface",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-200": {
+        "role": "neutral",
+        "displayName": "Divider",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-250": {
+        "role": "neutral",
+        "displayName": "Control border",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-800": {
+        "role": "neutral",
+        "displayName": "Supporting text and action hover",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "el-1000": {
+        "role": "primary",
+        "displayName": "Inverse action",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "txt": {
+        "role": "neutral",
+        "displayName": "Primary text",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "on-inverse": {
+        "role": "primary",
+        "displayName": "Inverse action text",
+        "tonalRamp": [
+          "#1c1c1c",
+          "#3a3a3a",
+          "#8a8a8a",
+          "#a1a1a1",
+          "#dcdcdc",
+          "#e5e5e5",
+          "#f7f7f5",
+          "#ffffff"
+        ]
+      },
+      "color-success": {
+        "role": "secondary",
+        "displayName": "Success and added lines",
+        "tonalRamp": [
+          "oklch(15% 0.08 145)",
+          "oklch(26% 0.08 145)",
+          "oklch(38% 0.08 145)",
+          "oklch(49% 0.08 145)",
+          "oklch(61% 0.08 145)",
+          "oklch(72% 0.08 145)",
+          "oklch(84% 0.08 145)",
+          "oklch(95% 0.08 145)"
+        ]
+      },
+      "err-tx": {
+        "role": "secondary",
+        "displayName": "Error text and removed lines",
+        "tonalRamp": [
+          "oklch(15% 0.12 25)",
+          "oklch(26% 0.12 25)",
+          "oklch(38% 0.12 25)",
+          "oklch(49% 0.12 25)",
+          "oklch(61% 0.12 25)",
+          "oklch(72% 0.12 25)",
+          "oklch(84% 0.12 25)",
+          "oklch(95% 0.12 25)"
+        ]
+      },
+      "err-bg": {
+        "role": "neutral",
+        "displayName": "Error and removal surface",
+        "tonalRamp": [
+          "oklch(15% 0.03 25)",
+          "oklch(26% 0.03 25)",
+          "oklch(38% 0.03 25)",
+          "oklch(49% 0.03 25)",
+          "oklch(61% 0.03 25)",
+          "oklch(72% 0.03 25)",
+          "oklch(84% 0.03 25)",
+          "oklch(95% 0.03 25)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "body": {
+        "displayName": "Body",
+        "purpose": "Conversation paragraphs in the host Inter stack."
+      },
+      "markdown": {
+        "displayName": "Markdown",
+        "purpose": "Reading rhythm for streamed assistant content."
+      },
+      "heading": {
+        "displayName": "Markdown heading",
+        "purpose": "Constrained heading size inside the narrow conversation."
+      },
+      "label": {
+        "displayName": "Supporting label",
+        "purpose": "Tool activity, warnings, and review support."
+      },
+      "activity": {
+        "displayName": "Activity label",
+        "purpose": "Solid status text beside measured elapsed time and animated pixels."
+      },
+      "code": {
+        "displayName": "Code and unified diff",
+        "purpose": "Shared wrapped monospace output for Markdown fences, tool payloads, and proposed changes."
+      }
+    },
+    "motion": [
+      {
+        "name": "message-enter",
+        "value": "160ms ease-out; opacity: 0 to 1; translateY: 3px to 0",
+        "purpose": "Message arrival only under prefers-reduced-motion: no-preference."
+      },
+      {
+        "name": "activity-pixels",
+        "value": "650ms ease-in-out; 950ms for upload Orbit",
+        "purpose": "Pixel opacity communicates ongoing activity; enabled only without reduced motion. Labels remain solid."
+      },
+      {
+        "name": "activity-spinner",
+        "value": "900ms linear infinite",
+        "purpose": "Running tool and task indicators only without reduced motion."
+      },
+      {
+        "name": "question-selection-enter",
+        "value": "180ms ease-out; opacity: 0 to 1; translate: 0 3px to 0 0",
+        "purpose": "Question and selection-action entrances only without reduced motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact-dialog",
+        "value": "(max-width: 1023px)"
+      },
+      {
+        "name": "compact-fields",
+        "value": "(max-width: 48rem)"
+      }
+    ],
+    "shadows": [
+      {
+        "name": "prompt-menu",
+        "value": "0 4px 14px #0002",
+        "purpose": "Local menu above the prompt."
+      },
+      {
+        "name": "selection-actions",
+        "value": "0 3px 12px #0002",
+        "purpose": "Local toolbar over the content editor."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Explicit Apply action; Send shares the inverse color pairing.",
+      "html": "<button class=\"ds-primary\" type=\"button\">Apply to draft</button>",
+      "css": ".ds-primary{font-family:Inter,system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;font-size:14px;letter-spacing:-0.15px;color:var(--txt);background:var(--el-0);border:1px solid var(--el-250);border-radius:var(--rad-m);padding:7px 10px;line-height:1.3;cursor:pointer;background:var(--el-1000);color:var(--on-inverse);border-color:transparent}.ds-primary:hover:not(:disabled){background:var(--el-800)}.ds-primary:focus-visible{outline:2px solid var(--txt);outline-offset:3px;}.ds-primary:disabled{opacity:0.5;cursor:not-allowed;}"
+    },
+    {
+      "name": "Secondary action",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Bordered actions such as Reject and Retry validation.",
+      "html": "<button class=\"ds-secondary\" type=\"button\">Reject</button>",
+      "css": ".ds-secondary{font-family:Inter,system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;font-size:14px;letter-spacing:-0.15px;color:var(--txt);background:var(--el-0);border:1px solid var(--el-250);border-radius:var(--rad-m);padding:7px 10px;line-height:1.3;cursor:pointer;}.ds-secondary:hover:not(:disabled){background:var(--el-150)}.ds-secondary:focus-visible{outline:2px solid var(--txt);outline-offset:3px;}.ds-secondary:disabled{opacity:0.5;cursor:not-allowed;}"
+    },
+    {
+      "name": "Conversation selector",
+      "kind": "nav",
+      "refersTo": "conversation-select",
+      "description": "Native conversation selection within the dock header.",
+      "html": "<select class=\"ds-conversation\" aria-label=\"Conversation\"><option>New conversation</option><option>Review this draft for clarity</option></select>",
+      "css": ".ds-conversation{font-family:Inter,system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;font-size:14px;letter-spacing:-0.15px;color:var(--txt);background:transparent;border:0;width:100%;padding:6px 0;font-weight:550;text-overflow:ellipsis}.ds-conversation:focus-visible{outline:2px solid var(--txt);outline-offset:3px;}"
+    },
+    {
+      "name": "Assistant mode",
+      "kind": "chip",
+      "refersTo": "mode-select",
+      "description": "Pill-shaped native selector for Review edits or Ask.",
+      "html": "<select class=\"ds-mode\" aria-label=\"Assistant mode\"><option>Review edits</option><option>Ask</option></select>",
+      "css": ".ds-mode{font-family:Inter,system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;font-size:14px;letter-spacing:-0.15px;font-size:12px;padding:6px 8px;border:1px solid var(--el-200);border-radius:20px;background:var(--el-100);color:var(--txt)}.ds-mode:focus-visible{outline:2px solid var(--txt);outline-offset:3px;}.ds-mode:disabled{opacity:0.5;cursor:not-allowed;}"
+    },
+    {
+      "name": "Message composer",
+      "kind": "input",
+      "refersTo": "composer",
+      "description": "PromptBar textarea surface; references, commands, attachments, modes, and send/stop behavior are supplied by the running component.",
+      "html": "<div class=\"ds-composer\"><textarea aria-label=\"Message the assistant\" placeholder=\"Describe what you want to change…\" rows=\"3\" maxlength=\"16000\"></textarea></div>",
+      "css": ".ds-composer{border:1px solid var(--el-250);background:var(--el-0);border-radius:16px;overflow:hidden}.ds-composer:focus-within{outline:1px solid var(--el-800)}.ds-composer textarea{font-family:Inter,system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;font-size:14px;letter-spacing:-0.15px;color:var(--txt);display:block;box-sizing:border-box;inline-size:100%;padding:14px 14px 6px;min-block-size:80px;max-block-size:180px;field-sizing:content;resize:vertical;border:0;border-radius:0;outline:none;box-shadow:none;background:transparent;line-height:1.5}.ds-composer textarea::placeholder{color:var(--el-800);opacity:1}.ds-composer textarea:focus-visible{outline:none;box-shadow:none}.ds-composer textarea:disabled{opacity:0.5;cursor:not-allowed}@media(max-width:48rem){.ds-composer textarea{font-size:16px}}"
+    },
+    {
+      "name": "Assistant reply",
+      "kind": "card",
+      "refersTo": "assistant-message",
+      "description": "The reply surface and readable Markdown body; content here is illustrative.",
+      "html": "<article class=\"ds-reply\" aria-label=\"Assistant\"><p>Review every change before applying it.</p><p><a href=\"#review\">Review the proposed changes</a></p></article>",
+      "css": ".ds-reply{font-family:Inter,system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;font-size:14px;letter-spacing:-0.15px;padding:15px;border:1px solid var(--el-200);border-radius:var(--rad-l);background:var(--el-0);color:var(--txt);line-height:1.65;overflow-wrap:anywhere}.ds-reply p{margin:0 0 12px;line-height:1.6}.ds-reply p:last-child{margin-bottom:0}.ds-reply a{color:inherit;text-decoration:underline}"
+    },
+    {
+      "name": "Proposal review",
+      "kind": "card",
+      "refersTo": "review-card",
+      "description": "Prepared unified diff and explicit draft actions; illustrative values. Runtime validation and Copy feedback are provided by ReviewCard and CodeBlock.",
+      "html": "<section class=\"ds-review\" aria-label=\"Review proposed changes\"><p>Clarify the page title.</p><p>1 section changes: title</p><details open><summary>title</summary><div class=\"ds-code\"><div class=\"ds-code-header\"><span>title</span><span><span class=\"ds-code-add\">+1</span> <span class=\"ds-code-remove\">−1</span></span><button class=\"ds-code-copy\" type=\"button\" aria-label=\"Copy title\">Copy</button></div><div class=\"ds-code-lines\" tabindex=\"0\" role=\"region\" aria-label=\"title: removed and added lines\"><div class=\"ds-code-line\" data-kind=\"remove\"><span class=\"ds-code-number\" aria-hidden=\"true\">1</span><span class=\"ds-code-sign\" aria-label=\"Removed\">−</span><code>Untitled</code></div><div class=\"ds-code-line\" data-kind=\"add\"><span class=\"ds-code-number\" aria-hidden=\"true\">1</span><span class=\"ds-code-sign\" aria-label=\"Added\">+</span><code>Service information</code></div></div></div></details><p class=\"ds-note\">Applies to this draft. Save or deploy when you are ready.</p><div class=\"ds-actions\"><button type=\"button\">Reject</button><button class=\"ds-apply\" type=\"button\">Apply to draft</button></div></section>",
+      "css": ".ds-review{font-family:Inter,system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;font-size:14px;letter-spacing:-0.15px;border:1px solid var(--el-250);border-radius:var(--rad-l);padding:16px;background:var(--el-0);color:var(--txt)}.ds-review p{margin:0 0 12px;line-height:1.6}.ds-review details{border-top:1px solid var(--el-200);padding-block:10px}.ds-review summary{cursor:pointer;font-weight:550;overflow-wrap:anywhere}.ds-review :is(summary,button):focus-visible{outline:2px solid var(--txt);outline-offset:3px;}.ds-note{color:var(--el-800);font-size:12px}.ds-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;flex-wrap:wrap}.ds-review button{font-family:Inter,system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;font-size:14px;letter-spacing:-0.15px;color:var(--txt);background:var(--el-0);border:1px solid var(--el-250);border-radius:var(--rad-m);padding:7px 10px;line-height:1.3;cursor:pointer;}.ds-review button:hover:not(:disabled){background:var(--el-150)}.ds-review .ds-apply{background:var(--el-1000);color:var(--on-inverse);border-color:transparent}.ds-review .ds-apply:hover:not(:disabled){background:var(--el-800)}.ds-review button:disabled{opacity:0.5;cursor:not-allowed}.ds-code{min-inline-size:0;overflow:hidden;border:1px solid var(--el-200);border-radius:var(--rad-m);margin-block:8px;background:var(--el-100);font-size:12px}.ds-code-header{display:flex;gap:8px;align-items:center;min-block-size:38px;border-bottom:1px solid var(--el-200);padding:5px 10px;font:11px ui-monospace,monospace}.ds-code-header .ds-code-copy{margin-inline-start:auto;border:0;background:transparent;padding:4px;font-size:11px}.ds-code-lines{overflow:auto;max-block-size:320px;padding-block:10px;line-height:1.65}.ds-code-line{display:flex;align-items:start;min-block-size:1lh}.ds-code-number{font:10px/1.98 ui-monospace,monospace;text-align:end;padding-inline:5px;inline-size:30px;flex-shrink:0;color:var(--el-800);user-select:none;border-inline-end:1px solid var(--el-200)}.ds-code-sign{inline-size:17px;flex-shrink:0;text-align:center;user-select:none}.ds-code-line>code{min-inline-size:0;padding-inline:7px 10px;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.7 ui-monospace,monospace}.ds-code-line[data-kind=\"add\"]{background:color-mix(in srgb,var(--color-success,var(--txt)) 9%,transparent);border-inline-start:2px solid var(--color-success,var(--txt))}.ds-code-line[data-kind=\"remove\"]{background:var(--err-bg);border-inline-start:2px solid var(--err-tx)}.ds-code-add{color:var(--color-success,var(--txt))}.ds-code-remove{color:var(--err-tx)}"
+    },
+    {
+      "name": "Loading activity",
+      "kind": "custom",
+      "refersTo": "loading-state",
+      "description": "Initial visual state. The running LoadingState measures elapsed time with performance.now; the label stays solid.",
+      "html": "<span class=\"ds-loading\"><span class=\"ds-pixels\" aria-hidden=\"true\"><span style=\"--delay:90ms\"></span><span style=\"--delay:180ms\"></span><span style=\"--delay:270ms\"></span><span style=\"--delay:0ms\"></span><span style=\"--delay:90ms\"></span><span style=\"--delay:180ms\"></span><span style=\"--delay:90ms\"></span><span style=\"--delay:180ms\"></span><span style=\"--delay:270ms\"></span></span><span class=\"ds-loading-label\" role=\"status\">Assistant is responding</span><span class=\"ds-elapsed\" aria-hidden=\"true\">0.0s</span></span>",
+      "css": ".ds-loading{font-family:Inter,system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;font-size:14px;letter-spacing:-0.15px;display:inline-flex;align-items:center;gap:9px;font-size:13px;color:var(--el-800);min-inline-size:0}.ds-pixels{display:grid;grid-template-columns:repeat(3,4px);gap:1.5px;flex-shrink:0}.ds-pixels>span{inline-size:4px;block-size:4px;border-radius:1px;background:currentColor;opacity:0.15}.ds-loading-label{font-weight:500;color:var(--el-800)}.ds-elapsed{font:11px ui-monospace,monospace;font-variant-numeric:tabular-nums;white-space:nowrap}@media(prefers-reduced-motion:no-preference){.ds-pixels>span{animation:ds-pixel 650ms ease-in-out var(--delay) infinite}@keyframes ds-pixel{0%,70%,100%{opacity:0.15}35%{opacity:1}}}"
+    },
+    {
+      "name": "Clarification question",
+      "kind": "custom",
+      "refersTo": "clarification-question",
+      "description": "A selected radio question inside its existing assistant message. Runtime navigation, custom answers, checkbox questions, and submission remain explicit.",
+      "html": "<article class=\"ds-question-host\" aria-label=\"Assistant\"><section class=\"ds-question-card\" aria-label=\"Questions from the assistant\"><fieldset class=\"ds-question\"><legend>Which part should I focus on?</legend><span class=\"ds-question-hint\">Choose one</span><label class=\"ds-option\"><input type=\"radio\" name=\"ds-focus\" checked><span>Clarity</span></label><label class=\"ds-option\"><input type=\"radio\" name=\"ds-focus\"><span>Structure</span></label><label class=\"ds-custom\"><span>Something else</span><input aria-label=\"Custom answer\" placeholder=\"Write your answer…\" maxlength=\"2000\"></label></fieldset><footer class=\"ds-question-footer\"><span class=\"ds-counter\">1 / 2</span><button type=\"button\">Skip</button><button class=\"ds-question-emphasis\" type=\"button\">Continue</button></footer><button class=\"ds-skip-all\" type=\"button\">Skip all questions</button></section></article>",
+      "css": ".ds-question-host{font-family:Inter,system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;font-size:14px;letter-spacing:-0.15px;padding:15px;border:1px solid var(--el-200);border-radius:var(--rad-l);background:var(--el-0);color:var(--txt)}.ds-question-card{margin-block:14px}.ds-question{border:0;padding:0;margin:0;min-inline-size:0}.ds-question legend{font-size:14px;font-weight:550;padding:0;margin-bottom:8px;overflow-wrap:anywhere}.ds-question-hint{display:block;color:var(--el-800);font-size:11px;margin-bottom:10px}.ds-option{display:flex;align-items:start;gap:8px;padding:9px;border-radius:var(--rad-s);font-size:13px;cursor:pointer;transition:background-color 120ms ease}.ds-option:hover,.ds-option:has(:checked){background:var(--el-100)}.ds-option input{accent-color:var(--txt);margin:2px 0 0;inline-size:15px;block-size:15px;flex-shrink:0}.ds-custom{display:grid;gap:6px;padding-block:10px 4px;font-size:11px;color:var(--el-800)}.ds-custom input{inline-size:100%;border:1px solid var(--el-250);border-radius:var(--rad-s);padding:9px;font:inherit;font-size:13px;color:var(--txt);background:var(--el-0);box-sizing:border-box}.ds-custom input::placeholder{color:var(--el-800);opacity:1}.ds-question-footer{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:14px;padding-top:12px;border-top:1px solid var(--el-200)}.ds-counter{margin-inline-end:auto;font-size:11px;font-variant-numeric:tabular-nums}.ds-question-host button{font-family:Inter,system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;font-size:14px;letter-spacing:-0.15px;color:var(--txt);background:var(--el-0);border:1px solid var(--el-250);border-radius:var(--rad-m);padding:7px 10px;line-height:1.3;cursor:pointer;}.ds-question-host button:hover:not(:disabled){background:var(--el-150)}.ds-question-footer>button{font-size:12px;border-radius:20px}.ds-question-host .ds-question-emphasis{background:var(--el-1000);color:var(--on-inverse);border-color:transparent}.ds-question-host .ds-question-emphasis:hover:not(:disabled){background:var(--el-800)}.ds-question-host .ds-skip-all{font-size:11px;padding:5px 0;margin-top:6px;border:0;background:transparent;color:var(--el-800)}.ds-question-host :is(button,input):focus-visible{outline:2px solid var(--txt);outline-offset:3px;}.ds-question-host :disabled{opacity:0.5;cursor:not-allowed}@media(max-width:48rem){.ds-custom input{font-size:16px}}@media(prefers-reduced-motion:reduce){.ds-option{transition:none}}"
+    },
+    {
+      "name": "Attachment metadata",
+      "kind": "card",
+      "refersTo": "attachment-card",
+      "description": "Metadata and type-label excerpt from a restored attachment card. Local image/PDF previews appear only while the original File is available.",
+      "html": "<div class=\"ds-file\"><span class=\"ds-file-thumbnail\">PDF</span><span class=\"ds-file-info\"><strong title=\"application.pdf\">application.pdf</strong><span>24 KB · Text extracted</span></span></div>",
+      "css": ".ds-file{font-family:Inter,system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;font-size:14px;letter-spacing:-0.15px;display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--el-200);border-radius:var(--rad-m);background:var(--el-100);color:var(--txt);min-inline-size:0;margin-bottom:8px}.ds-file-thumbnail{display:flex;flex-direction:column;gap:2px;align-items:center;justify-content:center;inline-size:46px;block-size:50px;flex-shrink:0;border:1px solid var(--el-250);border-radius:5px;background:var(--el-0);overflow:hidden;font-size:9px;font-weight:650;color:var(--el-800)}.ds-file-info{display:grid;min-inline-size:0;gap:4px;flex:1}.ds-file-info strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;font-weight:550}.ds-file-info>span{font-size:10px;color:var(--el-800)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The contextual authoring assistant",
+    "overview": "This record covers only `app/components/ui/ai`. The assistant inherits the authoring application's neutral light/dark surfaces, Inter typography, and compact native controls. Conversation and review remain close to the current form or content page.\n\nThe panel uses restrained tonal separation and readable evidence. Its visual hierarchy leads from the current artifact through conversation to an explicit decision about proposed changes.",
+    "keyCharacteristics": [
+      "Neutral surfaces that follow the host theme.",
+      "Compact Inter text with generous conversation line spacing.",
+      "Native controls and disclosures with visible keyboard focus.",
+      "Unified before/after changes presented with validation before Apply.",
+      "Activity and attachment states driven by the current operation."
+    ],
+    "rules": [
+      {
+        "name": "The Theme Pairing Rule",
+        "body": "Keep inverse actions paired with `on-inverse`, and retain solid `el-800` for loading labels and prompt/question placeholders across themes.",
+        "section": "colors"
+      },
+      {
+        "name": "The Review Before Apply Rule",
+        "body": "Keep the proposed values and validation state available beside an explicit Apply action. Apply changes only the local draft; the author retains the existing Save or Deploy step.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do inherit the host theme, Inter stack, and existing radius tokens.",
+      "Do preserve native controls, keyboard focus, and the compact modal behavior.",
+      "Do present unified before/after changes and validation before enabling Apply.",
+      "Do bind activity, question choices, references, and file states to the actual conversation.",
+      "Do keep loading labels and prompt/question placeholders solid and readable with the supporting-text token."
+    ],
+    "donts": [
+      "Don't hardcode a light-theme foreground on inverse actions.",
+      "Don't imply that a selection action, question answer, or Apply saves or deploys the artifact.",
+      "Don't promote the conversation texture or local message silhouettes into application-wide rules."
+    ]
+  }
+}

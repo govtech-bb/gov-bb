@@ -1,3 +1,4 @@
+import type { AssistantRequest } from "../../components/ui/ai/prompt-bar";
 import {
   LANDING_CATEGORIES,
   VISIBILITY_LEVELS,
@@ -19,10 +20,12 @@ export function PageFields({
   ed,
   formOptions,
   layout,
+  onAiAction,
 }: {
   ed: EditorState;
   formOptions: BuilderFormSummary[];
   layout: "stacked" | "wide";
+  onAiAction?: (request: AssistantRequest) => void;
 }) {
   const { state, set, setState } = ed;
   const categoryIsUnlisted =
@@ -324,6 +327,7 @@ export function PageFields({
         Body
       </label>
       <BodyEditor
+        onAiAction={onAiAction}
         id="sp-body"
         ariaLabel="Page body"
         value={state.body}

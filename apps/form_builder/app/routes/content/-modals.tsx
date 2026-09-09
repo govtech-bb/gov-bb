@@ -1,6 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Delete02Icon, Rocket01Icon, SparklesIcon } from "hugeicons-react";
-import { generateContentPage } from "./-ai";
+import { Delete02Icon, Rocket01Icon } from "hugeicons-react";
 import { CONTENT_ROOT, VISIBILITY_LEVELS } from "./-lib";
 import type { OpenContentPR } from "./-server";
 import type { EditorState } from "./-editor-state";
@@ -265,108 +264,6 @@ export function DeployModal({
           className={s.secondaryBtn}
           onClick={onClose}
           disabled={isPublishing}
-        >
-          Cancel
-        </button>
-      </div>
-    </Modal>
-  );
-}
-
-export function AiModal({
-  cls,
-  onClose,
-  pageJson,
-  onApply,
-}: {
-  cls: string;
-  onClose: () => void;
-  /** The current draft as JSON, sent so "rewrite this" works in place. */
-  pageJson: string;
-  /** Receives the model's proposed fields; the parent applies them to the draft. */
-  onApply: (page: Record<string, unknown>) => void;
-}) {
-  const [prompt, setPrompt] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [reply, setReply] = useState<string | null>(null);
-
-  const onGenerate = async () => {
-    const message = prompt.trim();
-    if (!message) return;
-    setBusy(true);
-    setError(null);
-    setReply(null);
-    try {
-      const result = await generateContentPage({
-        data: { message, pageJson },
-      });
-      if (result.page) {
-        onApply(result.page);
-        onClose();
-        setPrompt("");
-      } else {
-        setReply(result.reply || "The AI didn’t propose any changes.");
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Generation failed");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Modal
-      title="Generate with AI"
-      cls={cls}
-      onClose={onClose}
-      closeDisabled={busy}
-    >
-      <p>
-        Describe the page you want — the draft’s fields and body are filled in
-        for you to review. Nothing is deployed until you do it.
-      </p>
-      <div className={`${s.field} ${s.subField}`}>
-        <label className={s.label} htmlFor="sp-ai-prompt">
-          What should this page say?
-        </label>
-        <textarea
-          id="sp-ai-prompt"
-          data-modal-initial-focus
-          className={s.textarea}
-          rows={4}
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="e.g. A start page for renewing a driver's licence — takes about 10 minutes, needs the old licence and a debit card."
-        />
-      </div>
-      {reply && (
-        <p className={s.modalNote} style={{ whiteSpace: "pre-wrap" }}>
-          {reply}
-        </p>
-      )}
-      <ErrorBanner error={error} />
-      <div className={s.modalActions}>
-        <button
-          type="button"
-          className={s.primaryBtn}
-          onClick={() => void onGenerate()}
-          disabled={busy || !prompt.trim()}
-        >
-          <SparklesIcon size={15} />
-          {busy ? (
-            <span className="t-shimmer" data-text="Generating…">
-              Generating…
-            </span>
-          ) : (
-            "Generate"
-          )}
-        </button>
-        <button
-          type="button"
-          className={s.secondaryBtn}
-          onClick={onClose}
-          disabled={busy}
         >
           Cancel
         </button>

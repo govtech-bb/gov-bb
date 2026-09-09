@@ -1,3 +1,4 @@
+import type { AssistantRequest } from "../../components/ui/ai/prompt-bar";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
@@ -15,7 +16,7 @@ import { listForms } from "../../server/forms";
 import { getPublishBaseBranch } from "../../server/publish";
 import { publishStartPage, deleteContentPage } from "./-server";
 import { HeaderMenu, type HeaderMenuItem } from "./-header-menu";
-import { linkableForms, applyAiPagePatch, buildDeployPayload } from "./-lib";
+import { linkableForms, buildDeployPayload } from "./-lib";
 import { StartPagePreviewFrame, LANDING_ORIGIN } from "./-preview-frame";
 import { useContentList } from "./-use-content-list";
 import { usePersistedState } from "./-use-persisted";
@@ -28,7 +29,8 @@ import {
   type EditorState,
 } from "./-editor-state";
 import { PageFields } from "./-fields";
-import { AiModal, DeleteModal, DeployModal, ErrorBanner } from "./-modals";
+import { ContentAssistant } from "../../components/ui/ai/content-assistant";
+import { DeleteModal, DeployModal, ErrorBanner } from "./-modals";
 import { SuccessCard } from "./-success-card";
 import type { BuilderFormSummary } from "../../types/index";
 import s from "./-styles.module.css";
@@ -258,6 +260,7 @@ function EditorPreviewPane({
 }
 
 function StartPagesEditor() {
+  const { user } = Route.useRouteContext();
   const { forms, baseBranch } = Route.useLoaderData();
   const search = Route.useSearch();
   const navigate = useNavigate();
@@ -342,7 +345,8 @@ function StartPagesEditor() {
   const deleteModal = useTransitionPresence("--modal-close-dur");
   // Generate with AI: the model proposes page fields, which are applied to
   // the local draft only — deploying stays a separate, human action.
-  const aiModal = useTransitionPresence("--modal-close-dur");
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiRequest, setAiRequest] = useState<AssistantRequest>();
   const [isPublishing, setIsPublishing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -403,284 +407,291 @@ function StartPagesEditor() {
     }
   };
 
-  const applyAiPage = (page: Record<string, unknown>) => {
-    ed.setState((cur) =>
-      applyAiPagePatch(cur, page, { fixedPath: !!ed.fixedPath }),
-    );
-  };
-
   const success = ed.success;
 
   return (
-    <div className={s.shell}>
-      <header className={s.docHeader}>
-        <div className={s.headerLeft}>
-          <Tip label="All pages">
-            <Link
-              to="/content"
-              className={s.secondaryBtn}
-              aria-label="Back to all pages"
-              onClick={(e) => {
-                if (!ed.confirmDiscard()) e.preventDefault();
-              }}
-            >
-              <ArrowLeft02Icon size={15} />
-            </Link>
-          </Tip>
-          <div>
-            <div className={s.eyebrow}>{ed.eyebrow}</div>
-            <h1 className={s.docTitle}>
-              {state.title.trim() || "Untitled service"}
-            </h1>
+    <div className={s.aiWorkspace}>
+      <div className={s.shell}>
+        <header className={s.docHeader}>
+          <div className={s.headerLeft}>
+            <Tip label="All pages">
+              <Link
+                to="/content"
+                className={s.secondaryBtn}
+                aria-label="Back to all pages"
+                onClick={(e) => {
+                  if (!ed.confirmDiscard()) e.preventDefault();
+                }}
+              >
+                <ArrowLeft02Icon size={15} />
+              </Link>
+            </Tip>
+            <div>
+              <div className={s.eyebrow}>{ed.eyebrow}</div>
+              <h1 className={s.docTitle}>
+                {state.title.trim() || "Untitled service"}
+              </h1>
+            </div>
           </div>
-        </div>
-        <div className={s.headerActions}>
-          {ed.dirty && !success && (
-            <span className={s.dirtyHint}>
-              {ed.draftSaved ? "Draft saved" : "Saving…"}
-            </span>
-          )}
-          {!success && (
-            <button
-              type="button"
-              className={s.secondaryBtn}
-              onClick={() => aiModal.open()}
-              disabled={ed.loadingPage}
-            >
-              <SparklesIcon size={15} />
-              Generate with AI
-            </button>
-          )}
-          <HeaderMenu
-            items={buildHeaderMenuItems({
-              success: !!success,
-              showPreview,
-              onTogglePreview: () => setShowPreview((v) => !v),
-              editing: ed.editing,
-              deleteAllowed:
-                ed.editRevision?.source === "base" && !ed.reviewBlock,
-              url: ed.url,
-              theme,
-              onToggleTheme: toggleTheme,
-              dirty: ed.dirty,
-              onDiscardDraft: ed.discardDraft,
-              onDeletePage: () => deleteModal.open(),
-            })}
+          <div className={s.headerActions}>
+            {ed.dirty && !success && (
+              <span className={s.dirtyHint}>
+                {ed.draftSaved ? "Draft saved" : "Saving…"}
+              </span>
+            )}
+            {!success && (
+              <button
+                type="button"
+                className={s.secondaryBtn}
+                onClick={() => setAiOpen(true)}
+                disabled={ed.loadingPage}
+              >
+                <SparklesIcon size={15} />
+                Assistant
+              </button>
+            )}
+            <HeaderMenu
+              items={buildHeaderMenuItems({
+                success: !!success,
+                showPreview,
+                onTogglePreview: () => setShowPreview((v) => !v),
+                editing: ed.editing,
+                deleteAllowed:
+                  ed.editRevision?.source === "base" && !ed.reviewBlock,
+                url: ed.url,
+                theme,
+                onToggleTheme: toggleTheme,
+                dirty: ed.dirty,
+                onDiscardDraft: ed.discardDraft,
+                onDeletePage: () => deleteModal.open(),
+              })}
+            />
+            {!success && !ed.loadingPage && ed.deployBlockReason && (
+              <span className={s.deployHint}>{ed.deployBlockReason}</span>
+            )}
+            {!success && (
+              <button
+                type="button"
+                className={s.primaryBtn}
+                onClick={() => deployModal.open()}
+                disabled={!ed.canDeploy || isPublishing || ed.loadingPage}
+              >
+                <Rocket01Icon size={15} />
+                {activeReview
+                  ? `Update PR #${activeReview.prNumber}`
+                  : ed.editing
+                    ? "Deploy update"
+                    : "Deploy page"}
+              </button>
+            )}
+          </div>
+        </header>
+
+        {success ? (
+          <SuccessCard
+            success={success}
+            baseBranch={baseBranch}
+            onBack={() => navigate({ to: "/content" })}
           />
-          {!success && !ed.loadingPage && ed.deployBlockReason && (
-            <span className={s.deployHint}>{ed.deployBlockReason}</span>
-          )}
-          {!success && (
-            <button
-              type="button"
-              className={s.primaryBtn}
-              onClick={() => deployModal.open()}
-              disabled={!ed.canDeploy || isPublishing || ed.loadingPage}
+        ) : (
+          <div className={s.body}>
+            <div
+              className={`${s.fieldsPanel} ${showPreview ? "" : s.fieldsPanelWide}`}
+              style={
+                showPreview ? { width: paneWidth, maxWidth: "none" } : undefined
+              }
             >
-              <Rocket01Icon size={15} />
-              {activeReview
-                ? `Update PR #${activeReview.prNumber}`
-                : ed.editing
-                  ? "Deploy update"
-                  : "Deploy page"}
-            </button>
-          )}
-        </div>
-      </header>
-
-      {success ? (
-        <SuccessCard
-          success={success}
-          baseBranch={baseBranch}
-          onBack={() => navigate({ to: "/content" })}
-        />
-      ) : (
-        <div className={s.body}>
-          <div
-            className={`${s.fieldsPanel} ${showPreview ? "" : s.fieldsPanelWide}`}
-            style={
-              showPreview ? { width: paneWidth, maxWidth: "none" } : undefined
-            }
-          >
-            <p className={s.hint}>
-              {activeReview
-                ? `Editing PR #${activeReview.prNumber}. Update adds a commit to the same PR.`
-                : ed.editing
-                  ? "Editing an existing landing page. Deploy opens a pull request that updates it."
-                  : "Deploy opens a pull request that adds this page to the landing site."}{" "}
-              Base: <code>{baseBranch}</code>.
-            </p>
-
-            {ed.loadingPage && (
-              <p className={s.modalNote}>
-                <span className="t-shimmer" data-text="Loading page…">
-                  Loading page…
-                </span>
+              <p className={s.hint}>
+                {activeReview
+                  ? `Editing PR #${activeReview.prNumber}. Update adds a commit to the same PR.`
+                  : ed.editing
+                    ? "Editing an existing landing page. Deploy opens a pull request that updates it."
+                    : "Deploy opens a pull request that adds this page to the landing site."}{" "}
+                Base: <code>{baseBranch}</code>.
               </p>
-            )}
-            {!ed.loadingPage && activeReview && (
-              <p className={s.modalNote}>
-                You’re editing the version in PR{" "}
-                <a
-                  href={activeReview.prUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  #{activeReview.prNumber}
-                </a>
-                {", not the live page. Updating adds one commit to that PR."}
-              </p>
-            )}
-            {ed.reviewBlock && (
-              <div className={s.recoveryBanner} role="alert">
-                <span>{ed.reviewBlock.message}</span>
-                <span className={s.reviewLinks}>
-                  {ed.reviewBlock.claims.map((claim) => (
+
+              {ed.loadingPage && (
+                <p className={s.modalNote}>
+                  <span className="t-shimmer" data-text="Loading page…">
+                    Loading page…
+                  </span>
+                </p>
+              )}
+              {!ed.loadingPage && activeReview && (
+                <p className={s.modalNote}>
+                  You’re editing the version in PR{" "}
+                  <a
+                    href={activeReview.prUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    #{activeReview.prNumber}
+                  </a>
+                  {", not the live page. Updating adds one commit to that PR."}
+                </p>
+              )}
+              {ed.reviewBlock && (
+                <div className={s.recoveryBanner} role="alert">
+                  <span>{ed.reviewBlock.message}</span>
+                  <span className={s.reviewLinks}>
+                    {ed.reviewBlock.claims.map((claim) => (
+                      <a
+                        key={`${claim.prNumber}:${claim.path}:${claim.previousPath ?? ""}`}
+                        href={claim.prUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Open PR #{claim.prNumber}
+                      </a>
+                    ))}
+                  </span>
+                </div>
+              )}
+              {ed.deployConflict && ed.deployConflict.claims.length > 0 && (
+                <div className={s.reviewLinks}>
+                  {ed.deployConflict.claims.map((claim) => (
                     <a
                       key={`${claim.prNumber}:${claim.path}:${claim.previousPath ?? ""}`}
                       href={claim.prUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      Open PR #{claim.prNumber}
+                      Review PR #{claim.prNumber}
                     </a>
                   ))}
-                </span>
-              </div>
-            )}
-            {ed.deployConflict && ed.deployConflict.claims.length > 0 && (
-              <div className={s.reviewLinks}>
-                {ed.deployConflict.claims.map((claim) => (
-                  <a
-                    key={`${claim.prNumber}:${claim.path}:${claim.previousPath ?? ""}`}
-                    href={claim.prUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                </div>
+              )}
+              {ed.deployConflict?.kind === "review-unavailable" && (
+                <div className={s.recoveryBanner} role="alert">
+                  <span>{ed.deployConflict.message}</span>
+                  <button
+                    type="button"
+                    className={s.secondaryBtn}
+                    onClick={() => {
+                      ed.setDeployConflict(null);
+                      ed.setError(null);
+                      contentList.refetch();
+                    }}
+                    disabled={contentList.loading}
                   >
-                    Review PR #{claim.prNumber}
-                  </a>
-                ))}
-              </div>
-            )}
-            {ed.deployConflict?.kind === "review-unavailable" && (
-              <div className={s.recoveryBanner} role="alert">
-                <span>{ed.deployConflict.message}</span>
-                <button
-                  type="button"
-                  className={s.secondaryBtn}
-                  onClick={() => {
-                    ed.setDeployConflict(null);
-                    ed.setError(null);
-                    contentList.refetch();
-                  }}
-                  disabled={contentList.loading}
-                >
-                  Retry review check
-                </button>
-              </div>
-            )}
-            {ed.staleDraft && (
-              <div className={s.recoveryBanner} role="alert">
-                <span>
-                  {ed.deployConflict
-                    ? `${ed.deployConflict.message} `
-                    : "This draft is based on an older page revision. "}
-                  Your changes are still saved in this browser. Copy anything
-                  you need, then load the latest version before deploying.
-                </span>
-                <button
-                  type="button"
-                  className={s.secondaryBtn}
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        "Discard this saved draft and load the latest page version?",
-                      )
-                    ) {
-                      ed.discardDraft();
-                      if (ed.editPath) {
-                        // Let React remove the beforeunload guard after the
-                        // draft is discarded, then request a clean revision.
-                        window.setTimeout(() => window.location.reload(), 0);
+                    Retry review check
+                  </button>
+                </div>
+              )}
+              {ed.staleDraft && (
+                <div className={s.recoveryBanner} role="alert">
+                  <span>
+                    {ed.deployConflict
+                      ? `${ed.deployConflict.message} `
+                      : "This draft is based on an older page revision. "}
+                    Your changes are still saved in this browser. Copy anything
+                    you need, then load the latest version before deploying.
+                  </span>
+                  <button
+                    type="button"
+                    className={s.secondaryBtn}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          "Discard this saved draft and load the latest page version?",
+                        )
+                      ) {
+                        ed.discardDraft();
+                        if (ed.editPath) {
+                          // Let React remove the beforeunload guard after the
+                          // draft is discarded, then request a clean revision.
+                          window.setTimeout(() => window.location.reload(), 0);
+                        }
                       }
-                    }
-                  }}
-                >
-                  Discard draft and load latest
-                </button>
-              </div>
+                    }}
+                  >
+                    Discard draft and load latest
+                  </button>
+                </div>
+              )}
+              <ErrorBanner
+                error={
+                  ed.deployConflict?.kind === "review-unavailable" ||
+                  ed.staleDraft
+                    ? null
+                    : ed.error
+                }
+              />
+
+              <PageFields
+                ed={ed}
+                formOptions={formOptions}
+                layout={showPreview ? "stacked" : "wide"}
+                onAiAction={
+                  ed.loadingPage ||
+                  !ed.sourceReady ||
+                  ed.reviewBlock ||
+                  ed.staleDraft ||
+                  ed.deployConflict
+                    ? undefined
+                    : (request) => {
+                        setAiRequest(request);
+                        setAiOpen(true);
+                      }
+                }
+              />
+            </div>
+
+            {showPreview && (
+              <EditorPreviewPane
+                dragging={dragging}
+                onStartDrag={startDrag}
+                paneWidth={paneWidth}
+                onResize={resizePane}
+                breakpoint={breakpoint}
+                onBreakpointChange={setBreakpoint}
+                ed={ed}
+              />
             )}
-            <ErrorBanner
-              error={
-                ed.deployConflict?.kind === "review-unavailable" ||
-                ed.staleDraft
-                  ? null
-                  : ed.error
-              }
-            />
-
-            <PageFields
-              ed={ed}
-              formOptions={formOptions}
-              layout={showPreview ? "stacked" : "wide"}
-            />
           </div>
+        )}
 
-          {showPreview && (
-            <EditorPreviewPane
-              dragging={dragging}
-              onStartDrag={startDrag}
-              paneWidth={paneWidth}
-              onResize={resizePane}
-              breakpoint={breakpoint}
-              onBreakpointChange={setBreakpoint}
-              ed={ed}
-            />
-          )}
-        </div>
-      )}
+        {deleteModal.mounted && ed.editPath && (
+          <DeleteModal
+            cls={deleteModal.cls}
+            onClose={() => deleteModal.close()}
+            editPath={ed.editPath}
+            error={ed.error}
+            isDeleting={isDeleting}
+            onDelete={() => void onDelete()}
+          />
+        )}
 
-      {deleteModal.mounted && ed.editPath && (
-        <DeleteModal
-          cls={deleteModal.cls}
-          onClose={() => deleteModal.close()}
-          editPath={ed.editPath}
-          error={ed.error}
-          isDeleting={isDeleting}
-          onDelete={() => void onDelete()}
-        />
-      )}
-
-      {aiModal.mounted && (
-        <AiModal
-          cls={aiModal.cls}
-          onClose={() => aiModal.close()}
-          pageJson={JSON.stringify({
-            title: state.title,
-            description: state.description,
-            category: state.category,
-            subcategory: state.subcategory,
-            slug: ed.slug,
-            body: state.body,
-            linkType: state.linkType,
-            linkHref: state.linkHref,
-            visibility: state.visibility,
-          })}
-          onApply={applyAiPage}
-        />
-      )}
-
-      {deployModal.mounted && (
-        <DeployModal
-          cls={deployModal.cls}
-          onClose={() => deployModal.close()}
-          ed={ed}
-          baseBranch={baseBranch}
-          openPR={activeReview}
-          isPublishing={isPublishing}
-          onDeploy={(desc) => void onDeploy(desc)}
-        />
-      )}
+        {deployModal.mounted && (
+          <DeployModal
+            cls={deployModal.cls}
+            onClose={() => deployModal.close()}
+            ed={ed}
+            baseBranch={baseBranch}
+            openPR={activeReview}
+            isPublishing={isPublishing}
+            onDeploy={(desc) => void onDeploy(desc)}
+          />
+        )}
+      </div>
+      <ContentAssistant
+        request={aiRequest}
+        onRequestHandled={() => setAiRequest(undefined)}
+        user={user.login}
+        documentId={ed.editPath ?? "new"}
+        state={state}
+        fixedPath={!!ed.fixedPath}
+        readOnly={
+          ed.loadingPage ||
+          !ed.sourceReady ||
+          !!ed.reviewBlock ||
+          ed.staleDraft ||
+          !!ed.deployConflict
+        }
+        open={aiOpen}
+        onOpenChange={setAiOpen}
+        onApply={ed.setState}
+      />
     </div>
   );
 }
