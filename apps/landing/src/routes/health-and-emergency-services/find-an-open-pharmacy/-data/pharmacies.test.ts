@@ -281,8 +281,8 @@ describe('pharmacy dataset', () => {
   it('keeps internal review language out of user-facing notes', () => {
     const INTERNAL = [
       /DATA CONFLICT/i,
-      /verify with/i,
-      /confirm (with|by)/i,
+      /\bverify with\b/i,
+      /\bconfirm (with|by)\b/i,
       /business directory/i,
       /location approximate/i,
       /not confirmed/i,
