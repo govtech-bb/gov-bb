@@ -1,3 +1,7 @@
+import { Button } from "../../component/ui/button";
+import { Input } from "../../component/ui/input";
+import { Select } from "../../component/ui/select";
+import { Checkbox } from "../../component/ui/checkbox";
 import { useState, useMemo } from "react";
 import {
   getRegistryItem,
@@ -28,7 +32,7 @@ import { BehavioursEditor } from "./-behaviours-editor";
 import { OptionsEditor } from "./-options-editor";
 import { KEBAB_ID_PATTERN, kebabize } from "./-id-validation";
 import styles from "../../styles/builder.module.css";
-import { useEscClose } from "./-use-esc-close";
+import { Dialog } from "../../component/ui/dialog";
 
 const FIELD_ID_ERROR =
   "Use lowercase letters, digits, and hyphens only. Must start with a letter (e.g. applicant-first-name).";
@@ -119,7 +123,7 @@ interface UiPropertiesEditorProps {
 
 // Schema-driven editor for a field's presentation `ui` object: it reads the
 // keys off `primitiveUISchema` and renders one control per key (checkbox for
-// booleans, native <select> for enums), so existing and future `ui` keys
+// booleans, Select for enums), so existing and future `ui` keys
 // surface with no per-key panel wiring. Setting a key to its per-key default —
 // the base primitive's `ui` value when declared, the global UI_FIELD_META
 // default otherwise (#789) — drops it, and `ui` collapses to `undefined` once
@@ -157,21 +161,13 @@ function UiPropertiesEditor({
               key={key}
               className={`${fg(ui?.[k] !== undefined)} ${styles.checkRow}`}
             >
-              <label>
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) =>
-                    setKey(
-                      k,
-                      e.target.checked === fallback
-                        ? undefined
-                        : e.target.checked,
-                    )
-                  }
-                />{" "}
-                {label}
-              </label>
+              <Checkbox
+                checked={checked}
+                onCheckedChange={(nextChecked) => {
+                  setKey(k, nextChecked === fallback ? undefined : nextChecked);
+                }}
+                label={<> {label}</>}
+              />
             </div>
           );
         }
@@ -181,26 +177,22 @@ function UiPropertiesEditor({
           const fallback =
             (baseUi?.[k] as string | undefined) ?? meta?.default ?? options[0];
           const current = (ui?.[k] as string | undefined) ?? fallback;
-          const selectId = `ui-${key}`;
           return (
             <div key={key} className={fg(ui?.[k] !== undefined)}>
-              <label htmlFor={selectId}>{label}</label>
-              <select
-                id={selectId}
+              <Select
+                label={label}
                 value={current}
-                onChange={(e) =>
-                  setKey(
-                    k,
-                    e.target.value === fallback ? undefined : e.target.value,
-                  )
-                }
-              >
-                {options.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {humanize(opt)}
-                  </option>
-                ))}
-              </select>
+                onValueChange={(nextValue) => {
+                  if (nextValue === null) return;
+                  setKey(k, nextValue === fallback ? undefined : nextValue);
+                }}
+                items={[
+                  ...options.map((opt) => ({
+                    value: opt,
+                    label: humanize(opt),
+                  })),
+                ]}
+              />
             </div>
           );
         }
@@ -231,8 +223,7 @@ function FieldIdOverrideInput({
   const [fieldIdError, setFieldIdError] = useState("");
   return (
     <div className={fg(value !== undefined && value !== "")}>
-      <label>Field ID Override</label>
-      <input
+      <Input
         type="text"
         value={value ?? ""}
         onChange={(e) => {
@@ -250,14 +241,22 @@ function FieldIdOverrideInput({
         }}
         placeholder="Leave blank to use default"
         aria-invalid={fieldIdError || duplicate ? true : undefined}
+        label={"Field ID Override"}
+        className="w-full min-w-0"
       />
       {fieldIdError ? (
-        <span role="alert" style={{ fontSize: "0.75rem", color: "red" }}>
+        <span
+          role="alert"
+          style={{ fontSize: "0.75rem", color: "var(--ui-danger-text)" }}
+        >
           {fieldIdError}
         </span>
       ) : (
         duplicate && (
-          <span role="alert" style={{ fontSize: "0.75rem", color: "red" }}>
+          <span
+            role="alert"
+            style={{ fontSize: "0.75rem", color: "var(--ui-danger-text)" }}
+          >
             {FIELD_ID_DUPLICATE_ERROR}
           </span>
         )
@@ -296,56 +295,53 @@ function RequiredRuleEditor({
       <div
         className={`${fg(validations?.required !== undefined)} ${styles.checkRow}`}
       >
-        <label>
-          <input
-            type="checkbox"
-            checked={effectiveRequired}
+        <Checkbox
+          checked={effectiveRequired}
+          onCheckedChange={(nextChecked) => {
+            const next = { ...(validations ?? {}) };
+            if (nextChecked) {
+              next.required = { value: true };
+            } else if (defaultRequired) {
+              // Base requires the field; write an explicit false to override it.
+              next.required = { value: false };
+            } else {
+              delete next.required;
+            }
+            onChange(Object.keys(next).length > 0 ? next : undefined);
+          }}
+          label={<> Required</>}
+        />
+      </div>
+
+      {effectiveRequired && (
+        <div className={fg(validations?.required?.error !== undefined)}>
+          <Input
+            type="text"
+            value={validations?.required?.error ?? ""}
+            placeholder={
+              baseValidations?.required?.error ?? DEFAULT_REQUIRED_MSG
+            }
             onChange={(e) => {
+              const text = e.target.value;
               const next = { ...(validations ?? {}) };
-              if (e.target.checked) {
-                next.required = { value: true };
+              if (text) {
+                // Carry both keys: validations merge shallow at the rule level
+                // (`shallowMergeDefined`), so a bare `{ error }` would drop `value`.
+                next.required = { value: true, error: text };
               } else if (defaultRequired) {
-                // Base requires the field; write an explicit false to override it.
-                next.required = { value: false };
-              } else {
+                // Base already requires the field — drop the override to restore
+                // the inherited message rather than persist a redundant rule.
                 delete next.required;
+              } else {
+                // Required only because the override says so; keep it required,
+                // just without a custom message.
+                next.required = { value: true };
               }
               onChange(Object.keys(next).length > 0 ? next : undefined);
             }}
-          />{" "}
-          Required
-        </label>
-      </div>
-      {effectiveRequired && (
-        <div className={fg(validations?.required?.error !== undefined)}>
-          <label>
-            Required error message
-            <input
-              type="text"
-              value={validations?.required?.error ?? ""}
-              placeholder={
-                baseValidations?.required?.error ?? DEFAULT_REQUIRED_MSG
-              }
-              onChange={(e) => {
-                const text = e.target.value;
-                const next = { ...(validations ?? {}) };
-                if (text) {
-                  // Carry both keys: validations merge shallow at the rule level
-                  // (`shallowMergeDefined`), so a bare `{ error }` would drop `value`.
-                  next.required = { value: true, error: text };
-                } else if (defaultRequired) {
-                  // Base already requires the field — drop the override to restore
-                  // the inherited message rather than persist a redundant rule.
-                  delete next.required;
-                } else {
-                  // Required only because the override says so; keep it required,
-                  // just without a custom message.
-                  next.required = { value: true };
-                }
-                onChange(Object.keys(next).length > 0 ? next : undefined);
-              }}
-            />
-          </label>
+            label={"Required error message"}
+            className="w-full min-w-0"
+          />
         </div>
       )}
     </>
@@ -372,6 +368,7 @@ function OptionsSection({
   return (
     <>
       <div className={styles.sectionTitle}>Options</div>
+
       <div className={fg(options !== undefined)}>
         <OptionsEditor
           value={options ?? []}
@@ -402,8 +399,7 @@ function PlainOverrideFields({
       <div
         className={fg(overrides.label !== undefined && overrides.label !== "")}
       >
-        <label>Label</label>
-        <input
+        <Input
           type="text"
           value={overrides.label ?? ""}
           onChange={(e) => patch({ label: e.target.value || undefined })}
@@ -418,41 +414,43 @@ function PlainOverrideFields({
             if (stripped !== e.target.value)
               patch({ label: stripped || undefined });
           }}
+          label={"Label"}
+          className="w-full min-w-0"
         />
       </div>
+
       <div
         className={fg(overrides.hint !== undefined && overrides.hint !== "")}
       >
-        <label>Hint</label>
-        <input
+        <Input
           type="text"
           value={overrides.hint ?? ""}
           onChange={(e) => patch({ hint: e.target.value || undefined })}
+          label={"Hint"}
+          className="w-full min-w-0"
         />
       </div>
+
       <div
         className={`${fg(overrides.isDisabled === true)} ${styles.checkRow}`}
       >
-        <label>
-          <input
-            type="checkbox"
-            checked={overrides.isDisabled ?? false}
-            onChange={(e) =>
-              patch({ isDisabled: e.target.checked || undefined })
-            }
-          />{" "}
-          Disabled
-        </label>
+        <Checkbox
+          checked={overrides.isDisabled ?? false}
+          onCheckedChange={(nextChecked) => {
+            patch({ isDisabled: nextChecked || undefined });
+          }}
+          label={<> Disabled</>}
+        />
       </div>
+
       <div className={`${fg(overrides.isHidden === true)} ${styles.checkRow}`}>
-        <label>
-          <input
-            type="checkbox"
-            checked={overrides.isHidden ?? false}
-            onChange={(e) => patch({ isHidden: e.target.checked || undefined })}
-          />{" "}
-          Hidden
-        </label>
+        <Checkbox
+          checked={overrides.isHidden ?? false}
+          onCheckedChange={(nextChecked) => {
+            patch({ isHidden: nextChecked || undefined });
+          }}
+          label={<> Hidden</>}
+        />
       </div>
     </>
   );
@@ -628,7 +626,6 @@ export function FieldEditPanel({
         childOverrides: field.kind === "block" ? childOverrides : undefined,
       });
     }
-    onClose();
   }
 
   function handleChildOverrideChange(
@@ -641,22 +638,23 @@ export function FieldEditPanel({
   const isBlock = field.kind === "block" && item && "block" in item;
   const blockDef = isBlock ? (item as BlockDefinition) : null;
 
-  useEscClose(onClose);
-
   return (
-    <div className={styles.modal} onClick={onClose}>
-      <div
-        className={`${styles.modalContent} ${styles.modalContentWide}`}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Edit Field"
-        onClick={(e) => e.stopPropagation()}
+    <Dialog.Root
+      defaultOpen
+      onOpenChangeComplete={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <Dialog
+        size={isBlock ? "xl" : "lg"}
+        showCloseButton={false}
+        className="space-y-5"
       >
-        <div className={styles.modalHead}>
-          <strong>Edit Field: {item?.displayName ?? ref}</strong>
-          <button type="button" onClick={onClose}>
+        <div className="flex items-center justify-between gap-4">
+          <Dialog.Title>Edit Field: {item?.displayName ?? ref}</Dialog.Title>
+          <Dialog.Close render={<Button variant="ghost" size="sm" />}>
             Close
-          </button>
+          </Dialog.Close>
         </div>
 
         {isBlock && blockDef ? (
@@ -669,7 +667,7 @@ export function FieldEditPanel({
                   key={element.fieldId}
                   style={{
                     marginBottom: 16,
-                    border: "1px solid #eee",
+                    border: "1px solid var(--ui-hairline)",
                     padding: 12,
                     borderRadius: 4,
                   }}
@@ -706,24 +704,30 @@ export function FieldEditPanel({
                 <code>{ref}</code>
               </div>
               {swappableRefs.length > 0 ? (
-                <select
+                <Select
                   id="field-type-select"
                   value={ref}
-                  onChange={(e) => handleChangeRef(e.target.value)}
-                >
-                  <option value={ref}>{item?.displayName ?? ref}</option>
-                  {swappableRefs.map((s) => (
-                    <option key={s.ref} value={s.ref}>
-                      {s.displayName}
-                    </option>
-                  ))}
-                </select>
+                  onValueChange={(nextValue) => {
+                    if (nextValue === null) return;
+                    handleChangeRef(nextValue);
+                  }}
+                  items={[
+                    { value: ref, label: item?.displayName ?? ref },
+                    ...swappableRefs.map((s) => ({
+                      value: s.ref,
+                      label: s.displayName,
+                    })),
+                  ]}
+                />
               ) : (
-                <span style={{ fontSize: "0.75rem", color: "#666" }}>
+                <span
+                  style={{ fontSize: "0.75rem", color: "var(--ui-subtle)" }}
+                >
                   No similar types to switch to
                 </span>
               )}
             </div>
+
             <OverrideForm
               overrides={overrides}
               htmlType={htmlType}
@@ -758,14 +762,18 @@ export function FieldEditPanel({
         )}
 
         <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
-          <button type="button" onClick={handleSave}>
+          <Dialog.Close
+            render={<Button onClick={handleSave} variant="primary" size="sm" />}
+          >
             Save
-          </button>
-          <button type="button" onClick={onClose}>
+          </Dialog.Close>
+          <Dialog.Close
+            render={<Button type="button" variant="secondary" size="sm" />}
+          >
             Cancel
-          </button>
+          </Dialog.Close>
         </div>
-      </div>
-    </div>
+      </Dialog>
+    </Dialog.Root>
   );
 }

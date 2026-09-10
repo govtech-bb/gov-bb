@@ -106,6 +106,8 @@ export function FormAssistant({
   catalog,
   readOnly,
   selection,
+  open,
+  onOpenChange,
   onApply,
 }: {
   user: string;
@@ -114,6 +116,8 @@ export function FormAssistant({
   catalog: RegistryCatalog;
   readOnly: boolean;
   selection?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   onApply: (draft: RecipeDraft, warnings: ValidationIssue[]) => void;
 }) {
   return (
@@ -121,6 +125,8 @@ export function FormAssistant({
       key={documentId}
       user={user}
       kind="form"
+      open={open}
+      onOpenChange={onOpenChange}
       documentId={documentId}
       document={recipeSnapshot(draft)}
       revisionSource={draft}

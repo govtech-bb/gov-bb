@@ -1,3 +1,9 @@
+import { useConfirmation } from "../../component/ui/dialog/confirmation";
+import { ScrollArea } from "../../component/ui/scroll-area";
+import { Elevated } from "../../component/ui/surface";
+import { Banner } from "../../component/ui/banner";
+import { Button } from "../../component/ui/button";
+import { Select } from "../../component/ui/select";
 import { useState } from "react";
 import type { Dispatch } from "react";
 import type {
@@ -45,6 +51,7 @@ export function ProcessorsEditor({
   dispatch,
   fields,
 }: ProcessorsEditorProps) {
+  const confirm = useConfirmation();
   const processors = draft.processors ?? [];
   const [addType, setAddType] = useState<AuthorableProcessorType>("email");
   const hasEmail = processors.some((p) => p.type === "email");
@@ -58,70 +65,109 @@ export function ProcessorsEditor({
     dispatch({ type: "ADD_PROCESSOR", processorType: addType });
   }
 
-  function handleRemove(id: string) {
-    if (!window.confirm("Remove this processor?")) return;
+  async function handleRemove(id: string) {
+    if (
+      !(await confirm({
+        title: "Remove processor?",
+        description: "Remove this processor?",
+        confirmLabel: "Remove processor",
+        destructive: true,
+      }))
+    )
+      return;
     dispatch({ type: "REMOVE_PROCESSOR", id });
   }
 
   return (
-    <div className={styles.processorsEditor}>
-      <div className={styles.sectionTitle}>Processors ({processors.length})</div>
-
-      {!hasEmail && (
-        <div className={styles.processorWarning} role="alert">
-          No email confirmation processor is attached, so applicants won&apos;t
-          receive a confirmation email. You can still deploy.
-        </div>
-      )}
-
-      <div className={styles.addProcessorRow}>
-        <label htmlFor="add-processor-type">Processor type</label>
-        <select
-          id="add-processor-type"
-          value={addType}
-          onChange={(e) =>
-            setAddType(e.target.value as AuthorableProcessorType)
-          }
+    <ScrollArea className="min-h-0 flex-1" viewportClassName="scroll-fade">
+      <div className="p-4 sm:p-6">
+        <Elevated
+          offset={1}
+          shadowLevel={2}
+          className="mx-auto max-w-5xl rounded-xl p-4 sm:p-6"
         >
-          {ADDABLE.map((o) => (
-            <option key={o.type} value={o.type}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <button type="button" onClick={handleAdd}>
-          Add processor
-        </button>
-      </div>
+          <div className={styles.sectionTitle}>
+            Processors ({processors.length})
+          </div>
 
-      {processors.length === 0 ? (
-        <div className={styles.noProcessors}>No processors yet.</div>
-      ) : (
-        processors.map((p) => (
-          <div key={p.id} className={styles.processorCard}>
-            <div className={styles.processorCardHeader}>
-              {/* Prefer the per-instance label (e.g. seeded "Applicant Email" /
+          {!hasEmail && (
+            <Banner variant="alert" size="sm" role="alert">
+              <div className="min-w-0 flex-1">
+                No email confirmation processor is attached, so applicants
+                won&apos;t receive a confirmation email. You can still deploy.
+              </div>
+            </Banner>
+          )}
+
+          <div className="mb-5 flex flex-wrap items-end gap-2">
+            <div className="min-w-0 flex-1 basis-56">
+              <Select
+                label="Processor type"
+                id="add-processor-type"
+                value={addType}
+                onValueChange={(nextValue) => {
+                  if (nextValue === null) return;
+                  setAddType(nextValue as AuthorableProcessorType);
+                }}
+                items={[
+                  ...ADDABLE.map((o) => ({ value: o.type, label: o.label })),
+                ]}
+              />
+            </div>
+            <Button
+              type="button"
+              onClick={handleAdd}
+              variant="secondary"
+              size="sm"
+            >
+              Add processor
+            </Button>
+          </div>
+
+          {processors.length === 0 ? (
+            <div className={styles.noProcessors}>No processors yet.</div>
+          ) : (
+            processors.map((p) => (
+              <Elevated
+                offset={1}
+                shadowLevel={2}
+                className="mb-4 rounded-xl p-3 sm:p-5"
+                key={p.id}
+              >
+                <div className={styles.processorCardHeader}>
+                  {/* Prefer the per-instance label (e.g. seeded "Applicant Email" /
                   "MDA Email", issue #501) so two email processors are
                   distinguishable; fall back to the type label otherwise. */}
-              <strong>
-                {(p.type === "email" && p.config.label) ||
-                  PROCESSOR_LABELS[p.type]}
-              </strong>
-              <button type="button" onClick={() => handleRemove(p.id)}>
-                Remove
-              </button>
-            </div>
-            <ProcessorConfigForm
-              processor={p}
-              fields={fields}
-              hasContactEmail={hasContactEmail}
-              onConfigChange={(config) =>
-                dispatch({ type: "UPDATE_PROCESSOR_CONFIG", id: p.id, config })
-              }
-            />
-          </div>
-        ))
-      )}
-    </div>
+                  <strong>
+                    {(p.type === "email" && p.config.label) ||
+                      PROCESSOR_LABELS[p.type]}
+                  </strong>
+                  <Button
+                    type="button"
+                    onClick={() => handleRemove(p.id)}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    Remove
+                  </Button>
+                </div>
+                <ProcessorConfigForm
+                  processor={p}
+                  fields={fields}
+                  hasContactEmail={hasContactEmail}
+                  onConfigChange={(config) =>
+                    dispatch({
+                      type: "UPDATE_PROCESSOR_CONFIG",
+                      id: p.id,
+                      config,
+                    })
+                  }
+                />
+              </Elevated>
+            ))
+          )}
+        </Elevated>
+      </div>
+    </ScrollArea>
   );
 }

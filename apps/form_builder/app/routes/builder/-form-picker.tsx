@@ -1,3 +1,11 @@
+import { useConfirmation } from "../../component/ui/dialog/confirmation";
+import { Loader } from "../../component/ui/loader";
+import { Empty } from "../../component/ui/empty";
+import { ScrollArea } from "../../component/ui/scroll-area";
+import { Badge } from "../../component/ui/badge";
+import { Banner } from "../../component/ui/banner";
+import { Input } from "../../component/ui/input";
+import { Button } from "../../component/ui/button";
 import { useState } from "react";
 import { GitPullRequestIcon } from "hugeicons-react";
 import { getRecipe, getFormConfig } from "../../server/forms";
@@ -6,8 +14,7 @@ import { deserializeRecipe, mergeDbProcessors } from "@govtech-bb/form-builder";
 import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
 import type { ServiceContractRecipe, Processor } from "@govtech-bb/form-types";
 import type { BuilderFormSummary } from "../../types/index";
-import styles from "../../styles/builder.module.css";
-import { useEscClose } from "./-use-esc-close";
+import { Dialog } from "../../component/ui/dialog";
 
 interface FormPickerProps {
   /** The forms to choose from, or `null` while the background fetch is in flight. */
@@ -42,46 +49,61 @@ function matches(query: string, ...fields: Array<string | undefined>) {
   return fields.some((f) => f !== undefined && f.toLowerCase().includes(q));
 }
 
-/**
- * "In review" badge for a form with an open Deploy PR (#2390). The row it
- * sits in is itself clickable (loads the form), so opening the PR needs its
- * own preventDefault/stopPropagation or the click would also select the row.
- * Mirrors content/index.tsx's PrBadge for the CMS's equivalent flag.
- */
 function PrBadge({ pr }: { pr: OpenDeployPR }) {
-  const openPr = (e: React.SyntheticEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    window.open(pr.prUrl, "_blank", "noopener");
-  };
   return (
-    <span
-      className={styles.reviewBadge}
-      role="link"
-      tabIndex={0}
-      title={`Open pull request #${pr.prNumber}`}
-      onClick={openPr}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") openPr(e);
-      }}
+    <a
+      href={pr.prUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Open pull request #${pr.prNumber}`}
+      className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ui-focus"
     >
-      <GitPullRequestIcon size={11} style={{ marginRight: 3 }} />
-      In review
-    </span>
+      <Badge
+        variant="info"
+        icon={<GitPullRequestIcon size={12} aria-hidden="true" />}
+      >
+        In review
+      </Badge>
+    </a>
   );
 }
 
-export function FormPicker({ forms, loadError, isDirty, catalog, openPRs, onLoad, onClose, onRequestDelete, onRequestDisable, onRequestErase, onEnable, onDuplicate }: FormPickerProps) {
+export function FormPicker({
+  forms,
+  loadError,
+  isDirty,
+  catalog,
+  openPRs,
+  onLoad,
+  onClose,
+  onRequestDelete,
+  onRequestDisable,
+  onRequestErase,
+  onEnable,
+  onDuplicate,
+}: FormPickerProps) {
+  const confirm = useConfirmation();
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
 
   // `forms` is null while the background fetch is in flight; treat that as an
   // empty list for filtering so the loading/empty states below own the messaging.
-  const filtered = (forms ?? []).filter((form) => matches(query, form.title, form.formId));
+  const filtered = (forms ?? []).filter((form) =>
+    matches(query, form.title, form.formId),
+  );
 
   async function handleSelect(form: BuilderFormSummary) {
-    if (isDirty && !window.confirm("Unsaved changes will be lost. Continue?")) return;
+    if (
+      isDirty &&
+      !(await confirm({
+        title: "Discard unsaved changes?",
+        description: "Unsaved changes will be lost. Continue?",
+        confirmLabel: "Discard changes",
+        destructive: true,
+      }))
+    )
+      return;
     setError(null);
     setLoadingId(form.formId);
     try {
@@ -91,7 +113,9 @@ export function FormPicker({ forms, loadError, isDirty, catalog, openPRs, onLoad
       // fetch that fails (e.g. older API) shouldn't block opening the form, so
       // it degrades to "no selection".
       const [recipe, config] = await Promise.all([
-        getRecipe({ data: { formId: form.formId } }) as Promise<ServiceContractRecipe>,
+        getRecipe({
+          data: { formId: form.formId },
+        }) as Promise<ServiceContractRecipe>,
         getFormConfig({ data: { formId: form.formId } }).catch(
           () =>
             ({ mdaContactId: null, processors: null }) as {
@@ -129,11 +153,22 @@ export function FormPicker({ forms, loadError, isDirty, catalog, openPRs, onLoad
   // identifiers; the builder's live uniqueness check flags them if they collide
   // (e.g. duplicating the same form twice) so the author renames before saving.
   async function handleDuplicate(form: BuilderFormSummary) {
-    if (isDirty && !window.confirm("Unsaved changes will be lost. Continue?")) return;
+    if (
+      isDirty &&
+      !(await confirm({
+        title: "Discard unsaved changes?",
+        description: "Unsaved changes will be lost. Continue?",
+        confirmLabel: "Discard changes",
+        destructive: true,
+      }))
+    )
+      return;
     setError(null);
     setLoadingId(form.formId);
     try {
-      const recipe = (await getRecipe({ data: { formId: form.formId } })) as ServiceContractRecipe;
+      const recipe = (await getRecipe({
+        data: { formId: form.formId },
+      })) as ServiceContractRecipe;
       const draft = deserializeRecipe(recipe, catalog);
       onDuplicate({
         ...draft,
@@ -151,210 +186,170 @@ export function FormPicker({ forms, loadError, isDirty, catalog, openPRs, onLoad
     }
   }
 
-  useEscClose(onClose);
-
   return (
-    <div className={styles.modal} onClick={onClose}>
-      <div className={`${styles.modalContent} ${styles.modalContentWide}`} role="dialog" aria-modal="true" aria-label="Open Form" onClick={(e) => e.stopPropagation()}>
-        <div className={styles.modalHead}>
-          <strong>Open Form</strong>
-          <button type="button" onClick={onClose}>Close</button>
+    <Dialog.Root
+      defaultOpen
+      onOpenChangeComplete={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <Dialog size="xl" showCloseButton={false} className="space-y-5">
+        <div className="flex items-center justify-between gap-4">
+          <Dialog.Title>Open Form</Dialog.Title>
+          <Dialog.Close render={<Button variant="ghost" size="sm" />}>
+            Close
+          </Dialog.Close>
         </div>
-
-        <div className={styles.pickerSearch}>
-          <input
-            type="text"
+        <div className="relative">
+          <Input
+            type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search forms…"
-            className={styles.pickerSearchInput}
+            className="w-full pr-10"
             aria-label="Search forms"
             autoFocus
           />
           {query && (
-            <button
-              type="button"
-              className={styles.pickerSearchClear}
+            <Button
+              variant="ghost"
+              size="sm"
+              shape="square"
+              className="absolute right-1 top-1/2 -translate-y-1/2"
               onClick={() => setQuery("")}
               aria-label="Clear search"
             >
               ×
-            </button>
+            </Button>
           )}
         </div>
-
         {(error || loadError) && (
-          <div className={styles.validationErrors} style={{ marginBottom: 8 }}>
+          <Banner variant="error" role="alert" size="sm">
             {error || loadError}
-          </div>
+          </Banner>
         )}
-
         {forms === null && !loadError && (
-          <div role="status">
-            <span className={styles.srOnly}>Loading forms…</span>
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className={styles.skelRow} />
-            ))}
-          </div>
-        )}
-
-        {forms !== null && forms.length === 0 && (
-          <p style={{ color: "#888" }}>No forms found.</p>
-        )}
-
-        {forms !== null && forms.length > 0 && filtered.length === 0 && (
-          <p style={{ color: "#888" }}>No forms match your search.</p>
-        )}
-
-        {filtered.map((form) => {
-          // Open Deploy PR for this row, if any (#2390).
-          const pr = openPRs?.get(form.formId);
-          return (
           <div
-            key={form.id}
-            className={styles.fieldRow}
-            style={{
-              cursor:
-                loadingId || form.isOrphanOverride ? "not-allowed" : "pointer",
-            }}
-            onClick={() => {
-              // An orphan override has no recipe to load — Enable-only, not openable.
-              if (!loadingId && !form.isOrphanOverride) handleSelect(form);
-            }}
+            role="status"
+            className="flex items-center gap-2 py-6 text-ui-subtle"
           >
-            <span style={{ flex: 1 }}>
-              <strong>{form.title || form.formId}</strong>{" "}
-              {!form.isOrphanOverride && (
-                <span className={styles.badge}>v{form.version}</span>
-              )}
-              {form.isPublished && (
-                <span className={styles.publishedBadge}>Published</span>
-              )}
-              {/* A non-public published form (#1835): badge its visibility so an
-                  operator sees why it isn't on the public site. Public forms and
-                  the token-less fallback (visibility undefined) show nothing. */}
-              {form.visibility && form.visibility !== "public" && (
-                <span className={styles.visibilityBadge}>
-                  {form.visibility}
-                </span>
-              )}
-              {form.isDisabled && (
-                <span className={styles.disabledBadge}>Disabled</span>
-              )}
-              {pr && <PrBadge pr={pr} />}
-            </span>
-            <span style={{ color: "#888", fontSize: "0.8rem" }}>{form.formId}</span>
-            {loadingId === form.formId && <span> Loading…</span>}
-            {/* Duplicate is non-destructive and works on any form (a published
-                form makes a fine template), so it sits ahead of the
-                publish-state danger cluster below. An orphan override has no
-                recipe to copy, so it offers no Duplicate. */}
-            {!form.isOrphanOverride && (
-              <button
-                type="button"
-                style={{ marginLeft: 8 }}
-                disabled={!!loadingId}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDuplicate(form);
-                }}
-              >
-                Duplicate
-              </button>
-            )}
-            {/* Per-row action follows intent. A disabled form enables — this
-                wins over publish state, so a disabled draft-only or orphan form
-                shows Enable, not Delete (#1658). Otherwise a draft deletes (id
-                freed) and a live published form gets both Disable (reversible
-                410 tombstone) and Erase (permanent on-disk recipe removal). */}
-            {form.isDisabled ? (
-              <button
-                type="button"
-                style={{ marginLeft: 8 }}
-                disabled={!!loadingId}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEnable(form);
-                }}
-              >
-                Enable
-              </button>
-            ) : !form.isPublished ? (
-              <button
-                type="button"
-                className={styles.btnDanger}
-                style={{ marginLeft: 8 }}
-                disabled={!!loadingId}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRequestDelete(form);
-                }}
-              >
-                Delete
-              </button>
-            ) : (
-              <>
-                {/* #2411: a scratch row shadows the committed recipe on
-                    every builder read path, so a recipe hand-edited in the repo
-                    can't reach the builder while one exists. Deleting the row
-                    is the way back — resolveStoredRecipe then falls back to the
-                    committed file. Same action and handler as the draft branch
-                    above; labelled for what it removes here (the builder's copy,
-                    not the service) and left un-reddened, so it can't read as
-                    the #576 hazard. Shown only when there IS a row to remove.
-
-                    Safe by construction even though deleteFormHandler has no
-                    `published_at` guard (unlike deleteFormVersionHandler and
-                    rekeyFormHandler, whose guards are pre-#1196 leftovers from
-                    when a published row WAS the artifact): `isPublished` is
-                    sourced from apps/api's file-backed index, so a committed
-                    recipe provably exists whenever this renders, and nothing
-                    public reads the row — source() forces RECIPE_SOURCE=files
-                    outside development. Guarding here would instead block the
-                    oldest rows, which are the likeliest to be stale. */}
-                {form.hasDraftRow && (
-                  <button
-                    type="button"
-                    style={{ marginLeft: 8 }}
-                    disabled={!!loadingId}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRequestDelete(form);
-                    }}
-                  >
-                    Delete working copy
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className={styles.btnDanger}
-                  style={{ marginLeft: 8 }}
-                  disabled={!!loadingId}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRequestDisable(form);
-                  }}
-                >
-                  Disable
-                </button>
-                <button
-                  type="button"
-                  className={styles.btnErase}
-                  style={{ marginLeft: 8 }}
-                  disabled={!!loadingId}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRequestErase(form);
-                  }}
-                >
-                  Erase
-                </button>
-              </>
-            )}
+            <Loader size="sm" />
+            Loading forms…
           </div>
-          );
-        })}
-      </div>
-    </div>
+        )}
+        {forms !== null && forms.length === 0 && (
+          <Empty title="No forms found." />
+        )}
+        {forms !== null && forms.length > 0 && filtered.length === 0 && (
+          <Empty title="No forms match your search." />
+        )}
+        {filtered.length > 0 && (
+          <ScrollArea
+            className="h-[min(55dvh,30rem)]"
+            viewportClassName="scroll-fade"
+          >
+            <div className="space-y-3 p-1">
+              {filtered.map((form) => {
+                const pr = openPRs?.get(form.formId);
+                return (
+                  <div
+                    key={form.id}
+                    className="rounded-lg border border-ui-hairline p-3"
+                  >
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="max-w-full justify-start truncate font-semibold"
+                        disabled={!!loadingId || form.isOrphanOverride}
+                        loading={loadingId === form.formId}
+                        onClick={() => handleSelect(form)}
+                      >
+                        {form.title || form.formId}
+                      </Button>
+                      {!form.isOrphanOverride && (
+                        <Badge variant="secondary">v{form.version}</Badge>
+                      )}
+                      {form.isPublished && (
+                        <Badge variant="success">Published</Badge>
+                      )}
+                      {form.visibility && form.visibility !== "public" && (
+                        <Badge variant="secondary" className="capitalize">
+                          {form.visibility}
+                        </Badge>
+                      )}
+                      {form.isDisabled && (
+                        <Badge variant="error">Disabled</Badge>
+                      )}
+                      {pr && <PrBadge pr={pr} />}
+                    </div>
+                    <p className="mt-1 break-all px-2 text-xs text-ui-subtle">
+                      {form.formId}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {!form.isOrphanOverride && (
+                        <Button
+                          size="sm"
+                          disabled={!!loadingId}
+                          onClick={() => handleDuplicate(form)}
+                        >
+                          Duplicate
+                        </Button>
+                      )}
+                      {form.isDisabled ? (
+                        <Button
+                          size="sm"
+                          disabled={!!loadingId}
+                          onClick={() => onEnable(form)}
+                        >
+                          Enable
+                        </Button>
+                      ) : !form.isPublished ? (
+                        <Button
+                          variant="secondary-destructive"
+                          size="sm"
+                          disabled={!!loadingId}
+                          onClick={() => onRequestDelete(form)}
+                        >
+                          Delete
+                        </Button>
+                      ) : (
+                        <>
+                          {form.hasDraftRow && (
+                            <Button
+                              size="sm"
+                              disabled={!!loadingId}
+                              onClick={() => onRequestDelete(form)}
+                            >
+                              Delete working copy
+                            </Button>
+                          )}
+                          <Button
+                            variant="secondary-destructive"
+                            size="sm"
+                            disabled={!!loadingId}
+                            onClick={() => onRequestDisable(form)}
+                          >
+                            Disable
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={!!loadingId}
+                            onClick={() => onRequestErase(form)}
+                          >
+                            Erase
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        )}
+      </Dialog>
+    </Dialog.Root>
   );
 }

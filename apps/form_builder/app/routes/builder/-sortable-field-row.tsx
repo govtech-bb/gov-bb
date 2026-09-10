@@ -1,6 +1,11 @@
+import { Badge } from "../../component/ui/badge";
+import { Button } from "../../component/ui/button";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { RecipeFieldDraft, RegistryCatalog } from "@govtech-bb/form-builder";
+import type {
+  RecipeFieldDraft,
+  RegistryCatalog,
+} from "@govtech-bb/form-builder";
 import { getRegistryItem } from "@govtech-bb/form-builder";
 import { resolveFieldLabel } from "./-field-label";
 import styles from "../../styles/builder.module.css";
@@ -34,8 +39,14 @@ export function SortableFieldRow({
   onEdit,
   onRemove,
 }: SortableFieldRowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: field.id });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: field.id });
 
   const item = getRegistryItem(field.ref, catalog);
   const label = resolveFieldLabel(field, item);
@@ -54,7 +65,7 @@ export function SortableFieldRow({
 
   return (
     <div ref={setNodeRef} className={styles.fieldRow} style={style}>
-      <button
+      <Button
         type="button"
         className={styles.dragHandle}
         title="Drag to reorder"
@@ -62,9 +73,11 @@ export function SortableFieldRow({
         {...attributes}
         {...listeners}
         tabIndex={-1}
+        variant="secondary"
+        size="sm"
       >
         ⠿
-      </button>
+      </Button>
       <div style={{ flex: 1 }}>
         <div>
           {hasOverrides && (
@@ -76,24 +89,35 @@ export function SortableFieldRow({
           <div className={styles.fieldRowSecondary}>{displayName}</div>
         )}
       </div>
-      <span className={styles.badge}>{field.kind}</span>
-      <button type="button" title="Move up" disabled={isFirst} onClick={onMoveUp}>
+      <Badge variant="secondary">{field.kind}</Badge>
+      <Button
+        type="button"
+        title="Move up"
+        disabled={isFirst}
+        onClick={onMoveUp}
+        variant="secondary"
+        size="sm"
+        aria-label={"Move up"}
+      >
         ▲
-      </button>
-      <button
+      </Button>
+      <Button
         type="button"
         title="Move down"
         disabled={isLast}
         onClick={onMoveDown}
+        variant="secondary"
+        size="sm"
+        aria-label={"Move down"}
       >
         ▼
-      </button>
-      <button type="button" onClick={onEdit}>
+      </Button>
+      <Button type="button" onClick={onEdit} variant="secondary" size="sm">
         Edit
-      </button>
-      <button type="button" onClick={onRemove}>
+      </Button>
+      <Button type="button" onClick={onRemove} variant="secondary" size="sm">
         ×
-      </button>
+      </Button>
     </div>
   );
 }

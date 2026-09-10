@@ -1,3 +1,5 @@
+import { Button } from "../../component/ui/button";
+import { Input } from "../../component/ui/input";
 import { useState } from "react";
 import styles from "../../styles/builder.module.css";
 
@@ -51,17 +53,20 @@ export function KeyValueEditor({
     <div className={styles.keyValueEditor}>
       {rows.map((row, i) => (
         <div key={i} className={styles.keyValueRow}>
-          <input
+          <Input
             type="text"
             placeholder="Key"
             value={row.key}
             onChange={(e) =>
               update(
-                rows.map((r, j) => (j === i ? { ...r, key: e.target.value } : r)),
+                rows.map((r, j) =>
+                  j === i ? { ...r, key: e.target.value } : r,
+                ),
               )
             }
+            className="w-full min-w-0"
           />
-          <input
+          <Input
             type="text"
             placeholder="Value"
             value={row.value}
@@ -72,23 +77,28 @@ export function KeyValueEditor({
                 ),
               )
             }
+            className="w-full min-w-0"
           />
-          <button
+          <Button
             type="button"
             aria-label="Remove row"
             title="Remove row"
             onClick={() => update(rows.filter((_, j) => j !== i))}
+            variant="secondary"
+            size="sm"
           >
             ×
-          </button>
+          </Button>
         </div>
       ))}
-      <button
+      <Button
         type="button"
         onClick={() => setRows([...rows, { key: "", value: "" }])}
+        variant="secondary"
+        size="sm"
       >
         {addLabel}
-      </button>
+      </Button>
     </div>
   );
 }

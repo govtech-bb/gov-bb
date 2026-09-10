@@ -1,0 +1,330 @@
+/* Component affordances are scoped so the builder's older styles can coexist. */
+:where(
+  [data-ui-component],
+  [data-ui-part],
+  .ui-control,
+  .ui-calendar button
+):focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+:where(
+    button,
+    a[href],
+    label[for],
+    [role^="menuitem"],
+    [role="option"],
+    [role="tab"],
+    [role="checkbox"],
+    [role="radio"],
+    [role="switch"]
+  ):where([data-ui-component], [data-ui-part]):not(
+    :disabled,
+    [data-disabled],
+    [aria-disabled="true"]
+  ) {
+  cursor: pointer;
+}
+
+@layer components {
+  .ui-elevated {
+    --ui-tint: color-mix(
+      in oklab,
+      var(--ui-default) 6%,
+      var(--ui-elevation-bg)
+    );
+    --ui-control-hover: color-mix(
+      in oklab,
+      var(--ui-default) 10%,
+      var(--ui-elevation-bg)
+    );
+  }
+  .ui-control {
+    transition:
+      box-shadow var(--ui-fast),
+      background-color var(--ui-fast);
+  }
+  .ui-control::placeholder,
+  .ui-input-placeholder::placeholder {
+    color: var(--ui-placeholder);
+  }
+  .ui-control:is([aria-invalid="true"], [data-invalid], .ui-control-invalid) {
+    --tw-ring-color: var(--ui-danger-text);
+  }
+
+  .ui-field[data-ui-layout="horizontal"] {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+  .ui-field[data-ui-control-first][data-ui-layout="horizontal"] {
+    grid-template-columns: auto 1fr;
+  }
+  .ui-field[data-ui-control-first] > :is([role="switch"], [role="checkbox"]) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .ui-field[data-ui-control-first] > label {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .ui-popup {
+    border-radius: var(--radius-lg);
+    color: var(--ui-default);
+  }
+  .ui-switch {
+    position: relative;
+    display: inline-flex;
+    width: 2.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+    align-items: center;
+    border: 1px solid var(--ui-line);
+    border-radius: 999px;
+    background: var(--ui-tint);
+    transition: background-color var(--ui-fast);
+  }
+  .ui-switch[data-checked] {
+    background: var(--ui-brand);
+    border-color: var(--ui-brand);
+  }
+  .ui-switch[data-size="sm"] {
+    width: 2rem;
+    height: 1.125rem;
+  }
+  .ui-switch[data-size="lg"] {
+    width: 2.5rem;
+    height: 1.5rem;
+  }
+  .ui-switch:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .ui-switch-thumb {
+    position: absolute;
+    inset-inline-start: 2px;
+    width: calc(50% - 3px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--ui-subtle);
+    transition:
+      translate var(--ui-fast) var(--ui-ease),
+      background-color var(--ui-fast);
+  }
+  .ui-switch[data-checked] .ui-switch-thumb {
+    translate: calc(100% + 4px) 0;
+    background: var(--ui-inverse);
+  }
+  @supports selector(:dir(rtl)) {
+    .ui-switch:dir(rtl)[data-checked] .ui-switch-thumb {
+      translate: calc(-100% - 4px) 0;
+    }
+  }
+
+  .skeleton-line {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.25rem;
+    height: 0.5rem;
+    width: var(--skeleton-width);
+    background: var(--ui-tint);
+  }
+  .skeleton-line::after,
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--ui-hairline),
+      transparent
+    );
+  }
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--ui-tint);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .skeleton-line::after,
+    .skeleton::after {
+      animation: ui-shimmer var(--shimmer-duration, 1.5s)
+        var(--shimmer-delay, 0s) ease-in-out infinite;
+    }
+    .animate-refresh {
+      animation: ui-refresh 1s linear infinite;
+    }
+    .animate-toast-bump,
+    .animate-clipboard-toast-bump {
+      animation: ui-toast-bump 160ms ease-out;
+    }
+  }
+  .link-current {
+    text-decoration-color: color-mix(in oklch, currentColor 40%, transparent);
+  }
+  .link-current:hover {
+    text-decoration-color: currentColor;
+  }
+  .link-external-icon {
+    stroke-width: 1.75;
+  }
+  @supports (overscroll-behavior: contain) {
+    .ui-tabs-list {
+      overscroll-behavior: contain;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ui-control,
+    .ui-switch,
+    .ui-switch-thumb {
+      transition: none;
+    }
+  }
+}
+
+@layer utilities {
+  @supports (scrollbar-width: none) {
+    .no-scrollbar {
+      scrollbar-width: none;
+    }
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-input-spinner {
+    appearance: textfield;
+  }
+  .no-input-spinner::-webkit-inner-spin-button,
+  .no-input-spinner::-webkit-outer-spin-button {
+    appearance: none;
+  }
+}
+
+/* eslint-disable css/no-important -- Shiki renders inline colors; these scoped rules select its dark theme. */
+/* Shiki supplies inline token colors; dark mode switches to its alternate values. */
+.ui-shiki pre {
+  background: transparent !important;
+}
+[data-mode="dark"] .ui-shiki span {
+  color: var(--shiki-dark) !important;
+  background: transparent !important;
+}
+.ui-shiki code {
+  display: block;
+  width: fit-content;
+  min-width: 100%;
+  padding-inline-end: 1rem;
+}
+.ui-shiki .line.line-highlighted {
+  display: inline-block;
+  width: calc(100% + 2rem);
+  margin-inline: -1rem;
+  padding-inline: 1rem;
+  background: var(--ui-tint) !important;
+}
+.ui-line-numbers {
+  padding-inline-start: 0.75rem;
+  line-height: 1.625;
+}
+
+/* eslint-enable css/no-important */
+
+@keyframes ui-shimmer {
+  from {
+    translate: -100% 0;
+  }
+  to {
+    translate: 100% 0;
+  }
+}
+@keyframes ui-refresh {
+  to {
+    rotate: 360deg;
+  }
+}
+@keyframes ui-toast-bump {
+  50% {
+    scale: 1.02;
+  }
+}
+
+.ui-control-group:focus-within {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  :where(
+    [data-ui-component],
+    [data-ui-part],
+    .ui-control,
+    .ui-calendar button
+  ):focus-visible,
+  .ui-control-group:focus-within {
+    outline-color: Highlight;
+  }
+  .ui-button {
+    border: 1px solid ButtonText;
+  }
+  .ui-switch {
+    border-color: ButtonText;
+  }
+  .ui-switch[data-checked] {
+    background: Highlight;
+  }
+  .ui-switch-thumb {
+    background: ButtonText;
+  }
+  .ui-switch[data-checked] .ui-switch-thumb {
+    background: HighlightText;
+  }
+}
+
+@supports selector(body:has(main)) {
+  :root:has([data-ui-preview]) {
+    font-size: 16px;
+  }
+  body:has([data-ui-preview]) {
+    margin: 0;
+  }
+}
+
+.ui-loader-ring {
+  stroke-dasharray: 42 150;
+  stroke-dashoffset: 0;
+  transform-origin: center;
+}
+.ui-switch::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ui-loader-ring {
+    animation:
+      ui-loader-turn 2s linear infinite,
+      ui-loader-dash 1.5s linear infinite;
+  }
+}
+@keyframes ui-loader-turn {
+  to {
+    rotate: 360deg;
+  }
+}
+@keyframes ui-loader-dash {
+  0% {
+    stroke-dasharray: 0 150;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 42 150;
+    stroke-dashoffset: -16;
+  }
+  100% {
+    stroke-dasharray: 42 150;
+    stroke-dashoffset: -59;
+  }
+}

@@ -109,6 +109,7 @@ export function FileThumbnail({
       ) : (
         <>
           <File01Icon size={21} aria-hidden="true" />
+
           <span>{extension}</span>
         </>
       )}

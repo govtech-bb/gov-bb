@@ -1,10 +1,19 @@
+import { useConfirmation } from "../../component/ui/dialog/confirmation";
 import type { RecipeStepDraft } from "@govtech-bb/form-builder";
 import {
-  ArrowDown01Icon,
-  ArrowUp01Icon,
-  Cancel01Icon,
-} from "hugeicons-react";
-import styles from "../../styles/builder.module.css";
+  ArrowDownIcon,
+  ArrowUpIcon,
+  DotsThreeIcon,
+  EnvelopeSimpleIcon,
+  GearSixIcon,
+  LockSimpleIcon,
+  PlusIcon,
+  TrashIcon,
+} from "@phosphor-icons/react";
+import { Button } from "../../component/ui/button";
+import { Sidebar, useSidebar } from "../../component/ui/sidebar";
+import { ScrollArea } from "../../component/ui/scroll-area";
+import { DropdownMenu } from "../../component/ui/dropdown";
 import { isRequiredStep, REQUIRED_STEP_IDS } from "./-recipe-reducer";
 
 interface StepListProps {
@@ -23,114 +32,163 @@ interface StepListProps {
   onSelectContactDetails: () => void;
 }
 
-export function StepList({
-  steps,
-  selectedStepId,
-  onSelect,
-  onAdd,
-  onRemove,
-  onMoveUp,
-  onMoveDown,
-  processorCount,
-  isProcessorsActive,
-  onSelectProcessors,
-  hasContactDetails,
-  isContactDetailsActive,
-  onSelectContactDetails,
-}: StepListProps) {
-  const editableCount = steps.length - REQUIRED_STEP_IDS.length;
+export function StepList(props: StepListProps) {
+  const confirm = useConfirmation();
+  const { setOpenMobile, isMobile } = useSidebar();
+  const editableCount = props.steps.length - REQUIRED_STEP_IDS.length;
 
-  function handleRemove(stepId: string) {
-    if (!window.confirm("Delete this step?")) return;
-    onRemove(stepId);
+  function select(action: () => void) {
+    action();
+    setOpenMobile(false);
   }
 
   return (
-    <div className={styles.stepList}>
-      <div className={styles.railTitle}>Steps</div>
-      {steps.map((step, index) => (
-        <div
-          key={step.stepId}
-          className={`${styles.stepRow} ${step.stepId === selectedStepId ? styles.stepRowActive : ""}`}
-          onClick={() => onSelect(step.stepId)}
-        >
-          <span className={styles.stepIndex}>{index + 1}</span>
-          {/* The select affordance is a real button (the row div also stays
-              clickable for the larger hit area) so the rail is keyboard- and
-              screen-reader-reachable. It can't be the row itself: the
-              reorder/delete buttons inside would nest interactives. */}
-          <button
-            type="button"
-            className={styles.stepRowTitle}
-            aria-current={step.stepId === selectedStepId ? "true" : undefined}
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelect(step.stepId);
-            }}
-          >
-            {step.title || step.stepId}
-          </button>
-          {!isRequiredStep(step.stepId) && (
-            <span className={styles.stepRowActions}>
-              <button
-                type="button"
-                className={styles.railIconBtn}
-                title="Move up"
-                disabled={index === 0}
-                onClick={(e) => { e.stopPropagation(); onMoveUp(index); }}
+    <Sidebar aria-label="Form outline">
+      <Sidebar.Header className="flex-row items-center justify-between px-4 py-5">
+        <h2 className="text-base font-semibold text-ui-strong">Form outline</h2>
+        {isMobile && <Sidebar.Close />}
+      </Sidebar.Header>
+      <ScrollArea
+        aria-label="Form navigation"
+        className="min-h-0 flex-1"
+        viewportClassName="scroll-fade"
+      >
+        <div className="space-y-6 px-3 pb-4">
+          <Sidebar.Group>
+            <Sidebar.GroupLabel>Steps</Sidebar.GroupLabel>
+            <Sidebar.Menu>
+              {props.steps.map((step, index) => {
+                const required = isRequiredStep(step.stepId);
+                return (
+                  <Sidebar.MenuItem
+                    key={step.stepId}
+                    itemId={step.stepId}
+                    className="group/step"
+                  >
+                    <Sidebar.MenuButton
+                      active={step.stepId === props.selectedStepId}
+                      aria-current={
+                        step.stepId === props.selectedStepId
+                          ? "step"
+                          : undefined
+                      }
+                      onClick={() => select(() => props.onSelect(step.stepId))}
+                      className="min-h-10 pe-9"
+                      icon={
+                        <span
+                          className="flex size-5 shrink-0 items-center justify-center rounded-md bg-ui-recessed text-xs tabular-nums text-ui-subtle"
+                          aria-hidden="true"
+                        >
+                          {index + 1}
+                        </span>
+                      }
+                    >
+                      {step.title || step.stepId}
+                    </Sidebar.MenuButton>
+                    {required ? (
+                      <LockSimpleIcon
+                        aria-hidden="true"
+                        className="pointer-events-none absolute end-2.5 top-3 size-3.5 text-ui-inactive"
+                      />
+                    ) : (
+                      <DropdownMenu>
+                        <DropdownMenu.Trigger
+                          render={
+                            <Button
+                              variant="ghost"
+                              shape="square"
+                              size="sm"
+                              className="absolute end-1 top-1.5"
+                              aria-label={`Actions for ${step.title || step.stepId}`}
+                              icon={<DotsThreeIcon aria-hidden="true" />}
+                            />
+                          }
+                        />
+                        <DropdownMenu.Content align="start" side="right">
+                          <DropdownMenu.Item
+                            disabled={index === 0}
+                            onClick={() => props.onMoveUp(index)}
+                          >
+                            <ArrowUpIcon aria-hidden="true" />
+                            Move up
+                          </DropdownMenu.Item>
+                          <DropdownMenu.Item
+                            disabled={index === editableCount - 1}
+                            onClick={() => props.onMoveDown(index)}
+                          >
+                            <ArrowDownIcon aria-hidden="true" />
+                            Move down
+                          </DropdownMenu.Item>
+                          <DropdownMenu.Separator />
+                          <DropdownMenu.Item
+                            className="text-ui-danger"
+                            onClick={async () => {
+                              if (
+                                await confirm({
+                                  title: "Delete step?",
+                                  description: "Delete this step?",
+                                  confirmLabel: "Delete step",
+                                  destructive: true,
+                                })
+                              )
+                                props.onRemove(step.stepId);
+                            }}
+                          >
+                            <TrashIcon aria-hidden="true" />
+                            Delete step
+                          </DropdownMenu.Item>
+                        </DropdownMenu.Content>
+                      </DropdownMenu>
+                    )}
+                  </Sidebar.MenuItem>
+                );
+              })}
+            </Sidebar.Menu>
+            <Button
+              variant="outline"
+              className="mt-3 w-full"
+              onClick={() => select(props.onAdd)}
+              icon={<PlusIcon aria-hidden="true" />}
+            >
+              Add Step
+            </Button>
+          </Sidebar.Group>
+          <Sidebar.Group>
+            <Sidebar.GroupLabel>Form</Sidebar.GroupLabel>
+            <Sidebar.Menu>
+              <Sidebar.MenuButton
+                active={props.isContactDetailsActive}
+                aria-current={props.isContactDetailsActive ? "true" : undefined}
+                onClick={() => select(props.onSelectContactDetails)}
+                icon={
+                  <EnvelopeSimpleIcon
+                    className="size-4 shrink-0 text-ui-subtle"
+                    aria-hidden="true"
+                  />
+                }
               >
-                <ArrowUp01Icon size={14} />
-              </button>
-              <button
-                type="button"
-                className={styles.railIconBtn}
-                title="Move down"
-                disabled={index === editableCount - 1}
-                onClick={(e) => { e.stopPropagation(); onMoveDown(index); }}
+                {`Contact Details ${props.hasContactDetails ? "✓" : "(none)"}`}
+              </Sidebar.MenuButton>
+              <Sidebar.MenuButton
+                active={props.isProcessorsActive}
+                aria-current={props.isProcessorsActive ? "true" : undefined}
+                onClick={() => select(props.onSelectProcessors)}
+                icon={
+                  <GearSixIcon
+                    className="size-4 shrink-0 text-ui-subtle"
+                    aria-hidden="true"
+                  />
+                }
               >
-                <ArrowDown01Icon size={14} />
-              </button>
-              <button
-                type="button"
-                className={styles.railIconBtn}
-                title="Delete"
-                onClick={(e) => { e.stopPropagation(); handleRemove(step.stepId); }}
-              >
-                <Cancel01Icon size={13} />
-              </button>
-            </span>
-          )}
+                {`Processors (${props.processorCount})`}
+              </Sidebar.MenuButton>
+            </Sidebar.Menu>
+          </Sidebar.Group>
         </div>
-      ))}
-      <button type="button" onClick={onAdd} className={styles.stepListAddButton}>
-        + Add Step
-      </button>
-
-      <div className={styles.railTitle}>Form</div>
-      {/* Form-level contact details live beside the steps, not inside one.
-          No nested controls here, so the whole row can be the button. */}
-      <button
-        type="button"
-        className={`${styles.stepRow} ${styles.stepRowButton} ${isContactDetailsActive ? styles.stepRowActive : ""}`}
-        aria-current={isContactDetailsActive ? "true" : undefined}
-        onClick={onSelectContactDetails}
-      >
-        <span className={styles.stepRowTitle}>
-          Contact Details {hasContactDetails ? "✓" : "(none)"}
-        </span>
-      </button>
-
-      {/* Form-level processors live beside the steps, not inside one. */}
-      <button
-        type="button"
-        className={`${styles.stepRow} ${styles.stepRowButton} ${isProcessorsActive ? styles.stepRowActive : ""}`}
-        aria-current={isProcessorsActive ? "true" : undefined}
-        onClick={onSelectProcessors}
-      >
-        <span className={styles.stepRowTitle}>
-          Processors ({processorCount})
-        </span>
-      </button>
-    </div>
+      </ScrollArea>
+      <Sidebar.Footer className="px-4 py-4 text-xs text-ui-subtle">
+        GovTech Barbados
+      </Sidebar.Footer>
+    </Sidebar>
   );
 }

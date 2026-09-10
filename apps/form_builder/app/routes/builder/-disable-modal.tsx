@@ -1,6 +1,9 @@
+import { Banner } from "../../component/ui/banner";
+import { InputArea } from "../../component/ui/input/input-area";
+import { Button } from "../../component/ui/button";
 import { useState } from "react";
 import styles from "../../styles/builder.module.css";
-import { useEscClose } from "./-use-esc-close";
+import { Dialog } from "../../component/ui/dialog";
 
 interface DisableModalProps {
   formId: string;
@@ -35,16 +38,19 @@ export function DisableModal({
     onConfirm(trimmed);
   }
 
-  useEscClose(onClose);
-
   return (
-    <div className={styles.modal} onClick={onClose}>
-      <div className={styles.modalContent} role="dialog" aria-modal="true" aria-label="Disable Form" onClick={(e) => e.stopPropagation()}>
-        <div className={styles.modalHead}>
-          <strong>Disable Form</strong>
-          <button type="button" onClick={onClose}>
+    <Dialog.Root
+      defaultOpen
+      onOpenChangeComplete={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <Dialog size="lg" showCloseButton={false} className="space-y-5">
+        <div className="flex items-center justify-between gap-4">
+          <Dialog.Title>Disable Form</Dialog.Title>
+          <Dialog.Close render={<Button variant="ghost" size="sm" />}>
             Close
-          </button>
+          </Dialog.Close>
         </div>
 
         <p>
@@ -55,42 +61,52 @@ export function DisableModal({
         </p>
 
         <div className={styles.formGroup}>
-          <label>Reason</label>
-          <textarea
+          <InputArea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             rows={3}
             maxLength={2000}
             placeholder="Why is this form being disabled?"
             autoFocus
+            label={"Reason"}
           />
         </div>
 
         {clientError && (
-          <div className={styles.validationErrors} style={{ marginBottom: 8 }}>
-            {clientError}
-          </div>
+          <Banner variant="error" size="sm" style={{ marginBottom: 8 }}>
+            <div className="min-w-0 flex-1">{clientError}</div>
+          </Banner>
         )}
         {disableError && (
-          <div className={styles.validationErrors} style={{ marginBottom: 8 }}>
-            {disableError}
-          </div>
+          <Banner variant="error" size="sm" style={{ marginBottom: 8 }}>
+            <div className="min-w-0 flex-1">{disableError}</div>
+          </Banner>
         )}
 
         <div style={{ display: "flex", gap: 8 }}>
-          <button
+          <Button
             type="button"
-            className={styles.btnDanger}
+            variant="destructive"
             onClick={handleConfirm}
             disabled={isDisabling}
+            size="sm"
           >
             {isDisabling ? "Disabling…" : "Disable Form"}
-          </button>
-          <button type="button" onClick={onClose} disabled={isDisabling}>
+          </Button>
+          <Dialog.Close
+            render={
+              <Button
+                type="button"
+                disabled={isDisabling}
+                variant="secondary"
+                size="sm"
+              />
+            }
+          >
             Cancel
-          </button>
+          </Dialog.Close>
         </div>
-      </div>
-    </div>
+      </Dialog>
+    </Dialog.Root>
   );
 }

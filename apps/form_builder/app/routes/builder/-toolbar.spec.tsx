@@ -2,7 +2,8 @@
  * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent } from "../../test/ui";
+import userEvent from "@testing-library/user-event";
 import { Toolbar } from "./-toolbar";
 
 function renderToolbar(overrides: Partial<Parameters<typeof Toolbar>[0]> = {}) {
@@ -47,24 +48,25 @@ function formIdInput() {
 describe("Toolbar — Visibility selector (#1682)", () => {
   it("reflects the current visibility value", () => {
     renderToolbar({ visibility: "draft" });
-    expect(screen.getByLabelText(/visibility/i)).toHaveValue("draft");
+    expect(
+      screen.getByRole("combobox", { name: "Visibility" }),
+    ).toHaveTextContent("Draft");
   });
 
-  it("offers public, preview, draft and maintenance options", () => {
+  it("offers public, preview, draft and maintenance options", async () => {
+    const user = userEvent.setup();
     renderToolbar();
-    const select = screen.getByLabelText(/visibility/i);
-    const values = Array.from(
-      select.querySelectorAll("option"),
-      (o) => (o as HTMLOptionElement).value,
-    );
-    expect(values).toEqual(["public", "preview", "draft", "maintenance"]);
+    await user.click(screen.getByRole("combobox", { name: "Visibility" }));
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual(["Public", "Preview", "Draft", "Maintenance"]);
   });
 
-  it("calls onVisibilityChange with the selected level", () => {
+  it("calls onVisibilityChange with the selected level", async () => {
+    const user = userEvent.setup();
     const { onVisibilityChange } = renderToolbar({ visibility: "public" });
-    fireEvent.change(screen.getByLabelText(/visibility/i), {
-      target: { value: "preview" },
-    });
+    await user.click(screen.getByRole("combobox", { name: "Visibility" }));
+    await user.click(screen.getByRole("option", { name: "Preview" }));
     expect(onVisibilityChange).toHaveBeenCalledWith("preview");
   });
 
@@ -219,9 +221,7 @@ describe("Toolbar — Deploy blocked while visibility is draft (#1682)", () => {
 describe("Toolbar — read-only lock (#874)", () => {
   it("disables Save draft when read-only, even with unsaved changes", () => {
     renderToolbar({ hasUnsavedChanges: true, isReadOnly: true });
-    expect(
-      screen.getByRole("button", { name: /save draft/i }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: /save draft/i })).toBeDisabled();
   });
 
   it("disables Deploy when read-only, even on a clean draft", () => {

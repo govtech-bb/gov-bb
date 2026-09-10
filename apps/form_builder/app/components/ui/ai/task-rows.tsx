@@ -1,3 +1,8 @@
+import { Loader } from "../../../component/ui/loader";
+import { Elevated } from "../../../component/ui/surface";
+import { Badge } from "../../../component/ui/badge";
+import { Collapsible } from "../../../component/ui/collapsible";
+import { Button } from "../../../component/ui/button";
 import {
   ArrowDown01Icon,
   CheckmarkCircle02Icon,
@@ -17,8 +22,20 @@ export function TaskRows({ rows }: { rows: TaskRow[] }) {
   return (
     <div className={s.tasks}>
       {rows.map((row, i) => (
-        <details className={s.task} key={row.id}>
-          <summary>
+        <Collapsible
+          className={s.task}
+          key={row.id}
+          render={<Elevated offset={1} shadowLevel={2} />}
+        >
+          <Collapsible.Trigger
+            render={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto min-h-9 w-full justify-start whitespace-normal text-left"
+              />
+            }
+          >
             <span
               className={s.taskBadge}
               data-state={row.status}
@@ -28,19 +45,25 @@ export function TaskRows({ rows }: { rows: TaskRow[] }) {
                 <CheckmarkCircle02Icon size={21} />
               ) : row.status === "error" ? (
                 <AlertCircleIcon size={21} />
+              ) : row.status === "running" ? (
+                <Loader size={18} />
               ) : (
                 <>
-                  <span
-                    className={
-                      row.status === "running" ? s.spinnerRing : s.pendingRing
-                    }
-                  />
+                  <span className={s.pendingRing} />
                   {i + 1}
                 </>
               )}
             </span>
             <span className={s.taskLabel}>{row.label}</span>
-            <span className={s.taskStatus} data-state={row.status}>
+            <Badge
+              variant={
+                row.status === "error"
+                  ? "destructive"
+                  : row.status === "done"
+                    ? "success"
+                    : "secondary"
+              }
+            >
               {
                 {
                   pending: "Waiting",
@@ -50,18 +73,25 @@ export function TaskRows({ rows }: { rows: TaskRow[] }) {
                   stopped: "Paused",
                 }[row.status]
               }
-            </span>
+            </Badge>
             <ArrowDown01Icon size={13} aria-hidden="true" />
-          </summary>
-          <div className={s.taskDetail}>
-            <p>{row.detail}</p>
-            {row.onRetry && (
-              <button type="button" onClick={row.onRetry}>
-                Retry {row.label.toLowerCase()}
-              </button>
-            )}
-          </div>
-        </details>
+          </Collapsible.Trigger>
+          <Collapsible.Panel>
+            <div className={s.taskDetail}>
+              <p>{row.detail}</p>
+              {row.onRetry && (
+                <Button
+                  type="button"
+                  onClick={row.onRetry}
+                  variant="ghost"
+                  size="sm"
+                >
+                  Retry {row.label.toLowerCase()}
+                </Button>
+              )}
+            </div>
+          </Collapsible.Panel>
+        </Collapsible>
       ))}
     </div>
   );

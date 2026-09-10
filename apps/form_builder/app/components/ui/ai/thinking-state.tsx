@@ -1,4 +1,6 @@
-import { useId, useState, type ReactNode } from "react";
+import { Collapsible } from "../../../component/ui/collapsible";
+import { Button } from "../../../component/ui/button";
+import { useState, type ReactNode } from "react";
 import { ArrowDown01Icon, AiMagicIcon } from "hugeicons-react";
 import { LoadingState } from "./loading-state";
 import s from "./components.module.css";
@@ -15,23 +17,25 @@ export function ThinkingState({
   done: string;
   children: ReactNode;
 }) {
-  const id = useId();
   const [expanded, setExpanded] = useState<boolean | null>(null);
   const open = expanded ?? working;
   return (
-    <div className={s.thinking}>
-      <button
-        type="button"
-        className={s.traceToggle}
-        aria-expanded={open}
-        aria-controls={id}
-        onClick={() => setExpanded(!open)}
+    <Collapsible className={s.thinking} open={open} onOpenChange={setExpanded}>
+      <Collapsible.Trigger
+        render={
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-auto w-full justify-start whitespace-normal text-left"
+          />
+        }
       >
         {working ? (
           <LoadingState label={active} />
         ) : (
           <>
             <AiMagicIcon size={15} aria-hidden="true" />
+
             <span>{done}</span>
           </>
         )}
@@ -41,10 +45,8 @@ export function ThinkingState({
           data-open={open}
           aria-hidden="true"
         />
-      </button>
-      <div id={id} className={s.trace} hidden={!open}>
-        {children}
-      </div>
-    </div>
+      </Collapsible.Trigger>
+      <Collapsible.Panel className={s.trace}>{children}</Collapsible.Panel>
+    </Collapsible>
   );
 }

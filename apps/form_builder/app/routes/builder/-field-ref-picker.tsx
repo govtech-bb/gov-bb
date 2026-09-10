@@ -1,6 +1,8 @@
+import { Select } from "../../component/ui/select";
 import type { FieldRef } from "./-recipe-refs";
 
 interface FieldRefPickerProps {
+  label?: string;
   value: string;
   fieldRefs: FieldRef[];
   onChange: (value: string) => void;
@@ -8,25 +10,28 @@ interface FieldRefPickerProps {
 }
 
 export function FieldRefPicker({
+  label,
   value,
   fieldRefs,
   onChange,
   disabled = false,
 }: FieldRefPickerProps) {
   return (
-    <select
+    <Select
+      label={label}
       value={value}
       disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
-    >
-      <option value="">— select field —</option>
-      {/* Two same-type fields in one step resolve to the same fieldId, so the
-          option value alone isn't unique — index keeps the React key stable. */}
-      {fieldRefs.map((f, i) => (
-        <option key={`${f.stepId}:${f.fieldId}:${i}`} value={f.fieldId}>
-          {f.displayName}
-        </option>
-      ))}
-    </select>
+      onValueChange={(nextValue) => {
+        if (nextValue === null) return;
+        onChange(nextValue);
+      }}
+      items={[
+        { value: "", label: "— select field —" },
+        ...fieldRefs.map((f) => ({
+          value: f.fieldId,
+          label: f.displayName,
+        })),
+      ]}
+    />
   );
 }

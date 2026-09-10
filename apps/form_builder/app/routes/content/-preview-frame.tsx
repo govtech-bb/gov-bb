@@ -1,3 +1,4 @@
+import { Loader } from "../../component/ui/loader";
 import { useEffect, useRef, useState } from "react";
 import s from "./-styles.module.css";
 
@@ -109,7 +110,8 @@ export function StartPagePreviewFrame({
       />
       {!connected && !timedOut && (
         <div className={s.previewHint}>
-          <span className="t-shimmer" data-text="Loading preview…">
+          <span role="status" className="inline-flex items-center gap-2">
+            <Loader size={16} aria-hidden />
             Loading preview…
           </span>
         </div>

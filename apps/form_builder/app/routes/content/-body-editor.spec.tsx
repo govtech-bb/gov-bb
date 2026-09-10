@@ -51,7 +51,10 @@ describe("BodyEditor", () => {
       />,
     );
 
-    expect(screen.getByRole("tab", { name: "Visual" })).toBeDisabled();
+    expect(screen.getByRole("tab", { name: "Visual" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
     expect(screen.getByRole("tab", { name: "Markdown" })).toHaveAttribute(
       "aria-selected",
       "true",
@@ -75,6 +78,8 @@ describe("BodyEditor", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Insert" }));
+    await screen.findByRole("menuitem", { name: /Notice/i });
+    await user.keyboard("{ArrowDown}");
     expect(screen.getByRole("menuitem", { name: /Notice/i })).toHaveFocus();
     await user.keyboard("{ArrowDown}");
     expect(
@@ -111,7 +116,7 @@ describe("BodyEditor", () => {
 
       await user.click(screen.getByRole("button", { name: "Insert" }));
       await user.click(
-        screen.getByRole("menuitem", { name: new RegExp(choice, "i") }),
+        await screen.findByRole("menuitem", { name: new RegExp(choice, "i") }),
       );
       fireEvent.change(await screen.findByLabelText(/^Content/), {
         target: { value: payload },

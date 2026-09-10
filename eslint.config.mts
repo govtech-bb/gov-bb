@@ -7,7 +7,26 @@ import css from "@eslint/css";
 import { tailwind4 } from "tailwind-csstree";
 import { defineConfig } from "eslint/config";
 
+const primitiveColorClasses = /(?:bg|text|border(?:-[trblxy])?|ring(?:-offset)?|outline|divide|fill|stroke|decoration|from|via|to|shadow)-(?:white|black|(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-[0-9]+)\b|\bdark:|(?:bg|text|border|ring|fill|stroke)-\[(?:#|rgba?\(|hsla?\(|oklch\(|oklab\()/;
+
 export default defineConfig([
+  {
+    files: [
+      "apps/form_builder/app/component/ui/**/*.{ts,tsx}",
+      "apps/form_builder/app/routes/-ui-catalogue.tsx",
+      "apps/form_builder/app/routes/dev.ui.tsx",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        ...["Literal[value", "TemplateElement[value.raw"].map((selector) => ({
+          selector: `${selector}=/${primitiveColorClasses.source}/]`,
+          message: "Use GovTech semantic color tokens instead of raw color or dark-mode classes.",
+        })),
+      ],
+    },
+  },
+
   {
     ignores: [
       "apps/forms/**",

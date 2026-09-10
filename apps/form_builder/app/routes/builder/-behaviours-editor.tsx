@@ -1,3 +1,7 @@
+import { Checkbox } from "../../component/ui/checkbox";
+import { Select } from "../../component/ui/select";
+import { Button } from "../../component/ui/button";
+import { Input } from "../../component/ui/input";
 import { useState } from "react";
 import { BEHAVIOUR_TYPE_DESCRIPTORS } from "@govtech-bb/form-builder";
 import type { Behaviour } from "@govtech-bb/form-types";
@@ -86,9 +90,7 @@ function FieldArrayMiniature({
       {min > boxes && (
         <div className={styles.faMiniatureMore}>…and {min - boxes} more</div>
       )}
-      {min < max && (
-        <div className={styles.faMiniatureLink}>+ {linkText}</div>
-      )}
+      {min < max && <div className={styles.faMiniatureLink}>+ {linkText}</div>}
     </div>
   );
 }
@@ -135,8 +137,7 @@ function InValueInput({
   );
   return (
     <div className={styles.formGroup}>
-      <label>{label}</label>
-      <input
+      <Input
         type="text"
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -148,6 +149,8 @@ function InValueInput({
               .filter(Boolean),
           )
         }
+        label={label}
+        className="w-full min-w-0"
       />
       <small className={styles.fieldHint}>
         Enter multiple values separated by commas
@@ -337,9 +340,14 @@ export function BehavioursEditor({
               }}
             >
               <strong>{descriptor?.label ?? behaviour.type}</strong>
-              <button type="button" onClick={() => handleDelete(index)}>
+              <Button
+                type="button"
+                onClick={() => handleDelete(index)}
+                variant="secondary"
+                size="sm"
+              >
                 ×
-              </button>
+              </Button>
             </div>
             {descriptor?.params.map((param) => {
               const bRecord = behaviour as Record<string, unknown>;
@@ -354,8 +362,8 @@ export function BehavioursEditor({
                   : [];
                 return (
                   <div key={param.name} className={styles.formGroup}>
-                    <label>{param.label}</label>
                     <FieldRefPicker
+                      label={param.label}
                       value={(bRecord[param.name] as string) ?? ""}
                       fieldRefs={scopedRefs}
                       disabled={!selectedStepId}
@@ -369,39 +377,41 @@ export function BehavioursEditor({
               if (param.kind === "stepRef") {
                 return (
                   <div key={param.name} className={styles.formGroup}>
-                    <label>{param.label}</label>
-                    <select
+                    <Select<string>
                       value={(bRecord[param.name] as string) ?? ""}
-                      onChange={(e) =>
-                        handleParamChange(index, param.name, e.target.value)
-                      }
-                    >
-                      <option value="">— select step —</option>
-                      {stepRefs.map((s) => (
-                        <option key={s.stepId} value={s.stepId}>
-                          {s.title}
-                        </option>
-                      ))}
-                    </select>
+                      onValueChange={(nextValue) => {
+                        if (nextValue === null) return;
+                        handleParamChange(index, param.name, nextValue);
+                      }}
+                      label={param.label}
+                      items={[
+                        { value: "", label: "— select step —" },
+                        ...stepRefs.map((s) => ({
+                          value: s.stepId,
+                          label: s.title,
+                        })),
+                      ]}
+                    />
                   </div>
                 );
               }
               if (param.kind === "operator") {
                 return (
                   <div key={param.name} className={styles.formGroup}>
-                    <label>{param.label}</label>
-                    <select
+                    <Select<string>
                       value={(bRecord[param.name] as string) ?? "equal"}
-                      onChange={(e) =>
-                        handleParamChange(index, param.name, e.target.value)
-                      }
-                    >
-                      {OPERATOR_OPTIONS.map((op) => (
-                        <option key={op} value={op}>
-                          {op}
-                        </option>
-                      ))}
-                    </select>
+                      onValueChange={(nextValue) => {
+                        if (nextValue === null) return;
+                        handleParamChange(index, param.name, nextValue);
+                      }}
+                      label={param.label}
+                      items={[
+                        ...OPERATOR_OPTIONS.map((op) => ({
+                          value: op,
+                          label: op,
+                        })),
+                      ]}
+                    />
                   </div>
                 );
               }
@@ -413,32 +423,32 @@ export function BehavioursEditor({
                 if (!operator || !NUMERIC_OPERATORS.has(operator)) return null;
                 return (
                   <div key={param.name} className={styles.formGroup}>
-                    <label>{param.label}</label>
-                    <select
+                    <Select<string>
                       value={(bRecord[param.name] as string) ?? ""}
-                      onChange={(e) =>
+                      onValueChange={(nextValue) => {
+                        if (nextValue === null) return;
                         handleParamChange(
                           index,
                           param.name,
-                          e.target.value === "" ? undefined : e.target.value,
-                        )
-                      }
-                    >
-                      <option value="">— none —</option>
-                      {TRANSFORM_OPTIONS.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
-                      ))}
-                    </select>
+                          nextValue === "" ? undefined : nextValue,
+                        );
+                      }}
+                      label={param.label}
+                      items={[
+                        { value: "", label: "— none —" },
+                        ...TRANSFORM_OPTIONS.map((t) => ({
+                          value: t,
+                          label: t,
+                        })),
+                      ]}
+                    />
                   </div>
                 );
               }
               if (param.kind === "number") {
                 return (
                   <div key={param.name} className={styles.formGroup}>
-                    <label>{param.label}</label>
-                    <input
+                    <Input
                       type="number"
                       value={(bRecord[param.name] as number) ?? 0}
                       min={param.minValue}
@@ -460,6 +470,8 @@ export function BehavioursEditor({
                           Math.max(floor, isNaN(parsed) ? 0 : parsed),
                         );
                       }}
+                      label={param.label}
+                      className="w-full min-w-0"
                     />
                   </div>
                 );
@@ -473,20 +485,22 @@ export function BehavioursEditor({
                   const boolValue = typeof raw === "boolean" ? raw : true;
                   return (
                     <div key={param.name} className={styles.formGroup}>
-                      <label>{param.label}</label>
-                      <select
+                      <Select<string>
                         value={String(boolValue)}
-                        onChange={(e) =>
+                        onValueChange={(nextValue) => {
+                          if (nextValue === null) return;
                           handleParamChange(
                             index,
                             param.name,
-                            e.target.value === "true",
-                          )
-                        }
-                      >
-                        <option value="true">true</option>
-                        <option value="false">false</option>
-                      </select>
+                            nextValue === "true",
+                          );
+                        }}
+                        label={param.label}
+                        items={[
+                          { value: "true", label: "true" },
+                          { value: "false", label: "false" },
+                        ]}
+                      />
                     </div>
                   );
                 }
@@ -512,13 +526,14 @@ export function BehavioursEditor({
                 }
                 return (
                   <div key={param.name} className={styles.formGroup}>
-                    <label>{param.label}</label>
-                    <input
+                    <Input
                       type="text"
                       value={(bRecord[param.name] as string) ?? ""}
                       onChange={(e) =>
                         handleParamChange(index, param.name, e.target.value)
                       }
+                      label={param.label}
+                      className="w-full min-w-0"
                     />
                   </div>
                 );
@@ -538,23 +553,25 @@ export function BehavioursEditor({
                 if (options.length === 0) {
                   return (
                     <div key={param.name} className={styles.formGroup}>
-                      <label>{param.label}</label>
+                      <span className={styles.fieldLabel}>{param.label}</span>
                       <em>This step has no fields yet.</em>
                     </div>
                   );
                 }
                 const validIds = options.map((o) => o.fieldId);
                 return (
-                  <div key={param.name} className={styles.formGroup}>
-                    <label>{param.label}</label>
+                  <fieldset
+                    key={param.name}
+                    className={`${styles.formGroup} min-w-0`}
+                  >
+                    <legend className={styles.fieldLabel}>{param.label}</legend>
                     {options.map((f) => {
                       const checked = selected.includes(f.fieldId);
                       return (
-                        <label key={f.fieldId}>
-                          <input
-                            type="checkbox"
+                        <div key={f.fieldId}>
+                          <Checkbox
                             checked={checked}
-                            onChange={() => {
+                            onCheckedChange={() => {
                               // Rebuild from real fields only — a stale
                               // hand-typed id silently drops on the next edit.
                               const next = checked
@@ -566,19 +583,18 @@ export function BehavioursEditor({
                                 next.filter((id) => validIds.includes(id)),
                               );
                             }}
+                            label={f.displayName}
                           />
-                          {f.displayName}
-                        </label>
+                        </div>
                       );
                     })}
-                  </div>
+                  </fieldset>
                 );
               }
               if (param.kind === "text") {
                 return (
                   <div key={param.name} className={styles.formGroup}>
-                    <label>{param.label}</label>
-                    <input
+                    <Input
                       type="text"
                       placeholder={param.placeholder}
                       value={(bRecord[param.name] as string) ?? ""}
@@ -591,6 +607,8 @@ export function BehavioursEditor({
                             : e.target.value,
                         )
                       }
+                      label={param.label}
+                      className="w-full min-w-0"
                     />
                   </div>
                 );
@@ -608,21 +626,24 @@ export function BehavioursEditor({
       })}
       {available.length > 0 && (
         <div>
-          <select
+          <Select<string>
+            aria-label="Add behaviour"
             value=""
-            onChange={(e) => {
-              if (e.target.value) handleAdd(e.target.value);
+            onValueChange={(nextValue) => {
+              if (nextValue === null) return;
+              if (nextValue) handleAdd(nextValue);
             }}
-          >
-            <option value="">+ Add Behaviour</option>
-            {available.map((d) => (
-              <option key={d.type} value={d.type} disabled={isUnsupported(d)}>
-                {isUnsupported(d)
+            items={[
+              { value: "", label: "+ Add Behaviour" },
+              ...available.map((d) => ({
+                value: d.type,
+                label: isUnsupported(d)
                   ? `${d.label} — needs a text-like field`
-                  : d.label}
-              </option>
-            ))}
-          </select>
+                  : d.label,
+                disabled: isUnsupported(d),
+              })),
+            ]}
+          />
           {available.some(isUnsupported) && (
             // Keep in sync with fieldArray's supportedHtmlTypes
             // (behaviour-builder.ts) — hand-written copy so it reads as plain

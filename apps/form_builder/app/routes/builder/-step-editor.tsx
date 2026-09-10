@@ -1,3 +1,7 @@
+import { useConfirmation } from "../../component/ui/dialog/confirmation";
+import { Input, InputArea } from "../../component/ui/input";
+import { Elevated } from "../../component/ui/surface";
+import { ScrollArea } from "../../component/ui/scroll-area";
 import { useState, useMemo, useEffect, useRef } from "react";
 import {
   DndContext,
@@ -54,6 +58,7 @@ export function StepEditor({
   catalog,
   onStepIdChange,
 }: StepEditorProps) {
+  const confirm = useConfirmation();
   const [localStepId, setLocalStepId] = useState(step.stepId);
   const [stepIdError, setStepIdError] = useState("");
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
@@ -120,7 +125,10 @@ export function StepEditor({
   // lands off-screen above the click — scroll it into view and flash it.
   // Keyed on stepId too so switching to a longer step doesn't false-trigger.
   const fieldsSectionRef = useRef<HTMLElement>(null);
-  const prevFieldsRef = useRef({ stepId: step.stepId, count: step.fields.length });
+  const prevFieldsRef = useRef({
+    stepId: step.stepId,
+    count: step.fields.length,
+  });
   useEffect(() => {
     const prev = prevFieldsRef.current;
     prevFieldsRef.current = { stepId: step.stepId, count: step.fields.length };
@@ -139,8 +147,16 @@ export function StepEditor({
     return () => clearTimeout(timer);
   }, [step.stepId, step.fields.length]);
 
-  function handleRemoveField(fieldId: string) {
-    if (!window.confirm("Remove this field?")) return;
+  async function handleRemoveField(fieldId: string) {
+    if (
+      !(await confirm({
+        title: "Remove field?",
+        description: "Remove this field?",
+        confirmLabel: "Remove field",
+        destructive: true,
+      }))
+    )
+      return;
     dispatch({ type: "REMOVE_FIELD", stepId: step.stepId, fieldId });
     if (editingFieldId === fieldId) setEditingFieldId(null);
   }
@@ -190,196 +206,225 @@ export function StepEditor({
   }
 
   return (
-    <div className={styles.stepEditor}>
-      {/* Step Metadata */}
-      <section className={styles.card}>
-      <div className={styles.sectionTitle}>Step Metadata</div>
-      <div className={styles.formGroup}>
-        <label>Step ID</label>
-        <input
-          type="text"
-          value={localStepId}
-          readOnly={isRequiredStep(step.stepId)}
-          onChange={(e) => {
-            if (isRequiredStep(step.stepId)) return;
-            handleStepIdChange(e.target.value);
-          }}
-          onBlur={() => {
-            // Mirror the Field ID Override input: normalize a non-kebab id on
-            // blur (e.g. `step_one` → `step-one`) instead of leaving it to
-            // fail server-side validation (#741).
-            if (isRequiredStep(step.stepId)) return;
-            const normalized = kebabize(localStepId);
-            if (normalized && normalized !== localStepId) {
-              handleStepIdChange(normalized);
-            }
-          }}
-          aria-invalid={stepIdError ? true : undefined}
-        />
-        {stepIdError && (
-          <span role="alert" style={{ fontSize: "0.75rem", color: "red" }}>
-            {stepIdError}
-          </span>
-        )}
-      </div>
-      <div className={styles.formGroup}>
-        <label>Title</label>
-        <input
-          type="text"
-          value={step.title}
-          onChange={(e) =>
-            dispatch({
-              type: "UPDATE_STEP_META",
-              stepId: step.stepId,
-              meta: { title: e.target.value },
-            })
-          }
-          onBlur={(e) => {
-            const title = e.target.value;
-            if (!title) return;
-            // Auto-derive stepId only if it's still the default placeholder (step-N)
-            // and the user has not started editing it manually.
-            const isDefault = STEP_ID_DEFAULT_PATTERN.test(step.stepId);
-            const localUntouched = localStepId === step.stepId;
-            if (isDefault && localUntouched) {
-              const derived = kebabize(title);
-              if (derived && derived !== step.stepId) {
+    <ScrollArea
+      aria-label="Step editor"
+      className="min-h-0 min-w-0 flex-1"
+      viewportClassName="scroll-fade"
+    >
+      <div className={styles.stepEditor}>
+        {/* Step Metadata */}
+        <Elevated
+          offset={1}
+          shadowLevel={2}
+          render={<section />}
+          className="mb-4 rounded-xl p-5"
+        >
+          <h2 className={styles.sectionTitle}>Step Metadata</h2>
+          <div className={styles.formGroup}>
+            <Input
+              label="Step ID"
+              className="w-full"
+              type="text"
+              value={localStepId}
+              readOnly={isRequiredStep(step.stepId)}
+              onChange={(e) => {
+                if (isRequiredStep(step.stepId)) return;
+                handleStepIdChange(e.target.value);
+              }}
+              onBlur={() => {
+                // Mirror the Field ID Override input: normalize a non-kebab id on
+                // blur (e.g. `step_one` → `step-one`) instead of leaving it to
+                // fail server-side validation (#741).
+                if (isRequiredStep(step.stepId)) return;
+                const normalized = kebabize(localStepId);
+                if (normalized && normalized !== localStepId) {
+                  handleStepIdChange(normalized);
+                }
+              }}
+              error={stepIdError}
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <Input
+              label="Step title"
+              className="w-full"
+              type="text"
+              value={step.title}
+              onChange={(e) =>
                 dispatch({
                   type: "UPDATE_STEP_META",
                   stepId: step.stepId,
-                  meta: { stepId: derived },
-                });
-                onStepIdChange(step.stepId, derived);
+                  meta: { title: e.target.value },
+                })
               }
-            }
-          }}
-        />
-      </div>
-      <div className={styles.formGroup}>
-        <label>Description</label>
-        <textarea
-          value={step.description ?? ""}
-          onChange={(e) =>
-            dispatch({
-              type: "UPDATE_STEP_META",
-              stepId: step.stepId,
-              meta: { description: e.target.value || undefined },
-            })
-          }
-          rows={2}
-        />
-      </div>
-      </section>
+              onBlur={(e) => {
+                const title = e.target.value;
+                if (!title) return;
+                // Auto-derive stepId only if it's still the default placeholder (step-N)
+                // and the user has not started editing it manually.
+                const isDefault = STEP_ID_DEFAULT_PATTERN.test(step.stepId);
+                const localUntouched = localStepId === step.stepId;
+                if (isDefault && localUntouched) {
+                  const derived = kebabize(title);
+                  if (derived && derived !== step.stepId) {
+                    dispatch({
+                      type: "UPDATE_STEP_META",
+                      stepId: step.stepId,
+                      meta: { stepId: derived },
+                    });
+                    onStepIdChange(step.stepId, derived);
+                  }
+                }
+              }}
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <InputArea
+              label="Description"
+              className="w-full"
+              value={step.description ?? ""}
+              onChange={(e) =>
+                dispatch({
+                  type: "UPDATE_STEP_META",
+                  stepId: step.stepId,
+                  meta: { description: e.target.value || undefined },
+                })
+              }
+              rows={2}
+            />
+          </div>
+        </Elevated>
 
-      {/* Confirmation-page copy. The submission-confirmation step renders this
+        {/* Confirmation-page copy. The submission-confirmation step renders this
           markdown ("What happens next") below the submission receipt (#1292).
           Authored here so it round-trips through publish instead of being
           dropped. Reuses the content CMS's visual editor in the constrained
           form-content profile. */}
-      {showMarkdownEditor && (
-        <section className={styles.card}>
-          <div className={styles.sectionTitle}>
-            {isConfirmation ? "Confirmation page content" : "Step content"}
-          </div>
-          <div className={styles.formGroup}>
-            <BodyEditor
-              id={`step-${step.stepId}-markdown-content`}
-              ariaLabel={
-                isConfirmation
-                  ? "Confirmation page content"
-                  : `${step.stepId} step content`
-              }
-              value={step.markdownContent ?? ""}
-              onChange={(next) =>
-                dispatch({
-                  type: "UPDATE_STEP_META",
-                  stepId: step.stepId,
-                  meta: { markdownContent: next || undefined },
-                })
-              }
-              profile={{ kind: "form-content" }}
-            />
-            <span className={styles.fieldHint}>
-              {isConfirmation
-                ? "Shown on the confirmation page after the applicant submits, below the submission receipt."
-                : "Shown at the top of this step, above any fields. A step with content and no fields renders as an information page."}
-            </span>
-          </div>
-        </section>
-      )}
+        {showMarkdownEditor && (
+          <Elevated
+            offset={1}
+            shadowLevel={2}
+            render={<section />}
+            className="mb-4 rounded-xl p-5"
+          >
+            <h2 className={styles.sectionTitle}>
+              {isConfirmation ? "Confirmation page content" : "Step content"}
+            </h2>
+            <div className={styles.formGroup}>
+              <BodyEditor
+                id={`step-${step.stepId}-markdown-content`}
+                ariaLabel={
+                  isConfirmation
+                    ? "Confirmation page content"
+                    : `${step.stepId} step content`
+                }
+                value={step.markdownContent ?? ""}
+                onChange={(next) =>
+                  dispatch({
+                    type: "UPDATE_STEP_META",
+                    stepId: step.stepId,
+                    meta: { markdownContent: next || undefined },
+                  })
+                }
+                profile={{ kind: "form-content" }}
+              />
+              <span className={styles.fieldHint}>
+                {isConfirmation
+                  ? "Shown on the confirmation page after the applicant submits, below the submission receipt."
+                  : "Shown at the top of this step, above any fields. A step with content and no fields renders as an information page."}
+              </span>
+            </div>
+          </Elevated>
+        )}
 
-      {/* Fields list — hidden for review/confirmation steps that accept no
+        {/* Fields list — hidden for review/confirmation steps that accept no
           fields. The "Add field" picker is split into its own block below so
           Step Behaviours can render between the list and the picker (#566). */}
-      {!noFields && (
-        <section className={styles.card} ref={fieldsSectionRef}>
-          <div className={styles.sectionTitle}>
-            Fields ({step.fields.length})
-          </div>
-          <DndContext
-            // Stable id pins dnd-kit's `aria-describedby` (otherwise derived
-            // from a module-global counter) so it can never differ between a
-            // server and client render → hydration mismatch (#546).
-            id="step-fields-dnd"
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleFieldDragEnd}
+        {!noFields && (
+          <Elevated
+            offset={1}
+            shadowLevel={2}
+            render={<section ref={fieldsSectionRef} />}
+            className="mb-4 rounded-xl p-5"
           >
-            <SortableContext
-              items={step.fields.map((f) => f.id)}
-              strategy={verticalListSortingStrategy}
+            <h2 className={styles.sectionTitle}>
+              Fields ({step.fields.length})
+            </h2>
+            <DndContext
+              // Stable id pins dnd-kit's `aria-describedby` (otherwise derived
+              // from a module-global counter) so it can never differ between a
+              // server and client render → hydration mismatch (#546).
+              id="step-fields-dnd"
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleFieldDragEnd}
             >
-              {step.fields.map((field, idx) => (
-                <SortableFieldRow
-                  key={field.id}
-                  field={field}
-                  catalog={catalog}
-                  isFirst={idx === 0}
-                  isLast={idx === step.fields.length - 1}
-                  onMoveUp={() => handleMoveFieldUp(idx)}
-                  onMoveDown={() => handleMoveFieldDown(idx)}
-                  onEdit={() => setEditingFieldId(field.id)}
-                  onRemove={() => handleRemoveField(field.id)}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
-        </section>
-      )}
+              <SortableContext
+                items={step.fields.map((f) => f.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {step.fields.map((field, idx) => (
+                  <SortableFieldRow
+                    key={field.id}
+                    field={field}
+                    catalog={catalog}
+                    isFirst={idx === 0}
+                    isLast={idx === step.fields.length - 1}
+                    onMoveUp={() => handleMoveFieldUp(idx)}
+                    onMoveDown={() => handleMoveFieldDown(idx)}
+                    onEdit={() => setEditingFieldId(field.id)}
+                    onRemove={() => handleRemoveField(field.id)}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          </Elevated>
+        )}
 
-      {/* Inline field edit panel — stays attached to the Fields list above. */}
-      {editingField !== null && editingFieldId !== null && (
-        <FieldEditPanel
-          field={editingField}
-          catalog={catalog}
-          draft={draft}
-          stepId={step.stepId}
-          dispatch={dispatch}
-          onClose={() => setEditingFieldId(null)}
-        />
-      )}
+        {/* Inline field edit panel — stays attached to the Fields list above. */}
+        {editingField !== null && editingFieldId !== null && (
+          <FieldEditPanel
+            field={editingField}
+            catalog={catalog}
+            draft={draft}
+            stepId={step.stepId}
+            dispatch={dispatch}
+            onClose={() => setEditingFieldId(null)}
+          />
+        )}
 
-      {/* Step behaviours */}
-      <section className={styles.card}>
-        <div className={styles.sectionTitle}>Step Behaviours</div>
-        <BehavioursEditor
-          scope="step"
-          behaviours={step.behaviours}
-          fieldRefs={fieldRefs}
-          stepRefs={stepRefs}
-          onChange={handleSetBehaviours}
-          currentStepId={step.stepId}
-        />
-      </section>
+        {/* Step behaviours */}
+        <Elevated
+          offset={1}
+          shadowLevel={2}
+          render={<section />}
+          className="mb-4 rounded-xl p-5"
+        >
+          <h2 className={styles.sectionTitle}>Step Behaviours</h2>
+          <BehavioursEditor
+            scope="step"
+            behaviours={step.behaviours}
+            fieldRefs={fieldRefs}
+            stepRefs={stepRefs}
+            onChange={handleSetBehaviours}
+            currentStepId={step.stepId}
+          />
+        </Elevated>
 
-      {/* Inline field picker palette — renders below Step Behaviours (#566),
+        {/* Inline field picker palette — renders below Step Behaviours (#566),
           hidden for no-fields steps alongside the Fields list. */}
-      {!noFields && (
-        <section className={styles.card}>
-          <div className={styles.sectionTitle}>Add field</div>
-          <FieldPicker catalog={catalog} onAddField={handleAddField} />
-        </section>
-      )}
-    </div>
+        {!noFields && (
+          <Elevated
+            offset={1}
+            shadowLevel={2}
+            render={<section />}
+            className="mb-4 rounded-xl p-5"
+          >
+            <h2 className={styles.sectionTitle}>Add field</h2>
+            <FieldPicker catalog={catalog} onAddField={handleAddField} />
+          </Elevated>
+        )}
+      </div>
+    </ScrollArea>
   );
 }

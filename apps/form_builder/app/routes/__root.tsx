@@ -1,3 +1,5 @@
+import "../component/ui/ui.css";
+import { ConfirmationProvider } from "../component/ui/dialog/confirmation";
 import type { ReactNode } from "react";
 import {
   Outlet,
@@ -20,7 +22,9 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <RootDocument>
-      <Outlet />
+      <ConfirmationProvider>
+        <Outlet />
+      </ConfirmationProvider>
     </RootDocument>
   );
 }

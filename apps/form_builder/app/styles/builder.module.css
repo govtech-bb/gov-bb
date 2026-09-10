@@ -1,40 +1,44 @@
-/* ── Buttons ─────────────────────────────────────── */
-
-.btnPrimary {
-  background: var(--el-1000);
-  color: var(--on-inverse);
-  border-color: transparent;
-}
-
-.btnPrimary:hover:not(:disabled) {
-  background: var(--el-800);
-  border-color: transparent;
-}
-
-.btnDanger {
-  background: var(--color-danger);
-  color: white;
-  border-color: transparent;
-}
-
-.btnDanger:hover:not(:disabled) {
-  background: var(--color-danger-hover);
-  border-color: transparent;
-}
-
-/* Erase is permanent (deletes the on-disk recipe via PR), so it reads stronger
-   than the reversible Disable: same red family as btnDanger but heavier
-   weight + the danger-hover shade as its base. */
-.btnErase {
-  background: var(--color-danger-hover);
-  color: white;
-  border-color: transparent;
-  font-weight: 600;
-}
-
-.btnErase:hover:not(:disabled) {
-  background: #6e1713;
-  border-color: transparent;
+/* Bridge legacy editor styles locally so CMS styles cannot replace the GovTech palette. */
+.builderShell {
+  --el-0: var(--ui-base);
+  --el-50: var(--ui-surface-2);
+  --el-100: var(--ui-canvas);
+  --el-150: var(--ui-tint);
+  --el-200: var(--ui-hairline);
+  --el-250: var(--ui-line);
+  --el-400: var(--ui-inactive);
+  --el-500: var(--ui-subtle);
+  --el-800: var(--ui-brand-hover);
+  --el-1000: var(--ui-brand);
+  --txt: var(--ui-default);
+  --txt-dim: var(--ui-subtle);
+  --rad-s: 6px;
+  --rad-m: var(--radius-lg);
+  --rad-l: var(--radius-xl);
+  --err-bg: var(--ui-danger-tint);
+  --err-bd: var(--ui-danger);
+  --err-tx: var(--ui-danger-text);
+  --on-inverse: var(--ui-inverse);
+  --color-bg: var(--ui-canvas);
+  --color-surface: var(--ui-base);
+  --color-border: var(--ui-hairline);
+  --color-border-strong: var(--ui-line);
+  --color-text: var(--ui-default);
+  --color-text-muted: var(--ui-subtle);
+  --color-accent: var(--ui-brand);
+  --color-accent-hover: var(--ui-brand-hover);
+  --color-accent-light: var(--ui-tint);
+  --color-danger: var(--ui-danger);
+  --color-danger-hover: color-mix(
+    in oklab,
+    var(--ui-danger),
+    var(--ui-on-warning) 15%
+  );
+  --color-danger-light: var(--ui-danger-tint);
+  --color-success: var(--ui-success-text);
+  --color-success-light: var(--ui-success-tint);
+  --color-warning-light: var(--ui-warning-tint);
+  --color-warning-text: var(--ui-warning-text);
 }
 
 /* ── Inputs & textareas ───────────────────────────── */
@@ -45,14 +49,16 @@
   box-sizing: border-box;
 }
 
-/* ── Layout ──────────────────────────────────────── */
-
 /* Header on top; beneath it the editor and the docked AI sidebar sit side by
    side, so toggling the sidebar never reflows the header. */
 .builderShell {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  font-family: var(--font-sans);
+  color: var(--ui-default);
+  font-size: var(--text-base);
 }
 
 .builderMain {
@@ -67,7 +73,7 @@
   flex-direction: column;
   flex: 1;
   min-width: 0;
-  background: var(--el-100);
+  background: var(--ui-canvas);
 }
 
 /* Validation/duplicate-ID banners float over the bottom of the canvas so
@@ -97,6 +103,7 @@
     translate 250ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* eslint-disable-next-line css/use-baseline -- Progressive enhancement: unsupported browsers show the visible final state. */
 @starting-style {
   .bannerStack > * {
     opacity: 0;
@@ -113,267 +120,14 @@
 .builderBody {
   display: flex;
   flex: 1;
+  min-height: 0;
   overflow: hidden;
-}
-
-/* ── Document header ─────────────────────────────── */
-/* Content-CMS-style header: section switch + an eyebrow/title block on the
-   left (the title and form id are in-place editable), actions on the right. */
-
-.toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px 24px;
-  padding: 10px 20px;
-  background: var(--el-0);
-  border-bottom: 1px solid var(--el-200);
-}
-
-.headerLeft {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-}
-
-.headerDivider {
-  width: 1px;
-  height: 26px;
-  flex-shrink: 0;
-  background: var(--el-200);
-}
-
-.titleBlock {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-/* Fixed height: the status chips that appear here are taller than the
-   eyebrow text, and must not push the title down when they show up. */
-.eyebrowRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 22px;
-}
-
-.eyebrow {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--txt-dim);
-  white-space: nowrap;
-}
-
-/* Title + form id sit on one baseline as underlined fields — the persistent
-   underline plus placeholder is what marks them as editable. */
-.fieldsRow {
-  display: flex;
-  align-items: baseline;
-  gap: 18px;
-  min-width: 0;
-}
-
-.toolbar input.titleInput {
-  width: 280px;
-  padding: 1px 2px 3px;
-  border: none;
-  border-bottom: 1px solid var(--el-250);
-  border-radius: 0;
-  background: transparent;
-  color: var(--txt);
-  font-size: 17px;
-  font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: -0.15px;
-  transition: border-color 0.15s;
-}
-.toolbar input.titleInput:hover:not(:disabled):not(:focus) {
-  border-bottom-color: var(--el-400);
-}
-.toolbar input.titleInput:focus {
-  outline: none;
-  box-shadow: none;
-  border-bottom-color: var(--el-1000);
-}
-.toolbar input.titleInput::placeholder {
-  color: var(--el-400);
-  font-weight: 500;
-}
-
-/* Where supported, the fields grow with their content (capped) instead of
-   clipping long names; the fixed widths above are the fallback. */
-@supports (field-sizing: content) {
-  .toolbar input.titleInput {
-    field-sizing: content;
-    width: auto;
-    min-width: 180px;
-    max-width: min(440px, 38vw);
-  }
-
-  .toolbar input.idInput {
-    field-sizing: content;
-    width: auto;
-    min-width: 120px;
-    max-width: min(320px, 26vw);
-  }
-}
-
-.idRow {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  min-width: 0;
-}
-
-.idLabel {
-  font-size: 11.5px;
-  color: var(--txt-dim);
-  white-space: nowrap;
-}
-
-.toolbar input.idInput {
-  width: 200px;
-  padding: 1px 2px 3px;
-  border: none;
-  border-bottom: 1px solid var(--el-250);
-  border-radius: 0;
-  background: transparent;
-  color: var(--el-800);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12.5px;
-  transition: border-color 0.15s;
-}
-.toolbar input.idInput:hover:not(:disabled):not(:focus) {
-  border-bottom-color: var(--el-400);
-}
-.toolbar input.idInput:focus {
-  outline: none;
-  box-shadow: none;
-  border-bottom-color: var(--el-1000);
-  color: var(--txt);
-}
-.toolbar input.idInput::placeholder {
-  color: var(--el-400);
-}
-
-.idError {
-  font-size: 11.5px;
-  color: var(--err-tx);
-  white-space: nowrap;
-}
-
-/* Launch-gate visibility selector (#1682) — matches the subtle, underlined
-   aesthetic of the toolbar's id/title inputs. */
-.toolbar select.visibilitySelect {
-  padding: 1px 2px 3px;
-  border: none;
-  border-bottom: 1px solid var(--el-250);
-  border-radius: 0;
-  background: transparent;
-  color: var(--el-800);
-  font-size: 12.5px;
-  transition: border-color 0.15s;
-}
-.toolbar select.visibilitySelect:hover:not(:disabled):not(:focus) {
-  border-bottom-color: var(--el-400);
-}
-.toolbar select.visibilitySelect:focus {
-  outline: none;
-  box-shadow: none;
-  border-bottom-color: var(--el-1000);
-  color: var(--txt);
-}
-/* The control itself is transparent over the toolbar, but the open option
-   popup is painted by the OS. On Windows/Chrome that popup ignores
-   color-scheme, so in dark mode it fell back to a white box with the light
-   --el-800 option text → light-on-light (#1739). Give the options an explicit
-   surface + text colour from the tokens so they read in both themes. */
-.toolbar select.visibilitySelect option {
-  background-color: var(--el-0);
-  color: var(--txt);
-}
-
-.headerActions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-left: auto;
-}
-
-.headerActions button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* Square icon-only action (New / Open / Validate / Preview / Discard / theme
-   toggle); the label lives in the tooltip + aria-label. */
-.iconBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  color: var(--el-800);
-}
-
-/* Why-disabled hint beside the header actions. */
-.actionHint {
-  font-size: 12px;
-  color: var(--txt-dim);
-  white-space: nowrap;
-  margin-right: 2px;
-}
-
-/* Visually hidden, still read by screen readers (and findable by tests). */
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-/* Loading placeholder rows in the Open Form picker. */
-.skelRow {
-  height: 38px;
-  margin-bottom: 6px;
-  border-radius: var(--rad-m);
-  background: var(--el-150);
-  animation: skel-pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes skel-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.55;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .skelRow {
-    animation: none;
-  }
 }
 
 .toolbarHint {
   font-size: 12px;
-  color: var(--txt-dim);
-  max-width: 220px;
+  color: var(--ui-subtle);
+  max-width: 65ch;
   line-height: 1.3;
 }
 
@@ -381,285 +135,20 @@
   display: block;
   margin-top: 4px;
   font-size: 12px;
-  color: var(--txt-dim);
+  color: var(--ui-subtle);
   line-height: 1.3;
-}
-
-/* ── Step rail ───────────────────────────────────── */
-
-.stepList {
-  width: 248px;
-  flex-shrink: 0;
-  border-right: 1px solid var(--el-200);
-  overflow-y: auto;
-  padding: 6px 12px 16px;
-  background: var(--el-0);
-}
-
-.railTitle {
-  margin: 16px 6px 6px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--txt-dim);
-}
-
-.stepListAddButton {
-  border: 1px dashed var(--el-250);
-  border-radius: var(--rad-s);
-  color: var(--el-500);
-  background: transparent;
-  width: 100%;
-  margin-top: 6px;
-  justify-content: center;
-}
-
-.stepRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 8px;
-  cursor: pointer;
-  border-radius: var(--rad-s);
-  font-size: 13.5px;
-  color: var(--txt);
-  transition: background 0.12s;
-}
-
-.stepRow:hover {
-  background: var(--el-100);
-}
-
-.stepRowActive {
-  background: var(--el-150);
-  color: var(--txt);
-  font-weight: 600;
-}
-
-.stepIndex {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  border-radius: 999px;
-  background: var(--el-150);
-  color: var(--el-500);
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.stepRowActive .stepIndex {
-  background: var(--el-1000);
-  color: var(--on-inverse);
-}
-
-/* Rendered as a <button> for keyboard access — strip the global button
-   chrome so it still reads as a row label. */
-.stepRowTitle {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  letter-spacing: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-button.stepRowTitle:hover:not(:disabled) {
-  background: transparent;
-  border: none;
-}
-
-/* Whole-row button variant (Contact Details / Processors). */
-button.stepRowButton {
-  width: 100%;
-  border: none;
-  background: transparent;
-  font: inherit;
-  letter-spacing: inherit;
-  color: var(--txt);
-  text-align: left;
-}
-
-button.stepRowButton:hover:not(:disabled) {
-  background: var(--el-100);
-  border: none;
-}
-
-button.stepRowButton.stepRowActive,
-button.stepRowButton.stepRowActive:hover:not(:disabled) {
-  background: var(--el-150);
-  font-weight: 600;
-}
-
-/* Reorder/delete controls surface on hover (always on the active row). */
-.stepRowActions {
-  display: flex;
-  align-items: center;
-  gap: 1px;
-  opacity: 0;
-  transition: opacity 0.12s;
-}
-
-.stepRow:hover .stepRowActions,
-.stepRowActive .stepRowActions {
-  opacity: 1;
-}
-
-.railIconBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--txt-dim);
-}
-
-.railIconBtn:hover:not(:disabled) {
-  background: var(--el-200);
-  border: none;
-  color: var(--txt);
 }
 
 /* ── Step editor canvas ──────────────────────────── */
 
 .stepEditor {
-  flex: 1;
-  overflow-y: auto;
+  min-width: 0;
   padding: 24px;
-  background: var(--el-100);
 }
 
-/* Content sits in a centred document column, like the content CMS's wide
-   editor layout. Modals rendered inline (e.g. the field edit panel) are
-   fixed-position overlays — exclude them or the column cap shrinks their
-   full-screen backdrop. */
-.stepEditor > *:not(.modal),
-.processorsEditor > *:not(.modal) {
-  max-width: 920px;
-  margin-inline: auto;
-}
-
-/* Card per editor section. The heading inside keeps the `.sectionTitle`
-   class (specs select on it for section order). */
-.card {
-  background: var(--el-0);
-  border: 1px solid var(--el-200);
-  border-radius: var(--rad-l);
-  padding: 18px 20px;
-  margin-bottom: 14px;
-}
-
-.card .sectionTitle {
-  margin: 0 0 14px;
-}
-
-.noStepSelected {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--txt-dim);
-  font-size: 14px;
-}
-
-.emptyState {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  color: var(--el-400);
-}
-
-.emptyState p {
-  margin: 0;
-  color: var(--txt-dim);
-}
-
-/* ── Modal ───────────────────────────────────────── */
-
-.modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  z-index: 100;
-  /* Entry fade via @starting-style — no JS open/close state needed. */
-  opacity: 1;
-  transition: opacity 250ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-@starting-style {
-  .modal {
-    opacity: 0;
-  }
-}
-
-/* Dialogs come in two fixed widths so they never size to content: the 560px
-   default (mirrors the content CMS modal) and an 880px wide tier for
-   content-heavy ones (field editor, preview, form picker). */
-.modalContent {
-  background: var(--el-0);
-  border-radius: var(--rad-l);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-  padding: 24px 28px;
-  width: 100%;
-  max-width: 560px;
-  max-height: 80vh;
-  overflow-y: auto;
-  /* A default scrollbar paints a square track through the rounded corners;
-     a thin thumb on a transparent track stays clear of the curve. */
-  scrollbar-width: thin;
-  scrollbar-color: var(--el-250) transparent;
-  transform: scale(1);
-  transition: transform 250ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-@starting-style {
-  .modalContent {
-    transform: scale(0.96);
-  }
-}
-
-.modalContentWide {
-  max-width: 880px;
-}
-
-/* Shared dialog header: title left, Close right. */
-.modalHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-.modalHead strong {
-  font-size: 15px;
-  font-weight: 600;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .modal,
-  .modalContent {
-    transition: none;
+@media (max-width: 40rem) {
+  .stepEditor {
+    padding: 16px;
   }
 }
 
@@ -670,60 +159,6 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
   margin-bottom: 12px;
 }
 
-.pickerSearchInput {
-  width: 100%;
-  padding: 9px 28px 9px 12px;
-  font-size: 14px;
-  border: 1px solid var(--el-200);
-  border-radius: var(--rad-s);
-  background: var(--el-0);
-  color: var(--txt);
-}
-
-.pickerSearchInput:focus {
-  outline: none;
-  border-color: var(--el-500);
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.06);
-}
-
-.pickerSearchClear {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: none;
-  font-size: 1.1rem;
-  line-height: 1;
-  color: var(--txt-dim);
-  cursor: pointer;
-  padding: 0;
-}
-
-.pickerSearchClear:hover {
-  color: var(--txt);
-  background: none;
-  border: none;
-}
-
-.pickerHintLink {
-  border: none;
-  background: none;
-  padding: 0;
-  font: inherit;
-  color: var(--txt);
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-/* ── Field picker tabs ───────────────────────────── */
-/* The segmented control itself comes from SlidingTabs (.cms-tabs). */
-
 .pickerTabs {
   margin-bottom: 14px;
 }
@@ -732,18 +167,24 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
 
 .fieldRow {
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
   align-items: center;
   gap: 8px;
   padding: 9px 12px;
-  border-radius: var(--rad-m);
-  border: 1px solid var(--el-200);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--ui-hairline);
   margin-bottom: 6px;
-  background: var(--el-0);
+  background: var(--ui-base);
   transition: border-color 0.12s;
 }
 
+.fieldRow > .formGroup {
+  width: 100%;
+}
+
 .fieldRow:hover {
-  border-color: var(--el-400);
+  border-color: var(--ui-inactive);
 }
 
 /* One-shot highlight on a just-added field row. */
@@ -754,11 +195,11 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
 @keyframes field-row-flash {
   0%,
   35% {
-    background: var(--color-warning-light);
-    border-color: var(--color-warning-text);
+    background: var(--ui-warning-tint);
+    border-color: var(--ui-warning-text);
   }
   100% {
-    background: var(--el-0);
+    background: var(--ui-base);
   }
 }
 
@@ -775,7 +216,7 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
   padding: 0 4px;
   border: none;
   background: none;
-  color: var(--txt-dim);
+  color: var(--ui-subtle);
   font-size: 1rem;
   line-height: 1;
   cursor: grab;
@@ -788,7 +229,7 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
 
 .fieldRowSecondary {
   font-size: 12px;
-  color: var(--txt-dim);
+  color: var(--ui-subtle);
 }
 
 /* ── Section title ───────────────────────────────── */
@@ -798,7 +239,7 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--txt-dim);
+  color: var(--ui-subtle);
   margin: 20px 0 8px;
 }
 
@@ -814,123 +255,11 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
 .formGroup label {
   font-size: 13px;
   font-weight: 500;
-  color: var(--el-800);
-}
-
-/* ── Badges ──────────────────────────────────────── */
-
-.badge {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--el-150);
-  color: var(--el-800);
-}
-
-.publishedBadge {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--color-warning-light);
-  color: var(--color-warning-text);
-  margin-left: 4px;
-}
-
-.disabledBadge {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--color-danger);
-  color: white;
-  margin-left: 4px;
-}
-
-/* Non-public launch-gate visibility (#1835): preview / draft / maintenance.
-   Mirrors the other state badges; text-transform capitalizes the raw value.
-   --el-800 and --el-150 invert together across themes (dark bg + light text in
-   light mode, light bg + dark text in dark mode), so contrast stays legible in
-   both — unlike a hardcoded `white` on the theme-reactive --el-800 (#1739). */
-.visibilityBadge {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--el-800);
-  color: var(--el-150);
-  margin-left: 4px;
-  text-transform: capitalize;
-}
-
-/* Open Deploy PR badge (#2390): a row with an in-flight Deploy PR gets a
-   clickable "In review" pill linking to it. Unlike the static badges above,
-   this one is interactive, so it borrows the solid --el-1000/--on-inverse
-   pairing already used for primary actions (.btnPrimary) rather than the
-   --el-800/--el-150 pair — same theme-inverting guarantee (light-mode dark
-   surface + white text, dark-mode light surface + dark text, per #1739) but
-   reads as "do something" instead of "state". */
-.reviewBadge {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--el-1000);
-  color: var(--on-inverse);
-  margin-left: 4px;
-  cursor: pointer;
-}
-
-.reviewBadge:hover {
-  text-decoration: underline;
-}
-
-/* ── Validation banners ───────────────────────────── */
-/* Inline (in-modal / in-editor) variants of the floating .errorBanner /
-   .successBanner: same tokens and shape, no floating margins. */
-
-.validationSuccess {
-  padding: 10px 12px;
-  border-radius: var(--rad-s);
-  background: var(--color-success-light);
-  color: var(--color-success);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.validationErrors {
-  padding: 10px 12px;
-  border: 1px solid var(--err-bd);
-  border-radius: var(--rad-s);
-  background: var(--err-bg);
-  color: var(--err-tx);
-  font-size: 13px;
-  line-height: 1.5;
+  color: var(--ui-brand-hover);
 }
 
 /* Editor-level banners (duplicate IDs, validation results), pinned under the
    editor: same treatment as the content CMS's error banner. */
-.errorBanner {
-  margin: 0 16px 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--err-bd);
-  border-radius: var(--rad-s);
-  background: var(--err-bg);
-  color: var(--err-tx);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.successBanner {
-  margin: 0 16px 12px;
-  padding: 10px 12px;
-  border-radius: var(--rad-s);
-  background: var(--color-success-light);
-  color: var(--color-success);
-  font-size: 13px;
-  line-height: 1.5;
-}
 
 .bannerList {
   margin: 4px 0 0;
@@ -942,42 +271,9 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
 }
 
 .bannerList code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
 }
-
-/* ── Toolbar status badge ─────────────────────────── */
-
-.statusOk {
-  color: var(--color-success);
-  font-size: 12px;
-  padding: 3px 10px;
-  background: var(--color-success-light);
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-.statusError {
-  color: var(--err-tx);
-  font-size: 12px;
-  padding: 3px 10px;
-  background: var(--err-bg);
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-/* Unsaved-changes indicator — amber, distinct from the green/red save status
-   it sits beside, to read as "pending" rather than success or failure. */
-.statusUnsaved {
-  color: var(--color-warning-text);
-  font-size: 12px;
-  padding: 3px 10px;
-  background: var(--color-warning-light);
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-/* ── Override indicators ──────────────────────────── */
 
 /* Author-set overrides ("modified, awaiting save") use the same amber as the
    Unsaved-changes chip, so pending state reads as one colour everywhere. */
@@ -986,14 +282,14 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--color-warning-text);
+  background: var(--ui-warning-text);
   margin-right: 6px;
   vertical-align: middle;
 }
 
 /* A slim amber rail on the modified item. */
 .overrideField {
-  border-left: 2px solid var(--color-warning-text);
+  border-left: 2px solid var(--ui-warning-text);
 }
 
 /* On bare form groups the rail hangs in the gutter — the negative margin
@@ -1009,43 +305,14 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
    distinguish it from author-set overrides (#618). Same 2px edge treatment
    as .overrideField so the rows stay aligned. */
 .inheritedRow {
-  border-left: 2px dashed var(--el-250);
-}
-
-.inheritedTag {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--txt-dim);
-  background: var(--el-150);
-  border-radius: 999px;
-  padding: 2px 8px;
-}
-
-/* ── Select fields ────────────────────────────────── */
-
-.formGroup select {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid var(--el-200);
-  border-radius: var(--rad-s);
-  background: var(--el-0);
-  color: var(--txt);
-  font-size: 14px;
-  appearance: auto;
-}
-
-.formGroup select:focus {
-  outline: none;
-  border-color: var(--el-500);
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.06);
+  border-left: 2px dashed var(--ui-line);
 }
 
 /* ── Checkbox rows ────────────────────────────────── */
 
 .checkRow {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
 }
 
@@ -1056,40 +323,9 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
   margin: 0;
 }
 
-.checkRow input[type="checkbox"] {
-  margin: 0;
-  vertical-align: middle;
-}
-
-/* ── Processors ──────────────────────────────────── */
-
-/* Rail entry for the form-level processors view. */
-.processorsRow {
-  margin-top: 8px;
-  border-top: 1px solid var(--el-150);
-  padding-top: 12px;
-  border-radius: 0;
-}
-
-.processorsEditor {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px;
-  background: var(--el-100);
-}
-
-.processorWarning {
-  margin: 8px 0 16px;
-  padding: 10px 12px;
-  border-radius: var(--rad-s);
-  border: 1px solid var(--el-200);
-  background: var(--el-50);
-  color: var(--el-500);
-  font-size: 12.5px;
-}
-
 .addProcessorRow {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-bottom: 16px;
@@ -1098,21 +334,13 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
 .addProcessorRow label {
   font-size: 13px;
   font-weight: 500;
-  color: var(--el-800);
+  color: var(--ui-brand-hover);
 }
 
 .noProcessors {
-  color: var(--txt-dim);
+  color: var(--ui-subtle);
   font-size: 13.5px;
   padding: 8px 0;
-}
-
-.processorCard {
-  border: 1px solid var(--el-200);
-  border-radius: var(--rad-l);
-  padding: 16px;
-  margin-bottom: 16px;
-  background: var(--el-0);
 }
 
 .processorCardHeader {
@@ -1124,14 +352,14 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
 
 .processorReadOnly {
   font-size: 13px;
-  color: var(--txt-dim);
+  color: var(--ui-subtle);
   line-height: 1.4;
 }
 
 .fieldLabel {
   font-size: 13px;
   font-weight: 500;
-  color: var(--el-800);
+  color: var(--ui-brand-hover);
 }
 
 /* ── Key/value editor ────────────────────────────── */
@@ -1163,12 +391,13 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
 
 .optionsRow {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
 }
 
 .optionsRow input[type="text"] {
-  flex: 1;
+  flex: 1 1 8rem;
   min-width: 0;
 }
 
@@ -1181,18 +410,9 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
 
 .optionsActions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin-top: 6px;
-}
-
-/* ── Editing-presence read-only banner (#874) ─────── */
-.presenceBanner {
-  margin: 0 0 12px;
-  padding: 10px 16px;
-  border-left: 3px solid var(--color-warning-text);
-  background: var(--color-warning-light);
-  color: var(--color-warning-text);
-  font-size: 13px;
 }
 
 /* ── fieldArray "The applicant sees" miniature (#2317) ─── */
@@ -1201,9 +421,9 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
   width: 100%;
   margin-top: 4px;
   padding: 10px 12px;
-  border: 1px dashed var(--el-250);
-  border-radius: var(--rad-m);
-  background: var(--el-50);
+  border: 1px dashed var(--ui-line);
+  border-radius: var(--radius-lg);
+  background: var(--ui-surface-2);
 }
 
 .faMiniatureCaption {
@@ -1211,14 +431,14 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--txt-dim);
+  color: var(--ui-subtle);
   margin-bottom: 6px;
 }
 
 .faMiniatureLabel {
   font-size: 13px;
   font-weight: 500;
-  color: var(--txt);
+  color: var(--ui-default);
   margin-bottom: 4px;
 }
 
@@ -1226,19 +446,19 @@ button.stepRowButton.stepRowActive:hover:not(:disabled) {
   height: 22px;
   max-width: 260px;
   margin-bottom: 4px;
-  border: 1px solid var(--el-400);
-  border-radius: var(--rad-s);
-  background: var(--el-0);
+  border: 1px solid var(--ui-inactive);
+  border-radius: 6px;
+  background: var(--ui-base);
 }
 
 .faMiniatureMore {
   font-size: 12px;
-  color: var(--txt-dim);
+  color: var(--ui-subtle);
   margin-bottom: 4px;
 }
 
 .faMiniatureLink {
   font-size: 13px;
-  color: var(--txt);
+  color: var(--ui-default);
   text-decoration: underline;
 }

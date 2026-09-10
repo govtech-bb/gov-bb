@@ -1,3 +1,9 @@
+import { ScrollArea } from "../../component/ui/scroll-area";
+import { Elevated } from "../../component/ui/surface";
+import { Banner } from "../../component/ui/banner";
+import { Select } from "../../component/ui/select";
+import { Button } from "../../component/ui/button";
+import { Input } from "../../component/ui/input";
 import { useState } from "react";
 import type { Dispatch } from "react";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
@@ -53,117 +59,131 @@ interface NewMdaContactFormProps {
 // The "Create new MDA contact" card (issue #607). State + POST live in
 // `useCreateMdaContactForm` (held by the parent so typed values survive a
 // Cancel/reopen); this component is the presentation.
-function NewMdaContactForm({ form, onCreated, onCancel }: NewMdaContactFormProps) {
+function NewMdaContactForm({
+  form,
+  onCreated,
+  onCancel,
+}: NewMdaContactFormProps) {
   const { values, setValue, isCreating, createError } = form;
   return (
-    <div className={styles.processorCard}>
+    <Elevated offset={1} shadowLevel={2} className="mb-4 rounded-xl p-5">
       <div className={styles.sectionTitle}>New MDA contact</div>
       {createError && (
-        <div className={styles.validationErrors} role="alert">
-          {createError}
-        </div>
+        <Banner variant="error" size="sm" role="alert">
+          <div className="min-w-0 flex-1">{createError}</div>
+        </Banner>
       )}
       <div className={styles.formGroup}>
         <label htmlFor="nc-label">Label</label>
-        <input
+        <Input
           id="nc-label"
           type="text"
           value={values.label}
           onChange={(e) => setValue("label", e.target.value)}
+          className="w-full min-w-0"
         />
       </div>
       <div className={styles.formGroup}>
         <label htmlFor="nc-title">Organisation title</label>
-        <input
+        <Input
           id="nc-title"
           type="text"
           value={values.title}
           onChange={(e) => setValue("title", e.target.value)}
+          className="w-full min-w-0"
         />
       </div>
       <div className={styles.formGroup}>
         <label htmlFor="nc-telephone">Telephone number</label>
-        <input
+        <Input
           id="nc-telephone"
           type="text"
           value={values.telephone}
           onChange={(e) => setValue("telephone", e.target.value)}
+          className="w-full min-w-0"
         />
       </div>
       <div className={styles.formGroup}>
         <label htmlFor="nc-email">Public email</label>
-        <input
+        <Input
           id="nc-email"
           type="text"
           value={values.email}
           onChange={(e) => setValue("email", e.target.value)}
+          className="w-full min-w-0"
         />
       </div>
       <div className={styles.formGroup}>
         <label htmlFor="nc-mda-email">
           MDA notification email (per-environment)
         </label>
-        <input
+        <Input
           id="nc-mda-email"
           type="text"
           value={values.mdaEmail}
           onChange={(e) => setValue("mdaEmail", e.target.value)}
+          className="w-full min-w-0"
         />
       </div>
       <div className={styles.sectionTitle}>Address (optional)</div>
       <div className={styles.formGroup}>
         <label htmlFor="nc-line1">Address line 1</label>
-        <input
+        <Input
           id="nc-line1"
           type="text"
           value={values.line1}
           onChange={(e) => setValue("line1", e.target.value)}
+          className="w-full min-w-0"
         />
       </div>
       <div className={styles.formGroup}>
         <label htmlFor="nc-line2">Address line 2</label>
-        <input
+        <Input
           id="nc-line2"
           type="text"
           value={values.line2}
           onChange={(e) => setValue("line2", e.target.value)}
+          className="w-full min-w-0"
         />
       </div>
       <div className={styles.formGroup}>
         <label htmlFor="nc-city">City</label>
-        <input
+        <Input
           id="nc-city"
           type="text"
           value={values.city}
           onChange={(e) => setValue("city", e.target.value)}
+          className="w-full min-w-0"
         />
       </div>
       <div className={styles.formGroup}>
         <label htmlFor="nc-country">Country</label>
-        <input
+        <Input
           id="nc-country"
           type="text"
           value={values.country}
           onChange={(e) => setValue("country", e.target.value)}
+          className="w-full min-w-0"
         />
       </div>
       <div className={styles.addProcessorRow}>
-        <button
+        <Button
           type="button"
           onClick={async () => {
             const created = await form.create();
             if (created) onCreated(created);
           }}
           disabled={isCreating}
-          className={styles.btnPrimary}
+          variant="primary"
+          size="sm"
         >
           {isCreating ? "Creating…" : "Create and select"}
-        </button>
-        <button type="button" onClick={onCancel}>
+        </Button>
+        <Button type="button" onClick={onCancel} variant="secondary" size="sm">
           Cancel
-        </button>
+        </Button>
       </div>
-    </div>
+    </Elevated>
   );
 }
 
@@ -237,152 +257,184 @@ export function ContactDetailsEditor({
   }
 
   return (
-    <div className={styles.processorsEditor}>
-      <div className={styles.sectionTitle}>Contact Details</div>
-
-      <p className={styles.toolbarHint}>
-        Shown to applicants on the confirmation step so they know who to contact
-        about the service. Leave the address blank to omit it.
-      </p>
-
-      <div className={styles.formGroup}>
-        <label htmlFor="cd-mda-contact">MDA contact</label>
-        <select
-          id="cd-mda-contact"
-          value={selectedId}
-          onChange={(e) => handleSelectChange(e.target.value)}
+    <ScrollArea className="min-h-0 flex-1" viewportClassName="scroll-fade">
+      <div className="p-4 sm:p-6">
+        <Elevated
+          offset={1}
+          shadowLevel={2}
+          className="mx-auto max-w-5xl rounded-xl p-4 sm:p-6"
         >
-          <option value="">— none —</option>
-          {(contacts ?? []).map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.label}
-            </option>
-          ))}
-          <option value={CREATE_VALUE}>+ Create new contact…</option>
-        </select>
-        {contacts === null && !contactsLoadError && (
-          <p className={styles.toolbarHint}>Loading contacts…</p>
-        )}
-        {contactsLoadError && (
-          <div className={styles.validationErrors} role="alert">
-            {contactsLoadError}
+          <div className={styles.sectionTitle}>Contact Details</div>
+
+          <p className={styles.toolbarHint}>
+            Shown to applicants on the confirmation step so they know who to
+            contact about the service. Leave the address blank to omit it.
+          </p>
+
+          <div className={styles.formGroup}>
+            <label htmlFor="cd-mda-contact">MDA contact</label>
+            <Select
+              id="cd-mda-contact"
+              value={selectedId}
+              onValueChange={(nextValue) => {
+                if (nextValue === null) return;
+                handleSelectChange(nextValue);
+              }}
+              items={[
+                { value: "", label: "— none —" },
+                ...(contacts ?? []).map((c) => ({
+                  value: c.id,
+                  label: c.label,
+                })),
+                { value: CREATE_VALUE, label: "+ Create new contact…" },
+              ]}
+            />
+            {contacts === null && !contactsLoadError && (
+              <p className={styles.toolbarHint}>Loading contacts…</p>
+            )}
+            {contactsLoadError && (
+              <Banner variant="error" size="sm" role="alert">
+                <div className="min-w-0 flex-1">{contactsLoadError}</div>
+              </Banner>
+            )}
           </div>
-        )}
+
+          {showCreate && (
+            <NewMdaContactForm
+              form={createForm}
+              onCreated={(created) => {
+                applyContact(created);
+                setSelectedId(created.id);
+                setShowCreate(false);
+              }}
+              onCancel={() => {
+                setShowCreate(false);
+                setSelectedId(draft.mdaContactId ?? "");
+                createForm.clearError();
+              }}
+            />
+          )}
+
+          {form.errors.length > 0 && (
+            <Banner variant="error" size="sm" role="alert">
+              <div className="min-w-0 flex-1">
+                <strong>Fix these before saving contact details:</strong>
+                <ul>
+                  {form.errors.map((e) => (
+                    <li key={e}>{e}</li>
+                  ))}
+                </ul>
+              </div>
+            </Banner>
+          )}
+
+          {form.savedNotice && form.errors.length === 0 && (
+            <Banner variant="success" size="sm" role="status">
+              <div className="min-w-0 flex-1">
+                Contact details saved to the draft.
+              </div>
+            </Banner>
+          )}
+
+          <div className={styles.formGroup}>
+            <label htmlFor="cd-title">Organisation title</label>
+            <Input
+              id="cd-title"
+              type="text"
+              value={form.title}
+              onChange={(e) => form.setTitle(e.target.value)}
+              className="w-full min-w-0"
+            />
+          </div>
+
+          <div className={styles.formGroup}>
+            <label htmlFor="cd-telephone">Telephone number</label>
+            <Input
+              id="cd-telephone"
+              type="text"
+              value={form.telephoneNumber}
+              onChange={(e) => form.setTelephoneNumber(e.target.value)}
+              className="w-full min-w-0"
+            />
+          </div>
+
+          <div className={styles.formGroup}>
+            <label htmlFor="cd-email">Email</label>
+            <Input
+              id="cd-email"
+              type="text"
+              value={form.email}
+              onChange={(e) => form.setEmail(e.target.value)}
+              className="w-full min-w-0"
+            />
+          </div>
+
+          <div className={styles.sectionTitle}>Address (optional)</div>
+
+          <div className={styles.formGroup}>
+            <label htmlFor="cd-line1">Address line 1</label>
+            <Input
+              id="cd-line1"
+              type="text"
+              value={form.line1}
+              onChange={(e) => form.setLine1(e.target.value)}
+              className="w-full min-w-0"
+            />
+          </div>
+
+          <div className={styles.formGroup}>
+            <label htmlFor="cd-line2">Address line 2</label>
+            <Input
+              id="cd-line2"
+              type="text"
+              value={form.line2}
+              onChange={(e) => form.setLine2(e.target.value)}
+              className="w-full min-w-0"
+            />
+          </div>
+
+          <div className={styles.formGroup}>
+            <label htmlFor="cd-city">City</label>
+            <Input
+              id="cd-city"
+              type="text"
+              value={form.city}
+              onChange={(e) => form.setCity(e.target.value)}
+              className="w-full min-w-0"
+            />
+          </div>
+
+          <div className={styles.formGroup}>
+            <label htmlFor="cd-country">Country</label>
+            <Input
+              id="cd-country"
+              type="text"
+              value={form.country}
+              onChange={(e) => form.setCountry(e.target.value)}
+              className="w-full min-w-0"
+            />
+          </div>
+
+          <div className={styles.addProcessorRow}>
+            <Button
+              type="button"
+              onClick={form.save}
+              variant="primary"
+              size="sm"
+            >
+              Save contact details
+            </Button>
+            <Button
+              type="button"
+              onClick={handleClear}
+              variant="destructive"
+              size="sm"
+            >
+              Clear contact details
+            </Button>
+          </div>
+        </Elevated>
       </div>
-
-      {showCreate && (
-        <NewMdaContactForm
-          form={createForm}
-          onCreated={(created) => {
-            applyContact(created);
-            setSelectedId(created.id);
-            setShowCreate(false);
-          }}
-          onCancel={() => {
-            setShowCreate(false);
-            setSelectedId(draft.mdaContactId ?? "");
-            createForm.clearError();
-          }}
-        />
-      )}
-
-      {form.errors.length > 0 && (
-        <div className={styles.validationErrors} role="alert">
-          <strong>Fix these before saving contact details:</strong>
-          <ul>
-            {form.errors.map((e) => (
-              <li key={e}>{e}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {form.savedNotice && form.errors.length === 0 && (
-        <div className={styles.validationSuccess} role="status">
-          Contact details saved to the draft.
-        </div>
-      )}
-
-      <div className={styles.formGroup}>
-        <label htmlFor="cd-title">Organisation title</label>
-        <input
-          id="cd-title"
-          type="text"
-          value={form.title}
-          onChange={(e) => form.setTitle(e.target.value)}
-        />
-      </div>
-
-      <div className={styles.formGroup}>
-        <label htmlFor="cd-telephone">Telephone number</label>
-        <input
-          id="cd-telephone"
-          type="text"
-          value={form.telephoneNumber}
-          onChange={(e) => form.setTelephoneNumber(e.target.value)}
-        />
-      </div>
-
-      <div className={styles.formGroup}>
-        <label htmlFor="cd-email">Email</label>
-        <input
-          id="cd-email"
-          type="text"
-          value={form.email}
-          onChange={(e) => form.setEmail(e.target.value)}
-        />
-      </div>
-
-      <div className={styles.sectionTitle}>Address (optional)</div>
-
-      <div className={styles.formGroup}>
-        <label htmlFor="cd-line1">Address line 1</label>
-        <input
-          id="cd-line1"
-          type="text"
-          value={form.line1}
-          onChange={(e) => form.setLine1(e.target.value)}
-        />
-      </div>
-
-      <div className={styles.formGroup}>
-        <label htmlFor="cd-line2">Address line 2</label>
-        <input
-          id="cd-line2"
-          type="text"
-          value={form.line2}
-          onChange={(e) => form.setLine2(e.target.value)}
-        />
-      </div>
-
-      <div className={styles.formGroup}>
-        <label htmlFor="cd-city">City</label>
-        <input
-          id="cd-city"
-          type="text"
-          value={form.city}
-          onChange={(e) => form.setCity(e.target.value)}
-        />
-      </div>
-
-      <div className={styles.formGroup}>
-        <label htmlFor="cd-country">Country</label>
-        <input
-          id="cd-country"
-          type="text"
-          value={form.country}
-          onChange={(e) => form.setCountry(e.target.value)}
-        />
-      </div>
-
-      <div className={styles.addProcessorRow}>
-        <button type="button" onClick={form.save} className={styles.btnPrimary}>
-          Save contact details
-        </button>
-        <button type="button" onClick={handleClear} className={styles.btnDanger}>
-          Clear contact details
-        </button>
-      </div>
-    </div>
+    </ScrollArea>
   );
 }

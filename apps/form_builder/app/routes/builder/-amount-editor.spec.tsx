@@ -1,3 +1,4 @@
+import { openSelect, chooseOption } from "../../test/select";
 /**
  * @vitest-environment jsdom
  */
@@ -68,9 +69,11 @@ describe("AmountEditor — fixed", () => {
     expect(amountState()).toBe(25);
   });
 
-  it("starts in Fixed mode for an unset amount", () => {
+  it("starts in Fixed mode for an unset amount", async () => {
     render(<Harness initialAmount={undefined} />);
-    expect(screen.getByLabelText("Amount type")).toHaveValue("fixed");
+    expect(screen.getByLabelText("Amount type")).toHaveTextContent(
+      "Fixed amount",
+    );
     expect(screen.getByLabelText("Amount")).toBeInTheDocument();
   });
 });
@@ -79,20 +82,17 @@ describe("AmountEditor — conditional field value", () => {
   it("compiles a field-equality rule to a values.-prefixed if-chain", async () => {
     render(<Harness initialAmount={10} />);
 
-    await userEvent.selectOptions(
+    await chooseOption(
       screen.getByLabelText("Amount type"),
-      "conditional",
+      "Conditional amount",
     );
     await userEvent.click(screen.getByRole("button", { name: /add rule/i }));
 
-    await userEvent.selectOptions(
+    await chooseOption(
       screen.getByLabelText("Condition field"),
-      "applicant.nationality",
+      new RegExp("\\(applicant\\.nationality\\)$"),
     );
-    await userEvent.selectOptions(
-      screen.getByLabelText("Condition operator"),
-      "notEqual",
-    );
+    await chooseOption(screen.getByLabelText("Condition operator"), "is not");
     await userEvent.type(screen.getByLabelText("Comparison value"), "national");
     const ruleAmount = screen.getByLabelText("Rule amount");
     await userEvent.clear(ruleAmount);
@@ -111,7 +111,7 @@ describe("AmountEditor — conditional field value", () => {
     });
   });
 
-  it("opens an existing field if-chain in Conditional mode, rule populated", () => {
+  it("opens an existing field if-chain in Conditional mode, rule populated", async () => {
     render(
       <Harness
         initialAmount={{
@@ -123,12 +123,14 @@ describe("AmountEditor — conditional field value", () => {
         }}
       />,
     );
-    expect(screen.getByLabelText("Amount type")).toHaveValue("conditional");
-    expect(screen.getByLabelText("Compare")).toHaveValue("field");
-    expect(screen.getByLabelText("Condition field")).toHaveValue(
+    expect(screen.getByLabelText("Amount type")).toHaveTextContent(
+      "Conditional amount",
+    );
+    expect(screen.getByLabelText("Compare")).toHaveTextContent("Field value");
+    expect(screen.getByLabelText("Condition field")).toHaveTextContent(
       "applicant.nationality",
     );
-    expect(screen.getByLabelText("Condition operator")).toHaveValue("equal");
+    expect(screen.getByLabelText("Condition operator")).toHaveTextContent("is");
     expect(screen.getByLabelText("Comparison value")).toHaveValue("national");
     expect(screen.getByLabelText("Rule amount")).toHaveValue(5);
     expect(screen.getByLabelText("Otherwise charge")).toHaveValue(15);
@@ -139,20 +141,20 @@ describe("AmountEditor — conditional age band", () => {
   it("compiles an `age of field` ordering rule to the age op", async () => {
     render(<Harness initialAmount={25} />);
 
-    await userEvent.selectOptions(
+    await chooseOption(
       screen.getByLabelText("Amount type"),
-      "conditional",
+      "Conditional amount",
     );
     await userEvent.click(screen.getByRole("button", { name: /add rule/i }));
 
-    await userEvent.selectOptions(screen.getByLabelText("Compare"), "age");
-    await userEvent.selectOptions(
+    await chooseOption(screen.getByLabelText("Compare"), "Age of field");
+    await chooseOption(
       screen.getByLabelText("Condition field"),
-      "applicant.dob",
+      new RegExp("\\(applicant\\.dob\\)$"),
     );
-    await userEvent.selectOptions(
+    await chooseOption(
       screen.getByLabelText("Condition operator"),
-      "lessThan",
+      "is less than",
     );
     const value = screen.getByLabelText("Comparison value");
     await userEvent.clear(value);
@@ -166,15 +168,11 @@ describe("AmountEditor — conditional age band", () => {
     await userEvent.type(otherwise, "20");
 
     expect(amountState()).toEqual({
-      if: [
-        { "<": [{ age: [{ var: "values.applicant.dob" }] }, 16] },
-        5,
-        20,
-      ],
+      if: [{ "<": [{ age: [{ var: "values.applicant.dob" }] }, 16] }, 5, 20],
     });
   });
 
-  it("opens an existing age if-chain with the age subject selected", () => {
+  it("opens an existing age if-chain with the age subject selected", async () => {
     render(
       <Harness
         initialAmount={{
@@ -186,12 +184,12 @@ describe("AmountEditor — conditional age band", () => {
         }}
       />,
     );
-    expect(screen.getByLabelText("Compare")).toHaveValue("age");
-    expect(screen.getByLabelText("Condition field")).toHaveValue(
+    expect(screen.getByLabelText("Compare")).toHaveTextContent("Age of field");
+    expect(screen.getByLabelText("Condition field")).toHaveTextContent(
       "applicant.dob",
     );
-    expect(screen.getByLabelText("Condition operator")).toHaveValue(
-      "greaterThanOrEqual",
+    expect(screen.getByLabelText("Condition operator")).toHaveTextContent(
+      "is at least",
     );
     expect(screen.getByLabelText("Comparison value")).toHaveValue(60);
     expect(screen.getByLabelText("Otherwise charge")).toHaveValue(25);
@@ -203,11 +201,11 @@ describe("AmountEditor — quantity multiplier", () => {
     render(<Harness initialAmount={10} />);
 
     await userEvent.click(
-      screen.getByLabelText("Multiply by a quantity field"),
+      screen.getByRole("checkbox", { name: "Multiply by a quantity field" }),
     );
-    await userEvent.selectOptions(
+    await chooseOption(
       screen.getByLabelText("Quantity field"),
-      "order-details.number-of-copies",
+      new RegExp("\\(order-details\\.number-of-copies\\)$"),
     );
 
     expect(amountState()).toEqual({
@@ -218,18 +216,24 @@ describe("AmountEditor — quantity multiplier", () => {
   it("offers only numeric fields in the quantity picker", async () => {
     render(<Harness initialAmount={10} />);
     await userEvent.click(
-      screen.getByLabelText("Multiply by a quantity field"),
+      screen.getByRole("checkbox", { name: "Multiply by a quantity field" }),
     );
 
     const picker = screen.getByLabelText("Quantity field");
     expect(
-      within(picker).getByRole("option", { name: /Number of copies/ }),
-    ).toHaveValue("order-details.number-of-copies");
+      within(await openSelect(picker)).getByRole("option", {
+        name: /Number of copies/,
+      }),
+    ).toBeInTheDocument();
     expect(
-      within(picker).queryByRole("option", { name: /Nationality/ }),
+      within(await openSelect(picker)).queryByRole("option", {
+        name: /Nationality/,
+      }),
     ).not.toBeInTheDocument();
     expect(
-      within(picker).queryByRole("option", { name: /Date of birth/ }),
+      within(await openSelect(picker)).queryByRole("option", {
+        name: /Date of birth/,
+      }),
     ).not.toBeInTheDocument();
   });
 
@@ -241,9 +245,11 @@ describe("AmountEditor — quantity multiplier", () => {
         }}
       />,
     );
-    const checkbox = screen.getByLabelText("Multiply by a quantity field");
+    const checkbox = screen.getByRole("checkbox", {
+      name: "Multiply by a quantity field",
+    });
     expect(checkbox).toBeChecked();
-    expect(screen.getByLabelText("Quantity field")).toHaveValue(
+    expect(screen.getByLabelText("Quantity field")).toHaveTextContent(
       "order-details.number-of-copies",
     );
 
@@ -259,13 +265,18 @@ describe("AmountEditor — quantity multiplier", () => {
         }}
       />,
     );
-    await userEvent.selectOptions(screen.getByLabelText("Quantity field"), "");
+    await chooseOption(
+      screen.getByLabelText("Quantity field"),
+      "— select field —",
+    );
 
-    expect(screen.getByLabelText("Multiply by a quantity field")).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "Multiply by a quantity field" }),
+    ).toBeChecked();
     expect(amountState()).toBe(10);
   });
 
-  it("opens an existing conditional × quantity amount in the structured editor", () => {
+  it("opens an existing conditional × quantity amount in the structured editor", async () => {
     render(
       <Harness
         initialAmount={{
@@ -282,17 +293,21 @@ describe("AmountEditor — quantity multiplier", () => {
         }}
       />,
     );
-    expect(screen.getByLabelText("Amount type")).toHaveValue("conditional");
-    expect(screen.getByLabelText("Compare")).toHaveValue("age");
-    expect(screen.getByLabelText("Multiply by a quantity field")).toBeChecked();
-    expect(screen.getByLabelText("Quantity field")).toHaveValue(
+    expect(screen.getByLabelText("Amount type")).toHaveTextContent(
+      "Conditional amount",
+    );
+    expect(screen.getByLabelText("Compare")).toHaveTextContent("Age of field");
+    expect(
+      screen.getByRole("checkbox", { name: "Multiply by a quantity field" }),
+    ).toBeChecked();
+    expect(screen.getByLabelText("Quantity field")).toHaveTextContent(
       "order-details.number-of-copies",
     );
   });
 });
 
 describe("AmountEditor — advanced fallback", () => {
-  it("renders an unrecognized expression read-only, with no type toggle", () => {
+  it("renders an unrecognized expression read-only, with no type toggle", async () => {
     const raw = { reduce: [{ var: "values.items" }, {}, 0] };
     render(<Harness initialAmount={raw} />);
 

@@ -1,3 +1,4 @@
+import { openSelect, chooseOption } from "../../test/select";
 import type { Mock } from "vitest";
 /**
  * @vitest-environment jsdom
@@ -57,9 +58,7 @@ function Harness({
 }
 
 function mdaContactIdState(): string | null {
-  return JSON.parse(
-    screen.getByTestId("mdaContactId").textContent || "null",
-  );
+  return JSON.parse(screen.getByTestId("mdaContactId").textContent || "null");
 }
 
 function state(): ContactDetails | null {
@@ -67,12 +66,15 @@ function state(): ContactDetails | null {
 }
 
 async function fillCore() {
-  await userEvent.type(screen.getByLabelText(/organisation title/i), "Ministry");
+  await userEvent.type(
+    screen.getByLabelText(/organisation title/i),
+    "Ministry",
+  );
   await userEvent.type(screen.getByLabelText(/telephone/i), "+1 246 555 0100");
   await userEvent.type(screen.getByLabelText(/^email/i), "health@gov.bb");
 }
 
-it("pre-fills inputs from existing contact details", () => {
+it("pre-fills inputs from existing contact details", async () => {
   const initial: RecipeDraft = {
     ...emptyDraft,
     contactDetails: {
@@ -106,7 +108,10 @@ it("saves valid details without an address", async () => {
 it("saves a full address as part of the details", async () => {
   render(<Harness initial={emptyDraft} />);
   await fillCore();
-  await userEvent.type(screen.getByLabelText(/address line 1/i), "Jemmotts Lane");
+  await userEvent.type(
+    screen.getByLabelText(/address line 1/i),
+    "Jemmotts Lane",
+  );
   await userEvent.type(screen.getByLabelText(/city/i), "Bridgetown");
   await userEvent.click(screen.getByRole("button", { name: /save contact/i }));
   expect(state()?.address).toEqual({
@@ -117,7 +122,10 @@ it("saves a full address as part of the details", async () => {
 
 it("rejects an invalid email and does not dispatch", async () => {
   render(<Harness initial={emptyDraft} />);
-  await userEvent.type(screen.getByLabelText(/organisation title/i), "Ministry");
+  await userEvent.type(
+    screen.getByLabelText(/organisation title/i),
+    "Ministry",
+  );
   await userEvent.type(screen.getByLabelText(/telephone/i), "+1 246 555 0100");
   await userEvent.type(screen.getByLabelText(/^email/i), "not-an-email");
   await userEvent.click(screen.getByRole("button", { name: /save contact/i }));
@@ -127,7 +135,10 @@ it("rejects an invalid email and does not dispatch", async () => {
 
 it("saves with a blank title now that the public fields are optional (issue #607)", async () => {
   render(<Harness initial={emptyDraft} />);
-  await userEvent.type(screen.getByLabelText(/^telephone number$/i), "+1 246 555 0100");
+  await userEvent.type(
+    screen.getByLabelText(/^telephone number$/i),
+    "+1 246 555 0100",
+  );
   await userEvent.type(screen.getByLabelText(/^email$/i), "health@gov.bb");
   await userEvent.click(screen.getByRole("button", { name: /save contact/i }));
   // Title is optional now, so a blank title with a valid phone/email is saved
@@ -142,7 +153,10 @@ it("rejects a partially-filled address (all-or-nothing group)", async () => {
   render(<Harness initial={emptyDraft} />);
   await fillCore();
   // line1 filled but city left blank → schema requires city when address present
-  await userEvent.type(screen.getByLabelText(/address line 1/i), "Jemmotts Lane");
+  await userEvent.type(
+    screen.getByLabelText(/address line 1/i),
+    "Jemmotts Lane",
+  );
   await userEvent.click(screen.getByRole("button", { name: /save contact/i }));
   expect(screen.getByRole("alert")).toBeInTheDocument();
   expect(state()).toBeNull();
@@ -164,28 +178,34 @@ it("clears contact details back to absent", async () => {
 
 // ── MDA contact dropdown (issue #607) ────────────────────────────────────────
 
-it("lists the MDA contacts in the dropdown", () => {
+it("lists the MDA contacts in the dropdown", async () => {
   render(<Harness initial={emptyDraft} />);
   const select = screen.getByLabelText(/mda contact/i);
   expect(
-    within(select).getByRole("option", { name: "Ministry of Health" }),
+    within(await openSelect(select)).getByRole("option", {
+      name: "Ministry of Health",
+    }),
   ).toBeInTheDocument();
   expect(
-    within(select).getByRole("option", { name: /create new contact/i }),
+    within(await openSelect(select)).getByRole("option", {
+      name: /create new contact/i,
+    }),
   ).toBeInTheDocument();
 });
 
-it("preselects the dropdown from the draft's mdaContactId", () => {
+it("preselects the dropdown from the draft's mdaContactId", async () => {
   const initial: RecipeDraft = { ...emptyDraft, mdaContactId: "contact-1" };
   render(<Harness initial={initial} />);
-  expect(screen.getByLabelText(/mda contact/i)).toHaveValue("contact-1");
+  expect(screen.getByLabelText(/mda contact/i)).toHaveTextContent(
+    "Ministry of Health",
+  );
 });
 
 it("selecting a contact fills the public fields and records the id", async () => {
   render(<Harness initial={emptyDraft} />);
-  await userEvent.selectOptions(
+  await chooseOption(
     screen.getByLabelText(/mda contact/i),
-    "contact-1",
+    "Ministry of Health",
   );
   // Public contactDetails filled from the contact (telephone → telephoneNumber).
   expect(state()).toEqual({
@@ -205,7 +225,7 @@ it("selecting a contact fills the public fields and records the id", async () =>
 it("selecting — none — clears the recorded id", async () => {
   const initial: RecipeDraft = { ...emptyDraft, mdaContactId: "contact-1" };
   render(<Harness initial={initial} />);
-  await userEvent.selectOptions(screen.getByLabelText(/mda contact/i), "");
+  await chooseOption(screen.getByLabelText(/mda contact/i), "— none —");
   expect(mdaContactIdState()).toBeNull();
 });
 
@@ -224,15 +244,21 @@ it("creating a new contact posts it and selects the created contact", async () =
   );
   render(<Harness initial={emptyDraft} onCreateContact={onCreateContact} />);
 
-  await userEvent.selectOptions(
+  await chooseOption(
     screen.getByLabelText(/mda contact/i),
-    "__create__",
+    "+ Create new contact…",
   );
   // Fill the create-form fields that carry labels unique to the create card
   // (the main panel re-uses "Organisation title"/"Telephone number"). The
   // create call is mocked, so client-side completeness isn't under test here.
-  await userEvent.type(screen.getByLabelText(/^label$/i), "Ministry of Finance");
-  await userEvent.type(screen.getByLabelText(/public email/i), "finance@gov.bb");
+  await userEvent.type(
+    screen.getByLabelText(/^label$/i),
+    "Ministry of Finance",
+  );
+  await userEvent.type(
+    screen.getByLabelText(/public email/i),
+    "finance@gov.bb",
+  );
   await userEvent.type(
     screen.getByLabelText(/mda notification email/i),
     "notify@finance.gov.bb",

@@ -1,8 +1,10 @@
+import { respondToConfirmation } from "../../test/ui";
+import { openSelect, chooseOption } from "../../test/select";
 /**
  * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "../../test/ui";
 import userEvent from "@testing-library/user-event";
 import { useReducer } from "react";
 import type { RecipeDraft, ResolvedFieldId } from "@govtech-bb/form-builder";
@@ -64,20 +66,35 @@ function state(): Array<{ type: string; config: Record<string, unknown> }> {
 }
 
 async function addProcessor(type: string) {
-  await userEvent.selectOptions(screen.getByLabelText(/processor type/i), type);
+  await chooseOption(
+    screen.getByLabelText(/processor type/i),
+    (
+      {
+        email: "Email confirmation",
+        webhook: "Webhook",
+        payment: "Payment",
+        spreadsheet: "Spreadsheet export",
+        opencrvs: "OpenCRVS forward",
+      } as Record<string, string>
+    )[type],
+  );
   await userEvent.click(screen.getByRole("button", { name: /add processor/i }));
 }
 
-beforeEach(() => {
-  vi.spyOn(window, "confirm").mockReturnValue(true);
-});
+beforeEach(() => {});
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
 it("adds a processor of each authorable type", async () => {
   render(<Harness initial={emptyDraft} />);
-  for (const type of ["email", "webhook", "payment", "spreadsheet", "opencrvs"]) {
+  for (const type of [
+    "email",
+    "webhook",
+    "payment",
+    "spreadsheet",
+    "opencrvs",
+  ]) {
     await addProcessor(type);
   }
   expect(state().map((p) => p.type)).toEqual([
@@ -91,10 +108,12 @@ it("adds a processor of each authorable type", async () => {
   // 5s default allows on a loaded CI runner (~1s locally); give it headroom.
 }, 15000);
 
-it("offers payment as an addable type (#716)", () => {
+it("offers payment as an addable type (#716)", async () => {
   render(<Harness initial={emptyDraft} />);
   const select = screen.getByLabelText(/processor type/i);
-  expect(within(select).queryByText(/payment/i)).toBeInTheDocument();
+  expect(
+    within(await openSelect(select)).queryByText(/payment/i),
+  ).toBeInTheDocument();
 });
 
 it("populates the recipient-field picker with only email-like fields", async () => {
@@ -103,11 +122,15 @@ it("populates the recipient-field picker with only email-like fields", async () 
   const picker = screen.getByLabelText(/recipient field/i);
   // The email field is offered...
   expect(
-    within(picker).getByRole("option", { name: "Email (contact.email)" }),
-  ).toHaveValue("contact.email");
+    within(await openSelect(picker)).getByRole("option", {
+      name: "Email (contact.email)",
+    }),
+  ).toBeInTheDocument();
   // ...but a non-email field (full-name) is filtered out.
   expect(
-    within(picker).queryByRole("option", { name: /Full name/ }),
+    within(await openSelect(picker)).queryByRole("option", {
+      name: /Full name/,
+    }),
   ).not.toBeInTheDocument();
 });
 
@@ -162,20 +185,28 @@ it("offers every email-like field (incl. mixed-case and applicant-email) and exc
   render(<Harness initial={emptyDraft} fields={fields} />);
   await addProcessor("email");
   const picker = screen.getByLabelText(/recipient field/i);
-  expect(within(picker).getByRole("option", { name: /^Email/ })).toHaveValue(
-    "contact.email",
-  );
   expect(
-    within(picker).getByRole("option", { name: /Applicant email/ }),
-  ).toHaveValue("applicant.applicant-email");
+    within(await openSelect(picker)).getByRole("option", { name: /^Email/ }),
+  ).toBeInTheDocument();
   expect(
-    within(picker).getByRole("option", { name: /MDA contact/ }),
-  ).toHaveValue("mda.Email");
+    within(await openSelect(picker)).getByRole("option", {
+      name: /Applicant email/,
+    }),
+  ).toBeInTheDocument();
   expect(
-    within(picker).queryByRole("option", { name: /Full name/ }),
+    within(await openSelect(picker)).getByRole("option", {
+      name: /MDA contact/,
+    }),
+  ).toBeInTheDocument();
+  expect(
+    within(await openSelect(picker)).queryByRole("option", {
+      name: /Full name/,
+    }),
   ).not.toBeInTheDocument();
   expect(
-    within(picker).queryByRole("option", { name: /Date of birth/ }),
+    within(await openSelect(picker)).queryByRole("option", {
+      name: /Date of birth/,
+    }),
   ).not.toBeInTheDocument();
 });
 
@@ -203,12 +234,12 @@ it("shows only the placeholder and the always-on config.mdaEmail option when no 
   render(<Harness initial={emptyDraft} fields={fields} />);
   await addProcessor("email");
   const picker = screen.getByLabelText(/recipient field/i);
-  const options = within(picker).getAllByRole("option");
+  const options = within(await openSelect(picker)).getAllByRole("option");
   // Placeholder + the always-on config.mdaEmail option (issue #607); no
   // email-like form field is offered.
   expect(options).toHaveLength(2);
   expect(options[0]).toHaveTextContent(/select field/i);
-  expect(options[1]).toHaveValue("config.mdaEmail");
+  expect(options[1]).toHaveTextContent("config.mdaEmail");
 });
 
 it("offers the MDA contact email as a recipient option when the draft has contact details", async () => {
@@ -226,10 +257,10 @@ it("offers the MDA contact email as a recipient option when the draft has contac
   await addProcessor("email");
   const picker = screen.getByLabelText(/recipient field/i);
   expect(
-    within(picker).getByRole("option", {
+    within(await openSelect(picker)).getByRole("option", {
       name: "MDA contact email (contactDetails.email)",
     }),
-  ).toHaveValue("contactDetails.email");
+  ).toBeInTheDocument();
 });
 
 it("does not offer the MDA contact email option when the draft has no contact details", async () => {
@@ -237,7 +268,9 @@ it("does not offer the MDA contact email option when the draft has no contact de
   await addProcessor("email");
   const picker = screen.getByLabelText(/recipient field/i);
   expect(
-    within(picker).queryByRole("option", { name: /MDA contact email/ }),
+    within(await openSelect(picker)).queryByRole("option", {
+      name: /MDA contact email/,
+    }),
   ).not.toBeInTheDocument();
 });
 
@@ -254,7 +287,9 @@ it("does not offer the MDA contact email option when contactDetails has no email
   await addProcessor("email");
   const picker = screen.getByLabelText(/recipient field/i);
   expect(
-    within(picker).queryByRole("option", { name: /MDA contact email/ }),
+    within(await openSelect(picker)).queryByRole("option", {
+      name: /MDA contact email/,
+    }),
   ).not.toBeInTheDocument();
 });
 
@@ -263,18 +298,18 @@ it("always offers config.mdaEmail (per-environment) as a recipient option (issue
   await addProcessor("email");
   const picker = screen.getByLabelText(/recipient field/i);
   expect(
-    within(picker).getByRole("option", {
+    within(await openSelect(picker)).getByRole("option", {
       name: "MDA notification email (per-environment) (config.mdaEmail)",
     }),
-  ).toHaveValue("config.mdaEmail");
+  ).toBeInTheDocument();
 });
 
 it("selects config.mdaEmail as the recipient path (issue #607)", async () => {
   render(<Harness initial={emptyDraft} />);
   await addProcessor("email");
-  await userEvent.selectOptions(
+  await chooseOption(
     screen.getByLabelText(/recipient field/i),
-    "config.mdaEmail",
+    new RegExp("\\(config\\.mdaEmail\\)$"),
   );
   expect(state()[0].config.recipientField).toBe("config.mdaEmail");
 });
@@ -292,9 +327,9 @@ it("selects the MDA contact email as the recipient path", async () => {
   };
   render(<Harness initial={initial} />);
   await addProcessor("email");
-  await userEvent.selectOptions(
+  await chooseOption(
     screen.getByLabelText(/recipient field/i),
-    "contactDetails.email",
+    new RegExp("\\(contactDetails\\.email\\)$"),
   );
   expect(state()[0].config.recipientField).toBe("contactDetails.email");
 });
@@ -302,9 +337,9 @@ it("selects the MDA contact email as the recipient path", async () => {
 it("edits an email processor's recipient path", async () => {
   render(<Harness initial={emptyDraft} />);
   await addProcessor("email");
-  await userEvent.selectOptions(
+  await chooseOption(
     screen.getByLabelText(/recipient field/i),
-    "contact.email",
+    new RegExp("\\(contact\\.email\\)$"),
   );
   expect(state()[0].config.recipientField).toBe("contact.email");
 });
@@ -314,6 +349,7 @@ it("removes a processor", async () => {
   await addProcessor("webhook");
   expect(state()).toHaveLength(1);
   await userEvent.click(screen.getByRole("button", { name: /^remove$/i }));
+  await respondToConfirmation("Remove processor");
   expect(state()).toHaveLength(0);
 });
 
@@ -375,13 +411,17 @@ it("prunes the webhook headers key when the last header is removed", async () =>
   expect(state()[0].config).not.toHaveProperty("headers");
 });
 
-it("renders an email processor's per-instance label as its card header", () => {
+it("renders an email processor's per-instance label as its card header", async () => {
   const initial: RecipeDraft = {
     formId: "f",
     title: "T",
     steps: [],
     processors: [
-      { id: "em-1", type: "email", config: { recipientField: "", label: "Applicant Email" } },
+      {
+        id: "em-1",
+        type: "email",
+        config: { recipientField: "", label: "Applicant Email" },
+      },
       {
         id: "em-2",
         type: "email",
@@ -417,7 +457,11 @@ it("prunes the label key when cleared", async () => {
     title: "T",
     steps: [],
     processors: [
-      { id: "em-1", type: "email", config: { recipientField: "", label: "MDA Email" } },
+      {
+        id: "em-1",
+        type: "email",
+        config: { recipientField: "", label: "MDA Email" },
+      },
     ],
   };
   render(<Harness initial={initial} />);
@@ -425,7 +469,7 @@ it("prunes the label key when cleared", async () => {
   expect(state()[0].config).not.toHaveProperty("label");
 });
 
-it("renders an existing payment processor as an editable form (#716)", () => {
+it("renders an existing payment processor as an editable form (#716)", async () => {
   const initial: RecipeDraft = {
     formId: "f",
     title: "T",
@@ -455,7 +499,9 @@ it("renders an existing payment processor as an editable form (#716)", () => {
   // Exact label: a literal amount opens in Fixed mode (there's also an
   // "Amount type" toggle now — see -amount-editor).
   expect(screen.getByLabelText("Amount")).toHaveValue(50);
-  expect(screen.getByLabelText("Amount type")).toHaveValue("fixed");
+  expect(screen.getByLabelText("Amount type")).toHaveTextContent(
+    "Fixed amount",
+  );
   // Provider is fixed (ezpay) and not user-editable.
   expect(screen.getByLabelText(/provider/i)).toBeDisabled();
 });
@@ -496,15 +542,71 @@ it("edits a payment processor's department field in place (#716)", async () => {
 
 const PAYMENT_FILTER_FIELDS: ResolvedFieldId[] = [
   // email-like
-  { fieldId: "email", editorFieldId: "e1", stepId: "s", stepTitle: "S", display: "Email", isBoolean: false, isNumeric: false },
-  { fieldId: "q1", editorFieldId: "e2", stepId: "s", stepTitle: "S", display: "Email address", isBoolean: false, isNumeric: false }, // by label only
-  { fieldId: "applicant-email", editorFieldId: "e3", stepId: "s", stepTitle: "S", display: "Contact", isBoolean: false, isNumeric: false }, // by id only
+  {
+    fieldId: "email",
+    editorFieldId: "e1",
+    stepId: "s",
+    stepTitle: "S",
+    display: "Email",
+    isBoolean: false,
+    isNumeric: false,
+  },
+  {
+    fieldId: "q1",
+    editorFieldId: "e2",
+    stepId: "s",
+    stepTitle: "S",
+    display: "Email address",
+    isBoolean: false,
+    isNumeric: false,
+  }, // by label only
+  {
+    fieldId: "applicant-email",
+    editorFieldId: "e3",
+    stepId: "s",
+    stepTitle: "S",
+    display: "Contact",
+    isBoolean: false,
+    isNumeric: false,
+  }, // by id only
   // name-like
-  { fieldId: "full-name", editorFieldId: "e4", stepId: "s", stepTitle: "S", display: "Full name", isBoolean: false, isNumeric: false },
-  { fieldId: "q2", editorFieldId: "e5", stepId: "s", stepTitle: "S", display: "Your name", isBoolean: false, isNumeric: false }, // by label only
-  { fieldId: "business-name", editorFieldId: "e6", stepId: "s", stepTitle: "S", display: "Business", isBoolean: false, isNumeric: false }, // by id only
+  {
+    fieldId: "full-name",
+    editorFieldId: "e4",
+    stepId: "s",
+    stepTitle: "S",
+    display: "Full name",
+    isBoolean: false,
+    isNumeric: false,
+  },
+  {
+    fieldId: "q2",
+    editorFieldId: "e5",
+    stepId: "s",
+    stepTitle: "S",
+    display: "Your name",
+    isBoolean: false,
+    isNumeric: false,
+  }, // by label only
+  {
+    fieldId: "business-name",
+    editorFieldId: "e6",
+    stepId: "s",
+    stepTitle: "S",
+    display: "Business",
+    isBoolean: false,
+    isNumeric: false,
+  }, // by id only
   // neither
-  { fieldId: "phone", editorFieldId: "e7", stepId: "s", stepTitle: "S", display: "Phone", isBoolean: false, isNumeric: false },
+  {
+    fieldId: "phone",
+    editorFieldId: "e7",
+    stepId: "s",
+    stepTitle: "S",
+    display: "Phone",
+    isBoolean: false,
+    isNumeric: false,
+  },
 ];
 
 it("offers only email-like fields (by label or id) in the customer email path picker (#957)", async () => {
@@ -512,14 +614,40 @@ it("offers only email-like fields (by label or id) in the customer email path pi
   await addProcessor("payment");
   const picker = screen.getByLabelText(/customer email path/i);
   // email-like fields are offered, whether matched by label or id
-  expect(within(picker).getByRole("option", { name: "Email (s.email)" })).toHaveValue("s.email");
-  expect(within(picker).getByRole("option", { name: /Email address/ })).toHaveValue("s.q1");
-  expect(within(picker).getByRole("option", { name: "Contact (s.applicant-email)" })).toHaveValue("s.applicant-email");
+  expect(
+    within(await openSelect(picker)).getByRole("option", {
+      name: "Email (s.email)",
+    }),
+  ).toBeInTheDocument();
+  expect(
+    within(await openSelect(picker)).getByRole("option", {
+      name: /Email address/,
+    }),
+  ).toBeInTheDocument();
+  expect(
+    within(await openSelect(picker)).getByRole("option", {
+      name: "Contact (s.applicant-email)",
+    }),
+  ).toBeInTheDocument();
   // name/other fields are filtered out
-  expect(within(picker).queryByRole("option", { name: /Full name/ })).not.toBeInTheDocument();
-  expect(within(picker).queryByRole("option", { name: /Your name/ })).not.toBeInTheDocument();
-  expect(within(picker).queryByRole("option", { name: /Business/ })).not.toBeInTheDocument();
-  expect(within(picker).queryByRole("option", { name: /Phone/ })).not.toBeInTheDocument();
+  expect(
+    within(await openSelect(picker)).queryByRole("option", {
+      name: /Full name/,
+    }),
+  ).not.toBeInTheDocument();
+  expect(
+    within(await openSelect(picker)).queryByRole("option", {
+      name: /Your name/,
+    }),
+  ).not.toBeInTheDocument();
+  expect(
+    within(await openSelect(picker)).queryByRole("option", {
+      name: /Business/,
+    }),
+  ).not.toBeInTheDocument();
+  expect(
+    within(await openSelect(picker)).queryByRole("option", { name: /Phone/ }),
+  ).not.toBeInTheDocument();
 });
 
 it("offers only name-like fields (by label or id) in the customer name path picker (#957)", async () => {
@@ -527,31 +655,71 @@ it("offers only name-like fields (by label or id) in the customer name path pick
   await addProcessor("payment");
   const picker = screen.getByLabelText(/customer name path/i);
   // name-like fields are offered, whether matched by label or id
-  expect(within(picker).getByRole("option", { name: "Full name (s.full-name)" })).toHaveValue("s.full-name");
-  expect(within(picker).getByRole("option", { name: /Your name/ })).toHaveValue("s.q2");
-  expect(within(picker).getByRole("option", { name: "Business (s.business-name)" })).toHaveValue("s.business-name");
+  expect(
+    within(await openSelect(picker)).getByRole("option", {
+      name: "Full name (s.full-name)",
+    }),
+  ).toBeInTheDocument();
+  expect(
+    within(await openSelect(picker)).getByRole("option", { name: /Your name/ }),
+  ).toBeInTheDocument();
+  expect(
+    within(await openSelect(picker)).getByRole("option", {
+      name: "Business (s.business-name)",
+    }),
+  ).toBeInTheDocument();
   // email/other fields are filtered out
-  expect(within(picker).queryByRole("option", { name: /Email/ })).not.toBeInTheDocument();
-  expect(within(picker).queryByRole("option", { name: /Contact/ })).not.toBeInTheDocument();
-  expect(within(picker).queryByRole("option", { name: /Phone/ })).not.toBeInTheDocument();
+  expect(
+    within(await openSelect(picker)).queryByRole("option", { name: /Email/ }),
+  ).not.toBeInTheDocument();
+  expect(
+    within(await openSelect(picker)).queryByRole("option", { name: /Contact/ }),
+  ).not.toBeInTheDocument();
+  expect(
+    within(await openSelect(picker)).queryByRole("option", { name: /Phone/ }),
+  ).not.toBeInTheDocument();
 });
 
 it("filters the customer email/name pickers case-insensitively (#957)", async () => {
   const fields: ResolvedFieldId[] = [
-    { fieldId: "Email", editorFieldId: "e1", stepId: "s", stepTitle: "S", display: "MDA contact", isBoolean: false, isNumeric: false },
-    { fieldId: "applicant-NAME", editorFieldId: "e2", stepId: "s", stepTitle: "S", display: "Applicant", isBoolean: false, isNumeric: false },
+    {
+      fieldId: "Email",
+      editorFieldId: "e1",
+      stepId: "s",
+      stepTitle: "S",
+      display: "MDA contact",
+      isBoolean: false,
+      isNumeric: false,
+    },
+    {
+      fieldId: "applicant-NAME",
+      editorFieldId: "e2",
+      stepId: "s",
+      stepTitle: "S",
+      display: "Applicant",
+      isBoolean: false,
+      isNumeric: false,
+    },
   ];
   render(<Harness initial={emptyDraft} fields={fields} />);
   await addProcessor("payment");
   expect(
-    within(screen.getByLabelText(/customer email path/i)).getByRole("option", { name: /MDA contact/ }),
-  ).toHaveValue("s.Email");
+    within(
+      await openSelect(screen.getByLabelText(/customer email path/i)),
+    ).getByRole("option", {
+      name: /MDA contact/,
+    }),
+  ).toBeInTheDocument();
   expect(
-    within(screen.getByLabelText(/customer name path/i)).getByRole("option", { name: /Applicant/ }),
-  ).toHaveValue("s.applicant-NAME");
+    within(
+      await openSelect(screen.getByLabelText(/customer name path/i)),
+    ).getByRole("option", {
+      name: /Applicant/,
+    }),
+  ).toBeInTheDocument();
 });
 
-it("preserves a previously-saved out-of-list customer email path via the (current) fallback (#957)", () => {
+it("preserves a previously-saved out-of-list customer email path via the (current) fallback (#957)", async () => {
   const initial: RecipeDraft = {
     formId: "f",
     title: "T",
@@ -575,7 +743,11 @@ it("preserves a previously-saved out-of-list customer email path via the (curren
   };
   render(<Harness initial={initial} fields={PAYMENT_FILTER_FIELDS} />);
   const picker = screen.getByLabelText(/customer email path/i);
-  expect(within(picker).getByRole("option", { name: "s.phone (current)" })).toHaveValue("s.phone");
+  expect(
+    within(await openSelect(picker)).getByRole("option", {
+      name: "s.phone (current)",
+    }),
+  ).toBeInTheDocument();
 });
 
 // ── Age-band condition: date-of-birth-only field options (#959) ───────────────
@@ -584,16 +756,59 @@ it("preserves a previously-saved out-of-list customer email path via the (curren
 // field's value (subject = "field") stays unrestricted.
 
 const AGE_FILTER_FIELDS: ResolvedFieldId[] = [
-  { fieldId: "date-of-birth", editorFieldId: "e1", stepId: "s", stepTitle: "S", display: "Date of birth", isBoolean: false, isNumeric: false },
-  { fieldId: "dob", editorFieldId: "e2", stepId: "s", stepTitle: "S", display: "Applicant", isBoolean: false, isNumeric: false }, // by id (dob)
-  { fieldId: "q1", editorFieldId: "e3", stepId: "s", stepTitle: "S", display: "Birth date", isBoolean: false, isNumeric: false }, // by label (birth)
-  { fieldId: "email", editorFieldId: "e4", stepId: "s", stepTitle: "S", display: "Email", isBoolean: false, isNumeric: false },
-  { fieldId: "phone", editorFieldId: "e5", stepId: "s", stepTitle: "S", display: "Phone", isBoolean: false, isNumeric: false },
+  {
+    fieldId: "date-of-birth",
+    editorFieldId: "e1",
+    stepId: "s",
+    stepTitle: "S",
+    display: "Date of birth",
+    isBoolean: false,
+    isNumeric: false,
+  },
+  {
+    fieldId: "dob",
+    editorFieldId: "e2",
+    stepId: "s",
+    stepTitle: "S",
+    display: "Applicant",
+    isBoolean: false,
+    isNumeric: false,
+  }, // by id (dob)
+  {
+    fieldId: "q1",
+    editorFieldId: "e3",
+    stepId: "s",
+    stepTitle: "S",
+    display: "Birth date",
+    isBoolean: false,
+    isNumeric: false,
+  }, // by label (birth)
+  {
+    fieldId: "email",
+    editorFieldId: "e4",
+    stepId: "s",
+    stepTitle: "S",
+    display: "Email",
+    isBoolean: false,
+    isNumeric: false,
+  },
+  {
+    fieldId: "phone",
+    editorFieldId: "e5",
+    stepId: "s",
+    stepTitle: "S",
+    display: "Phone",
+    isBoolean: false,
+    isNumeric: false,
+  },
 ];
 
 async function addConditionalRule() {
   await addProcessor("payment");
-  await userEvent.selectOptions(screen.getByLabelText(/amount type/i), "conditional");
+  await chooseOption(
+    screen.getByLabelText(/amount type/i),
+    "Conditional amount",
+  );
   await userEvent.click(screen.getByRole("button", { name: /add rule/i }));
 }
 
@@ -602,44 +817,77 @@ it("offers all fields in the condition-field picker when comparing a field value
   await addConditionalRule();
   // subject defaults to "field" — every field is selectable
   const picker = screen.getByLabelText(/condition field/i);
-  expect(within(picker).getByRole("option", { name: /Email/ })).toBeInTheDocument();
-  expect(within(picker).getByRole("option", { name: /Phone/ })).toBeInTheDocument();
-  expect(within(picker).getByRole("option", { name: /Date of birth/ })).toBeInTheDocument();
+  expect(
+    within(await openSelect(picker)).getByRole("option", { name: /Email/ }),
+  ).toBeInTheDocument();
+  expect(
+    within(await openSelect(picker)).getByRole("option", { name: /Phone/ }),
+  ).toBeInTheDocument();
+  expect(
+    within(await openSelect(picker)).getByRole("option", {
+      name: /Date of birth/,
+    }),
+  ).toBeInTheDocument();
 });
 
 it("offers only date-of-birth fields in the condition-field picker when comparing age (#959)", async () => {
   render(<Harness initial={emptyDraft} fields={AGE_FILTER_FIELDS} />);
   await addConditionalRule();
-  await userEvent.selectOptions(screen.getByLabelText(/compare/i), "age");
+  await chooseOption(screen.getByLabelText(/compare/i), "Age of field");
   const picker = screen.getByLabelText(/condition field/i);
   // date-of-birth-like fields (by label or id) are offered
-  expect(within(picker).getByRole("option", { name: "Date of birth (s.date-of-birth)" })).toHaveValue("s.date-of-birth");
-  expect(within(picker).getByRole("option", { name: "Applicant (s.dob)" })).toHaveValue("s.dob");
-  expect(within(picker).getByRole("option", { name: /Birth date/ })).toHaveValue("s.q1");
+  expect(
+    within(await openSelect(picker)).getByRole("option", {
+      name: "Date of birth (s.date-of-birth)",
+    }),
+  ).toBeInTheDocument();
+  expect(
+    within(await openSelect(picker)).getByRole("option", {
+      name: "Applicant (s.dob)",
+    }),
+  ).toBeInTheDocument();
+  expect(
+    within(await openSelect(picker)).getByRole("option", {
+      name: /Birth date/,
+    }),
+  ).toBeInTheDocument();
   // non-DOB fields are filtered out
-  expect(within(picker).queryByRole("option", { name: /Email/ })).not.toBeInTheDocument();
-  expect(within(picker).queryByRole("option", { name: /Phone/ })).not.toBeInTheDocument();
+  expect(
+    within(await openSelect(picker)).queryByRole("option", { name: /Email/ }),
+  ).not.toBeInTheDocument();
+  expect(
+    within(await openSelect(picker)).queryByRole("option", { name: /Phone/ }),
+  ).not.toBeInTheDocument();
 });
 
 it("clears a stale non-DOB selection when a rule switches to comparing age (#959)", async () => {
   render(<Harness initial={emptyDraft} fields={AGE_FILTER_FIELDS} />);
   await addConditionalRule();
   // Pick a non-DOB field while comparing the field value...
-  await userEvent.selectOptions(screen.getByLabelText(/condition field/i), "s.email");
-  expect(screen.getByLabelText(/condition field/i)).toHaveValue("s.email");
+  await chooseOption(
+    screen.getByLabelText(/condition field/i),
+    new RegExp("\\(s\\.email\\)$"),
+  );
+  expect(screen.getByLabelText(/condition field/i)).toHaveTextContent(
+    "s.email",
+  );
   // ...then switch to age: the now-invalid path must be cleared, not kept alive
   // by the picker's (current) fallback.
-  await userEvent.selectOptions(screen.getByLabelText(/compare/i), "age");
-  expect(screen.getByLabelText(/condition field/i)).toHaveValue("");
+  await chooseOption(screen.getByLabelText(/compare/i), "Age of field");
+  expect(screen.getByLabelText(/condition field/i)).toHaveTextContent(
+    "— select field —",
+  );
 });
 
 it("keeps a DOB selection when a rule switches to comparing age (#959)", async () => {
   render(<Harness initial={emptyDraft} fields={AGE_FILTER_FIELDS} />);
   await addConditionalRule();
-  await userEvent.selectOptions(
+  await chooseOption(
     screen.getByLabelText(/condition field/i),
+    new RegExp("\\(s\\.date-of-birth\\)$"),
+  );
+  await chooseOption(screen.getByLabelText(/compare/i), "Age of field");
+  expect(screen.getByLabelText(/condition field/i)).toHaveTextContent(
     "s.date-of-birth",
   );
-  await userEvent.selectOptions(screen.getByLabelText(/compare/i), "age");
-  expect(screen.getByLabelText(/condition field/i)).toHaveValue("s.date-of-birth");
 });

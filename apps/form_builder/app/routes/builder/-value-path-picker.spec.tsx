@@ -1,9 +1,9 @@
+import { openSelect, chooseOption } from "../../test/select";
 /**
  * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import type { ResolvedFieldId } from "@govtech-bb/form-builder";
 import { ValuePathPicker } from "./-value-path-picker";
 
@@ -29,24 +29,30 @@ const FIELDS: ResolvedFieldId[] = [
   },
 ];
 
-it("renders an option per resolved field with a `stepId.fieldId` value", () => {
+it("renders an option per resolved field with a `stepId.fieldId` value", async () => {
   render(<ValuePathPicker value="" fields={FIELDS} onChange={() => {}} />);
-  expect(screen.getByRole("option", { name: /Email/ })).toHaveValue("contact.email");
-  expect(screen.getByRole("option", { name: /Full name/ })).toHaveValue(
-    "applicant.full-name",
-  );
+  await openSelect(screen.getByRole("combobox"));
+  expect(screen.getByRole("option", { name: /Email/ })).toBeInTheDocument();
+  expect(screen.getByRole("option", { name: /Full name/ })).toBeInTheDocument();
 });
 
 it("calls onChange with the selected `stepId.fieldId` path", async () => {
   const onChange = vi.fn();
   render(<ValuePathPicker value="" fields={FIELDS} onChange={onChange} />);
-  await userEvent.selectOptions(screen.getByRole("combobox"), "contact.email");
+  await chooseOption(
+    screen.getByRole("combobox"),
+    new RegExp("\\(contact\\.email\\)$"),
+  );
+  await openSelect(screen.getByRole("combobox"));
   expect(onChange).toHaveBeenCalledWith("contact.email");
 });
 
-it("keeps an existing value selectable even when it matches no current field", () => {
-  render(<ValuePathPicker value="legacy.path" fields={FIELDS} onChange={() => {}} />);
-  expect(screen.getByRole("combobox")).toHaveValue("legacy.path");
+it("keeps an existing value selectable even when it matches no current field", async () => {
+  render(
+    <ValuePathPicker value="legacy.path" fields={FIELDS} onChange={() => {}} />,
+  );
+  await openSelect(screen.getByRole("combobox"));
+  expect(screen.getByRole("combobox")).toHaveTextContent("legacy.path");
   expect(
     screen.getByRole("option", { name: /legacy\.path/ }),
   ).toBeInTheDocument();
@@ -59,20 +65,25 @@ it("renders extraOptions as `label (value)` and makes them selectable", async ()
       value=""
       fields={FIELDS}
       onChange={onChange}
-      extraOptions={[{ value: "contactDetails.email", label: "MDA contact email" }]}
+      extraOptions={[
+        { value: "contactDetails.email", label: "MDA contact email" },
+      ]}
     />,
   );
+  await openSelect(screen.getByRole("combobox"));
   expect(
-    screen.getByRole("option", { name: "MDA contact email (contactDetails.email)" }),
-  ).toHaveValue("contactDetails.email");
-  await userEvent.selectOptions(
+    screen.getByRole("option", {
+      name: "MDA contact email (contactDetails.email)",
+    }),
+  ).toBeInTheDocument();
+  await chooseOption(
     screen.getByRole("combobox"),
-    "contactDetails.email",
+    new RegExp("\\(contactDetails\\.email\\)$"),
   );
   expect(onChange).toHaveBeenCalledWith("contactDetails.email");
 });
 
-it("drops an extra option that collides with a real field path", () => {
+it("drops an extra option that collides with a real field path", async () => {
   const collidingFields: ResolvedFieldId[] = [
     {
       fieldId: "email",
@@ -89,37 +100,45 @@ it("drops an extra option that collides with a real field path", () => {
       value=""
       fields={collidingFields}
       onChange={() => {}}
-      extraOptions={[{ value: "contactDetails.email", label: "MDA contact email" }]}
+      extraOptions={[
+        { value: "contactDetails.email", label: "MDA contact email" },
+      ]}
     />,
   );
+  await openSelect(screen.getByRole("combobox"));
   // The field option wins; the extra option is dropped, so the value is unique.
   const options = screen.getAllByRole("option");
   expect(
-    options.filter((o) => (o as HTMLOptionElement).value === "contactDetails.email"),
+    options.filter((o) => o.textContent?.endsWith("(contactDetails.email)")),
   ).toHaveLength(1);
   expect(
     screen.queryByRole("option", { name: /MDA contact email/ }),
   ).not.toBeInTheDocument();
 });
 
-it("does not duplicate an extra option against the `(current)` fallback", () => {
+it("does not duplicate an extra option against the `(current)` fallback", async () => {
   render(
     <ValuePathPicker
       value="contactDetails.email"
       fields={FIELDS}
       onChange={() => {}}
-      extraOptions={[{ value: "contactDetails.email", label: "MDA contact email" }]}
+      extraOptions={[
+        { value: "contactDetails.email", label: "MDA contact email" },
+      ]}
     />,
   );
+  await openSelect(screen.getByRole("combobox"));
   // The extra option carries the value; no separate `(current)` option appears.
   expect(
-    screen.getByRole("option", { name: "MDA contact email (contactDetails.email)" }),
+    screen.getByRole("option", {
+      name: "MDA contact email (contactDetails.email)",
+    }),
   ).toBeInTheDocument();
   expect(
     screen.queryByRole("option", { name: /\(current\)/ }),
   ).not.toBeInTheDocument();
   const options = screen.getAllByRole("option");
   expect(
-    options.filter((o) => (o as HTMLOptionElement).value === "contactDetails.email"),
+    options.filter((o) => o.textContent?.endsWith("(contactDetails.email)")),
   ).toHaveLength(1);
 });

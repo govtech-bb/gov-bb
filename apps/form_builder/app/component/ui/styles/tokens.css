@@ -1,0 +1,577 @@
+/* GovTech color roles. Each light/dark pair is defined once below. */
+@theme inline {
+  --color-ui-canvas: var(--ui-canvas);
+  --color-ui-base: var(--ui-base);
+  --color-ui-control: var(--ui-control);
+  --color-ui-tint: var(--ui-tint);
+  --color-ui-control-hover: var(--ui-control-hover);
+  --color-ui-contrast: var(--ui-contrast);
+  --color-ui-default: var(--ui-default);
+  --color-ui-inverse: var(--ui-inverse);
+  --color-ui-subtle: var(--ui-subtle);
+  --color-ui-placeholder: var(--ui-placeholder);
+  --color-ui-inactive: var(--ui-inactive);
+  --color-ui-hairline: var(--ui-hairline);
+  --color-ui-line: var(--ui-line);
+  --color-ui-brand: var(--ui-brand);
+  --color-ui-brand-hover: var(--ui-brand-hover);
+  --color-ui-focus: var(--ui-focus);
+  --color-ui-link: var(--ui-link);
+  --color-ui-info: var(--ui-info);
+  --color-ui-info-tint: var(--ui-info-tint);
+  --color-ui-success: var(--ui-success);
+  --color-ui-success-tint: var(--ui-success-tint);
+  --color-ui-warning: var(--ui-warning);
+  --color-ui-warning-tint: var(--ui-warning-tint);
+  --color-ui-danger: var(--ui-danger);
+  --color-ui-danger-tint: var(--ui-danger-tint);
+  --color-ui-neutral: var(--ui-neutral);
+  --color-ui-purple: var(--ui-purple);
+  --color-ui-teal: var(--ui-teal);
+  --color-ui-teal-tint: var(--ui-teal-tint);
+  --color-ui-shadow-edge: var(--ui-shadow-edge);
+  --color-ui-shadow-drop: var(--ui-shadow-drop);
+  --color-ui-backdrop: var(--ui-backdrop);
+  --color-ui-strong: var(--ui-strong);
+  --color-ui-on-status: var(--ui-on-status);
+  --color-ui-on-warning: var(--ui-on-warning);
+  --color-ui-elevated: var(--ui-elevated);
+  --color-ui-recessed: var(--ui-recessed);
+  --color-ui-scrollbar: var(--ui-scrollbar);
+  --color-ui-scrollbar-hover: var(--ui-scrollbar-hover);
+  --color-ui-surface-1: var(--ui-surface-1);
+  --color-ui-surface-2: var(--ui-surface-2);
+  --color-ui-surface-3: var(--ui-surface-3);
+  --color-ui-surface-4: var(--ui-surface-4);
+  --color-ui-surface-5: var(--ui-surface-5);
+  --color-ui-surface-6: var(--ui-surface-6);
+  --color-ui-surface-7: var(--ui-surface-7);
+  --color-ui-surface-8: var(--ui-surface-8);
+  --text-color-ui-info: var(--ui-info-text);
+  --text-color-ui-success: var(--ui-success-text);
+  --text-color-ui-warning: var(--ui-warning-text);
+  --text-color-ui-danger: var(--ui-danger-text);
+  --text-color-ui-teal: var(--ui-teal-text);
+  --shadow-ui-surface-1: var(--ui-shadow-1);
+  --shadow-ui-surface-2: var(--ui-shadow-2);
+  --shadow-ui-surface-3: var(--ui-shadow-3);
+  --shadow-ui-surface-4: var(--ui-shadow-4);
+  --shadow-ui-surface-5: var(--ui-shadow-5);
+  --shadow-ui-surface-6: var(--ui-shadow-6);
+  --shadow-ui-surface-7: var(--ui-shadow-7);
+  --shadow-ui-surface-8: var(--ui-shadow-8);
+  --font-sans:
+    "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.5;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.5;
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.5;
+  --text-lg: 1rem;
+  --text-lg--line-height: 1.5;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --default-transition-duration: 120ms;
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --ui-light-mode: 100%;
+    --ui-canvas-light: oklch(0.97558 0.00264 106.45);
+    --ui-canvas-dark: oklch(0.22645 0 0);
+    --ui-base-light: oklch(1 0 0);
+    --ui-base-dark: oklch(0.25615 0 0);
+    --ui-control-light: oklch(1 0 0);
+    --ui-control-dark: oklch(0.24353 0 0);
+    --ui-tint-light: oklch(0.95458 0.00266 106.45);
+    --ui-tint-dark: oklch(0.28502 0 0);
+    --ui-control-hover-light: oklch(0.92191 0 0);
+    --ui-control-hover-dark: oklch(0.32109 0 0);
+    --ui-contrast-light: oklch(0.22645 0 0);
+    --ui-contrast-dark: oklch(0.92191 0 0);
+    --ui-default-light: oklch(0.22645 0 0);
+    --ui-default-dark: oklch(0.92191 0 0);
+    --ui-inverse-light: oklch(1 0 0);
+    --ui-inverse-dark: oklch(0.22645 0 0);
+    --ui-subtle-light: oklch(0.48906 0 0);
+    --ui-subtle-dark: oklch(0.8078 0 0);
+    --ui-placeholder-light: oklch(0.55553 0 0);
+    --ui-placeholder-dark: oklch(0.68949 0 0);
+    --ui-inactive-light: oklch(0.63343 0 0);
+    --ui-inactive-dark: oklch(0.56926 0 0);
+    --ui-hairline-light: oklch(0.90557 0.00538 106.51);
+    --ui-hairline-dark: oklch(0.36768 0 0);
+    --ui-line-light: oklch(0.63251 0.00441 106.53);
+    --ui-line-dark: oklch(0.68949 0 0);
+    --ui-brand-light: oklch(0.22645 0 0);
+    --ui-brand-dark: oklch(0.92191 0 0);
+    --ui-brand-hover-light: oklch(0.34846 0 0);
+    --ui-brand-hover-dark: oklch(0.86994 0 0);
+    --ui-focus-light: oklch(0.4882 0.21717 264.38);
+    --ui-focus-dark: oklch(0.80907 0.0956 251.81);
+    --ui-link-light: oklch(0.4882 0.21717 264.38);
+    --ui-link-dark: oklch(0.80907 0.0956 251.81);
+    --ui-info-light: oklch(0.4882 0.21717 264.38);
+    --ui-info-dark: oklch(0.54615 0.21521 262.88);
+    --ui-info-text-light: oklch(0.42445 0.18087 265.64);
+    --ui-info-text-dark: oklch(0.88234 0.05706 254.13);
+    --ui-info-tint-light: oklch(0.97048 0.01418 254.6);
+    --ui-info-tint-dark: oklch(0.29742 0.05689 254.46);
+    --ui-success-light: oklch(0.41864 0.09945 148.57);
+    --ui-success-dark: oklch(0.47793 0.11436 148.49);
+    --ui-success-text-light: oklch(0.41864 0.09945 148.57);
+    --ui-success-text-dark: oklch(0.83182 0.11129 151.92);
+    --ui-success-tint-light: oklch(0.93041 0.0392 151.09);
+    --ui-success-tint-dark: oklch(0.3094 0.06416 149.96);
+    --ui-warning: oklch(0.86236 0.10529 83.46);
+    --ui-warning-text-light: oklch(0.4604 0.09903 71.19);
+    --ui-warning-text-dark: oklch(0.84619 0.11148 82.94);
+    --ui-warning-tint-light: oklch(0.93888 0.05227 81.17);
+    --ui-warning-tint-dark: oklch(0.33729 0.06457 76.27);
+    --ui-danger: oklch(0.50128 0.17832 28.7);
+    --ui-danger-text-light: oklch(0.42005 0.14731 28.14);
+    --ui-danger-text-dark: oklch(0.83449 0.06771 22.01);
+    --ui-danger-tint-light: oklch(0.95875 0.01738 17.46);
+    --ui-danger-tint-dark: oklch(0.25889 0.05435 24.99);
+    --ui-neutral: oklch(0.48906 0 0);
+    --ui-purple: oklch(0.49552 0.23687 301.92);
+    --ui-teal: oklch(0.51094 0.08606 186.39);
+    --ui-teal-text-light: oklch(0.51094 0.08606 186.39);
+    --ui-teal-text-dark: oklch(0.90996 0.0927 180.43);
+    --ui-teal-tint-light: oklch(0.98358 0.0142 180.72);
+    --ui-teal-tint-dark: oklch(0.38606 0.05902 188.42);
+    --ui-shadow-edge-light: oklch(0 0 0 / 0.1);
+    --ui-shadow-edge-dark: oklch(1 0 0 / 0.08);
+    --ui-shadow-drop-light: oklch(0 0 0 / 0.08);
+    --ui-shadow-drop-dark: oklch(0 0 0 / 0.3);
+    --ui-backdrop-light: oklch(0 0 0 / 0.4);
+    --ui-backdrop-dark: oklch(0 0 0 / 0.8);
+    --ui-strong-light: oklch(0.1822 0 0);
+    --ui-strong-dark: oklch(0.9851 0 0);
+    --ui-on-status: oklch(1 0 0);
+    --ui-on-warning: oklch(0.22645 0 0);
+    --ui-elevated-light: oklch(1 0 0);
+    --ui-elevated-dark: oklch(0.28502 0 0);
+    --ui-recessed-light: oklch(0.95458 0.00266 106.45);
+    --ui-recessed-dark: oklch(0.24353 0 0);
+    --ui-scrollbar-light: oklch(0.62675 0 0);
+    --ui-scrollbar-dark: oklch(0.68949 0 0);
+    --ui-scrollbar-hover-light: oklch(0.48906 0 0);
+    --ui-scrollbar-hover-dark: oklch(0.8078 0 0);
+    --ui-surface-1-light: oklch(0.97558 0.00264 106.45);
+    --ui-surface-1-dark: oklch(0.22645 0 0);
+    --ui-surface-2-light: oklch(0.99107 0 0);
+    --ui-surface-2-dark: oklch(0.25615 0 0);
+    --ui-surface-3-light: oklch(1 0 0);
+    --ui-surface-3-dark: oklch(0.28502 0 0);
+    --ui-surface-4-light: oklch(1 0 0);
+    --ui-surface-4-dark: oklch(0.31317 0 0);
+    --ui-surface-5-light: oklch(1 0 0);
+    --ui-surface-5-dark: oklch(0.3407 0 0);
+    --ui-surface-6-light: oklch(1 0 0);
+    --ui-surface-6-dark: oklch(0.36768 0 0);
+    --ui-surface-7-light: oklch(1 0 0);
+    --ui-surface-7-dark: oklch(0.39418 0 0);
+    --ui-surface-8-light: oklch(1 0 0);
+    --ui-surface-8-dark: oklch(0.42024 0 0);
+  }
+  [data-mode="light"] {
+    color-scheme: light;
+    --ui-light-mode: 100%;
+  }
+  [data-mode="dark"] {
+    color-scheme: dark;
+    --ui-light-mode: 0%;
+  }
+
+  :root,
+  [data-mode],
+  [data-theme] {
+    --ui-canvas: color-mix(
+      in oklch,
+      var(--ui-canvas-light) var(--ui-light-mode),
+      var(--ui-canvas-dark)
+    );
+    --ui-base: color-mix(
+      in oklch,
+      var(--ui-base-light) var(--ui-light-mode),
+      var(--ui-base-dark)
+    );
+    --ui-control: color-mix(
+      in oklch,
+      var(--ui-control-light) var(--ui-light-mode),
+      var(--ui-control-dark)
+    );
+    --ui-tint: color-mix(
+      in oklch,
+      var(--ui-tint-light) var(--ui-light-mode),
+      var(--ui-tint-dark)
+    );
+    --ui-control-hover: color-mix(
+      in oklch,
+      var(--ui-control-hover-light) var(--ui-light-mode),
+      var(--ui-control-hover-dark)
+    );
+    --ui-contrast: color-mix(
+      in oklch,
+      var(--ui-contrast-light) var(--ui-light-mode),
+      var(--ui-contrast-dark)
+    );
+    --ui-default: color-mix(
+      in oklch,
+      var(--ui-default-light) var(--ui-light-mode),
+      var(--ui-default-dark)
+    );
+    --ui-inverse: color-mix(
+      in oklch,
+      var(--ui-inverse-light) var(--ui-light-mode),
+      var(--ui-inverse-dark)
+    );
+    --ui-subtle: color-mix(
+      in oklch,
+      var(--ui-subtle-light) var(--ui-light-mode),
+      var(--ui-subtle-dark)
+    );
+    --ui-placeholder: color-mix(
+      in oklch,
+      var(--ui-placeholder-light) var(--ui-light-mode),
+      var(--ui-placeholder-dark)
+    );
+    --ui-inactive: color-mix(
+      in oklch,
+      var(--ui-inactive-light) var(--ui-light-mode),
+      var(--ui-inactive-dark)
+    );
+    --ui-hairline: color-mix(
+      in oklch,
+      var(--ui-hairline-light) var(--ui-light-mode),
+      var(--ui-hairline-dark)
+    );
+    --ui-line: color-mix(
+      in oklch,
+      var(--ui-line-light) var(--ui-light-mode),
+      var(--ui-line-dark)
+    );
+    --ui-brand: color-mix(
+      in oklch,
+      var(--ui-brand-light) var(--ui-light-mode),
+      var(--ui-brand-dark)
+    );
+    --ui-brand-hover: color-mix(
+      in oklch,
+      var(--ui-brand-hover-light) var(--ui-light-mode),
+      var(--ui-brand-hover-dark)
+    );
+    --ui-focus: color-mix(
+      in oklch,
+      var(--ui-focus-light) var(--ui-light-mode),
+      var(--ui-focus-dark)
+    );
+    --ui-link: color-mix(
+      in oklch,
+      var(--ui-link-light) var(--ui-light-mode),
+      var(--ui-link-dark)
+    );
+    --ui-info: color-mix(
+      in oklch,
+      var(--ui-info-light) var(--ui-light-mode),
+      var(--ui-info-dark)
+    );
+    --ui-info-text: color-mix(
+      in oklch,
+      var(--ui-info-text-light) var(--ui-light-mode),
+      var(--ui-info-text-dark)
+    );
+    --ui-info-tint: color-mix(
+      in oklch,
+      var(--ui-info-tint-light) var(--ui-light-mode),
+      var(--ui-info-tint-dark)
+    );
+    --ui-success: color-mix(
+      in oklch,
+      var(--ui-success-light) var(--ui-light-mode),
+      var(--ui-success-dark)
+    );
+    --ui-success-text: color-mix(
+      in oklch,
+      var(--ui-success-text-light) var(--ui-light-mode),
+      var(--ui-success-text-dark)
+    );
+    --ui-success-tint: color-mix(
+      in oklch,
+      var(--ui-success-tint-light) var(--ui-light-mode),
+      var(--ui-success-tint-dark)
+    );
+    --ui-warning-text: color-mix(
+      in oklch,
+      var(--ui-warning-text-light) var(--ui-light-mode),
+      var(--ui-warning-text-dark)
+    );
+    --ui-warning-tint: color-mix(
+      in oklch,
+      var(--ui-warning-tint-light) var(--ui-light-mode),
+      var(--ui-warning-tint-dark)
+    );
+    --ui-danger-text: color-mix(
+      in oklch,
+      var(--ui-danger-text-light) var(--ui-light-mode),
+      var(--ui-danger-text-dark)
+    );
+    --ui-danger-tint: color-mix(
+      in oklch,
+      var(--ui-danger-tint-light) var(--ui-light-mode),
+      var(--ui-danger-tint-dark)
+    );
+    --ui-teal-text: color-mix(
+      in oklch,
+      var(--ui-teal-text-light) var(--ui-light-mode),
+      var(--ui-teal-text-dark)
+    );
+    --ui-teal-tint: color-mix(
+      in oklch,
+      var(--ui-teal-tint-light) var(--ui-light-mode),
+      var(--ui-teal-tint-dark)
+    );
+    --ui-shadow-edge: color-mix(
+      in oklch,
+      var(--ui-shadow-edge-light) var(--ui-light-mode),
+      var(--ui-shadow-edge-dark)
+    );
+    --ui-shadow-drop: color-mix(
+      in oklch,
+      var(--ui-shadow-drop-light) var(--ui-light-mode),
+      var(--ui-shadow-drop-dark)
+    );
+    --ui-backdrop: color-mix(
+      in oklch,
+      var(--ui-backdrop-light) var(--ui-light-mode),
+      var(--ui-backdrop-dark)
+    );
+    --ui-strong: color-mix(
+      in oklch,
+      var(--ui-strong-light) var(--ui-light-mode),
+      var(--ui-strong-dark)
+    );
+    --ui-elevated: color-mix(
+      in oklch,
+      var(--ui-elevated-light) var(--ui-light-mode),
+      var(--ui-elevated-dark)
+    );
+    --ui-recessed: color-mix(
+      in oklch,
+      var(--ui-recessed-light) var(--ui-light-mode),
+      var(--ui-recessed-dark)
+    );
+    --ui-scrollbar: color-mix(
+      in oklch,
+      var(--ui-scrollbar-light) var(--ui-light-mode),
+      var(--ui-scrollbar-dark)
+    );
+    --ui-scrollbar-hover: color-mix(
+      in oklch,
+      var(--ui-scrollbar-hover-light) var(--ui-light-mode),
+      var(--ui-scrollbar-hover-dark)
+    );
+    --ui-surface-1: color-mix(
+      in oklch,
+      var(--ui-surface-1-light) var(--ui-light-mode),
+      var(--ui-surface-1-dark)
+    );
+    --ui-surface-2: color-mix(
+      in oklch,
+      var(--ui-surface-2-light) var(--ui-light-mode),
+      var(--ui-surface-2-dark)
+    );
+    --ui-surface-3: color-mix(
+      in oklch,
+      var(--ui-surface-3-light) var(--ui-light-mode),
+      var(--ui-surface-3-dark)
+    );
+    --ui-surface-4: color-mix(
+      in oklch,
+      var(--ui-surface-4-light) var(--ui-light-mode),
+      var(--ui-surface-4-dark)
+    );
+    --ui-surface-5: color-mix(
+      in oklch,
+      var(--ui-surface-5-light) var(--ui-light-mode),
+      var(--ui-surface-5-dark)
+    );
+    --ui-surface-6: color-mix(
+      in oklch,
+      var(--ui-surface-6-light) var(--ui-light-mode),
+      var(--ui-surface-6-dark)
+    );
+    --ui-surface-7: color-mix(
+      in oklch,
+      var(--ui-surface-7-light) var(--ui-light-mode),
+      var(--ui-surface-7-dark)
+    );
+    --ui-surface-8: color-mix(
+      in oklch,
+      var(--ui-surface-8-light) var(--ui-light-mode),
+      var(--ui-surface-8-dark)
+    );
+  }
+
+  @supports (color: light-dark(white, black)) {
+    :root,
+    [data-mode],
+    [data-theme] {
+      --ui-canvas: light-dark(var(--ui-canvas-light), var(--ui-canvas-dark));
+      --ui-base: light-dark(var(--ui-base-light), var(--ui-base-dark));
+      --ui-control: light-dark(var(--ui-control-light), var(--ui-control-dark));
+      --ui-tint: light-dark(var(--ui-tint-light), var(--ui-tint-dark));
+      --ui-control-hover: light-dark(
+        var(--ui-control-hover-light),
+        var(--ui-control-hover-dark)
+      );
+      --ui-contrast: light-dark(
+        var(--ui-contrast-light),
+        var(--ui-contrast-dark)
+      );
+      --ui-default: light-dark(var(--ui-default-light), var(--ui-default-dark));
+      --ui-inverse: light-dark(var(--ui-inverse-light), var(--ui-inverse-dark));
+      --ui-subtle: light-dark(var(--ui-subtle-light), var(--ui-subtle-dark));
+      --ui-placeholder: light-dark(
+        var(--ui-placeholder-light),
+        var(--ui-placeholder-dark)
+      );
+      --ui-inactive: light-dark(
+        var(--ui-inactive-light),
+        var(--ui-inactive-dark)
+      );
+      --ui-hairline: light-dark(
+        var(--ui-hairline-light),
+        var(--ui-hairline-dark)
+      );
+      --ui-line: light-dark(var(--ui-line-light), var(--ui-line-dark));
+      --ui-brand: light-dark(var(--ui-brand-light), var(--ui-brand-dark));
+      --ui-brand-hover: light-dark(
+        var(--ui-brand-hover-light),
+        var(--ui-brand-hover-dark)
+      );
+      --ui-focus: light-dark(var(--ui-focus-light), var(--ui-focus-dark));
+      --ui-link: light-dark(var(--ui-link-light), var(--ui-link-dark));
+      --ui-info: light-dark(var(--ui-info-light), var(--ui-info-dark));
+      --ui-info-text: light-dark(
+        var(--ui-info-text-light),
+        var(--ui-info-text-dark)
+      );
+      --ui-info-tint: light-dark(
+        var(--ui-info-tint-light),
+        var(--ui-info-tint-dark)
+      );
+      --ui-success: light-dark(var(--ui-success-light), var(--ui-success-dark));
+      --ui-success-text: light-dark(
+        var(--ui-success-text-light),
+        var(--ui-success-text-dark)
+      );
+      --ui-success-tint: light-dark(
+        var(--ui-success-tint-light),
+        var(--ui-success-tint-dark)
+      );
+      --ui-warning-text: light-dark(
+        var(--ui-warning-text-light),
+        var(--ui-warning-text-dark)
+      );
+      --ui-warning-tint: light-dark(
+        var(--ui-warning-tint-light),
+        var(--ui-warning-tint-dark)
+      );
+      --ui-danger-text: light-dark(
+        var(--ui-danger-text-light),
+        var(--ui-danger-text-dark)
+      );
+      --ui-danger-tint: light-dark(
+        var(--ui-danger-tint-light),
+        var(--ui-danger-tint-dark)
+      );
+      --ui-teal-text: light-dark(
+        var(--ui-teal-text-light),
+        var(--ui-teal-text-dark)
+      );
+      --ui-teal-tint: light-dark(
+        var(--ui-teal-tint-light),
+        var(--ui-teal-tint-dark)
+      );
+      --ui-shadow-edge: light-dark(
+        var(--ui-shadow-edge-light),
+        var(--ui-shadow-edge-dark)
+      );
+      --ui-shadow-drop: light-dark(
+        var(--ui-shadow-drop-light),
+        var(--ui-shadow-drop-dark)
+      );
+      --ui-backdrop: light-dark(
+        var(--ui-backdrop-light),
+        var(--ui-backdrop-dark)
+      );
+      --ui-strong: light-dark(var(--ui-strong-light), var(--ui-strong-dark));
+      --ui-elevated: light-dark(
+        var(--ui-elevated-light),
+        var(--ui-elevated-dark)
+      );
+      --ui-recessed: light-dark(
+        var(--ui-recessed-light),
+        var(--ui-recessed-dark)
+      );
+      --ui-scrollbar: light-dark(
+        var(--ui-scrollbar-light),
+        var(--ui-scrollbar-dark)
+      );
+      --ui-scrollbar-hover: light-dark(
+        var(--ui-scrollbar-hover-light),
+        var(--ui-scrollbar-hover-dark)
+      );
+      --ui-surface-1: light-dark(
+        var(--ui-surface-1-light),
+        var(--ui-surface-1-dark)
+      );
+      --ui-surface-2: light-dark(
+        var(--ui-surface-2-light),
+        var(--ui-surface-2-dark)
+      );
+      --ui-surface-3: light-dark(
+        var(--ui-surface-3-light),
+        var(--ui-surface-3-dark)
+      );
+      --ui-surface-4: light-dark(
+        var(--ui-surface-4-light),
+        var(--ui-surface-4-dark)
+      );
+      --ui-surface-5: light-dark(
+        var(--ui-surface-5-light),
+        var(--ui-surface-5-dark)
+      );
+      --ui-surface-6: light-dark(
+        var(--ui-surface-6-light),
+        var(--ui-surface-6-dark)
+      );
+      --ui-surface-7: light-dark(
+        var(--ui-surface-7-light),
+        var(--ui-surface-7-dark)
+      );
+      --ui-surface-8: light-dark(
+        var(--ui-surface-8-light),
+        var(--ui-surface-8-dark)
+      );
+    }
+  }
+
+  :root,
+  [data-mode],
+  [data-theme] {
+    --ui-shadow-1: 0 0 0 1px var(--ui-shadow-edge);
+    --ui-shadow-2: var(--ui-shadow-1), 0 1px 1px -0.5px var(--ui-shadow-drop);
+    --ui-shadow-3: var(--ui-shadow-2), 0 3px 3px -1.5px var(--ui-shadow-drop);
+    --ui-shadow-4: var(--ui-shadow-3), 0 6px 6px -3px var(--ui-shadow-drop);
+    --ui-shadow-5: var(--ui-shadow-4), 0 12px 12px -6px var(--ui-shadow-drop);
+    --ui-shadow-6: var(--ui-shadow-5), 0 24px 24px -12px var(--ui-shadow-drop);
+    --ui-shadow-7: var(--ui-shadow-6), 0 48px 48px -24px var(--ui-shadow-drop);
+    --ui-shadow-8: var(--ui-shadow-7), 0 96px 96px -48px var(--ui-shadow-drop);
+  }
+}

@@ -1,3 +1,4 @@
+import { useConfirmation } from "../../component/ui/dialog/confirmation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadLandingContentPage } from "./-server";
 import {
@@ -116,6 +117,7 @@ export function useEditorState(
   contentPages: ContentPageSummary[] | null,
   reviewComplete = true,
 ) {
+  const confirm = useConfirmation();
   const [state, setState] = useState<FormState>(EMPTY);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<DeploySuccess | null>(null);
@@ -207,9 +209,14 @@ export function useEditorState(
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [dirty]);
 
-  const confirmDiscard = () =>
+  const confirmDiscard = async () =>
     !dirty ||
-    window.confirm("You have unsaved changes — leave and discard them?");
+    (await confirm({
+      title: "Discard unsaved changes?",
+      description: "You have unsaved changes — leave and discard them?",
+      confirmLabel: "Discard changes",
+      destructive: true,
+    }));
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setState((cur) => ({ ...cur, [key]: value }));

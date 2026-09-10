@@ -1,7 +1,8 @@
+import { respondToConfirmation } from "../../test/ui";
 /**
  * @vitest-environment jsdom
  */
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook } from "../../test/ui";
 import { useDraftLifecycle } from "./-use-draft-lifecycle";
 import { EMPTY_DRAFT } from "./-recipe-reducer";
 import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
@@ -148,31 +149,30 @@ describe("useDraftLifecycle", () => {
   });
 
   describe("handleDiscard", () => {
-    it("does nothing when the confirm is declined", () => {
-      vi.spyOn(window, "confirm").mockReturnValue(false);
+    it("does nothing when the confirm is declined", async () => {
       const { result, dispatch } = render({ savedDraft: null });
 
       act(() => {
-        result.current.handleDiscard();
+        void result.current.handleDiscard();
       });
+      await respondToConfirmation("Cancel");
 
       expect(dispatch).not.toHaveBeenCalled();
     });
 
-    it("takes the clear-form path (delegates to New) when there's no saved baseline", () => {
-      vi.spyOn(window, "confirm").mockReturnValue(true);
+    it("takes the clear-form path (delegates to New) when there's no saved baseline", async () => {
       const { result, dispatch, setSavedDraft } = render({ savedDraft: null });
 
       act(() => {
-        result.current.handleDiscard();
+        void result.current.handleDiscard();
       });
+      await respondToConfirmation("Discard changes");
 
       expect(dispatch).toHaveBeenCalledWith({ type: "RESET" });
       expect(setSavedDraft).toHaveBeenCalledWith(null);
     });
 
-    it("reverts to the saved baseline (not RESET) when a saved draft exists", () => {
-      vi.spyOn(window, "confirm").mockReturnValue(true);
+    it("reverts to the saved baseline (not RESET) when a saved draft exists", async () => {
       const savedDraft: RecipeDraft = {
         ...EMPTY_DRAFT,
         formId: "passport",
@@ -181,8 +181,9 @@ describe("useDraftLifecycle", () => {
       const { result, dispatch } = render({ savedDraft });
 
       act(() => {
-        result.current.handleDiscard();
+        void result.current.handleDiscard();
       });
+      await respondToConfirmation("Discard changes");
 
       expect(dispatch).toHaveBeenCalledWith({
         type: "LOAD_DRAFT",

@@ -1,0 +1,194 @@
+@layer components {
+  .ui-scrollbar {
+    position: absolute;
+    z-index: 20;
+    display: flex;
+    touch-action: none;
+  }
+  .ui-scrollbar[data-orientation="vertical"] {
+    inset-block: 0;
+    inset-inline-end: 0;
+    width: 12px;
+    padding-block: 4px;
+  }
+  .ui-scrollbar[data-orientation="horizontal"] {
+    inset-inline: 0;
+    inset-block-end: 0;
+    height: 12px;
+    padding-inline: 4px;
+    flex-direction: column;
+  }
+  .ui-scroll-thumb {
+    position: relative;
+    border-radius: 999px;
+    background: var(--ui-scrollbar);
+    transition:
+      background-color var(--ui-fast),
+      width var(--ui-fast),
+      height var(--ui-fast);
+  }
+  .ui-scrollbar[data-orientation="vertical"] .ui-scroll-thumb {
+    margin-inline: auto;
+    width: 4px;
+    height: var(--scroll-area-thumb-height);
+  }
+  .ui-scrollbar[data-orientation="horizontal"] .ui-scroll-thumb {
+    margin-block: auto;
+    height: 4px;
+    width: var(--scroll-area-thumb-width);
+  }
+  .ui-scroll-corner {
+    width: 12px;
+    height: 12px;
+  }
+  @media (hover: hover) {
+    .ui-scrollbar:hover .ui-scroll-thumb {
+      background: var(--ui-scrollbar-hover);
+    }
+    .ui-scrollbar[data-orientation="vertical"]:hover .ui-scroll-thumb {
+      width: 6px;
+    }
+    .ui-scrollbar[data-orientation="horizontal"]:hover .ui-scroll-thumb {
+      height: 6px;
+    }
+  }
+  .ui-scroll-thumb:active {
+    background: var(--ui-scrollbar-hover);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ui-scroll-thumb {
+      transition: none;
+    }
+  }
+  @media (forced-colors: active) {
+    .ui-scroll-thumb {
+      background: ButtonText;
+    }
+  }
+}
+
+/* Base UI already measures overflow distances; fades need no second observer. */
+@layer utilities {
+  @supports (mask-image: linear-gradient(black, transparent)) {
+    .scroll-fade,
+    .scroll-fade-x {
+      --scroll-fade-size: 24px;
+    }
+    .scroll-fade {
+      scroll-padding-block: var(--scroll-fade-size);
+      mask-image: linear-gradient(
+        to bottom,
+        transparent,
+        black
+          min(var(--scroll-fade-size), var(--scroll-area-overflow-y-start, 0px)),
+        black
+          calc(
+            100% -
+              min(
+                var(--scroll-fade-size),
+                var(--scroll-area-overflow-y-end, 0px)
+              )
+          ),
+        transparent
+      );
+    }
+    .scroll-fade-x {
+      scroll-padding-inline: var(--scroll-fade-size);
+      mask-image: linear-gradient(
+        var(--ui-fade-direction, to right),
+        transparent,
+        black
+          min(var(--scroll-fade-size), var(--scroll-area-overflow-x-start, 0px)),
+        black
+          calc(
+            100% -
+              min(
+                var(--scroll-fade-size),
+                var(--scroll-area-overflow-x-end, 0px)
+              )
+          ),
+        transparent
+      );
+    }
+    @supports (mask-composite: intersect) {
+      .scroll-fade.scroll-fade-x {
+        mask-image:
+          linear-gradient(
+            to bottom,
+            transparent,
+            black
+              min(
+                var(--scroll-fade-size),
+                var(--scroll-area-overflow-y-start, 0px)
+              ),
+            black
+              calc(
+                100% -
+                  min(
+                    var(--scroll-fade-size),
+                    var(--scroll-area-overflow-y-end, 0px)
+                  )
+              ),
+            transparent
+          ),
+          linear-gradient(
+            var(--ui-fade-direction, to right),
+            transparent,
+            black
+              min(
+                var(--scroll-fade-size),
+                var(--scroll-area-overflow-x-start, 0px)
+              ),
+            black
+              calc(
+                100% -
+                  min(
+                    var(--scroll-fade-size),
+                    var(--scroll-area-overflow-x-end, 0px)
+                  )
+              ),
+            transparent
+          );
+        mask-composite: intersect;
+      }
+    }
+    @supports selector(:dir(rtl)) {
+      .scroll-fade-x:dir(rtl) {
+        --ui-fade-direction: to left;
+      }
+    }
+    @media (forced-colors: active) {
+      .scroll-fade,
+      .scroll-fade-x {
+        mask-image: none;
+      }
+    }
+  }
+  @supports (scrollbar-width: thin) and (scrollbar-color: auto) {
+    .ui-scroll-native {
+      scrollbar-width: thin;
+      scrollbar-color: var(--ui-scrollbar) transparent;
+    }
+  }
+}
+
+.ui-scroll-area .ui-scroll-viewport:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Override Base UI's native-scrollbar hiding rule on touch without remounting content. */
+@media (pointer: coarse) {
+  .ui-scroll-area .ui-scrollbar,
+  .ui-scroll-area .ui-scroll-corner {
+    display: none;
+  }
+  @supports (scrollbar-width: auto) {
+    .ui-scroll-area .ui-scroll-viewport,
+    .ui-scroll-native {
+      scrollbar-width: auto;
+    }
+  }
+  .ui-scroll-area .ui-scroll-viewport::-webkit-scrollbar {
+    display: initial;
+  }
+}

@@ -73,7 +73,7 @@ describe("PublishModal deploy button", () => {
 // success copy must say which happened.
 describe("PublishModal success copy (#2390)", () => {
   it("says a PR was opened when updatedExistingPR is false", () => {
-    const { container } = renderModal({
+    const { baseElement: container } = renderModal({
       baseBranch: "dev",
       publishSuccess: {
         prUrl: "https://example.test/pr/7",
@@ -88,7 +88,7 @@ describe("PublishModal success copy (#2390)", () => {
   });
 
   it("says the recipe was pushed onto the already-open PR when updatedExistingPR is true, and does not claim a new PR was opened", () => {
-    const { container } = renderModal({
+    const { baseElement: container } = renderModal({
       baseBranch: "dev",
       publishSuccess: {
         prUrl: "https://example.test/pr/7",

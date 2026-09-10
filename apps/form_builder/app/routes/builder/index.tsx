@@ -1,3 +1,4 @@
+import { useConfirmation } from "../../component/ui/dialog/confirmation";
 import "../../styles/builder.global.css";
 import { createFileRoute } from "@tanstack/react-router";
 import { useReducer, useState, useMemo, useEffect } from "react";
@@ -18,10 +19,11 @@ import type {
 import { getRecipeVisibility } from "@govtech-bb/form-types";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
 
-import { Moon02Icon, Sun03Icon } from "hugeicons-react";
+import { MoonIcon, SunIcon, SparkleIcon } from "@phosphor-icons/react";
+import { Button } from "../../component/ui/button";
+import { Sidebar } from "../../component/ui/sidebar";
 
 import { SectionSwitch } from "../../components/section-switch";
-import { Tip } from "../content/-sliding-tabs";
 import { useTheme } from "../content/-use-theme";
 import { draftsEqual } from "./-apply-recipe";
 import { FormAssistant } from "../../components/ui/ai/form-assistant";
@@ -68,6 +70,7 @@ export const Route = createFileRoute("/builder/")({
 });
 
 function BuilderPage() {
+  const confirm = useConfirmation();
   const { user } = Route.useRouteContext();
   const { catalog, baseBranch } = Route.useLoaderData();
   const {
@@ -112,6 +115,7 @@ function BuilderPage() {
   const [previewRecipeJson, setPreviewRecipeJson] =
     useState<ServiceContractRecipe | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
 
   // Derived
@@ -316,9 +320,12 @@ function BuilderPage() {
     const result = await runValidation();
     if (
       !result.valid &&
-      !window.confirm(
-        "This form has validation errors. Save it as a draft anyway so others can review it?",
-      )
+      !(await confirm({
+        title: "Save with validation errors?",
+        description:
+          "This form has validation errors. Save it as a draft anyway so others can review it?",
+        confirmLabel: "Save draft",
+      }))
     ) {
       return;
     }
@@ -428,7 +435,17 @@ function BuilderPage() {
   };
 
   return (
-    <div className={styles.builderShell}>
+    <Sidebar.Provider
+      contained
+      collapsible="offcanvas"
+      className={styles.builderShell}
+    >
+      <a
+        href="#builder-canvas"
+        className="sr-only z-50 rounded-lg bg-ui-brand px-4 py-3 text-ui-inverse focus:not-sr-only focus:absolute focus:start-4 focus:top-4"
+      >
+        Skip to form editor
+      </a>
       {isReadOnly && presenceHolder && (
         <PresenceBanner holder={presenceHolder} />
       )}
@@ -439,28 +456,45 @@ function BuilderPage() {
           <>
             <SectionSwitch
               current="builder"
-              onBeforeNavigate={() =>
+              onBeforeNavigate={async () =>
                 !hasUnsavedChanges ||
-                window.confirm("Unsaved changes will be lost. Continue?")
+                (await confirm({
+                  title: "Discard unsaved changes?",
+                  description: "Unsaved changes will be lost. Continue?",
+                  confirmLabel: "Discard changes",
+                  destructive: true,
+                }))
               }
             />
-            <Tip
-              label={theme === "light" ? "Dark mode" : "Light mode"}
-              placement="bottom"
-            >
-              <button
-                type="button"
-                className={styles.iconBtn}
-                aria-label={theme === "light" ? "Dark mode" : "Light mode"}
-                onClick={toggleTheme}
-              >
-                {theme === "light" ? (
-                  <Moon02Icon size={15} />
+
+            <Sidebar.Trigger aria-label="Toggle form outline" />
+
+            <Button
+              variant="ghost"
+              shape="square"
+              title={theme === "light" ? "Dark mode" : "Light mode"}
+              aria-label={theme === "light" ? "Dark mode" : "Light mode"}
+              onClick={toggleTheme}
+              icon={
+                theme === "light" ? (
+                  <MoonIcon aria-hidden="true" />
                 ) : (
-                  <Sun03Icon size={15} />
-                )}
-              </button>
-            </Tip>
+                  <SunIcon aria-hidden="true" />
+                )
+              }
+            />
+
+            <Button
+              variant="ghost"
+              aria-label="Assistant"
+              title="Assistant"
+              className="max-sm:size-9 max-sm:p-0"
+              aria-expanded={isAssistantOpen}
+              onClick={() => setIsAssistantOpen((open) => !open)}
+              icon={<SparkleIcon aria-hidden="true" />}
+            >
+              <span className="hidden sm:inline">Assistant</span>
+            </Button>
           </>
         }
         formId={draft.formId}
@@ -506,18 +540,26 @@ function BuilderPage() {
               onSelectContactDetails={handleSelectContactDetails}
             />
 
-            <BuilderPanel
-              mainView={mainView}
-              draft={draft}
-              dispatch={dispatch}
-              catalog={catalog}
-              selectedStep={selectedStep}
-              mdaContacts={mdaContacts}
-              mdaContactsLoadError={mdaContactsLoadError}
-              resolvedFieldIds={resolvedFieldIds}
-              onCreateContact={handleCreateMdaContact}
-              onStepIdChange={handleStepIdChange}
-            />
+            <main
+              id="builder-canvas"
+              tabIndex={-1}
+              className="flex min-h-0 min-w-0 flex-1 flex-col outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ui-focus"
+            >
+              <BuilderPanel
+                mainView={mainView}
+                draft={draft}
+                dispatch={dispatch}
+                catalog={catalog}
+                selectedStep={selectedStep}
+                mdaContacts={mdaContacts}
+                mdaContactsLoadError={mdaContactsLoadError}
+                resolvedFieldIds={resolvedFieldIds}
+                onCreateContact={handleCreateMdaContact}
+                onStepIdChange={handleStepIdChange}
+                onAddStep={handleAddStep}
+                onOpenForm={() => setIsPickerOpen(true)}
+              />
+            </main>
           </div>
 
           {/* Floating over the canvas (not in-flow) so appearing/dismissing never
@@ -589,6 +631,8 @@ function BuilderPage() {
         </div>
 
         <FormAssistant
+          open={isAssistantOpen}
+          onOpenChange={setIsAssistantOpen}
           user={user.login}
           documentId={loadedFromId ?? "new"}
           draft={draft}
@@ -606,6 +650,6 @@ function BuilderPage() {
           onApply={applyAiRecipe}
         />
       </div>
-    </div>
+    </Sidebar.Provider>
   );
 }

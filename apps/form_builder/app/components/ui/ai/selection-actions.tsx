@@ -1,3 +1,6 @@
+import { Elevated } from "../../../component/ui/surface";
+import { Input } from "../../../component/ui/input";
+import { Button } from "../../../component/ui/button";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { AiMagicIcon, ArrowUp01Icon, Cancel01Icon } from "hugeicons-react";
 import type { AssistantRequest } from "./prompt-bar";
@@ -58,7 +61,10 @@ export function SelectionActions({
   };
   if (!selected || selected.source !== value) return null;
   return (
-    <div
+    <Elevated
+      offset={1}
+      shadowLevel={2}
+      render={<div />}
       ref={toolbar}
       className={s.selectionActions}
       aria-label="AI actions for selected text"
@@ -74,55 +80,65 @@ export function SelectionActions({
         <span className={s.selectionCount}>
           {selected.text.length.toLocaleString()} characters selected
         </span>
-        <button
+        <Button
           type="button"
           aria-label="Dismiss selection actions"
           onClick={() => setSelected(undefined)}
+          variant="ghost"
+          size="sm"
         >
           <Cancel01Icon size={14} aria-hidden="true" />
-        </button>
+        </Button>
       </div>
       <div className={s.selectionActionsRow}>
-        <button
+        <Button
           type="button"
           onClick={() =>
             run(
               "Improve the selected text. Keep its meaning and preserve all facts, links and requirements.",
             )
           }
+          variant="ghost"
+          size="sm"
         >
           Improve
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={() =>
             run(
               "Shorten the selected text without losing important facts or requirements.",
             )
           }
+          variant="ghost"
+          size="sm"
         >
           Shorten
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={() =>
             run(
               "Fix spelling and grammar in the selected text. Preserve its meaning.",
             )
           }
+          variant="ghost"
+          size="sm"
         >
           Fix grammar
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={() =>
             run(
               "Explain the selected text and point out anything unclear. Do not propose edits yet.",
             )
           }
+          variant="ghost"
+          size="sm"
         >
           Explain
-        </button>
+        </Button>
       </div>
       <form
         onSubmit={(event) => {
@@ -130,21 +146,24 @@ export function SelectionActions({
           if (instruction.trim()) run(instruction.trim());
         }}
       >
-        <input
+        <Input
           aria-label="Describe edits to selected text"
           placeholder="Describe an edit…"
           value={instruction}
           maxLength={2000}
           onChange={(event) => setInstruction(event.target.value)}
+          className="w-full min-w-0"
         />
-        <button
+        <Button
           type="submit"
           aria-label="Use edit instruction"
           disabled={!instruction.trim()}
+          variant="ghost"
+          size="sm"
         >
           <ArrowUp01Icon size={15} aria-hidden="true" />
-        </button>
+        </Button>
       </form>
-    </div>
+    </Elevated>
   );
 }

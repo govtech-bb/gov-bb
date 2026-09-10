@@ -1,0 +1,80 @@
+@import "react-day-picker/style.css" layer(components);
+
+@layer components {
+  .ui-calendar {
+    --rdp-accent-color: var(--ui-brand);
+    --rdp-accent-background-color: var(--ui-tint);
+    --rdp-day-height: 2.25rem;
+    --rdp-day-width: 2.25rem;
+    --rdp-day_button-height: 2rem;
+    --rdp-day_button-width: 2rem;
+    --rdp-day_button-border: 0;
+    --rdp-day_button-border-radius: 0.375rem;
+    --rdp-selected-border: 0;
+    --rdp-nav_button-height: 1.75rem;
+    --rdp-nav_button-width: 1.75rem;
+    --rdp-nav-height: 2.5rem;
+    --rdp-months-gap: 1rem;
+    --rdp-range_middle-background-color: var(--ui-tint);
+    --rdp-range_middle-color: var(--ui-default);
+    --rdp-range_start-color: var(--ui-inverse);
+    --rdp-range_start-date-background-color: var(--ui-brand);
+    --rdp-range_end-color: var(--ui-inverse);
+    --rdp-range_end-date-background-color: var(--ui-brand);
+    --rdp-today-color: var(--ui-link);
+    --rdp-animation_duration: 160ms;
+    --rdp-animation_timing: cubic-bezier(0.2, 0, 0, 1);
+    color: var(--ui-default);
+    font-variant-numeric: tabular-nums;
+  }
+  .ui-calendar .rdp-month_grid {
+    border-collapse: collapse;
+  }
+  .ui-calendar :is(.rdp-caption_label, .rdp-month_caption) {
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  .ui-calendar .rdp-weekday {
+    font-weight: 500;
+    font-size: 0.75rem;
+    color: var(--ui-subtle);
+    opacity: 1;
+  }
+  .ui-calendar .rdp-day_button {
+    margin: auto;
+    font-size: 0.8125rem;
+  }
+  .ui-calendar
+    :is(.rdp-selected, .rdp-range_start, .rdp-range_end)
+    .rdp-day_button {
+    background: var(--ui-brand);
+    color: var(--ui-inverse);
+  }
+  .ui-calendar .rdp-range_middle .rdp-day_button {
+    background: transparent;
+    color: var(--ui-default);
+  }
+  .ui-calendar :is(.rdp-button_next, .rdp-button_previous) {
+    border: 1px solid var(--ui-hairline);
+    border-radius: 0.375rem;
+    color: var(--ui-default);
+  }
+  .ui-calendar .rdp-chevron {
+    fill: currentColor;
+  }
+  .ui-calendar .rdp-footer {
+    width: 0;
+    min-width: 100%;
+    padding-block-start: 0.5rem;
+  }
+  @media (hover: hover) {
+    .ui-calendar .rdp-day:not(.rdp-selected) .rdp-day_button:hover {
+      background: var(--ui-tint);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ui-calendar {
+      --rdp-animation_duration: 0s;
+    }
+  }
+}

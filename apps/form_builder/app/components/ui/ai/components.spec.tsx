@@ -44,15 +44,15 @@ it("keeps custom and multiple-choice answers when navigating, and submits the fi
       onSubmit={submit}
     />,
   );
-  fireEvent.click(screen.getByLabelText("Businesses"));
+  fireEvent.click(screen.getByRole("radio", { name: "Businesses" }));
   expect(submit).not.toHaveBeenCalled();
   fireEvent.click(screen.getByText("Continue"));
-  fireEvent.click(screen.getByLabelText("Email"));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Email" }));
   fireEvent.change(screen.getByLabelText("Custom answer"), {
     target: { value: "Registration number" },
   });
   fireEvent.click(screen.getByLabelText("Previous question"));
-  expect(screen.getByLabelText("Businesses")).toBeChecked();
+  expect(screen.getByRole("radio", { name: "Businesses" })).toBeChecked();
   fireEvent.click(screen.getByLabelText("Next question"));
   fireEvent.click(screen.getByText("Send answers"));
   fireEvent.click(screen.getByText("Sending…"));
@@ -131,7 +131,7 @@ it("inserts keyboard-selected commands without sending, and accepts a pasted fil
   fireEvent.keyDown(input, { key: "Enter", isComposing: true });
   expect(send).not.toHaveBeenCalled();
   fireEvent.keyDown(input, { key: "Enter" });
-  expect(send).toHaveBeenCalledOnce();
+  expect(send).toHaveBeenCalledTimes(1);
   const file = new File(["image"], "scan.png", { type: "image/png" });
   fireEvent.paste(input, { clipboardData: { files: [file] } });
   expect(attach).toHaveBeenCalledWith(file);
@@ -316,8 +316,8 @@ it("shares the rendered PDF image while releasing each thumbnail's blob URL", as
     expect(create).toHaveBeenCalledTimes(2);
     expect(create).toHaveBeenCalledWith(png);
     expect(toBlob).toHaveBeenCalledWith(expect.any(Function), "image/png");
-    expect(pdfMock.getDocument).toHaveBeenCalledOnce();
-    expect(destroy).toHaveBeenCalledOnce();
+    expect(pdfMock.getDocument).toHaveBeenCalledTimes(1);
+    expect(destroy).toHaveBeenCalledTimes(1);
   } finally {
     view.unmount();
     toBlob.mockRestore();

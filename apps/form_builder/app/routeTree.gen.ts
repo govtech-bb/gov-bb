@@ -14,6 +14,7 @@ import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ContentIndexRouteImport } from './routes/content/index'
 import { Route as BuilderIndexRouteImport } from './routes/builder/index'
+import { Route as DevUiRouteImport } from './routes/dev.ui'
 import { Route as ContentEditRouteImport } from './routes/content/edit'
 import { Route as AuthGithubRouteImport } from './routes/auth/github'
 import { Route as AuthDeniedRouteImport } from './routes/auth/denied'
@@ -44,6 +45,11 @@ const BuilderIndexRoute = BuilderIndexRouteImport.update({
   path: '/',
   getParentRoute: () => BuilderRoute,
 } as any)
+const DevUiRoute = DevUiRouteImport.update({
+  id: '/dev/ui',
+  path: '/dev/ui',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContentEditRoute = ContentEditRouteImport.update({
   id: '/edit',
   path: '/edit',
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/auth/denied': typeof AuthDeniedRoute
   '/auth/github': typeof AuthGithubRoute
   '/content/edit': typeof ContentEditRoute
+  '/dev/ui': typeof DevUiRoute
   '/builder/': typeof BuilderIndexRoute
   '/content/': typeof ContentIndexRoute
   '/auth/github/callback': typeof AuthGithubCallbackRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/auth/denied': typeof AuthDeniedRoute
   '/auth/github': typeof AuthGithubRoute
   '/content/edit': typeof ContentEditRoute
+  '/dev/ui': typeof DevUiRoute
   '/builder': typeof BuilderIndexRoute
   '/content': typeof ContentIndexRoute
   '/auth/github/callback': typeof AuthGithubCallbackRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/auth/denied': typeof AuthDeniedRoute
   '/auth/github': typeof AuthGithubRoute
   '/content/edit': typeof ContentEditRoute
+  '/dev/ui': typeof DevUiRoute
   '/builder/': typeof BuilderIndexRoute
   '/content/': typeof ContentIndexRoute
   '/auth/github_/callback': typeof AuthGithubCallbackRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/auth/denied'
     | '/auth/github'
     | '/content/edit'
+    | '/dev/ui'
     | '/builder/'
     | '/content/'
     | '/auth/github/callback'
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
     | '/auth/denied'
     | '/auth/github'
     | '/content/edit'
+    | '/dev/ui'
     | '/builder'
     | '/content'
     | '/auth/github/callback'
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '/auth/denied'
     | '/auth/github'
     | '/content/edit'
+    | '/dev/ui'
     | '/builder/'
     | '/content/'
     | '/auth/github_/callback'
@@ -137,6 +149,7 @@ export interface RootRouteChildren {
   ContentRoute: typeof ContentRouteWithChildren
   AuthDeniedRoute: typeof AuthDeniedRoute
   AuthGithubRoute: typeof AuthGithubRoute
+  DevUiRoute: typeof DevUiRoute
   AuthGithubCallbackRoute: typeof AuthGithubCallbackRoute
 }
 
@@ -176,6 +189,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/builder/'
       preLoaderRoute: typeof BuilderIndexRouteImport
       parentRoute: typeof BuilderRoute
+    }
+    '/dev/ui': {
+      id: '/dev/ui'
+      path: '/dev/ui'
+      fullPath: '/dev/ui'
+      preLoaderRoute: typeof DevUiRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/content/edit': {
       id: '/content/edit'
@@ -238,6 +258,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContentRoute: ContentRouteWithChildren,
   AuthDeniedRoute: AuthDeniedRoute,
   AuthGithubRoute: AuthGithubRoute,
+  DevUiRoute: DevUiRoute,
   AuthGithubCallbackRoute: AuthGithubCallbackRoute,
 }
 export const routeTree = rootRouteImport

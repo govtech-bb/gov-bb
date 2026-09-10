@@ -1,3 +1,6 @@
+import { CheckmarkCircle02Icon } from "hugeicons-react";
+import { Elevated } from "../../component/ui/surface";
+import { Button } from "../../component/ui/button";
 import type { DeploySuccess } from "./-editor-state";
 import s from "./-styles.module.css";
 
@@ -12,18 +15,17 @@ export function SuccessCard({
 }) {
   return (
     <div className={s.successWrap}>
-      <div className={s.successCard}>
-        <span className="t-success-check" data-state="in" aria-hidden="true">
-          <svg viewBox="0 0 48 48" width="40" height="40" fill="none">
-            <path
-              d="M14 25l7 7 13-14"
-              stroke="#1c8a3b"
-              strokeWidth="4.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </span>
+      <Elevated
+        offset={1}
+        shadowLevel={2}
+        render={<div />}
+        className={s.successCard}
+      >
+        <CheckmarkCircle02Icon
+          size={40}
+          className="text-ui-success"
+          aria-hidden
+        />
         <h2>
           {success.kind === "removed"
             ? "Removal deployed"
@@ -57,10 +59,10 @@ export function SuccessCard({
           </p>
         )}
         <p className={s.mutedText}>A reviewer must approve and merge it.</p>
-        <button type="button" className={s.primaryBtn} onClick={onBack}>
+        <Button type="button" onClick={onBack} variant="primary" size="sm">
           Back to all pages
-        </button>
-      </div>
+        </Button>
+      </Elevated>
     </div>
   );
 }

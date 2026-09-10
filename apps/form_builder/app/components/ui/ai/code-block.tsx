@@ -1,3 +1,6 @@
+import { ScrollArea } from "../../../component/ui/scroll-area";
+import { Elevated } from "../../../component/ui/surface";
+import { Button } from "../../../component/ui/button";
 import {
   isValidElement,
   useEffect,
@@ -76,7 +79,12 @@ export function CodeBlock({
           .map((text, i) => ({ text, kind: "context", next: i + 1 }))
       : diffLines(before, code);
   return (
-    <div className={s.codeBlock}>
+    <Elevated
+      offset={1}
+      shadowLevel={2}
+      render={<div />}
+      className={s.codeBlock}
+    >
       <div className={s.codeHeader}>
         <span>{filename}</span>
         {before !== undefined && (
@@ -89,8 +97,9 @@ export function CodeBlock({
             </span>
           </span>
         )}
-        <button
+        <Button
           type="button"
+          className="ml-auto"
           aria-label={`Copy ${filename}`}
           onClick={async () => {
             try {
@@ -102,6 +111,8 @@ export function CodeBlock({
             clearTimeout(timeout.current);
             timeout.current = setTimeout(() => setCopyState(""), 2500);
           }}
+          variant="ghost"
+          size="sm"
         >
           {copyState === "Copied" ? (
             <CheckmarkCircle02Icon size={14} aria-hidden="true" />
@@ -109,47 +120,56 @@ export function CodeBlock({
             <Copy01Icon size={14} aria-hidden="true" />
           )}
           <span>Copy</span>
-        </button>
+        </Button>
       </div>
       {copyState && (
         <span role="status" className={s.copyStatus}>
           {copyState}
         </span>
       )}
-      <div
-        className={s.codeLines}
-        tabIndex={0}
-        role="region"
+      <ScrollArea
+        className="max-h-80"
+        viewportClassName="max-h-80 scroll-fade"
+        orientation="both"
         aria-label={
           before === undefined
             ? filename
             : `${filename}: removed and added lines`
         }
       >
-        {lines.map((line, i) => (
-          <div key={i} className={s.codeLine} data-kind={line.kind}>
-            <span className={s.lineNumber} aria-hidden="true">
-              {line.kind === "remove" ? line.old : line.next}
-            </span>
-            {before !== undefined && (
+        <div className={s.codeLines}>
+          {lines.map((line, i) => (
+            <div key={i} className={s.codeLine} data-kind={line.kind}>
               <span
-                className={s.lineSign}
-                aria-label={
-                  line.kind === "add"
-                    ? "Added"
-                    : line.kind === "remove"
-                      ? "Removed"
-                      : undefined
-                }
+                className={`${s.lineNumber} select-none`}
+                aria-hidden="true"
               >
-                {line.kind === "add" ? "+" : line.kind === "remove" ? "−" : " "}
+                {line.kind === "remove" ? line.old : line.next}
               </span>
-            )}
-            <code>{line.text || "\n"}</code>
-          </div>
-        ))}
-      </div>
-    </div>
+              {before !== undefined && (
+                <span
+                  className={`${s.lineSign} select-none`}
+                  aria-label={
+                    line.kind === "add"
+                      ? "Added"
+                      : line.kind === "remove"
+                        ? "Removed"
+                        : undefined
+                  }
+                >
+                  {line.kind === "add"
+                    ? "+"
+                    : line.kind === "remove"
+                      ? "−"
+                      : " "}
+                </span>
+              )}
+              <code>{line.text || "\n"}</code>
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
+    </Elevated>
   );
 }
 

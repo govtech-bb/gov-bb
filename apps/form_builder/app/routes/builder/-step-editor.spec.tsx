@@ -5,7 +5,7 @@
  * the "Add field" picker — i.e. between the Fields list and the picker.
  */
 import "@testing-library/jest-dom";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent } from "../../test/ui";
 import type {
   RecipeDraft,
   RecipeStepDraft,
@@ -61,10 +61,7 @@ it("omits Fields and Add field for a no-fields step, leaving Step Behaviours", (
   const { container } = renderEditor(
     makeStep({ stepId: "check-your-answers", title: "Check your answers" }),
   );
-  expect(sectionOrder(container)).toEqual([
-    "Step Metadata",
-    "Step Behaviours",
-  ]);
+  expect(sectionOrder(container)).toEqual(["Step Metadata", "Step Behaviours"]);
 });
 
 // #1292: the submission-confirmation step renders recipe-authored markdown
@@ -169,11 +166,16 @@ it("pins a stable dnd-kit id so draggable aria-describedby is deterministic", ()
   const { container } = renderEditor(
     makeStep({
       fields: [
-        { id: "field-1", kind: "component", ref: "components/first-name", overrides: {} },
+        {
+          id: "field-1",
+          kind: "component",
+          ref: "components/first-name",
+          overrides: {},
+        },
       ],
     }),
   );
-  const handle = container.querySelector("[aria-describedby]");
+  const handle = container.querySelector('[aria-label="Drag to reorder"]');
   expect(handle).not.toBeNull();
   expect(handle).toHaveAttribute("aria-describedby", "step-fields-dnd");
 });
@@ -195,10 +197,7 @@ it("kebabizes the Step ID on blur and commits the normalized id", () => {
       onStepIdChange={onStepIdChange}
     />,
   );
-  // The label is a sibling of the input (no htmlFor), so locate via the group.
-  const input = screen
-    .getByText("Step ID")
-    .parentElement!.querySelector("input")!;
+  const input = screen.getByRole("textbox", { name: "Step ID" });
   fireEvent.change(input, { target: { value: "step_one" } });
   expect(dispatch).not.toHaveBeenCalled(); // invalid id is not committed
   fireEvent.blur(input);
@@ -226,11 +225,14 @@ it("renders this step's fields as Shared Fields checkboxes", () => {
   };
   const step = makeStep({
     fields: [
-      { id: "field-1", kind: "component", ref: "components/first-name", overrides: {} },
+      {
+        id: "field-1",
+        kind: "component",
+        ref: "components/first-name",
+        overrides: {},
+      },
     ],
-    behaviours: [
-      { type: "sharedFields", fieldIds: [] },
-    ],
+    behaviours: [{ type: "sharedFields", fieldIds: [] }],
   });
   const draft: RecipeDraft = { formId: "f", title: "F", steps: [step] };
   render(
@@ -242,5 +244,7 @@ it("renders this step's fields as Shared Fields checkboxes", () => {
       onStepIdChange={vi.fn()}
     />,
   );
-  expect(screen.getByRole("checkbox", { name: "First Name" })).toBeInTheDocument();
+  expect(
+    screen.getByRole("checkbox", { name: "First Name" }),
+  ).toBeInTheDocument();
 });

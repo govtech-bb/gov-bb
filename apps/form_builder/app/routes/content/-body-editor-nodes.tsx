@@ -1,3 +1,8 @@
+import { Elevated } from "../../component/ui/surface";
+import { Select } from "../../component/ui/select";
+import { Input } from "../../component/ui/input";
+import { InputArea } from "../../component/ui/input/input-area";
+import { Button } from "../../component/ui/button";
 import {
   isSafeContentUrl,
   serializeLandingComponent,
@@ -72,30 +77,35 @@ function ComponentControls({ nodeKey }: { nodeKey: NodeKey }) {
       role="group"
       aria-label="Component controls"
     >
-      <button
+      <Button
         type="button"
-        className={s.componentIconButton}
         aria-label="Move component up"
         onClick={() => move("up")}
+        variant="ghost"
+        size="sm"
+        shape="square"
       >
         <ArrowUp02Icon size={16} aria-hidden="true" />
-      </button>
-      <button
+      </Button>
+      <Button
         type="button"
-        className={s.componentIconButton}
         aria-label="Move component down"
         onClick={() => move("down")}
+        variant="ghost"
+        size="sm"
+        shape="square"
       >
         <ArrowDown02Icon size={16} aria-hidden="true" />
-      </button>
-      <button
+      </Button>
+      <Button
         type="button"
-        className={`${s.componentIconButton} ${s.componentDeleteButton}`}
         aria-label="Remove component"
         onClick={remove}
+        variant="destructive"
+        size="sm"
       >
         <Delete02Icon size={16} aria-hidden="true" />
-      </button>
+      </Button>
     </div>
   );
 }
@@ -128,7 +138,10 @@ function LandingComponentEditor({
   };
 
   return (
-    <section
+    <Elevated
+      offset={1}
+      shadowLevel={2}
+      render={<section />}
       className={s.componentCard}
       aria-label={`${component.kind} component`}
     >
@@ -145,45 +158,49 @@ function LandingComponentEditor({
 
       <div className={s.componentFields}>
         {component.kind === "notice" ? (
-          <label className={s.componentField} htmlFor={`${fieldId}-body`}>
-            <span>Content</span>
-            <textarea
+          <div className={s.componentField}>
+            <InputArea
+              label={"Content"}
               id={`${fieldId}-body`}
               rows={3}
               value={component.body}
               onChange={(event) =>
                 update({ kind: "notice", body: event.target.value })
               }
+              className="w-full min-w-0"
             />
             <small>Markdown formatting is supported inside this notice.</small>
-          </label>
+          </div>
         ) : component.kind === "details" ? (
           <>
-            <label className={s.componentField} htmlFor={`${fieldId}-summary`}>
-              <span>Summary</span>
-              <input
+            <div className={s.componentField}>
+              <Input
+                label={"Summary"}
                 id={`${fieldId}-summary`}
                 type="text"
                 value={component.summary}
                 onChange={(event) =>
                   update({ ...component, summary: event.target.value })
                 }
+                className="w-full min-w-0"
               />
-            </label>
-            <label className={s.componentField} htmlFor={`${fieldId}-body`}>
-              <span>Content</span>
-              <textarea
+            </div>
+
+            <div className={s.componentField}>
+              <InputArea
+                label={"Content"}
                 id={`${fieldId}-body`}
                 rows={3}
                 value={component.body}
                 onChange={(event) =>
                   update({ ...component, body: event.target.value })
                 }
+                className="w-full min-w-0"
               />
               <small>
                 Markdown formatting is supported inside this section.
               </small>
-            </label>
+            </div>
           </>
         ) : (
           <>
@@ -196,19 +213,20 @@ function LandingComponentEditor({
                   key={`${index}-${action.variant}`}
                 >
                   <legend>Action {index + 1}</legend>
-                  <label className={s.componentField}>
-                    <span>Label</span>
-                    <input
+                  <div className={s.componentField}>
+                    <Input
+                      label={"Label"}
                       type="text"
                       value={action.label}
                       onChange={(event) =>
                         updateAction(index, { label: event.target.value })
                       }
+                      className="w-full min-w-0"
                     />
-                  </label>
-                  <label className={s.componentField} htmlFor={hrefId}>
-                    <span>Link</span>
-                    <input
+                  </div>
+                  <div className={s.componentField}>
+                    <Input
+                      label={"Link"}
                       id={hrefId}
                       type="text"
                       value={action.href}
@@ -219,6 +237,7 @@ function LandingComponentEditor({
                       onChange={(event) =>
                         updateAction(index, { href: event.target.value })
                       }
+                      className="w-full min-w-0"
                     />
                     {hrefInvalid && (
                       <small
@@ -228,25 +247,25 @@ function LandingComponentEditor({
                         Use a safe web, email, telephone, or relative link.
                       </small>
                     )}
-                  </label>
-                  <label className={s.componentField}>
-                    <span>Style</span>
-                    <select
+                  </div>
+                  <div className={s.componentField}>
+                    <Select
+                      label={"Style"}
                       value={action.variant}
-                      onChange={(event) =>
+                      onValueChange={(nextValue) => {
+                        if (nextValue === null) return;
                         updateAction(index, {
-                          variant: event.target
-                            .value as LandingAction["variant"],
-                        })
-                      }
-                    >
-                      <option value="primary">Primary</option>
-                      <option value="secondary">Secondary</option>
-                    </select>
-                  </label>
-                  <button
+                          variant: nextValue as LandingAction["variant"],
+                        });
+                      }}
+                      items={[
+                        { value: "primary", label: "Primary" },
+                        { value: "secondary", label: "Secondary" },
+                      ]}
+                    />
+                  </div>
+                  <Button
                     type="button"
-                    className={s.removeActionButton}
                     aria-label={`Remove action ${index + 1}`}
                     disabled={component.actions.length === 1}
                     onClick={() =>
@@ -257,16 +276,18 @@ function LandingComponentEditor({
                         ),
                       })
                     }
+                    variant="secondary-destructive"
+                    size="sm"
                   >
                     <Delete02Icon size={15} aria-hidden="true" />
                     Remove
-                  </button>
+                  </Button>
                 </fieldset>
               );
             })}
-            <button
+
+            <Button
               type="button"
-              className={s.addActionButton}
               onClick={() =>
                 update({
                   kind: "actions",
@@ -280,14 +301,16 @@ function LandingComponentEditor({
                   ],
                 })
               }
+              variant="outline"
+              size="sm"
             >
               <Add01Icon size={15} aria-hidden="true" />
               Add action
-            </button>
+            </Button>
           </>
         )}
       </div>
-    </section>
+    </Elevated>
   );
 }
 
@@ -395,8 +418,11 @@ function StartLinkEditor({
   };
 
   return (
-    <section
-      className={`${s.componentCard} ${s.startLinkCard}`}
+    <Elevated
+      offset={1}
+      shadowLevel={2}
+      render={<section />}
+      className={s.componentCard}
       aria-label="Start button"
     >
       <header className={s.componentHeader}>
@@ -404,24 +430,26 @@ function StartLinkEditor({
         <ComponentControls nodeKey={nodeKey} />
       </header>
       <div className={s.componentFields}>
-        <label className={s.componentField} htmlFor={`${fieldId}-label`}>
-          <span>Label</span>
-          <input
+        <div className={s.componentField}>
+          <Input
+            label={"Label"}
             id={`${fieldId}-label`}
             type="text"
             value={label}
             onChange={(event) => update({ label: event.target.value })}
+            className="w-full min-w-0"
           />
-        </label>
-        <label className={s.componentField} htmlFor={`${fieldId}-href`}>
-          <span>Link override (optional)</span>
-          <input
+        </div>
+        <div className={s.componentField}>
+          <Input
+            label={"Link override (optional)"}
             id={`${fieldId}-href`}
             type="text"
             value={href}
             aria-invalid={hrefInvalid || undefined}
             aria-describedby={hrefInvalid ? `${fieldId}-href-error` : undefined}
             onChange={(event) => update({ href: event.target.value })}
+            className="w-full min-w-0"
           />
           <small
             id={hrefInvalid ? `${fieldId}-href-error` : undefined}
@@ -431,9 +459,9 @@ function StartLinkEditor({
               ? "Use a safe web, email, telephone, or relative link."
               : "Leave blank to use the page’s configured destination."}
           </small>
-        </label>
+        </div>
       </div>
-    </section>
+    </Elevated>
   );
 }
 

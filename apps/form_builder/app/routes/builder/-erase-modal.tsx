@@ -1,6 +1,9 @@
+import { Banner } from "../../component/ui/banner";
+import { InputArea } from "../../component/ui/input/input-area";
+import { Button } from "../../component/ui/button";
 import { useState } from "react";
 import styles from "../../styles/builder.module.css";
-import { useEscClose } from "./-use-esc-close";
+import { Dialog } from "../../component/ui/dialog";
 
 interface EraseModalProps {
   formId: string;
@@ -39,38 +42,43 @@ export function EraseModal({
     onConfirm(trimmed);
   }
 
-  useEscClose(onClose);
-
   return (
-    <div className={styles.modal} onClick={onClose}>
-      <div className={styles.modalContent} role="dialog" aria-modal="true" aria-label="Erase Form" onClick={(e) => e.stopPropagation()}>
-        <div className={styles.modalHead}>
-          <strong>Erase Form</strong>
-          <button type="button" onClick={onClose}>
+    <Dialog.Root
+      defaultOpen
+      onOpenChangeComplete={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <Dialog size="lg" showCloseButton={false} className="space-y-5">
+        <div className="flex items-center justify-between gap-4">
+          <Dialog.Title>Erase Form</Dialog.Title>
+          <Dialog.Close render={<Button variant="ghost" size="sm" />}>
             Close
-          </button>
+          </Dialog.Close>
         </div>
 
         {eraseSuccess ? (
-          <div className={styles.validationSuccess}>
-            <p>
-              PR <strong>#{eraseSuccess.prNumber}</strong> opened to erase{" "}
-              <strong>{title || formId}</strong> (<code>{formId}</code>).
-            </p>
-            <p>
-              <a
-                href={eraseSuccess.prUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {eraseSuccess.prUrl}
-              </a>
-            </p>
-            <p style={{ marginTop: 8, color: "#666" }}>
-              A reviewer must approve and merge it. The recipe stays on disk
-              until the PR merges.
-            </p>
-          </div>
+          <Banner variant="success" size="sm">
+            <div className="min-w-0 flex-1">
+              <p>
+                PR <strong>#{eraseSuccess.prNumber}</strong> opened to erase{" "}
+                <strong>{title || formId}</strong> (<code>{formId}</code>).
+              </p>
+              <p>
+                <a
+                  href={eraseSuccess.prUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {eraseSuccess.prUrl}
+                </a>
+              </p>
+              <p style={{ marginTop: 8, color: "var(--ui-subtle)" }}>
+                A reviewer must approve and merge it. The recipe stays on disk
+                until the PR merges.
+              </p>
+            </div>
+          </Banner>
         ) : (
           <>
             <p>
@@ -83,44 +91,55 @@ export function EraseModal({
             </p>
 
             <div className={styles.formGroup}>
-              <label>Reason</label>
-              <textarea
+              <InputArea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}
                 maxLength={2000}
                 placeholder="Why is this form being erased?"
                 autoFocus
+                label={"Reason"}
               />
             </div>
 
             {clientError && (
-              <div className={styles.validationErrors} style={{ marginBottom: 8 }}>
-                {clientError}
-              </div>
+              <Banner variant="error" size="sm" style={{ marginBottom: 8 }}>
+                <div className="min-w-0 flex-1">{clientError}</div>
+              </Banner>
             )}
+
             {eraseError && (
-              <div className={styles.validationErrors} style={{ marginBottom: 8 }}>
-                {eraseError}
-              </div>
+              <Banner variant="error" size="sm" style={{ marginBottom: 8 }}>
+                <div className="min-w-0 flex-1">{eraseError}</div>
+              </Banner>
             )}
 
             <div style={{ display: "flex", gap: 8 }}>
-              <button
+              <Button
                 type="button"
-                className={styles.btnErase}
+                variant="destructive"
                 onClick={handleConfirm}
                 disabled={isErasing}
+                size="sm"
               >
                 {isErasing ? "Opening PR…" : "Erase Form"}
-              </button>
-              <button type="button" onClick={onClose} disabled={isErasing}>
+              </Button>
+              <Dialog.Close
+                render={
+                  <Button
+                    type="button"
+                    disabled={isErasing}
+                    variant="secondary"
+                    size="sm"
+                  />
+                }
+              >
                 Cancel
-              </button>
+              </Dialog.Close>
             </div>
           </>
         )}
-      </div>
-    </div>
+      </Dialog>
+    </Dialog.Root>
   );
 }

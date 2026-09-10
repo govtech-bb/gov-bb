@@ -1,7 +1,11 @@
+import { Banner } from "../../component/ui/banner";
+import { InputArea } from "../../component/ui/input/input-area";
+import { Input } from "../../component/ui/input";
+import { Button } from "../../component/ui/button";
 import { useState } from "react";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
 import styles from "../../styles/builder.module.css";
-import { useEscClose } from "./-use-esc-close";
+import { Dialog } from "../../component/ui/dialog";
 
 interface PublishModalProps {
   draft: RecipeDraft;
@@ -35,79 +39,100 @@ export function PublishModal({
 }: PublishModalProps) {
   const [description, setDescription] = useState("");
 
-  useEscClose(onClose);
-
   return (
-    <div className={styles.modal} onClick={onClose}>
-      <div className={styles.modalContent} role="dialog" aria-modal="true" aria-label="Deploy" onClick={(e) => e.stopPropagation()}>
-        <div className={styles.modalHead}>
-          <strong>Deploy</strong>
-          <button type="button" onClick={onClose}>
+    <Dialog.Root
+      defaultOpen
+      onOpenChangeComplete={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <Dialog size="lg" showCloseButton={false} className="space-y-5">
+        <div className="flex items-center justify-between gap-4">
+          <Dialog.Title>Deploy</Dialog.Title>
+          <Dialog.Close render={<Button variant="ghost" size="sm" />}>
             Close
-          </button>
+          </Dialog.Close>
         </div>
 
         {publishSuccess ? (
-          <div className={styles.validationSuccess}>
-            <p>
-              {publishSuccess.updatedExistingPR ? (
-                // #2390: this form already had a Deploy PR in review, so the
-                // recipe was pushed onto it instead of opening a duplicate
-                // that would conflict with it on the same recipe file.
-                <>
-                  Pushed to the already-open PR{" "}
-                  <strong>#{publishSuccess.prNumber}</strong> for this form —
-                  no duplicate PR was created.
-                </>
-              ) : (
-                <>
-                  PR <strong>#{publishSuccess.prNumber}</strong> opened on{" "}
-                  <code>{baseBranch}</code>.
-                </>
-              )}
-            </p>
-            <p>
-              <a
-                href={publishSuccess.prUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {publishSuccess.prUrl}
-              </a>
-            </p>
-            <p style={{ marginTop: 8, color: "#666" }}>
-              A reviewer must approve and merge it. When merged, the recipe
-              becomes available on the next API deploy.
-            </p>
-          </div>
+          <Banner variant="success" size="sm">
+            <div className="min-w-0 flex-1">
+              <p>
+                {publishSuccess.updatedExistingPR ? (
+                  // #2390: this form already had a Deploy PR in review, so the
+                  // recipe was pushed onto it instead of opening a duplicate
+                  // that would conflict with it on the same recipe file.
+                  <>
+                    Pushed to the already-open PR{" "}
+                    <strong>#{publishSuccess.prNumber}</strong> for this form —
+                    no duplicate PR was created.
+                  </>
+                ) : (
+                  <>
+                    PR <strong>#{publishSuccess.prNumber}</strong> opened on{" "}
+                    <code>{baseBranch}</code>.
+                  </>
+                )}
+              </p>
+              <p>
+                <a
+                  href={publishSuccess.prUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {publishSuccess.prUrl}
+                </a>
+              </p>
+              <p style={{ marginTop: 8, color: "var(--ui-subtle)" }}>
+                A reviewer must approve and merge it. When merged, the recipe
+                becomes available on the next API deploy.
+              </p>
+            </div>
+          </Banner>
         ) : (
           <div>
             {isReadOnly && (
-              <div className={styles.presenceBanner} role="alert" style={{ marginBottom: 8 }}>
-                Another user is currently editing this form. Deploying is
-                disabled until their editing session ends.
-              </div>
+              <Banner
+                variant="alert"
+                size="sm"
+                role="alert"
+                style={{ marginBottom: 8 }}
+              >
+                <div className="min-w-0 flex-1">
+                  Another user is currently editing this form. Deploying is
+                  disabled until their editing session ends.
+                </div>
+              </Banner>
             )}
-            <p style={{ color: "#444", marginTop: 0 }}>
+            <p style={{ color: "var(--ui-default)", marginTop: 0 }}>
               This opens a pull request against <code>{baseBranch}</code> that
-              overwrites{" "}
-              <code>recipes/{draft.formId}.json</code>. The PR is authored by
-              your GitHub account.
+              overwrites <code>recipes/{draft.formId}.json</code>. The PR is
+              authored by your GitHub account.
             </p>
 
             <div className={styles.formGroup}>
-              <label>Form</label>
-              <input type="text" value={draft.title} readOnly />
+              <Input
+                type="text"
+                value={draft.title}
+                readOnly
+                label={"Form"}
+                className="w-full min-w-0"
+              />
             </div>
             <div className={styles.formGroup}>
-              <label>Form ID</label>
-              <input type="text" value={draft.formId} readOnly />
+              <Input
+                type="text"
+                value={draft.formId}
+                readOnly
+                label={"Form ID"}
+                className="w-full min-w-0"
+              />
             </div>
             <div className={styles.formGroup}>
               <label htmlFor="publish-description">
                 PR description (optional)
               </label>
-              <textarea
+              <InputArea
                 id="publish-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -117,30 +142,30 @@ export function PublishModal({
             </div>
 
             {publishError && (
-              <div
-                className={styles.validationErrors}
-                style={{ marginBottom: 8 }}
-              >
-                {publishError}
-              </div>
+              <Banner variant="error" size="sm" style={{ marginBottom: 8 }}>
+                <div className="min-w-0 flex-1">{publishError}</div>
+              </Banner>
             )}
 
             <div style={{ display: "flex", gap: 8 }}>
-              <button
+              <Button
                 type="button"
-                className={styles.btnPrimary}
+                variant="primary"
                 onClick={() => onPublish(description)}
                 disabled={isPublishing || isReadOnly}
+                size="sm"
               >
                 {isPublishing ? "Opening PR…" : "Deploy"}
-              </button>
-              <button type="button" onClick={onClose}>
+              </Button>
+              <Dialog.Close
+                render={<Button type="button" variant="secondary" size="sm" />}
+              >
                 Cancel
-              </button>
+              </Dialog.Close>
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </Dialog>
+    </Dialog.Root>
   );
 }
