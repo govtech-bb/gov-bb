@@ -2,8 +2,10 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { afterEach, describe, expect, it, beforeAll, vi } from "vitest";
 import { Logger } from "@nestjs/common";
+import { POLYCLINIC_CONTACTS } from "@govtech-bb/form-conditions";
 import { CatchmentRoutingService } from "./catchment-routing.service";
 import {
+  CATCHMENT_CONTACT,
   CATCHMENT_SUFFIX,
   PARISH_DEFAULTS,
   SERVING_CATCHMENT,
@@ -202,6 +204,70 @@ describe("CatchmentRoutingService", () => {
       coordinates: "13.0901,-59.5861",
     });
     expect(r?.programmeCode).toBe("FUTURE_THING_WINSTON_SCOTT");
+  });
+
+  // One coordinate inside each serving catchment and inside no other.
+  const POINT_IN: Record<string, string> = {
+    "Branford Taitt Polyclinic": "13.1377,-59.6259",
+    "David Thompson Health & Social Services Complex": "13.1855,-59.5038",
+    "Eunice Gibson Polyclinic": "13.1781,-59.5924",
+    "Maurice Byer Polyclinic": "13.2716,-59.6044",
+    "Randal Phillips Polyclinic": "13.0658,-59.5282",
+    "Sir Winston Scott Polyclinic": "13.0901,-59.5861",
+    "St. Philip Polyclinic": "13.1478,-59.4424",
+  };
+
+  it("resolves a {polyclinicContact} line for every serving catchment", () => {
+    // Every clinic the router can name must have a contact line, and that line
+    // must *name that same clinic* — the confirmation body must never pair one
+    // clinic's name with another's contact details (#254). The line is taken
+    // from the shared `POLYCLINIC_CONTACTS`, which also derives the
+    // all-clinics fallback, so the two can't carry different digits; what this
+    // pins is that the key the router resolves by agrees with the row's text.
+    for (const clinic of Object.keys(POINT_IN)) {
+      const r = svc.resolve({
+        formId: PERMIT_FORM,
+        programmeCode: PERMIT_CODE,
+        coordinates: POINT_IN[clinic],
+      });
+      expect(r?.polyclinic, clinic).toBe(clinic);
+      expect(r?.polyclinicContact, clinic).toBe(POLYCLINIC_CONTACTS[clinic]);
+      expect(r?.polyclinicContact, clinic).toMatch(
+        new RegExp(`^${clinic.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} - `),
+      );
+    }
+
+    // And POINT_IN covers the whole table — a new serving catchment must be
+    // added here rather than silently skipping this check.
+    expect(Object.keys(POINT_IN).sort()).toEqual(
+      Object.keys(POLYCLINIC_CONTACTS).sort(),
+    );
+  });
+
+  it("resolves the contact line for the clinic a coordinate actually hits", () => {
+    const r = svc.resolve({
+      formId: PERMIT_FORM,
+      programmeCode: PERMIT_CODE,
+      coordinates: POINT_IN["Maurice Byer Polyclinic"],
+    });
+    expect(r?.polyclinic).toBe("Maurice Byer Polyclinic");
+    expect(r?.polyclinicContact).toBe(
+      "Maurice Byer Polyclinic - [(246) 536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)",
+    );
+  });
+
+  it("uses St. Philip's contact line for a Frederick Miller coordinate (redirect applied to contact too)", () => {
+    // Frederick Miller has no Environmental Health Department; the whole
+    // resolution — name, code, inbox and now the contact line — is St. Philip's.
+    const r = svc.resolve({
+      formId: PERMIT_FORM,
+      programmeCode: PERMIT_CODE,
+      coordinates: "13.1323,-59.5626",
+    });
+    expect(r?.polyclinic).toBe("St. Philip Polyclinic");
+    expect(r?.polyclinicContact).toBe(
+      "St. Philip Polyclinic - [(246) 536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)",
+    );
   });
 });
 
@@ -438,6 +504,7 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
     const { "Sir Winston Scott Polyclinic": _omit, ...rest } = CATCHMENT_SUFFIX;
     vi.doMock("./polyclinic-routing", () => ({
       CATCHMENT_SUFFIX: rest,
+      CATCHMENT_CONTACT,
       PARISH_DEFAULTS,
       SERVING_CATCHMENT,
     }));
@@ -454,6 +521,7 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
         ...CATCHMENT_SUFFIX,
         "Not A Real Polyclinic": "BOGUS",
       },
+      CATCHMENT_CONTACT,
       PARISH_DEFAULTS,
       SERVING_CATCHMENT,
     }));
@@ -473,6 +541,7 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
         ...CATCHMENT_SUFFIX,
         "Frederick Miller Polyclinic": "FREDERICK_MILLER",
       },
+      CATCHMENT_CONTACT,
       PARISH_DEFAULTS,
       SERVING_CATCHMENT,
     }));
@@ -486,6 +555,7 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
   it("throws when a PARISH_DEFAULTS value names an unknown catchment", async () => {
     vi.doMock("./polyclinic-routing", () => ({
       CATCHMENT_SUFFIX,
+      CATCHMENT_CONTACT,
       PARISH_DEFAULTS: {
         ...PARISH_DEFAULTS,
         "st-lucy": "Not A Real Polyclinic",
@@ -502,6 +572,7 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
   it("throws when SERVING_CATCHMENT redirects a catchment that is not in the GeoJSON", async () => {
     vi.doMock("./polyclinic-routing", () => ({
       CATCHMENT_SUFFIX,
+      CATCHMENT_CONTACT,
       PARISH_DEFAULTS,
       SERVING_CATCHMENT: {
         ...SERVING_CATCHMENT,
@@ -518,6 +589,7 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
   it("throws when SERVING_CATCHMENT points at a catchment that is not in the GeoJSON", async () => {
     vi.doMock("./polyclinic-routing", () => ({
       CATCHMENT_SUFFIX,
+      CATCHMENT_CONTACT,
       PARISH_DEFAULTS,
       SERVING_CATCHMENT: {
         "Frederick Miller Polyclinic": "Not A Real Polyclinic",
@@ -533,6 +605,7 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
   it("throws when a SERVING_CATCHMENT target is itself redirected (chain)", async () => {
     vi.doMock("./polyclinic-routing", () => ({
       CATCHMENT_SUFFIX,
+      CATCHMENT_CONTACT,
       PARISH_DEFAULTS,
       SERVING_CATCHMENT: {
         "Frederick Miller Polyclinic": "St. Philip Polyclinic",
@@ -544,6 +617,39 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
       await import("./catchment-routing.service");
     const svc = new Svc();
     expect(() => svc.onModuleInit()).toThrow(/chains are not followed/);
+  });
+
+  it("throws when a GeoJSON serving catchment has no contact line", async () => {
+    const { "Sir Winston Scott Polyclinic": _omit, ...rest } =
+      CATCHMENT_CONTACT;
+    vi.doMock("./polyclinic-routing", () => ({
+      CATCHMENT_SUFFIX,
+      CATCHMENT_CONTACT: rest,
+      PARISH_DEFAULTS,
+      SERVING_CATCHMENT,
+    }));
+    vi.resetModules();
+    const { CatchmentRoutingService: Svc } =
+      await import("./catchment-routing.service");
+    const svc = new Svc();
+    expect(() => svc.onModuleInit()).toThrow(/Sir Winston Scott Polyclinic/);
+  });
+
+  it("throws when CATCHMENT_CONTACT has a row for a catchment that is not serving", async () => {
+    vi.doMock("./polyclinic-routing", () => ({
+      CATCHMENT_SUFFIX,
+      CATCHMENT_CONTACT: {
+        ...CATCHMENT_CONTACT,
+        "Not A Serving Catchment": "Bogus - [x](tel:1)",
+      },
+      PARISH_DEFAULTS,
+      SERVING_CATCHMENT,
+    }));
+    vi.resetModules();
+    const { CatchmentRoutingService: Svc } =
+      await import("./catchment-routing.service");
+    const svc = new Svc();
+    expect(() => svc.onModuleInit()).toThrow(/Not A Serving Catchment/);
   });
 });
 
@@ -589,6 +695,7 @@ describe("CatchmentRoutingService polygon geometry (mocked GeoJSON)", () => {
   function mockRouting(catchment: string, suffix: string) {
     vi.doMock("./polyclinic-routing", () => ({
       CATCHMENT_SUFFIX: { [catchment]: suffix },
+      CATCHMENT_CONTACT: { [catchment]: `${catchment} - [x](tel:1)` },
       PARISH_DEFAULTS: {},
       SERVING_CATCHMENT: {},
     }));

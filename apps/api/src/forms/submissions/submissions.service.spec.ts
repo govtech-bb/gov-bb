@@ -305,6 +305,8 @@ describe("SubmissionsService", () => {
       const catchmentRouting = makeCatchmentRouting(() => ({
         polyclinic: "Randal Phillips Polyclinic",
         programmeCode: "TEMP_RESTAURANT_PERMIT_RANDAL_PHILLIPS",
+        polyclinicContact:
+          "Randal Phillips Polyclinic - [(246) 536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)",
       }));
       const { pipeline, service } = makeMocks({
         existingEntity: existing,
@@ -322,6 +324,9 @@ describe("SubmissionsService", () => {
 
       expect(result.outcome).toBe("duplicate");
       expect(result.resolvedPolyclinic).toBe("Randal Phillips Polyclinic");
+      expect(result.resolvedPolyclinicContact).toBe(
+        "Randal Phillips Polyclinic - [(246) 536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)",
+      );
     });
 
     // A replay must never fail because the ROUTING lookup failed — the API has
@@ -855,7 +860,8 @@ describe("SubmissionsService", () => {
       const resolution = {
         polyclinic: "Sir Winston Scott Polyclinic",
         programmeCode: "C",
-        mdaEmail: "e@x.bb",
+        polyclinicContact:
+          "Sir Winston Scott Polyclinic - [(246) 536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)",
       };
       const catchmentRouting = makeCatchmentRouting(() => resolution);
       const { pipeline, service, eventEmitter } = makeMocks({
@@ -885,6 +891,8 @@ describe("SubmissionsService", () => {
         expect.objectContaining({
           resolvedCatchment: expect.objectContaining({
             polyclinic: "Sir Winston Scott Polyclinic",
+            polyclinicContact:
+              "Sir Winston Scott Polyclinic - [(246) 536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)",
           }),
         }),
       );

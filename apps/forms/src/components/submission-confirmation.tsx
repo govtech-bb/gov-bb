@@ -73,17 +73,20 @@ export default function SubmissionConfirmation({
     paymentUrl,
     paymentDescription,
     polyclinic,
+    polyclinicContact,
   } = submissionState;
 
   // Substitute the resolved polyclinic name into the recipe's `{polyclinic}`
-  // token (coordinate-routed forms only), and the landing origin into
-  // `{landingUrl}` so authored links to a service page resolve to this
-  // environment's landing site rather than to the forms host this page is
-  // served from. Shared with the applicant email via
+  // token (coordinate-routed forms only), its single contact line into
+  // `{polyclinicContact}` (so only the routed clinic's details are shown,
+  // #254), and the landing origin into `{landingUrl}` so authored links to a
+  // service page resolve to this environment's landing site rather than to the
+  // forms host this page is served from. Shared with the applicant email via
   // interpolateConfirmationMarkdown so the page and email copy can't drift
   // (#2201).
   const resolvedMarkdown = interpolateConfirmationMarkdown(markdownContent, {
     polyclinic,
+    polyclinicContact,
     landingUrl: LANDING_URL,
   });
 

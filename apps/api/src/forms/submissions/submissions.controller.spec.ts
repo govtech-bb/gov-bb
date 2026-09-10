@@ -116,6 +116,51 @@ describe("SubmissionsController", () => {
       });
     });
 
+    it("includes meta.resolvedPolyclinicContact when the service returns one", async () => {
+      const entity = makeEntity({ status: FormSubmissionStatus.SUBMITTED });
+      (service.submit as Mock).mockResolvedValue({
+        data: entity,
+        message: "Submission created",
+        statusCode: HttpStatus.CREATED,
+        resolvedPolyclinic: "Randal Phillips Polyclinic",
+        resolvedPolyclinicContact:
+          "Randal Phillips Polyclinic - [(246) 536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)",
+      });
+
+      const result = await controller.create(
+        "key-abc",
+        undefined,
+        undefined,
+        baseDto,
+      );
+
+      expect(result).toMatchObject({
+        meta: {
+          resolvedPolyclinic: "Randal Phillips Polyclinic",
+          resolvedPolyclinicContact:
+            "Randal Phillips Polyclinic - [(246) 536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)",
+        },
+      });
+    });
+
+    it("omits meta.resolvedPolyclinicContact when the service returns none", async () => {
+      const entity = makeEntity({ status: FormSubmissionStatus.SUBMITTED });
+      (service.submit as Mock).mockResolvedValue({
+        data: entity,
+        message: "Submission created",
+        statusCode: HttpStatus.CREATED,
+      });
+
+      const result = await controller.create(
+        "key-abc",
+        undefined,
+        undefined,
+        baseDto,
+      );
+
+      expect("meta" in result).toBe(false);
+    });
+
     it("does NOT include meta when deferred is undefined/falsy", async () => {
       const entity = makeEntity();
       (service.submit as Mock).mockResolvedValue({

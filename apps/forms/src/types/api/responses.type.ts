@@ -60,5 +60,12 @@ export interface FormSubmissionResponse extends ApiResponse {
      * in the confirmation copy. Never carries the MDA email.
      */
     resolvedPolyclinic?: string;
+    /**
+     * The routed polyclinic's single contact line (name + phone + email).
+     * Present only for coordinate-routed forms; the confirmation page
+     * substitutes it into the `{polyclinicContact}` token in the confirmation
+     * copy so only the routed clinic's details are shown (#254).
+     */
+    resolvedPolyclinicContact?: string;
   };
 }

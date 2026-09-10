@@ -56,6 +56,52 @@ describe("SubmissionConfirmation", () => {
     expect(container.textContent).not.toContain("{polyclinic}");
   });
 
+  it("substitutes only the routed polyclinic's contact line into {polyclinicContact}", () => {
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Temporary Restaurant Licence"
+        stepTitle="Application submitted"
+        submissionState={{
+          ...baseState,
+          polyclinicContact:
+            "Maurice Byer Polyclinic - [(246) 536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)",
+        }}
+        markdownContent={
+          "## Contact\n\nIf you need help, contact your Environmental Health Service office.\n\n{polyclinicContact}"
+        }
+      />,
+    );
+    // react-markdown is stubbed in this project's vitest config, so what is
+    // asserted here is the *substitution* — the routed line reaching the
+    // renderer, and no other clinic's details with it. The rendered links and
+    // list shape are pinned where markdown really runs, in
+    // apps/api/src/email/email-body.builder.spec.ts.
+    expect(container.textContent).toContain(
+      "- Maurice Byer Polyclinic - [(246) 536-3214]",
+    );
+    expect(container.textContent).toContain("MBPC.apps@health.gov.bb");
+    // Only the routed clinic's details — none of the others.
+    expect(container.textContent).not.toContain("St. Philip Polyclinic");
+    expect(container.textContent).not.toContain("Sir Winston Scott Polyclinic");
+    expect(container.textContent).not.toContain("{polyclinicContact}");
+  });
+
+  it("falls back to the full clinic list for {polyclinicContact} when nothing resolved", () => {
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Temporary Restaurant Licence"
+        stepTitle="Application submitted"
+        submissionState={baseState}
+        markdownContent={"## Contact\n\n{polyclinicContact}"}
+      />,
+    );
+    // The all-clinics fallback lists every serving clinic (issue #254).
+    expect(container.textContent).toContain("St. Philip Polyclinic");
+    expect(container.textContent).toContain("Sir Winston Scott Polyclinic");
+    expect(container.textContent).toContain("Maurice Byer Polyclinic");
+    expect(container.textContent).not.toContain("{polyclinicContact}");
+  });
+
   it("renders contact details panel when contactDetails is present", () => {
     const contactDetails = {
       title: "Immigration Dept",

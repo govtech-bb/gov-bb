@@ -90,6 +90,23 @@ describe("resolveSubmissionOutcome", () => {
     expect(outcome.subState?.polyclinic).toBeUndefined();
   });
 
+  it("carries meta.resolvedPolyclinicContact into the submission state (coordinate-routed forms)", () => {
+    const outcome = resolveSubmissionOutcome(
+      response("submitted", {
+        resolvedPolyclinicContact:
+          "St. Philip Polyclinic - [(246) 536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)",
+      }),
+    );
+    expect(outcome.subState?.polyclinicContact).toBe(
+      "St. Philip Polyclinic - [(246) 536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)",
+    );
+  });
+
+  it("leaves polyclinicContact undefined when the response carries no resolvedPolyclinicContact", () => {
+    const outcome = resolveSubmissionOutcome(response("submitted"));
+    expect(outcome.subState?.polyclinicContact).toBeUndefined();
+  });
+
   it("commits the caller's resolved confirmation markdown (#2068)", () => {
     // Resolved at submit because `clearFormState` drops the answers on success;
     // persisting it here is what lets a refresh keep the right branch.

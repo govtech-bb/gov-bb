@@ -20,6 +20,8 @@ export type { ConditionCriteria } from "./internals";
 // confirmation page (apps/forms) and the applicant email (apps/api) so the two
 // surfaces can't drift (#2201).
 export {
+  ALL_POLYCLINIC_CONTACTS_MARKDOWN,
+  POLYCLINIC_CONTACTS,
   interpolateConfirmationMarkdown,
   resolveConditionalMarkdown,
 } from "./confirmation-markdown";

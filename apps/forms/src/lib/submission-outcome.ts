@@ -35,6 +35,11 @@ export function resolveSubmissionOutcome(
     // The confirmation page substitutes it into the `{polyclinic}` token; absent
     // for every other form, where the token falls back to a generic phrase.
     polyclinic: response.meta?.resolvedPolyclinic,
+    // The routed polyclinic's single contact line (coordinate-routed forms
+    // only). The confirmation page substitutes it into the `{polyclinicContact}`
+    // token so only that clinic's details are shown; absent for every other
+    // form, where the token falls back to the full clinic list (#254).
+    polyclinicContact: response.meta?.resolvedPolyclinicContact,
     // Confirmation body with its per-answer passages already filled (#2068).
     // Resolved by the caller while the answers are still in the form store —
     // submit success clears the draft, so it cannot be recomputed later.

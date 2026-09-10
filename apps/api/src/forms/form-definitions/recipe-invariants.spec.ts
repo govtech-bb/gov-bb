@@ -182,6 +182,47 @@ it("recipes pair passport show-hide toggles with optionalIf on the National ID f
   expect(problems).toEqual([]);
 });
 
+// A catchment-routed form is routed to exactly one polyclinic, so its
+// confirmation copy must show only that clinic's contact details — via the
+// shared `{polyclinicContact}` token, whose fallback restores the full list
+// when nothing resolves. The seven-clinic list used to be hardcoded into every
+// one of these recipes (#254); the risk now is a new EHO form authored by
+// copy-pasting an older `## Contact` section and bringing it back, which would
+// regress on that form alone and silently. Nothing else in the gate would
+// notice, so this pins it.
+it("catchment-routed recipes use {polyclinicContact}, never hardcoded contact details", async () => {
+  const problems: string[] = [];
+  const recipes = await readRecipeFiles();
+
+  for (const { file, raw } of recipes) {
+    const recipe = raw as {
+      catchmentRouting?: unknown;
+      steps?: { markdownContent?: string }[];
+    };
+    if (!recipe.catchmentRouting) continue;
+
+    const body = (recipe.steps ?? [])
+      .map((step) => step.markdownContent ?? "")
+      .join("\n");
+
+    // A routed form must not carry any clinic's phone number — the routed one
+    // included, since it arrives through the token, not the authored copy.
+    const phones = body.match(/tel:\+1246\d+/g);
+    if (phones) {
+      problems.push(
+        `${file}: hardcodes contact number(s) [${[...new Set(phones)].join(", ")}] — use {polyclinicContact}`,
+      );
+    }
+    if (body.includes("## Contact") && !body.includes("{polyclinicContact}")) {
+      problems.push(
+        `${file}: has a ## Contact section without {polyclinicContact}`,
+      );
+    }
+  }
+
+  expect(problems).toEqual([]);
+});
+
 // Proves the net actually catches malformed recipes (#2075 acceptance criteria)
 // without polluting the real recipes/ set: each synthetic recipe is a mutation
 // of a real, valid one, and asserts the *specific* problem is reported so a
