@@ -1398,7 +1398,6 @@
         "lat": 13.096193,
         "lon": -59.604597
       },
-      "notes": "Call to confirm pharmacy opening hours.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -1427,7 +1426,6 @@
         "lat": 13.117804,
         "lon": -59.603729
       },
-      "notes": "Blood pressure and glucose testing available.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -1561,7 +1559,6 @@
         "lon": -59.636022
       },
       "additionalPhones": ["(246) 234-5746"],
-      "notes": "Drive-through service available.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -3412,7 +3409,6 @@
         "lat": 13.104791,
         "lon": -59.618223
       },
-      "notes": "DATA CONFLICT: a Barbados business directory lists Friendship Pharmacy at Manor Lodge Complex, Lodge Hill, and shows 23 Baxters Road as Total Care Pharmacy. This address may be mislabelled. Verify with the Drug Service.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -3617,7 +3613,6 @@
         "lat": 13.076596,
         "lon": -59.57795
       },
-      "notes": "Address, parish and phone from a Barbados business directory. Confirm with the Drug Service.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -3760,7 +3755,6 @@
         "lat": 13.097735,
         "lon": -59.603193
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -3782,7 +3776,6 @@
         "lat": 13.099174,
         "lon": -59.611161
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -3975,7 +3968,6 @@
         "lat": 13.101584,
         "lon": -59.611308
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -3993,7 +3985,6 @@
       "parish": "St. Michael",
       "address": "Brittons Hill Medical Centre, Brittons Hill, St. Michael",
       "phone": "(246) 429-5461",
-      "notes": "Listed as Brittons Hill Dispensary in the August 2026 Drug Service list.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -4064,7 +4055,6 @@
         "lat": 13.101387,
         "lon": -59.611467
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -4086,7 +4076,6 @@
         "lat": 13.101257,
         "lon": -59.61156
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -4108,7 +4097,6 @@
         "lat": 13.070723,
         "lon": -59.579373
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -4130,7 +4118,6 @@
         "lat": 13.070256,
         "lon": -59.54074
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -4152,7 +4139,6 @@
         "lat": 13.093217,
         "lon": -59.592847
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -4174,7 +4160,6 @@
         "lat": 13.097549,
         "lon": -59.613494
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -4196,7 +4181,6 @@
         "lat": 13.138901,
         "lon": -59.488371
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -4218,7 +4202,6 @@
         "lat": 13.099119,
         "lon": -59.611222
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -4289,7 +4272,6 @@
         "lat": 13.0988,
         "lon": -59.611047
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -4360,7 +4342,6 @@
         "lat": 13.097926,
         "lon": -59.609707
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -4382,7 +4363,6 @@
         "lat": 13.097918,
         "lon": -59.609191
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -4404,7 +4384,6 @@
         "lat": 13.087087,
         "lon": -59.604372
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -4426,7 +4405,6 @@
         "lat": 13.074388,
         "lon": -59.596224
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -4514,7 +4492,6 @@
         "lat": 13.130525,
         "lon": -59.550329
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -4585,7 +4562,6 @@
         "lat": 13.122228,
         "lon": -59.609911
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -4676,7 +4652,6 @@
         "lat": 13.102518,
         "lon": -59.610162
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -4698,7 +4673,6 @@
         "lat": 13.181214,
         "lon": -59.634549
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -4720,7 +4694,6 @@
         "lat": 13.065204,
         "lon": -59.544351
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -4787,7 +4760,6 @@
         "lon": -59.611318
       },
       "additionalPhones": ["(246) 426-1289"],
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -4853,7 +4825,6 @@
         "lat": 13.085751,
         "lon": -59.591351
       },
-      "notes": "Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -4925,7 +4896,6 @@
         "lat": 13.106023,
         "lon": -59.62467
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -4947,7 +4917,6 @@
         "lat": 13.099622,
         "lon": -59.611827
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -4969,7 +4938,6 @@
         "lat": 13.119513,
         "lon": -59.46114
       },
-      "notes": "Directory listing says open until 10pm Mon–Sat. Confirm by phone. Location approximate and subsidy status not confirmed with the Drug Service.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -4992,7 +4960,6 @@
         "lon": -59.603082
       },
       "additionalPhones": ["(246) 233-7367"],
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -5063,7 +5030,6 @@
         "lat": 13.098741,
         "lon": -59.611061
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -5085,7 +5051,6 @@
         "lat": 13.250727,
         "lon": -59.641291
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -5152,7 +5117,6 @@
         "lat": 13.097887,
         "lon": -59.609592
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -5223,7 +5187,6 @@
         "lat": 13.250617,
         "lon": -59.640794
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -5289,7 +5252,6 @@
         "lat": 13.110587,
         "lon": -59.613429
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -5311,7 +5273,6 @@
         "lat": 13.09825,
         "lon": -59.608056
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -5377,7 +5338,6 @@
         "lat": 13.09502,
         "lon": -59.601459
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -5399,7 +5359,6 @@
         "lat": 13.097115,
         "lon": -59.616704
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -5465,7 +5424,6 @@
         "lat": 13.100779,
         "lon": -59.607199
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -5487,7 +5445,6 @@
         "lat": 13.135653,
         "lon": -59.627371
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -5509,7 +5466,6 @@
         "lat": 13.103757,
         "lon": -59.606956
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -5575,7 +5531,6 @@
         "lat": 13.102913,
         "lon": -59.60927
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -5597,7 +5552,6 @@
         "lat": 13.071846,
         "lon": -59.539509
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -5729,7 +5683,6 @@
         "lat": 13.102003,
         "lon": -59.611109
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -5751,7 +5704,6 @@
         "lat": 13.101937,
         "lon": -59.618601
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -5817,7 +5769,6 @@
         "lat": 13.100388,
         "lon": -59.612247
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -5839,7 +5790,6 @@
         "lat": 13.065187,
         "lon": -59.549856
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -5861,7 +5811,6 @@
         "lat": 13.249468,
         "lon": -59.64362
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -5930,7 +5879,6 @@
         "lat": 13.09877,
         "lon": -59.611737
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -5952,7 +5900,6 @@
         "lat": 13.071095,
         "lon": -59.581476
       },
-      "notes": "From a Barbados business directory. Location approximate.",
       "verification": [
         {
           "fields": ["ppp"],
@@ -6427,7 +6374,6 @@
         "lon": -59.604204
       },
       "additionalPhones": ["(246) 266-6587"],
-      "notes": "Warrens Healthcare complex.",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
@@ -6498,7 +6444,6 @@
         "lat": 13.096861,
         "lon": -59.602114
       },
-      "notes": "Second Elbethel branch (Lloyd A Burrowes).",
       "verification": [
         {
           "fields": ["ppp", "contacts"],
