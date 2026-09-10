@@ -604,7 +604,7 @@ describe("BuilderPage — unsaved changes + Discard", () => {
     await respondToConfirmation("Discard changes");
     expect(titleInput()).toHaveValue("Test Form");
     expect(screen.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
-  }, 10000);
+  });
 
   it("keeps the edit when the Discard confirm is declined", async () => {
     mockEmptyDraft = VALID_DRAFT;

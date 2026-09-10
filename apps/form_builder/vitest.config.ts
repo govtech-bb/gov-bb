@@ -19,6 +19,10 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    // Nx runs two projects together; reserve capacity for the other Vitest pool.
+    maxWorkers: 2,
+    // Editor journeys mount real dialogs, calendars, and menus on shared runners.
+    testTimeout: 10000,
     environment: "node",
     include: ["app/**/*.spec.{ts,tsx}"],
     setupFiles: ["./vitest.setup.ts"],
