@@ -33,13 +33,5 @@ export default defineConfig({
     },
     // Component specs opt into jsdom per-file via a @vitest-environment
     // docblock, mirroring the old per-file @jest-environment pattern.
-    css: {
-      modules: {
-        // Echo class names instead of hashing, so components importing
-        // *.module.css render with readable class names (replaces
-        // identity-obj-proxy).
-        classNameStrategy: "non-scoped",
-      },
-    },
   },
 });

@@ -63,31 +63,29 @@ export function ConfirmationProvider({ children }: { children: ReactNode }) {
           if (!next && !pending.current) setOptions(null);
         }}
       >
-        {options && (
-          <Dialog
-            size="base"
-            className="space-y-4"
-            finalFocus={() =>
-              previousFocus.current?.isConnected ? previousFocus.current : false
-            }
-          >
-            <Dialog.Title>{options.title}</Dialog.Title>
-            <Dialog.Description>{options.description}</Dialog.Description>
-            <div className="flex flex-wrap justify-end gap-2 pt-2">
-              {options.cancelLabel !== null && (
-                <Dialog.Close render={<Button />}>
-                  {options.cancelLabel ?? "Cancel"}
-                </Dialog.Close>
-              )}
-              <Button
-                variant={options.destructive ? "destructive" : "primary"}
-                onClick={() => finish(true)}
-              >
-                {options.confirmLabel ?? "Continue"}
-              </Button>
-            </div>
-          </Dialog>
-        )}
+        <Dialog
+          size="base"
+          className="space-y-4"
+          finalFocus={() =>
+            previousFocus.current?.isConnected ? previousFocus.current : false
+          }
+        >
+          <Dialog.Title>{options?.title}</Dialog.Title>
+          <Dialog.Description>{options?.description}</Dialog.Description>
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
+            {options?.cancelLabel !== null && (
+              <Dialog.Close render={<Button />}>
+                {options?.cancelLabel ?? "Cancel"}
+              </Dialog.Close>
+            )}
+            <Button
+              variant={options?.destructive ? "destructive" : "primary"}
+              onClick={() => finish(true)}
+            >
+              {options?.confirmLabel ?? "Continue"}
+            </Button>
+          </div>
+        </Dialog>
       </Dialog.Root>
     </ConfirmationContext.Provider>
   );

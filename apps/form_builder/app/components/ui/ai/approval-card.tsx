@@ -10,7 +10,6 @@ import {
   ArrowRight01Icon,
   CheckmarkCircle02Icon,
 } from "hugeicons-react";
-import s from "./components.module.css";
 
 export function ApprovalCard({
   questions,
@@ -68,7 +67,7 @@ export function ApprovalCard({
   };
   if (sent)
     return (
-      <p role="status" className={s.answerSent}>
+      <p role="status" className="flex items-center gap-1.75 text-[12px]">
         <CheckmarkCircle02Icon size={16} aria-hidden="true" />
         Response sent
       </p>
@@ -93,12 +92,12 @@ export function ApprovalCard({
         <fieldset
           disabled={disabled || sending}
           key={index}
-          className={s.question}
+          className="m-0 min-inline-0 border-0 p-0 motion-safe:animate-ai-appear [&_legend]:mb-2 [&_legend]:p-0 [&_legend]:text-[14px] [&_legend]:font-[550] [&_legend]:wrap-anywhere"
         >
           <legend ref={heading} tabIndex={-1}>
             {question.question}
           </legend>
-          <span className={s.questionHint}>
+          <span className="mb-2.5 block text-[11px] text-ui-default">
             {question.type === "check" ? "Choose any that apply" : "Choose one"}
           </span>
           {question.type === "radio" ? (
@@ -144,7 +143,7 @@ export function ApprovalCard({
               ))}
             </div>
           )}
-          <div className={s.customAnswer}>
+          <div className="grid gap-1.5 pt-2.5 pb-1 text-[11px] text-ui-default">
             <Input
               aria-label="Custom answer"
               placeholder="Write your answer…"
@@ -164,8 +163,8 @@ export function ApprovalCard({
           </div>
         </fieldset>
         {error && <p role="alert">{error}</p>}
-        <footer className={s.questionFooter}>
-          <div className={s.questionNav}>
+        <footer className="mt-3.5 flex flex-wrap items-center gap-1.5 border-t border-ui-hairline pt-3">
+          <div className="me-auto flex items-center gap-0.75 text-[11px]">
             <Button
               type="button"
               aria-label="Previous question"
@@ -176,7 +175,7 @@ export function ApprovalCard({
             >
               <ArrowLeft01Icon size={14} aria-hidden="true" />
             </Button>
-            <span aria-live="polite" className={s.counter}>
+            <span aria-live="polite" className="whitespace-nowrap tabular-nums">
               {index + 1} / {questions.length}
             </span>
             <Button
@@ -214,7 +213,6 @@ export function ApprovalCard({
       </form>
       <Button
         type="button"
-        className={s.skipQuestions}
         disabled={disabled || sending}
         onClick={() => void submit(true)}
         variant="ghost"

@@ -11,7 +11,6 @@ import {
   Cancel01Icon,
 } from "hugeicons-react";
 import type { AiContext } from "@govtech-bb/form-builder";
-import s from "./components.module.css";
 
 export type AssistantRequest = {
   id: string;
@@ -179,7 +178,7 @@ export function PromptBar({
       }}
     >
       <div
-        className={s.promptBar}
+        className="group/prompt-bar relative min-inline-0"
         data-dragging={dragging}
         onDragOver={(event) => {
           if (event.dataTransfer.types.includes("Files")) {
@@ -237,7 +236,7 @@ export function PromptBar({
               No matching {token?.kind === "@" ? "references" : "commands"}.
             </p>
           )}
-          <div className={s.menuHint}>
+          <div className="border-t border-ui-hairline p-1.75 text-[10px] text-ui-default">
             ↑ ↓ to choose · Enter to insert · Esc to close
           </div>
         </Popover.Content>
@@ -245,20 +244,20 @@ export function PromptBar({
           offset={1}
           shadowLevel={2}
           render={<form />}
-          className={s.prompt}
+          className="overflow-hidden rounded-xl p-2 group-data-[dragging=true]/prompt-bar:outline-2 group-data-[dragging=true]/prompt-bar:outline-ui-default"
           onSubmit={(event) => {
             event.preventDefault();
             if (!busy && !pending && !blocked && value.trim()) onSend();
           }}
         >
-          {attachments && (
-            <div className={s.composerAttachments}>{attachments}</div>
-          )}
+          {attachments && <div className="px-3 pt-3">{attachments}</div>}
           {dragging && (
-            <div className={s.dropHint}>Drop a PDF or image here</div>
+            <div className="bg-ui-tint px-3.5 py-2.25 text-[12px]">
+              Drop a PDF or image here
+            </div>
           )}
           {selection && (
-            <div className={s.selectionChip}>
+            <div className="mx-2.5 mt-2.5 mb-0 flex items-center gap-1.5 rounded-md border border-ui-hairline bg-ui-recessed px-1.75 py-1 text-[11px] [&>span]:min-inline-0 [&>span]:flex-1 [&>span]:truncate">
               <span title={selection}>Selection: {selection}</span>
               <Button
                 type="button"
@@ -335,7 +334,7 @@ export function PromptBar({
             }}
             className="min-h-20 max-h-44 w-full resize-y [field-sizing:content]"
           />
-          <div className={s.promptControls}>
+          <div className="flex items-center gap-1.75 px-2.5 pt-1.5 pb-2.5">
             <Button
               variant="ghost"
               size="sm"
@@ -375,7 +374,9 @@ export function PromptBar({
                 ]}
               />
             </div>
-            <span className={s.promptHint}>@ references · / commands</span>
+            <span className="ms-auto text-[10px] text-ui-default max-md:hidden">
+              @ references · / commands
+            </span>
             {busy ? (
               <Button
                 type="button"

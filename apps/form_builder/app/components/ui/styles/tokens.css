@@ -1,5 +1,8 @@
 /* GovTech color roles. Each light/dark pair is defined once below. */
 @theme inline {
+  --animate-field-row-flash: field-row-flash 1.2s ease-out;
+  --animate-ai-message: ai-message 160ms ease-out;
+  --animate-ai-appear: ai-appear 180ms ease-out;
   --color-ui-canvas: var(--ui-canvas);
   --color-ui-base: var(--ui-base);
   --color-ui-control: var(--ui-control);

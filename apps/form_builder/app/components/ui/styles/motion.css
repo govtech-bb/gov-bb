@@ -1,3 +1,28 @@
+@keyframes field-row-flash {
+  0%,
+  35% {
+    background: var(--ui-warning-tint);
+    border-color: var(--ui-warning-text);
+  }
+  100% {
+    background: var(--ui-base);
+  }
+}
+
+@keyframes ai-message {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
+@keyframes ai-appear {
+  from {
+    opacity: 0;
+    translate: 0 3px;
+  }
+}
+
 :root {
   --ui-fast: 120ms;
   --ui-moderate: 160ms;

@@ -1,3 +1,4 @@
+import { cn } from "../../components/ui/utils/cn";
 import { Collapsible } from "../../components/ui/collapsible";
 import { ScrollArea } from "../../components/ui/scroll-area";
 import { SkeletonLine } from "../../components/ui/loader";
@@ -32,15 +33,16 @@ import {
   VISIBILITY_WORD,
   linkableForms,
   type ViewLevel,
-} from "./-lib";
-import type { ContentPageSummary, ContentReviewClaim } from "./-server";
-import { useContentList } from "./-use-content-list";
-import { ErrorBanner } from "./-modals";
-import { usePersistedState } from "./-use-persisted";
-import { useTheme } from "./-use-theme";
-import { Tip } from "./-sliding-tabs";
+} from "../../lib/content";
+import type {
+  ContentPageSummary,
+  ContentReviewClaim,
+} from "../../server/content";
+import { useContentList } from "../../components/content/use-content-list";
+import { usePersistedState } from "../../hooks/use-persisted-state";
+import { useTheme } from "../../hooks/use-theme";
+import { Tooltip } from "../../components/ui/tooltip";
 import { SectionSwitch } from "../../components/section-switch";
-import s from "./-styles.module.css";
 
 export const Route = createFileRoute("/content/")({
   loader: async () => {
@@ -91,9 +93,9 @@ function categoryTitle(slug: string): string {
 }
 
 const STATUS_DOT: Record<string, string> = {
-  public: "dotLive",
-  preview: "dotPreview",
-  draft: "dotHidden",
+  public: "bg-ui-success",
+  preview: "bg-ui-info",
+  draft: "bg-ui-warning",
 };
 
 type StatusFilter = "all" | "incomplete" | "draft" | "pr";
@@ -324,9 +326,12 @@ function ContentHome() {
         claims.length === 0 || (claims.length === 1 && claims[0].writable);
       const status =
         VISIBILITY_WORD[slot.page.visibility as ViewLevel] ?? "Live";
-      const dot = STATUS_DOT[slot.page.visibility] ?? "dotLive";
+      const dot = STATUS_DOT[slot.page.visibility] ?? "bg-ui-success";
       return (
-        <span key={slot.label} className={s.pageActions}>
+        <span
+          key={slot.label}
+          className="inline-flex flex-wrap items-center gap-1.5"
+        >
           {editable ? (
             <AppLink
               size="sm"
@@ -338,15 +343,20 @@ function ContentHome() {
             >
               <PencilEdit02Icon size={13} aria-hidden="true" />
               {slot.label}
-              <span className={s.chipStatus}>
-                <span className={`${s.dot} ${s[dot]}`} aria-hidden="true" />
+              <span className="inline-flex items-center gap-1.25 border-l border-ui-tint pl-2 text-[11.5px] text-ui-subtle">
+                <span
+                  className={cn("size-1.5 rounded-full", dot)}
+                  aria-hidden="true"
+                />
                 {status}
               </span>
             </AppLink>
           ) : (
             <Badge variant="secondary" className="ml-auto max-w-[55%] truncate">
               {slot.label}
-              <span className={s.chipStatus}>{status}</span>
+              <span className="inline-flex items-center gap-1.25 border-l border-ui-tint pl-2 text-[11.5px] text-ui-subtle">
+                {status}
+              </span>
             </Badge>
           )}
           {claims.length > 1 && <Badge variant="warning">Multiple PRs</Badge>}
@@ -377,19 +387,24 @@ function ContentHome() {
   }
 
   return (
-    <div className={s.shell}>
-      <header className={s.docHeader}>
-        <div className={s.headerLeft}>
+    <div className="@container box-border flex h-dvh flex-col overflow-hidden bg-ui-canvas font-sans text-[14px] tracking-[-0.15px] text-ui-default">
+      <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-ui-hairline bg-ui-base px-6 py-3.5 max-sm:flex-col max-sm:items-stretch max-sm:px-4">
+        <div className="flex min-w-0 items-center gap-3.5">
           <SectionSwitch current="content" />
           <div>
-            <div className={s.eyebrow}>Content</div>
-            <h1 className={s.docTitle}>Landing pages</h1>
+            <div className="text-[11px] font-semibold tracking-[0.07em] text-ui-subtle uppercase">
+              Content
+            </div>
+            <h1 className="mt-0.5 mb-0 text-[19px] leading-[1.2] font-semibold">
+              Landing pages
+            </h1>
           </div>
         </div>
-        <div className={s.headerActions}>
-          <Tip
-            label={theme === "light" ? "Dark mode" : "Light mode"}
-            placement="bottom"
+        <div className="flex items-center gap-3.5 max-sm:flex-wrap max-sm:justify-start max-sm:gap-2">
+          <Tooltip
+            content={theme === "light" ? "Dark mode" : "Light mode"}
+            side="bottom"
+            render={<span className="inline-flex" />}
           >
             <Button
               type="button"
@@ -404,7 +419,7 @@ function ContentHome() {
                 <Sun03Icon size={15} />
               )}
             </Button>
-          </Tip>
+          </Tooltip>
           <Button
             type="button"
             onClick={() => {
@@ -440,80 +455,90 @@ function ContentHome() {
         aria-label="Landing pages"
         viewportClassName="scroll-fade"
       >
-        <div className={s.homeBody}>
+        <div className="min-h-0 w-full p-6 max-sm:px-4">
           {!loading && (
-            <div className={s.statRow}>
+            <div className="mb-4.5 grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-2.5">
               <Elevated
                 offset={1}
                 shadowLevel={2}
                 render={<div />}
-                className={s.statCard}
+                className="flex items-center gap-3 rounded-xl px-4 py-3.5"
               >
-                <span className={s.statIcon}>
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-ui-recessed text-ui-subtle">
                   <File01Icon size={18} />
                 </span>
                 <span>
-                  <div className={s.statValue}>{list.pages?.length ?? 0}</div>
-                  <div className={s.statLabel}>Pages</div>
+                  <div className="text-[18px] leading-[1.1] font-semibold">
+                    {list.pages?.length ?? 0}
+                  </div>
+                  <div className="mt-0.5 text-[12px] text-ui-subtle">Pages</div>
                 </span>
               </Elevated>
               <Elevated
                 offset={1}
                 shadowLevel={2}
                 render={<div />}
-                className={s.statCard}
+                className="flex items-center gap-3 rounded-xl px-4 py-3.5"
               >
-                <span className={s.statIcon}>
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-ui-recessed text-ui-subtle">
                   <CheckmarkCircle02Icon size={18} />
                 </span>
                 <span>
-                  <div className={s.statValue}>
+                  <div className="text-[18px] leading-[1.1] font-semibold">
                     {linkedCount}/{formRowsAll.length}
                   </div>
-                  <div className={s.statLabel}>Services with pages</div>
+                  <div className="mt-0.5 text-[12px] text-ui-subtle">
+                    Services with pages
+                  </div>
                 </span>
               </Elevated>
               <Elevated
                 offset={1}
                 shadowLevel={2}
                 render={<div />}
-                className={s.statCard}
+                className="flex items-center gap-3 rounded-xl px-4 py-3.5"
               >
-                <span className={s.statIcon}>
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-ui-recessed text-ui-subtle">
                   <Alert02Icon size={18} />
                 </span>
                 <span>
-                  <div className={s.statValue}>{missingCount}</div>
-                  <div className={s.statLabel}>Missing a page</div>
+                  <div className="text-[18px] leading-[1.1] font-semibold">
+                    {missingCount}
+                  </div>
+                  <div className="mt-0.5 text-[12px] text-ui-subtle">
+                    Missing a page
+                  </div>
                 </span>
               </Elevated>
               <Elevated
                 offset={1}
                 shadowLevel={2}
                 render={<div />}
-                className={s.statCard}
+                className="flex items-center gap-3 rounded-xl px-4 py-3.5"
               >
-                <span className={s.statIcon}>
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-ui-recessed text-ui-subtle">
                   <GitPullRequestIcon size={18} />
                 </span>
                 <span>
-                  <div className={s.statValue}>
+                  <div className="text-[18px] leading-[1.1] font-semibold">
                     {list.reviewSnapshot.complete ? openPRCount : "—"}
                   </div>
-                  <div className={s.statLabel}>In review</div>
+                  <div className="mt-0.5 text-[12px] text-ui-subtle">
+                    In review
+                  </div>
                 </span>
               </Elevated>
             </div>
           )}
 
-          <div className={s.filterBar}>
-            <div className={s.searchWrap}>
-              <label className={s.srOnly} htmlFor="content-page-search">
+          <div className="mb-2 flex flex-wrap items-center gap-2.5 max-sm:*:min-w-0 max-sm:*:w-full max-sm:*:flex-[1_1_100%]">
+            <div className="relative flex-[1_1_220px] max-sm:w-full max-sm:flex-[1_1_100%]">
+              <label className="sr-only" htmlFor="content-page-search">
                 Find a page by name
               </label>
               <Search01Icon
                 size={15}
-                className={s.searchIcon}
+                className="pointer-events-none absolute top-1/2 left-2.75 -translate-y-1/2 text-ui-subtle"
                 aria-hidden="true"
               />
               <Input
@@ -560,13 +585,11 @@ function ContentHome() {
             />
           </div>
 
-          <ErrorBanner
-            error={
-              list.loadError
-                ? `Existing pages couldn’t be loaded (${list.loadError}). Refresh before creating or deploying a page.`
-                : null
-            }
-          />
+          {list.loadError && (
+            <Banner variant="error" role="alert">
+              {`Existing pages couldn’t be loaded (${list.loadError}). Refresh before creating or deploying a page.`}
+            </Banner>
+          )}
           {list.reviewError && !list.loadError && (
             <Banner variant="error" role="alert">
               <div className="min-w-0 space-y-2">
@@ -588,7 +611,7 @@ function ContentHome() {
           )}
 
           {list.loadError && list.pages === null ? (
-            <div className={s.emptyState}>
+            <div className="grid justify-items-start gap-2.5 py-6 text-ui-subtle [&_p]:m-0">
               <p>
                 Page creation is paused until the current repository inventory
                 can be loaded safely.
@@ -609,13 +632,13 @@ function ContentHome() {
               aria-label="Loading pages"
               className="space-y-4"
             >
-              <div className={s.statRow}>
+              <div className="mb-4.5 grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-2.5">
                 {[0, 1, 2, 3].map((i) => (
                   <Elevated
                     offset={1}
                     shadowLevel={2}
                     key={i}
-                    className={s.statCard}
+                    className="flex items-center gap-3 rounded-xl px-4 py-3.5"
                   >
                     <div className="w-full space-y-2">
                       <SkeletonLine minWidth={40} maxWidth={40} />
@@ -639,7 +662,7 @@ function ContentHome() {
               </Elevated>
             </div>
           ) : groups.length === 0 ? (
-            <div className={s.emptyState}>
+            <div className="grid justify-items-start gap-2.5 py-6 text-ui-subtle [&_p]:m-0">
               <p>No pages match the current search and filters.</p>
               <Button
                 type="button"
@@ -673,14 +696,16 @@ function ContentHome() {
                       />
                     }
                   >
-                    <span className={s.groupChevron}>
+                    <span className="inline-flex items-center text-ui-subtle">
                       {isCollapsed ? (
                         <ArrowRight01Icon size={15} />
                       ) : (
                         <ArrowDown01Icon size={15} />
                       )}
                     </span>
-                    <span className={s.groupTitle}>{g.title}</span>
+                    <span className="text-[13px] font-semibold tracking-[0.03em] text-ui-default uppercase">
+                      {g.title}
+                    </span>
                     <Badge variant="secondary">{g.rows.length}</Badge>
                   </Collapsible.Trigger>
                   <Collapsible.Panel>
@@ -688,14 +713,20 @@ function ContentHome() {
                       offset={1}
                       shadowLevel={2}
                       render={<ul />}
-                      className={s.groupCard}
+                      className="m-0 list-none overflow-hidden rounded-xl p-0"
                     >
                       {g.rows.map((r) => (
-                        <li key={r.key} className={s.svcRow}>
-                          <span className={s.svcTitle} title={r.title}>
+                        <li
+                          key={r.key}
+                          className="flex items-center justify-between gap-4 px-4 py-3.25 not-last:border-b not-last:border-ui-tint hover:bg-ui-elevated max-sm:flex-col max-sm:items-stretch"
+                        >
+                          <span
+                            className="min-w-0 flex-1 text-[14px] font-medium wrap-break-word"
+                            title={r.title}
+                          >
                             {r.title}
                           </span>
-                          <span className={s.chipRow}>
+                          <span className="flex shrink-0 flex-wrap items-center gap-2 max-sm:justify-start">
                             {r.slots.map((sl) => chip(sl))}
                           </span>
                         </li>

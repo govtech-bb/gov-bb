@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { File01Icon } from "hugeicons-react";
-import s from "./components.module.css";
 
 // Weak keys release the cached first page when the conversation releases its File.
 const pages = new WeakMap<File, Promise<Blob>>();
@@ -93,7 +92,7 @@ export function FileThumbnail({
           ? "JPG"
           : name.split(".").at(-1)?.toUpperCase();
   return (
-    <span className={s.fileThumbnail}>
+    <span className="flex block-12.5 inline-11.5 shrink-0 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-[5px] border border-ui-line bg-ui-base text-[9px] font-[650] text-ui-default [&_img]:block-full [&_img]:inline-full [&_img]:object-cover">
       {preview ? (
         <img
           src={preview}
@@ -102,7 +101,7 @@ export function FileThumbnail({
         />
       ) : loading ? (
         <span
-          className={s.spinner}
+          className="block-3 inline-3 rounded-full border-[1.5px] border-ui-line border-t-ui-default motion-safe:animate-[spin_900ms_linear_infinite]"
           role="status"
           aria-label={`Loading preview of ${name}`}
         />
