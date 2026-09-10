@@ -4,7 +4,6 @@ import { Button } from "../button";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { AiMagicIcon, ArrowUp01Icon, Cancel01Icon } from "hugeicons-react";
 import type { AssistantRequest } from "./prompt-bar";
-import s from "./components.module.css";
 
 /** Uses the editor's native selection, including Markdown textarea ranges. */
 export function SelectionActions({
@@ -66,7 +65,7 @@ export function SelectionActions({
       shadowLevel={2}
       render={<div />}
       ref={toolbar}
-      className={s.selectionActions}
+      className="sticky bottom-3 z-5 mx-auto my-2.5 inline-fit max-inline-[calc(100%-20px)] rounded-xl p-2 font-sans text-ui-default motion-safe:animate-ai-appear [&_form]:mt-1 [&_form]:flex [&_form]:items-center [&_form]:border-t [&_form]:border-ui-hairline [&_form]:pt-1"
       aria-label="AI actions for selected text"
       onKeyDown={(event) => {
         if (event.key === "Escape") {
@@ -75,9 +74,9 @@ export function SelectionActions({
         }
       }}
     >
-      <div className={s.selectionActionsRow}>
+      <div className="flex flex-wrap items-center gap-1">
         <AiMagicIcon size={15} aria-hidden="true" />
-        <span className={s.selectionCount}>
+        <span className="flex-1 text-[11px] text-ui-default">
           {selected.text.length.toLocaleString()} characters selected
         </span>
         <Button
@@ -90,7 +89,7 @@ export function SelectionActions({
           <Cancel01Icon size={14} aria-hidden="true" />
         </Button>
       </div>
-      <div className={s.selectionActionsRow}>
+      <div className="flex flex-wrap items-center gap-1">
         <Button
           type="button"
           onClick={() =>

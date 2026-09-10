@@ -3,7 +3,6 @@ import { Button } from "../button";
 import { Cancel01Icon } from "hugeicons-react";
 import type { AttachmentMetadata } from "./attachment-data";
 import { FileThumbnail } from "./file-thumbnail";
-import s from "./components.module.css";
 
 export function AttachmentCard({
   attachment,
@@ -23,14 +22,14 @@ export function AttachmentCard({
       offset={1}
       shadowLevel={2}
       render={<div />}
-      className={s.fileCard}
+      className="mb-2 flex min-inline-0 items-center gap-2.5 rounded-lg p-2"
     >
       <FileThumbnail
         file={file}
         name={attachment.name}
         type={attachment.type}
       />
-      <span className={s.fileInfo}>
+      <span className="grid min-inline-0 flex-1 gap-1 [&_strong]:truncate [&_strong]:text-[12px] [&_strong]:font-[550] [&>span]:text-[10px] [&>span]:text-ui-default">
         <strong title={attachment.name}>{attachment.name}</strong>
         <span>
           {attachment.size !== undefined

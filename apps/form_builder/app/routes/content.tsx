@@ -4,8 +4,8 @@ import { checkSession } from "../server/auth";
 /**
  * Standalone route tree for the landing **content CMS**, kept fully separate
  * from `/builder` so it can't disturb the builder's draft/deploy state. Same
- * GitHub-OAuth gate as the builder layout. All of its code is colocated under
- * `app/routes/content/` (dash-prefixed helpers + lib/render/server/styles).
+ * GitHub-OAuth gate as the builder layout. Extracted UI lives in
+ * `app/components/content`; server functions live in `app/server/content.ts`.
  */
 export const Route = createFileRoute("/content")({
   beforeLoad: async () => {

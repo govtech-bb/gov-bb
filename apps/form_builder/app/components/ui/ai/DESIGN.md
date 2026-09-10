@@ -2,19 +2,19 @@
 name: Gov BB authoring assistant
 description: A contextual conversation and review panel within the existing authoring interface.
 colors:
-  el-0: "var(--el-0)"
-  el-50: "var(--el-50)"
-  el-100: "var(--el-100)"
-  el-150: "var(--el-150)"
-  el-200: "var(--el-200)"
-  el-250: "var(--el-250)"
-  el-800: "var(--el-800)"
-  el-1000: "var(--el-1000)"
-  txt: "var(--txt)"
-  on-inverse: "var(--on-inverse)"
-  color-success: "var(--color-success, var(--txt))"
-  err-tx: "var(--err-tx)"
-  err-bg: "var(--err-bg)"
+  ui-base: "var(--ui-base)"
+  ui-surface-2: "var(--ui-surface-2)"
+  ui-canvas: "var(--ui-canvas)"
+  ui-tint: "var(--ui-tint)"
+  ui-hairline: "var(--ui-hairline)"
+  ui-line: "var(--ui-line)"
+  ui-brand-hover: "var(--ui-brand-hover)"
+  ui-brand: "var(--ui-brand)"
+  ui-default: "var(--ui-default)"
+  ui-inverse: "var(--ui-inverse)"
+  ui-success-text: "var(--ui-success-text)"
+  ui-danger-text: "var(--ui-danger-text)"
+  ui-danger-tint: "var(--ui-danger-tint)"
 typography:
   body:
     fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'
@@ -46,55 +46,55 @@ spacing:
   section: "16px"
 components:
   button-primary:
-    backgroundColor: "{colors.el-1000}"
-    textColor: "{colors.on-inverse}"
+    backgroundColor: "{colors.ui-brand}"
+    textColor: "{colors.ui-inverse}"
     rounded: "{rounded.rad-m}"
     padding: "7px 10px"
   button-primary-hover:
-    backgroundColor: "{colors.el-800}"
+    backgroundColor: "{colors.ui-brand-hover}"
   button-secondary:
-    backgroundColor: "{colors.el-0}"
-    textColor: "{colors.txt}"
+    backgroundColor: "{colors.ui-base}"
+    textColor: "{colors.ui-default}"
     rounded: "{rounded.rad-m}"
     padding: "7px 10px"
   button-secondary-hover:
-    backgroundColor: "{colors.el-150}"
+    backgroundColor: "{colors.ui-tint}"
   conversation-select:
-    textColor: "{colors.txt}"
+    textColor: "{colors.ui-default}"
     padding: "6px 0"
   mode-select:
-    backgroundColor: "{colors.el-100}"
-    textColor: "{colors.txt}"
+    backgroundColor: "{colors.ui-canvas}"
+    textColor: "{colors.ui-default}"
     typography: "{typography.label}"
     rounded: "20px"
     padding: "6px 8px"
   composer:
-    backgroundColor: "{colors.el-0}"
-    textColor: "{colors.txt}"
+    backgroundColor: "{colors.ui-base}"
+    textColor: "{colors.ui-default}"
     rounded: "16px"
   assistant-message:
-    backgroundColor: "{colors.el-0}"
-    textColor: "{colors.txt}"
+    backgroundColor: "{colors.ui-base}"
+    textColor: "{colors.ui-default}"
     rounded: "{rounded.rad-l}"
     padding: "15px"
   review-card:
-    backgroundColor: "{colors.el-0}"
-    textColor: "{colors.txt}"
+    backgroundColor: "{colors.ui-base}"
+    textColor: "{colors.ui-default}"
     rounded: "{rounded.rad-l}"
     padding: "16px"
   loading-state:
-    textColor: "{colors.el-800}"
+    textColor: "{colors.ui-brand-hover}"
     typography: "{typography.activity}"
   code-block:
-    backgroundColor: "{colors.el-100}"
-    textColor: "{colors.txt}"
+    backgroundColor: "{colors.ui-canvas}"
+    textColor: "{colors.ui-default}"
     typography: "{typography.code}"
     rounded: "{rounded.rad-m}"
   clarification-question:
-    textColor: "{colors.txt}"
+    textColor: "{colors.ui-default}"
   attachment-card:
-    backgroundColor: "{colors.el-100}"
-    textColor: "{colors.txt}"
+    backgroundColor: "{colors.ui-canvas}"
+    textColor: "{colors.ui-default}"
     rounded: "{rounded.rad-m}"
     padding: "8px"
 ---
@@ -117,31 +117,31 @@ The panel uses restrained tonal separation and readable evidence. Its visual hie
 - Unified before/after changes presented with validation before Apply.
 - Activity and attachment states driven by the current operation.
 
-Evidence: [PRODUCT.md](../../../../PRODUCT.md), [assistant.tsx](./assistant.tsx), and [ai.module.css](./ai.module.css). This is a record of implemented components, not a new application identity.
+Evidence: [PRODUCT.md](../../../../PRODUCT.md), [assistant.tsx](./assistant.tsx), and [theme tokens](../styles/tokens.css). This is a record of implemented components, not a new application identity.
 
 ## Colors
 
-A warm neutral surface family becomes a charcoal family in dark mode. Frontmatter colors retain the actual CSS custom-property bindings so they follow both themes; their values remain owned by [the content theme](../../../routes/content/-styles.module.css) and [the matching builder theme](../../../styles/builder.global.css).
+A warm neutral surface family becomes a charcoal family in dark mode. Frontmatter colors retain the actual CSS custom-property bindings so they follow both themes; their values remain owned by [the content theme](../styles/tokens.css) and [the matching builder theme](../../../styles/builder.global.css).
 
 ### Primary
 
-- **Inverse action:** `el-1000` with `on-inverse` identifies Apply and Send; hover uses `el-800`.
+- **Inverse action:** `ui-brand` with `ui-inverse` identifies Apply and Send; hover uses `ui-brand-hover`.
 
 ### Secondary
 
-- **Success and additions:** the existing `color-success` token marks completed tasks and added lines, falling back to `txt` where the host supplies no success color.
-- **Errors and removals:** `err-tx` and `err-bg` mark failed activity and removed lines. Status text and addition/removal signs preserve meaning without color.
+- **Success and additions:** the existing `ui-success-text` token marks completed tasks and added lines, falling back to `ui-default` where the host supplies no success color.
+- **Errors and removals:** `ui-danger-text` and `ui-danger-tint` mark failed activity and removed lines. Status text and addition/removal signs preserve meaning without color.
 
 ### Neutral
 
-- **Panel and cards:** `el-50` backs the dock; `el-0` backs the header, assistant messages, review cards, and composer.
-- **Inset surfaces:** `el-100` backs code, tool chips, attachment cards, warnings, and selected or hovered question options. `el-150` backs user messages and secondary-button hover.
-- **Dividers:** `el-200` separates regions; `el-250` outlines controls and review cards.
-- **Readable copy:** `txt` carries primary text. `el-800` carries supporting text, solid loading labels, and prompt/question placeholders at full opacity.
+- **Panel and cards:** `ui-surface-2` backs the dock; `ui-base` backs the header, assistant messages, review cards, and composer.
+- **Inset surfaces:** `ui-canvas` backs code, tool chips, attachment cards, warnings, and selected or hovered question options. `ui-tint` backs user messages and secondary-button hover.
+- **Dividers:** `ui-hairline` separates regions; `ui-line` outlines controls and review cards.
+- **Readable copy:** `ui-default` carries primary text. `ui-brand-hover` carries supporting text, solid loading labels, and prompt/question placeholders at full opacity.
 
-**The Theme Pairing Rule.** Keep inverse actions paired with `on-inverse`, and retain solid `el-800` for loading labels and prompt/question placeholders across themes.
+**The Theme Pairing Rule.** Keep inverse actions paired with `ui-inverse`, and retain solid `ui-brand-hover` for loading labels and prompt/question placeholders across themes.
 
-Evidence: [actions and supporting text](./ai.module.css), [activity, status, diff, and placeholder styles](./components.module.css).
+Evidence: [actions and supporting text](./assistant.tsx), [shared color roles](../styles/tokens.css).
 
 ## Typography
 
@@ -149,7 +149,7 @@ Inter and its existing sans-serif fallback stack are inherited from the host. Bo
 
 The welcome title is a local introduction (22px, weight 550, tracking -0.6px), not a reusable application display scale. Conversation titles use weight 550. Code fences, tool payloads, and unified diffs share the monospace code role, with wrapped lines and explicit addition/removal signs. Elapsed time and question counters use tabular numbers.
 
-Evidence: [host type](../../../styles/builder.global.css), [welcome and Markdown](./ai.module.css), [code and activity text](./components.module.css).
+Evidence: [host type](../../../styles/builder.global.css), [welcome and Markdown](./assistant.tsx), [code](./code-block.tsx) and [activity text](./loading-state.tsx).
 
 ## Layout
 
@@ -159,7 +159,7 @@ At viewport widths of 1023px or below, the same native dialog opens modally at f
 
 Spacing is compact around controls and more open between messages. Review disclosures contain one unified before/after diff, with line numbers and added/removed counts. Code regions scroll within 320px; attachment activity scrolls within the smaller of 240px and 25dvh inside the composer. Prompt menus open above it. Clarification questions appear one at a time inside the existing assistant message.
 
-Evidence: [dock sizing and dialog behavior](./assistant.tsx), [resize control](./assistant.tsx), [dock responsive rules](./ai.module.css), [prompt, question, and selection layout](./components.module.css).
+Evidence: [dock sizing and dialog behavior](./assistant.tsx), [resize control](./assistant.tsx), [dock responsive rules](./assistant.tsx), [prompt](./prompt-bar.tsx), [question](./approval-card.tsx), and [selection layout](./selection-actions.tsx).
 
 ## Elevation & Depth
 
@@ -167,13 +167,13 @@ Borders and tonal surfaces establish depth. The conversation alone carries a fai
 
 New messages, questions, and selection actions use short opacity/vertical entrances. Activity pixels and spinners animate only when reduced motion is not requested. Loading labels remain solid; a real elapsed timer accompanies the pixels. Text communicates status independently of animation.
 
-Evidence: [feed texture](./ai.module.css), [floating control](./ai.module.css), [message motion](./ai.module.css), [component motion and local shadows](./components.module.css).
+Evidence: [feed texture](./assistant.tsx), [floating control](./assistant.tsx), [message motion](./assistant.tsx), [shared animations](../styles/motion.css) and [selection actions](./selection-actions.tsx).
 
 ## Shapes
 
 Use the existing small radius for warnings and question options; medium for buttons, code blocks, and attachment cards; large for assistant messages and review cards. The prompt has its own softer silhouette (16px). Task rows change from a pill to the large radius when expanded. User messages retain an asymmetric corner, the mode selector is pill shaped, and Send is circular. Clarification questions add no enclosing card. These silhouettes identify component roles rather than introducing new global radius tokens.
 
-Evidence: [messages](./ai.module.css), [review](./ai.module.css), [prompt, task, attachment, and question shapes](./components.module.css).
+Evidence: [messages](./assistant.tsx), [review](./assistant.tsx), [prompt](./prompt-bar.tsx), [tasks](./task-rows.tsx), [attachments](./attachments.tsx), and [questions](./approval-card.tsx).
 
 ## Components
 
@@ -189,7 +189,7 @@ Evidence: [messages](./ai.module.css), [review](./ai.module.css), [prompt, task,
 
 **The Review Before Apply Rule.** Keep the proposed values and validation state available beside an explicit Apply action. Apply changes only the local draft; the author retains the existing Save or Deploy step.
 
-Evidence: [assistant integration](./assistant.tsx), [prompt](./prompt-bar.tsx), [attachment card](./attachments.tsx), [local thumbnails](./file-thumbnail.tsx), [attachment parts](./attachment-data.ts), [saved transcript](./history.ts), [authenticated document transport](./transport.ts), [loading](./loading-state.tsx), [activity](./thinking-state.tsx), [tool details](./tool-chips.tsx), [tasks](./task-rows.tsx), [questions](./approval-card.tsx), [code/diff](./code-block.tsx), [review](./review.tsx), [selection](./selection-actions.tsx), and [editor integration](../../../routes/content/-body-editor.tsx).
+Evidence: [assistant integration](./assistant.tsx), [prompt](./prompt-bar.tsx), [attachment card](./attachments.tsx), [local thumbnails](./file-thumbnail.tsx), [attachment parts](./attachment-data.ts), [saved transcript](./history.ts), [authenticated document transport](./transport.ts), [loading](./loading-state.tsx), [activity](./thinking-state.tsx), [tool details](./tool-chips.tsx), [tasks](./task-rows.tsx), [questions](./approval-card.tsx), [code/diff](./code-block.tsx), [review](./review.tsx), [selection](./selection-actions.tsx), and [editor integration](../../body-editor/body-editor.tsx).
 
 ## Do's and Don'ts
 

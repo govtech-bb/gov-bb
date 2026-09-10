@@ -20,8 +20,8 @@ import {
   NavigationExamples,
   FormPattern,
   ElevationExamples,
-} from "../../routes/-ui-catalogue";
-import { useTheme } from "../../routes/content/-use-theme";
+} from "../ui-catalogue";
+import { useTheme } from "../../hooks/use-theme";
 import {
   Input,
   InputArea,

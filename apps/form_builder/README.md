@@ -41,6 +41,34 @@ Copy [`.env.example`](./.env.example) to `.env`. Key variables:
 pnpm exec nx test form-builder-app   # Vitest 4
 ```
 
+## Code organization
+
+- `app/routes` owns route configuration, page composition, and page-level state.
+  Route-local tests use a leading `-` so TanStack excludes them from routing.
+- `app/components/builder` and `app/components/content` group each editor's
+  controls, dialogs, private hooks, helpers, and tests.
+- `app/components/body-editor` contains the rich-text editor shared by both
+  editors, including its nodes, plugins, markdown conversion, and tests.
+- `app/components/ui` owns shared UI primitives and the shared AI assistant;
+  feature-specific assistant adapters live with their editor components.
+- `app/hooks` holds shared theme and persisted-state hooks. Browser-safe content
+  helpers live in `app/lib`; server functions and markdown serialization live
+  in `app/server`.
+
+Style components with Tailwind utilities and the shared `ui-*` color tokens.
+Keep shared theme and animation definitions in `app/components/ui/styles`;
+`app/styles/builder.global.css` supplies the page defaults. Use `cn` when
+combining utilities with conditional overrides. JavaScript should select
+elements by a data attribute or ref rather than by their styling classes.
+
+Import modules directly. Keep small page-local helpers with their page and use
+existing UI primitives instead of adding forwarding wrappers. Components and
+shared helpers must not import route modules.
+
+Keep dialogs mounted and control their visibility with `open`. Let the dialog
+portal finish its closing animation before resetting local input; retain the
+selected item and result content throughout that animation.
+
 ## Build & deploy
 
 `pnpm build` runs `vite build` then `scripts/patch-amplify-manifest.mjs` to fix
@@ -49,7 +77,8 @@ PR previews must not contain a `.` (see the root [CLAUDE.md](../../CLAUDE.md)).
 
 ## AI assistant
 
-All AI UI lives in `app/components/ui/ai`. Ask mode answers questions; Review
+Shared AI UI lives in `app/components/ui/ai`; form and content adapters live in
+their respective component groups. Ask mode answers questions; Review
 edits shows a normalized before/after comparison and validation warnings before
 Apply. Changes remain local until the existing Save or Deploy action.
 

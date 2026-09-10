@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from "react";
 import { Copy01Icon, CheckmarkCircle02Icon } from "hugeicons-react";
-import s from "./components.module.css";
 
 export type DiffLine = {
   text: string;
@@ -83,12 +82,12 @@ export function CodeBlock({
       offset={1}
       shadowLevel={2}
       render={<div />}
-      className={s.codeBlock}
+      className="my-2 min-inline-0 overflow-hidden rounded-lg text-[12px]"
     >
-      <div className={s.codeHeader}>
+      <div className="flex min-block-9.5 items-center gap-2 border-b border-ui-hairline px-2.5 py-1.25 text-[11px] [&>span:first-child]:min-inline-0 [&>span:first-child]:font-mono [&>span:first-child]:wrap-anywhere">
         <span>{filename}</span>
         {before !== undefined && (
-          <span className={s.diffStats}>
+          <span className="shrink-0 font-mono [&_[data-tone=add]]:text-ui-success [&_[data-tone=remove]]:text-ui-danger">
             <span data-tone="add">
               +{lines.filter((line) => line.kind === "add").length}
             </span>{" "}
@@ -123,7 +122,7 @@ export function CodeBlock({
         </Button>
       </div>
       {copyState && (
-        <span role="status" className={s.copyStatus}>
+        <span role="status" className="block px-2.5 py-1 text-[11px]">
           {copyState}
         </span>
       )}
@@ -137,18 +136,22 @@ export function CodeBlock({
             : `${filename}: removed and added lines`
         }
       >
-        <div className={s.codeLines}>
+        <div className="py-2.5 leading-[1.65]">
           {lines.map((line, i) => (
-            <div key={i} className={s.codeLine} data-kind={line.kind}>
+            <div
+              key={i}
+              className="flex min-block-lh items-start [&>code]:min-inline-0 [&>code]:ps-1.75 [&>code]:pe-2.5 [&>code]:font-mono [&>code]:text-[12px] [&>code]:leading-[1.7] [&>code]:wrap-anywhere [&>code]:whitespace-pre-wrap data-[kind=add]:border-s-2 data-[kind=add]:border-s-(--ui-success-text) data-[kind=add]:bg-[color-mix(in_srgb,var(--ui-success-text)_9%,transparent)] data-[kind=remove]:border-s-2 data-[kind=remove]:border-s-(--ui-danger-text) data-[kind=remove]:bg-ui-danger-tint"
+              data-kind={line.kind}
+            >
               <span
-                className={`${s.lineNumber} select-none`}
+                className="inline-7.5 shrink-0 border-e border-ui-hairline px-1.25 text-end font-mono text-[10px] leading-[1.98] text-ui-default select-none"
                 aria-hidden="true"
               >
                 {line.kind === "remove" ? line.old : line.next}
               </span>
               {before !== undefined && (
                 <span
-                  className={`${s.lineSign} select-none`}
+                  className="inline-4.25 shrink-0 text-center select-none"
                   aria-label={
                     line.kind === "add"
                       ? "Added"

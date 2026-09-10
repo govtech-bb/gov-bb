@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { redactAiData } from "@govtech-bb/form-builder";
 import { CodeBlock } from "./code-block";
 import { TaskRows } from "./task-rows";
-import s from "./ai.module.css";
 
 export type PreparedChange = {
   before: Record<string, unknown>;
@@ -71,10 +70,12 @@ export function ReviewCard({
       offset={1}
       shadowLevel={2}
       render={<section />}
-      className={s.review}
+      className="my-3.5 rounded-xl p-4"
       aria-label="Review proposed changes"
     >
-      <div className={s.eyebrow}>Proposed changes</div>
+      <div className="mb-2.25 text-[11px] font-[650] text-ui-default">
+        Proposed changes
+      </div>
       <p>{proposal.summary}</p>
       {!stale && (
         <TaskRows
@@ -157,12 +158,12 @@ export function ReviewCard({
             </Collapsible>
           ))}
 
-          <p className={s.muted}>
+          <p className="text-[12px] text-ui-default">
             Applies to this draft. Save or deploy when you are ready.
           </p>
         </>
       )}
-      <div className={s.actions}>
+      <div className="mt-3.5 flex flex-wrap justify-end gap-2">
         <Button
           type="button"
           disabled={disabled}

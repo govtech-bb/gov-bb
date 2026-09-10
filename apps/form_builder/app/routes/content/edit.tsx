@@ -1,3 +1,4 @@
+import { cn } from "../../components/ui/utils/cn";
 import { ScrollArea } from "../../components/ui/scroll-area";
 import { Loader } from "../../components/ui/loader";
 import { Banner } from "../../components/ui/banner";
@@ -21,25 +22,31 @@ import {
 } from "hugeicons-react";
 import { listForms } from "../../server/forms";
 import { getPublishBaseBranch } from "../../server/publish";
-import { publishStartPage, deleteContentPage } from "./-server";
-import { HeaderMenu, type HeaderMenuItem } from "./-header-menu";
-import { linkableForms, buildDeployPayload } from "./-lib";
-import { StartPagePreviewFrame, LANDING_ORIGIN } from "./-preview-frame";
-import { useContentList } from "./-use-content-list";
-import { usePersistedState } from "./-use-persisted";
-import { SlidingTabs, Tip } from "./-sliding-tabs";
-import { useTheme } from "./-use-theme";
+import { publishStartPage, deleteContentPage } from "../../server/content";
+import {
+  HeaderMenu,
+  type HeaderMenuItem,
+} from "../../components/content/header-menu";
+import { linkableForms, buildDeployPayload } from "../../lib/content";
+import {
+  StartPagePreviewFrame,
+  LANDING_ORIGIN,
+} from "../../components/content/preview-frame";
+import { useContentList } from "../../components/content/use-content-list";
+import { usePersistedState } from "../../hooks/use-persisted-state";
+import { Tabs } from "../../components/ui/tabs";
+import { Tooltip } from "../../components/ui/tooltip";
+import { useTheme } from "../../hooks/use-theme";
 import {
   useEditorState,
   type EditSearch,
   type EditorState,
-} from "./-editor-state";
-import { PageFields } from "./-fields";
-import { ContentAssistant } from "../../components/ui/ai/content-assistant";
-import { DeleteModal, DeployModal, ErrorBanner } from "./-modals";
-import { SuccessCard } from "./-success-card";
+} from "../../components/content/use-editor-state";
+import { PageFields } from "../../components/content/fields";
+import { ContentAssistant } from "../../components/content/content-assistant";
+import { DeleteModal, DeployModal } from "../../components/content/modals";
+import { SuccessCard } from "../../components/content/success-card";
 import type { BuilderFormSummary } from "../../types/index";
-import s from "./-styles.module.css";
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -214,7 +221,7 @@ function EditorPreviewPane({
   return (
     <>
       <div
-        className={s.splitter}
+        className="w-1.5 shrink-0 cursor-col-resize bg-transparent transition-[background] duration-120 ease-[ease] hover:bg-ui-line active:bg-ui-line focus-visible:bg-ui-line @max-[48rem]:hidden"
         role="separator"
         aria-orientation="vertical"
         aria-label="Resize editor and preview"
@@ -229,23 +236,28 @@ function EditorPreviewPane({
       />
 
       <div
-        className={s.previewPanel}
+        className="flex min-w-0 flex-1 flex-col bg-ui-tint @max-[48rem]:min-h-45 @max-[48rem]:flex-[0_0_35%]"
         // The iframe would swallow mousemove during a drag — disable it.
         style={dragging ? { pointerEvents: "none" } : undefined}
       >
-        <div className={s.previewToolbar}>
-          <SlidingTabs
-            ariaLabel="Preview device"
-            options={BREAKPOINTS.map((b) => ({ key: b.key, label: b.label }))}
+        <div className="flex h-12.5 items-center gap-3 border-b border-ui-hairline bg-ui-elevated px-4 py-0">
+          <Tabs
+            aria-label="Preview device"
+            size="sm"
+            activateOnFocus
+            tabs={BREAKPOINTS.map((b) => ({ value: b.key, label: b.label }))}
             value={breakpoint}
-            onChange={onBreakpointChange}
+            onValueChange={(next) => onBreakpointChange(next as Breakpoint)}
           />
-          <span className={s.previewUrl}>
+          <span className="ml-auto max-w-1/2 truncate font-mono text-[12px] text-ui-subtle">
             {ed.url ? `…${ed.url}` : "alpha.gov.bb"}
           </span>
         </div>
-        <div className={s.previewStage}>
-          <div className={s.deviceFrame} style={{ width: frameWidth }}>
+        <div className="flex min-h-0 flex-1 justify-center overflow-auto bg-ui-tint p-6">
+          <div
+            className="h-full w-full overflow-hidden rounded-xl bg-ui-base shadow-ui-surface-3 transition-[width] duration-250 ease-[ease] motion-reduce:transition-none"
+            style={{ width: frameWidth }}
+          >
             <StartPagePreviewFrame
               data={{
                 frontmatter: {
@@ -422,13 +434,20 @@ function StartPagesEditor() {
   };
 
   const success = ed.success;
+  const visibleError =
+    ed.deployConflict?.kind === "review-unavailable" || ed.staleDraft
+      ? null
+      : ed.error;
 
   return (
-    <div className={s.aiWorkspace}>
-      <div className={s.shell}>
-        <header className={s.docHeader}>
-          <div className={s.headerLeft}>
-            <Tip label="All pages">
+    <div className="flex h-dvh min-w-0 *:min-w-0">
+      <div className="@container box-border flex h-dvh flex-col overflow-hidden bg-ui-canvas font-sans text-[14px] tracking-[-0.15px] text-ui-default min-w-0 flex-1">
+        <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-ui-hairline bg-ui-base px-6 py-3.5 max-sm:flex-col max-sm:items-stretch max-sm:px-4">
+          <div className="flex min-w-0 items-center gap-3.5">
+            <Tooltip
+              content="All pages"
+              render={<span className="inline-flex" />}
+            >
               <AppLink
                 size="sm"
                 to="/content"
@@ -450,15 +469,17 @@ function StartPagesEditor() {
               >
                 <ArrowLeft02Icon size={15} />
               </AppLink>
-            </Tip>
+            </Tooltip>
             <div>
-              <div className={s.eyebrow}>{ed.eyebrow}</div>
-              <h1 className={s.docTitle}>
+              <div className="text-[11px] font-semibold tracking-[0.07em] text-ui-subtle uppercase">
+                {ed.eyebrow}
+              </div>
+              <h1 className="mt-0.5 mb-0 text-[19px] leading-[1.2] font-semibold">
                 {state.title.trim() || "Untitled service"}
               </h1>
             </div>
           </div>
-          <div className={s.headerActions}>
+          <div className="flex items-center gap-3.5 max-sm:flex-wrap max-sm:justify-start max-sm:gap-2">
             {ed.dirty && !success && (
               <Badge variant="warning">
                 {ed.draftSaved ? "Draft saved" : "Saving…"}
@@ -522,15 +543,19 @@ function StartPagesEditor() {
             onBack={() => navigate({ to: "/content" })}
           />
         ) : (
-          <div className={s.body}>
+          <div className="flex min-h-0 flex-1 items-stretch @max-[48rem]:flex-col">
             <ScrollArea
               aria-label="Page fields"
               viewportClassName="scroll-fade"
-              className={`${s.fieldsPanel} ${showPreview ? "" : s.fieldsPanelWide}`}
+              data-wide={!showPreview}
+              className={cn(
+                "group/fields-panel w-115 max-w-full shrink-0 border-r border-ui-hairline bg-ui-base @max-[48rem]:min-h-0 @max-[48rem]:flex-1 @max-[48rem]:border-r-0 @max-[48rem]:border-b",
+                showPreview ? "" : "w-full max-w-none border-r-0",
+              )}
               style={showPreview ? { width: paneWidth } : undefined}
             >
-              <div className={s.fieldsContent}>
-                <p className={s.hint}>
+              <div className="min-w-0 p-6 max-sm:p-4 group-data-[wide=true]/fields-panel:*:mx-auto group-data-[wide=true]/fields-panel:*:max-w-300">
+                <p className="m-0 mb-5 text-[13px] leading-normal text-ui-subtle [&_code]:rounded-[3px] [&_code]:bg-ui-recessed [&_code]:px-1.25 [&_code]:py-px [&_code]:text-[0.85em]">
                   {activeReview
                     ? `Editing PR #${activeReview.prNumber}. Update adds a commit to the same PR.`
                     : ed.editing
@@ -540,7 +565,7 @@ function StartPagesEditor() {
                 </p>
 
                 {ed.loadingPage && (
-                  <p className={s.modalNote}>
+                  <p className="py-2 text-[13px] text-ui-subtle [&_a]:text-ui-link">
                     <span
                       role="status"
                       className="inline-flex items-center gap-2"
@@ -551,7 +576,7 @@ function StartPagesEditor() {
                   </p>
                 )}
                 {!ed.loadingPage && activeReview && (
-                  <p className={s.modalNote}>
+                  <p className="py-2 text-[13px] text-ui-subtle [&_a]:text-ui-link">
                     You’re editing the version in PR{" "}
                     <a
                       href={activeReview.prUrl}
@@ -569,7 +594,7 @@ function StartPagesEditor() {
                   <Banner variant="error" role="alert">
                     <div className="min-w-0 space-y-2">
                       <span>{ed.reviewBlock.message}</span>
-                      <span className={s.reviewLinks}>
+                      <span className="flex flex-wrap items-center gap-2.5 [&_a]:font-semibold [&_a]:text-inherit">
                         {ed.reviewBlock.claims.map((claim) => (
                           <a
                             key={`${claim.prNumber}:${claim.path}:${claim.previousPath ?? ""}`}
@@ -585,7 +610,7 @@ function StartPagesEditor() {
                   </Banner>
                 )}
                 {ed.deployConflict && ed.deployConflict.claims.length > 0 && (
-                  <div className={s.reviewLinks}>
+                  <div className="flex flex-wrap items-center gap-2.5 [&_a]:font-semibold [&_a]:text-inherit">
                     {ed.deployConflict.claims.map((claim) => (
                       <a
                         key={`${claim.prNumber}:${claim.path}:${claim.previousPath ?? ""}`}
@@ -660,14 +685,11 @@ function StartPagesEditor() {
                     </div>
                   </Banner>
                 )}
-                <ErrorBanner
-                  error={
-                    ed.deployConflict?.kind === "review-unavailable" ||
-                    ed.staleDraft
-                      ? null
-                      : ed.error
-                  }
-                />
+                {visibleError && (
+                  <Banner variant="error" role="alert">
+                    {visibleError}
+                  </Banner>
+                )}
 
                 <PageFields
                   ed={ed}
@@ -703,26 +725,23 @@ function StartPagesEditor() {
           </div>
         )}
 
-        {deleteOpen && ed.editPath && (
-          <DeleteModal
-            onClose={() => setDeleteOpen(false)}
-            editPath={ed.editPath}
-            error={ed.error}
-            isDeleting={isDeleting}
-            onDelete={() => void onDelete()}
-          />
-        )}
-
-        {deployOpen && (
-          <DeployModal
-            onClose={() => setDeployOpen(false)}
-            ed={ed}
-            baseBranch={baseBranch}
-            openPR={activeReview}
-            isPublishing={isPublishing}
-            onDeploy={(desc) => void onDeploy(desc)}
-          />
-        )}
+        <DeleteModal
+          open={deleteOpen && ed.editPath !== null}
+          onClose={() => setDeleteOpen(false)}
+          editPath={ed.editPath ?? ""}
+          error={ed.error}
+          isDeleting={isDeleting}
+          onDelete={() => void onDelete()}
+        />
+        <DeployModal
+          open={deployOpen}
+          onClose={() => setDeployOpen(false)}
+          ed={ed}
+          baseBranch={baseBranch}
+          openPR={activeReview}
+          isPublishing={isPublishing}
+          onDeploy={(desc) => void onDeploy(desc)}
+        />
       </div>
       <ContentAssistant
         request={aiRequest}

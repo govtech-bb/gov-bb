@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import s from "./components.module.css";
 
 import { Loader } from "../loader";
 
@@ -21,13 +20,16 @@ export function LoadingState({
     return () => clearInterval(interval);
   }, [timer]);
   return (
-    <span className={s.loading}>
+    <span className="inline-flex min-inline-0 items-center gap-2.25 text-[13px] text-ui-default">
       <Loader size={16} aria-hidden="true" />
-      <span className={s.loadingLabel} role="status">
+      <span className="font-medium text-ui-default" role="status">
         {label}
       </span>
       {timer && (
-        <span className={s.elapsed} aria-hidden="true">
+        <span
+          className="font-mono text-[11px] whitespace-nowrap tabular-nums"
+          aria-hidden="true"
+        >
           {elapsed < 60
             ? `${elapsed.toFixed(1)}s`
             : `${Math.floor(elapsed / 60)}m ${Math.floor(elapsed % 60)}s`}

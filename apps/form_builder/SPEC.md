@@ -139,7 +139,8 @@ A resizable sidebar serves both the form builder and content editor. It uses
 the current draft and selection as context, offers Ask and Review edits modes,
 and renders streamed replies with TanStack Markdown. Mobile uses a full-screen
 native dialog; the panel supports keyboard resizing, Stop, Retry, and copying
-replies. All AI components live under `app/components/ui/ai`.
+replies. Shared AI components live under `app/components/ui/ai`; the form and
+content adapters live with their respective editor components.
 
 ### 3.1 Transport and tools
 

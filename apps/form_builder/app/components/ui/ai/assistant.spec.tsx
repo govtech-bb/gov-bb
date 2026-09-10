@@ -9,7 +9,7 @@ import {
 } from "@testing-library/react";
 import { getCatalog, type RecipeDraft } from "@govtech-bb/form-builder";
 import { Assistant } from "./assistant";
-import { prepareFormDraft } from "./form-assistant";
+import { prepareFormDraft } from "../../builder/form-assistant";
 import { restoreTranscript, historyKey } from "./history";
 import type { PreparedChange } from "./review";
 

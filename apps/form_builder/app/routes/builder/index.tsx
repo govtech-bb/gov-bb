@@ -24,33 +24,41 @@ import { Button } from "../../components/ui/button";
 import { Sidebar } from "../../components/ui/sidebar";
 
 import { SectionSwitch } from "../../components/section-switch";
-import { useTheme } from "../content/-use-theme";
-import { draftsEqual } from "./-apply-recipe";
-import { FormAssistant } from "../../components/ui/ai/form-assistant";
+import { useTheme } from "../../hooks/use-theme";
+import { draftsEqual } from "../../components/builder/apply-recipe";
+import { FormAssistant } from "../../components/builder/form-assistant";
 import {
   recipeReducer,
   EMPTY_DRAFT,
   nextStepId,
   REQUIRED_STEP_IDS,
-} from "./-recipe-reducer";
-import { Toolbar } from "./-toolbar";
-import { usePresence } from "./-use-presence";
-import { PresenceBanner } from "./-presence-banner";
-import { StepList } from "./-step-list";
-import { BuilderPanel } from "./-builder-panel";
-import { CollisionBanner } from "./-collision-banner";
-import { BuilderModals } from "./-builder-modals";
-import { ValidationPanel } from "./-validation-panel";
-import { checkFormUniqueness, checkRekeyPublished } from "./-form-uniqueness";
-import { useFormsList } from "./-use-forms-list";
-import { useMdaContacts } from "./-use-mda-contacts";
-import { useRecipeValidation } from "./-use-recipe-validation";
-import { useRecipeSave } from "./-use-recipe-save";
-import { useDraftLifecycle } from "./-use-draft-lifecycle";
-import { useFormManagement } from "./-use-form-management";
+} from "../../components/builder/recipe-reducer";
+import { Toolbar } from "../../components/builder/toolbar";
+import { usePresence } from "../../components/builder/use-presence";
+import { PresenceBanner } from "../../components/builder/presence-banner";
+import { StepList } from "../../components/builder/step-list";
+import { BuilderPanel } from "../../components/builder/builder-panel";
+import { CollisionBanner } from "../../components/builder/collision-banner";
+import { FormPicker } from "../../components/builder/form-picker";
+import { PreviewModal } from "../../components/builder/preview-modal";
+import { SubmitModal } from "../../components/builder/submit-modal";
+import { PublishModal } from "../../components/builder/publish-modal";
+import { DeleteModal } from "../../components/builder/delete-modal";
+import { DisableModal } from "../../components/builder/disable-modal";
+import { EraseModal } from "../../components/builder/erase-modal";
+import { formPreviewUrl } from "../../lib/form-url";
+import { ValidationPanel } from "../../components/builder/validation-panel";
+import {
+  checkFormUniqueness,
+  checkRekeyPublished,
+} from "../../components/builder/form-uniqueness";
+import { useFormsList } from "../../components/builder/use-forms-list";
+import { useMdaContacts } from "../../components/builder/use-mda-contacts";
+import { useRecipeValidation } from "../../components/builder/use-recipe-validation";
+import { useRecipeSave } from "../../components/builder/use-recipe-save";
+import { useDraftLifecycle } from "../../components/builder/use-draft-lifecycle";
+import { useFormManagement } from "../../components/builder/use-form-management";
 import type { CreateMdaContactInput, MdaContact } from "../../types/index";
-
-import styles from "../../styles/builder.module.css";
 
 export const Route = createFileRoute("/builder/")({
   // The catalog is needed for the first render (StepEditor, the duplicate-ID
@@ -277,6 +285,9 @@ function BuilderPage() {
 
   // Form management: delete / disable / erase / enable, off the Open picker.
   const {
+    isDeleteOpen,
+    isDisableOpen,
+    isEraseOpen,
     deleteTarget,
     isDeleting,
     deleteError,
@@ -346,6 +357,8 @@ function BuilderPage() {
     setIsPreviewOpen(true);
     setIsPreviewing(true);
     setPreviewError(null);
+    setPreviewData(null);
+    setPreviewRecipeJson(null);
     try {
       const recipe = serializeRecipeDraft(draft);
       // Captured before the request so the JSON is inspectable even when the
@@ -438,7 +451,7 @@ function BuilderPage() {
     <Sidebar.Provider
       contained
       collapsible="offcanvas"
-      className={styles.builderShell}
+      className="flex h-dvh min-h-0 flex-col font-sans text-[length:var(--text-base)] text-ui-default"
     >
       <a
         href="#builder-canvas"
@@ -521,9 +534,9 @@ function BuilderPage() {
         onDiscard={handleDiscard}
       />
 
-      <div className={styles.builderMain}>
-        <div className={styles.builderRoot}>
-          <div className={styles.builderBody}>
+      <div className="flex min-h-0 flex-1">
+        <div className="relative flex min-w-0 flex-1 flex-col bg-ui-canvas">
+          <div className="flex min-h-0 flex-1 overflow-hidden">
             <StepList
               steps={draft.steps}
               selectedStepId={mainView === "step" ? selectedStepId : null}
@@ -564,69 +577,92 @@ function BuilderPage() {
 
           {/* Floating over the canvas (not in-flow) so appearing/dismissing never
           reflows the editor underneath. */}
-          <div className={styles.bannerStack}>
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col gap-2 px-4 pb-3 *:pointer-events-auto *:m-0 *:translate-y-0 *:opacity-100 *:shadow-[0_2px_10px_rgb(0_0_0/0.08)] *:transition-[opacity,translate] *:duration-250 *:ease-[cubic-bezier(0.22,1,0.36,1)] starting:*:translate-y-2.5 starting:*:opacity-0 motion-reduce:*:transition-none">
             <CollisionBanner idCollisions={idCollisions} />
 
             <ValidationPanel result={validateResult} onDismiss={dismiss} />
           </div>
 
-          <BuilderModals
-            isPickerOpen={isPickerOpen}
+          <FormPicker
+            open={isPickerOpen}
             forms={forms}
-            formsLoadError={formsLoadError}
+            loadError={formsLoadError}
             openPRs={formOpenPRs}
             isDirty={isDirty}
             catalog={catalog}
             onLoad={handleLoad}
-            onClosePicker={() => setIsPickerOpen(false)}
+            onClose={() => setIsPickerOpen(false)}
             onRequestDelete={handleRequestDelete}
             onRequestDisable={handleRequestDisable}
             onRequestErase={handleRequestErase}
             onEnable={handleEnable}
             onDuplicate={handleDuplicate}
-            isPreviewOpen={isPreviewOpen}
-            previewData={previewData}
-            isPreviewing={isPreviewing}
-            previewError={previewError}
-            loadedFromId={loadedFromId}
-            previewRecipeJson={previewRecipeJson}
-            onClosePreview={() => {
-              setIsPreviewOpen(false);
-              setPreviewData(null);
-              setPreviewError(null);
-              setPreviewRecipeJson(null);
-            }}
-            isSubmitOpen={isSubmitOpen}
+          />
+
+          <PreviewModal
+            open={isPreviewOpen}
+            contract={previewData}
+            isLoading={isPreviewing}
+            error={previewError}
+            previewUrl={loadedFromId ? formPreviewUrl(loadedFromId) : null}
+            recipe={previewRecipeJson}
+            onClose={() => setIsPreviewOpen(false)}
+          />
+
+          <SubmitModal
+            open={isSubmitOpen}
             draft={draft}
+            loadedFromId={loadedFromId}
             isSubmitting={isSubmitting}
             submitSuccess={submitSuccess}
             submitError={submitError}
             isReadOnly={isReadOnly}
             onSubmit={handleSubmit}
-            onCloseSubmit={() => setIsSubmitOpen(false)}
-            isPublishOpen={isPublishOpen}
+            onClose={() => setIsSubmitOpen(false)}
+          />
+
+          <PublishModal
+            open={isPublishOpen}
+            draft={draft}
             baseBranch={baseBranch}
             isPublishing={isPublishing}
             publishSuccess={publishSuccess}
             publishError={publishError}
+            isReadOnly={isReadOnly}
             onPublish={handlePublish}
-            onClosePublish={handleClosePublish}
-            deleteTarget={deleteTarget}
+            onClose={handleClosePublish}
+          />
+
+          <DeleteModal
+            open={isDeleteOpen}
+            formId={deleteTarget?.formId ?? ""}
+            title={deleteTarget?.title ?? ""}
+            isPublished={deleteTarget?.isPublished}
             isDeleting={isDeleting}
             deleteError={deleteError}
-            onConfirmDelete={handleConfirmDelete}
-            onCloseDelete={handleCloseDelete}
-            disableTarget={disableTarget}
+            onConfirm={handleConfirmDelete}
+            onClose={handleCloseDelete}
+          />
+
+          <DisableModal
+            open={isDisableOpen}
+            formId={disableTarget?.formId ?? ""}
+            title={disableTarget?.title ?? ""}
             isDisabling={isDisabling}
             disableError={disableError}
-            onConfirmDisable={handleConfirmDisable}
-            onCloseDisable={handleCloseDisable}
-            eraseTarget={eraseTarget}
+            onConfirm={handleConfirmDisable}
+            onClose={handleCloseDisable}
+          />
+
+          <EraseModal
+            open={isEraseOpen}
+            formId={eraseTarget?.formId ?? ""}
+            title={eraseTarget?.title ?? ""}
             isErasing={isErasing}
-            eraseError={eraseError}
             eraseSuccess={eraseSuccess}
-            onConfirmErase={handleConfirmErase}
-            onCloseErase={handleCloseErase}
+            eraseError={eraseError}
+            onConfirm={handleConfirmErase}
+            onClose={handleCloseErase}
           />
         </div>
 

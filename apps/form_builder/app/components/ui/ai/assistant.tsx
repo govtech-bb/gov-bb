@@ -65,7 +65,6 @@ import { TaskRows } from "./task-rows";
 import { ApprovalCard } from "./approval-card";
 import { PromptBar, type AssistantRequest } from "./prompt-bar";
 import { MarkdownCodeBlock } from "./code-block";
-import s from "./ai.module.css";
 
 const toolLabels: Record<string, string> = {
   lookup_component: "Looking up component",
@@ -228,7 +227,7 @@ export function Assistant(props: AssistantProps) {
     <>
       {!open && !props.onOpenChange && (
         <Button
-          className={s.launcher}
+          className="m-3 self-start"
           type="button"
           onClick={() => setOpen(true)}
           variant="ghost"
@@ -240,144 +239,140 @@ export function Assistant(props: AssistantProps) {
 
       <div
         ref={setDock}
-        className={s.dock}
+        className="relative min-inline-0 flex-[0_0_var(--ai-width,450px)] data-[open=false]:hidden data-[expanded=true]:basis-[min(720px,55vw)] max-lg:basis-0"
         data-open={open}
         data-expanded={expanded}
         style={{ "--ai-width": width + "px" } as CSSProperties}
       >
         <Dialog.Root
-          open={open}
+          open={open && dock !== null}
           onOpenChange={setOpen}
           modal={compact}
           disablePointerDismissal
         >
-          {dock && (
-            <Dialog
-              container={dock}
-              keepMounted
-              backdrop={compact}
-              initialFocus={compact ? undefined : false}
-              className={s.panel}
-              aria-label="Builder assistant"
-              showCloseButton={false}
-            >
-              <div
-                className={s.resize}
-                role="separator"
-                tabIndex={0}
-                aria-label="Assistant width"
-                aria-orientation="vertical"
-                aria-valuemin={360}
-                aria-valuemax={720}
-                aria-valuenow={width}
-                onKeyDown={(event) => {
-                  if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-                    event.preventDefault();
-                    setWidth((value) =>
-                      Math.max(
-                        360,
-                        Math.min(
-                          720,
-                          value + (event.key === "ArrowLeft" ? 20 : -20),
-                        ),
+          <Dialog
+            container={dock}
+            keepMounted
+            backdrop={compact}
+            initialFocus={compact ? undefined : false}
+            className="absolute inset-0 m-0 flex h-full max-h-none w-full max-w-none translate-none flex-col overflow-hidden rounded-none border-0 border-s border-ui-hairline p-0 font-sans text-[14px] text-ui-default sm:w-full max-lg:fixed max-lg:h-dvh max-lg:w-screen max-lg:border-0 [:where(&)_p]:mt-0 [:where(&)_p]:mb-3 [:where(&)_p]:leading-[1.6]"
+            aria-label="Builder assistant"
+            showCloseButton={false}
+          >
+            <div
+              className="absolute inset-y-0 -start-1 z-2 inline-2 cursor-col-resize touch-none focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-ui-focus max-lg:hidden"
+              role="separator"
+              tabIndex={0}
+              aria-label="Assistant width"
+              aria-orientation="vertical"
+              aria-valuemin={360}
+              aria-valuemax={720}
+              aria-valuenow={width}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+                  event.preventDefault();
+                  setWidth((value) =>
+                    Math.max(
+                      360,
+                      Math.min(
+                        720,
+                        value + (event.key === "ArrowLeft" ? 20 : -20),
                       ),
-                    );
-                  }
-                }}
-                onPointerDown={(event) => {
-                  event.currentTarget.setPointerCapture(event.pointerId);
-                }}
-                onPointerMove={(event) => {
-                  if (event.currentTarget.hasPointerCapture(event.pointerId))
-                    setWidth(
-                      Math.max(
-                        360,
-                        Math.min(720, window.innerWidth - event.clientX),
-                      ),
-                    );
-                }}
-              />
-              <header className={s.header}>
-                <div className={s.conversation}>
-                  <Select
-                    aria-label={"Conversation"}
-                    value={thread}
-                    onValueChange={(nextValue) => {
-                      if (nextValue === null) return;
-                      const id = nextValue;
-                      setThread(id);
-                      saveIndex([
-                        ...conversations.filter((item) => item.id === id),
-                        ...conversations.filter((item) => item.id !== id),
-                      ]);
-                    }}
-                    items={[
-                      ...conversations.map((item) => ({
-                        value: item.id,
-                        label: item.title,
-                      })),
-                    ]}
-                  />
-                </div>
-                <Button
-                  type="button"
-                  aria-label="New conversation"
-                  title="New conversation"
-                  disabled={conversations.length >= 50}
-                  onClick={newConversation}
-                  variant="ghost"
-                  size="sm"
-                >
-                  <Add01Icon size={16} aria-hidden="true" />
-                </Button>
-                <Button
-                  type="button"
-                  className={s.expand}
-                  aria-label={
-                    expanded ? "Narrow assistant" : "Expand assistant"
-                  }
-                  title={expanded ? "Narrow assistant" : "Expand assistant"}
-                  onClick={() => setExpanded((value) => !value)}
-                  variant="ghost"
-                  size="sm"
-                >
-                  {expanded ? (
-                    <ArrowShrink01Icon size={16} aria-hidden="true" />
-                  ) : (
-                    <ArrowExpand01Icon size={16} aria-hidden="true" />
-                  )}
-                </Button>
-                <Button
-                  type="button"
-                  aria-label="Close assistant"
-                  title="Close assistant"
-                  onClick={() => setOpen(false)}
-                  variant="ghost"
-                  size="sm"
-                >
-                  <Cancel01Icon size={16} aria-hidden="true" />
-                </Button>
-              </header>
-              {thread && (
-                <ChatSession
-                  key={thread}
-                  thread={thread}
-                  current={current}
-                  context={context}
-                  request={props.request}
-                  onRequestHandled={props.onRequestHandled}
-                  readOnly={props.readOnly}
-                  open={open}
-                  mode={context.mode}
-                  setMode={setMode}
-                  storageError={storageError}
-                  onStorageError={() => setStorageError(true)}
-                  onFirstMessage={rename}
-                  onDelete={() => void remove()}
+                    ),
+                  );
+                }
+              }}
+              onPointerDown={(event) => {
+                event.currentTarget.setPointerCapture(event.pointerId);
+              }}
+              onPointerMove={(event) => {
+                if (event.currentTarget.hasPointerCapture(event.pointerId))
+                  setWidth(
+                    Math.max(
+                      360,
+                      Math.min(720, window.innerWidth - event.clientX),
+                    ),
+                  );
+              }}
+            />
+            <header className="flex min-block-14.5 shrink-0 items-center gap-1 border-b border-ui-hairline bg-ui-base px-3.5">
+              <div className="min-inline-0 flex-1">
+                <Select
+                  aria-label={"Conversation"}
+                  value={thread}
+                  onValueChange={(nextValue) => {
+                    if (nextValue === null) return;
+                    const id = nextValue;
+                    setThread(id);
+                    saveIndex([
+                      ...conversations.filter((item) => item.id === id),
+                      ...conversations.filter((item) => item.id !== id),
+                    ]);
+                  }}
+                  items={[
+                    ...conversations.map((item) => ({
+                      value: item.id,
+                      label: item.title,
+                    })),
+                  ]}
                 />
-              )}
-            </Dialog>
-          )}
+              </div>
+              <Button
+                type="button"
+                aria-label="New conversation"
+                title="New conversation"
+                disabled={conversations.length >= 50}
+                onClick={newConversation}
+                variant="ghost"
+                size="sm"
+              >
+                <Add01Icon size={16} aria-hidden="true" />
+              </Button>
+              <Button
+                type="button"
+                className="max-lg:hidden"
+                aria-label={expanded ? "Narrow assistant" : "Expand assistant"}
+                title={expanded ? "Narrow assistant" : "Expand assistant"}
+                onClick={() => setExpanded((value) => !value)}
+                variant="ghost"
+                size="sm"
+              >
+                {expanded ? (
+                  <ArrowShrink01Icon size={16} aria-hidden="true" />
+                ) : (
+                  <ArrowExpand01Icon size={16} aria-hidden="true" />
+                )}
+              </Button>
+              <Button
+                type="button"
+                aria-label="Close assistant"
+                title="Close assistant"
+                onClick={() => setOpen(false)}
+                variant="ghost"
+                size="sm"
+              >
+                <Cancel01Icon size={16} aria-hidden="true" />
+              </Button>
+            </header>
+            {thread && (
+              <ChatSession
+                key={thread}
+                thread={thread}
+                current={current}
+                context={context}
+                request={props.request}
+                onRequestHandled={props.onRequestHandled}
+                readOnly={props.readOnly}
+                open={open}
+                mode={context.mode}
+                setMode={setMode}
+                storageError={storageError}
+                onStorageError={() => setStorageError(true)}
+                onFirstMessage={rename}
+                onDelete={() => void remove()}
+              />
+            )}
+          </Dialog>
         </Dialog.Root>
       </div>
     </>
@@ -742,7 +737,7 @@ function ChatSession({
   );
   return (
     <>
-      <div className={s.context}>
+      <div className="flex items-center gap-2 border-b border-ui-hairline px-4 py-2.25 text-[11px] text-ui-default [&_span]:min-inline-0 [&_span]:flex-1 [&_span]:truncate">
         <span>
           {context.kind === "form" ? "Form" : "Content page"} ·{" "}
           {String(context.document.title || "Untitled")}
@@ -783,16 +778,16 @@ function ChatSession({
           },
         }}
       >
-        <div className={s.feed}>
+        <div className="px-4.5 py-5.5">
           {chat.messages.length === 0 && (
-            <div className={s.welcome}>
+            <div className="mx-auto max-inline-[38ch] pt-8 pb-5 [&_h2]:mt-4 [&_h2]:mb-3 [&_h2]:text-[22px] [&_h2]:font-[550] [&_h2]:tracking-[-0.6px] [&>p]:text-ui-default">
               <AiMagicIcon size={26} />
               <h2>Build with a little help</h2>
               <p>
                 Ask a question, refine your draft, or start from an existing
                 document. Review every change before applying it.
               </p>
-              <div className={s.suggestions}>
+              <div className="mt-6 grid gap-2 [&>button]:h-auto [&>button]:min-h-10 [&>button]:justify-between [&>button]:text-start [&>button]:whitespace-normal">
                 {[
                   "Review this draft for clarity",
                   "Make the wording easier to understand",
@@ -872,7 +867,7 @@ function ChatSession({
             });
             return (
               <article
-                className={s.message}
+                className="mb-5 min-inline-0 wrap-anywhere motion-safe:animate-ai-message data-[role=user]:ms-auto data-[role=user]:inline-fit data-[role=user]:max-inline-[90%] data-[role=user]:justify-self-end data-[role=user]:rounded-[14px_14px_4px_14px] data-[role=user]:bg-ui-tint data-[role=user]:px-4 data-[role=user]:py-3 data-[role=user]:[&_p]:m-0 data-[role=user]:[&_p]:whitespace-pre-wrap data-[role=assistant]:rounded-xl data-[role=assistant]:border data-[role=assistant]:border-ui-hairline data-[role=assistant]:bg-ui-base data-[role=assistant]:p-3.75"
                 data-role={message.role}
                 key={message.id}
                 aria-label={message.role === "user" ? "You" : "Assistant"}
@@ -886,7 +881,9 @@ function ChatSession({
                     />
                   ))}
                 {message.role === "assistant" && (
-                  <div className={s.eyebrow}>Assistant</div>
+                  <div className="mb-2.25 text-[11px] font-[650] text-ui-default">
+                    Assistant
+                  </div>
                 )}
                 {steps.length > 0 && (
                   <ThinkingState
@@ -902,7 +899,10 @@ function ChatSession({
                 )}
                 {message.parts.map((part, index) =>
                   part.type === "text" ? (
-                    <div className={s.markdown} key={index}>
+                    <div
+                      className="leading-[1.65] [&>:first-child]:mt-0 [&>:last-child]:mb-0 [&_:where(h1,h2,h3,h4)]:mt-4.5 [&_:where(h1,h2,h3,h4)]:mb-2 [&_:where(h1,h2,h3,h4)]:text-[16px] [&_:where(h1,h2,h3,h4)]:leading-[1.4] [&_:where(ul,ol)]:ps-5.5 [&_:where(pre,table)]:max-inline-full [&_:where(pre,table)]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-ui-recessed [&_pre]:p-3 [&_pre]:whitespace-pre-wrap [&_:where(th,td)]:border [&_:where(th,td)]:border-ui-hairline [&_:where(th,td)]:p-1.5 [&_a]:text-inherit [&_a]:underline"
+                      key={index}
+                    >
                       {message.role === "user" ? (
                         <p>{part.content}</p>
                       ) : (
@@ -985,7 +985,7 @@ function ChatSession({
                   message.parts.some((part) => part.type === "text") && (
                     <Button
                       type="button"
-                      className={s.copy}
+                      className="mt-2"
                       onClick={() => {
                         void navigator.clipboard
                           .writeText(
@@ -1043,7 +1043,7 @@ function ChatSession({
             />
           )}
           {!busy && pending && (
-            <p role="status" className={s.muted}>
+            <p role="status" className="text-[12px] text-ui-default">
               {unanswered.length
                 ? "Answer the questions to continue."
                 : "Review the proposed changes to continue."}
@@ -1053,7 +1053,7 @@ function ChatSession({
       </ScrollArea>
       {away && (
         <Button
-          className={s.jump}
+          className="absolute start-1/2 bottom-55 -translate-x-1/2"
           type="button"
           onClick={() => {
             follow.current = true;
@@ -1070,7 +1070,7 @@ function ChatSession({
         </Button>
       )}
 
-      <div className={s.composerArea}>
+      <div className="grid shrink-0 gap-2.5 px-4 pt-3 pb-2 max-lg:pb-[max(12px,env(safe-area-inset-bottom))]">
         {storageError && (
           <Banner variant="alert" role="status">
             <div className="min-w-0 space-y-2">
@@ -1112,7 +1112,7 @@ function ChatSession({
         <PromptBar
           attachments={
             attachment || localFile ? (
-              <div className={s.documentTasks}>
+              <div className="max-block-[min(240px,25dvh)] overflow-y-auto">
                 <AttachmentCard
                   attachment={
                     attachment
@@ -1243,7 +1243,7 @@ function ChatSession({
           }}
           onAttach={(file) => void extract(file)}
         />
-        <p className={s.footnote}>
+        <p className="m-0 text-center text-[11px] text-ui-default">
           Saved on this device · Enter to send · Shift + Enter for a new line
         </p>
       </div>

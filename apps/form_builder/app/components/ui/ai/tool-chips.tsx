@@ -9,7 +9,6 @@ import {
   AlertCircleIcon,
 } from "hugeicons-react";
 import { CodeBlock } from "./code-block";
-import s from "./components.module.css";
 
 export type ToolStep = {
   id: string;
@@ -22,9 +21,12 @@ export type ToolStep = {
 
 export function ToolChips({ steps }: { steps: ToolStep[] }) {
   return (
-    <div className={s.toolChips}>
+    <div className="grid gap-1">
       {steps.map((step) => (
-        <Collapsible key={step.id} className={s.toolRow}>
+        <Collapsible
+          key={step.id}
+          className="min-inline-0 [&>[data-panel-open]>svg:last-child]:rotate-180"
+        >
           <Collapsible.Trigger
             render={
               <Button
@@ -35,7 +37,7 @@ export function ToolChips({ steps }: { steps: ToolStep[] }) {
             }
           >
             <span
-              className={s.toolIcon}
+              className="grid inline-4 shrink-0 place-items-center text-ui-default data-[state=error]:text-ui-danger"
               data-state={step.status}
               aria-hidden="true"
             >
@@ -46,17 +48,17 @@ export function ToolChips({ steps }: { steps: ToolStep[] }) {
               ) : step.status === "running" ? (
                 <Loader size={14} />
               ) : (
-                <span className={s.waitDot} />
+                <span className="block-1.25 inline-1.25 rounded-full bg-ui-subtle" />
               )}
             </span>
-            <span className={s.toolLabel}>{step.label}</span>
+            <span className="wrap-anywhere">{step.label}</span>
             <Badge variant="secondary" className="ml-auto max-w-[55%] truncate">
               {step.chip}
             </Badge>
             <ArrowDown01Icon size={12} aria-hidden="true" />
           </Collapsible.Trigger>
           <Collapsible.Panel>
-            <div className={s.toolDetail}>
+            <div className="mt-1 mb-2.5 text-[12px] [&>p]:mb-1.5">
               <p>
                 Status:{" "}
                 {step.status === "waiting"

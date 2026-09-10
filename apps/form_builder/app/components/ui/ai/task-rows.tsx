@@ -8,7 +8,6 @@ import {
   CheckmarkCircle02Icon,
   AlertCircleIcon,
 } from "hugeicons-react";
-import s from "./components.module.css";
 
 export type TaskRow = {
   id: string;
@@ -20,10 +19,10 @@ export type TaskRow = {
 
 export function TaskRows({ rows }: { rows: TaskRow[] }) {
   return (
-    <div className={s.tasks}>
+    <div className="my-2.5 grid gap-1.75">
       {rows.map((row, i) => (
         <Collapsible
-          className={s.task}
+          className="overflow-hidden rounded-[20px] open:rounded-xl [&>[data-panel-open]>svg:last-child]:rotate-180"
           key={row.id}
           render={<Elevated offset={1} shadowLevel={2} />}
         >
@@ -37,7 +36,7 @@ export function TaskRows({ rows }: { rows: TaskRow[] }) {
             }
           >
             <span
-              className={s.taskBadge}
+              className="relative grid block-6 inline-6 shrink-0 place-items-center text-[10px] tabular-nums data-[state=done]:text-ui-success data-[state=error]:text-ui-danger"
               data-state={row.status}
               aria-hidden="true"
             >
@@ -49,12 +48,14 @@ export function TaskRows({ rows }: { rows: TaskRow[] }) {
                 <Loader size={18} />
               ) : (
                 <>
-                  <span className={s.pendingRing} />
+                  <span className="absolute inset-0 rounded-full border-[1.5px] border-ui-line" />
                   {i + 1}
                 </>
               )}
             </span>
-            <span className={s.taskLabel}>{row.label}</span>
+            <span className="min-inline-0 flex-1 text-[12px] font-medium wrap-anywhere">
+              {row.label}
+            </span>
             <Badge
               variant={
                 row.status === "error"
@@ -77,7 +78,7 @@ export function TaskRows({ rows }: { rows: TaskRow[] }) {
             <ArrowDown01Icon size={13} aria-hidden="true" />
           </Collapsible.Trigger>
           <Collapsible.Panel>
-            <div className={s.taskDetail}>
+            <div className="mt-0 mr-3 mb-2.5 ml-5.5 border-s border-ui-hairline ps-5 text-[12px] text-ui-default [&>p]:mb-1.25">
               <p>{row.detail}</p>
               {row.onRetry && (
                 <Button

@@ -1,8 +1,8 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { MoonIcon, SunIcon } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
-import { Catalogue, categories } from "./-ui-catalogue";
-import { useTheme } from "./content/-use-theme";
+import { Catalogue, categories } from "../components/ui-catalogue";
+import { useTheme } from "../hooks/use-theme";
 export const Route = createFileRoute("/dev/ui")({
   beforeLoad: () => {
     if (!import.meta.env.DEV) throw notFound();
