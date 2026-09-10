@@ -1,11 +1,17 @@
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
 import { useState } from "react";
-import type { RegistryCatalog, RecipeFieldDraft } from "@govtech-bb/form-builder";
+import type {
+  RegistryCatalog,
+  RecipeFieldDraft,
+} from "@govtech-bb/form-builder";
 import {
   REGISTRY_COMPONENTS,
   REGISTRY_BLOCKS,
   REGISTRY_PRIMITIVES,
 } from "@govtech-bb/registry";
-import { SlidingTabs } from "../content/-sliding-tabs";
+import { Tabs } from "../../components/ui/tabs";
 import styles from "../../styles/builder.module.css";
 
 interface FieldPickerProps {
@@ -64,58 +70,62 @@ export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
   };
 
   const activeCount = counts[activeTab];
-  const otherTabsWithMatches = TABS.filter((t) => t !== activeTab && counts[t] > 0);
+  const otherTabsWithMatches = TABS.filter(
+    (t) => t !== activeTab && counts[t] > 0,
+  );
 
   return (
     <div>
       <div className={styles.pickerSearch}>
-        <input
+        <Input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search fields…"
-          className={styles.pickerSearchInput}
+          className="w-full pr-10"
           aria-label="Search fields"
         />
         {query && (
-          <button
+          <Button
             type="button"
-            className={styles.pickerSearchClear}
+            className="absolute right-1 top-1/2 -translate-y-1/2"
+            shape="square"
             onClick={() => setQuery("")}
             aria-label="Clear search"
+            variant="ghost"
+            size="sm"
           >
             ×
-          </button>
+          </Button>
         )}
       </div>
 
-      <SlidingTabs
-        // Labels carry live counts; remount when they change so the active
-        // pill is re-measured (it only repositions on selection otherwise).
-        key={TABS.map((t) => counts[t]).join("-")}
-        options={TABS.map((tab) => ({
-          key: tab,
+      <Tabs
+        tabs={TABS.map((tab) => ({
+          value: tab,
           label: `${tab} (${counts[tab]})`,
         }))}
         value={activeTab}
-        onChange={setActiveTab}
-        ariaLabel="Field source"
+        onValueChange={(tab) => setActiveTab(tab as Tab)}
+        aria-label="Field source"
         className={styles.pickerTabs}
       />
 
       {query && activeCount === 0 && otherTabsWithMatches.length > 0 && (
-        <p style={{ color: "#888" }}>
+        <p style={{ color: "var(--ui-subtle)" }}>
           No matches here — try{" "}
           {otherTabsWithMatches.map((t, i) => (
             <span key={t}>
               {i > 0 && (i === otherTabsWithMatches.length - 1 ? " or " : ", ")}
-              <button
+              <Button
                 type="button"
-                className={styles.pickerHintLink}
+                className="h-auto px-1 underline"
                 onClick={() => setActiveTab(t)}
+                variant="secondary"
+                size="sm"
               >
                 {t} ({counts[t]})
-              </button>
+              </Button>
             </span>
           ))}
           .
@@ -125,20 +135,22 @@ export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
       {activeTab === "Components" && (
         <div>
           {Object.entries(REGISTRY_COMPONENTS).length === 0 && (
-            <p style={{ color: "#888" }}>No registry components available.</p>
+            <p style={{ color: "var(--ui-subtle)" }}>
+              No registry components available.
+            </p>
           )}
           {components.map(([ref, primitive]) => (
-            <div
+            <Button
+              variant="outline"
+              className="mb-2 h-auto min-h-11 w-full flex-wrap justify-between gap-3 whitespace-normal text-left"
               key={ref}
-              className={styles.fieldRow}
-              style={{ cursor: "pointer" }}
               onClick={() =>
                 onAddField({ kind: "component", ref, overrides: {} })
               }
             >
               <span style={{ flex: 1 }}>{primitive.label}</span>
-              <span className={styles.badge}>{primitive.fieldId}</span>
-            </div>
+              <Badge variant="secondary">{primitive.fieldId}</Badge>
+            </Button>
           ))}
         </div>
       )}
@@ -146,20 +158,27 @@ export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
       {activeTab === "Blocks" && (
         <div>
           {Object.entries(REGISTRY_BLOCKS).length === 0 && (
-            <p style={{ color: "#888" }}>No registry blocks available.</p>
+            <p style={{ color: "var(--ui-subtle)" }}>
+              No registry blocks available.
+            </p>
           )}
           {blocks.map(([ref, block]) => (
-            <div
+            <Button
+              variant="outline"
+              className="mb-2 h-auto min-h-11 w-full flex-wrap justify-between gap-3 whitespace-normal text-left"
               key={ref}
-              className={styles.fieldRow}
-              style={{ cursor: "pointer" }}
               onClick={() =>
-                onAddField({ kind: "block", ref, overrides: {}, childOverrides: {} })
+                onAddField({
+                  kind: "block",
+                  ref,
+                  overrides: {},
+                  childOverrides: {},
+                })
               }
             >
               <span style={{ flex: 1 }}>{block.blockId}</span>
-              <span className={styles.badge}>{ref}</span>
-            </div>
+              <Badge variant="secondary">{ref}</Badge>
+            </Button>
           ))}
         </div>
       )}
@@ -167,13 +186,13 @@ export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
       {activeTab === "Custom" && (
         <div>
           {custom.length === 0 && (
-            <p style={{ color: "#888" }}>No matches.</p>
+            <p style={{ color: "var(--ui-subtle)" }}>No matches.</p>
           )}
           {custom.map((row) => (
-            <div
+            <Button
+              variant="outline"
+              className="mb-2 h-auto min-h-11 w-full flex-wrap justify-between gap-3 whitespace-normal text-left"
               key={`${row.source}:${row.ref}`}
-              className={styles.fieldRow}
-              style={{ cursor: "pointer" }}
               onClick={() =>
                 onAddField(
                   row.source === "primitive"
@@ -183,8 +202,8 @@ export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
               }
             >
               <span style={{ flex: 1 }}>{row.label}</span>
-              <span className={styles.badge}>{row.badge}</span>
-            </div>
+              <Badge variant="secondary">{row.badge}</Badge>
+            </Button>
           ))}
         </div>
       )}

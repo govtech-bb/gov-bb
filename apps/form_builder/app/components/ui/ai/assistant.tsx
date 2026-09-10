@@ -1,3 +1,9 @@
+import { ScrollArea } from "../scroll-area";
+import { Collapsible } from "../collapsible";
+import { Banner } from "../banner";
+import { Dialog } from "../dialog";
+import { Select } from "../select";
+import { Button } from "../button";
 import {
   useCallback,
   useEffect,
@@ -114,7 +120,7 @@ export function Assistant(props: AssistantProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [thread, setThread] = useState("");
   const [storageError, setStorageError] = useState(false);
-  const dialog = useRef<HTMLDialogElement>(null);
+  const [dock, setDock] = useState<HTMLDivElement | null>(null);
   const scope = historyKey(props.user, props.kind, props.documentId);
   const source = JSON.stringify(props.revisionSource);
   const revision = useMemo(
@@ -153,15 +159,6 @@ export function Assistant(props: AssistantProps) {
     query.addEventListener("change", update);
     return () => query.removeEventListener("change", update);
   }, []);
-  useEffect(() => {
-    const element = dialog.current;
-    if (!element) return;
-    element.close();
-    if (open) {
-      if (compact) element.showModal();
-      else element.open = true;
-    }
-  }, [open, compact]);
   useEffect(() => {
     try {
       const saved = readConversations(scope);
@@ -230,136 +227,158 @@ export function Assistant(props: AssistantProps) {
   return (
     <>
       {!open && !props.onOpenChange && (
-        <button
+        <Button
           className={s.launcher}
           type="button"
           onClick={() => setOpen(true)}
+          variant="ghost"
+          size="sm"
         >
           <AiMagicIcon size={17} /> Assistant
-        </button>
+        </Button>
       )}
+
       <div
+        ref={setDock}
         className={s.dock}
         data-open={open}
         data-expanded={expanded}
         style={{ "--ai-width": width + "px" } as CSSProperties}
       >
-        <dialog
-          ref={dialog}
-          className={s.panel}
-          aria-label="Builder assistant"
-          onCancel={(event) => {
-            event.preventDefault();
-            setOpen(false);
-          }}
+        <Dialog.Root
+          open={open}
+          onOpenChange={setOpen}
+          modal={compact}
+          disablePointerDismissal
         >
-          <div
-            className={s.resize}
-            role="separator"
-            tabIndex={0}
-            aria-label="Assistant width"
-            aria-orientation="vertical"
-            aria-valuemin={360}
-            aria-valuemax={720}
-            aria-valuenow={width}
-            onKeyDown={(event) => {
-              if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-                event.preventDefault();
-                setWidth((value) =>
-                  Math.max(
-                    360,
-                    Math.min(
-                      720,
-                      value + (event.key === "ArrowLeft" ? 20 : -20),
-                    ),
-                  ),
-                );
-              }
-            }}
-            onPointerDown={(event) => {
-              event.currentTarget.setPointerCapture(event.pointerId);
-            }}
-            onPointerMove={(event) => {
-              if (event.currentTarget.hasPointerCapture(event.pointerId))
-                setWidth(
-                  Math.max(
-                    360,
-                    Math.min(720, window.innerWidth - event.clientX),
-                  ),
-                );
-            }}
-          />
-          <header className={s.header}>
-            <label className={s.conversation}>
-              <span className={s.srOnly}>Conversation</span>
-              <select
-                value={thread}
-                onChange={(event) => {
-                  const id = event.target.value;
-                  setThread(id);
-                  saveIndex([
-                    ...conversations.filter((item) => item.id === id),
-                    ...conversations.filter((item) => item.id !== id),
-                  ]);
+          {dock && (
+            <Dialog
+              container={dock}
+              keepMounted
+              backdrop={compact}
+              initialFocus={compact ? undefined : false}
+              className={s.panel}
+              aria-label="Builder assistant"
+              showCloseButton={false}
+            >
+              <div
+                className={s.resize}
+                role="separator"
+                tabIndex={0}
+                aria-label="Assistant width"
+                aria-orientation="vertical"
+                aria-valuemin={360}
+                aria-valuemax={720}
+                aria-valuenow={width}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+                    event.preventDefault();
+                    setWidth((value) =>
+                      Math.max(
+                        360,
+                        Math.min(
+                          720,
+                          value + (event.key === "ArrowLeft" ? 20 : -20),
+                        ),
+                      ),
+                    );
+                  }
                 }}
-              >
-                {conversations.map((item) => (
-                  <option value={item.id} key={item.id}>
-                    {item.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              aria-label="New conversation"
-              title="New conversation"
-              disabled={conversations.length >= 50}
-              onClick={newConversation}
-            >
-              <Add01Icon size={16} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className={s.expand}
-              aria-label={expanded ? "Narrow assistant" : "Expand assistant"}
-              title={expanded ? "Narrow assistant" : "Expand assistant"}
-              onClick={() => setExpanded((value) => !value)}
-            >
-              {expanded ? (
-                <ArrowShrink01Icon size={16} aria-hidden="true" />
-              ) : (
-                <ArrowExpand01Icon size={16} aria-hidden="true" />
+                onPointerDown={(event) => {
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                }}
+                onPointerMove={(event) => {
+                  if (event.currentTarget.hasPointerCapture(event.pointerId))
+                    setWidth(
+                      Math.max(
+                        360,
+                        Math.min(720, window.innerWidth - event.clientX),
+                      ),
+                    );
+                }}
+              />
+              <header className={s.header}>
+                <div className={s.conversation}>
+                  <Select
+                    aria-label={"Conversation"}
+                    value={thread}
+                    onValueChange={(nextValue) => {
+                      if (nextValue === null) return;
+                      const id = nextValue;
+                      setThread(id);
+                      saveIndex([
+                        ...conversations.filter((item) => item.id === id),
+                        ...conversations.filter((item) => item.id !== id),
+                      ]);
+                    }}
+                    items={[
+                      ...conversations.map((item) => ({
+                        value: item.id,
+                        label: item.title,
+                      })),
+                    ]}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  aria-label="New conversation"
+                  title="New conversation"
+                  disabled={conversations.length >= 50}
+                  onClick={newConversation}
+                  variant="ghost"
+                  size="sm"
+                >
+                  <Add01Icon size={16} aria-hidden="true" />
+                </Button>
+                <Button
+                  type="button"
+                  className={s.expand}
+                  aria-label={
+                    expanded ? "Narrow assistant" : "Expand assistant"
+                  }
+                  title={expanded ? "Narrow assistant" : "Expand assistant"}
+                  onClick={() => setExpanded((value) => !value)}
+                  variant="ghost"
+                  size="sm"
+                >
+                  {expanded ? (
+                    <ArrowShrink01Icon size={16} aria-hidden="true" />
+                  ) : (
+                    <ArrowExpand01Icon size={16} aria-hidden="true" />
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  aria-label="Close assistant"
+                  title="Close assistant"
+                  onClick={() => setOpen(false)}
+                  variant="ghost"
+                  size="sm"
+                >
+                  <Cancel01Icon size={16} aria-hidden="true" />
+                </Button>
+              </header>
+              {thread && (
+                <ChatSession
+                  key={thread}
+                  thread={thread}
+                  current={current}
+                  context={context}
+                  request={props.request}
+                  onRequestHandled={props.onRequestHandled}
+                  readOnly={props.readOnly}
+                  open={open}
+                  mode={context.mode}
+                  setMode={setMode}
+                  storageError={storageError}
+                  onStorageError={() => setStorageError(true)}
+                  onFirstMessage={rename}
+                  onDelete={() => void remove()}
+                />
               )}
-            </button>
-            <button
-              type="button"
-              aria-label="Close assistant"
-              title="Close assistant"
-              onClick={() => setOpen(false)}
-            >
-              <Cancel01Icon size={16} aria-hidden="true" />
-            </button>
-          </header>
-          {thread && (
-            <ChatSession
-              key={thread}
-              thread={thread}
-              current={current}
-              context={context}
-              request={props.request}
-              onRequestHandled={props.onRequestHandled}
-              readOnly={props.readOnly}
-              open={open}
-              mode={context.mode}
-              setMode={setMode}
-              storageError={storageError}
-              onStorageError={() => setStorageError(true)}
-              onFirstMessage={rename}
-              onDelete={() => void remove()}
-            />
+            </Dialog>
           )}
-        </dialog>
+        </Dialog.Root>
       </div>
     </>
   );
@@ -728,7 +747,7 @@ function ChatSession({
           {context.kind === "form" ? "Form" : "Content page"} ·{" "}
           {String(context.document.title || "Untitled")}
         </span>
-        <button
+        <Button
           type="button"
           disabled={busy}
           onClick={() => {
@@ -736,288 +755,304 @@ function ChatSession({
             updateAttachment(undefined);
             onDelete();
           }}
+          variant="ghost"
+          size="sm"
         >
           Delete chat
-        </button>
+        </Button>
       </div>
-      <div
-        className={s.feed}
-        ref={feed}
-        role="log"
+
+      <ScrollArea
+        className="min-h-0 flex-1"
         aria-label="Conversation"
-        aria-live="off"
-        onScroll={() => {
-          const element = feed.current;
-          if (element) {
-            follow.current =
-              element.scrollHeight - element.scrollTop - element.clientHeight <
-              80;
-            setAway(!follow.current);
-          }
+        viewportClassName="scroll-fade"
+        viewportProps={{
+          ref: feed,
+          role: "log",
+          "aria-live": "off",
+          onScroll: () => {
+            const element = feed.current;
+            if (element) {
+              follow.current =
+                element.scrollHeight -
+                  element.scrollTop -
+                  element.clientHeight <
+                80;
+              setAway(!follow.current);
+            }
+          },
         }}
       >
-        {chat.messages.length === 0 && (
-          <div className={s.welcome}>
-            <AiMagicIcon size={26} />
-            <h2>Build with a little help</h2>
-            <p>
-              Ask a question, refine your draft, or start from an existing
-              document. Review every change before applying it.
-            </p>
-            <div className={s.suggestions}>
-              {[
-                "Review this draft for clarity",
-                "Make the wording easier to understand",
-                context.kind === "form"
-                  ? "Help me build a new form"
-                  : "Improve the page structure",
-              ].map((text) => (
-                <button
-                  type="button"
-                  key={text}
-                  onClick={() => void send(text)}
-                >
-                  {text}
-                  <ArrowRight01Icon size={14} />
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        {chat.messages.map((message, messageIndex) => {
-          const steps: ToolStep[] = message.parts.flatMap((part) => {
-            if (part.type !== "tool-call") return [];
-            const result = message.parts.find(
-              (other) =>
-                other.type === "tool-result" && other.toolCallId === part.id,
-            );
-            const failed =
-              part.state === "error" ||
-              (result?.type === "tool-result" && result.state === "error");
-            const waiting =
-              part.state === "approval-requested" ||
-              (part.name === "ask_questions" &&
-                part.state === "input-complete" &&
-                part.output === undefined);
-            const running = messageIndex === chat.messages.length - 1 && busy;
-            const status = failed
-              ? "error"
-              : part.output !== undefined
-                ? "done"
-                : waiting
-                  ? "waiting"
-                  : running
-                    ? "running"
-                    : "stopped";
-            const detail =
-              part.input &&
-              typeof part.input === "object" &&
-              "ref" in part.input
-                ? String(part.input.ref)
-                : status === "done"
-                  ? typeof part.output === "object" &&
-                    part.output &&
-                    "applied" in part.output
-                    ? part.output.applied
-                      ? "Applied"
-                      : "Not applied"
-                    : "Complete"
-                  : status === "waiting"
-                    ? "Your input"
-                    : status === "error"
-                      ? "Failed"
-                      : status === "stopped"
-                        ? "Interrupted"
-                        : "Working";
-            return [
-              {
-                id: part.id,
-                label: toolLabels[part.name] ?? "Tool activity",
-                chip: detail,
-                status,
-                input: part.input,
-                output: part.output,
-              },
-            ];
-          });
-          return (
-            <article
-              className={s.message}
-              data-role={message.role}
-              key={message.id}
-              aria-label={message.role === "user" ? "You" : "Assistant"}
-            >
-              {message.role === "user" &&
-                messageAttachments(message.metadata).map((file) => (
-                  <AttachmentCard
-                    key={file.id}
-                    attachment={file}
-                    file={localFiles[file.id]}
-                  />
-                ))}
-              {message.role === "assistant" && (
-                <div className={s.eyebrow}>Assistant</div>
-              )}
-              {steps.length > 0 && (
-                <ThinkingState
-                  working={steps.some((step) => step.status === "running")}
-                  done={
-                    steps.some((step) => step.status === "waiting")
-                      ? "Waiting for your input"
-                      : `${steps.length} ${steps.length === 1 ? "tool call" : "tool calls"}`
-                  }
-                >
-                  <ToolChips steps={steps} />
-                </ThinkingState>
-              )}
-              {message.parts.map((part, index) =>
-                part.type === "text" ? (
-                  <div className={s.markdown} key={index}>
-                    {message.role === "user" ? (
-                      <p>{part.content}</p>
-                    ) : (
-                      <Markdown
-                        extensions={extensions}
-                        frontmatter={false}
-                        headingIds={false}
-                        allowHtml={false}
-                        components={markdownComponents}
-                      >
-                        {part.content}
-                      </Markdown>
-                    )}
-                  </div>
-                ) : part.type === "image" || part.type === "document" ? (
-                  (() => {
-                    const file = attachmentMetadata(part);
-                    return file &&
-                      !messageAttachments(message.metadata).length ? (
-                      <AttachmentCard
-                        key={file.id}
-                        attachment={file}
-                        file={localFiles[file.id]}
-                      />
-                    ) : null;
-                  })()
-                ) : part.type === "tool-call" &&
-                  part.name === "ask_questions" &&
-                  part.state === "input-complete" &&
-                  part.output === undefined &&
-                  !questionsStopped &&
-                  messageIndex > lastUserIndex ? (
-                  (() => {
-                    const parsed = askQuestionsTool.inputSchema.safeParse(
-                      part.input,
-                    );
-                    return parsed.success ? (
-                      <div key={part.id}>
-                        {bindings.current.get(part.id) !== context.revision && (
-                          <p role="status">
-                            The draft changed. Skip these questions and ask
-                            again.
-                          </p>
-                        )}
-                        <ApprovalCard
-                          questions={parsed.data.questions}
-                          disabled={busy}
-                          onSubmit={(result) =>
-                            answerQuestions(part.id, result)
-                          }
-                        />
-                      </div>
-                    ) : (
-                      <div key={part.id} role="alert">
-                        <p>
-                          The assistant sent an invalid question. Skip it to
-                          continue.
-                        </p>
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() =>
-                            void answerQuestions(part.id, {
-                              status: "skipped",
-                              answers: [],
-                            })
-                          }
-                        >
-                          Skip question
-                        </button>
-                      </div>
-                    );
-                  })()
-                ) : null,
-              )}
-              {message.role === "assistant" &&
-                message.parts.some((part) => part.type === "text") && (
-                  <button
+        <div className={s.feed}>
+          {chat.messages.length === 0 && (
+            <div className={s.welcome}>
+              <AiMagicIcon size={26} />
+              <h2>Build with a little help</h2>
+              <p>
+                Ask a question, refine your draft, or start from an existing
+                document. Review every change before applying it.
+              </p>
+              <div className={s.suggestions}>
+                {[
+                  "Review this draft for clarity",
+                  "Make the wording easier to understand",
+                  context.kind === "form"
+                    ? "Help me build a new form"
+                    : "Improve the page structure",
+                ].map((text) => (
+                  <Button
                     type="button"
-                    className={s.copy}
-                    onClick={() => {
-                      void navigator.clipboard
-                        .writeText(
-                          message.parts
-                            .filter((part) => part.type === "text")
-                            .map((part) => part.content)
-                            .join("\n"),
-                        )
-                        .then(
-                          () => setCopied(message.id),
-                          () =>
-                            setNotice(
-                              "Copy failed. Select the text to copy it.",
-                            ),
-                        );
-                    }}
+                    key={text}
+                    onClick={() => void send(text)}
+                    variant="ghost"
+                    size="sm"
                   >
-                    {copied === message.id ? "Copied" : "Copy reply"}
-                  </button>
+                    {text}
+                    <ArrowRight01Icon size={14} />
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+          {chat.messages.map((message, messageIndex) => {
+            const steps: ToolStep[] = message.parts.flatMap((part) => {
+              if (part.type !== "tool-call") return [];
+              const result = message.parts.find(
+                (other) =>
+                  other.type === "tool-result" && other.toolCallId === part.id,
+              );
+              const failed =
+                part.state === "error" ||
+                (result?.type === "tool-result" && result.state === "error");
+              const waiting =
+                part.state === "approval-requested" ||
+                (part.name === "ask_questions" &&
+                  part.state === "input-complete" &&
+                  part.output === undefined);
+              const running = messageIndex === chat.messages.length - 1 && busy;
+              const status = failed
+                ? "error"
+                : part.output !== undefined
+                  ? "done"
+                  : waiting
+                    ? "waiting"
+                    : running
+                      ? "running"
+                      : "stopped";
+              const detail =
+                part.input &&
+                typeof part.input === "object" &&
+                "ref" in part.input
+                  ? String(part.input.ref)
+                  : status === "done"
+                    ? typeof part.output === "object" &&
+                      part.output &&
+                      "applied" in part.output
+                      ? part.output.applied
+                        ? "Applied"
+                        : "Not applied"
+                      : "Complete"
+                    : status === "waiting"
+                      ? "Your input"
+                      : status === "error"
+                        ? "Failed"
+                        : status === "stopped"
+                          ? "Interrupted"
+                          : "Working";
+              return [
+                {
+                  id: part.id,
+                  label: toolLabels[part.name] ?? "Tool activity",
+                  chip: detail,
+                  status,
+                  input: part.input,
+                  output: part.output,
+                },
+              ];
+            });
+            return (
+              <article
+                className={s.message}
+                data-role={message.role}
+                key={message.id}
+                aria-label={message.role === "user" ? "You" : "Assistant"}
+              >
+                {message.role === "user" &&
+                  messageAttachments(message.metadata).map((file) => (
+                    <AttachmentCard
+                      key={file.id}
+                      attachment={file}
+                      file={localFiles[file.id]}
+                    />
+                  ))}
+                {message.role === "assistant" && (
+                  <div className={s.eyebrow}>Assistant</div>
                 )}
-            </article>
-          );
-        })}
-        {chat.interrupts.map((interrupt) =>
-          interrupt.kind === "tool-approval" ? (
-            <BoundReview
-              key={interrupt.id}
-              id={interrupt.toolCallId}
-              proposal={interrupt.originalArgs}
-              prepare={prepare}
-              stale={
-                bindings.current.get(interrupt.toolCallId) !==
-                  context.revision || !!readOnly
+                {steps.length > 0 && (
+                  <ThinkingState
+                    working={steps.some((step) => step.status === "running")}
+                    done={
+                      steps.some((step) => step.status === "waiting")
+                        ? "Waiting for your input"
+                        : `${steps.length} ${steps.length === 1 ? "tool call" : "tool calls"}`
+                    }
+                  >
+                    <ToolChips steps={steps} />
+                  </ThinkingState>
+                )}
+                {message.parts.map((part, index) =>
+                  part.type === "text" ? (
+                    <div className={s.markdown} key={index}>
+                      {message.role === "user" ? (
+                        <p>{part.content}</p>
+                      ) : (
+                        <Markdown
+                          extensions={extensions}
+                          frontmatter={false}
+                          headingIds={false}
+                          allowHtml={false}
+                          components={markdownComponents}
+                        >
+                          {part.content}
+                        </Markdown>
+                      )}
+                    </div>
+                  ) : part.type === "image" || part.type === "document" ? (
+                    (() => {
+                      const file = attachmentMetadata(part);
+                      return file &&
+                        !messageAttachments(message.metadata).length ? (
+                        <AttachmentCard
+                          key={file.id}
+                          attachment={file}
+                          file={localFiles[file.id]}
+                        />
+                      ) : null;
+                    })()
+                  ) : part.type === "tool-call" &&
+                    part.name === "ask_questions" &&
+                    part.state === "input-complete" &&
+                    part.output === undefined &&
+                    !questionsStopped &&
+                    messageIndex > lastUserIndex ? (
+                    (() => {
+                      const parsed = askQuestionsTool.inputSchema.safeParse(
+                        part.input,
+                      );
+                      return parsed.success ? (
+                        <div key={part.id}>
+                          {bindings.current.get(part.id) !==
+                            context.revision && (
+                            <p role="status">
+                              The draft changed. Skip these questions and ask
+                              again.
+                            </p>
+                          )}
+                          <ApprovalCard
+                            questions={parsed.data.questions}
+                            disabled={busy}
+                            onSubmit={(result) =>
+                              answerQuestions(part.id, result)
+                            }
+                          />
+                        </div>
+                      ) : (
+                        <div key={part.id} role="alert">
+                          <p>
+                            The assistant sent an invalid question. Skip it to
+                            continue.
+                          </p>
+                          <Button
+                            type="button"
+                            disabled={busy}
+                            onClick={() =>
+                              void answerQuestions(part.id, {
+                                status: "skipped",
+                                answers: [],
+                              })
+                            }
+                            variant="ghost"
+                            size="sm"
+                          >
+                            Skip question
+                          </Button>
+                        </div>
+                      );
+                    })()
+                  ) : null,
+                )}
+                {message.role === "assistant" &&
+                  message.parts.some((part) => part.type === "text") && (
+                    <Button
+                      type="button"
+                      className={s.copy}
+                      onClick={() => {
+                        void navigator.clipboard
+                          .writeText(
+                            message.parts
+                              .filter((part) => part.type === "text")
+                              .map((part) => part.content)
+                              .join("\n"),
+                          )
+                          .then(
+                            () => setCopied(message.id),
+                            () =>
+                              setNotice(
+                                "Copy failed. Select the text to copy it.",
+                              ),
+                          );
+                      }}
+                      variant="ghost"
+                      size="sm"
+                    >
+                      {copied === message.id ? "Copied" : "Copy reply"}
+                    </Button>
+                  )}
+              </article>
+            );
+          })}
+          {chat.interrupts.map((interrupt) =>
+            interrupt.kind === "tool-approval" ? (
+              <BoundReview
+                key={interrupt.id}
+                id={interrupt.toolCallId}
+                proposal={interrupt.originalArgs}
+                prepare={prepare}
+                stale={
+                  bindings.current.get(interrupt.toolCallId) !==
+                    context.revision || !!readOnly
+                }
+                disabled={!interrupt.canResolve || busy}
+                onApprove={(change) => {
+                  approved.current.set(interrupt.toolCallId, change);
+                  interrupt.resolveInterrupt(true);
+                }}
+                onReject={() => interrupt.resolveInterrupt(false)}
+              />
+            ) : null,
+          )}
+          {busy && (
+            <LoadingState
+              label={
+                uploading
+                  ? attachment
+                    ? "Reading document"
+                    : "Uploading document"
+                  : "Assistant is responding"
               }
-              disabled={!interrupt.canResolve || busy}
-              onApprove={(change) => {
-                approved.current.set(interrupt.toolCallId, change);
-                interrupt.resolveInterrupt(true);
-              }}
-              onReject={() => interrupt.resolveInterrupt(false)}
             />
-          ) : null,
-        )}
-        {busy && (
-          <LoadingState
-            label={
-              uploading
-                ? attachment
-                  ? "Reading document"
-                  : "Uploading document"
-                : "Assistant is responding"
-            }
-            variant={uploading ? "Orbit" : "Drive"}
-          />
-        )}
-        {!busy && pending && (
-          <p role="status" className={s.muted}>
-            {unanswered.length
-              ? "Answer the questions to continue."
-              : "Review the proposed changes to continue."}
-          </p>
-        )}
-      </div>
+          )}
+          {!busy && pending && (
+            <p role="status" className={s.muted}>
+              {unanswered.length
+                ? "Answer the questions to continue."
+                : "Review the proposed changes to continue."}
+            </p>
+          )}
+        </div>
+      </ScrollArea>
       {away && (
-        <button
+        <Button
           className={s.jump}
           type="button"
           onClick={() => {
@@ -1028,40 +1063,51 @@ function ChatSession({
               behavior: "instant",
             });
           }}
+          variant="ghost"
+          size="sm"
         >
           Jump to latest <ArrowDown01Icon size={14} aria-hidden="true" />
-        </button>
+        </Button>
       )}
+
       <div className={s.composerArea}>
         {storageError && (
-          <p className={s.warning} role="status">
-            Browser storage is unavailable. This conversation may not survive a
-            refresh.
-          </p>
+          <Banner variant="alert" role="status">
+            <div className="min-w-0 space-y-2">
+              Browser storage is unavailable. This conversation may not survive
+              a refresh.
+            </div>
+          </Banner>
         )}
         {readOnly && (
-          <p className={s.warning}>
-            This draft is read-only. You can still ask questions.
-          </p>
+          <Banner variant="alert">
+            <div className="min-w-0 space-y-2">
+              This draft is read-only. You can still ask questions.
+            </div>
+          </Banner>
         )}
         {(notice || chat.error) && (
-          <div className={s.warning} role="alert">
-            <p>{notice || chat.error?.message}</p>
-            {!busy && (
-              <button
-                type="button"
-                onClick={() => {
-                  setNotice("");
-                  if (pendingFile.current) void extract(pendingFile.current);
-                  else if (attachment && attachment.status !== "ready")
-                    void extract();
-                  else void chat.reload();
-                }}
-              >
-                Retry
-              </button>
-            )}
-          </div>
+          <Banner variant="error" role="alert">
+            <div className="min-w-0 space-y-2">
+              <p>{notice || chat.error?.message}</p>
+              {!busy && (
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setNotice("");
+                    if (pendingFile.current) void extract(pendingFile.current);
+                    else if (attachment && attachment.status !== "ready")
+                      void extract();
+                    else void chat.reload();
+                  }}
+                  variant="ghost"
+                  size="sm"
+                >
+                  Retry
+                </Button>
+              )}
+            </div>
+          </Banner>
         )}
         <PromptBar
           attachments={
@@ -1104,52 +1150,68 @@ function ChatSession({
                     setNotice("");
                   }}
                 />
-                <details>
-                  <summary>Document activity</summary>
-                  <TaskRows
-                    rows={[
-                      {
-                        id: "upload",
-                        label: "Upload document",
-                        status: attachment
-                          ? "done"
-                          : uploading
-                            ? "running"
-                            : documentFailure
-                              ? "error"
-                              : "pending",
-                        detail: attachment
-                          ? "Document uploaded. Text extraction can use the same upload on retry."
-                          : documentFailure || "Uploading your PDF or image.",
-                        ...(!uploading && !attachment
-                          ? { onRetry: () => void extract(pendingFile.current) }
-                          : {}),
-                      },
-                      {
-                        id: "extract",
-                        label: "Read document",
-                        status:
-                          attachment?.status === "ready"
+                <Collapsible>
+                  <Collapsible.Trigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto min-h-9 w-full justify-start whitespace-normal text-left"
+                      />
+                    }
+                  >
+                    {" "}
+                    Document activity
+                  </Collapsible.Trigger>
+                  <Collapsible.Panel>
+                    <TaskRows
+                      rows={[
+                        {
+                          id: "upload",
+                          label: "Upload document",
+                          status: attachment
                             ? "done"
-                            : uploading && attachment
+                            : uploading
                               ? "running"
-                              : documentFailure && attachment
-                                ? "stopped"
+                              : documentFailure
+                                ? "error"
                                 : "pending",
-                        detail:
-                          attachment?.status === "ready"
-                            ? "Extracted text is ready to use in this conversation."
-                            : documentFailure ||
-                              "Text is extracted before the assistant uses this document.",
-                        ...(!uploading &&
-                        attachment &&
-                        attachment.status !== "ready"
-                          ? { onRetry: () => void extract() }
-                          : {}),
-                      },
-                    ]}
-                  />
-                </details>
+                          detail: attachment
+                            ? "Document uploaded. Text extraction can use the same upload on retry."
+                            : documentFailure || "Uploading your PDF or image.",
+                          ...(!uploading && !attachment
+                            ? {
+                                onRetry: () =>
+                                  void extract(pendingFile.current),
+                              }
+                            : {}),
+                        },
+                        {
+                          id: "extract",
+                          label: "Read document",
+                          status:
+                            attachment?.status === "ready"
+                              ? "done"
+                              : uploading && attachment
+                                ? "running"
+                                : documentFailure && attachment
+                                  ? "stopped"
+                                  : "pending",
+                          detail:
+                            attachment?.status === "ready"
+                              ? "Extracted text is ready to use in this conversation."
+                              : documentFailure ||
+                                "Text is extracted before the assistant uses this document.",
+                          ...(!uploading &&
+                          attachment &&
+                          attachment.status !== "ready"
+                            ? { onRetry: () => void extract() }
+                            : {}),
+                        },
+                      ]}
+                    />
+                  </Collapsible.Panel>
+                </Collapsible>
               </div>
             ) : undefined
           }

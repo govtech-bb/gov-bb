@@ -1,3 +1,7 @@
+import { Collapsible } from "../collapsible";
+import { Banner } from "../banner";
+import { Elevated } from "../surface";
+import { Button } from "../button";
 import { useEffect, useState } from "react";
 import { redactAiData } from "@govtech-bb/form-builder";
 import { CodeBlock } from "./code-block";
@@ -63,7 +67,13 @@ export function ReviewCard({
   }, [attempt, stale, prepare]);
   const fields = change ? changedFields(change.before, change.after) : [];
   return (
-    <section className={s.review} aria-label="Review proposed changes">
+    <Elevated
+      offset={1}
+      shadowLevel={2}
+      render={<section />}
+      className={s.review}
+      aria-label="Review proposed changes"
+    >
       <div className={s.eyebrow}>Proposed changes</div>
       <p>{proposal.summary}</p>
       {!stale && (
@@ -109,45 +119,70 @@ export function ReviewCard({
               {fields.join(", ")}
             </p>
           )}
+
           {change.warnings.length > 0 && (
-            <div className={s.warning}>
-              <strong>Needs repair before saving or deploying</strong>
-              <ul>
-                {change.warnings.map((warning, index) => (
-                  <li key={index}>{warning}</li>
-                ))}
-              </ul>
-            </div>
+            <Banner variant="alert">
+              <div className="min-w-0 space-y-2">
+                <strong>Needs repair before saving or deploying</strong>
+                <ul>
+                  {change.warnings.map((warning, index) => (
+                    <li key={index}>{warning}</li>
+                  ))}
+                </ul>
+              </div>
+            </Banner>
           )}
+
           {fields.map((field) => (
-            <details key={field}>
-              <summary>{field}</summary>
-              <CodeBlock
-                filename={field}
-                before={displayValue(change.before[field])}
-                code={displayValue(change.after[field])}
-              />
-            </details>
+            <Collapsible key={field}>
+              <Collapsible.Trigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto min-h-9 w-full justify-start whitespace-normal text-left"
+                  />
+                }
+              >
+                {" "}
+                {field}
+              </Collapsible.Trigger>
+              <Collapsible.Panel>
+                <CodeBlock
+                  filename={field}
+                  before={displayValue(change.before[field])}
+                  code={displayValue(change.after[field])}
+                />
+              </Collapsible.Panel>
+            </Collapsible>
           ))}
+
           <p className={s.muted}>
             Applies to this draft. Save or deploy when you are ready.
           </p>
         </>
       )}
       <div className={s.actions}>
-        <button type="button" disabled={disabled} onClick={onReject}>
-          Reject
-        </button>
-        <button
+        <Button
           type="button"
-          className={s.primary}
+          disabled={disabled}
+          onClick={onReject}
+          variant="ghost"
+          size="sm"
+        >
+          Reject
+        </Button>
+        <Button
+          type="button"
           disabled={disabled || stale || !change || fields.length === 0}
           onClick={() => change && onApprove(change)}
+          variant="primary"
+          size="sm"
         >
           {change?.warnings.length ? "Apply with warnings" : "Apply to draft"}
-        </button>
+        </Button>
       </div>
-    </section>
+    </Elevated>
   );
 }
 

@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
-import { render, screen } from "@testing-library/react";
+import { render, screen } from "../../test/ui";
 import userEvent from "@testing-library/user-event";
 import type { Mock } from "vitest";
 import { FormPicker } from "./-form-picker";
@@ -20,7 +20,13 @@ vi.mock("../../server/forms", () => ({
 
 const CATALOG = {} as RegistryCatalog;
 const FORMS: BuilderFormSummary[] = [
-  { id: "passport", formId: "passport", title: "Passport Application", version: "1.2.0", isPublished: true },
+  {
+    id: "passport",
+    formId: "passport",
+    title: "Passport Application",
+    version: "1.2.0",
+    isPublished: true,
+  },
 ];
 
 const DRAFT: BuilderFormSummary = {
@@ -79,7 +85,9 @@ const SHADOWED_PUBLISHED: BuilderFormSummary = {
   hasDraftRow: true,
 };
 
-function renderPicker(props: Partial<React.ComponentProps<typeof FormPicker>> = {}) {
+function renderPicker(
+  props: Partial<React.ComponentProps<typeof FormPicker>> = {},
+) {
   return render(
     <FormPicker
       forms={null}
@@ -138,9 +146,15 @@ describe("FormPicker", () => {
     const deleteBtn = screen.getByRole("button", { name: /delete/i });
     expect(deleteBtn).toBeInTheDocument();
     // A draft offers neither Disable nor Enable, and never Erase.
-    expect(screen.queryByRole("button", { name: /disable/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /enable/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /erase/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /disable/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /enable/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /erase/i }),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(deleteBtn);
     expect(onRequestDelete).toHaveBeenCalledWith(DRAFT);
@@ -156,7 +170,9 @@ describe("FormPicker", () => {
     expect(disableBtn).toBeInTheDocument();
     expect(eraseBtn).toBeInTheDocument();
     // A live published form must NOT offer the draft-only Delete.
-    expect(screen.queryByRole("button", { name: /^delete$/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^delete$/i }),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(disableBtn);
     expect(onRequestDisable).toHaveBeenCalledWith(LIVE_PUBLISHED);
@@ -172,13 +188,19 @@ describe("FormPicker", () => {
     expect(screen.getByText(/disabled/i)).toBeInTheDocument();
     const enableBtn = screen.getByRole("button", { name: /enable/i });
     expect(enableBtn).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^delete$/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^delete$/i }),
+    ).not.toBeInTheDocument();
     // The "Disable" action is gone once disabled (only Enable remains). The
     // Disabled badge text must not be matched as a Disable button.
-    expect(screen.queryByRole("button", { name: /^disable$/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^disable$/i }),
+    ).not.toBeInTheDocument();
     // Erase is offered only on LIVE published forms — a disabled form must be
     // Enabled first.
-    expect(screen.queryByRole("button", { name: /^erase$/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^erase$/i }),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(enableBtn);
     expect(onEnable).toHaveBeenCalledWith(DISABLED_PUBLISHED);
@@ -248,7 +270,9 @@ describe("FormPicker", () => {
     // A disabled form takes the Enable branch, not the draft-only Delete branch.
     const enableBtn = screen.getByRole("button", { name: /enable/i });
     expect(enableBtn).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^delete$/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^delete$/i }),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(enableBtn);
     expect(onEnable).toHaveBeenCalledWith(DISABLED_DRAFT);
@@ -257,7 +281,9 @@ describe("FormPicker", () => {
     // The pending getRecipe pins loadingId (disabling the buttons), so this is
     // asserted last.
     await userEvent.click(screen.getByText("Draft Disabled"));
-    expect(getRecipe).toHaveBeenCalledWith({ data: { formId: "draft-disabled" } });
+    expect(getRecipe).toHaveBeenCalledWith({
+      data: { formId: "draft-disabled" },
+    });
   });
 
   it("renders Enable only for an orphan-override row, hides Duplicate, and is not row-clickable", async () => {
@@ -267,10 +293,18 @@ describe("FormPicker", () => {
     const enableBtn = screen.getByRole("button", { name: /enable/i });
     expect(enableBtn).toBeInTheDocument();
     // Nothing to open, copy, delete, disable, or erase — Enable is the only action.
-    expect(screen.queryByRole("button", { name: /duplicate/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^delete$/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^disable$/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^erase$/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /duplicate/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^delete$/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^disable$/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^erase$/i }),
+    ).not.toBeInTheDocument();
 
     // No recipe to load — clicking the row must not attempt to open it. (The
     // title falls back to the formId, so it appears twice; the first is the row
@@ -304,45 +338,49 @@ describe("FormPicker", () => {
       expect(screen.queryByText(/in review/i)).not.toBeInTheDocument();
     });
 
-    it("exposes the PR number via the badge's title", () => {
+    it("exposes the PR number in the link's accessible name", () => {
       renderPicker({
         forms: FORMS,
         openPRs: new Map([[OPEN_PR.formId, OPEN_PR]]),
       });
-      expect(screen.getByTitle(/#42/)).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /#42/ })).toBeInTheDocument();
     });
 
     it("clicking the badge opens the PR in a new tab and does not select/load the form", async () => {
-      const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+      const activate = vi.fn((event: Event) => event.preventDefault());
       renderPicker({
         forms: FORMS,
         openPRs: new Map([[OPEN_PR.formId, OPEN_PR]]),
       });
 
-      await userEvent.click(screen.getByText(/in review/i));
+      const link = screen.getByRole("link", { name: /#42/ });
+      link.addEventListener("click", activate);
+      await userEvent.click(link);
 
-      expect(openSpy).toHaveBeenCalledWith(OPEN_PR.prUrl, "_blank", "noopener");
+      expect(activate).toHaveBeenCalledTimes(1);
+      expect(link).toHaveAttribute("href", OPEN_PR.prUrl);
+      expect(link).toHaveAttribute("target", "_blank");
       // A click on the badge must not bubble to the row's select handler —
       // that would fetch the recipe and load the form into the editor.
       expect(getRecipe).not.toHaveBeenCalled();
-
-      openSpy.mockRestore();
     });
 
     it("opens the PR on Enter for keyboard access", async () => {
-      const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+      const activate = vi.fn((event: Event) => event.preventDefault());
       renderPicker({
         forms: FORMS,
         openPRs: new Map([[OPEN_PR.formId, OPEN_PR]]),
       });
 
-      screen.getByText(/in review/i).focus();
+      const link = screen.getByRole("link", { name: /#42/ });
+      link.addEventListener("click", activate);
+      link.focus();
       await userEvent.keyboard("{Enter}");
 
-      expect(openSpy).toHaveBeenCalledWith(OPEN_PR.prUrl, "_blank", "noopener");
+      expect(activate).toHaveBeenCalledTimes(1);
+      expect(link).toHaveAttribute("href", OPEN_PR.prUrl);
+      expect(link).toHaveAttribute("target", "_blank");
       expect(getRecipe).not.toHaveBeenCalled();
-
-      openSpy.mockRestore();
     });
   });
 
@@ -360,11 +398,17 @@ describe("FormPicker", () => {
     it("keeps Disable and Erase alongside it, and still offers no bare Delete", () => {
       renderPicker({ forms: [SHADOWED_PUBLISHED] });
 
-      expect(screen.getByRole("button", { name: /^disable$/i })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /^erase$/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /^disable$/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /^erase$/i }),
+      ).toBeInTheDocument();
       // #576: a bare "Delete" must never sit beside a live published service —
       // the working-copy action is labelled for what it actually removes.
-      expect(screen.queryByRole("button", { name: /^delete$/i })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /^delete$/i }),
+      ).not.toBeInTheDocument();
     });
 
     it("offers nothing to delete for a published form with no scratch row", () => {
@@ -373,13 +417,17 @@ describe("FormPicker", () => {
       expect(
         screen.queryByRole("button", { name: /delete working copy/i }),
       ).not.toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: /^delete$/i })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /^delete$/i }),
+      ).not.toBeInTheDocument();
     });
 
     it("leaves a draft-only form on the plain Delete", () => {
       renderPicker({ forms: [{ ...DRAFT, hasDraftRow: true }] });
 
-      expect(screen.getByRole("button", { name: /^delete$/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /^delete$/i }),
+      ).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: /delete working copy/i }),
       ).not.toBeInTheDocument();
@@ -391,7 +439,9 @@ describe("FormPicker", () => {
       expect(
         screen.queryByRole("button", { name: /delete working copy/i }),
       ).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /enable/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /enable/i }),
+      ).toBeInTheDocument();
     });
   });
 });

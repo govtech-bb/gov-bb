@@ -1,3 +1,8 @@
+import { Elevated } from "../surface";
+import { Popover } from "../popover";
+import { Select } from "../select";
+import { InputArea } from "../input/input-area";
+import { Button } from "../button";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   Attachment02Icon,
@@ -55,6 +60,7 @@ export function PromptBar({
 }) {
   const id = useId();
   const input = useRef<HTMLTextAreaElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
   const [active, setActive] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -166,153 +172,185 @@ export function PromptBar({
     onAttach(files[0]);
   };
   return (
-    <div
-      className={s.promptBar}
-      data-dragging={dragging}
-      onDragOver={(event) => {
-        if (event.dataTransfer.types.includes("Files")) {
-          event.preventDefault();
-          event.dataTransfer.dropEffect = busy || pending ? "none" : "copy";
-          if (!busy && !pending) setDragging(true);
-        }
-      }}
-      onDragLeave={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node))
-          setDragging(false);
-      }}
-      onDrop={(event) => {
-        if (event.dataTransfer.types.includes("Files")) {
-          event.preventDefault();
-          setDragging(false);
-          attachFiles(event.dataTransfer.files);
-        }
+    <Popover
+      open={menuOpen}
+      onOpenChange={(open) => {
+        if (!open) setDismissed(true);
       }}
     >
-      {menuOpen && (
-        <div
+      <div
+        className={s.promptBar}
+        data-dragging={dragging}
+        onDragOver={(event) => {
+          if (event.dataTransfer.types.includes("Files")) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = busy || pending ? "none" : "copy";
+            if (!busy && !pending) setDragging(true);
+          }
+        }}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node))
+            setDragging(false);
+        }}
+        onDrop={(event) => {
+          if (event.dataTransfer.types.includes("Files")) {
+            event.preventDefault();
+            setDragging(false);
+            attachFiles(event.dataTransfer.files);
+          }
+        }}
+      >
+        <Popover.Content
+          anchor={input}
+          side="top"
+          align="start"
+          initialFocus={false}
+          finalFocus={false}
           id={id}
-          className={s.promptMenu}
+          className="w-(--anchor-width) max-h-[min(320px,40dvh)] p-1.5"
           role="listbox"
           aria-label={
-            token.kind === "@" ? "Draft references" : "Assistant commands"
+            token?.kind === "@" ? "Draft references" : "Assistant commands"
           }
         >
           {rows.map((row, i) => (
-            <button
+            <Button
               key={row.key}
               type="button"
               role="option"
+              className="grid h-auto w-full justify-stretch gap-1 text-left aria-selected:bg-ui-tint"
               aria-selected={i === current}
               id={`${id}-${i}`}
               tabIndex={-1}
               onMouseDown={(event) => event.preventDefault()}
               onPointerMove={() => setActive(i)}
               onClick={() => pick(row)}
+              variant="ghost"
+              size="sm"
             >
               <span>{row.name}</span>
               <small>{row.description}</small>
-            </button>
+            </Button>
           ))}
           {rows.length === 0 && (
-            <p>No matching {token.kind === "@" ? "references" : "commands"}.</p>
+            <p>
+              No matching {token?.kind === "@" ? "references" : "commands"}.
+            </p>
           )}
           <div className={s.menuHint}>
             ↑ ↓ to choose · Enter to insert · Esc to close
           </div>
-        </div>
-      )}
-      <form
-        className={s.prompt}
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (!busy && !pending && !blocked && value.trim()) onSend();
-        }}
-      >
-        {attachments && (
-          <div className={s.composerAttachments}>{attachments}</div>
-        )}
-        {dragging && <div className={s.dropHint}>Drop a PDF or image here</div>}
-        {selection && (
-          <div className={s.selectionChip}>
-            <span title={selection}>Selection: {selection}</span>
-            <button
-              type="button"
-              aria-label="Clear selected context"
-              disabled={busy || pending}
-              onClick={onClearSelection}
-            >
-              <Cancel01Icon size={13} aria-hidden="true" />
-            </button>
-          </div>
-        )}
-        <textarea
-          ref={input}
-          aria-label="Message the assistant"
-          placeholder={
-            mode === "ask"
-              ? "Ask about this draft…"
-              : "Describe what you want to change…"
-          }
-          value={value}
-          maxLength={16000}
-          rows={3}
-          disabled={pending}
-          onPaste={(event) => {
-            if (event.clipboardData.files.length) {
-              event.preventDefault();
-              attachFiles(event.clipboardData.files);
-            }
+        </Popover.Content>
+        <Elevated
+          offset={1}
+          shadowLevel={2}
+          render={<form />}
+          className={s.prompt}
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!busy && !pending && !blocked && value.trim()) onSend();
           }}
-          onChange={(event) => change(event.target.value)}
-          aria-autocomplete="list"
-          aria-controls={menuOpen ? id : undefined}
-          aria-haspopup="listbox"
-          aria-activedescendant={
-            menuOpen && rows.length ? `${id}-${current}` : undefined
-          }
-          onBlur={(event) => {
-            if (
-              !event.currentTarget.parentElement?.parentElement?.contains(
-                event.relatedTarget as Node,
+        >
+          {attachments && (
+            <div className={s.composerAttachments}>{attachments}</div>
+          )}
+          {dragging && (
+            <div className={s.dropHint}>Drop a PDF or image here</div>
+          )}
+          {selection && (
+            <div className={s.selectionChip}>
+              <span title={selection}>Selection: {selection}</span>
+              <Button
+                type="button"
+                aria-label="Clear selected context"
+                disabled={busy || pending}
+                onClick={onClearSelection}
+                variant="ghost"
+                size="sm"
+              >
+                <Cancel01Icon size={13} aria-hidden="true" />
+              </Button>
+            </div>
+          )}
+          <InputArea
+            ref={input}
+            aria-label="Message the assistant"
+            placeholder={
+              mode === "ask"
+                ? "Ask about this draft…"
+                : "Describe what you want to change…"
+            }
+            value={value}
+            maxLength={16000}
+            rows={3}
+            disabled={pending}
+            onPaste={(event) => {
+              if (event.clipboardData.files.length) {
+                event.preventDefault();
+                attachFiles(event.clipboardData.files);
+              }
+            }}
+            onChange={(event) => change(event.target.value)}
+            aria-autocomplete="list"
+            aria-controls={menuOpen ? id : undefined}
+            aria-haspopup="listbox"
+            aria-activedescendant={
+              menuOpen && rows.length ? `${id}-${current}` : undefined
+            }
+            onBlur={(event) => {
+              if (
+                !event.currentTarget.parentElement?.parentElement?.contains(
+                  event.relatedTarget as Node,
+                )
               )
-            )
-              setDismissed(true);
-          }}
-          onKeyDown={(event) => {
-            if (event.nativeEvent.isComposing) return;
-            if (event.key === "Escape" && menuOpen) {
-              event.preventDefault();
-              event.stopPropagation();
-              setDismissed(true);
-              return;
-            }
-            if (
-              menuOpen &&
-              rows.length &&
-              (event.key === "ArrowDown" || event.key === "ArrowUp")
-            ) {
-              event.preventDefault();
-              setActive(
-                (current + (event.key === "ArrowDown" ? 1 : rows.length - 1)) %
-                  rows.length,
-              );
-              return;
-            }
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              if (menuOpen && rows.length) pick(rows[current]);
-              else if (!busy && !pending && !blocked && value.trim()) onSend();
-            }
-          }}
-        />
-        <div className={s.promptControls}>
-          <label
-            className={s.upload}
-            title="Attach PDF (20 MB), PNG or JPEG (10 MB)"
-          >
-            <Attachment02Icon size={18} aria-hidden="true" />
-            <span className={s.srOnly}>Attach a document</span>
+                setDismissed(true);
+            }}
+            onKeyDown={(event) => {
+              if (event.nativeEvent.isComposing) return;
+              if (event.key === "Escape" && menuOpen) {
+                event.preventDefault();
+                event.stopPropagation();
+                setDismissed(true);
+                return;
+              }
+              if (
+                menuOpen &&
+                rows.length &&
+                (event.key === "ArrowDown" || event.key === "ArrowUp")
+              ) {
+                event.preventDefault();
+                setActive(
+                  (current +
+                    (event.key === "ArrowDown" ? 1 : rows.length - 1)) %
+                    rows.length,
+                );
+                return;
+              }
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                if (menuOpen && rows.length) pick(rows[current]);
+                else if (!busy && !pending && !blocked && value.trim())
+                  onSend();
+              }
+            }}
+            className="min-h-20 max-h-44 w-full resize-y [field-sizing:content]"
+          />
+          <div className={s.promptControls}>
+            <Button
+              variant="ghost"
+              size="sm"
+              shape="square"
+              aria-label="Attach a document"
+              title="Attach PDF (20 MB), PNG or JPEG (10 MB)"
+              disabled={busy || pending}
+              onClick={() => fileInput.current?.click()}
+            >
+              <Attachment02Icon size={18} aria-hidden="true" />
+            </Button>
             <input
+              ref={fileInput}
+              hidden
+              aria-label="Choose attachment"
               type="file"
               accept="application/pdf,image/png,image/jpeg"
               disabled={busy || pending}
@@ -322,42 +360,50 @@ export function PromptBar({
                 if (file) onAttach(file);
               }}
             />
-          </label>
-          <label>
-            <span className={s.srOnly}>Assistant mode</span>
-            <select
-              value={mode}
-              disabled={busy || pending || readOnly}
-              onChange={(event) =>
-                onModeChange(event.target.value as AiContext["mode"])
-              }
-            >
-              <option value="edit">Review edits</option>
-              <option value="ask">Ask</option>
-            </select>
-          </label>
-          <span className={s.promptHint}>@ references · / commands</span>
-          {busy ? (
-            <button
-              type="button"
-              className={s.send}
-              aria-label="Stop response"
-              onClick={onStop}
-            >
-              <StopIcon size={15} aria-hidden="true" />
-            </button>
-          ) : (
-            <button
-              type="submit"
-              className={s.send}
-              aria-label="Send message"
-              disabled={!value.trim() || pending || blocked}
-            >
-              <ArrowUp01Icon size={18} aria-hidden="true" />
-            </button>
-          )}
-        </div>
-      </form>
-    </div>
+            <div>
+              <Select
+                aria-label={"Assistant mode"}
+                value={mode}
+                disabled={busy || pending || readOnly}
+                onValueChange={(nextValue) => {
+                  if (nextValue === null) return;
+                  onModeChange(nextValue as AiContext["mode"]);
+                }}
+                items={[
+                  { value: "edit", label: "Review edits" },
+                  { value: "ask", label: "Ask" },
+                ]}
+              />
+            </div>
+            <span className={s.promptHint}>@ references · / commands</span>
+            {busy ? (
+              <Button
+                type="button"
+                aria-label="Stop response"
+                onClick={onStop}
+                variant="primary"
+                size="sm"
+                shape="circle"
+                className="ml-auto shrink-0"
+              >
+                <StopIcon size={15} aria-hidden="true" />
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                aria-label="Send message"
+                disabled={!value.trim() || pending || blocked}
+                variant="primary"
+                size="sm"
+                shape="circle"
+                className="ml-auto shrink-0"
+              >
+                <ArrowUp01Icon size={18} aria-hidden="true" />
+              </Button>
+            )}
+          </div>
+        </Elevated>
+      </div>
+    </Popover>
   );
 }

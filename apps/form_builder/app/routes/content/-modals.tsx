@@ -1,120 +1,67 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { InputArea } from "../../components/ui/input/input-area";
+import { Button } from "../../components/ui/button";
+import { useState } from "react";
+import { Dialog } from "../../components/ui/dialog";
+import { Banner } from "../../components/ui/banner";
 import { Delete02Icon, Rocket01Icon } from "hugeicons-react";
 import { CONTENT_ROOT, VISIBILITY_LEVELS } from "./-lib";
 import type { OpenContentPR } from "./-server";
 import type { EditorState } from "./-editor-state";
 import s from "./-styles.module.css";
 
-/** Error banner with a shake on appear; keyed so a new message replays it. */
 export function ErrorBanner({ error }: { error: string | null }) {
-  if (!error) return null;
-  return (
-    <div
-      key={error}
-      className={`${s.errorBanner} t-input is-error is-shaking`}
-      role="alert"
-    >
+  return error ? (
+    <Banner variant="error" role="alert">
       {error}
-    </div>
-  );
+    </Banner>
+  ) : null;
 }
 
-/** Shared modal scaffold; presence/transition state stays with the caller. */
 function Modal({
   title,
-  cls,
   onClose,
   closeDisabled,
   children,
 }: {
   title: string;
-  cls: string;
   onClose: () => void;
   closeDisabled?: boolean;
   children: React.ReactNode;
 }) {
-  const titleId = useId();
-  const dialogRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    const dialog = dialogRef.current;
-    const initial =
-      dialog?.querySelector<HTMLElement>("[data-modal-initial-focus]") ??
-      dialog?.querySelector<HTMLElement>(
-        'button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex="0"]',
-      );
-    initial?.focus();
-    return () => previous?.focus();
-  }, []);
-
-  const onDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === "Escape" && !closeDisabled) {
-      event.preventDefault();
-      onClose();
-      return;
-    }
-    if (event.key !== "Tab") return;
-    const focusable = [
-      ...(dialogRef.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex="0"]',
-      ) ?? []),
-    ];
-    if (focusable.length === 0) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
-
   return (
-    <div className={`${s.modalOverlay} t-modal-overlay ${cls}`}>
-      <button
-        type="button"
-        className={s.modalBackdrop}
-        aria-label="Close dialog"
-        tabIndex={-1}
-        onClick={onClose}
-        disabled={closeDisabled}
-      />
-      <div
-        ref={dialogRef}
-        className={`${s.modal} t-modal ${cls}`}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        onKeyDown={onDialogKeyDown}
-      >
-        <div className={s.modalHead}>
-          <h2 id={titleId}>{title}</h2>
-          <button
-            type="button"
-            className={s.secondaryBtn}
-            onClick={onClose}
-            disabled={closeDisabled}
+    <Dialog.Root
+      defaultOpen
+      onOpenChange={(open, details) => {
+        if (!open && closeDisabled) details.cancel();
+      }}
+      onOpenChangeComplete={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <Dialog size="lg" showCloseButton={false} className="space-y-5">
+        <div className="flex items-center justify-between gap-4">
+          <Dialog.Title>{title}</Dialog.Title>
+          <Dialog.Close
+            render={
+              <Button variant="ghost" size="sm" disabled={closeDisabled} />
+            }
           >
             Close
-          </button>
+          </Dialog.Close>
         </div>
-        <div className={s.modalBody}>{children}</div>
-      </div>
-    </div>
+        <div className="space-y-4">{children}</div>
+      </Dialog>
+    </Dialog.Root>
   );
 }
 
 export function DeleteModal({
-  cls,
   onClose,
   editPath,
   error,
   isDeleting,
   onDelete,
 }: {
-  cls: string;
   onClose: () => void;
   editPath: string;
   error: string | null;
@@ -122,12 +69,7 @@ export function DeleteModal({
   onDelete: () => void;
 }) {
   return (
-    <Modal
-      title="Remove page"
-      cls={cls}
-      onClose={onClose}
-      closeDisabled={isDeleting}
-    >
+    <Modal title="Remove page" onClose={onClose} closeDisabled={isDeleting}>
       <p>
         Open a pull request that removes{" "}
         <code>{editPath.slice(CONTENT_ROOT.length)}</code> from the landing
@@ -135,30 +77,29 @@ export function DeleteModal({
       </p>
       <ErrorBanner error={error} />
       <div className={s.modalActions}>
-        <button
+        <Button
           type="button"
-          className={s.dangerBtn}
           onClick={onDelete}
           disabled={isDeleting}
+          variant="destructive"
+          size="sm"
         >
           <Delete02Icon size={15} />
           {isDeleting ? "Opening PR…" : "Deploy removal"}
-        </button>
-        <button
-          type="button"
-          className={s.secondaryBtn}
-          onClick={onClose}
-          disabled={isDeleting}
+        </Button>
+        <Dialog.Close
+          render={
+            <Button disabled={isDeleting} variant="secondary" size="sm" />
+          }
         >
           Cancel
-        </button>
+        </Dialog.Close>
       </div>
     </Modal>
   );
 }
 
 export function DeployModal({
-  cls,
   onClose,
   ed,
   baseBranch,
@@ -166,7 +107,6 @@ export function DeployModal({
   isPublishing,
   onDeploy,
 }: {
-  cls: string;
   onClose: () => void;
   ed: EditorState;
   baseBranch: string;
@@ -184,7 +124,6 @@ export function DeployModal({
             ? "Deploy update"
             : "Deploy page"
       }
-      cls={cls}
       onClose={onClose}
       closeDisabled={isPublishing}
     >
@@ -200,6 +139,7 @@ export function DeployModal({
         {ed.url && (
           <>
             <dt>URL</dt>
+
             <dd>
               <code>{ed.url}</code>
             </dd>
@@ -228,10 +168,9 @@ export function DeployModal({
         <label className={s.label} htmlFor="sp-pr-desc">
           {openPR ? "Update note (optional)" : "PR description (optional)"}
         </label>
-        <textarea
+        <InputArea
           id="sp-pr-desc"
           data-modal-initial-focus
-          className={s.textarea}
           rows={3}
           value={prDesc}
           onChange={(e) => setPrDesc(e.target.value)}
@@ -240,15 +179,17 @@ export function DeployModal({
               ? "What changed in this update? This will be added as a PR comment."
               : "What changed and why?"
           }
+          className="w-full min-w-0"
         />
       </div>
       <ErrorBanner error={ed.error} />
       <div className={s.modalActions}>
-        <button
+        <Button
           type="button"
-          className={s.primaryBtn}
           onClick={() => onDeploy(prDesc)}
           disabled={isPublishing || !ed.canDeploy}
+          variant="primary"
+          size="sm"
         >
           <Rocket01Icon size={15} />
           {isPublishing
@@ -258,15 +199,14 @@ export function DeployModal({
             : openPR
               ? `Update PR #${openPR.prNumber}`
               : "Deploy"}
-        </button>
-        <button
-          type="button"
-          className={s.secondaryBtn}
-          onClick={onClose}
-          disabled={isPublishing}
+        </Button>
+        <Dialog.Close
+          render={
+            <Button disabled={isPublishing} variant="secondary" size="sm" />
+          }
         >
           Cancel
-        </button>
+        </Dialog.Close>
       </div>
     </Modal>
   );

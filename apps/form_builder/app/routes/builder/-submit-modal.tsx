@@ -1,7 +1,10 @@
+import { Banner } from "../../components/ui/banner";
+import { Input } from "../../components/ui/input";
+import { Button } from "../../components/ui/button";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
 import { formPreviewUrl } from "../../lib/form-url";
 import styles from "../../styles/builder.module.css";
-import { useEscClose } from "./-use-esc-close";
+import { Dialog } from "../../components/ui/dialog";
 
 interface SubmitModalProps {
   draft: RecipeDraft;
@@ -29,61 +32,95 @@ export function SubmitModal({
   const isUpdate = loadedFromId !== null;
   const mode = isUpdate ? "Save Changes" : "Submit Recipe";
 
-  useEscClose(onClose);
-
   return (
-    <div className={styles.modal} onClick={onClose}>
-      <div className={styles.modalContent} role="dialog" aria-modal="true" aria-label={mode} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.modalHead}>
-          <strong>{mode}</strong>
-          <button type="button" onClick={onClose}>Close</button>
+    <Dialog.Root
+      defaultOpen
+      onOpenChangeComplete={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <Dialog size="lg" showCloseButton={false} className="space-y-5">
+        <div className="flex items-center justify-between gap-4">
+          <Dialog.Title>{mode}</Dialog.Title>
+          <Dialog.Close render={<Button variant="ghost" size="sm" />}>
+            Close
+          </Dialog.Close>
         </div>
 
         {submitSuccess ? (
-          <div className={styles.validationSuccess}>
-            Recipe submitted successfully!
-            <div style={{ marginTop: 8 }}>
-              <a
-                href={formPreviewUrl(draft.formId)}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                🔗 Preview form
-              </a>
+          <Banner variant="success" size="sm">
+            <div className="min-w-0 flex-1">
+              Recipe submitted successfully!
+              <div style={{ marginTop: 8 }}>
+                <a
+                  href={formPreviewUrl(draft.formId)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  🔗 Preview form
+                </a>
+              </div>
             </div>
-          </div>
+          </Banner>
         ) : (
           <div>
             {isReadOnly && (
-              <div className={styles.presenceBanner} role="alert" style={{ marginBottom: 8 }}>
-                Another user is currently editing this form. Saving is disabled
-                until their editing session ends.
-              </div>
+              <Banner
+                variant="alert"
+                size="sm"
+                role="alert"
+                style={{ marginBottom: 8 }}
+              >
+                <div className="min-w-0 flex-1">
+                  Another user is currently editing this form. Saving is
+                  disabled until their editing session ends.
+                </div>
+              </Banner>
             )}
             <div className={styles.formGroup}>
-              <label>Form ID</label>
-              <input type="text" value={draft.formId} readOnly />
+              <Input
+                type="text"
+                value={draft.formId}
+                readOnly
+                label={"Form ID"}
+                className="w-full min-w-0"
+              />
             </div>
             <div className={styles.formGroup}>
-              <label>Title</label>
-              <input type="text" value={draft.title} readOnly />
+              <Input
+                type="text"
+                value={draft.title}
+                readOnly
+                label={"Title"}
+                className="w-full min-w-0"
+              />
             </div>
 
             {submitError && (
-              <div className={styles.validationErrors} style={{ marginBottom: 8 }}>
-                {submitError}
-              </div>
+              <Banner variant="error" size="sm" style={{ marginBottom: 8 }}>
+                <div className="min-w-0 flex-1">{submitError}</div>
+              </Banner>
             )}
 
             <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" className={styles.btnPrimary} onClick={onSubmit} disabled={isSubmitting || isReadOnly}>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={onSubmit}
+                disabled={isSubmitting || isReadOnly}
+                size="sm"
+              >
                 {isSubmitting ? "Submitting…" : mode}
-              </button>
-              <button type="button" onClick={onClose}>Cancel</button>
+              </Button>
+              <Dialog.Close
+                render={<Button type="button" variant="secondary" size="sm" />}
+              >
+                Cancel
+              </Dialog.Close>
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </Dialog>
+    </Dialog.Root>
   );
 }

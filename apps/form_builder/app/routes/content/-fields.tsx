@@ -1,3 +1,6 @@
+import { InputArea } from "../../components/ui/input/input-area";
+import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
 import type { AssistantRequest } from "../../components/ui/ai/prompt-bar";
 import {
   LANDING_CATEGORIES,
@@ -37,17 +40,21 @@ export function PageFields({
       <label className={s.label} htmlFor="sp-linktype">
         Start button links to
       </label>
-      <select
+      <Select
         id="sp-linktype"
-        className={s.select}
         value={state.linkType}
-        onChange={(e) => set("linkType", e.target.value as StartLinkType)}
-      >
-        <option value="form">A form</option>
-        <option value="slug">Another page (internal)</option>
-        <option value="external">An external URL</option>
-        <option value="none">No start button</option>
-      </select>
+        onValueChange={(nextValue) => {
+          if (nextValue === null) return;
+          set("linkType", nextValue as StartLinkType);
+        }}
+        className="w-full min-w-0"
+        items={[
+          { value: "form", label: "A form" },
+          { value: "slug", label: "Another page (internal)" },
+          { value: "external", label: "An external URL" },
+          { value: "none", label: "No start button" },
+        ]}
+      />
 
       {state.linkType === "none" ? (
         <small className={s.help}>
@@ -61,13 +68,14 @@ export function PageFields({
               <label className={s.srOnly} htmlFor="sp-form-id">
                 Form ID
               </label>
-              <input
+
+              <Input
                 id="sp-form-id"
-                className={s.input}
                 type="text"
                 value={state.formId}
                 onChange={(e) => set("formId", e.target.value)}
                 placeholder="form-id (e.g. get-birth-certificate)"
+                className="w-full min-w-0"
               />
             </>
           ) : (
@@ -100,8 +108,7 @@ export function PageFields({
         </div>
       ) : (
         <div className={s.subField}>
-          <input
-            className={s.input}
+          <Input
             type="text"
             value={state.linkHref}
             onChange={(e) => set("linkHref", e.target.value)}
@@ -110,6 +117,7 @@ export function PageFields({
                 ? "/family-birth-relationships/get-birth-certificate"
                 : "https://example.gov.bb/apply"
             }
+            className="w-full min-w-0"
           />
           <small className={`${s.help} ${ed.hrefValid ? "" : s.helpError}`}>
             {state.linkType === "slug"
@@ -126,13 +134,13 @@ export function PageFields({
       <label className={s.label} htmlFor="sp-title">
         Title
       </label>
-      <input
+      <Input
         id="sp-title"
-        className={s.input}
         type="text"
         value={state.title}
         onChange={(e) => set("title", e.target.value)}
         placeholder="Get a copy of a birth certificate"
+        className="w-full min-w-0"
       />
     </div>
   );
@@ -156,13 +164,13 @@ export function PageFields({
       <label className={s.label} htmlFor="sp-slug">
         Slug
       </label>
-      <input
+      <Input
         id="sp-slug"
-        className={s.input}
         type="text"
         value={state.slug}
         onChange={(e) => set("slug", e.target.value)}
         placeholder={state.formId || "page-slug"}
+        className="w-full min-w-0"
       />
       {!ed.slugValid ? (
         <small className={`${s.help} ${s.helpError}`}>
@@ -183,12 +191,12 @@ export function PageFields({
           <label className={s.label} htmlFor="sp-category">
             Category
           </label>
-          <select
+          <Select
             id="sp-category"
-            className={s.select}
             value={ed.creatingCategory ? "__new__" : state.category}
-            onChange={(e) => {
-              const v = e.target.value;
+            onValueChange={(nextValue) => {
+              if (nextValue === null) return;
+              const v = nextValue;
               ed.setCreatingCategory(v === "__new__");
               setState((cur) => ({
                 ...cur,
@@ -196,42 +204,54 @@ export function PageFields({
                 subcategory: "",
               }));
             }}
-          >
-            <option value="">No category</option>
-            {LANDING_CATEGORIES.map((c) => (
-              <option key={c.slug} value={c.slug}>
-                {c.title}
-              </option>
-            ))}
-            {categoryIsUnlisted && (
-              <option value={state.category}>
-                {state.category}
-                {ed.editRevision?.source === "pr"
-                  ? " (in this PR)"
-                  : " (current page)"}
-              </option>
-            )}
-            <option value="__new__">＋ Create new category…</option>
-          </select>
+            className="w-full min-w-0"
+            items={[
+              { value: "", label: "No category" },
+              ...LANDING_CATEGORIES.map((c) => ({
+                value: c.slug,
+                label: c.title,
+              })),
+              ...(categoryIsUnlisted
+                ? [
+                    {
+                      value: state.category,
+                      label: (
+                        <>
+                          {state.category}
+
+                          {ed.editRevision?.source === "pr"
+                            ? " (in this PR)"
+                            : " (current page)"}
+                        </>
+                      ),
+                    },
+                  ]
+                : []),
+              { value: "__new__", label: "＋ Create new category…" },
+            ]}
+          />
         </div>
         {ed.subcats.length > 0 && (
           <div className={s.field}>
             <label className={s.label} htmlFor="sp-subcategory">
               Subcategory
             </label>
-            <select
+            <Select
               id="sp-subcategory"
-              className={s.select}
               value={state.subcategory}
-              onChange={(e) => set("subcategory", e.target.value)}
-            >
-              <option value="">None</option>
-              {ed.subcats.map((sc) => (
-                <option key={sc.slug} value={sc.slug}>
-                  {sc.title}
-                </option>
-              ))}
-            </select>
+              onValueChange={(nextValue) => {
+                if (nextValue === null) return;
+                set("subcategory", nextValue);
+              }}
+              className="w-full min-w-0"
+              items={[
+                { value: "", label: "None" },
+                ...ed.subcats.map((sc) => ({
+                  value: sc.slug,
+                  label: sc.title,
+                })),
+              ]}
+            />
           </div>
         )}
       </div>
@@ -241,9 +261,8 @@ export function PageFields({
           <label className={s.label} htmlFor="sp-newcat-title">
             New category name
           </label>
-          <input
+          <Input
             id="sp-newcat-title"
-            className={s.input}
             type="text"
             value={ed.newCatTitle}
             onChange={(e) => {
@@ -255,6 +274,7 @@ export function PageFields({
               setState((cur) => ({ ...cur, category: slug }));
             }}
             placeholder="Housing and land"
+            className="w-full min-w-0"
           />
           <label
             className={`${s.label} ${s.subField}`}
@@ -262,13 +282,13 @@ export function PageFields({
           >
             Category description (optional)
           </label>
-          <textarea
+          <InputArea
             id="sp-newcat-description"
-            className={s.textarea}
             rows={2}
             value={ed.newCatDesc}
             onChange={(e) => ed.setNewCatDesc(e.target.value)}
             placeholder="Short description shown on the category page (optional)."
+            className="w-full min-w-0"
           />
           <small className={s.help}>
             Adds the category to the site's navigation in the same pull request
@@ -290,13 +310,13 @@ export function PageFields({
       <label className={s.label} htmlFor="sp-description">
         Description
       </label>
-      <textarea
+      <InputArea
         id="sp-description"
-        className={s.textarea}
         rows={2}
         value={state.description}
         onChange={(e) => set("description", e.target.value)}
         placeholder="Short summary shown in category listings and search."
+        className="w-full min-w-0"
       />
     </div>
   );
@@ -306,18 +326,18 @@ export function PageFields({
       <label className={s.label} htmlFor="sp-visibility">
         Visibility
       </label>
-      <select
+      <Select
         id="sp-visibility"
-        className={s.select}
         value={state.visibility}
-        onChange={(e) => set("visibility", e.target.value as ViewLevel)}
-      >
-        {VISIBILITY_LEVELS.map((v) => (
-          <option key={v.value} value={v.value}>
-            {v.label}
-          </option>
-        ))}
-      </select>
+        onValueChange={(nextValue) => {
+          if (nextValue === null) return;
+          set("visibility", nextValue as ViewLevel);
+        }}
+        className="w-full min-w-0"
+        items={[
+          ...VISIBILITY_LEVELS.map((v) => ({ value: v.value, label: v.label })),
+        ]}
+      />
     </div>
   );
 
@@ -344,11 +364,17 @@ export function PageFields({
     return (
       <>
         {linkField}
+
         {titleField}
+
         {pathField}
+
         {categoryFields}
+
         {descriptionField}
+
         {visibilityField}
+
         {bodyField}
       </>
     );

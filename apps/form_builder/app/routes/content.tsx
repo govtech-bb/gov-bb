@@ -1,7 +1,3 @@
-import "@fontsource/inter/400.css";
-import "./content/-transitions.css";
-import "@fontsource/inter/500.css";
-import "@fontsource/inter/600.css";
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { checkSession } from "../server/auth";
 

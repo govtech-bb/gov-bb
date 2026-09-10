@@ -57,13 +57,6 @@ beforeEach(() => {
       removeEventListener() {},
     }),
   });
-  HTMLDialogElement.prototype.show = function () {
-    this.setAttribute("open", "");
-  };
-  HTMLDialogElement.prototype.showModal = HTMLDialogElement.prototype.show;
-  HTMLDialogElement.prototype.close = function () {
-    this.removeAttribute("open");
-  };
 });
 
 const props = {

@@ -1,3 +1,8 @@
+import { Radio } from "../radio";
+import { Checkbox } from "../checkbox";
+import { Elevated } from "../surface";
+import { Button } from "../button";
+import { Input } from "../input";
 import { useEffect, useId, useRef, useState } from "react";
 import type { AiQuestion, AiAnswers } from "@govtech-bb/form-builder";
 import {
@@ -69,8 +74,11 @@ export function ApprovalCard({
       </p>
     );
   return (
-    <section
-      className={s.approvalCard}
+    <Elevated
+      render={<section />}
+      offset={1}
+      shadowLevel={2}
+      className="my-3 rounded-xl p-4"
       aria-label="Questions from the assistant"
     >
       <form
@@ -93,34 +101,51 @@ export function ApprovalCard({
           <span className={s.questionHint}>
             {question.type === "check" ? "Choose any that apply" : "Choose one"}
           </span>
-          {question.options.map((option, i) => (
-            <label key={`${index}-${i}`} className={s.option}>
-              <input
-                type={question.type === "check" ? "checkbox" : "radio"}
-                name={`${id}-${index}`}
-                checked={value.choices.includes(option)}
-                onChange={() => {
-                  const choices =
-                    question.type === "radio"
-                      ? [option]
-                      : value.choices.includes(option)
-                        ? value.choices.filter((item) => item !== option)
-                        : [...value.choices, option];
-                  setAnswers({
-                    ...answers,
-                    [index]: {
-                      choices,
-                      custom: question.type === "radio" ? "" : value.custom,
-                    },
-                  });
-                }}
-              />
-              <span>{option}</span>
-            </label>
-          ))}
-          <label className={s.customAnswer}>
-            <span>Something else</span>
-            <input
+          {question.type === "radio" ? (
+            <Radio
+              name={`${id}-${index}`}
+              value={value.choices[0] ?? ""}
+              disabled={disabled || sending}
+              onValueChange={(choice) =>
+                setAnswers({
+                  ...answers,
+                  [index]: { choices: [choice], custom: "" },
+                })
+              }
+              appearance="card"
+            >
+              <Radio.Legend className="sr-only">
+                {question.question}
+              </Radio.Legend>
+              {question.options.map((option) => (
+                <Radio.Item key={option} value={option} label={option} />
+              ))}
+            </Radio>
+          ) : (
+            <div className="space-y-3">
+              {question.options.map((option) => (
+                <Checkbox
+                  key={option}
+                  label={option}
+                  disabled={disabled || sending}
+                  checked={value.choices.includes(option)}
+                  onCheckedChange={(checked) =>
+                    setAnswers({
+                      ...answers,
+                      [index]: {
+                        choices: checked
+                          ? [...value.choices, option]
+                          : value.choices.filter((item) => item !== option),
+                        custom: value.custom,
+                      },
+                    })
+                  }
+                />
+              ))}
+            </div>
+          )}
+          <div className={s.customAnswer}>
+            <Input
               aria-label="Custom answer"
               placeholder="Write your answer…"
               value={value.custom}
@@ -134,59 +159,69 @@ export function ApprovalCard({
                   },
                 })
               }
+              className="w-full min-w-0"
             />
-          </label>
+          </div>
         </fieldset>
         {error && <p role="alert">{error}</p>}
         <footer className={s.questionFooter}>
           <div className={s.questionNav}>
-            <button
+            <Button
               type="button"
               aria-label="Previous question"
               disabled={index === 0 || sending || disabled}
               onClick={() => setIndex(index - 1)}
+              variant="ghost"
+              size="sm"
             >
               <ArrowLeft01Icon size={14} aria-hidden="true" />
-            </button>
+            </Button>
             <span aria-live="polite" className={s.counter}>
               {index + 1} / {questions.length}
             </span>
-            <button
+            <Button
               type="button"
               aria-label="Next question"
               disabled={last || sending || disabled}
               onClick={() => setIndex(index + 1)}
+              variant="ghost"
+              size="sm"
             >
               <ArrowRight01Icon size={14} aria-hidden="true" />
-            </button>
+            </Button>
           </div>
-          <button
+          <Button
             type="button"
             disabled={disabled || sending}
             onClick={() => {
               if (last) void submit();
               else setIndex(index + 1);
             }}
+            variant="ghost"
+            size="sm"
           >
             Skip
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
-            className={s.emphasis}
             disabled={disabled || sending || !hasAnswer}
+            variant="primary"
+            size="sm"
           >
             {sending ? "Sending…" : last ? "Send answers" : "Continue"}
-          </button>
+          </Button>
         </footer>
       </form>
-      <button
+      <Button
         type="button"
         className={s.skipQuestions}
         disabled={disabled || sending}
         onClick={() => void submit(true)}
+        variant="ghost"
+        size="sm"
       >
         Skip all questions
-      </button>
-    </section>
+      </Button>
+    </Elevated>
   );
 }

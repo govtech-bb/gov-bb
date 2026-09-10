@@ -1,3 +1,4 @@
+import { openSelect, chooseOption } from "../../test/select";
 /**
  * @vitest-environment jsdom
  *
@@ -40,7 +41,7 @@ const resetButton = () => screen.getByRole("button", { name: /reset/i });
 const deleteButton = () => screen.getByRole("button", { name: "×" });
 
 describe("inherited (base-only) rules", () => {
-  it("renders a base-only rule read-only with its value, error, and an Override action", () => {
+  it("renders a base-only rule read-only with its value, error, and an Override action", async () => {
     renderEditor({
       baseRules: { minLength: { value: "5", error: "Too short" } },
     });
@@ -65,12 +66,13 @@ describe("inherited (base-only) rules", () => {
     });
   });
 
-  it("does not offer an inherited rule type in the Add Rule dropdown", () => {
+  it("does not offer an inherited rule type in the Add Rule dropdown", async () => {
     renderEditor({
       baseRules: { minLength: { value: "5", error: "Too short" } },
     });
     // The only path to edit an inherited rule is Override, not re-adding it.
     const select = screen.getByRole("combobox");
+    await openSelect(select);
     expect(
       screen.queryByRole("option", { name: "Min Length" }),
     ).not.toBeInTheDocument();
@@ -79,7 +81,7 @@ describe("inherited (base-only) rules", () => {
 });
 
 describe("overridden rules (base + override)", () => {
-  it("renders an editable row seeded with the override value and a Reset action", () => {
+  it("renders an editable row seeded with the override value and a Reset action", async () => {
     renderEditor({
       baseRules: { minLength: { value: "5", error: "Too short" } },
       rules: { minLength: { value: "8", error: "Need eight" } },
@@ -106,7 +108,7 @@ describe("overridden rules (base + override)", () => {
 });
 
 describe("author-added rules (override-only, no base)", () => {
-  it("keeps the editable row with a delete action and no Override/Reset", () => {
+  it("keeps the editable row with a delete action and no Override/Reset", async () => {
     renderEditor({
       rules: { pattern: { value: "abc", error: "Bad" } },
     });
@@ -133,7 +135,7 @@ describe("author-added rules (override-only, no base)", () => {
 });
 
 describe("required is owned by the Required checkbox, not this editor", () => {
-  it("never renders a base `required` rule and never offers it in Add Rule", () => {
+  it("never renders a base `required` rule and never offers it in Add Rule", async () => {
     renderEditor({
       baseRules: { required: { value: true }, minLength: { value: "5" } },
     });
@@ -201,9 +203,10 @@ describe("editing an overridden row", () => {
 });
 
 describe("text fields offer numeric and year comparison rules (#830)", () => {
-  it("lists the numeric/year rules in the Add Rule dropdown", () => {
+  it("lists the numeric/year rules in the Add Rule dropdown", async () => {
     renderEditor({});
 
+    await openSelect(screen.getByRole("combobox", { name: "Add rule" }));
     // The numeric comparison and year rules are now available on text fields.
     for (const label of [
       "Min Value",
@@ -246,23 +249,19 @@ describe("reference rule step scoping (#840)", () => {
   ];
 
   // Locate the Reference Step select by its containing label.
-  const stepSelect = () => {
-    const label = screen.getByText("Reference Step");
-    // The select is the next sibling control inside the same form group.
-    return label.parentElement!.querySelector("select")! as HTMLSelectElement;
-  };
+  const stepSelect = () =>
+    screen.getByRole("combobox", { name: "Reference Step" });
 
-  const fieldSelect = () => {
-    const label = screen.getByText("Reference Field");
-    return label.parentElement!.querySelector("select")! as HTMLSelectElement;
-  };
+  const fieldSelect = () =>
+    screen.getByRole("combobox", { name: "Reference Field" });
 
-  const fieldOptionLabels = () =>
-    Array.from(fieldSelect().options)
+  const fieldOptionLabels = async () =>
+    within(await openSelect(fieldSelect()))
+      .getAllByRole("option")
       .map((o) => o.textContent)
       .filter((t) => t !== "— select field —");
 
-  it("renders a Reference Step select for a reference rule (gt) but not for a value-only rule (minLength)", () => {
+  it("renders a Reference Step select for a reference rule (gt) but not for a value-only rule (minLength)", async () => {
     renderEditor({
       rules: { gt: { value: "5" } },
       fieldRefs: FIELD_REFS,
@@ -272,7 +271,7 @@ describe("reference rule step scoping (#840)", () => {
     expect(screen.getByText("Reference Field")).toBeInTheDocument();
   });
 
-  it("does not render a Reference Step select for a value-only rule (minLength)", () => {
+  it("does not render a Reference Step select for a value-only rule (minLength)", async () => {
     renderEditor({
       rules: { minLength: { value: "5" } },
       fieldRefs: FIELD_REFS,
@@ -282,13 +281,15 @@ describe("reference rule step scoping (#840)", () => {
     expect(screen.queryByText("Reference Field")).not.toBeInTheDocument();
   });
 
-  it("offers an 'any step' option plus one option per step", () => {
+  it("offers an 'any step' option plus one option per step", async () => {
     renderEditor({
       rules: { gt: { value: "5" } },
       fieldRefs: FIELD_REFS,
       stepRefs: STEP_REFS,
     });
-    const labels = Array.from(stepSelect().options).map((o) => o.textContent);
+    const labels = within(await openSelect(stepSelect()))
+      .getAllByRole("option")
+      .map((o) => o.textContent);
     expect(labels).toEqual([
       expect.stringMatching(/any step/i),
       "Step One",
@@ -296,15 +297,19 @@ describe("reference rule step scoping (#840)", () => {
     ]);
   });
 
-  it("unscoped: shows the full flat field list and keeps the field picker enabled", () => {
+  it("unscoped: shows the full flat field list and keeps the field picker enabled", async () => {
     renderEditor({
       rules: { gt: {} },
       fieldRefs: FIELD_REFS,
       stepRefs: STEP_REFS,
     });
-    expect(stepSelect().value).toBe("");
-    expect(fieldSelect().disabled).toBe(false);
-    expect(fieldOptionLabels()).toEqual(["First Name", "Last Name", "Age"]);
+    expect(stepSelect()).toHaveTextContent("— any step —");
+    expect(fieldSelect()).toBeEnabled();
+    expect(await fieldOptionLabels()).toEqual([
+      "First Name",
+      "Last Name",
+      "Age",
+    ]);
   });
 
   it("selecting a step commits targetStepId and filters the field list to that step", async () => {
@@ -313,21 +318,21 @@ describe("reference rule step scoping (#840)", () => {
       fieldRefs: FIELD_REFS,
       stepRefs: STEP_REFS,
     });
-    await userEvent.selectOptions(stepSelect(), "step-one");
+    await chooseOption(stepSelect(), "Step One");
 
     const config = onChange.mock.calls.at(-1)![0].gt;
     expect(config.targetStepId).toBe("step-one");
   });
 
-  it("scoped: a pre-existing targetStepId renders the step value and a scoped field list", () => {
+  it("scoped: a pre-existing targetStepId renders the step value and a scoped field list", async () => {
     renderEditor({
       rules: { gt: { targetStepId: "step-two", referenceFieldId: "age" } },
       fieldRefs: FIELD_REFS,
       stepRefs: STEP_REFS,
     });
-    expect(stepSelect().value).toBe("step-two");
-    expect(fieldSelect().disabled).toBe(false);
-    expect(fieldOptionLabels()).toEqual(["Age"]);
+    expect(stepSelect()).toHaveTextContent("Step Two");
+    expect(fieldSelect()).toBeEnabled();
+    expect(await fieldOptionLabels()).toEqual(["Age"]);
   });
 
   it("changing the step clears a now-stale referenceFieldId", async () => {
@@ -338,7 +343,7 @@ describe("reference rule step scoping (#840)", () => {
       fieldRefs: FIELD_REFS,
       stepRefs: STEP_REFS,
     });
-    await userEvent.selectOptions(stepSelect(), "step-two");
+    await chooseOption(stepSelect(), "Step Two");
 
     const config = onChange.mock.calls.at(-1)![0].gt;
     expect(config.targetStepId).toBe("step-two");
@@ -361,7 +366,7 @@ describe("reference rule step scoping (#840)", () => {
       ],
       stepRefs: STEP_REFS,
     });
-    await userEvent.selectOptions(stepSelect(), "step-one");
+    await chooseOption(stepSelect(), "Step One");
 
     const config = onChange.mock.calls.at(-1)![0].gt;
     expect(config.targetStepId).toBe("step-one");
@@ -374,7 +379,7 @@ describe("reference rule step scoping (#840)", () => {
       fieldRefs: FIELD_REFS,
       stepRefs: STEP_REFS,
     });
-    await userEvent.selectOptions(stepSelect(), "");
+    await chooseOption(stepSelect(), "— any step —");
 
     const config = onChange.mock.calls.at(-1)![0].gt;
     expect(config).not.toHaveProperty("targetStepId");
@@ -382,7 +387,7 @@ describe("reference rule step scoping (#840)", () => {
 });
 
 describe("inherited and author-added rules coexist", () => {
-  it("renders a base-only rule (inherited) before an override-only rule (editable)", () => {
+  it("renders a base-only rule (inherited) before an override-only rule (editable)", async () => {
     renderEditor({
       baseRules: { minLength: { value: "5", error: "min err" } },
       rules: { pattern: { value: "abc", error: "pat" } },
@@ -418,23 +423,19 @@ describe("transform on a date field's numeric rules (#1020)", () => {
   }
 
   const transformSelect = () =>
-    screen
-      .getAllByRole("combobox")
-      .find((el) => within(el).queryByRole("option", { name: /yearsSince/i }));
+    screen.queryByRole("combobox", { name: "Transform" }) ?? undefined;
 
   const addRuleSelect = () =>
-    screen
-      .getAllByRole("combobox")
-      .find((el) => within(el).queryByRole("option", { name: /add rule/i }))!;
+    screen.queryByRole("combobox", { name: "Add rule" }) ?? undefined;
 
-  it("renders a Transform selector for a date's duration rule", () => {
+  it("renders a Transform selector for a date's duration rule", async () => {
     renderDate({ min: { value: "16", transform: "yearsSince" } });
     expect(transformSelect()).toBeDefined();
   });
 
   it("writes the chosen transform onto the rule config", async () => {
     const onChange = renderDate({ min: { value: "16" } });
-    await userEvent.selectOptions(transformSelect()!, "monthsSince");
+    await chooseOption(transformSelect()!, "monthsSince");
     expect(onChange).toHaveBeenLastCalledWith({
       min: expect.objectContaining({ transform: "monthsSince" }),
     });
@@ -442,7 +443,7 @@ describe("transform on a date field's numeric rules (#1020)", () => {
 
   it("seeds transform=yearsSince when a duration rule is added", async () => {
     const onChange = renderDate(undefined);
-    await userEvent.selectOptions(addRuleSelect(), "min");
+    await chooseOption(addRuleSelect()!, "Min (duration)");
     expect(onChange).toHaveBeenLastCalledWith({
       min: { transform: "yearsSince" },
     });
@@ -464,15 +465,13 @@ describe("a date duration rule's transform is mandatory (#1020)", () => {
     return onChange;
   }
   const transformSelect = () =>
-    screen
-      .getAllByRole("combobox")
-      .find((el) => within(el).queryByRole("option", { name: /yearsSince/i }))!;
+    screen.queryByRole("combobox", { name: "Transform" }) ?? undefined;
 
-  it("offers no '— none —' option, so the rule can't be left always-failing", () => {
+  it("offers no '— none —' option, so the rule can't be left always-failing", async () => {
     renderDate({ min: { value: "16", transform: "yearsSince" } });
-    const values = within(transformSelect())
+    const values = within(await openSelect(transformSelect()!))
       .getAllByRole("option")
-      .map((o) => (o as HTMLOptionElement).value);
+      .map((o) => o.textContent);
     expect(values).not.toContain("");
     expect(values).toEqual(
       expect.arrayContaining(["yearsSince", "monthsSince", "daysSince"]),
@@ -492,7 +491,7 @@ describe("a date duration rule's transform is mandatory (#1020)", () => {
 describe("value coercion to the rule's committed shape (#2384)", () => {
   const valueInput = () => screen.getAllByRole("textbox")[0]!;
 
-  it("commits fileTypes as an array, splitting on commas", () => {
+  it("commits fileTypes as an array, splitting on commas", async () => {
     const onChange = renderEditor({
       htmlType: "file",
       rules: { fileTypes: {} },
@@ -507,7 +506,7 @@ describe("value coercion to the rule's committed shape (#2384)", () => {
     });
   });
 
-  it("renders an array fileTypes value back into the box as comma-separated text", () => {
+  it("renders an array fileTypes value back into the box as comma-separated text", async () => {
     renderEditor({
       htmlType: "file",
       rules: { fileTypes: { value: ["application/pdf", "image/png"] } },
@@ -516,7 +515,7 @@ describe("value coercion to the rule's committed shape (#2384)", () => {
     expect(valueInput()).toHaveValue("application/pdf, image/png");
   });
 
-  it("commits a numeric rule as a number, not a numeric string", () => {
+  it("commits a numeric rule as a number, not a numeric string", async () => {
     const onChange = renderEditor({ rules: { minLength: {} } });
 
     fireEvent.change(valueInput(), { target: { value: "5" } });
@@ -526,7 +525,7 @@ describe("value coercion to the rule's committed shape (#2384)", () => {
     });
   });
 
-  it("commits an itemMaxSize byte count as a number", () => {
+  it("commits an itemMaxSize byte count as a number", async () => {
     const onChange = renderEditor({
       htmlType: "file",
       rules: { itemMaxSize: {} },
@@ -539,7 +538,7 @@ describe("value coercion to the rule's committed shape (#2384)", () => {
     });
   });
 
-  it("leaves a free-text rule's value as a string", () => {
+  it("leaves a free-text rule's value as a string", async () => {
     const onChange = renderEditor({ rules: { pattern: {} } });
 
     fireEvent.change(valueInput(), { target: { value: "^[0-9]+$" } });
@@ -549,7 +548,7 @@ describe("value coercion to the rule's committed shape (#2384)", () => {
     });
   });
 
-  it("drops the value key when the box is cleared", () => {
+  it("drops the value key when the box is cleared", async () => {
     const onChange = renderEditor({ rules: { minLength: { value: 5 } } });
 
     fireEvent.change(valueInput(), { target: { value: "" } });
@@ -557,7 +556,7 @@ describe("value coercion to the rule's committed shape (#2384)", () => {
     expect(onChange.mock.calls.at(-1)![0]).toEqual({ minLength: {} });
   });
 
-  it("keeps an unparseable numeric entry as typed, for the save gate to reject", () => {
+  it("keeps an unparseable numeric entry as typed, for the save gate to reject", async () => {
     const onChange = renderEditor({ rules: { minLength: {} } });
 
     fireEvent.change(valueInput(), { target: { value: "abc" } });

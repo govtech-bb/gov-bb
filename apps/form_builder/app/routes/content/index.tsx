@@ -1,4 +1,14 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { Collapsible } from "../../components/ui/collapsible";
+import { ScrollArea } from "../../components/ui/scroll-area";
+import { SkeletonLine } from "../../components/ui/loader";
+import { Banner } from "../../components/ui/banner";
+import { Elevated } from "../../components/ui/surface";
+import { Badge } from "../../components/ui/badge";
+import { AppLink } from "../../components/app-link";
+import { Select } from "../../components/ui/select";
+import { Input } from "../../components/ui/input";
+import { Button } from "../../components/ui/button";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   Alert02Icon,
@@ -130,11 +140,13 @@ function PrBadge({
       href={pr.prUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className={`${s.badge} ${s.badgePr} ${s.badgeClickable}`}
+      className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ui-focus"
       aria-label={`Open pull request #${pr.prNumber}: ${reviewLabel(pr)}`}
     >
-      <GitPullRequestIcon size={11} aria-hidden="true" />
-      {showNumber ? `PR #${pr.prNumber}` : reviewLabel(pr)}
+      <Badge variant="secondary">
+        <GitPullRequestIcon size={11} aria-hidden="true" />
+        {showNumber ? `PR #${pr.prNumber}` : reviewLabel(pr)}
+      </Badge>
     </a>
   );
 }
@@ -316,10 +328,12 @@ function ContentHome() {
       return (
         <span key={slot.label} className={s.pageActions}>
           {editable ? (
-            <Link
+            <AppLink
+              size="sm"
               to="/content/edit"
               search={{ path: slot.page.path }}
-              className={`${s.chip} ${s.chipFilled}`}
+              variant="outline"
+              className="h-auto flex-wrap justify-start py-1.5"
               title={slot.page.path.slice(CONTENT_ROOT.length)}
             >
               <PencilEdit02Icon size={13} aria-hidden="true" />
@@ -328,19 +342,14 @@ function ContentHome() {
                 <span className={`${s.dot} ${s[dot]}`} aria-hidden="true" />
                 {status}
               </span>
-            </Link>
+            </AppLink>
           ) : (
-            <span
-              className={`${s.chip} ${s.chipFilled} ${s.chipReadOnly}`}
-              title={slot.page.path.slice(CONTENT_ROOT.length)}
-            >
+            <Badge variant="secondary" className="ml-auto max-w-[55%] truncate">
               {slot.label}
               <span className={s.chipStatus}>{status}</span>
-            </span>
+            </Badge>
           )}
-          {claims.length > 1 && (
-            <span className={`${s.badge} ${s.badgeDraft}`}>Multiple PRs</span>
-          )}
+          {claims.length > 1 && <Badge variant="warning">Multiple PRs</Badge>}
           {claims.map((claim) => (
             <PrBadge
               key={`${claim.prNumber}:${claim.path}:${claim.previousPath ?? ""}`}
@@ -352,16 +361,18 @@ function ContentHome() {
       );
     }
     return (
-      <Link
+      <AppLink
+        size="sm"
         key={slot.label}
         to="/content/edit"
         search={{ formId: slot.formId!, kind: slot.createKind! }}
-        className={`${s.chip} ${s.chipMissing}`}
+        variant="ghost"
+        className="border border-dashed border-ui-line"
         title={`Create the ${slot.label.toLowerCase()} for this service`}
       >
         <PlusSignIcon size={13} aria-hidden="true" />
         {slot.label}
-      </Link>
+      </AppLink>
     );
   }
 
@@ -380,22 +391,22 @@ function ContentHome() {
             label={theme === "light" ? "Dark mode" : "Light mode"}
             placement="bottom"
           >
-            <button
+            <Button
               type="button"
-              className={s.secondaryBtn}
               aria-label={theme === "light" ? "Dark mode" : "Light mode"}
               onClick={toggleTheme}
+              variant="secondary"
+              size="sm"
             >
               {theme === "light" ? (
                 <Moon02Icon size={15} />
               ) : (
                 <Sun03Icon size={15} />
               )}
-            </button>
+            </Button>
           </Tip>
-          <button
+          <Button
             type="button"
-            className={s.secondaryBtn}
             onClick={() => {
               // Re-runs the route loader too, so the forms list (loader data)
               // refreshes along with the pages — not just the content list.
@@ -403,13 +414,16 @@ function ContentHome() {
               list.refetch();
             }}
             disabled={list.loading}
+            variant="secondary"
+            size="sm"
           >
             <RefreshIcon size={15} />
             {list.loading ? "Refreshing…" : "Refresh"}
-          </button>
-          <Link
+          </Button>
+          <AppLink
+            size="sm"
             to="/content/edit"
-            className={s.primaryBtn}
+            variant="primary"
             aria-disabled={list.loading || Boolean(list.loadError)}
             onClick={(event) => {
               if (list.loading || list.loadError) event.preventDefault();
@@ -417,238 +431,283 @@ function ContentHome() {
           >
             <PlusSignIcon size={15} />
             New page
-          </Link>
+          </AppLink>
         </div>
       </header>
 
-      <div className={s.homeBody}>
-        {!loading && (
-          <div className={s.statRow}>
-            <div className={s.statCard}>
-              <span className={s.statIcon}>
-                <File01Icon size={18} />
-              </span>
-              <span>
-                <div className={s.statValue}>{list.pages?.length ?? 0}</div>
-                <div className={s.statLabel}>Pages</div>
-              </span>
+      <ScrollArea
+        className="min-h-0 flex-1"
+        aria-label="Landing pages"
+        viewportClassName="scroll-fade"
+      >
+        <div className={s.homeBody}>
+          {!loading && (
+            <div className={s.statRow}>
+              <Elevated
+                offset={1}
+                shadowLevel={2}
+                render={<div />}
+                className={s.statCard}
+              >
+                <span className={s.statIcon}>
+                  <File01Icon size={18} />
+                </span>
+                <span>
+                  <div className={s.statValue}>{list.pages?.length ?? 0}</div>
+                  <div className={s.statLabel}>Pages</div>
+                </span>
+              </Elevated>
+              <Elevated
+                offset={1}
+                shadowLevel={2}
+                render={<div />}
+                className={s.statCard}
+              >
+                <span className={s.statIcon}>
+                  <CheckmarkCircle02Icon size={18} />
+                </span>
+                <span>
+                  <div className={s.statValue}>
+                    {linkedCount}/{formRowsAll.length}
+                  </div>
+                  <div className={s.statLabel}>Services with pages</div>
+                </span>
+              </Elevated>
+              <Elevated
+                offset={1}
+                shadowLevel={2}
+                render={<div />}
+                className={s.statCard}
+              >
+                <span className={s.statIcon}>
+                  <Alert02Icon size={18} />
+                </span>
+                <span>
+                  <div className={s.statValue}>{missingCount}</div>
+                  <div className={s.statLabel}>Missing a page</div>
+                </span>
+              </Elevated>
+              <Elevated
+                offset={1}
+                shadowLevel={2}
+                render={<div />}
+                className={s.statCard}
+              >
+                <span className={s.statIcon}>
+                  <GitPullRequestIcon size={18} />
+                </span>
+                <span>
+                  <div className={s.statValue}>
+                    {list.reviewSnapshot.complete ? openPRCount : "—"}
+                  </div>
+                  <div className={s.statLabel}>In review</div>
+                </span>
+              </Elevated>
             </div>
-            <div className={s.statCard}>
-              <span className={s.statIcon}>
-                <CheckmarkCircle02Icon size={18} />
-              </span>
-              <span>
-                <div className={s.statValue}>
-                  {linkedCount}/{formRowsAll.length}
-                </div>
-                <div className={s.statLabel}>Services with pages</div>
-              </span>
-            </div>
-            <div className={s.statCard}>
-              <span className={s.statIcon}>
-                <Alert02Icon size={18} />
-              </span>
-              <span>
-                <div className={s.statValue}>{missingCount}</div>
-                <div className={s.statLabel}>Missing a page</div>
-              </span>
-            </div>
-            <div className={s.statCard}>
-              <span className={s.statIcon}>
-                <GitPullRequestIcon size={18} />
-              </span>
-              <span>
-                <div className={s.statValue}>
-                  {list.reviewSnapshot.complete ? openPRCount : "—"}
-                </div>
-                <div className={s.statLabel}>In review</div>
-              </span>
-            </div>
-          </div>
-        )}
+          )}
 
-        <div className={s.filterBar}>
-          <div className={s.searchWrap}>
-            <label className={s.srOnly} htmlFor="content-page-search">
-              Find a page by name
-            </label>
-            <Search01Icon
-              size={15}
-              className={s.searchIcon}
-              aria-hidden="true"
+          <div className={s.filterBar}>
+            <div className={s.searchWrap}>
+              <label className={s.srOnly} htmlFor="content-page-search">
+                Find a page by name
+              </label>
+              <Search01Icon
+                size={15}
+                className={s.searchIcon}
+                aria-hidden="true"
+              />
+              <Input
+                id="content-page-search"
+                name="content-page-search"
+                type="search"
+                placeholder="Find a page by name…"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="w-full pl-9"
+              />
+            </div>
+            <Select
+              value={categoryFilter}
+              onValueChange={(nextValue) => {
+                if (nextValue === null) return;
+                setCategoryFilter(nextValue);
+              }}
+              aria-label="Filter by category"
+              className="w-auto min-w-40"
+              items={[
+                { value: "", label: "All categories" },
+                ...presentCategories.map((c) => ({
+                  value: c,
+                  label:
+                    c === UNCATEGORISED ? "Uncategorised" : categoryTitle(c),
+                })),
+              ]}
             />
-            <input
-              id="content-page-search"
-              name="content-page-search"
-              type="search"
-              className={s.filterInput}
-              placeholder="Find a page by name…"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
+            <Select
+              value={statusFilter}
+              onValueChange={(nextValue) => {
+                if (nextValue === null) return;
+                setStatusFilter(nextValue as StatusFilter);
+              }}
+              aria-label="Filter by status"
+              className="w-auto min-w-40"
+              items={[
+                { value: "all", label: "Any status" },
+                { value: "incomplete", label: "Missing a page" },
+                { value: "draft", label: "Hidden (draft)" },
+                { value: "pr", label: "In review" },
+              ]}
             />
           </div>
-          <select
-            className={s.filterSelect}
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            aria-label="Filter by category"
-          >
-            <option value="">All categories</option>
-            {presentCategories.map((c) => (
-              <option key={c} value={c}>
-                {c === UNCATEGORISED ? "Uncategorised" : categoryTitle(c)}
-              </option>
-            ))}
-          </select>
-          <select
-            className={s.filterSelect}
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            aria-label="Filter by status"
-          >
-            <option value="all">Any status</option>
-            <option value="incomplete">Missing a page</option>
-            <option value="draft">Hidden (draft)</option>
-            <option value="pr">In review</option>
-          </select>
-        </div>
 
-        <ErrorBanner
-          error={
-            list.loadError
-              ? `Existing pages couldn’t be loaded (${list.loadError}). Refresh before creating or deploying a page.`
-              : null
-          }
-        />
-        {list.reviewError && !list.loadError && (
-          <div className={s.recoveryBanner} role="alert">
-            <span>
-              {list.reviewError} You can keep drafting, but refresh before
-              deploying so an existing PR is not duplicated.
-            </span>
-            <button
-              type="button"
-              className={s.secondaryBtn}
-              onClick={() => list.refetch()}
-              disabled={list.loading}
-            >
-              Retry review check
-            </button>
-          </div>
-        )}
+          <ErrorBanner
+            error={
+              list.loadError
+                ? `Existing pages couldn’t be loaded (${list.loadError}). Refresh before creating or deploying a page.`
+                : null
+            }
+          />
+          {list.reviewError && !list.loadError && (
+            <Banner variant="error" role="alert">
+              <div className="min-w-0 space-y-2">
+                <span>
+                  {list.reviewError} You can keep drafting, but refresh before
+                  deploying so an existing PR is not duplicated.
+                </span>
+                <Button
+                  type="button"
+                  onClick={() => list.refetch()}
+                  disabled={list.loading}
+                  variant="secondary"
+                  size="sm"
+                >
+                  Retry review check
+                </Button>
+              </div>
+            </Banner>
+          )}
 
-        {list.loadError && list.pages === null ? (
-          <div className={s.emptyState}>
-            <p>
-              Page creation is paused until the current repository inventory can
-              be loaded safely.
-            </p>
-            <button
-              type="button"
-              className={s.secondaryBtn}
-              onClick={() => list.refetch()}
-              disabled={list.loading}
-            >
-              Retry loading pages
-            </button>
-          </div>
-        ) : loading ? (
-          <div className="t-skel" aria-busy="true" aria-label="Loading pages">
+          {list.loadError && list.pages === null ? (
+            <div className={s.emptyState}>
+              <p>
+                Page creation is paused until the current repository inventory
+                can be loaded safely.
+              </p>
+              <Button
+                type="button"
+                onClick={() => list.refetch()}
+                disabled={list.loading}
+                variant="secondary"
+                size="sm"
+              >
+                Retry loading pages
+              </Button>
+            </div>
+          ) : loading ? (
             <div
-              className="t-skel-skeleton is-pulsing"
-              style={{ "--pulse-count": "infinite" } as React.CSSProperties}
+              aria-busy="true"
+              aria-label="Loading pages"
+              className="space-y-4"
             >
               <div className={s.statRow}>
                 {[0, 1, 2, 3].map((i) => (
-                  <div key={i} className={s.statCard}>
-                    <span
-                      className={`${s.skel} ${s.statIcon}`}
-                      style={{ background: "var(--el-150)" }}
-                    />
-                    <span style={{ flex: 1 }}>
-                      <div
-                        className={s.skel}
-                        style={{ height: 16, width: "40%" }}
-                      />
-                      <div
-                        className={s.skel}
-                        style={{ height: 10, width: "70%", marginTop: 6 }}
-                      />
-                    </span>
-                  </div>
+                  <Elevated
+                    offset={1}
+                    shadowLevel={2}
+                    key={i}
+                    className={s.statCard}
+                  >
+                    <div className="w-full space-y-2">
+                      <SkeletonLine minWidth={40} maxWidth={40} />
+                      <SkeletonLine minWidth={70} maxWidth={70} />
+                    </div>
+                  </Elevated>
                 ))}
               </div>
-              <ul className={s.groupCard} style={{ marginTop: 22 }}>
+              <Elevated
+                offset={1}
+                shadowLevel={2}
+                className="space-y-5 rounded-xl p-5"
+              >
                 {[0, 1, 2, 3, 4].map((i) => (
-                  <li key={i} className={s.svcRow}>
-                    <span
-                      className={s.skel}
-                      style={{ height: 14, width: `${55 - i * 6}%` }}
-                    />
-                    <span
-                      className={s.skel}
-                      style={{ height: 26, width: 200 }}
-                    />
-                  </li>
+                  <SkeletonLine
+                    key={i}
+                    minWidth={55 - i * 6}
+                    maxWidth={55 - i * 6}
+                  />
                 ))}
-              </ul>
+              </Elevated>
             </div>
-          </div>
-        ) : groups.length === 0 ? (
-          <div className={s.emptyState}>
-            <p>No pages match the current search and filters.</p>
-            <button
-              type="button"
-              className={s.secondaryBtn}
-              onClick={() => {
-                setFilter("");
-                setCategoryFilter("");
-                setStatusFilter("all");
-              }}
-            >
-              Clear filters
-            </button>
-          </div>
-        ) : (
-          groups.map((g) => {
-            const isCollapsed = collapsed.has(g.slug);
-            return (
-              <section key={g.slug}>
-                <button
-                  type="button"
-                  className={s.groupHeader}
-                  aria-expanded={!isCollapsed}
-                  onClick={() => toggle(g.slug)}
+          ) : groups.length === 0 ? (
+            <div className={s.emptyState}>
+              <p>No pages match the current search and filters.</p>
+              <Button
+                type="button"
+                onClick={() => {
+                  setFilter("");
+                  setCategoryFilter("");
+                  setStatusFilter("all");
+                }}
+                variant="secondary"
+                size="sm"
+              >
+                Clear filters
+              </Button>
+            </div>
+          ) : (
+            groups.map((g) => {
+              const isCollapsed = collapsed.has(g.slug);
+              return (
+                <Collapsible
+                  key={g.slug}
+                  open={!isCollapsed}
+                  onOpenChange={() => toggle(g.slug)}
+                  render={<section />}
                 >
-                  <span className={s.groupChevron}>
-                    {isCollapsed ? (
-                      <ArrowRight01Icon size={15} />
-                    ) : (
-                      <ArrowDown01Icon size={15} />
-                    )}
-                  </span>
-                  <span className={s.groupTitle}>{g.title}</span>
-                  <span className={s.groupCount}>{g.rows.length}</span>
-                </button>
-                {!isCollapsed && (
-                  <ul className={s.groupCard}>
-                    {g.rows.map((r) => (
-                      <li key={r.key} className={s.svcRow}>
-                        <span className={s.svcTitle} title={r.title}>
-                          {r.title}
-                        </span>
-                        <span className={s.chipRow}>
-                          {r.slots.map((sl) => chip(sl))}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-            );
-          })
-        )}
-      </div>
+                  <Collapsible.Trigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="my-4 h-auto w-full justify-start px-1 py-2"
+                      />
+                    }
+                  >
+                    <span className={s.groupChevron}>
+                      {isCollapsed ? (
+                        <ArrowRight01Icon size={15} />
+                      ) : (
+                        <ArrowDown01Icon size={15} />
+                      )}
+                    </span>
+                    <span className={s.groupTitle}>{g.title}</span>
+                    <Badge variant="secondary">{g.rows.length}</Badge>
+                  </Collapsible.Trigger>
+                  <Collapsible.Panel>
+                    <Elevated
+                      offset={1}
+                      shadowLevel={2}
+                      render={<ul />}
+                      className={s.groupCard}
+                    >
+                      {g.rows.map((r) => (
+                        <li key={r.key} className={s.svcRow}>
+                          <span className={s.svcTitle} title={r.title}>
+                            {r.title}
+                          </span>
+                          <span className={s.chipRow}>
+                            {r.slots.map((sl) => chip(sl))}
+                          </span>
+                        </li>
+                      ))}
+                    </Elevated>
+                  </Collapsible.Panel>
+                </Collapsible>
+              );
+            })
+          )}
+        </div>
+      </ScrollArea>
     </div>
   );
 }

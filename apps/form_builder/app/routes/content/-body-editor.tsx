@@ -1,3 +1,4 @@
+import { Banner } from "../../components/ui/banner";
 import {
   analyzeMarkdownCompatibility,
   isSafeContentUrl,
@@ -31,6 +32,7 @@ import {
 import type { BodyEditorProps } from "./-body-editor-types";
 import { SlidingTabs } from "./-sliding-tabs";
 import { SelectionActions } from "../../components/ui/ai/selection-actions";
+import { InputArea } from "../../components/ui/input/input-area";
 import s from "./-styles.module.css";
 
 export type { BodyEditorProfile, BodyEditorProps } from "./-body-editor-types";
@@ -166,14 +168,16 @@ export function BodyEditor({
           hidden={mode !== "markdown"}
         >
           {reasons.length > 0 && (
-            <div className={s.sourceOnlyNotice} role="status">
-              <strong>Markdown mode is required for this content.</strong>
-              <span>{reasons.join(" ")}</span>
-            </div>
+            <Banner variant="alert" role="status">
+              <div className="min-w-0 space-y-2">
+                <strong>Markdown mode is required for this content.</strong>
+                <span>{reasons.join(" ")}</span>
+              </div>
+            </Banner>
           )}
-          <textarea
+          <InputArea
             id={id}
-            className={`${s.textarea} ${s.mono} ${s.bodyTextarea}`}
+            className="min-h-72 w-full resize-y rounded-none font-mono ring-0"
             rows={18}
             value={value}
             aria-label={ariaLabel}

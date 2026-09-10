@@ -1,3 +1,7 @@
+import { Loader } from "../loader";
+import { Badge } from "../badge";
+import { Button } from "../button";
+import { Collapsible } from "../collapsible";
 import { redactAiData } from "@govtech-bb/form-builder";
 import {
   ArrowDown01Icon,
@@ -20,8 +24,16 @@ export function ToolChips({ steps }: { steps: ToolStep[] }) {
   return (
     <div className={s.toolChips}>
       {steps.map((step) => (
-        <details key={step.id} className={s.toolRow}>
-          <summary>
+        <Collapsible key={step.id} className={s.toolRow}>
+          <Collapsible.Trigger
+            render={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto min-h-9 w-full justify-start whitespace-normal text-left"
+              />
+            }
+          >
             <span
               className={s.toolIcon}
               data-state={step.status}
@@ -31,41 +43,45 @@ export function ToolChips({ steps }: { steps: ToolStep[] }) {
                 <CheckmarkCircle02Icon size={15} />
               ) : step.status === "error" ? (
                 <AlertCircleIcon size={15} />
+              ) : step.status === "running" ? (
+                <Loader size={14} />
               ) : (
-                <span
-                  className={step.status === "running" ? s.spinner : s.waitDot}
-                />
+                <span className={s.waitDot} />
               )}
             </span>
             <span className={s.toolLabel}>{step.label}</span>
-            <span className={s.chip}>{step.chip}</span>
+            <Badge variant="secondary" className="ml-auto max-w-[55%] truncate">
+              {step.chip}
+            </Badge>
             <ArrowDown01Icon size={12} aria-hidden="true" />
-          </summary>
-          <div className={s.toolDetail}>
-            <p>
-              Status:{" "}
-              {step.status === "waiting"
-                ? "Waiting for your response"
-                : step.status === "done"
-                  ? "Complete"
-                  : step.status === "stopped"
-                    ? "Interrupted"
-                    : step.status}
-            </p>
-            {step.input !== undefined && (
-              <CodeBlock
-                filename="Tool input"
-                code={JSON.stringify(redactAiData(step.input), null, 2)}
-              />
-            )}
-            {step.output !== undefined && (
-              <CodeBlock
-                filename="Tool result"
-                code={JSON.stringify(redactAiData(step.output), null, 2)}
-              />
-            )}
-          </div>
-        </details>
+          </Collapsible.Trigger>
+          <Collapsible.Panel>
+            <div className={s.toolDetail}>
+              <p>
+                Status:{" "}
+                {step.status === "waiting"
+                  ? "Waiting for your response"
+                  : step.status === "done"
+                    ? "Complete"
+                    : step.status === "stopped"
+                      ? "Interrupted"
+                      : step.status}
+              </p>
+              {step.input !== undefined && (
+                <CodeBlock
+                  filename="Tool input"
+                  code={JSON.stringify(redactAiData(step.input), null, 2)}
+                />
+              )}
+              {step.output !== undefined && (
+                <CodeBlock
+                  filename="Tool result"
+                  code={JSON.stringify(redactAiData(step.output), null, 2)}
+                />
+              )}
+            </div>
+          </Collapsible.Panel>
+        </Collapsible>
       ))}
     </div>
   );

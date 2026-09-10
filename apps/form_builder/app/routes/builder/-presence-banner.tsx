@@ -1,5 +1,5 @@
+import { Banner } from "../../components/ui/banner";
 import type { PresenceHolder } from "../../server/presence";
-import styles from "../../styles/builder.module.css";
 
 // Humanise the holder's last activity into a short "active … ago" phrase. The
 // banner re-renders on each presence poll, so this stays roughly current.
@@ -19,10 +19,12 @@ function activeAgo(lastActivityAt: string): string {
  */
 export function PresenceBanner({ holder }: { holder: PresenceHolder }) {
   return (
-    <div className={styles.presenceBanner} role="alert">
-      ⚠ <strong>{holder.userLogin}</strong> is currently editing this form
-      (active {activeAgo(holder.lastActivityAt)}). Your session is{" "}
-      <strong>read-only</strong> until their claim expires.
-    </div>
+    <Banner variant="alert" size="sm" role="alert">
+      <div className="min-w-0 flex-1">
+        ⚠ <strong>{holder.userLogin}</strong> is currently editing this form
+        (active {activeAgo(holder.lastActivityAt)}). Your session is{" "}
+        <strong>read-only</strong> until their claim expires.
+      </div>
+    </Banner>
   );
 }

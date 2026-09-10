@@ -1,3 +1,4 @@
+import { Select } from "../../components/ui/select";
 import type { ResolvedFieldId } from "@govtech-bb/form-builder";
 
 interface ValuePathPickerProps {
@@ -14,7 +15,7 @@ interface ValuePathPickerProps {
 }
 
 /**
- * A `<select>` over the form's resolved fields, emitting a `stepId.fieldId`
+ * A Select over the form's resolved fields, emitting a `stepId.fieldId`
  * dot-path the runtime resolves against submission `values`. Distinct from
  * FieldRefPicker, which selects a registry *ref* — a different value space.
  *
@@ -41,25 +42,38 @@ export function ValuePathPicker({
     value !== "" && !paths.includes(value) && !extraValues.includes(value);
 
   return (
-    <select id={id} value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">— select field —</option>
-      {fields.map((f) => {
-        const path = `${f.stepId}.${f.fieldId}`;
-        return (
-          <option
-            key={`${f.editorFieldId}:${f.childFieldId ?? f.fieldId}`}
-            value={path}
-          >
-            {f.display} ({path})
-          </option>
-        );
-      })}
-      {extras.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label} ({o.value})
-        </option>
-      ))}
-      {showCurrent && <option value={value}>{value} (current)</option>}
-    </select>
+    <Select
+      id={id}
+      value={value}
+      onValueChange={(nextValue) => {
+        if (nextValue === null) return;
+        onChange(nextValue);
+      }}
+      items={[
+        { value: "", label: "— select field —" },
+        ...fields.map((f) => {
+          const path = `${f.stepId}.${f.fieldId}`;
+          return {
+            value: path,
+            label: (
+              <>
+                {f.display} ({path})
+              </>
+            ),
+          };
+        }),
+        ...extras.map((o) => ({
+          value: o.value,
+          label: (
+            <>
+              {o.label} ({o.value})
+            </>
+          ),
+        })),
+        ...(showCurrent
+          ? [{ value: value, label: <>{value} (current)</> }]
+          : []),
+      ]}
+    />
   );
 }

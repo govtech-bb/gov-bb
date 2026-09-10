@@ -1,3 +1,5 @@
+import { Elevated } from "../surface";
+import { Button } from "../button";
 import { Cancel01Icon } from "hugeicons-react";
 import type { AttachmentMetadata } from "./attachment-data";
 import { FileThumbnail } from "./file-thumbnail";
@@ -17,7 +19,12 @@ export function AttachmentCard({
   onRemove?: () => void;
 }) {
   return (
-    <div className={s.fileCard}>
+    <Elevated
+      offset={1}
+      shadowLevel={2}
+      render={<div />}
+      className={s.fileCard}
+    >
       <FileThumbnail
         file={file}
         name={attachment.name}
@@ -33,15 +40,17 @@ export function AttachmentCard({
         </span>
       </span>
       {onRemove && (
-        <button
+        <Button
           type="button"
           aria-label={`Remove ${attachment.name}`}
           disabled={disabled}
           onClick={onRemove}
+          variant="ghost"
+          size="sm"
         >
           <Cancel01Icon size={14} aria-hidden="true" />
-        </button>
+        </Button>
       )}
-    </div>
+    </Elevated>
   );
 }

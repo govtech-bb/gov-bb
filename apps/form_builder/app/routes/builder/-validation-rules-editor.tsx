@@ -1,3 +1,7 @@
+import { Badge } from "../../components/ui/badge";
+import { Select } from "../../components/ui/select";
+import { Input } from "../../components/ui/input";
+import { Button } from "../../components/ui/button";
 import { VALIDATION_RULE_DESCRIPTORS } from "@govtech-bb/form-builder";
 import type {
   HtmlTypes,
@@ -202,24 +206,27 @@ export function ValidationRulesEditor({
               className={`${styles.fieldRow} ${styles.inheritedRow}`}
               style={{ flexDirection: "column", alignItems: "flex-start" }}
             >
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div className="flex flex-wrap items-center gap-2">
                 <strong>{label}</strong>
-                <span className={styles.inheritedTag}>
-                  Inherited from component
-                </span>
-                <button type="button" onClick={() => handleOverride(ruleType)}>
+                <Badge variant="secondary">Inherited from component</Badge>
+                <Button
+                  type="button"
+                  onClick={() => handleOverride(ruleType)}
+                  variant="secondary"
+                  size="sm"
+                >
                   Override
-                </button>
+                </Button>
               </div>
               {descriptor?.hasValue && config.value != null && (
                 <div className={styles.formGroup}>
-                  <label>Value</label>
+                  <span className={styles.fieldLabel}>Value</span>
                   <span>{formatRuleValue(config.value)}</span>
                 </div>
               )}
               {config.error && (
                 <div className={styles.formGroup}>
-                  <label>Error Message</label>
+                  <span className={styles.fieldLabel}>Error Message</span>
                   <span>{config.error}</span>
                 </div>
               )}
@@ -238,16 +245,20 @@ export function ValidationRulesEditor({
             className={`${styles.fieldRow} ${hasBase ? styles.overrideField : ""}`}
             style={{ flexDirection: "column", alignItems: "flex-start" }}
           >
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div className="flex flex-wrap items-center gap-2">
               <strong>{label}</strong>
-              <button type="button" onClick={() => removeRule(ruleType)}>
+              <Button
+                type="button"
+                onClick={() => removeRule(ruleType)}
+                variant="secondary"
+                size="sm"
+              >
                 {hasBase ? "Reset" : "×"}
-              </button>
+              </Button>
             </div>
             {descriptor?.hasValue && (
               <div className={styles.formGroup}>
-                <label>Value</label>
-                <input
+                <Input
                   type="text"
                   placeholder={descriptor?.valuePlaceholder}
                   value={formatRuleValue(config.value)}
@@ -256,30 +267,29 @@ export function ValidationRulesEditor({
                       value: parseRuleValue(ruleType, e.target.value),
                     })
                   }
+                  label={"Value"}
+                  className="w-full min-w-0"
                 />
               </div>
             )}
             {descriptor?.hasTransform && (
               <div className={styles.formGroup}>
-                <label>Transform</label>
                 {/* No "none" option: a duration rule with no transform compares
                     the raw date (NaN) and can never pass, so the transform is
                     mandatory — seeded to `yearsSince` on add. (#1020) */}
-                <select
+                <Select<string>
                   value={(config.transform as string) ?? "yearsSince"}
-                  onChange={(e) =>
+                  onValueChange={(nextValue) => {
+                    if (nextValue === null) return;
                     handleUpdate(ruleType, {
-                      transform: e.target
-                        .value as ValidationConfig["transform"],
-                    })
-                  }
-                >
-                  {TRANSFORM_OPTIONS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
+                      transform: nextValue as ValidationConfig["transform"],
+                    });
+                  }}
+                  label={"Transform"}
+                  items={[
+                    ...TRANSFORM_OPTIONS.map((t) => ({ value: t, label: t })),
+                  ]}
+                />
               </div>
             )}
             {descriptor?.hasReference &&
@@ -295,24 +305,26 @@ export function ValidationRulesEditor({
                 return (
                   <>
                     <div className={styles.formGroup}>
-                      <label>Reference Step</label>
-                      <select
+                      <Select<string>
                         value={targetStepId}
-                        onChange={(e) =>
-                          handleStepChange(ruleType, e.target.value)
-                        }
-                      >
-                        <option value="">— any step —</option>
-                        {stepRefs.map((s) => (
-                          <option key={s.stepId} value={s.stepId}>
-                            {s.title}
-                          </option>
-                        ))}
-                      </select>
+                        onValueChange={(nextValue) => {
+                          if (nextValue === null) return;
+                          handleStepChange(ruleType, nextValue);
+                        }}
+                        label={"Reference Step"}
+                        items={[
+                          { value: "", label: "— any step —" },
+                          ...stepRefs.map((s) => ({
+                            value: s.stepId,
+                            label: s.title,
+                          })),
+                        ]}
+                      />
                     </div>
+
                     <div className={styles.formGroup}>
-                      <label>Reference Field</label>
                       <FieldRefPicker
+                        label={"Reference Field"}
                         value={config.referenceFieldId ?? ""}
                         fieldRefs={scopedRefs}
                         onChange={(val) =>
@@ -324,13 +336,14 @@ export function ValidationRulesEditor({
                 );
               })()}
             <div className={styles.formGroup}>
-              <label>Error Message</label>
-              <input
+              <Input
                 type="text"
                 value={config.error ?? ""}
                 onChange={(e) =>
                   handleUpdate(ruleType, { error: e.target.value })
                 }
+                label={"Error Message"}
+                className="w-full min-w-0"
               />
             </div>
           </div>
@@ -338,19 +351,18 @@ export function ValidationRulesEditor({
       })}
       {available.length > 0 && (
         <div>
-          <select
+          <Select<string>
+            aria-label="Add rule"
             value=""
-            onChange={(e) => {
-              if (e.target.value) handleAdd(e.target.value as ValidationType);
+            onValueChange={(nextValue) => {
+              if (nextValue === null) return;
+              if (nextValue) handleAdd(nextValue as ValidationType);
             }}
-          >
-            <option value="">+ Add Rule</option>
-            {available.map((d) => (
-              <option key={d.type} value={d.type}>
-                {d.label}
-              </option>
-            ))}
-          </select>
+            items={[
+              { value: "", label: "+ Add Rule" },
+              ...available.map((d) => ({ value: d.type, label: d.label })),
+            ]}
+          />
         </div>
       )}
     </div>

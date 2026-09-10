@@ -1,3 +1,6 @@
+import { Button } from "../../components/ui/button";
+import { Checkbox } from "../../components/ui/checkbox";
+import { Input } from "../../components/ui/input";
 import type { Option } from "@govtech-bb/form-types";
 import styles from "../../styles/builder.module.css";
 
@@ -55,64 +58,78 @@ export function OptionsEditor({
     <div className={styles.optionsEditor}>
       {rows.map((row, i) => (
         <div key={i} className={styles.optionsRow}>
-          <input
+          <Input
             type="text"
             aria-label="Option label"
             placeholder="Label"
             value={row.label}
             onChange={(e) => update(i, { label: e.target.value })}
+            className="w-full min-w-0"
           />
-          <input
+          <Input
             type="text"
             aria-label="Option value"
             placeholder="Value"
             value={row.value}
             onChange={(e) => update(i, { value: e.target.value })}
+            className="w-full min-w-0"
           />
-          <label className={styles.optionsDisabled}>
-            <input
-              type="checkbox"
+          <div className={styles.optionsDisabled}>
+            <Checkbox
               checked={row.disabled ?? false}
-              onChange={(e) => toggleDisabled(i, e.target.checked)}
+              onCheckedChange={(nextChecked) => {
+                toggleDisabled(i, nextChecked);
+              }}
+              label={<> Disabled</>}
             />
-            {" "}Disabled
-          </label>
-          <button
+          </div>
+          <Button
             type="button"
             aria-label="Move option up"
             title="Move up"
             disabled={i === 0}
             onClick={() => move(i, -1)}
+            variant="secondary"
+            size="sm"
           >
             ↑
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             aria-label="Move option down"
             title="Move down"
             disabled={i === rows.length - 1}
             onClick={() => move(i, 1)}
+            variant="secondary"
+            size="sm"
           >
             ↓
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             aria-label="Remove option"
             title="Remove option"
             onClick={() => remove(i)}
+            variant="secondary"
+            size="sm"
           >
             ×
-          </button>
+          </Button>
         </div>
       ))}
       <div className={styles.optionsActions}>
-        <button type="button" onClick={add}>
+        <Button type="button" onClick={add} variant="secondary" size="sm">
           Add option
-        </button>
+        </Button>
         {isOverridden && (
-          <button type="button" onClick={() => onChange(undefined)}>
+          <Button
+            type="button"
+            onClick={() => onChange(undefined)}
+            variant="secondary"
+            size="sm"
+          >
             Reset to defaults
-          </button>
+          </Button>
         )}
       </div>
     </div>

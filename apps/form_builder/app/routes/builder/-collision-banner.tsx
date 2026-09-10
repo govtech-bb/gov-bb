@@ -1,3 +1,4 @@
+import { Banner } from "../../components/ui/banner";
 import type { findRecipeIdCollisions } from "@govtech-bb/form-builder";
 import styles from "../../styles/builder.module.css";
 
@@ -24,30 +25,32 @@ export function CollisionBanner({ idCollisions }: CollisionBannerProps) {
   }
 
   return (
-    <div className={styles.errorBanner} role="alert">
-      <strong>Duplicate IDs must be fixed before saving or deploying</strong>
-      <ul className={styles.bannerList}>
-        {idCollisions.fieldIdCollisions.map((c) => (
-          <li key={`field-${c.id}`}>
-            Field ID <code>{c.id}</code> is used by {c.locations.length}{" "}
-            fields:{" "}
-            {formatCollisionLocations(
-              c.locations.map(
-                (l) => `${l.stepTitle || l.stepId} › ${l.display}`,
-              ),
-            )}
-          </li>
-        ))}
-        {idCollisions.stepIdCollisions.map((c) => (
-          <li key={`step-${c.stepId}`}>
-            Step ID <code>{c.stepId}</code> is used by {c.locations.length}{" "}
-            steps:{" "}
-            {formatCollisionLocations(
-              c.locations.map((l) => l.stepTitle || l.stepId),
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
+    <Banner variant="error" size="sm" role="alert">
+      <div className="min-w-0 flex-1">
+        <strong>Duplicate IDs must be fixed before saving or deploying</strong>
+        <ul className={styles.bannerList}>
+          {idCollisions.fieldIdCollisions.map((c) => (
+            <li key={`field-${c.id}`}>
+              Field ID <code>{c.id}</code> is used by {c.locations.length}{" "}
+              fields:{" "}
+              {formatCollisionLocations(
+                c.locations.map(
+                  (l) => `${l.stepTitle || l.stepId} › ${l.display}`,
+                ),
+              )}
+            </li>
+          ))}
+          {idCollisions.stepIdCollisions.map((c) => (
+            <li key={`step-${c.stepId}`}>
+              Step ID <code>{c.stepId}</code> is used by {c.locations.length}{" "}
+              steps:{" "}
+              {formatCollisionLocations(
+                c.locations.map((l) => l.stepTitle || l.stepId),
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Banner>
   );
 }

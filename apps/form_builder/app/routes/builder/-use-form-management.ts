@@ -1,3 +1,4 @@
+import { useConfirmation } from "../../components/ui/dialog/confirmation";
 import { useState } from "react";
 import { deleteForm, disableForm, enableForm } from "../../server/forms";
 import { eraseRecipe } from "../../server/publish";
@@ -22,6 +23,7 @@ export function useFormManagement({
   refetchForms,
   setIsPickerOpen,
 }: UseFormManagementParams) {
+  const confirm = useConfirmation();
   const [deleteTarget, setDeleteTarget] = useState<BuilderFormSummary | null>(
     null,
   );
@@ -137,13 +139,14 @@ export function useFormManagement({
     setEraseSuccess(null);
   };
 
-  // Enable is a direct action (no modal) with an inline confirm: clearing a
-  // tombstone restores the public service, so a single confirm is enough.
+  // Confirm before restoring the public service.
   const handleEnable = async (form: BuilderFormSummary) => {
     if (
-      !window.confirm(
-        `Re-enable ${form.title || form.formId}? The public service will be restored.`,
-      )
+      !(await confirm({
+        title: "Restore service?",
+        description: `Re-enable ${form.title || form.formId}? The public service will be restored.`,
+        confirmLabel: "Re-enable",
+      }))
     ) {
       return;
     }
@@ -151,9 +154,12 @@ export function useFormManagement({
       await enableForm({ data: { formId: form.formId } });
       refetchForms();
     } catch (e) {
-      // Surface in the picker's load-error slot via the forms list is overkill;
-      // a window.alert keeps the inline action simple and visible.
-      window.alert(e instanceof Error ? e.message : "Enable failed");
+      await confirm({
+        title: "Enable failed",
+        description: e instanceof Error ? e.message : "Enable failed",
+        confirmLabel: "OK",
+        cancelLabel: null,
+      });
     }
   };
 

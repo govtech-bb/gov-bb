@@ -1,7 +1,8 @@
+import { respondToConfirmation } from "../../test/ui";
 /**
  * @vitest-environment jsdom
  */
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook } from "../../test/ui";
 import { useFormManagement } from "./-use-form-management";
 import type { BuilderFormSummary } from "../../types/index";
 
@@ -136,32 +137,26 @@ describe("useFormManagement", () => {
   });
 
   describe("handleEnable", () => {
-    let confirmSpy: ReturnType<typeof vi.spyOn>;
-
-    afterEach(() => {
-      confirmSpy.mockRestore();
-    });
-
     it("calls enableForm and refetches when confirmed", async () => {
-      confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
       enableForm.mockResolvedValue(undefined);
       const { result, refetchForms } = render();
 
-      await act(async () => {
-        await result.current.handleEnable(passport);
+      act(() => {
+        void result.current.handleEnable(passport);
       });
+      await respondToConfirmation("Re-enable");
 
       expect(enableForm).toHaveBeenCalledWith({ data: { formId: "passport" } });
       expect(refetchForms).toHaveBeenCalledTimes(1);
     });
 
     it("does nothing when the confirm is declined", async () => {
-      confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
       const { result, refetchForms } = render();
 
-      await act(async () => {
-        await result.current.handleEnable(passport);
+      act(() => {
+        void result.current.handleEnable(passport);
       });
+      await respondToConfirmation("Cancel");
 
       expect(enableForm).not.toHaveBeenCalled();
       expect(refetchForms).not.toHaveBeenCalled();

@@ -1,3 +1,5 @@
+import { Select } from "../../components/ui/select";
+import { Input } from "../../components/ui/input";
 import type {
   RecipeProcessorDraft,
   ResolvedFieldId,
@@ -90,7 +92,7 @@ export function ProcessorConfigForm({
         <>
           <div className={styles.formGroup}>
             <label htmlFor={fid("label")}>Label</label>
-            <input
+            <Input
               id={fid("label")}
               type="text"
               value={asText(config.label)}
@@ -102,8 +104,10 @@ export function ProcessorConfigForm({
                 else delete next.label;
                 onConfigChange(next);
               }}
+              className="w-full min-w-0"
             />
           </div>
+
           <div className={styles.formGroup}>
             <label htmlFor={fid("recipientField")}>Recipient field</label>
             <ValuePathPicker
@@ -116,9 +120,10 @@ export function ProcessorConfigForm({
               }
             />
           </div>
+
           <div className={styles.formGroup}>
             <label htmlFor={fid("subject")}>Subject (optional)</label>
-            <input
+            <Input
               id={fid("subject")}
               type="text"
               value={asText(config.subject)}
@@ -128,6 +133,7 @@ export function ProcessorConfigForm({
                 else delete next.subject;
                 onConfigChange(next);
               }}
+              className="w-full min-w-0"
             />
           </div>
         </>
@@ -140,29 +146,30 @@ export function ProcessorConfigForm({
         <>
           <div className={styles.formGroup}>
             <label htmlFor={fid("url")}>URL</label>
-            <input
+            <Input
               id={fid("url")}
               type="text"
               value={asText(config.url)}
-              onChange={(e) => onConfigChange({ ...config, url: e.target.value })}
+              onChange={(e) =>
+                onConfigChange({ ...config, url: e.target.value })
+              }
+              className="w-full min-w-0"
             />
           </div>
+
           <div className={styles.formGroup}>
             <label htmlFor={fid("method")}>Method</label>
-            <select
+            <Select
               id={fid("method")}
               value={config.method ?? "POST"}
-              onChange={(e) =>
-                onConfigChange({ ...config, method: e.target.value })
-              }
-            >
-              {WEBHOOK_METHODS.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
+              onValueChange={(nextValue) => {
+                if (nextValue === null) return;
+                onConfigChange({ ...config, method: nextValue });
+              }}
+              items={[...WEBHOOK_METHODS.map((m) => ({ value: m, label: m }))]}
+            />
           </div>
+
           <div className={styles.formGroup}>
             <div className={styles.fieldLabel}>Headers</div>
             <KeyValueEditor
@@ -178,20 +185,23 @@ export function ProcessorConfigForm({
               addLabel="Add header"
             />
           </div>
+
           <div className={styles.formGroup}>
             <label htmlFor={fid("signatureHeader")}>Signature header</label>
-            <input
+            <Input
               id={fid("signatureHeader")}
               type="text"
               value={config.signatureHeader ?? ""}
               onChange={(e) =>
                 onConfigChange({ ...config, signatureHeader: e.target.value })
               }
+              className="w-full min-w-0"
             />
           </div>
+
           <div className={styles.formGroup}>
             <label htmlFor={fid("timeoutMs")}>Timeout (ms)</label>
-            <input
+            <Input
               id={fid("timeoutMs")}
               type="number"
               value={config.timeoutMs ?? ""}
@@ -202,6 +212,7 @@ export function ProcessorConfigForm({
                     e.target.value === "" ? undefined : Number(e.target.value),
                 })
               }
+              className="w-full min-w-0"
             />
           </div>
         </>
@@ -243,55 +254,66 @@ export function ProcessorConfigForm({
         <>
           <div className={styles.formGroup}>
             <label htmlFor={fid("provider")}>Provider</label>
-            <input
+            <Input
               id={fid("provider")}
               type="text"
               value="ezpay"
               readOnly
               disabled
+              className="w-full min-w-0"
             />
           </div>
+
           <div className={styles.formGroup}>
             <label htmlFor={fid("department")}>Department</label>
-            <input
+            <Input
               id={fid("department")}
               type="text"
               value={asText(config.department)}
               onChange={(e) =>
                 onConfigChange({ ...config, department: e.target.value })
               }
+              className="w-full min-w-0"
             />
           </div>
+
           <div className={styles.formGroup}>
             <label htmlFor={fid("paymentCode")}>Payment code</label>
-            <input
+            <Input
               id={fid("paymentCode")}
               type="text"
               value={asText(config.paymentCode)}
               onChange={(e) =>
                 onConfigChange({ ...config, paymentCode: e.target.value })
               }
+              className="w-full min-w-0"
             />
           </div>
+
           <AmountEditor
             amount={config.amount}
             fields={fields}
             idPrefix={String(processor.id)}
             onChange={(amount) => onConfigChange({ ...config, amount })}
           />
+
           <div className={styles.formGroup}>
             <label htmlFor={fid("description")}>Description</label>
-            <input
+            <Input
               id={fid("description")}
               type="text"
               value={asText(config.description)}
               onChange={(e) =>
                 onConfigChange({ ...config, description: e.target.value })
               }
+              className="w-full min-w-0"
             />
           </div>
+
           <div className={styles.formGroup}>
-            <label htmlFor={fid("customerEmailPath")}>Customer email path</label>
+            <label htmlFor={fid("customerEmailPath")}>
+              Customer email path
+            </label>
             <ValuePathPicker
               id={fid("customerEmailPath")}
               value={asText(config.customerEmailPath)}
@@ -301,6 +323,7 @@ export function ProcessorConfigForm({
               }
             />
           </div>
+
           <div className={styles.formGroup}>
             <label htmlFor={fid("customerNamePath")}>Customer name path</label>
             <ValuePathPicker

@@ -1,3 +1,4 @@
+import { openSelect, chooseOption } from "../../test/select";
 import type { Mock } from "vitest";
 /**
  * @vitest-environment jsdom
@@ -21,7 +22,9 @@ function makeDraft(field: RecipeFieldDraft): RecipeDraft {
   return {
     formId: "form-001",
     title: "Test Form",
-    steps: [{ stepId: "step-1", title: "Step 1", fields: [field], behaviours: [] }],
+    steps: [
+      { stepId: "step-1", title: "Step 1", fields: [field], behaviours: [] },
+    ],
   };
 }
 
@@ -29,14 +32,17 @@ function makeField(ref: string): RecipeFieldDraft {
   return { id: "f1", kind: "component", ref, overrides: {} };
 }
 
-function makeFieldWith(ref: string, overrides: RecipeFieldDraft["overrides"]): RecipeFieldDraft {
+function makeFieldWith(
+  ref: string,
+  overrides: RecipeFieldDraft["overrides"],
+): RecipeFieldDraft {
   return { id: "f1", kind: "component", ref, overrides };
 }
 
 const requiredCheckbox = () =>
   screen.getByRole("checkbox", { name: /^required$/i });
 
-it("checks Required for a field that is required in the registry", () => {
+it("checks Required for a field that is required in the registry", async () => {
   const field = makeField("components/last-name"); // base required: { value: true }
   render(
     <FieldEditPanel
@@ -78,7 +84,7 @@ it("writes required:{value:false} when un-requiring a base-required field", asyn
   );
 });
 
-it("leaves an optional field unchecked and adds no override when untouched", () => {
+it("leaves an optional field unchecked and adds no override when untouched", async () => {
   const field = makeField("components/middle-name"); // registry: no required rule
   render(
     <FieldEditPanel
@@ -152,22 +158,26 @@ it.each(["short", "medium"] as const)(
   "dispatches ui.width=%s when the width select is changed",
   async (width) => {
     const dispatch = renderPanel(makeField("components/generic-text"));
-    await userEvent.selectOptions(widthSelect(), width);
+    await chooseOption(widthSelect(), humanize(width));
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(lastOverrides(dispatch)).toEqual({ ui: { width } });
   },
 );
 
 it("collapses ui to undefined when width is set back to the long default", async () => {
-  const dispatch = renderPanel(makeFieldWith("components/generic-text", { ui: { width: "short" } }));
-  expect(widthSelect()).toHaveValue("short");
-  await userEvent.selectOptions(widthSelect(), "long");
+  const dispatch = renderPanel(
+    makeFieldWith("components/generic-text", { ui: { width: "short" } }),
+  );
+  expect(widthSelect()).toHaveTextContent("Short");
+  await chooseOption(widthSelect(), "Long");
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
   expect(lastOverrides(dispatch).ui).toBeUndefined();
 });
 
 it("collapses ui to undefined when hideLabel is unchecked as the last set key (#522 regression)", async () => {
-  const dispatch = renderPanel(makeFieldWith("components/generic-text", { ui: { hideLabel: true } }));
+  const dispatch = renderPanel(
+    makeFieldWith("components/generic-text", { ui: { hideLabel: true } }),
+  );
   expect(hideLabelCheckbox()).toBeChecked();
   await userEvent.click(hideLabelCheckbox());
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -175,10 +185,15 @@ it("collapses ui to undefined when hideLabel is unchecked as the last set key (#
 });
 
 it("preserves hideLabel when width is set alongside it", async () => {
-  const dispatch = renderPanel(makeFieldWith("components/generic-text", { ui: { hideLabel: true } }));
-  await userEvent.selectOptions(widthSelect(), "short");
+  const dispatch = renderPanel(
+    makeFieldWith("components/generic-text", { ui: { hideLabel: true } }),
+  );
+  await chooseOption(widthSelect(), "Short");
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
-  expect(lastOverrides(dispatch).ui).toEqual({ hideLabel: true, width: "short" });
+  expect(lastOverrides(dispatch).ui).toEqual({
+    hideLabel: true,
+    width: "short",
+  });
 });
 
 // --- Registry ui defaults (#789) ------------------------------------------
@@ -188,14 +203,14 @@ it("preserves hideLabel when width is set alongside it", async () => {
 // undefined, the registry `short` wins on resolution, and "Long" renders
 // *narrower* than "Medium".
 
-it("shows the registry ui.width default for an untouched component", () => {
+it("shows the registry ui.width default for an untouched component", async () => {
   renderPanel(makeField("components/national-id-number")); // registry: width "short"
-  expect(widthSelect()).toHaveValue("short");
+  expect(widthSelect()).toHaveTextContent("Short");
 });
 
 it("persists ui.width=long when it differs from the registry default (#789)", async () => {
   const dispatch = renderPanel(makeField("components/national-id-number"));
-  await userEvent.selectOptions(widthSelect(), "long");
+  await chooseOption(widthSelect(), "Long");
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
   expect(lastOverrides(dispatch)).toEqual({ ui: { width: "long" } });
 });
@@ -204,22 +219,22 @@ it("collapses ui when width is set back to the registry default", async () => {
   const dispatch = renderPanel(
     makeFieldWith("components/national-id-number", { ui: { width: "long" } }),
   );
-  expect(widthSelect()).toHaveValue("long");
-  await userEvent.selectOptions(widthSelect(), "short");
+  expect(widthSelect()).toHaveTextContent("Long");
+  await chooseOption(widthSelect(), "Short");
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
   expect(lastOverrides(dispatch).ui).toBeUndefined();
 });
 
-it("defaults the width select to a value that is a real schema enum member", () => {
+it("defaults the width select to a value that is a real schema enum member", async () => {
   // Guards against `UI_FIELD_META.width.default` drifting from the schema: the
   // value shown when `ui.width` is unset must be a genuine enum member, or
   // re-selecting it would fail to clear the key (the collapse test above).
   renderPanel(makeField("components/generic-text"));
   const enumOptions = primitiveUISchema.shape.width.unwrap().options;
-  expect(enumOptions).toContain((widthSelect() as HTMLSelectElement).value);
+  expect(enumOptions).toContain(widthSelect().textContent?.toLowerCase());
 });
 
-it("humanizes a key name for the schema-driven fallback label", () => {
+it("humanizes a key name for the schema-driven fallback label", async () => {
   // A future `ui` key with no UI_FIELD_META entry falls back to this label.
   expect(humanize("width")).toBe("Width");
   expect(humanize("hideLabel")).toBe("Hide Label");
@@ -233,59 +248,47 @@ it("humanizes a key name for the schema-driven fallback label", () => {
 const fieldTypeSelect = () =>
   screen.getByRole("combobox", { name: /field type/i });
 
-it("shows the current registry ref for a non-block field", () => {
+it("shows the current registry ref for a non-block field", async () => {
   renderPanel(makeField("components/generic-text"));
   expect(screen.getByText("components/generic-text")).toBeInTheDocument();
 });
 
-it("offers the generic swap peers in the Field type picker", () => {
+it("offers the generic swap peers in the Field type picker", async () => {
   renderPanel(makeField("components/generic-text"));
-  const options = Array.from(fieldTypeSelect().querySelectorAll("option")).map(
-    (o) => (o as HTMLOptionElement).value,
-  );
+  const options = Array.from(
+    (await openSelect(fieldTypeSelect())).querySelectorAll('[role="option"]'),
+  ).map((o) => o.textContent);
   expect(options).toEqual(
     expect.arrayContaining([
-      "components/generic-text",
-      "components/generic-textarea",
-      "components/generic-tel",
-      "components/generic-number",
-      "components/generic-email",
+      "Text",
+      "Long text",
+      "Telephone",
+      "Number",
+      "Email",
     ]),
   );
 });
 
-it("shows a read-only ref with a no-swap note for a singleton type", () => {
+it("shows a read-only ref with a no-swap note for a singleton type", async () => {
   renderPanel(makeField("components/generic-date"));
   expect(screen.getByText("components/generic-date")).toBeInTheDocument();
-  expect(screen.getByText(/no similar types to switch to/i)).toBeInTheDocument();
+  expect(
+    screen.getByText(/no similar types to switch to/i),
+  ).toBeInTheDocument();
   expect(
     screen.queryByRole("combobox", { name: /field type/i }),
   ).not.toBeInTheDocument();
 });
 
 it("renders no Field type picker for a block field", () => {
-  const field: RecipeFieldDraft = {
+  // One real child exercises block rendering without the nationality options list.
+  renderPanel({
     id: "b1",
     kind: "block",
-    ref: "blocks/personal-information",
+    ref: "blocks/additional-information",
     overrides: {},
-  };
-  render(
-    <FieldEditPanel
-      field={field}
-      catalog={catalog}
-      draft={{
-        formId: "f",
-        title: "t",
-        steps: [
-          { stepId: "step-1", title: "Step 1", fields: [field], behaviours: [] },
-        ],
-      }}
-      stepId="step-1"
-      dispatch={vi.fn()}
-      onClose={vi.fn()}
-    />,
-  );
+  });
+  expect(screen.getByLabelText("Field ID Override")).toBeInTheDocument();
   expect(
     screen.queryByRole("combobox", { name: /field type/i }),
   ).not.toBeInTheDocument();
@@ -299,7 +302,7 @@ it("dispatches CHANGE_FIELD_REF migrating compatible overrides on save", async (
     }),
   );
 
-  await userEvent.selectOptions(fieldTypeSelect(), "components/generic-textarea");
+  await chooseOption(fieldTypeSelect(), "Long text");
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
   expect(dispatch).toHaveBeenCalledWith(
@@ -321,7 +324,7 @@ it("pins the current default fieldId on swap so references survive (no explicit 
   // generic-text resolves its default fieldId to "generic-text". Swapping type
   // would otherwise re-resolve it to "generic-textarea", dangling any reference.
   const dispatch = renderPanel(makeField("components/generic-text"));
-  await userEvent.selectOptions(fieldTypeSelect(), "components/generic-textarea");
+  await chooseOption(fieldTypeSelect(), "Long text");
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
   expect(dispatch).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -336,7 +339,7 @@ it("leaves an explicit fieldId override untouched on swap", async () => {
   const dispatch = renderPanel(
     makeFieldWith("components/generic-text", { fieldId: "my-custom-id" }),
   );
-  await userEvent.selectOptions(fieldTypeSelect(), "components/generic-textarea");
+  await chooseOption(fieldTypeSelect(), "Long text");
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
   expect(dispatch).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -361,7 +364,7 @@ it("still dispatches UPDATE_FIELD_OVERRIDES when the ref is unchanged", async ()
 const NATIONAL_ID_PATTERN_ERROR =
   "Enter a valid National ID number (for example, 850101-0001)";
 
-it("surfaces a base component validation rule as an inherited, read-only row", () => {
+it("surfaces a base component validation rule as an inherited, read-only row", async () => {
   // National ID number declares a `pattern` rule in the registry. Freshly added
   // (no overrides), it must still appear — inherited from the component.
   renderPanel(makeField("components/national-id-number"));
@@ -396,12 +399,12 @@ it("writes the base value into overrides when an inherited rule is overridden", 
 const requiredErrorInput = () =>
   screen.queryByLabelText(/required error message/i);
 
-it("hides the Required error message input when the field is not required", () => {
+it("hides the Required error message input when the field is not required", async () => {
   renderPanel(makeField("components/middle-name")); // registry: no required rule
   expect(requiredErrorInput()).not.toBeInTheDocument();
 });
 
-it("shows the Required error message input with the inherited base error as placeholder", () => {
+it("shows the Required error message input with the inherited base error as placeholder", async () => {
   // last-name declares a custom required error in the registry. With no
   // override of its own, the input is empty but hints the inherited message.
   renderPanel(makeField("components/last-name"));
@@ -411,10 +414,12 @@ it("shows the Required error message input with the inherited base error as plac
   expect(input).toHaveValue("");
 });
 
-it("populates the input with an existing custom Required error", () => {
+it("populates the input with an existing custom Required error", async () => {
   renderPanel(
     makeFieldWith("components/middle-name", {
-      validations: { required: { value: true, error: "Please tell us your middle name" } },
+      validations: {
+        required: { value: true, error: "Please tell us your middle name" },
+      },
     }),
   );
   expect(requiredErrorInput()).toHaveValue("Please tell us your middle name");
@@ -435,7 +440,9 @@ it("writes required:{ value: true, error } when a message is typed", async () =>
 it("keeps required:{ value: true } when the message is emptied on an override-required (base-optional) field", async () => {
   const dispatch = renderPanel(
     makeFieldWith("components/middle-name", {
-      validations: { required: { value: true, error: "Middle name is required" } },
+      validations: {
+        required: { value: true, error: "Middle name is required" },
+      },
     }),
   );
 
@@ -444,7 +451,9 @@ it("keeps required:{ value: true } when the message is emptied on an override-re
 
   // Base doesn't require the field — dropping the rule would un-require it, so
   // the override must persist as a bare `{ value: true }`.
-  expect(lastOverrides(dispatch).validations).toEqual({ required: { value: true } });
+  expect(lastOverrides(dispatch).validations).toEqual({
+    required: { value: true },
+  });
 });
 
 it("clears the override to restore inheritance when the message is emptied on a base-required field", async () => {

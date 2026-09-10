@@ -1,3 +1,4 @@
+import { openSelect, chooseOption } from "../../test/select";
 /**
  * @vitest-environment jsdom
  *
@@ -45,20 +46,11 @@ const FIELD_REFS: FieldRef[] = [
 ];
 
 function targetFieldSelect() {
-  // The Target Field picker is the only select whose placeholder is "select field".
-  return screen
-    .getAllByRole("combobox")
-    .find((el) =>
-      within(el).queryByRole("option", { name: /select field/i }),
-    ) as HTMLSelectElement;
+  return screen.getByRole("combobox", { name: "Target Field" });
 }
 
 function targetStepSelect() {
-  return screen
-    .getAllByRole("combobox")
-    .find((el) =>
-      within(el).queryByRole("option", { name: /select step/i }),
-    ) as HTMLSelectElement;
+  return screen.getByRole("combobox", { name: "Target Step" });
 }
 
 function renderStepBehaviour(behaviours: Behaviour[], onChange = vi.fn()) {
@@ -74,7 +66,7 @@ function renderStepBehaviour(behaviours: Behaviour[], onChange = vi.fn()) {
   return onChange;
 }
 
-it("disables the Target Field picker until a Target Step is chosen", () => {
+it("disables the Target Field picker until a Target Step is chosen", async () => {
   renderStepBehaviour([
     {
       type: "stepConditionalOn",
@@ -87,7 +79,7 @@ it("disables the Target Field picker until a Target Step is chosen", () => {
   expect(targetFieldSelect()).toBeDisabled();
 });
 
-it("enables the Target Field picker once a Target Step is set", () => {
+it("enables the Target Field picker once a Target Step is set", async () => {
   renderStepBehaviour([
     {
       type: "stepConditionalOn",
@@ -100,7 +92,7 @@ it("enables the Target Field picker once a Target Step is set", () => {
   expect(targetFieldSelect()).toBeEnabled();
 });
 
-it("limits Target Field options to fields in the selected Target Step", () => {
+it("limits Target Field options to fields in the selected Target Step", async () => {
   renderStepBehaviour([
     {
       type: "stepConditionalOn",
@@ -110,7 +102,7 @@ it("limits Target Field options to fields in the selected Target Step", () => {
       value: "",
     },
   ]);
-  const options = within(targetFieldSelect())
+  const options = within(await openSelect(targetFieldSelect()))
     .getAllByRole("option")
     .map((o) => o.textContent);
   expect(options).toEqual([
@@ -121,8 +113,8 @@ it("limits Target Field options to fields in the selected Target Step", () => {
   ]);
 });
 
-it("uses the resolved field id as the option value", () => {
-  renderStepBehaviour([
+it("uses the resolved field id as the option value", async () => {
+  const onChange = renderStepBehaviour([
     {
       type: "stepConditionalOn",
       targetStepId: "step-1",
@@ -131,10 +123,16 @@ it("uses the resolved field id as the option value", () => {
       value: "",
     },
   ]);
-  const firstName = within(targetFieldSelect()).getByRole("option", {
-    name: "First Name",
-  }) as HTMLOptionElement;
-  expect(firstName.value).toBe("first-name");
+  const firstName = within(await openSelect(targetFieldSelect())).getByRole(
+    "option",
+    {
+      name: "First Name",
+    },
+  ) as HTMLOptionElement;
+  await userEvent.click(firstName);
+  expect(onChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ targetFieldId: "first-name" }),
+  ]);
 });
 
 it("clears an incompatible Target Field when the Target Step changes", async () => {
@@ -147,7 +145,7 @@ it("clears an incompatible Target Field when the Target Step changes", async () 
       value: "",
     },
   ]);
-  await userEvent.selectOptions(targetStepSelect(), "step-2");
+  await chooseOption(targetStepSelect(), "Step Two");
   expect(onChange).toHaveBeenLastCalledWith([
     expect.objectContaining({ targetStepId: "step-2", targetFieldId: "" }),
   ]);
@@ -187,7 +185,7 @@ it("keeps the Target Field when the new step still contains it", async () => {
       onChange={onChange}
     />,
   );
-  await userEvent.selectOptions(targetStepSelect(), "step-2");
+  await chooseOption(targetStepSelect(), "Step Two");
   expect(onChange).toHaveBeenLastCalledWith([
     expect.objectContaining({
       targetStepId: "step-2",
@@ -196,7 +194,7 @@ it("keeps the Target Field when the new step still contains it", async () => {
   ]);
 });
 
-it("renders distinct options for two fields in a step that resolve to the same id", () => {
+it("renders distinct options for two fields in a step that resolve to the same id", async () => {
   // Open question in the plan: two same-type components in one step resolve to
   // the same fieldId. The picker must still render both without a duplicate
   // React key crashing the render (keys are stepId:fieldId:index).
@@ -232,7 +230,9 @@ it("renders distinct options for two fields in a step that resolve to the same i
     />,
   );
   // Placeholder + two duplicate-id options, all rendered (no key collision).
-  expect(within(targetFieldSelect()).getAllByRole("option")).toHaveLength(3);
+  expect(
+    within(await openSelect(targetFieldSelect())).getAllByRole("option"),
+  ).toHaveLength(3);
 });
 
 it("defaults a new fieldConditionalOn's Target Step to currentStepId", async () => {
@@ -247,10 +247,7 @@ it("defaults a new fieldConditionalOn's Target Step to currentStepId", async () 
       currentStepId="step-2"
     />,
   );
-  await userEvent.selectOptions(
-    screen.getByRole("combobox"),
-    "fieldConditionalOn",
-  );
+  await chooseOption(screen.getByRole("combobox"), "Field Conditional On");
   expect(onChange).toHaveBeenCalledWith([
     expect.objectContaining({
       type: "fieldConditionalOn",
@@ -264,14 +261,10 @@ it("defaults a new fieldConditionalOn's Target Step to currentStepId", async () 
 
 // The value control for a boolean target is the only select offering "true".
 function valueBooleanSelect() {
-  return screen
-    .getAllByRole("combobox")
-    .find((el) => within(el).queryByRole("option", { name: "true" })) as
-    | HTMLSelectElement
-    | undefined;
+  return screen.queryByRole("combobox", { name: "Value" }) ?? undefined;
 }
 
-it("renders a true/false select for a boolean Target Field", () => {
+it("renders a true/false select for a boolean Target Field", async () => {
   renderStepBehaviour([
     {
       type: "stepConditionalOn",
@@ -284,7 +277,7 @@ it("renders a true/false select for a boolean Target Field", () => {
   const select = valueBooleanSelect();
   expect(select).toBeDefined();
   expect(
-    within(select as HTMLSelectElement)
+    within(await openSelect(select as HTMLSelectElement))
       .getAllByRole("option")
       .map((o) => o.textContent),
   ).toEqual(["true", "false"]);
@@ -302,16 +295,13 @@ it("stores a real boolean when the true/false control changes", async () => {
       value: true,
     },
   ]);
-  await userEvent.selectOptions(
-    valueBooleanSelect() as HTMLSelectElement,
-    "false",
-  );
+  await chooseOption(valueBooleanSelect() as HTMLSelectElement, "false");
   expect(onChange).toHaveBeenLastCalledWith([
     expect.objectContaining({ value: false }),
   ]);
 });
 
-it("renders a text input for a non-boolean Target Field", () => {
+it("renders a text input for a non-boolean Target Field", async () => {
   renderStepBehaviour([
     {
       type: "stepConditionalOn",
@@ -335,7 +325,7 @@ it("resets the value to true when the Target Field switches to boolean", async (
       value: "hello",
     },
   ]);
-  await userEvent.selectOptions(targetFieldSelect(), "agree");
+  await chooseOption(targetFieldSelect(), "Agree");
   expect(onChange).toHaveBeenLastCalledWith([
     expect.objectContaining({ targetFieldId: "agree", value: true }),
   ]);
@@ -351,7 +341,7 @@ it("resets the value to an empty string when the Target Field switches to non-bo
       value: true,
     },
   ]);
-  await userEvent.selectOptions(targetFieldSelect(), "first-name");
+  await chooseOption(targetFieldSelect(), "First Name");
   expect(onChange).toHaveBeenLastCalledWith([
     expect.objectContaining({ targetFieldId: "first-name", value: "" }),
   ]);
@@ -361,14 +351,10 @@ it("resets the value to an empty string when the Target Field switches to non-bo
 // authorable from the field modal's behaviours editor.
 
 function addBehaviourSelect() {
-  return screen
-    .getAllByRole("combobox")
-    .find((el) =>
-      within(el).queryByRole("option", { name: /add behaviour/i }),
-    ) as HTMLSelectElement;
+  return screen.getByRole("combobox", { name: "Add behaviour" });
 }
 
-it("offers Optional If in the Add Behaviour dropdown for field scope", () => {
+it("offers Optional If in the Add Behaviour dropdown for field scope", async () => {
   render(
     <BehavioursEditor
       scope="field"
@@ -380,14 +366,18 @@ it("offers Optional If in the Add Behaviour dropdown for field scope", () => {
     />,
   );
   expect(
-    within(addBehaviourSelect()).getByRole("option", { name: "Optional If" }),
+    within(await openSelect(addBehaviourSelect())).getByRole("option", {
+      name: "Optional If",
+    }),
   ).toBeInTheDocument();
 });
 
-it("does not offer Optional If for step scope", () => {
+it("does not offer Optional If for step scope", async () => {
   renderStepBehaviour([]);
   expect(
-    within(addBehaviourSelect()).queryByRole("option", { name: "Optional If" }),
+    within(await openSelect(addBehaviourSelect())).queryByRole("option", {
+      name: "Optional If",
+    }),
   ).not.toBeInTheDocument();
 });
 
@@ -403,7 +393,7 @@ it("defaults a new optionalIf's Target Step to currentStepId", async () => {
       currentStepId="step-2"
     />,
   );
-  await userEvent.selectOptions(addBehaviourSelect(), "optionalIf");
+  await chooseOption(addBehaviourSelect(), "Optional If");
   expect(onChange).toHaveBeenCalledWith([
     expect.objectContaining({
       type: "optionalIf",
@@ -419,20 +409,18 @@ it("defaults a new optionalIf's Target Step to currentStepId", async () => {
 
 it("adding a repeatable behaviour initialises { min: 1, max: 5 }", async () => {
   const onChange = renderStepBehaviour([]);
-  await userEvent.selectOptions(addBehaviourSelect(), "repeatable");
+  await chooseOption(addBehaviourSelect(), "Repeatable");
   expect(onChange).toHaveBeenLastCalledWith([
     expect.objectContaining({ type: "repeatable", min: 1, max: 5 }),
   ]);
 });
 
-it("the Min input for repeatable has min='1' and changing to 0 stores 1", () => {
+it("the Min input for repeatable has min='1' and changing to 0 stores 1", async () => {
   const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="step"
-      behaviours={[
-        { type: "repeatable", min: 1, max: 5 },
-      ]}
+      behaviours={[{ type: "repeatable", min: 1, max: 5 }]}
       fieldRefs={FIELD_REFS}
       stepRefs={STEP_REFS}
       onChange={onChange}
@@ -452,14 +440,12 @@ it("the Min input for repeatable has min='1' and changing to 0 stores 1", () => 
   expect((lastCall[0] as Record<string, unknown>)["min"]).toBe(1);
 });
 
-it("with min: 3, changing Max to 2 stores 3 (clamped to atLeastParam)", () => {
+it("with min: 3, changing Max to 2 stores 3 (clamped to atLeastParam)", async () => {
   const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="step"
-      behaviours={[
-        { type: "repeatable", min: 3, max: 5 },
-      ]}
+      behaviours={[{ type: "repeatable", min: 3, max: 5 }]}
       fieldRefs={FIELD_REFS}
       stepRefs={STEP_REFS}
       onChange={onChange}
@@ -477,14 +463,12 @@ it("with min: 3, changing Max to 2 stores 3 (clamped to atLeastParam)", () => {
   expect((lastCall[0] as Record<string, unknown>)["max"]).toBe(3);
 });
 
-it("raising Min above current Max also raises Max (min: 7 with max: 5 stores { min: 7, max: 7 })", () => {
+it("raising Min above current Max also raises Max (min: 7 with max: 5 stores { min: 7, max: 7 })", async () => {
   const onChange = vi.fn();
   render(
     <BehavioursEditor
       scope="step"
-      behaviours={[
-        { type: "repeatable", min: 3, max: 5 },
-      ]}
+      behaviours={[{ type: "repeatable", min: 3, max: 5 }]}
       fieldRefs={FIELD_REFS}
       stepRefs={STEP_REFS}
       onChange={onChange}
@@ -503,7 +487,7 @@ it("raising Min above current Max also raises Max (min: 7 with max: 5 stores { m
   expect((lastCall[0] as Record<string, unknown>)["max"]).toBe(7);
 });
 
-it("renders the gated step/field/operator/value controls for an optionalIf behaviour", () => {
+it("renders the gated step/field/operator/value controls for an optionalIf behaviour", async () => {
   render(
     <BehavioursEditor
       scope="field"
@@ -533,16 +517,14 @@ it("renders the gated step/field/operator/value controls for an optionalIf behav
 // overrides the runtime's auto-generated "Add another?" radio label. Blank
 // means absent — the editor must never store "".
 
-it("renders a text input for repeatable's Add another label with the default as placeholder", () => {
-  renderStepBehaviour([
-    { type: "repeatable", min: 1, max: 5 },
-  ]);
+it("renders a text input for repeatable's Add another label with the default as placeholder", async () => {
+  renderStepBehaviour([{ type: "repeatable", min: 1, max: 5 }]);
   const input = screen.getByPlaceholderText("Add another?");
   expect(input).toBeInTheDocument();
   expect(input).toHaveValue("");
 });
 
-it("shows the stored addAnotherLabel value", () => {
+it("shows the stored addAnotherLabel value", async () => {
   renderStepBehaviour([
     {
       type: "repeatable",
@@ -567,7 +549,7 @@ it("does not initialize addAnotherLabel when adding a repeatable behaviour", asy
       onChange={onChange}
     />,
   );
-  await userEvent.selectOptions(screen.getByRole("combobox"), "repeatable");
+  await chooseOption(screen.getByRole("combobox"), "Repeatable");
   const added = onChange.mock.lastCall?.[0][0] as Record<string, unknown>;
   expect(added.type).toBe("repeatable");
   expect("addAnotherLabel" in added).toBe(false);
@@ -628,7 +610,7 @@ function renderSharedFields(
   return onChange;
 }
 
-it("renders a checkbox per current-step field and none for other steps' fields", () => {
+it("renders a checkbox per current-step field and none for other steps' fields", async () => {
   renderSharedFields([]);
   expect(
     screen.getByRole("checkbox", { name: "First Name" }),
@@ -645,7 +627,7 @@ it("renders a checkbox per current-step field and none for other steps' fields",
   expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
 });
 
-it("checks exactly the boxes whose field ids are in fieldIds", () => {
+it("checks exactly the boxes whose field ids are in fieldIds", async () => {
   renderSharedFields(["first-name"]);
   expect(screen.getByRole("checkbox", { name: "First Name" })).toBeChecked();
   expect(screen.getByRole("checkbox", { name: "Last Name" })).not.toBeChecked();
@@ -668,7 +650,7 @@ it("unchecking a box removes its field id from fieldIds", async () => {
   ]);
 });
 
-it("renders one checkbox for two same-step fields that resolve to the same id", () => {
+it("renders one checkbox for two same-step fields that resolve to the same id", async () => {
   // Two same-type components on one step resolve to the same runtime fieldId;
   // the list dedupes so the id is offered once.
   const refs: FieldRef[] = [
@@ -700,7 +682,7 @@ it("renders no checkbox for a stale id and drops it on the next toggle", async (
   ]);
 });
 
-it("shows a hint instead of checkboxes when the step has no fields", () => {
+it("shows a hint instead of checkboxes when the step has no fields", async () => {
   renderSharedFields([], vi.fn(), { currentStepId: "step-9" });
   expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
   expect(screen.getByText(/no fields/i)).toBeInTheDocument();
@@ -718,7 +700,7 @@ it("adding a Shared Fields behaviour seeds an empty fieldIds array", async () =>
       currentStepId="step-1"
     />,
   );
-  await userEvent.selectOptions(addBehaviourSelect(), "sharedFields");
+  await chooseOption(addBehaviourSelect(), "Shared Fields");
   expect(onChange).toHaveBeenLastCalledWith([
     { type: "sharedFields", fieldIds: [] },
   ]);
@@ -739,7 +721,7 @@ it("step-scope stepConditionalOn still seeds an empty Target Step when currentSt
       currentStepId="step-1"
     />,
   );
-  await userEvent.selectOptions(addBehaviourSelect(), "stepConditionalOn");
+  await chooseOption(addBehaviourSelect(), "Step Conditional On");
   expect(onChange).toHaveBeenLastCalledWith([
     expect.objectContaining({ type: "stepConditionalOn", targetStepId: "" }),
   ]);
@@ -748,24 +730,14 @@ it("step-scope stepConditionalOn still seeds an empty Target Step when currentSt
 // ─── numeric operators + duration transform (#1020) ──────────────────────────
 
 function operatorSelect() {
-  // The operator dropdown is the combobox that offers the "equal" option.
-  return screen
-    .getAllByRole("combobox")
-    .find((el) => within(el).queryByRole("option", { name: "equal" })) as
-    | HTMLSelectElement
-    | undefined;
+  return screen.queryByRole("combobox", { name: "Operator" }) ?? undefined;
 }
 
 function transformSelect() {
-  // The transform dropdown is the combobox that offers the "yearsSince" option.
-  return screen
-    .getAllByRole("combobox")
-    .find((el) => within(el).queryByRole("option", { name: /yearsSince/i })) as
-    | HTMLSelectElement
-    | undefined;
+  return screen.queryByRole("combobox", { name: "Transform" }) ?? undefined;
 }
 
-it("offers the numeric comparison operators (gte/lte/gt/lt)", () => {
+it("offers the numeric comparison operators (gte/lte/gt/lt)", async () => {
   renderStepBehaviour([
     {
       type: "stepConditionalOn",
@@ -775,13 +747,13 @@ it("offers the numeric comparison operators (gte/lte/gt/lt)", () => {
       value: "",
     },
   ]);
-  const values = within(operatorSelect()!)
+  const values = within(await openSelect(operatorSelect()!))
     .getAllByRole("option")
-    .map((o) => (o as HTMLOptionElement).value);
+    .map((o) => o.textContent);
   expect(values).toEqual(expect.arrayContaining(["gte", "lte", "gt", "lt"]));
 });
 
-it("shows a duration transform selector once a numeric operator is chosen", () => {
+it("shows a duration transform selector once a numeric operator is chosen", async () => {
   renderStepBehaviour([
     {
       type: "stepConditionalOn",
@@ -794,7 +766,7 @@ it("shows a duration transform selector once a numeric operator is chosen", () =
   expect(transformSelect()).toBeDefined();
 });
 
-it("hides the transform selector for non-numeric operators", () => {
+it("hides the transform selector for non-numeric operators", async () => {
   renderStepBehaviour([
     {
       type: "stepConditionalOn",
@@ -817,7 +789,7 @@ it("writes the chosen transform onto the behaviour", async () => {
       value: "16",
     },
   ]);
-  await userEvent.selectOptions(transformSelect()!, "yearsSince");
+  await chooseOption(transformSelect()!, "yearsSince");
   expect(onChange).toHaveBeenLastCalledWith([
     expect.objectContaining({ transform: "yearsSince" }),
   ]);
@@ -834,7 +806,7 @@ it("clears a stale transform when the operator switches to a non-numeric one (#1
       transform: "yearsSince",
     },
   ]);
-  await userEvent.selectOptions(operatorSelect()!, "equal");
+  await chooseOption(operatorSelect()!, "equal");
   const next = onChange.mock.calls.at(-1)![0][0] as Record<string, unknown>;
   expect(next.operator).toBe("equal");
   expect(next.transform).toBeUndefined();
@@ -851,7 +823,7 @@ it("keeps the transform when switching between numeric operators (#1020)", async
       transform: "yearsSince",
     },
   ]);
-  await userEvent.selectOptions(operatorSelect()!, "lte");
+  await chooseOption(operatorSelect()!, "lte");
   const next = onChange.mock.calls.at(-1)![0][0] as Record<string, unknown>;
   expect(next.operator).toBe("lte");
   expect(next.transform).toBe("yearsSince");
@@ -873,12 +845,12 @@ function inBehaviour(value: string[]): Behaviour {
   };
 }
 
-it("displays an array `in` value as a comma-separated string", () => {
+it("displays an array `in` value as a comma-separated string", async () => {
   renderStepBehaviour([inBehaviour(["a", "b"])]);
   expect(screen.getByRole("textbox")).toHaveValue("a, b");
 });
 
-it("commits a string array on blur for comma-separated values under `in`", () => {
+it("commits a string array on blur for comma-separated values under `in`", async () => {
   const onChange = renderStepBehaviour([inBehaviour([])]);
   const input = screen.getByRole("textbox");
   fireEvent.change(input, { target: { value: "a, b" } });
@@ -888,7 +860,7 @@ it("commits a string array on blur for comma-separated values under `in`", () =>
   ]);
 });
 
-it("commits a single typed value as a one-element array on blur under `in`", () => {
+it("commits a single typed value as a one-element array on blur under `in`", async () => {
   const onChange = renderStepBehaviour([inBehaviour([])]);
   const input = screen.getByRole("textbox");
   fireEvent.change(input, { target: { value: "other" } });
@@ -898,7 +870,7 @@ it("commits a single typed value as a one-element array on blur under `in`", () 
   ]);
 });
 
-it("trims entries and drops empties when committing the `in` value", () => {
+it("trims entries and drops empties when committing the `in` value", async () => {
   const onChange = renderStepBehaviour([inBehaviour([])]);
   const input = screen.getByRole("textbox");
   fireEvent.change(input, { target: { value: "a, , b ," } });
@@ -908,7 +880,7 @@ it("trims entries and drops empties when committing the `in` value", () => {
   ]);
 });
 
-it("commits an empty array when the `in` value input is blanked", () => {
+it("commits an empty array when the `in` value input is blanked", async () => {
   const onChange = renderStepBehaviour([inBehaviour(["a"])]);
   const input = screen.getByRole("textbox");
   fireEvent.change(input, { target: { value: "" } });
@@ -918,12 +890,12 @@ it("commits an empty array when the `in` value input is blanked", () => {
   ]);
 });
 
-it("shows the comma hint while `in` is selected", () => {
+it("shows the comma hint while `in` is selected", async () => {
   renderStepBehaviour([inBehaviour([])]);
   expect(screen.getByText(IN_HINT)).toBeInTheDocument();
 });
 
-it("does not show the comma hint for a non-`in` operator", () => {
+it("does not show the comma hint for a non-`in` operator", async () => {
   renderStepBehaviour([
     {
       type: "stepConditionalOn",
@@ -946,7 +918,7 @@ it("wraps an existing scalar value into an array when switching to `in`", async 
       value: "other",
     },
   ]);
-  await userEvent.selectOptions(operatorSelect()!, "in");
+  await chooseOption(operatorSelect()!, "in");
   const next = onChange.mock.calls.at(-1)![0][0] as Record<string, unknown>;
   expect(next.operator).toBe("in");
   expect(next.value).toEqual(["other"]);
@@ -962,14 +934,14 @@ it("wraps an empty scalar value into an empty array when switching to `in`", asy
       value: "",
     },
   ]);
-  await userEvent.selectOptions(operatorSelect()!, "in");
+  await chooseOption(operatorSelect()!, "in");
   const next = onChange.mock.calls.at(-1)![0][0] as Record<string, unknown>;
   expect(next.value).toEqual([]);
 });
 
 it("joins an array value back to a comma string when switching `in` → a scalar operator", async () => {
   const onChange = renderStepBehaviour([inBehaviour(["a", "b"])]);
-  await userEvent.selectOptions(operatorSelect()!, "equal");
+  await chooseOption(operatorSelect()!, "equal");
   const next = onChange.mock.calls.at(-1)![0][0] as Record<string, unknown>;
   expect(next.operator).toBe("equal");
   expect(next.value).toBe("a, b");
@@ -985,7 +957,7 @@ it("leaves a boolean target's value untouched when switching to `in`", async () 
       value: true,
     },
   ]);
-  await userEvent.selectOptions(operatorSelect()!, "in");
+  await chooseOption(operatorSelect()!, "in");
   const next = onChange.mock.calls.at(-1)![0][0] as Record<string, unknown>;
   expect(next.operator).toBe("in");
   expect(next.value).toBe(true);
@@ -1020,7 +992,9 @@ function ControlledInEditor({
 
 it("keeps a trailing comma visible so a second value can be typed (#1738)", async () => {
   const onChange = vi.fn();
-  render(<ControlledInEditor initial={[inBehaviour([])]} onChange={onChange} />);
+  render(
+    <ControlledInEditor initial={[inBehaviour([])]} onChange={onChange} />,
+  );
   const input = screen.getByRole("textbox");
   await userEvent.type(input, "abc, def");
   // The raw text survives keystroke-by-keystroke (no comma stripping)…
@@ -1070,18 +1044,15 @@ function renderFieldArrayEditor(
 
 it("adding Answer more than once initialises { min: 1, max: 4 } with no addAnotherLabel", async () => {
   const onChange = renderFieldArrayEditor([]);
-  await userEvent.selectOptions(addBehaviourSelect(), "fieldArray");
+  await chooseOption(addBehaviourSelect(), "Answer more than once");
   const added = onChange.mock.lastCall?.[0][0] as Record<string, unknown>;
   expect(added).toMatchObject({ type: "fieldArray", min: 1, max: 4 });
   expect("addAnotherLabel" in added).toBe(false);
 });
 
-it("the Start with input has min='1' and changing to 0 stores 1", () => {
+it("the Start with input has min='1' and changing to 0 stores 1", async () => {
   const onChange = vi.fn();
-  renderFieldArrayEditor(
-    [{ type: "fieldArray", min: 1, max: 4 }],
-    onChange,
-  );
+  renderFieldArrayEditor([{ type: "fieldArray", min: 1, max: 4 }], onChange);
   const minInput = screen
     .getAllByRole("spinbutton")
     .find((el) =>
@@ -1095,12 +1066,9 @@ it("the Start with input has min='1' and changing to 0 stores 1", () => {
   expect((lastCall[0] as Record<string, unknown>)["min"]).toBe(1);
 });
 
-it("with min: 3, lowering Allow up to to 2 stores 3 (clamped to Start with)", () => {
+it("with min: 3, lowering Allow up to to 2 stores 3 (clamped to Start with)", async () => {
   const onChange = vi.fn();
-  renderFieldArrayEditor(
-    [{ type: "fieldArray", min: 3, max: 5 }],
-    onChange,
-  );
+  renderFieldArrayEditor([{ type: "fieldArray", min: 3, max: 5 }], onChange);
   const maxInput = screen
     .getAllByRole("spinbutton")
     .find((el) =>
@@ -1113,12 +1081,9 @@ it("with min: 3, lowering Allow up to to 2 stores 3 (clamped to Start with)", ()
   expect((lastCall[0] as Record<string, unknown>)["max"]).toBe(3);
 });
 
-it("raising Start with above Allow up to raises both", () => {
+it("raising Start with above Allow up to raises both", async () => {
   const onChange = vi.fn();
-  renderFieldArrayEditor(
-    [{ type: "fieldArray", min: 2, max: 4 }],
-    onChange,
-  );
+  renderFieldArrayEditor([{ type: "fieldArray", min: 2, max: 4 }], onChange);
   const minInput = screen
     .getAllByRole("spinbutton")
     .find((el) =>
@@ -1132,22 +1097,23 @@ it("raising Start with above Allow up to raises both", () => {
   expect((lastCall[0] as Record<string, unknown>)["max"]).toBe(6);
 });
 
-it("renders a text input for the Add another link text with the runtime default as placeholder", () => {
-  renderFieldArrayEditor([
-    { type: "fieldArray", min: 1, max: 4 },
-  ]);
+it("renders a text input for the Add another link text with the runtime default as placeholder", async () => {
+  renderFieldArrayEditor([{ type: "fieldArray", min: 1, max: 4 }]);
   expect(screen.getByPlaceholderText("Add Another")).toBeInTheDocument();
 });
 
-it("disables Answer more than once for a select field, with a reason and a hint", () => {
+it("disables Answer more than once for a select field, with a reason and a hint", async () => {
   renderFieldArrayEditor([], vi.fn(), {
     label: "Region",
     htmlType: "select",
   });
-  const option = within(addBehaviourSelect()).getByRole("option", {
-    name: /Answer more than once — needs a text-like field/,
-  });
-  expect(option).toBeDisabled();
+  const option = within(await openSelect(addBehaviourSelect())).getByRole(
+    "option",
+    {
+      name: /Answer more than once — needs a text-like field/,
+    },
+  );
+  expect(option).toHaveAttribute("aria-disabled", "true");
   expect(
     screen.getByText(
       "Only text, number, phone, email, time and long-answer fields can be answered more than once.",
@@ -1155,28 +1121,29 @@ it("disables Answer more than once for a select field, with a reason and a hint"
   ).toBeInTheDocument();
 });
 
-it("offers Answer more than once enabled (no hint) for a text field", () => {
+it("offers Answer more than once enabled (no hint) for a text field", async () => {
   renderFieldArrayEditor([]);
-  const option = within(addBehaviourSelect()).getByRole("option", {
-    name: "Answer more than once",
-  });
+  const option = within(await openSelect(addBehaviourSelect())).getByRole(
+    "option",
+    {
+      name: "Answer more than once",
+    },
+  );
   expect(option).not.toBeDisabled();
   expect(
     screen.queryByText(/can be answered more than once/),
   ).not.toBeInTheDocument();
 });
 
-it("miniature shows the field label, one box per Start with, and the default link text", () => {
-  renderFieldArrayEditor([
-    { type: "fieldArray", min: 2, max: 4 },
-  ]);
+it("miniature shows the field label, one box per Start with, and the default link text", async () => {
+  renderFieldArrayEditor([{ type: "fieldArray", min: 2, max: 4 }]);
   expect(screen.getByText("The applicant sees")).toBeInTheDocument();
   expect(screen.getByText("Middle name")).toBeInTheDocument();
   expect(screen.getAllByTestId("fa-miniature-box")).toHaveLength(2);
   expect(screen.getByText("+ Add Another")).toBeInTheDocument();
 });
 
-it("miniature link line uses the typed addAnotherLabel", () => {
+it("miniature link line uses the typed addAnotherLabel", async () => {
   renderFieldArrayEditor([
     {
       type: "fieldArray",
@@ -1188,21 +1155,17 @@ it("miniature link line uses the typed addAnotherLabel", () => {
   expect(screen.getByText("+ Add another middle name")).toBeInTheDocument();
 });
 
-it("miniature hides the link line when min equals max", () => {
-  renderFieldArrayEditor([
-    { type: "fieldArray", min: 3, max: 3 },
-  ]);
+it("miniature hides the link line when min equals max", async () => {
+  renderFieldArrayEditor([{ type: "fieldArray", min: 3, max: 3 }]);
   expect(screen.getAllByTestId("fa-miniature-box")).toHaveLength(3);
   expect(screen.queryByText("+ Add Another")).not.toBeInTheDocument();
 });
 
-it("renders no miniature without currentField", () => {
+it("renders no miniature without currentField", async () => {
   render(
     <BehavioursEditor
       scope="field"
-      behaviours={[
-        { type: "fieldArray", min: 1, max: 4 },
-      ]}
+      behaviours={[{ type: "fieldArray", min: 1, max: 4 }]}
       fieldRefs={FIELD_REFS}
       stepRefs={STEP_REFS}
       onChange={vi.fn()}
@@ -1212,10 +1175,8 @@ it("renders no miniature without currentField", () => {
   expect(screen.queryByText("The applicant sees")).not.toBeInTheDocument();
 });
 
-it("miniature caps at 5 boxes and collapses the rest to an '…and N more' line", () => {
-  renderFieldArrayEditor([
-    { type: "fieldArray", min: 8, max: 10 },
-  ]);
+it("miniature caps at 5 boxes and collapses the rest to an '…and N more' line", async () => {
+  renderFieldArrayEditor([{ type: "fieldArray", min: 8, max: 10 }]);
   expect(screen.getAllByTestId("fa-miniature-box")).toHaveLength(5);
   expect(screen.getByText("…and 3 more")).toBeInTheDocument();
 });

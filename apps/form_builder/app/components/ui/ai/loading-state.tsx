@@ -1,15 +1,13 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import s from "./components.module.css";
 
-const orbit = [0, 1, 2, 5, 8, 7, 6, 3];
+import { Loader } from "../loader";
 
 export function LoadingState({
   label = "Working",
-  variant = "Drive",
   timer = true,
 }: {
   label?: string;
-  variant?: "Drive" | "Dots" | "Orbit";
   timer?: boolean;
 }) {
   const [elapsed, setElapsed] = useState(0);
@@ -24,26 +22,7 @@ export function LoadingState({
   }, [timer]);
   return (
     <span className={s.loading}>
-      <span className={s.pixels} data-variant={variant} aria-hidden="true">
-        {Array.from({ length: 9 }, (_, index) => {
-          const delay =
-            variant === "Orbit"
-              ? orbit.indexOf(index) * 110
-              : ((index % 3) + Math.abs(Math.floor(index / 3) - 1)) * 90;
-          return (
-            <span
-              key={index}
-              style={
-                {
-                  "--delay": `${delay}ms`,
-                  "--duration": variant === "Orbit" ? "950ms" : "650ms",
-                } as CSSProperties
-              }
-              data-off={delay < 0}
-            />
-          );
-        })}
-      </span>
+      <Loader size={16} aria-hidden="true" />
       <span className={s.loadingLabel} role="status">
         {label}
       </span>

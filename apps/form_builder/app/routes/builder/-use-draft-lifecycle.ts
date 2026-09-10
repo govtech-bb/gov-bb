@@ -1,3 +1,4 @@
+import { useConfirmation } from "../../components/ui/dialog/confirmation";
 import type { Dispatch } from "react";
 import type {
   RecipeDraft,
@@ -60,6 +61,7 @@ export function useDraftLifecycle({
   setIsSubmitOpen,
   setIsPreviewOpen,
 }: UseDraftLifecycleParams) {
+  const confirm = useConfirmation();
   const handleLoad = (loadedDraft: RecipeDraft, formId: string) => {
     const loadAction = { type: "LOAD_DRAFT" as const, draft: loadedDraft };
     dispatch(loadAction);
@@ -126,12 +128,20 @@ export function useDraftLifecycle({
   // (and its version); with none (brand-new form), clear the form — same as
   // New. Confirm-gated; the toolbar already disables this when there's nothing
   // unsaved.
-  const handleDiscard = () => {
+  const handleDiscard = async () => {
     const message =
       savedDraft === null
         ? "Discard unsaved changes and clear the form?"
         : "Discard unsaved changes and revert to the last saved version?";
-    if (!window.confirm(message)) return;
+    if (
+      !(await confirm({
+        title: "Discard unsaved changes?",
+        description: message,
+        confirmLabel: "Discard changes",
+        destructive: true,
+      }))
+    )
+      return;
     if (savedDraft === null) {
       handleNew();
       return;

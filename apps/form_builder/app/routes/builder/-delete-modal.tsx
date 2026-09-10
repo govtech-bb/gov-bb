@@ -1,5 +1,6 @@
-import styles from "../../styles/builder.module.css";
-import { useEscClose } from "./-use-esc-close";
+import { Banner } from "../../components/ui/banner";
+import { Button } from "../../components/ui/button";
+import { Dialog } from "../../components/ui/dialog";
 
 interface DeleteModalProps {
   formId: string;
@@ -33,15 +34,21 @@ export function DeleteModal({
   onConfirm,
   onClose,
 }: DeleteModalProps) {
-  useEscClose(onClose);
   return (
-    <div className={styles.modal} onClick={onClose}>
-      <div className={styles.modalContent} role="dialog" aria-modal="true" aria-label={isPublished ? "Delete working copy" : "Delete Draft"} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.modalHead}>
-          <strong>{isPublished ? "Delete working copy" : "Delete Draft"}</strong>
-          <button type="button" onClick={onClose}>
+    <Dialog.Root
+      defaultOpen
+      onOpenChangeComplete={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <Dialog size="lg" showCloseButton={false} className="space-y-5">
+        <div className="flex items-center justify-between gap-4">
+          <Dialog.Title>
+            {isPublished ? "Delete working copy" : "Delete Draft"}
+          </Dialog.Title>
+          <Dialog.Close render={<Button variant="ghost" size="sm" />}>
             Close
-          </button>
+          </Dialog.Close>
         </div>
 
         {isPublished ? (
@@ -52,8 +59,11 @@ export function DeleteModal({
               builder will fall back to the recipe committed in the repository,
               so a recipe edited there becomes visible here again.
             </p>
+
             <p>
-              <strong>Any unpublished builder edits to this form are lost.</strong>{" "}
+              <strong>
+                Any unpublished builder edits to this form are lost.
+              </strong>{" "}
               The live service, its submissions, and its per-environment config
               (contact, payment processors) are not affected.
             </p>
@@ -61,35 +71,45 @@ export function DeleteModal({
         ) : (
           <p>
             Delete the draft <strong>{title || formId}</strong> (
-            <code>{formId}</code>)? This removes it from the builder. The form ID
-            stays available for reuse.
+            <code>{formId}</code>)? This removes it from the builder. The form
+            ID stays available for reuse.
           </p>
         )}
 
         {deleteError && (
-          <div className={styles.validationErrors} style={{ marginBottom: 8 }}>
-            {deleteError}
-          </div>
+          <Banner variant="error" size="sm" style={{ marginBottom: 8 }}>
+            <div className="min-w-0 flex-1">{deleteError}</div>
+          </Banner>
         )}
 
         <div style={{ display: "flex", gap: 8 }}>
-          <button
+          <Button
             type="button"
-            className={styles.btnDanger}
+            variant="destructive"
             onClick={onConfirm}
             disabled={isDeleting}
+            size="sm"
           >
             {isDeleting
               ? "Deleting…"
               : isPublished
                 ? "Delete working copy"
                 : "Delete Draft"}
-          </button>
-          <button type="button" onClick={onClose} disabled={isDeleting}>
+          </Button>
+          <Dialog.Close
+            render={
+              <Button
+                type="button"
+                disabled={isDeleting}
+                variant="secondary"
+                size="sm"
+              />
+            }
+          >
             Cancel
-          </button>
+          </Dialog.Close>
         </div>
-      </div>
-    </div>
+      </Dialog>
+    </Dialog.Root>
   );
 }

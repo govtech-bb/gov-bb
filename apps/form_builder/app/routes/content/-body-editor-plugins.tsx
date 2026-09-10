@@ -1,3 +1,5 @@
+import { Elevated } from "../../components/ui/surface";
+import { Popover } from "../../components/ui/popover";
 import { isSafeContentUrl } from "@govtech-bb/content/markdown-authoring";
 import { INSERT_HORIZONTAL_RULE_COMMAND } from "@lexical/extension";
 import { $toggleLink, $isLinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
@@ -78,7 +80,10 @@ import {
   EDITOR_TRANSFORMERS,
 } from "./-body-editor-markdown";
 import type { BodyEditorProfile } from "./-body-editor-types";
-import { Tip } from "./-sliding-tabs";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
+import { DropdownMenu } from "../../components/ui/dropdown";
 import s from "./-styles.module.css";
 
 const IMPORT_TAG = "body-editor:markdown-import";
@@ -131,6 +136,7 @@ export function MarkdownSyncPlugin({
         ignoreSelectionChange
         onChange={handleChange}
       />
+
       <MarkdownShortcutPlugin transformers={EDITOR_TRANSFORMERS} />
     </>
   );
@@ -162,20 +168,21 @@ function ToolbarButton({
   onClick: () => void;
 }) {
   return (
-    <Tip label={label}>
-      <button
-        type="button"
-        className={`${s.toolBtn} ${active ? s.toolBtnActive : ""} ${className}`}
-        aria-label={label}
-        aria-pressed={active || undefined}
-        disabled={disabled}
-        onMouseDown={(event) => event.preventDefault()}
-        onClick={onClick}
-      >
-        {icon}
-        {text && <span>{text}</span>}
-      </button>
-    </Tip>
+    <Button
+      title={label}
+      variant={active ? "secondary" : "ghost"}
+      size="sm"
+      type="button"
+      className={text ? className : `size-7 p-0 ${className}`}
+      aria-label={label}
+      aria-pressed={active || undefined}
+      disabled={disabled}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={onClick}
+    >
+      {icon}
+      {text && <span>{text}</span>}
+    </Button>
   );
 }
 
@@ -257,99 +264,32 @@ function InsertMenu({
   editor: LexicalEditor;
   profile: BodyEditorProfile;
 }) {
-  const [open, setOpen] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
   const choices = useMemo(() => landingChoices(profile), [profile]);
-
-  useEffect(() => {
-    if (!open) return;
-    wrapperRef.current
-      ?.querySelector<HTMLButtonElement>('[role="menuitem"]')
-      ?.focus();
-    const dismiss = (event: MouseEvent) => {
-      if (!wrapperRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", dismiss);
-    document.addEventListener("keydown", escape);
-    return () => {
-      document.removeEventListener("mousedown", dismiss);
-      document.removeEventListener("keydown", escape);
-    };
-  }, [open]);
-
   if (choices.length === 0) return null;
-
   return (
-    <div className={s.insertMenuWrap} ref={wrapperRef}>
-      <button
-        ref={triggerRef}
-        type="button"
-        className={`${s.toolBtn} ${s.insertMenuButton}`}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onMouseDown={(event) => event.preventDefault()}
-        onClick={() => setOpen((current) => !current)}
-      >
-        <AddSquareIcon size={15} aria-hidden="true" />
-        Insert
-      </button>
-      {open && (
-        <div
-          className={s.insertMenu}
-          role="menu"
-          aria-label="Insert component"
-          onKeyDown={(event) => {
-            const items = [
-              ...event.currentTarget.querySelectorAll<HTMLButtonElement>(
-                '[role="menuitem"]',
-              ),
-            ];
-            const currentIndex = items.indexOf(
-              document.activeElement as HTMLButtonElement,
-            );
-            let nextIndex: number | null = null;
-            if (event.key === "ArrowDown") {
-              nextIndex = (currentIndex + 1) % items.length;
-            } else if (event.key === "ArrowUp") {
-              nextIndex = (currentIndex - 1 + items.length) % items.length;
-            } else if (event.key === "Home") {
-              nextIndex = 0;
-            } else if (event.key === "End") {
-              nextIndex = items.length - 1;
-            } else if (event.key === "Escape") {
-              event.preventDefault();
-              setOpen(false);
-              triggerRef.current?.focus();
-            }
-            if (nextIndex !== null) {
-              event.preventDefault();
-              items[nextIndex]?.focus();
-            }
-          }}
-        >
-          {choices.map((choice) => (
-            <button
-              key={choice.key}
-              type="button"
-              role="menuitem"
-              className={s.insertMenuItem}
-              onClick={() => {
-                editor.update(choice.insert);
-                editor.focus();
-                setOpen(false);
-              }}
-            >
-              <strong>{choice.label}</strong>
-              <span>{choice.description}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <DropdownMenu>
+      <DropdownMenu.Trigger render={<Button variant="ghost" size="sm" />}>
+        <AddSquareIcon size={15} aria-hidden="true" /> Insert
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Content aria-label="Insert component" finalFocus={false}>
+        {choices.map((choice) => (
+          <DropdownMenu.Item
+            key={choice.key}
+            onClick={() => {
+              editor.update(choice.insert);
+              editor.focus();
+            }}
+          >
+            <div>
+              <strong className="block font-medium">{choice.label}</strong>
+              <span className="text-xs text-ui-subtle">
+                {choice.description}
+              </span>
+            </div>
+          </DropdownMenu.Item>
+        ))}
+      </DropdownMenu.Content>
+    </DropdownMenu>
   );
 }
 
@@ -379,10 +319,11 @@ function LinkEditor({
   };
 
   return (
-    <form className={s.linkEditor} onSubmit={submit}>
-      <label>
-        <span>Link address</span>
-        <input
+    <form className="grid gap-3" onSubmit={submit}>
+      <div>
+        <Input
+          label={"Link address"}
+          className="w-full"
           type="text"
           value={url}
           autoFocus
@@ -394,16 +335,19 @@ function LinkEditor({
             setError("");
           }}
         />
-      </label>
+      </div>
       {error && (
         <small id={errorId} role="alert">
           {error}
         </small>
       )}
       <div className={s.linkEditorActions}>
-        <button type="submit">Apply</button>
+        <Button type="submit" variant="primary" size="sm">
+          Apply
+        </Button>
         {initialUrl && (
-          <button
+          <Button
+            size="sm"
             type="button"
             onClick={() => {
               editor.update(() => $toggleLink(null));
@@ -412,11 +356,11 @@ function LinkEditor({
             }}
           >
             Remove link
-          </button>
+          </Button>
         )}
-        <button type="button" onClick={onClose}>
+        <Button size="sm" onClick={onClose}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -497,19 +441,22 @@ export function EditorToolbar({ profile }: { profile: BodyEditorProfile }) {
 
   return (
     <div className={s.editorTools} role="toolbar" aria-label="Formatting">
-      <select
-        className={s.toolSelect}
+      <Select<"p" | HeadingTagType>
+        size="sm"
+        className="w-32"
         value={blockFormat}
         aria-label="Text style"
-        onChange={(event) =>
-          setBlock(event.target.value as "p" | HeadingTagType)
-        }
-      >
-        <option value="p">Paragraph</option>
-        <option value="h2">Heading 2</option>
-        <option value="h3">Heading 3</option>
-        <option value="h4">Heading 4</option>
-      </select>
+        onValueChange={(value) => {
+          if (value) setBlock(value);
+        }}
+        finalFocus={() => editor.getRootElement()}
+        items={[
+          { value: "p", label: "Paragraph" },
+          { value: "h2", label: "Heading 2" },
+          { value: "h3", label: "Heading 3" },
+          { value: "h4", label: "Heading 4" },
+        ]}
+      />
       <span className={s.toolSep} aria-hidden="true" />
       <ToolbarButton
         label="Undo"
@@ -566,12 +513,29 @@ export function EditorToolbar({ profile }: { profile: BodyEditorProfile }) {
         }}
       />
       <span className={s.toolSep} aria-hidden="true" />
-      <ToolbarButton
-        label={linkUrl ? "Edit link" : "Add link"}
-        icon={<Link01Icon size={15} aria-hidden="true" />}
-        active={Boolean(linkUrl)}
-        onClick={() => setLinkEditorOpen((current) => !current)}
-      />
+      <Popover open={linkEditorOpen} onOpenChange={setLinkEditorOpen}>
+        <Popover.Trigger
+          render={
+            <Button
+              variant="ghost"
+              size="sm"
+              shape="square"
+              aria-label={linkUrl ? "Edit link" : "Add link"}
+              aria-pressed={Boolean(linkUrl)}
+              onMouseDown={(event) => event.preventDefault()}
+            />
+          }
+        >
+          <Link01Icon size={15} aria-hidden />
+        </Popover.Trigger>
+        <Popover.Content align="start" className="w-[min(360px,90vw)] p-3">
+          <LinkEditor
+            editor={editor}
+            initialUrl={linkUrl}
+            onClose={() => setLinkEditorOpen(false)}
+          />
+        </Popover.Content>
+      </Popover>
       <ToolbarButton
         label="Insert table"
         icon={<Table01Icon size={15} aria-hidden="true" />}
@@ -594,19 +558,11 @@ export function EditorToolbar({ profile }: { profile: BodyEditorProfile }) {
         <ToolbarButton
           label="Place or move Start button"
           icon={<PlayCircleIcon size={15} aria-hidden="true" />}
-          className={s.toolBtnStart}
           text="Start"
           onClick={() => editor.update(insertStartLink)}
         />
       )}
       <InsertMenu editor={editor} profile={profile} />
-      {linkEditorOpen && (
-        <LinkEditor
-          editor={editor}
-          initialUrl={linkUrl}
-          onClose={() => setLinkEditorOpen(false)}
-        />
-      )}
     </div>
   );
 }
@@ -754,24 +710,31 @@ export function SlashCommandPlugin({
       menuRenderFn={(anchorElementRef, itemProps) =>
         anchorElementRef.current && itemProps.options.length > 0
           ? createPortal(
-              <div className={s.slashMenu} role="listbox" aria-label="Blocks">
+              <Elevated
+                offset={2}
+                shadowLevel={3}
+                className="ui-popup grid max-h-80 min-w-60 overflow-y-auto rounded-lg p-1.5"
+                role="listbox"
+                aria-label="Blocks"
+              >
                 {itemProps.options.map((option, index) => (
-                  <button
+                  <Button
+                    size="sm"
                     key={option.key}
                     type="button"
                     role="option"
                     aria-selected={itemProps.selectedIndex === index}
                     ref={(element) => option.setRefElement(element)}
-                    className={s.slashMenuItem}
+                    variant="ghost"
+                    className="h-auto w-full flex-col items-start gap-1 whitespace-normal px-3 py-2 text-left aria-selected:bg-ui-tint"
                     onMouseEnter={() => itemProps.setHighlightedIndex(index)}
-                    onMouseDown={(event) => event.preventDefault()}
                     onClick={() => itemProps.selectOptionAndCleanUp(option)}
                   >
                     <strong>{option.label}</strong>
                     <span>{option.description}</span>
-                  </button>
+                  </Button>
                 ))}
-              </div>,
+              </Elevated>,
               anchorElementRef.current,
             )
           : null

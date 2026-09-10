@@ -1,3 +1,7 @@
+import { Checkbox } from "../../components/ui/checkbox";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
 import { useState } from "react";
 import type { ResolvedFieldId } from "@govtech-bb/form-builder";
 import { ValuePathPicker } from "./-value-path-picker";
@@ -41,7 +45,10 @@ const ORDERING_OPERATORS: AmountOperator[] = [
   "greaterThanOrEqual",
 ];
 
-function wantsNumber(subject: AmountSubject, operator: AmountOperator): boolean {
+function wantsNumber(
+  subject: AmountSubject,
+  operator: AmountOperator,
+): boolean {
   return subject.kind === "age" || ORDERING_OPERATORS.includes(operator);
 }
 
@@ -65,7 +72,10 @@ function toNumber(raw: string): number {
 // Keep a rule's comparison value in the type its subject/operator imply, so a
 // subject or operator change never leaves a stale string under a numeric
 // comparison (or vice versa).
-function coerceValue(value: string | number, numeric: boolean): string | number {
+function coerceValue(
+  value: string | number,
+  numeric: boolean,
+): string | number {
   if (numeric) return typeof value === "number" ? value : toNumber(value) || 0;
   return typeof value === "string" ? value : String(value);
 }
@@ -122,7 +132,7 @@ export function AmountEditor({
           ? initial.conditional
           : {
               rules: [],
-              default: initial.kind === "fixed" ? initial.amount ?? 0 : 0,
+              default: initial.kind === "fixed" ? (initial.amount ?? 0) : 0,
             },
       fixedAmount: initial.kind === "fixed" ? initial.amount : undefined,
       quantityEnabled: quantityPath != null,
@@ -168,7 +178,8 @@ export function AmountEditor({
     // value the author can see: fixed adopts the table's default; conditional
     // re-emits its (possibly bare-default) chain. buildAmount handles the rest,
     // including re-applying any quantity multiplier.
-    if (next === "fixed") update({ mode: "fixed", fixedAmount: conditional.default });
+    if (next === "fixed")
+      update({ mode: "fixed", fixedAmount: conditional.default });
     else update({ mode: "conditional" });
   };
 
@@ -180,7 +191,13 @@ export function AmountEditor({
       rules: conditional.rules.map((r, j) => {
         if (j !== i) return r;
         const next = { ...r, ...patch };
-        return { ...next, value: coerceValue(next.value, wantsNumber(next.subject, next.operator)) };
+        return {
+          ...next,
+          value: coerceValue(
+            next.value,
+            wantsNumber(next.subject, next.operator),
+          ),
+        };
       }),
     });
 
@@ -188,20 +205,24 @@ export function AmountEditor({
     <>
       <div className={styles.formGroup}>
         <label htmlFor={fid("amountType")}>Amount type</label>
-        <select
+        <Select
           id={fid("amountType")}
           value={mode}
-          onChange={(e) => switchMode(e.target.value as "fixed" | "conditional")}
-        >
-          <option value="fixed">Fixed amount</option>
-          <option value="conditional">Conditional amount</option>
-        </select>
+          onValueChange={(nextValue) => {
+            if (nextValue === null) return;
+            switchMode(nextValue as "fixed" | "conditional");
+          }}
+          items={[
+            { value: "fixed", label: "Fixed amount" },
+            { value: "conditional", label: "Conditional amount" },
+          ]}
+        />
       </div>
 
       {mode === "fixed" ? (
         <div className={styles.formGroup}>
           <label htmlFor={fid("amount")}>Amount</label>
-          <input
+          <Input
             id={fid("amount")}
             type="number"
             min={0}
@@ -215,6 +236,7 @@ export function AmountEditor({
                 conditional: { ...conditional, default: toNumber(raw) },
               });
             }}
+            className="w-full min-w-0"
           />
         </div>
       ) : (
@@ -230,11 +252,12 @@ export function AmountEditor({
             return (
               <div key={i} className={styles.formGroup}>
                 <label htmlFor={fid(`ruleSubject-${i}`)}>Compare</label>
-                <select
+                <Select
                   id={fid(`ruleSubject-${i}`)}
                   value={rule.subject.kind}
-                  onChange={(e) => {
-                    const kind = e.target.value as AmountSubject["kind"];
+                  onValueChange={(nextValue) => {
+                    if (nextValue === null) return;
+                    const kind = nextValue as AmountSubject["kind"];
                     // Switching to age drops a stale non-DOB path so the picker
                     // (now DOB-only) can't keep an invalid selection alive via
                     // its `(current)` fallback (#959).
@@ -250,10 +273,11 @@ export function AmountEditor({
                       },
                     });
                   }}
-                >
-                  <option value="field">Field value</option>
-                  <option value="age">Age of field</option>
-                </select>
+                  items={[
+                    { value: "field", label: "Field value" },
+                    { value: "age", label: "Age of field" },
+                  ]}
+                />
                 <label htmlFor={fid(`ruleField-${i}`)}>Condition field</label>
                 <ValuePathPicker
                   id={fid(`ruleField-${i}`)}
@@ -264,32 +288,35 @@ export function AmountEditor({
                   }
                 />
                 <label htmlFor={fid(`ruleOp-${i}`)}>Condition operator</label>
-                <select
+                <Select
                   id={fid(`ruleOp-${i}`)}
                   value={rule.operator}
-                  onChange={(e) =>
-                    patchRule(i, { operator: e.target.value as AmountOperator })
-                  }
-                >
-                  {(Object.keys(OPERATOR_LABELS) as AmountOperator[]).map((op) => (
-                    <option key={op} value={op}>
-                      {OPERATOR_LABELS[op]}
-                    </option>
-                  ))}
-                </select>
+                  onValueChange={(nextValue) => {
+                    if (nextValue === null) return;
+                    patchRule(i, { operator: nextValue as AmountOperator });
+                  }}
+                  items={[
+                    ...(Object.keys(OPERATOR_LABELS) as AmountOperator[]).map(
+                      (op) => ({ value: op, label: OPERATOR_LABELS[op] }),
+                    ),
+                  ]}
+                />
                 <label htmlFor={fid(`ruleValue-${i}`)}>Comparison value</label>
-                <input
+                <Input
                   id={fid(`ruleValue-${i}`)}
                   type={numeric ? "number" : "text"}
                   value={rule.value}
                   onChange={(e) =>
                     patchRule(i, {
-                      value: numeric ? toNumber(e.target.value) : e.target.value,
+                      value: numeric
+                        ? toNumber(e.target.value)
+                        : e.target.value,
                     })
                   }
+                  className="w-full min-w-0"
                 />
                 <label htmlFor={fid(`ruleAmount-${i}`)}>Rule amount</label>
-                <input
+                <Input
                   id={fid(`ruleAmount-${i}`)}
                   type="number"
                   min={0}
@@ -297,25 +324,28 @@ export function AmountEditor({
                   onChange={(e) =>
                     patchRule(i, { amount: toNumber(e.target.value) })
                   }
+                  className="w-full min-w-0"
                 />
-                <button
+                <Button
                   type="button"
-                  className={styles.btnErase}
+                  variant="destructive"
                   onClick={() =>
                     emit({
                       ...conditional,
                       rules: conditional.rules.filter((_, j) => j !== i),
                     })
                   }
+                  size="sm"
                 >
                   Remove rule
-                </button>
+                </Button>
               </div>
             );
           })}
-          <button
+
+          <Button
             type="button"
-            className={styles.btnPrimary}
+            variant="primary"
             onClick={() =>
               emit({
                 ...conditional,
@@ -330,12 +360,14 @@ export function AmountEditor({
                 ],
               })
             }
+            size="sm"
           >
             Add rule
-          </button>
+          </Button>
+
           <div className={styles.formGroup}>
             <label htmlFor={fid("otherwise")}>Otherwise charge</label>
-            <input
+            <Input
               id={fid("otherwise")}
               type="number"
               min={0}
@@ -343,6 +375,7 @@ export function AmountEditor({
               onChange={(e) =>
                 emit({ ...conditional, default: toNumber(e.target.value) })
               }
+              className="w-full min-w-0"
             />
           </div>
         </>
@@ -350,17 +383,18 @@ export function AmountEditor({
 
       {/* Quantity multiplier — applies to both modes. When on and a field is
           chosen, the amount above is multiplied by that field (#961). */}
+
       <div className={styles.formGroup}>
-        <label htmlFor={fid("quantityEnabled")}>
-          <input
-            id={fid("quantityEnabled")}
-            type="checkbox"
-            checked={state.quantityEnabled}
-            onChange={(e) => update({ quantityEnabled: e.target.checked })}
-          />{" "}
-          Multiply by a quantity field
-        </label>
+        <Checkbox
+          id={fid("quantityEnabled")}
+          checked={state.quantityEnabled}
+          onCheckedChange={(nextChecked) => {
+            update({ quantityEnabled: nextChecked });
+          }}
+          label={<> Multiply by a quantity field</>}
+        />
       </div>
+
       {state.quantityEnabled && (
         <div className={styles.formGroup}>
           <label htmlFor={fid("quantityField")}>Quantity field</label>

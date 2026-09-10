@@ -1,22 +1,30 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { usePersistedState } from "./-use-persisted";
 
 export type Theme = "light" | "dark";
+const useThemeEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect;
 
-/**
- * Light/dark theme for the content CMS, persisted across sessions. The choice
- * lands as `data-theme` on <html>, which the stylesheet's token overrides key
- * on — only this app's `--el-*`/`--txt*` tokens react to it, so the builder
- * is unaffected.
- */
+/** Shared appearance for GovTech UI and the existing builder screens. */
 export function useTheme(): { theme: Theme; toggleTheme: () => void } {
   const [theme, setTheme] = usePersistedState<Theme>(
     "content-cms:theme",
     "light",
   );
 
-  useEffect(() => {
+  useThemeEffect(() => {
+    // A theme change should not trigger every control's hover transition.
+    const reset = document.createElement("style");
+    reset.textContent = "*,*::before,*::after{transition:none!important}";
+    document.head.append(reset);
     document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.mode = theme;
+    document.documentElement.getBoundingClientRect();
+    const frame = requestAnimationFrame(() => reset.remove());
+    return () => {
+      cancelAnimationFrame(frame);
+      reset.remove();
+    };
   }, [theme]);
 
   return {
