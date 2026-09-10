@@ -1,5 +1,5 @@
-import { Badge } from "../../component/ui/badge";
-import { Button } from "../../component/ui/button";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type {

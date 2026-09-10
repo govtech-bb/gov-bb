@@ -1,4 +1,4 @@
-import { useConfirmation } from "../../component/ui/dialog/confirmation";
+import { useConfirmation } from "../../components/ui/dialog/confirmation";
 import { useState, type ReactNode } from "react";
 import {
   CheckCircleIcon,
@@ -9,9 +9,9 @@ import {
   EyeIcon,
 } from "@phosphor-icons/react";
 import type { RecipeVisibility } from "@govtech-bb/form-types";
-import { Button } from "../../component/ui/button";
-import { Input } from "../../component/ui/input";
-import { Select } from "../../component/ui/select";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
 import { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "./-id-validation";
 
 interface ToolbarProps {

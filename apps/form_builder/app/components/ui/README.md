@@ -5,9 +5,9 @@ Reusable components for GovTech's form builder and content tools. Base UI suppli
 Import `ui.css` once at the application root; it also loads Inter from `@fontsource-variable/inter`. Use component imports in application code:
 
 ```tsx
-import { Button } from "../component/ui/button";
-import { Input } from "../component/ui/input";
-import { Select } from "../component/ui/select";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Select } from "../components/ui/select";
 
 <Input
   name="title"
@@ -49,8 +49,8 @@ Use `className` and native element props for local adjustments. Give icon button
 See [Colors](./COLORS.md) for the token reference and theme overrides. Review live swatches, eight surface levels, nested overlays, and all scrollbar orientations at `/dev/ui`.
 
 ```tsx
-import { Elevated, SurfaceProvider, useSurface, surfaceClasses } from "../component/ui/surface";
-import { ScrollArea } from "../component/ui/scroll-area";
+import { Elevated, SurfaceProvider, useSurface, surfaceClasses } from "../components/ui/surface";
+import { ScrollArea } from "../components/ui/scroll-area";
 
 <SurfaceProvider value={1}>
   <Elevated offset={2} shadowLevel={3} className="rounded-xl p-4">

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import s from "./components.module.css";
 
-import { Loader } from "../../../component/ui/loader";
+import { Loader } from "../loader";
 
 export function LoadingState({
   label = "Working",

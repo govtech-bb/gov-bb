@@ -1,7 +1,7 @@
-import { Button } from "../../component/ui/button";
-import { Input } from "../../component/ui/input";
-import { Select } from "../../component/ui/select";
-import { Checkbox } from "../../component/ui/checkbox";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
+import { Checkbox } from "../../components/ui/checkbox";
 import { useState, useMemo } from "react";
 import {
   getRegistryItem,
@@ -32,7 +32,7 @@ import { BehavioursEditor } from "./-behaviours-editor";
 import { OptionsEditor } from "./-options-editor";
 import { KEBAB_ID_PATTERN, kebabize } from "./-id-validation";
 import styles from "../../styles/builder.module.css";
-import { Dialog } from "../../component/ui/dialog";
+import { Dialog } from "../../components/ui/dialog";
 
 const FIELD_ID_ERROR =
   "Use lowercase letters, digits, and hyphens only. Must start with a letter (e.g. applicant-first-name).";

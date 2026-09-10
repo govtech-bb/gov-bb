@@ -1,7 +1,7 @@
-import { Badge } from "../../component/ui/badge";
-import { Select } from "../../component/ui/select";
-import { Input } from "../../component/ui/input";
-import { Button } from "../../component/ui/button";
+import { Badge } from "../../components/ui/badge";
+import { Select } from "../../components/ui/select";
+import { Input } from "../../components/ui/input";
+import { Button } from "../../components/ui/button";
 import { VALIDATION_RULE_DESCRIPTORS } from "@govtech-bb/form-builder";
 import type {
   HtmlTypes,

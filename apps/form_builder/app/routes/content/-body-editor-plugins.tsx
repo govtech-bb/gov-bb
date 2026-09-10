@@ -1,5 +1,5 @@
-import { Elevated } from "../../component/ui/surface";
-import { Popover } from "../../component/ui/popover";
+import { Elevated } from "../../components/ui/surface";
+import { Popover } from "../../components/ui/popover";
 import { isSafeContentUrl } from "@govtech-bb/content/markdown-authoring";
 import { INSERT_HORIZONTAL_RULE_COMMAND } from "@lexical/extension";
 import { $toggleLink, $isLinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
@@ -80,10 +80,10 @@ import {
   EDITOR_TRANSFORMERS,
 } from "./-body-editor-markdown";
 import type { BodyEditorProfile } from "./-body-editor-types";
-import { Button } from "../../component/ui/button";
-import { Input } from "../../component/ui/input";
-import { Select } from "../../component/ui/select";
-import { DropdownMenu } from "../../component/ui/dropdown";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
+import { DropdownMenu } from "../../components/ui/dropdown";
 import s from "./-styles.module.css";
 
 const IMPORT_TAG = "body-editor:markdown-import";

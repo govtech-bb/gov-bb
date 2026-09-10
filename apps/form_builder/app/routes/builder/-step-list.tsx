@@ -1,4 +1,4 @@
-import { useConfirmation } from "../../component/ui/dialog/confirmation";
+import { useConfirmation } from "../../components/ui/dialog/confirmation";
 import type { RecipeStepDraft } from "@govtech-bb/form-builder";
 import {
   ArrowDownIcon,
@@ -10,10 +10,10 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import { Button } from "../../component/ui/button";
-import { Sidebar, useSidebar } from "../../component/ui/sidebar";
-import { ScrollArea } from "../../component/ui/scroll-area";
-import { DropdownMenu } from "../../component/ui/dropdown";
+import { Button } from "../../components/ui/button";
+import { Sidebar, useSidebar } from "../../components/ui/sidebar";
+import { ScrollArea } from "../../components/ui/scroll-area";
+import { DropdownMenu } from "../../components/ui/dropdown";
 import { isRequiredStep, REQUIRED_STEP_IDS } from "./-recipe-reducer";
 
 interface StepListProps {

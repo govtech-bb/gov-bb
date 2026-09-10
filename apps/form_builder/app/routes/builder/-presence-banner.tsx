@@ -1,4 +1,4 @@
-import { Banner } from "../../component/ui/banner";
+import { Banner } from "../../components/ui/banner";
 import type { PresenceHolder } from "../../server/presence";
 
 // Humanise the holder's last activity into a short "active … ago" phrase. The

@@ -1,4 +1,4 @@
-import { Loader } from "../../component/ui/loader";
+import { Loader } from "../../components/ui/loader";
 import { useEffect, useRef, useState } from "react";
 import s from "./-styles.module.css";
 

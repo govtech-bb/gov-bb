@@ -1,7 +1,7 @@
-import { Loader } from "../../../component/ui/loader";
-import { Badge } from "../../../component/ui/badge";
-import { Button } from "../../../component/ui/button";
-import { Collapsible } from "../../../component/ui/collapsible";
+import { Loader } from "../loader";
+import { Badge } from "../badge";
+import { Button } from "../button";
+import { Collapsible } from "../collapsible";
 import { redactAiData } from "@govtech-bb/form-builder";
 import {
   ArrowDown01Icon,

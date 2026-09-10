@@ -8,7 +8,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ConfirmationProvider } from "../component/ui/dialog";
+import { ConfirmationProvider } from "../components/ui/dialog";
 export * from "@testing-library/react";
 export const render = (ui: ReactNode, options?: RenderOptions) =>
   baseRender(ui, { wrapper: ConfirmationProvider, ...options });

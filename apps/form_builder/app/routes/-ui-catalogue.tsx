@@ -67,11 +67,11 @@ import {
   TooltipProvider,
   useToastManager,
   type DateRange,
-} from "../component/ui";
+} from "../components/ui";
 import {
   CodeHighlighted,
   ShikiProvider,
-} from "../component/ui/code-highlighted";
+} from "../components/ui/code-highlighted";
 export const categories = [
   "Form pattern",
   "Colors",

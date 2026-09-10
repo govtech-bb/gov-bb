@@ -1,11 +1,11 @@
-import { Banner } from "../../component/ui/banner";
-import { InputArea } from "../../component/ui/input/input-area";
-import { Input } from "../../component/ui/input";
-import { Button } from "../../component/ui/button";
+import { Banner } from "../../components/ui/banner";
+import { InputArea } from "../../components/ui/input/input-area";
+import { Input } from "../../components/ui/input";
+import { Button } from "../../components/ui/button";
 import { useState } from "react";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
 import styles from "../../styles/builder.module.css";
-import { Dialog } from "../../component/ui/dialog";
+import { Dialog } from "../../components/ui/dialog";
 
 interface PublishModalProps {
   draft: RecipeDraft;

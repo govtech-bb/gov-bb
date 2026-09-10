@@ -1,4 +1,4 @@
-import { useConfirmation } from "../../component/ui/dialog/confirmation";
+import { useConfirmation } from "../../components/ui/dialog/confirmation";
 import type { Dispatch } from "react";
 import type {
   RecipeDraft,

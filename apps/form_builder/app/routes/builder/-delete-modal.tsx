@@ -1,6 +1,6 @@
-import { Banner } from "../../component/ui/banner";
-import { Button } from "../../component/ui/button";
-import { Dialog } from "../../component/ui/dialog";
+import { Banner } from "../../components/ui/banner";
+import { Button } from "../../components/ui/button";
+import { Dialog } from "../../components/ui/dialog";
 
 interface DeleteModalProps {
   formId: string;

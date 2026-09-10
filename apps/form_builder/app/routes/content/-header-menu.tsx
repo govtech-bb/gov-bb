@@ -1,6 +1,6 @@
 import { MoreHorizontalIcon } from "hugeicons-react";
-import { Button } from "../../component/ui/button";
-import { DropdownMenu } from "../../component/ui/dropdown";
+import { Button } from "../../components/ui/button";
+import { DropdownMenu } from "../../components/ui/dropdown";
 
 export interface HeaderMenuItem {
   label: string;

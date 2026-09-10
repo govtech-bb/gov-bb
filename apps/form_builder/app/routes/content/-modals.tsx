@@ -1,8 +1,8 @@
-import { InputArea } from "../../component/ui/input/input-area";
-import { Button } from "../../component/ui/button";
+import { InputArea } from "../../components/ui/input/input-area";
+import { Button } from "../../components/ui/button";
 import { useState } from "react";
-import { Dialog } from "../../component/ui/dialog";
-import { Banner } from "../../component/ui/banner";
+import { Dialog } from "../../components/ui/dialog";
+import { Banner } from "../../components/ui/banner";
 import { Delete02Icon, Rocket01Icon } from "hugeicons-react";
 import { CONTENT_ROOT, VISIBILITY_LEVELS } from "./-lib";
 import type { OpenContentPR } from "./-server";

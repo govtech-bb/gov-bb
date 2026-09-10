@@ -1,5 +1,5 @@
-import { Collapsible } from "../../../component/ui/collapsible";
-import { Button } from "../../../component/ui/button";
+import { Collapsible } from "../collapsible";
+import { Button } from "../button";
 import { useState, type ReactNode } from "react";
 import { ArrowDown01Icon, AiMagicIcon } from "hugeicons-react";
 import { LoadingState } from "./loading-state";

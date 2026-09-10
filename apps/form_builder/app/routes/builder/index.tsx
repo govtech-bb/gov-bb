@@ -1,4 +1,4 @@
-import { useConfirmation } from "../../component/ui/dialog/confirmation";
+import { useConfirmation } from "../../components/ui/dialog/confirmation";
 import "../../styles/builder.global.css";
 import { createFileRoute } from "@tanstack/react-router";
 import { useReducer, useState, useMemo, useEffect } from "react";
@@ -20,8 +20,8 @@ import { getRecipeVisibility } from "@govtech-bb/form-types";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
 
 import { MoonIcon, SunIcon, SparkleIcon } from "@phosphor-icons/react";
-import { Button } from "../../component/ui/button";
-import { Sidebar } from "../../component/ui/sidebar";
+import { Button } from "../../components/ui/button";
+import { Sidebar } from "../../components/ui/sidebar";
 
 import { SectionSwitch } from "../../components/section-switch";
 import { useTheme } from "../content/-use-theme";

@@ -280,38 +280,19 @@ it("shows a read-only ref with a no-swap note for a singleton type", async () =>
   ).not.toBeInTheDocument();
 });
 
-it("renders no Field type picker for a block field", async () => {
-  const field: RecipeFieldDraft = {
+it("renders no Field type picker for a block field", () => {
+  // One real child exercises block rendering without the nationality options list.
+  renderPanel({
     id: "b1",
     kind: "block",
-    ref: "blocks/personal-information",
+    ref: "blocks/additional-information",
     overrides: {},
-  };
-  render(
-    <FieldEditPanel
-      field={field}
-      catalog={catalog}
-      draft={{
-        formId: "f",
-        title: "t",
-        steps: [
-          {
-            stepId: "step-1",
-            title: "Step 1",
-            fields: [field],
-            behaviours: [],
-          },
-        ],
-      }}
-      stepId="step-1"
-      dispatch={vi.fn()}
-      onClose={vi.fn()}
-    />,
-  );
+  });
+  expect(screen.getByLabelText("Field ID Override")).toBeInTheDocument();
   expect(
     screen.queryByRole("combobox", { name: /field type/i }),
   ).not.toBeInTheDocument();
-}, 15000);
+});
 
 it("dispatches CHANGE_FIELD_REF migrating compatible overrides on save", async () => {
   const dispatch = renderPanel(

@@ -1,5 +1,5 @@
-import { Tooltip } from "../../component/ui/tooltip";
-import { Tabs } from "../../component/ui/tabs";
+import { Tooltip } from "../../components/ui/tooltip";
+import { Tabs } from "../../components/ui/tabs";
 
 interface SlidingTabsProps<K extends string> {
   options: ReadonlyArray<{

@@ -1,6 +1,6 @@
-import { InputArea } from "../../component/ui/input/input-area";
-import { Input } from "../../component/ui/input";
-import { Select } from "../../component/ui/select";
+import { InputArea } from "../../components/ui/input/input-area";
+import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
 import type { AssistantRequest } from "../../components/ui/ai/prompt-bar";
 import {
   LANDING_CATEGORIES,

@@ -1,6 +1,6 @@
-import { Button } from "../../component/ui/button";
-import { Checkbox } from "../../component/ui/checkbox";
-import { Input } from "../../component/ui/input";
+import { Button } from "../../components/ui/button";
+import { Checkbox } from "../../components/ui/checkbox";
+import { Input } from "../../components/ui/input";
 import type { Option } from "@govtech-bb/form-types";
 import styles from "../../styles/builder.module.css";
 

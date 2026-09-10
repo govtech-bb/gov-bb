@@ -1,4 +1,4 @@
-import { useConfirmation } from "../../component/ui/dialog/confirmation";
+import { useConfirmation } from "../../components/ui/dialog/confirmation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadLandingContentPage } from "./-server";
 import {

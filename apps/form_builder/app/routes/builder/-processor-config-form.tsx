@@ -1,5 +1,5 @@
-import { Select } from "../../component/ui/select";
-import { Input } from "../../component/ui/input";
+import { Select } from "../../components/ui/select";
+import { Input } from "../../components/ui/input";
 import type {
   RecipeProcessorDraft,
   ResolvedFieldId,

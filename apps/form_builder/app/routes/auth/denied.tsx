@@ -1,5 +1,5 @@
-import { Elevated } from "../../component/ui/surface";
-import { Button } from "../../component/ui/button";
+import { Elevated } from "../../components/ui/surface";
+import { Button } from "../../components/ui/button";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { logoutSession } from "../../server/auth";

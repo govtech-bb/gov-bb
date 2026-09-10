@@ -1,9 +1,9 @@
-import { ScrollArea } from "../../component/ui/scroll-area";
-import { Elevated } from "../../component/ui/surface";
-import { Banner } from "../../component/ui/banner";
-import { Select } from "../../component/ui/select";
-import { Button } from "../../component/ui/button";
-import { Input } from "../../component/ui/input";
+import { ScrollArea } from "../../components/ui/scroll-area";
+import { Elevated } from "../../components/ui/surface";
+import { Banner } from "../../components/ui/banner";
+import { Select } from "../../components/ui/select";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
 import { useState } from "react";
 import type { Dispatch } from "react";
 import type { RecipeDraft } from "@govtech-bb/form-builder";

@@ -1,7 +1,7 @@
-import { Collapsible } from "../../../component/ui/collapsible";
-import { Banner } from "../../../component/ui/banner";
-import { Elevated } from "../../../component/ui/surface";
-import { Button } from "../../../component/ui/button";
+import { Collapsible } from "../collapsible";
+import { Banner } from "../banner";
+import { Elevated } from "../surface";
+import { Button } from "../button";
 import { useEffect, useState } from "react";
 import { redactAiData } from "@govtech-bb/form-builder";
 import { CodeBlock } from "./code-block";

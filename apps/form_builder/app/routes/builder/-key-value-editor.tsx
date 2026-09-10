@@ -1,5 +1,5 @@
-import { Button } from "../../component/ui/button";
-import { Input } from "../../component/ui/input";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
 import { useState } from "react";
 import styles from "../../styles/builder.module.css";
 

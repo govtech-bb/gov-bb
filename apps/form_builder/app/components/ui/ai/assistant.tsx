@@ -1,9 +1,9 @@
-import { ScrollArea } from "../../../component/ui/scroll-area";
-import { Collapsible } from "../../../component/ui/collapsible";
-import { Banner } from "../../../component/ui/banner";
-import { Dialog } from "../../../component/ui/dialog";
-import { Select } from "../../../component/ui/select";
-import { Button } from "../../../component/ui/button";
+import { ScrollArea } from "../scroll-area";
+import { Collapsible } from "../collapsible";
+import { Banner } from "../banner";
+import { Dialog } from "../dialog";
+import { Select } from "../select";
+import { Button } from "../button";
 import {
   useCallback,
   useEffect,

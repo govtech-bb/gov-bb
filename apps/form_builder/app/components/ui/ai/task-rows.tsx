@@ -1,8 +1,8 @@
-import { Loader } from "../../../component/ui/loader";
-import { Elevated } from "../../../component/ui/surface";
-import { Badge } from "../../../component/ui/badge";
-import { Collapsible } from "../../../component/ui/collapsible";
-import { Button } from "../../../component/ui/button";
+import { Loader } from "../loader";
+import { Elevated } from "../surface";
+import { Badge } from "../badge";
+import { Collapsible } from "../collapsible";
+import { Button } from "../button";
 import {
   ArrowDown01Icon,
   CheckmarkCircle02Icon,

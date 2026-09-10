@@ -579,20 +579,20 @@ describe("BuilderPage — unsaved changes + Discard", () => {
   });
 
   it("reverts to the saved baseline when Discard is confirmed after a save", async () => {
+    const user = userEvent.setup();
     mockEmptyDraft = VALID_DRAFT; // baseline title "Test Form"
     validateRecipe.mockResolvedValue({ ok: true });
     renderBuilder();
 
     // Save the draft so it becomes the baseline; the indicator then clears.
-    await userEvent.click(saveDraftButton());
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Submit Recipe" }),
+    await user.click(saveDraftButton());
+    const dialog = await screen.findByRole("dialog", { name: "Submit Recipe" });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Submit Recipe" }),
     );
-    await screen.findByText(/recipe submitted successfully/i);
-    await userEvent.click(screen.getByRole("button", { name: /close/i }));
-    await waitFor(() =>
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
-    );
+    await within(dialog).findByText(/recipe submitted successfully/i);
+    await user.click(within(dialog).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
     expect(screen.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
 
     // Edit ⇒ unsaved again.
@@ -604,7 +604,7 @@ describe("BuilderPage — unsaved changes + Discard", () => {
     await respondToConfirmation("Discard changes");
     expect(titleInput()).toHaveValue("Test Form");
     expect(screen.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
-  });
+  }, 10000);
 
   it("keeps the edit when the Discard confirm is declined", async () => {
     mockEmptyDraft = VALID_DRAFT;

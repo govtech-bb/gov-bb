@@ -1,4 +1,4 @@
-import { Banner } from "../../component/ui/banner";
+import { Banner } from "../../components/ui/banner";
 import type { findRecipeIdCollisions } from "@govtech-bb/form-builder";
 import styles from "../../styles/builder.module.css";
 

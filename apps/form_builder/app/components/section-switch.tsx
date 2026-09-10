@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Tabs } from "../component/ui/tabs";
+import { Tabs } from "./ui/tabs";
 
 const SECTIONS = [
   { value: "builder", label: "Builder" },

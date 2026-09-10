@@ -1,6 +1,6 @@
-import { Elevated } from "../../../component/ui/surface";
-import { Input } from "../../../component/ui/input";
-import { Button } from "../../../component/ui/button";
+import { Elevated } from "../surface";
+import { Input } from "../input";
+import { Button } from "../button";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { AiMagicIcon, ArrowUp01Icon, Cancel01Icon } from "hugeicons-react";
 import type { AssistantRequest } from "./prompt-bar";

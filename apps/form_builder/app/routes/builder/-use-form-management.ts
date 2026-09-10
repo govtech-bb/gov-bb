@@ -1,4 +1,4 @@
-import { useConfirmation } from "../../component/ui/dialog/confirmation";
+import { useConfirmation } from "../../components/ui/dialog/confirmation";
 import { useState } from "react";
 import { deleteForm, disableForm, enableForm } from "../../server/forms";
 import { eraseRecipe } from "../../server/publish";

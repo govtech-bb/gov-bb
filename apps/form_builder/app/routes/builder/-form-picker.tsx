@@ -1,11 +1,11 @@
-import { useConfirmation } from "../../component/ui/dialog/confirmation";
-import { Loader } from "../../component/ui/loader";
-import { Empty } from "../../component/ui/empty";
-import { ScrollArea } from "../../component/ui/scroll-area";
-import { Badge } from "../../component/ui/badge";
-import { Banner } from "../../component/ui/banner";
-import { Input } from "../../component/ui/input";
-import { Button } from "../../component/ui/button";
+import { useConfirmation } from "../../components/ui/dialog/confirmation";
+import { Loader } from "../../components/ui/loader";
+import { Empty } from "../../components/ui/empty";
+import { ScrollArea } from "../../components/ui/scroll-area";
+import { Badge } from "../../components/ui/badge";
+import { Banner } from "../../components/ui/banner";
+import { Input } from "../../components/ui/input";
+import { Button } from "../../components/ui/button";
 import { useState } from "react";
 import { GitPullRequestIcon } from "hugeicons-react";
 import { getRecipe, getFormConfig } from "../../server/forms";
@@ -14,7 +14,7 @@ import { deserializeRecipe, mergeDbProcessors } from "@govtech-bb/form-builder";
 import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
 import type { ServiceContractRecipe, Processor } from "@govtech-bb/form-types";
 import type { BuilderFormSummary } from "../../types/index";
-import { Dialog } from "../../component/ui/dialog";
+import { Dialog } from "../../components/ui/dialog";
 
 interface FormPickerProps {
   /** The forms to choose from, or `null` while the background fetch is in flight. */

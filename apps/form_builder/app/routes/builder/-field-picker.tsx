@@ -1,6 +1,6 @@
-import { Badge } from "../../component/ui/badge";
-import { Button } from "../../component/ui/button";
-import { Input } from "../../component/ui/input";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
 import { useState } from "react";
 import type {
   RegistryCatalog,
@@ -11,7 +11,7 @@ import {
   REGISTRY_BLOCKS,
   REGISTRY_PRIMITIVES,
 } from "@govtech-bb/registry";
-import { Tabs } from "../../component/ui/tabs";
+import { Tabs } from "../../components/ui/tabs";
 import styles from "../../styles/builder.module.css";
 
 interface FieldPickerProps {

@@ -1,6 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { MoonIcon, SunIcon } from "@phosphor-icons/react";
-import { Button } from "../component/ui/button";
+import { Button } from "../components/ui/button";
 import { Catalogue, categories } from "./-ui-catalogue";
 import { useTheme } from "./content/-use-theme";
 export const Route = createFileRoute("/dev/ui")({

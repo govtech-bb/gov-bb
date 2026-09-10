@@ -1,9 +1,9 @@
-import { useConfirmation } from "../../component/ui/dialog/confirmation";
-import { ScrollArea } from "../../component/ui/scroll-area";
-import { Elevated } from "../../component/ui/surface";
-import { Banner } from "../../component/ui/banner";
-import { Button } from "../../component/ui/button";
-import { Select } from "../../component/ui/select";
+import { useConfirmation } from "../../components/ui/dialog/confirmation";
+import { ScrollArea } from "../../components/ui/scroll-area";
+import { Elevated } from "../../components/ui/surface";
+import { Banner } from "../../components/ui/banner";
+import { Button } from "../../components/ui/button";
+import { Select } from "../../components/ui/select";
 import { useState } from "react";
 import type { Dispatch } from "react";
 import type {

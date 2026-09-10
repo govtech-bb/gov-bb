@@ -1,7 +1,7 @@
-import { useConfirmation } from "../../component/ui/dialog/confirmation";
-import { Input, InputArea } from "../../component/ui/input";
-import { Elevated } from "../../component/ui/surface";
-import { ScrollArea } from "../../component/ui/scroll-area";
+import { useConfirmation } from "../../components/ui/dialog/confirmation";
+import { Input, InputArea } from "../../components/ui/input";
+import { Elevated } from "../../components/ui/surface";
+import { ScrollArea } from "../../components/ui/scroll-area";
 import { useState, useMemo, useEffect, useRef } from "react";
 import {
   DndContext,

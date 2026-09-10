@@ -1,9 +1,9 @@
 import type { Dispatch } from "react";
 import { StackIcon, PlusIcon, FolderOpenIcon } from "@phosphor-icons/react";
-import { Button } from "../../component/ui/button";
-import { Empty } from "../../component/ui/empty";
-import { Elevated } from "../../component/ui/surface";
-import { ScrollArea } from "../../component/ui/scroll-area";
+import { Button } from "../../components/ui/button";
+import { Empty } from "../../components/ui/empty";
+import { Elevated } from "../../components/ui/surface";
+import { ScrollArea } from "../../components/ui/scroll-area";
 import type {
   RecipeDraft,
   RecipeStepDraft,

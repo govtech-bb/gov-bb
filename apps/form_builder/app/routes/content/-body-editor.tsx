@@ -1,4 +1,4 @@
-import { Banner } from "../../component/ui/banner";
+import { Banner } from "../../components/ui/banner";
 import {
   analyzeMarkdownCompatibility,
   isSafeContentUrl,
@@ -32,7 +32,7 @@ import {
 import type { BodyEditorProps } from "./-body-editor-types";
 import { SlidingTabs } from "./-sliding-tabs";
 import { SelectionActions } from "../../components/ui/ai/selection-actions";
-import { InputArea } from "../../component/ui/input/input-area";
+import { InputArea } from "../../components/ui/input/input-area";
 import s from "./-styles.module.css";
 
 export type { BodyEditorProfile, BodyEditorProps } from "./-body-editor-types";

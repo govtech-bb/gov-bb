@@ -1,11 +1,11 @@
-import { Badge } from "../../component/ui/badge";
-import { Button } from "../../component/ui/button";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
 import type {
   ServiceContract,
   ServiceContractRecipe,
 } from "@govtech-bb/form-types";
 import styles from "../../styles/builder.module.css";
-import { Dialog } from "../../component/ui/dialog";
+import { Dialog } from "../../components/ui/dialog";
 
 interface PreviewModalProps {
   contract: ServiceContract | null;

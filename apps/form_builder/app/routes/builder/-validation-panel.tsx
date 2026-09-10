@@ -1,5 +1,5 @@
-import { Banner } from "../../component/ui/banner";
-import { Button } from "../../component/ui/button";
+import { Banner } from "../../components/ui/banner";
+import { Button } from "../../components/ui/button";
 import type { RecipeValidateResponse } from "@govtech-bb/form-builder";
 import styles from "../../styles/builder.module.css";
 

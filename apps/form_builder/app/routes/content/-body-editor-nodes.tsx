@@ -1,8 +1,8 @@
-import { Elevated } from "../../component/ui/surface";
-import { Select } from "../../component/ui/select";
-import { Input } from "../../component/ui/input";
-import { InputArea } from "../../component/ui/input/input-area";
-import { Button } from "../../component/ui/button";
+import { Elevated } from "../../components/ui/surface";
+import { Select } from "../../components/ui/select";
+import { Input } from "../../components/ui/input";
+import { InputArea } from "../../components/ui/input/input-area";
+import { Button } from "../../components/ui/button";
 import {
   isSafeContentUrl,
   serializeLandingComponent,

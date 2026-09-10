@@ -596,20 +596,34 @@ it("keeps filtered multi-select values, disabled options, and custom list render
     "aria-disabled",
     "true",
   );
+  expect(screen.getByRole("listbox")).toHaveAttribute(
+    "data-empty-list",
+    "false",
+  );
   await user.type(input, "Transport");
   await user.click(await screen.findByRole("option", { name: "Transport" }));
   expect(change).toHaveBeenLastCalledWith(
     ["Education", "Transport"],
     expect.any(Object),
   );
-  expect(screen.getByRole("listbox")).toHaveAttribute(
-    "data-empty-list",
-    "false",
-  );
+  // Filtered selections close the popup and clear its query after unmount.
+  await waitFor(() => {
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(input).toHaveValue("");
+  });
   await user.type(input, "Education");
   await user.click(await screen.findByRole("option", { name: "Education" }));
   expect(change).toHaveBeenLastCalledWith(["Transport"], expect.any(Object));
+  await waitFor(() => {
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(input).toHaveValue("");
+  });
+  await user.click(input);
+  await screen.findByRole("listbox");
   await user.keyboard("{Escape}");
+  await waitFor(() =>
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument(),
+  );
   expect(input).toHaveFocus();
 });
 it("keeps menu checkboxes and submenus interactive with the shared highlight", async () => {

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Combobox } from "../../component/ui/combobox";
+import { Combobox } from "../../components/ui/combobox";
 import type { BuilderFormSummary } from "../../types/index";
 
 interface FormComboboxProps {

@@ -1,6 +1,6 @@
 import { CheckmarkCircle02Icon } from "hugeicons-react";
-import { Elevated } from "../../component/ui/surface";
-import { Button } from "../../component/ui/button";
+import { Elevated } from "../../components/ui/surface";
+import { Button } from "../../components/ui/button";
 import type { DeploySuccess } from "./-editor-state";
 import s from "./-styles.module.css";
 

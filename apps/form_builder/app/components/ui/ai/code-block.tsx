@@ -1,6 +1,6 @@
-import { ScrollArea } from "../../../component/ui/scroll-area";
-import { Elevated } from "../../../component/ui/surface";
-import { Button } from "../../../component/ui/button";
+import { ScrollArea } from "../scroll-area";
+import { Elevated } from "../surface";
+import { Button } from "../button";
 import {
   isValidElement,
   useEffect,

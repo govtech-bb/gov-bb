@@ -1,8 +1,8 @@
-import { Radio } from "../../../component/ui/radio";
-import { Checkbox } from "../../../component/ui/checkbox";
-import { Elevated } from "../../../component/ui/surface";
-import { Button } from "../../../component/ui/button";
-import { Input } from "../../../component/ui/input";
+import { Radio } from "../radio";
+import { Checkbox } from "../checkbox";
+import { Elevated } from "../surface";
+import { Button } from "../button";
+import { Input } from "../input";
 import { useEffect, useId, useRef, useState } from "react";
 import type { AiQuestion, AiAnswers } from "@govtech-bb/form-builder";
 import {

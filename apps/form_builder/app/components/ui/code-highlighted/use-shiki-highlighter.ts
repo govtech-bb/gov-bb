@@ -8,7 +8,7 @@ export function useShikiHighlighter(): UseShikiHighlighterResult {
   if (!context) {
     throw new Error(
       "useShikiHighlighter must be used within a ShikiProvider. " +
-        "Wrap your app with the local <ShikiProvider> from component/ui/code-highlighted.",
+        "Wrap your app with the local <ShikiProvider> from components/ui/code-highlighted.",
     );
   }
   const { highlighter, isLoading, error, languages, labels } = context;

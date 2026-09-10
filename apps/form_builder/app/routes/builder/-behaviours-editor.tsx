@@ -1,7 +1,7 @@
-import { Checkbox } from "../../component/ui/checkbox";
-import { Select } from "../../component/ui/select";
-import { Button } from "../../component/ui/button";
-import { Input } from "../../component/ui/input";
+import { Checkbox } from "../../components/ui/checkbox";
+import { Select } from "../../components/ui/select";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
 import { useState } from "react";
 import { BEHAVIOUR_TYPE_DESCRIPTORS } from "@govtech-bb/form-builder";
 import type { Behaviour } from "@govtech-bb/form-types";

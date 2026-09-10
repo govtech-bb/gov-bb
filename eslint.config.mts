@@ -12,7 +12,7 @@ const primitiveColorClasses = /(?:bg|text|border(?:-[trblxy])?|ring(?:-offset)?|
 export default defineConfig([
   {
     files: [
-      "apps/form_builder/app/component/ui/**/*.{ts,tsx}",
+      "apps/form_builder/app/components/ui/**/*.{ts,tsx}",
       "apps/form_builder/app/routes/-ui-catalogue.tsx",
       "apps/form_builder/app/routes/dev.ui.tsx",
     ],

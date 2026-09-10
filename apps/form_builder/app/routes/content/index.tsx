@@ -1,13 +1,13 @@
-import { Collapsible } from "../../component/ui/collapsible";
-import { ScrollArea } from "../../component/ui/scroll-area";
-import { SkeletonLine } from "../../component/ui/loader";
-import { Banner } from "../../component/ui/banner";
-import { Elevated } from "../../component/ui/surface";
-import { Badge } from "../../component/ui/badge";
+import { Collapsible } from "../../components/ui/collapsible";
+import { ScrollArea } from "../../components/ui/scroll-area";
+import { SkeletonLine } from "../../components/ui/loader";
+import { Banner } from "../../components/ui/banner";
+import { Elevated } from "../../components/ui/surface";
+import { Badge } from "../../components/ui/badge";
 import { AppLink } from "../../components/app-link";
-import { Select } from "../../component/ui/select";
-import { Input } from "../../component/ui/input";
-import { Button } from "../../component/ui/button";
+import { Select } from "../../components/ui/select";
+import { Input } from "../../components/ui/input";
+import { Button } from "../../components/ui/button";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {

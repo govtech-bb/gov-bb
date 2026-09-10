@@ -1,4 +1,4 @@
-import { Select } from "../../component/ui/select";
+import { Select } from "../../components/ui/select";
 import type { FieldRef } from "./-recipe-refs";
 
 interface FieldRefPickerProps {

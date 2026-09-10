@@ -1,9 +1,9 @@
-import { Banner } from "../../component/ui/banner";
-import { InputArea } from "../../component/ui/input/input-area";
-import { Button } from "../../component/ui/button";
+import { Banner } from "../../components/ui/banner";
+import { InputArea } from "../../components/ui/input/input-area";
+import { Button } from "../../components/ui/button";
 import { useState } from "react";
 import styles from "../../styles/builder.module.css";
-import { Dialog } from "../../component/ui/dialog";
+import { Dialog } from "../../components/ui/dialog";
 
 interface DisableModalProps {
   formId: string;

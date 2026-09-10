@@ -1,7 +1,7 @@
-import { Checkbox } from "../../component/ui/checkbox";
-import { Button } from "../../component/ui/button";
-import { Input } from "../../component/ui/input";
-import { Select } from "../../component/ui/select";
+import { Checkbox } from "../../components/ui/checkbox";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
 import { useState } from "react";
 import type { ResolvedFieldId } from "@govtech-bb/form-builder";
 import { ValuePathPicker } from "./-value-path-picker";

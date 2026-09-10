@@ -1,8 +1,8 @@
-import { Elevated } from "../../../component/ui/surface";
-import { Popover } from "../../../component/ui/popover";
-import { Select } from "../../../component/ui/select";
-import { InputArea } from "../../../component/ui/input/input-area";
-import { Button } from "../../../component/ui/button";
+import { Elevated } from "../surface";
+import { Popover } from "../popover";
+import { Select } from "../select";
+import { InputArea } from "../input/input-area";
+import { Button } from "../button";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   Attachment02Icon,

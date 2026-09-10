@@ -1,5 +1,5 @@
-import { Elevated } from "../../../component/ui/surface";
-import { Button } from "../../../component/ui/button";
+import { Elevated } from "../surface";
+import { Button } from "../button";
 import { Cancel01Icon } from "hugeicons-react";
 import type { AttachmentMetadata } from "./attachment-data";
 import { FileThumbnail } from "./file-thumbnail";

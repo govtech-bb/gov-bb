@@ -1,10 +1,10 @@
-import { ScrollArea } from "../../component/ui/scroll-area";
-import { Loader } from "../../component/ui/loader";
-import { Banner } from "../../component/ui/banner";
-import { Badge } from "../../component/ui/badge";
+import { ScrollArea } from "../../components/ui/scroll-area";
+import { Loader } from "../../components/ui/loader";
+import { Banner } from "../../components/ui/banner";
+import { Badge } from "../../components/ui/badge";
 import { AppLink } from "../../components/app-link";
-import { useConfirmation } from "../../component/ui/dialog/confirmation";
-import { Button } from "../../component/ui/button";
+import { useConfirmation } from "../../components/ui/dialog/confirmation";
+import { Button } from "../../components/ui/button";
 import type { AssistantRequest } from "../../components/ui/ai/prompt-bar";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
