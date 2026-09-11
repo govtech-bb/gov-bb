@@ -849,6 +849,11 @@ jobs:
             dockerfile: apps/form_builder_api/Dockerfile
             smoke_args: -e NODE_ENV=development
             smoke: require('reflect-metadata'); require('/app/dist/app.js')
+          # Build only, no smoke: a one-shot tsx job, not a server. Nothing in
+          # this repo deploys it (the chatbot repo builds its own since #2163),
+          # but the Main CI Required ruleset still lists this check — #2670.
+          - label: chat-ingest
+            dockerfile: apps/chat/Dockerfile.ingest
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
@@ -864,12 +869,13 @@ jobs:
           file: ${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: false
-          load: true
+          load: ${{ matrix.smoke != '' }}
           tags: ci-${{ matrix.label }}:smoke
           cache-from: type=gha,scope=ci-${{ matrix.label }}
           cache-to: type=gha,mode=max,scope=ci-${{ matrix.label }}
 
       - name: Smoke — the image loads its compiled module graph
+        if: matrix.smoke != ''
         env:
           IMAGE: ci-${{ matrix.label }}:smoke
           SMOKE: ${{ matrix.smoke }}
