@@ -199,21 +199,35 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      # Reads the layer cache CI's docker-build job writes on every push to
+      # main (same scope) instead of building cold — 3.5–4.5 min per image
+      # before. No cache-to: deploys never write cache. provenance: false keeps
+      # a plain single-manifest image, as `docker build` + `docker push`
+      # produced, so the digest checks below see the same shape.
       - name: Build and push image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-from: type=gha,scope=ci-api
+
+      - name: Image reference
         id: build
         env:
           REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          IMAGE_URI="$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          LATEST_URI="$REGISTRY/$ECR_REPOSITORY:latest"
-
-          docker build --platform linux/amd64 -f apps/api/Dockerfile -t "$IMAGE_URI" -t "$LATEST_URI" .
-          docker push "$IMAGE_URI"
-          docker push "$LATEST_URI"
-
-          echo "image=$IMAGE_URI" >> "$GITHUB_OUTPUT"
-          echo "✅ Pushed $IMAGE_URI"
+          echo "image=$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          echo "✅ Pushed $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
       - name: Get current task definition
         id: task-def
@@ -251,7 +265,7 @@ jobs:
             --task-definition "$TASK_DEF_ARN" \
             --launch-type FARGATE \
             --network-configuration "awsvpcConfiguration={subnets=[subnet-0dc6c8333012885b5,subnet-016eb706debe10250],securityGroups=[sg-05bfeab97a70e1081],assignPublicIp=DISABLED}" \
-            --overrides '{"containerOverrides":[{"name":"api","command":["pnpm","migration:run"]}]}' \
+            --overrides '{"containerOverrides":[{"name":"api","command":["node","node_modules/typeorm/cli.js","migration:run","-d","dist/src/database/data-source.js"]}]}' \
             --region $AWS_REGION \
             --query tasks[0].taskArn \
             --output text)
@@ -348,21 +362,32 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      # Same cache reuse as the api job above (scope written by CI's
+      # docker-build job on push to main).
       - name: Build and push form-builder image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: apps/form_builder_api/Dockerfile
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/gov-bb-form-builder:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/gov-bb-form-builder:latest
+          cache-from: type=gha,scope=ci-form-builder-api
+
+      - name: Image reference
         id: build-form-builder
         env:
           REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          IMAGE_URI="$REGISTRY/gov-bb-form-builder:$IMAGE_TAG"
-          LATEST_URI="$REGISTRY/gov-bb-form-builder:latest"
-
-          docker build --platform linux/amd64 -f apps/form_builder_api/Dockerfile -t "$IMAGE_URI" -t "$LATEST_URI" .
-          docker push "$IMAGE_URI"
-          docker push "$LATEST_URI"
-
-          echo "image=$IMAGE_URI" >> "$GITHUB_OUTPUT"
-          echo "✅ Pushed form-builder $IMAGE_URI"
+          echo "image=$REGISTRY/gov-bb-form-builder:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          echo "✅ Pushed form-builder $REGISTRY/gov-bb-form-builder:$IMAGE_TAG"
 
       - name: Deploy form-builder to ECS
         run: |
