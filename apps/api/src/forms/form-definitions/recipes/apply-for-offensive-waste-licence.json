@@ -443,7 +443,7 @@
             },
             "options": [
               {
-                "label": "I confirm that the information I have provided is true and correct to the best of my knowledge.",
+                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
                 "value": "confirmed"
               }
             ]
@@ -509,7 +509,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:33:15.101Z",
-  "updatedAt": "2026-09-09T23:42:12.289Z",
+  "updatedAt": "2026-09-11T12:23:26.647Z",
   "meta": {
     "visibility": "preview"
   },
