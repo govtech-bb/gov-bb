@@ -274,4 +274,31 @@ describe('pharmacy dataset', () => {
       }
     },
   )
+
+  // notes is rendered to citizens as a grey caveat on the card and the detail
+  // page, so it must carry only facts a person can act on - never internal
+  // review language. See govtech-bb/projects#914.
+  it('keeps internal review language out of user-facing notes', () => {
+    const INTERNAL = [
+      /DATA CONFLICT/i,
+      /\bverify with\b/i,
+      /\bconfirm (with|by)\b/i,
+      /business directory/i,
+      /location approximate/i,
+      /not confirmed/i,
+    ]
+    const noted = ALL_PHARMACIES.filter((pharmacy) => pharmacy.notes)
+    expect(noted.map((pharmacy) => pharmacy.slug)).toEqual([
+      'st-andrew-outpatient-clinic',
+      'st-joseph-outpatient-clinic',
+      'st-thomas-outpatient-clinic',
+      'imart-pharmacy-w-plaza',
+      'jillandeehlp-island-wide-delivery',
+    ])
+    for (const pharmacy of noted) {
+      for (const marker of INTERNAL) {
+        expect(pharmacy.notes).not.toMatch(marker)
+      }
+    }
+  })
 })
