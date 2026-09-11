@@ -68,11 +68,9 @@
           }
         },
         {
-          "ref": "components/contact-telephone",
+          "ref": "components/telephone",
           "overrides": {
-            "fieldId": "applicant-contact-number",
-            "label": "Contact number",
-            "hint": "You can enter a local or international number."
+            "fieldId": "applicant-contact-number"
           }
         }
       ]
@@ -844,12 +842,12 @@
     }
   ],
   "createdAt": "2026-08-24T23:54:14.187Z",
-  "updatedAt": "2026-09-09T23:42:12.289Z",
+  "updatedAt": "2026-09-11T12:21:22.880Z",
+  "meta": {
+    "visibility": "preview"
+  },
   "catchmentRouting": {
     "coordinatesField": "property-details.property-address-coordinates",
     "parishField": "property-details.property-parish"
-  },
-  "meta": {
-    "visibility": "preview"
   }
 }
