@@ -31,6 +31,17 @@ COPY --chown=app:app packages/ packages/
 # Build the API and all workspace deps (Nx handles the dependency graph via dependsOn: ["^build"])
 RUN pnpm exec nx build form-builder-api
 
+# ---- prod-deps ---------------------------------------------------------------
+# Runtime node_modules: only @govtech-bb/form-builder-api's graph (plus the root
+# project, whose runtime deps it shares), no devDependencies. Linked from the
+# cache-mount store where possible, fetched otherwise (a CACHED install layer
+# leaves the mount empty). Mirrors apps/api/Dockerfile.
+FROM builder AS prod-deps
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
+    rm -rf node_modules apps/form_builder_api/node_modules packages/*/node_modules && \
+    pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts --prefer-offline --prod \
+      --filter @govtech-bb/form-builder-api... --filter @govtech-bb/modular-forms-monorepo
+
 # ---- runner ----------------------------------------------------------------
 # Matches the main API's runner pattern exactly.
 FROM node:24.20-alpine3.23@sha256:0388af2af070cd4736a1567cfed02469ba117848845b4165d87a333edb53d2ca AS runner
@@ -40,17 +51,11 @@ FROM node:24.20-alpine3.23@sha256:0388af2af070cd4736a1567cfed02469ba117848845b41
 # still ships 3.5.7).
 RUN apk upgrade --no-cache
 
-# This image only ever uses pnpm; the npm bundled with the node base image is
-# dead weight that AWS Inspector still scans (its vendored tar/pacote/undici/
-# ip-address/brace-expansion copies were all flagged). corepack stays — it
-# provides pnpm.
-RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
-
-# rm /root/.cache: corepack prepare (running as root) caches a copy of pnpm
-# whose vendored deps Inspector flags (tar, undici). Runtime processes execute
-# as the `app` user, whose corepack shim never reads root's cache — so deleting
-# it changes nothing at runtime.
-RUN corepack enable && corepack prepare pnpm@11.6.0 --activate && rm -rf /root/.cache
+# npm and corepack are dead weight AWS Inspector still scans (npm's vendored
+# tar/pacote/undici/ip-address/brace-expansion copies were all flagged);
+# nothing in this image runs either — the entrypoint is plain node.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+           /usr/local/lib/node_modules/corepack /usr/local/bin/corepack
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
 
 WORKDIR /app
@@ -81,26 +86,10 @@ COPY --from=builder --chown=app:app /app/apps/form_builder_api/dist/ ./dist/
 # so dist/packages/{name}/src/index.js lands at packages/{name}/src/index.js to resolve correctly.
 COPY --from=builder --chown=app:app /app/dist/packages/ ./packages/
 
-# node_modules from builder (has all deps resolved)
-COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
-# pnpm hoists older chat versions to the root; preserve this API's newer packages.
-COPY --from=builder --chown=app:app /app/apps/form_builder_api/node_modules/ ./node_modules/
-
-# Drop esbuild from the runtime image (#1567). esbuild ships a Go-compiled
-# binary (@esbuild/<platform>/bin/esbuild) that AWS Inspector flags as
-# go/stdlib CVE-2025-68121 (+ other go/stdlib CVEs). It's a build-time tool
-# only — the runner runs `node dist/main.js` and never loads esbuild — so
-# removing it closes the finding with no runtime impact.
-RUN rm -rf node_modules/@esbuild node_modules/esbuild
-
-# Drop jsdom (and its transitive undici) from the runtime image. `jsdom` is a
-# root devDependency used only by the vitest DOM environment, and its dependency
-# `undici` is flagged by AWS Inspector. Nothing in apps/ or packages/ imports
-# either — the lockfile lists exactly one dependent for undici, and that is
-# jsdom — and the runtime CMD is `node dist/src/main.js`, so removing them
-# closes the finding with no runtime impact. Same mechanism as the esbuild
-# removal above.
-RUN rm -rf node_modules/jsdom node_modules/undici
+# Production-only node_modules (see prod-deps above).
+COPY --from=prod-deps --chown=app:app /app/node_modules/ ./node_modules/
+# pnpm hoists conflicting versions to the root; preserve this API's own resolutions.
+COPY --from=prod-deps --chown=app:app /app/apps/form_builder_api/node_modules/ ./node_modules/
 
 # Workspace package symlinks so require("@govtech-bb/database") resolves.
 # Generated from whatever's actually in packages/ rather than a hand-maintained
@@ -138,8 +127,3 @@ ENV PORT=3003
 EXPOSE 3003
 
 CMD ["node", "--require", "reflect-metadata", "dist/main.js"]
-
-# Bootstrap: trip nx-affected for form-builder-api so deploy-staging.yml builds
-# and pushes the first image to the gov-bb-form-builder ECR (empty since the
-# staging env stood up — same nx-affected gap that hit chat-ingest #468 and
-# api #470). form-builder-staging ECS has had no image to run.

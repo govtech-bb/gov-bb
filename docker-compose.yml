@@ -17,7 +17,15 @@
 # runs on the host); landing/forms/chat/form_builder run vite dev directly.
 # Each service uses an anonymous volume at its node_modules path so the
 # host's (possibly absent or mismatched-arch) node_modules can't shadow
-# the image's.
+# the image's. Those volumes are snapshots of the image at container
+# creation and never refresh — after a lockfile or workspace-dependency
+# change run `docker compose up -d --build -V` (-V recreates them), or the
+# watchers fail on modules the old volume never had.
+#
+# Every published port binds to 127.0.0.1: the stack runs with default DB
+# credentials and dev auth bypasses, so it must not be reachable from the
+# LAN. Need a phone on the same network to reach it? Override the port in a
+# docker-compose.override.yml rather than here.
 #
 # Postgres uses the pgvector/pgvector:pg16 image (a drop-in superset of
 # postgres:16) so the `vector` extension is available for the chat app's
@@ -65,10 +73,10 @@ services:
   # showing HTML, plain-text, and attachments — at http://localhost:8005.
   # Not part of any deployed stack; deployed envs leave SES_ENDPOINT unset.
   aws-ses-v2-local:
-    image: ghcr.io/domdomegg/aws-ses-v2-local:latest
+    image: ghcr.io/domdomegg/aws-ses-v2-local:2.10.2
     restart: unless-stopped
     ports:
-      - "${SES_LOCAL_PORT:-8005}:8005"
+      - "127.0.0.1:${SES_LOCAL_PORT:-8005}:8005"
 
   api:
     build:
@@ -119,7 +127,7 @@ services:
       SES_REGION: ${SES_REGION:-us-east-1}
       SES_FROM_ADDRESS: ${SES_FROM_ADDRESS:-noreply@gov.bb}
     ports:
-      - "${API_PORT:-3001}:3001"
+      - "127.0.0.1:${API_PORT:-3001}:3001"
     volumes:
       - ./apps/api/src:/app/apps/api/src
       - ./apps/api/tsconfig.json:/app/apps/api/tsconfig.json
@@ -140,7 +148,7 @@ services:
       dockerfile: apps/landing/Dockerfile
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     volumes:
       - ./apps/landing/src:/app/apps/landing/src
       - ./apps/landing/public:/app/apps/landing/public
@@ -162,7 +170,7 @@ services:
     ports:
       # Container listens on 3000; host gets 4200 to match the historical
       # convention in the repo README.
-      - "4200:3000"
+      - "127.0.0.1:4200:3000"
     volumes:
       - ./apps/forms/src:/app/apps/forms/src
       - ./apps/forms/public:/app/apps/forms/public
@@ -196,15 +204,17 @@ services:
       BEDROCK_REGION: ${BEDROCK_REGION:-}
       BEDROCK_EMBED_MODEL: ${BEDROCK_EMBED_MODEL:-amazon.titan-embed-text-v2:0}
     ports:
-      - "${CHAT_PORT:-3002}:3000"
+      - "127.0.0.1:${CHAT_PORT:-3002}:3000"
     volumes:
       - ./apps/chat/src:/app/apps/chat/src
       - ./apps/chat/public:/app/apps/chat/public
       - ./packages:/app/packages
       - /app/apps/chat/node_modules
     healthcheck:
+      # 127.0.0.1, not localhost: busybox wget tries ::1 first and vite binds
+      # IPv4 only, so a localhost probe is refused forever.
       test:
-        ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+        ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/api/health"]
       interval: 10s
       timeout: 5s
       retries: 6
@@ -264,7 +274,7 @@ services:
       AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
       AWS_REGION: ${AWS_REGION:-ca-central-1}
     ports:
-      - "${FORM_BUILDER_PORT:-3003}:3000"
+      - "127.0.0.1:${FORM_BUILDER_PORT:-3003}:3000"
     volumes:
       - ./apps/form_builder/app:/app/apps/form_builder/app
       - ./packages:/app/packages

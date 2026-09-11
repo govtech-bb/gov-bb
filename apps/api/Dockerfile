@@ -21,30 +21,22 @@ COPY --chown=app:app patches/ ./patches/
 
 # Per-workspace manifests are required for pnpm to resolve the workspace graph.
 COPY --chown=app:app apps/api/package.json apps/api/
-COPY --chown=app:app apps/landing/package.json apps/landing/
-COPY --chown=app:app apps/forms/package.json apps/forms/
 COPY --chown=app:app packages/database/package.json packages/database/
 COPY --chown=app:app packages/expressions/package.json packages/expressions/
 COPY --chown=app:app packages/form-conditions/package.json packages/form-conditions/
 COPY --chown=app:app packages/form-types/package.json packages/form-types/
 COPY --chown=app:app packages/form-validation/package.json packages/form-validation/
 COPY --chown=app:app packages/registry/package.json packages/registry/
-# content is never imported by the api, but the ROOT package.json devDeps pin
-# it (workspace:*) — without its manifest any non-frozen `pnpm install` in the
-# image fails with ERR_PNPM_WORKSPACE_PKG_NOT_FOUND (broke the migrate task
-# after 47f73422 made it a root dep).
+# content is never imported by the api, but the ROOT package.json pins it
+# (workspace:*), and the root project is part of the prod-deps install below.
 COPY --chown=app:app packages/content/package.json packages/content/
 
 # BuildKit cache mount keeps the pnpm content-addressable store across builds,
 # so a cache-invalidating change to the lockfile or any package.json re-installs
-# without re-downloading from the registry. Shared `id` across all four app
+# without re-downloading from the registry. Shared `id` across all app
 # Dockerfiles so they hit the same store. uid/gid match the app user so it can
-# write to the mount.
-# NOTE: this install intentionally includes devDependencies. The runner stage
-# copies the builder's node_modules wholesale, and the migrate-task's
-# `pnpm migration:run` registers tsconfig-paths — a devDependency of apps/api —
-# at runtime. Switching to --prod here would break in-container migrations
-# with MODULE_NOT_FOUND on tsconfig-paths/register.
+# write to the mount. Full install, devDependencies included: nx and the
+# TypeScript toolchain are root devDeps, and the `dev` stage needs them too.
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
     pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts
 
@@ -70,9 +62,25 @@ ENV NODE_ENV=development
 EXPOSE 3001
 CMD ["pnpm", "exec", "nx", "dev", "api"]
 
+# ---- prod-deps ----------------------------------------------------------
+# node_modules for the runner: only what @govtech-bb/api needs at runtime
+# (plus the root project, whose runtime deps it shares) — no devDependencies,
+# nothing from the other apps or from packages the api never imports. The
+# builder's full install is ~900MB of nx/vitest/vite/react/playwright that
+# AWS Inspector scans and every task start pulls. Linked from the cache-mount
+# store where possible and fetched otherwise: when the install layer above is
+# CACHED it never ran in this build, so the mount is empty.
+FROM builder AS prod-deps
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
+    rm -rf node_modules apps/api/node_modules packages/*/node_modules && \
+    pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts --prefer-offline --prod \
+      --filter @govtech-bb/api... --filter @govtech-bb/modular-forms-monorepo
+
 # ---- runner -------------------------------------------------------------
-# Slim runtime image. Includes pnpm so the ECS sandbox migrate-task
-# (deploy-sandbox.yml) can shell into the container and run `pnpm migration:run`.
+# Slim runtime image: plain `node`, no package manager. The ECS migrate task
+# (deploy-*.yml) runs the compiled data source directly —
+#   node node_modules/typeorm/cli.js migration:run -d dist/src/database/data-source.js
+# — so nothing here needs pnpm, corepack or ts-node.
 FROM node:24.20-alpine3.23@sha256:0388af2af070cd4736a1567cfed02469ba117848845b4165d87a333edb53d2ca AS runner
 
 # Pick up Alpine security patches ahead of the base image's rebuild cadence
@@ -80,17 +88,11 @@ FROM node:24.20-alpine3.23@sha256:0388af2af070cd4736a1567cfed02469ba117848845b41
 # still ships 3.5.7).
 RUN apk upgrade --no-cache
 
-# This image only ever uses pnpm; the npm bundled with the node base image is
-# dead weight that AWS Inspector still scans (its vendored tar/pacote/undici/
-# ip-address/brace-expansion copies were all flagged). corepack stays — it
-# provides pnpm.
-RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
-
-# rm /root/.cache: corepack prepare (running as root) caches a copy of pnpm
-# whose vendored deps Inspector flags (tar, undici). The in-container
-# `pnpm migration:run` executes as the `app` user, whose corepack shim never
-# reads root's cache — so deleting it changes nothing at runtime.
-RUN corepack enable && corepack prepare pnpm@11.6.0 --activate && rm -rf /root/.cache
+# npm and corepack are dead weight AWS Inspector still scans (npm's vendored
+# tar/pacote/undici/ip-address/brace-expansion copies were all flagged);
+# nothing in this image runs either.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+           /usr/local/lib/node_modules/corepack /usr/local/bin/corepack
 
 # Closes #15 (CIS Docker Benchmark — no container should run as root).
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
@@ -117,44 +119,7 @@ USER app
 
 COPY --from=builder --chown=app:app /app/dist/apps/api/ ./dist/
 COPY --from=builder --chown=app:app /app/dist/packages/ ./packages/
-# Workspace-package SOURCE overlays for ts-node. The migrate-task runs
-# `pnpm migration:run`, which ts-node-compiles apps/api/typeorm.config.ts →
-# data-source.ts and typechecks every `@govtech-bb/*` import against the
-# tsconfig.base.json `paths` mapping — `packages/<pkg>/src/index.ts`. The
-# compiled packages copied above contain only .js/.d.ts, and a missing paths
-# target makes TypeScript crash with a bare "Debug Failure" (it asserts while
-# building the module-not-found diagnostic). Any package imported from the
-# ts-node-compiled graph needs its src/ overlaid here; runtime require()
-# still resolves to the compiled .js via the package.json `main`.
-#   - form-types: imported (type-only) by the entity declarations
-#   - database: imported by data-source.ts since #721
-COPY --from=builder --chown=app:app /app/packages/form-types/src/ ./packages/form-types/src/
-COPY --from=builder --chown=app:app /app/packages/database/src/ ./packages/database/src/
-# content is source-only (no build target) so it isn't in dist/packages/, but
-# the ROOT package.json devDeps pin it (workspace:*) — keep the runtime
-# workspace self-consistent so a non-frozen `pnpm install` can't die on
-# ERR_PNPM_WORKSPACE_PKG_NOT_FOUND. The manifest alone is enough: nothing in
-# the api imports it.
-COPY --from=builder --chown=app:app /app/packages/content/package.json ./packages/content/
-COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
-
-# Drop esbuild from the runtime image (#1567). esbuild ships a Go-compiled
-# binary (@esbuild/<platform>/bin/esbuild) that AWS Inspector flags as
-# go/stdlib CVE-2025-68121 (+ other go/stdlib CVEs). This image deliberately
-# keeps devDeps (in-container `pnpm migration:run`), but migrations run via
-# typeorm-ts-node-commonjs (ts-node, not tsx/esbuild) and the runtime CMD is
-# `node dist/src/main.js` — nothing here loads esbuild, so removing it closes
-# the finding with no runtime impact.
-RUN rm -rf node_modules/@esbuild node_modules/esbuild
-
-# Drop jsdom (and its transitive undici) from the runtime image. `jsdom` is a
-# root devDependency used only by the vitest DOM environment, and its dependency
-# `undici` is flagged by AWS Inspector. Nothing in apps/ or packages/ imports
-# either — the lockfile lists exactly one dependent for undici, and that is
-# jsdom — and the runtime CMD is `node dist/src/main.js`, so removing them
-# closes the finding with no runtime impact. Same mechanism as the esbuild
-# removal above.
-RUN rm -rf node_modules/jsdom node_modules/undici
+COPY --from=prod-deps --chown=app:app /app/node_modules/ ./node_modules/
 
 # pnpm (hoisted mode) keeps workspace-package symlinks in the consumer's
 # own node_modules (apps/api/node_modules/@govtech-bb/*). The runtime
@@ -184,21 +149,6 @@ RUN mkdir -p node_modules/@govtech-bb && \
 # MODULE_NOT_FOUND and ECS's circuit breaker silently rolls back (#1385).
 RUN ln -sfn ../dist/src node_modules/@
 COPY --from=builder --chown=app:app /app/package.json ./
-COPY --from=builder --chown=app:app /app/pnpm-lock.yaml ./
-COPY --from=builder --chown=app:app /app/pnpm-workspace.yaml ./
-# pnpm 11's verify-deps-before-run intercepts any in-container `pnpm run` (the
-# migrate task runs `pnpm migration:run`): the runner's trimmed workspace never
-# matches the builder's install state, so the check re-resolves everything —
-# needing registry egress at deploy time and failing hard on any workspace
-# drift. This image is immutable: always run against the baked node_modules.
-# Appended to pnpm-workspace.yaml because pnpm 11 ignores the .npmrc and
-# npm_config_* env forms of this setting — image-only, local dev keeps it on.
-RUN printf '\n# image-only (see Dockerfile): never re-install at runtime\nverifyDepsBeforeRun: false\n' >> pnpm-workspace.yaml
-COPY --from=builder --chown=app:app /app/tsconfig.base.json ./
-COPY --from=builder --chown=app:app /app/apps/api/package.json ./apps/api/
-COPY --from=builder --chown=app:app /app/apps/api/tsconfig.json ./apps/api/
-COPY --from=builder --chown=app:app /app/apps/api/typeorm.config.ts ./apps/api/
-COPY --from=builder --chown=app:app /app/apps/api/src/database/ ./apps/api/src/database/
 # Recipe files (.json) — read by RecipeFileLoaderService. tsc/nx don't bundle
 # non-`.ts` assets into dist/, so we copy them alongside the compiled output
 # (mirrors the email-templates COPY below).
@@ -211,7 +161,3 @@ ENV NODE_EXTRA_CA_CERTS=/app/rds-ca-bundle.pem
 EXPOSE 3001
 
 CMD ["node", "dist/src/main.js"]
-
-# Staging bootstrap touch 2026-05-30: force api affected so the image gets pushed to ssb-api ECR
-# (forms-db-staging has never had migrations run; this commit + the migrations/README.md trip
-# both gates so the first deploy populates the DB).

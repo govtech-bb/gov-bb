@@ -819,15 +819,18 @@ jobs:
           exit 1
 
   docker-build:
-    # Build every Dockerfile in the repo on every PR. Catches refactors that
-    # orphan a `COPY` path (the class of bug that broke sandbox CD after
-    # commit a8d25528 deleted apps/form_builder/app/server/ai-builder/prompts
-    # while the form_builder_api Dockerfile still referenced it).
+    # Build every deployed Dockerfile on every PR, then load the image and
+    # require its whole compiled module graph. Catches refactors that orphan a
+    # `COPY` path (a8d25528 deleted apps/form_builder/app/server/ai-builder/prompts
+    # while the form_builder_api Dockerfile still referenced it) AND the
+    # runtime-resolution class that has crash-looped ECS four times (#412,
+    # #1385, #1400, #1525) — the circuit breaker rolls back and reports a
+    # "successful" deploy, so nothing downstream notices.
     #
-    # `push: false` — no ECR push, just validate the build context. Faster
-    # than full deploy since we don't run the image, just compile it.
-    # GHA layer cache scoped per Dockerfile so a change to one doesn't bust
-    # the others.
+    # `push: false` + `load: true` — no ECR push; the image is loaded into the
+    # runner's docker only for the smoke. GHA layer cache scoped per Dockerfile
+    # so a change to one doesn't bust the others; deploy-*.yml read the same
+    # scopes so deploys don't build cold.
     name: Docker Build (${{ matrix.label }})
     runs-on: ubuntu-latest
     strategy:
@@ -836,8 +839,19 @@ jobs:
         include:
           - label: api
             dockerfile: apps/api/Dockerfile
+            # Env the ConfigModule validates at import time — dummy values,
+            # nothing connects. NODE_ENV=development so no RDS SSL is expected.
+            smoke_args: >-
+              -e NODE_ENV=development -e DB_HOST=x -e DB_USERNAME=x -e DB_PASSWORD=x
+              -e DB_NAME=x -e EZPAY_BASE_URL=https://example.invalid -e EZPAY_DEPARTMENT_API_KEYS={}
+            smoke: require('/app/dist/src/app.module.js')
           - label: form-builder-api
             dockerfile: apps/form_builder_api/Dockerfile
+            smoke_args: -e NODE_ENV=development
+            smoke: require('reflect-metadata'); require('/app/dist/app.js')
+          # Build only, no smoke: a one-shot tsx job, not a server. Nothing in
+          # this repo deploys it (the chatbot repo builds its own since #2163),
+          # but the Main CI Required ruleset still lists this check — #2670.
           - label: chat-ingest
             dockerfile: apps/chat/Dockerfile.ingest
     steps:
@@ -855,5 +869,17 @@ jobs:
           file: ${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: false
+          load: ${{ matrix.smoke != '' }}
+          tags: ci-${{ matrix.label }}:smoke
           cache-from: type=gha,scope=ci-${{ matrix.label }}
           cache-to: type=gha,mode=max,scope=ci-${{ matrix.label }}
+
+      - name: Smoke — the image loads its compiled module graph
+        if: matrix.smoke != ''
+        env:
+          IMAGE: ci-${{ matrix.label }}:smoke
+          SMOKE: ${{ matrix.smoke }}
+          SMOKE_ARGS: ${{ matrix.smoke_args }}
+        run: |
+          # shellcheck disable=SC2086 # SMOKE_ARGS is a list of -e flags
+          docker run --rm $SMOKE_ARGS --entrypoint node "$IMAGE" -e "$SMOKE"
