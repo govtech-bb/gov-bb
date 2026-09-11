@@ -26,7 +26,10 @@ function FeedbackPage() {
             Your feedback will help us make it clearer, simpler and faster to
             find and use public services.
           </Text>
-          <Text as="p">Do not include personal information.</Text>
+          <Text as="p">
+            Do not include personal or sensitive information in your answers. If
+            you would like a reply, you can leave your email address at the end.
+          </Text>
         </div>
       </div>
       <FeedbackForm />

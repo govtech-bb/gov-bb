@@ -12,6 +12,9 @@ export interface FeedbackInput {
   visitReason?: string;
   whatWentWrong?: string;
   referrer?: string;
+  // Optional reply-to address. When present it becomes the message's
+  // ReplyToAddresses so replying from the inbox reaches the visitor.
+  email?: string;
 }
 
 // Backoff between send attempts. Three attempts total (initial + 2 retries)
@@ -55,9 +58,14 @@ export class FeedbackService {
    * (#1298) — cannot recur unnoticed.
    */
   async send(dto: FeedbackInput): Promise<void> {
+    // Reply-to is the visitor's address, not the sender: FromEmailAddress stays
+    // the verified SES sender so the message still authenticates, while a reply
+    // from the inbox is routed to the visitor.
+    const replyTo = (dto.email ?? "").trim();
     const command = new SendEmailCommand({
       FromEmailAddress: this.from,
       Destination: { ToAddresses: [this.recipient] },
+      ...(replyTo && { ReplyToAddresses: [replyTo] }),
       Content: {
         Simple: {
           Subject: { Data: buildSubject(), Charset: "UTF-8" },
@@ -106,6 +114,10 @@ function buildTextBody(dto: FeedbackInput): string {
     "What went wrong?",
     (dto.whatWentWrong ?? "").trim() || "(no answer)",
   ];
+  const email = (dto.email ?? "").trim();
+  if (email) {
+    lines.push("", `Reply to: ${email}`);
+  }
   const referrer = (dto.referrer ?? "").trim();
   if (referrer) {
     lines.push("", `Submitted from: ${referrer}`);
