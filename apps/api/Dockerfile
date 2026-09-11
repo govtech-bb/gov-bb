@@ -67,12 +67,13 @@ CMD ["pnpm", "exec", "nx", "dev", "api"]
 # (plus the root project, whose runtime deps it shares) — no devDependencies,
 # nothing from the other apps or from packages the api never imports. The
 # builder's full install is ~900MB of nx/vitest/vite/react/playwright that
-# AWS Inspector scans and every task start pulls. Re-linked offline from the
-# cache-mount store the install above populated.
+# AWS Inspector scans and every task start pulls. Linked from the cache-mount
+# store where possible and fetched otherwise: when the install layer above is
+# CACHED it never ran in this build, so the mount is empty.
 FROM builder AS prod-deps
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
     rm -rf node_modules apps/api/node_modules packages/*/node_modules && \
-    pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts --offline --prod \
+    pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts --prefer-offline --prod \
       --filter @govtech-bb/api... --filter @govtech-bb/modular-forms-monorepo
 
 # ---- runner -------------------------------------------------------------

@@ -33,12 +33,13 @@ RUN pnpm exec nx build form-builder-api
 
 # ---- prod-deps ---------------------------------------------------------------
 # Runtime node_modules: only @govtech-bb/form-builder-api's graph (plus the root
-# project, whose runtime deps it shares), no devDependencies. Re-linked offline
-# from the cache-mount store. Mirrors apps/api/Dockerfile.
+# project, whose runtime deps it shares), no devDependencies. Linked from the
+# cache-mount store where possible, fetched otherwise (a CACHED install layer
+# leaves the mount empty). Mirrors apps/api/Dockerfile.
 FROM builder AS prod-deps
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
     rm -rf node_modules apps/form_builder_api/node_modules packages/*/node_modules && \
-    pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts --offline --prod \
+    pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts --prefer-offline --prod \
       --filter @govtech-bb/form-builder-api... --filter @govtech-bb/modular-forms-monorepo
 
 # ---- runner ----------------------------------------------------------------
