@@ -1,7 +1,7 @@
 const PHARMACY_SERVICE_PATH =
   'health-and-emergency-services/find-an-open-pharmacy'
 
-const PARENT_PATHS: Readonly<Record<string, string>> = {
+export const PARENT_PATHS: Readonly<Record<string, string>> = {
   'health-and-emergency-services/free-or-subsidised-medication':
     PHARMACY_SERVICE_PATH,
   'health-and-emergency-services/prescription-colours': PHARMACY_SERVICE_PATH,

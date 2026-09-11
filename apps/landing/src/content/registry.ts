@@ -1,3 +1,4 @@
+import { PARENT_PATHS } from '../lib/breadcrumb-hierarchy'
 import { FrontmatterSchema, titleFromSlug } from '../lib/frontmatter'
 import type { Frontmatter, ViewLevel } from '../lib/frontmatter'
 import type { Root } from 'hast'
@@ -529,6 +530,8 @@ export function resolveBareSlugRedirect(
  * The listable service pages of a category at the viewer's level: non-sub-page
  * pages that claim the category and are visible. Sub-category pages are included
  * (they carry the parent slug in `categories`); callers narrow by subcategory.
+ * A page the breadcrumb hierarchy hangs off another page is reached from that
+ * parent, so it is left out here too — it stays searchable, unlike a sub-page.
  * The single source for "what shows under a category" — both the category
  * listings and the visibility gate read it, so they can never disagree.
  */
@@ -541,6 +544,7 @@ export function categoryServices(
     (p) =>
       p.frontmatter.categories.includes(categorySlug) &&
       !isSubPage(p) &&
+      !(p.url in PARENT_PATHS) &&
       isVisible(p, viewer, overlay),
   )
 }

@@ -5,7 +5,7 @@ description: >-
   pharmacies offering free or subsidised medication through the Barbados Drug
   Service, and check who qualifies.
 stage: alpha
-visibility: preview
+visibility: public
 featured: false
 publish_date: '2026-08-21'
 category: health-and-emergency-services

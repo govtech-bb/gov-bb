@@ -61,8 +61,8 @@ describe('pharmacy publication', () => {
     expect(paths).toContain(`/${service}/market-hill-dispensary`)
   })
 
-  it('keeps preview and withdrawn services private throughout the route family', () => {
-    for (const serviceStatuses of [[], [[service, 'disabled']]]) {
+  it('keeps withdrawn services private throughout the route family', () => {
+    for (const serviceStatuses of [[[service, 'disabled']]]) {
       for (const route of [finder, detail]) {
         expect(() =>
           call(route.options.beforeLoad, {

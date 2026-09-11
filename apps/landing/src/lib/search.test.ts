@@ -98,7 +98,7 @@ describe('full search', () => {
   })
 
   it('preserves frontmatter and overlay visibility', () => {
-    expect(search('open pharmacy')).toEqual([])
+    expect(search('prescription colours')).toEqual([])
 
     const overlay = new Map<string, ViewLevel>([
       ['get-death-certificate', 'preview'],
@@ -141,8 +141,7 @@ describe('autocomplete', () => {
   })
 
   it('uses aliases and visibility without description or body matches', () => {
-    expect(suggest('open chemist')).toEqual([])
-    expect(suggest('open chemist', 'preview')[0]?.href).toBe(
+    expect(suggest('open chemist')[0]?.href).toBe(
       '/health-and-emergency-services/find-an-open-pharmacy',
     )
     expect(suggest('BRA', 'preview')).toEqual([])
