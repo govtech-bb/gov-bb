@@ -17,6 +17,7 @@ import {
   urlLevel,
 } from './registry'
 import { CATEGORY_BY_SLUG } from './categories'
+import { search } from '../lib/search'
 import type { ViewLevel } from '../lib/frontmatter'
 
 describe('resolveServiceHref', () => {
@@ -359,6 +360,25 @@ describe('categoryServices', () => {
     expect(severance).toHaveLength(1)
     expect(severance[0].url).toBe(
       'money-financial-support/calculate-severance-pay',
+    )
+  })
+
+  it('lists a pharmacy sub-page under its parent only, still searchable', () => {
+    const urls = categoryServices(
+      'health-and-emergency-services',
+      'preview',
+    ).map((p) => p.url)
+    expect(urls).toContain(
+      'health-and-emergency-services/find-an-open-pharmacy',
+    )
+    expect(urls).not.toContain(
+      'health-and-emergency-services/free-or-subsidised-medication',
+    )
+    expect(urls).not.toContain(
+      'health-and-emergency-services/prescription-colours',
+    )
+    expect(search('prescription colours', 'preview')[0]?.href).toBe(
+      '/health-and-emergency-services/prescription-colours',
     )
   })
 
