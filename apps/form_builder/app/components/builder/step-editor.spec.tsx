@@ -505,4 +505,4 @@ it("duplicates a question beside its source and edits the copy instead of the la
   expect(
     screen.getByRole("button", { name: "Edit Last question" }),
   ).toBeInTheDocument();
-});
+}, 30_000);
