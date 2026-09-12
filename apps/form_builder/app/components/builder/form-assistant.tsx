@@ -9,7 +9,7 @@ import {
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 import { validateRecipe } from "../../server/registry";
 import { recipeReducer } from "./recipe-reducer";
-import { Assistant } from "../ui/ai/assistant";
+import { WorkspaceAssistant as Assistant } from "../global-assistant";
 
 export function recipeSnapshot(draft: RecipeDraft): Record<string, unknown> {
   const {

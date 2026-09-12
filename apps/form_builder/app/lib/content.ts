@@ -134,6 +134,19 @@ export interface FormState {
   visibility: ViewLevel;
 }
 
+export const EMPTY_PAGE: FormState = {
+  formId: "",
+  slug: "",
+  title: "",
+  description: "",
+  category: "",
+  subcategory: "",
+  body: "",
+  linkType: "none",
+  linkHref: "",
+  visibility: "draft",
+};
+
 /** Frontmatter values are untyped; coerce to a string ("" when absent). */
 export function asString(v: unknown): string {
   return typeof v === "string" ? v : "";
@@ -150,15 +163,36 @@ export function isValidSlug(slug: string): boolean {
  * unvalidated-interpolation concern behind landing/api issue #293).
  */
 export function startPageContentPath(slug: string): string {
-  if (!isValidSlug(slug)) {
+  if (!isValidContentSlug(slug)) {
     throw new Error(`Invalid start-page slug: "${slug}"`);
   }
   return `apps/landing/src/content/${slug}.md`;
 }
 
 /** Public URL the page resolves to, for display in the editor/PR. */
-export function startPageUrl(category: string, slug: string): string {
-  return category ? `/${category}/${slug}` : `/${slug}`;
+export function startPageUrl(
+  category: string,
+  slug: string,
+  subcategory = "",
+): string {
+  let leaf = slug.replace(/\/index$/, "");
+  const prefix = [category, subcategory].filter(Boolean).join("/");
+  if (prefix && leaf.startsWith(`${prefix}/`))
+    leaf = leaf.slice(prefix.length + 1);
+  else if (category && leaf.startsWith(`${category}/`))
+    leaf = leaf.slice(category.length + 1);
+  return `/${[category, subcategory, leaf].filter(Boolean).join("/")}`;
+}
+
+export function isValidContentSlug(slug: string): boolean {
+  return slug.split("/").every(isValidSlug);
+}
+
+export function contentSlug(path: string): string {
+  return path
+    .slice(CONTENT_ROOT.length)
+    .replace(/\/index\.md$/, "")
+    .replace(/\.md$/, "");
 }
 
 /** Repo-relative root every editable landing content file lives under. */
@@ -307,7 +341,7 @@ export function applyAiPagePatch(
   if (
     typeof page.slug === "string" &&
     !opts.fixedPath &&
-    isValidSlug(page.slug)
+    isValidContentSlug(page.slug)
   ) {
     next.slug = page.slug;
   }
@@ -408,5 +442,80 @@ export function buildDeployPayload(input: DeployPayloadInput) {
       : createPath
         ? { path: createPath }
         : {}),
+  };
+}
+
+/** The shared draft and preview use the same content representation. */
+export function buildServicePageDraft(
+  state: FormState,
+  page: import("@govtech-bb/form-types").ServicePageDraft,
+): import("@govtech-bb/form-types").ServicePageDraft {
+  const frontmatter = {
+    ...page.frontmatter,
+    title: state.title.trim(),
+    visibility: state.visibility,
+  } as Record<string, unknown>;
+  for (const [key, value] of Object.entries({
+    description: state.description,
+    category: state.category,
+    subcategory: state.subcategory,
+    form_id: state.formId,
+  })) {
+    if (value.trim()) frontmatter[key] = value.trim();
+    else delete frontmatter[key];
+  }
+  const href = state.linkType === "form" ? "" : state.linkHref.trim();
+  const body =
+    state.linkType === "none"
+      ? stripStartLinks(state.body)
+      : applyStartLink(state.body, {
+          href,
+          label: parseStartLink(state.body)?.label || "Start now",
+          hasTarget: state.linkType === "form" ? !!state.formId : !!href,
+        });
+  return { ...page, frontmatter, body };
+}
+
+export function appendServicePage(
+  snapshot: import("@govtech-bb/form-types").ServiceSnapshot,
+  path: string,
+  state: FormState,
+): import("@govtech-bb/form-types").ServiceSnapshot {
+  if (snapshot.pages.some((page) => page.path === path))
+    throw new Error("A page already uses this link. Choose another name.");
+  const id = crypto.randomUUID();
+  const first = !snapshot.pages.length;
+  const page = buildServicePageDraft(state, {
+    id,
+    path,
+    baseSha: null,
+    body: "",
+    frontmatter: {},
+  });
+  const publicPath = new URL(
+    startPageUrl(state.category, contentSlug(path), state.subcategory),
+    "https://service.invalid",
+  ).pathname;
+  return {
+    ...snapshot,
+    pages: [...snapshot.pages, page],
+    manifest: {
+      ...snapshot.manifest,
+      entryPoint: first ? id : snapshot.manifest.entryPoint,
+      pages: [
+        ...snapshot.manifest.pages,
+        {
+          id,
+          path,
+          title: state.title,
+          publicPath,
+          kind: first
+            ? "main"
+            : path.endsWith("/start.md")
+              ? "start"
+              : "guidance",
+        },
+      ],
+    },
   };
 }

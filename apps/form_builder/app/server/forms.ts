@@ -8,7 +8,7 @@ import {
   type PublicFormSummary,
 } from "@govtech-bb/form-types";
 import { api, ApiError } from "./api-client";
-import { getPublishedRecipe } from "./github-recipes";
+import { getPublishedRecipe, RECIPES_BASE } from "./github-recipes";
 import type { BuilderFormSummary } from "../types/index";
 import { requireSession } from "./auth/require-session";
 import {
@@ -18,16 +18,71 @@ import {
   hasRedactedSecret,
 } from "./redact-processor-secrets";
 
+function canReadLocalRecipes(error?: unknown): boolean {
+  if (!import.meta.env.DEV) return false;
+  const url = process.env.BUILDER_API_URL;
+  return (
+    !url ||
+    (error instanceof TypeError &&
+      URL.canParse(url) &&
+      ["localhost", "127.0.0.1", "[::1]"].includes(new URL(url).hostname))
+  );
+}
+
+// Match content's checkout source when the local development API is unavailable.
+async function readLocalRecipes(
+  formId?: string,
+): Promise<ServiceContractRecipe[]> {
+  const { readFile, readdir } = await import("node:fs/promises");
+  const { resolve } = await import("node:path");
+  const root = resolve(process.cwd(), "../..", RECIPES_BASE);
+  const files =
+    formId === undefined
+      ? (await readdir(root, { withFileTypes: true }))
+          .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
+          .map((entry) => entry.name)
+      : [`${serviceContractRecipeSchema.shape.formId.parse(formId)}.json`];
+  return Promise.all(
+    files.map(async (file) =>
+      serviceContractRecipeSchema.parse(
+        JSON.parse(await readFile(resolve(root, file), "utf8")),
+      ),
+    ),
+  ).catch((error) => {
+    if (formId && (error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  });
+}
+
+async function listLocalForms(): Promise<BuilderFormSummary[]> {
+  return (await readLocalRecipes()).map((recipe) => ({
+    id: recipe.formId,
+    formId: recipe.formId,
+    title: recipe.title,
+    version: recipe.version ?? "",
+    publishedVersion: recipe.version,
+    visibility: recipe.meta?.visibility ?? "public",
+    isPublished: true,
+    isDisabled: false,
+    isOrphanOverride: false,
+    hasDraftRow: false,
+  }));
+}
+
 export const listForms = createServerFn({ method: "GET" })
   .middleware([requireSession])
   .handler(async (): Promise<BuilderFormSummary[]> => {
+    if (canReadLocalRecipes()) return listLocalForms();
     const [drafts, published, disabled] = await Promise.all([
       api.get<BuilderFormSummary[]>("/builder/forms"),
       api.get<
         Pick<PublicFormSummary, "formId" | "title" | "version" | "visibility">[]
       >("/builder/forms/published"),
       api.get<string[]>("/builder/forms/disabled"),
-    ]);
+    ]).catch(async (error) => {
+      if (!canReadLocalRecipes(error)) throw error;
+      return [[], await listLocalForms(), []] as const;
+    });
 
     // `isPublished` means "this formId appears in the published index" — derive
     // it from the raw published response, independently of the merge loop below.
@@ -119,10 +174,13 @@ export const listForms = createServerFn({ method: "GET" })
 // Shared by getRecipe (which redacts secrets before returning) and the save path
 // (which restores redacted secrets from this same source) so both resolve the
 // secret from one place.
-async function resolveStoredRecipe(
+export async function resolveStoredRecipe(
   formId: string,
   token: string,
 ): Promise<ServiceContractRecipe | null> {
+  if (canReadLocalRecipes()) {
+    return (await readLocalRecipes(formId))[0] ?? null;
+  }
   // #1196: the DB scratch row is the current working draft — prefer it. Guard
   // on truthiness (not just a non-404 response) so a falsy body — a 204 or a
   // `200 null` for an empty draft row — falls through to the published copy
@@ -152,8 +210,13 @@ async function resolveStoredRecipe(
       return draft;
     }
   } catch (err) {
+    if (canReadLocalRecipes(err))
+      return (await readLocalRecipes(formId))[0] ?? null;
     if (!(err instanceof ApiError) || err.status !== 404) throw err;
   }
+
+  if (import.meta.env.DEV && !token)
+    return (await readLocalRecipes(formId))[0] ?? null;
 
   // No draft row — seed from the published canonical flat file.
   try {
@@ -350,7 +413,10 @@ export const disableForm = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<void> => {
     await api.post(
       `/builder/forms/${encodeURIComponent(data.formId)}/disable`,
-      { reason: data.reason, disabledBy: context.session.login },
+      {
+        reason: data.reason,
+        disabledBy: context.session.login,
+      },
     );
   });
 

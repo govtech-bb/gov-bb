@@ -11,6 +11,12 @@ import {
   type PointerEvent,
 } from "react";
 import { cn } from "../utils/cn";
+import { Button } from "../button";
+import {
+  MinusIcon,
+  PlusIcon,
+  ArrowsOutSimpleIcon,
+} from "@phosphor-icons/react";
 import { FlowConnectors } from "./connectors";
 import {
   DescendantsProvider,
@@ -22,6 +28,7 @@ import {
 import {
   computeEdges,
   computePositions,
+  computeConnectionPositions,
   computeDiagramRect,
   type FlowAlign,
   type FlowOrientation,
@@ -37,7 +44,16 @@ type Orientation = FlowOrientation;
 function isEventFromNode(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest("[data-node-id]") !== null;
 }
+export interface FlowConnection {
+  from: string;
+  to: string;
+  label?: string;
+  kind?: "navigation" | "conditional" | "delivery";
+  branch?: "yes" | "no";
+}
 interface FlowDiagramProps {
+  connections?: FlowConnection[];
+  controls?: boolean;
   /**
    * Flow direction.
    * - `"horizontal"`: Nodes progress left-to-right (default)
@@ -74,6 +90,8 @@ interface FlowDiagramProps {
   children?: ReactNode;
 }
 export function FlowDiagram({
+  connections,
+  controls = false,
   orientation = "horizontal",
   canvas = true,
   align = "start",
@@ -89,6 +107,7 @@ export function FlowDiagram({
     y: requestedPadding?.y ?? DEFAULT_PADDING.y,
   };
   const [isPanning, setIsPanning] = useState(false);
+  const [zoom, setZoom] = useState(1);
   const [canPan, setCanPan] = useState(false);
   const lastOverflow = useRef<{
     x: boolean;
@@ -169,8 +188,12 @@ export function FlowDiagram({
   const tree = descendantsToTree(rootDescendants, childrenByParent);
   const flowState: FlowState = { nodes, tree, align, orientation };
   // Derive edges, positions, and diagram size synchronously — never stored in state.
-  const edges = computeEdges(flowState);
-  const nodePositions = computePositions(flowState);
+  const edges: [string, string][] = connections
+    ? connections.map((e) => [e.from, e.to])
+    : computeEdges(flowState);
+  const nodePositions = connections
+    ? computeConnectionPositions(flowState, connections)
+    : computePositions(flowState);
   const diagramRect = computeDiagramRect(nodePositions, flowState);
   const flowStateContextValue = useMemo(
     () => ({
@@ -252,52 +275,249 @@ export function FlowDiagram({
   };
   return (
     <FlowStateContext.Provider value={flowStateContextValue}>
-      <div
-        ref={wrapperRef}
-        className={cn(
-          "group isolate grow",
-          canvas
-            ? "ui-scroll-native overflow-auto overscroll-contain"
-            : "overflow-visible",
-          className,
-        )}
-        role={canvas ? "region" : undefined}
-        aria-label={canvas ? "Workflow diagram" : undefined}
-        tabIndex={canvas && canPan ? 0 : undefined}
-        style={{
-          paddingTop: padding.y,
-          paddingBottom: padding.y,
-          paddingLeft: padding.x,
-          paddingRight: padding.x,
-          cursor:
-            canvas && canPan ? (isPanning ? "grabbing" : "grab") : undefined,
-          userSelect: isPanning ? "none" : undefined,
-        }}
-        onPointerDown={handlePanStart}
-        onPointerMove={handlePan}
-        onPointerUp={handlePanEnd}
-        onPointerCancel={handlePanEnd}
-        onLostPointerCapture={handlePanEnd}
-      >
+      <div className="relative h-full min-w-0">
         <div
-          data-testid="flow-contents"
-          ref={contentRef}
-          className="relative mx-auto"
+          ref={wrapperRef}
+          className={cn(
+            "group isolate grow",
+            canvas
+              ? "ui-scroll-native overflow-auto overscroll-contain"
+              : "overflow-visible",
+            className,
+          )}
+          role={canvas ? "region" : undefined}
+          aria-label={canvas ? "Workflow diagram" : undefined}
+          tabIndex={canvas && canPan ? 0 : undefined}
           style={{
-            width: diagramRect.width || undefined,
-            height: diagramRect.height || undefined,
+            paddingTop: padding.y,
+            paddingBottom: padding.y,
+            paddingLeft: padding.x,
+            paddingRight: padding.x,
+            cursor:
+              canvas && canPan ? (isPanning ? "grabbing" : "grab") : undefined,
+            userSelect: isPanning ? "none" : undefined,
           }}
+          onPointerDown={handlePanStart}
+          onPointerMove={handlePan}
+          onPointerUp={handlePanEnd}
+          onPointerCancel={handlePanEnd}
+          onLostPointerCapture={handlePanEnd}
         >
-          <FlowNodeList>{children}</FlowNodeList>
-          <div className="pointer-events-none absolute inset-0">
-            <FlowConnectors
-              edges={edges}
-              nodePositions={nodePositions}
-              nodes={flowState.nodes}
-              orientation={orientation}
-            />
+          <div
+            data-testid="flow-contents"
+            ref={contentRef}
+            className="relative mx-auto"
+            style={{
+              width: diagramRect.width || undefined,
+              height: diagramRect.height || undefined,
+              zoom,
+            }}
+          >
+            <FlowNodeList>{children}</FlowNodeList>
+            <div className="pointer-events-none absolute inset-0">
+              {connections ? (
+                <svg
+                  className="h-full w-full overflow-visible"
+                  aria-hidden="true"
+                >
+                  {connections.map((edge, index) => {
+                    const a = nodePositions[edge.from],
+                      b = nodePositions[edge.to];
+                    const an = nodes[edge.from],
+                      bn = nodes[edge.to];
+                    if (!a || !b || !an || !bn) return null;
+                    // Draw in horizontal coordinates, then swap axes for a vertical map.
+                    const vertical = orientation === "vertical";
+                    const x1 = vertical ? a.y + an.height : a.x + an.width,
+                      y1 = vertical ? a.x + an.width / 2 : a.y + an.height / 2;
+                    const x2 = vertical ? b.y : b.x,
+                      y2 = vertical ? b.x + bn.width / 2 : b.y + bn.height / 2;
+                    const detour =
+                      x2 <= x1 ||
+                      Object.entries(nodePositions).some(([id, pos]) => {
+                        if (id === edge.from || id === edge.to || !nodes[id])
+                          return false;
+                        const main = vertical ? pos.y : pos.x;
+                        const cross = vertical ? pos.x : pos.y;
+                        const size = vertical
+                          ? nodes[id].width
+                          : nodes[id].height;
+                        return (
+                          main > x1 &&
+                          main < x2 &&
+                          cross <= Math.max(y1, y2) &&
+                          cross + size >= Math.min(y1, y2)
+                        );
+                      });
+                    const lane =
+                      Math.min(
+                        ...Object.values(nodePositions).map((pos) =>
+                          vertical ? pos.x : pos.y,
+                        ),
+                      ) -
+                      32 -
+                      (index % 3) * 16;
+                    const point = (x: number, y: number) =>
+                      vertical ? `${y},${x}` : `${x},${y}`;
+                    const sideMain = vertical
+                      ? a.y + an.height / 2
+                      : a.x + an.width / 2;
+                    const sideCross = vertical
+                      ? a.x + an.width
+                      : a.y + an.height;
+                    const branchLane =
+                      Math.max(
+                        sideCross,
+                        ...Object.entries(nodePositions)
+                          .filter(
+                            ([, pos]) =>
+                              (vertical ? pos.y : pos.x) >=
+                                (vertical ? a.y : a.x) &&
+                              (vertical ? pos.y : pos.x) <= x2,
+                          )
+                          .map(([id, pos]) =>
+                            vertical
+                              ? pos.x + (nodes[id]?.width ?? 0)
+                              : pos.y + (nodes[id]?.height ?? 0),
+                          ),
+                      ) + 48;
+                    const d =
+                      edge.branch === "no" && x2 > x1
+                        ? `M${point(sideMain, sideCross)} L${point(sideMain, branchLane - 12)} Q${point(sideMain, branchLane)} ${point(sideMain + 12, branchLane)} L${point(x2 - 24, branchLane)} Q${point(x2 - 12, branchLane)} ${point(x2 - 12, branchLane - 12)} L${point(x2 - 12, y2 + 12)} Q${point(x2 - 12, y2)} ${point(x2, y2)}`
+                        : detour
+                          ? `M${point(x1, y1)} Q${point(x1 + 20, y1)} ${point(x1 + 20, lane)} L${point(x2 - 20, lane)} Q${point(x2 - 20, y2)} ${point(x2, y2)}`
+                          : `M${point(x1, y1)} C${point((x1 + x2) / 2, y1)} ${point((x1 + x2) / 2, y2)} ${point(x2, y2)}`;
+                    return (
+                      <g
+                        key={`${edge.from}-${edge.to}-${index}`}
+                        className="text-ui-subtle"
+                      >
+                        <title>{edge.label}</title>
+                        <path
+                          d={d}
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeDasharray={
+                            edge.kind === "conditional" && !edge.branch
+                              ? "6 4"
+                              : edge.kind === "delivery"
+                                ? "2 4"
+                                : undefined
+                          }
+                        />
+                        {edge.branch && (
+                          <text
+                            x={
+                              vertical
+                                ? edge.branch === "no"
+                                  ? sideCross + 24
+                                  : y1 - 10
+                                : edge.branch === "no"
+                                  ? sideMain + 10
+                                  : x1 + 28
+                            }
+                            y={
+                              vertical
+                                ? edge.branch === "no"
+                                  ? sideMain - 8
+                                  : x1 + 28
+                                : edge.branch === "no"
+                                  ? sideCross + 24
+                                  : y1 - 10
+                            }
+                            textAnchor="middle"
+                            className="fill-ui-default stroke-ui-elevated text-xs font-medium [paint-order:stroke]"
+                            strokeWidth="5"
+                            strokeLinejoin="round"
+                          >
+                            {edge.label}
+                          </text>
+                        )}
+                        <path
+                          d={`M${point(x2 - 5, y2 - 4)} L${point(x2, y2)} L${point(x2 - 5, y2 + 4)}`}
+                          fill="none"
+                          stroke="currentColor"
+                        />
+                      </g>
+                    );
+                  })}
+                </svg>
+              ) : (
+                <FlowConnectors
+                  edges={edges}
+                  nodePositions={nodePositions}
+                  nodes={flowState.nodes}
+                  orientation={orientation}
+                />
+              )}
+            </div>
           </div>
         </div>
+        {canvas && controls && (
+          <div
+            className="absolute bottom-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-ui-line bg-ui-base p-1"
+            role="group"
+            aria-label="Map controls"
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              shape="square"
+              title="Zoom out"
+              aria-label="Zoom out"
+              disabled={zoom <= 0.5}
+              onClick={() => setZoom((value) => Math.max(0.5, value - 0.1))}
+            >
+              <MinusIcon />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-14 tabular-nums"
+              title="Reset zoom"
+              aria-label="Reset zoom"
+              onClick={() => setZoom(1)}
+            >
+              {Math.round(zoom * 100)}%
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              shape="square"
+              title="Zoom in"
+              aria-label="Zoom in"
+              disabled={zoom >= 1.5}
+              onClick={() => setZoom((value) => Math.min(1.5, value + 0.1))}
+            >
+              <PlusIcon />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              shape="square"
+              title="Fit width"
+              aria-label="Fit width"
+              onClick={() => {
+                const viewport = wrapperRef.current;
+                if (!viewport || !diagramRect.width) return;
+                setZoom(
+                  Math.max(
+                    0.5,
+                    Math.min(
+                      1,
+                      (viewport.clientWidth - padding.x * 2) /
+                        diagramRect.width,
+                    ),
+                  ),
+                );
+                viewport.scrollTo({ left: 0, top: 0 });
+              }}
+            >
+              <ArrowsOutSimpleIcon />
+            </Button>
+          </div>
+        )}
       </div>
     </FlowStateContext.Provider>
   );

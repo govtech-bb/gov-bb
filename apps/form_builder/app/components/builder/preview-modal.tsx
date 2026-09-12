@@ -1,4 +1,3 @@
-import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import type {
   ServiceContract,
@@ -67,95 +66,89 @@ export function PreviewModal({
           </Dialog.Close>
         </div>
 
-        <div
-          className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full"
-          style={{ display: "flex", gap: 16, alignItems: "center" }}
-        >
+        <Dialog.Description>
+          Review the pages and questions in your current draft. Open the saved
+          form to try the applicant journey.
+        </Dialog.Description>
+        <div className="flex flex-wrap items-center gap-3 border-b border-ui-hairline pb-5">
           {previewUrl ? (
-            <a href={previewUrl} target="_blank" rel="noopener noreferrer">
-              🔗 Preview saved form
+            <a
+              className="rounded-lg bg-ui-brand px-4 py-2 text-sm font-medium text-ui-inverse no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ui-focus"
+              href={previewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Preview saved form
             </a>
           ) : (
-            <span style={{ color: "var(--ui-subtle)", fontSize: "0.85rem" }}>
-              Save this recipe to enable a live preview link.
-            </span>
+            <p className="text-sm text-ui-subtle">
+              Save a draft to preview the applicant journey.
+            </p>
           )}
           {recipe && (
             <Button
               type="button"
               onClick={handleViewRecipeJson}
-              style={{
-                background: "none",
-                border: "none",
-                padding: 0,
-                color: "var(--ui-link)",
-                cursor: "pointer",
-                textDecoration: "underline",
-                fontSize: "inherit",
-              }}
-              variant="secondary"
+              variant="ghost"
               size="sm"
             >
-              {"{} "}View recipe JSON
+              View recipe JSON
             </Button>
           )}
         </div>
 
         {isLoading && <p>Loading preview…</p>}
 
-        {error && <p style={{ color: "var(--ui-danger-text)" }}>{error}</p>}
+        {error && (
+          <p role="alert" className="text-ui-danger">
+            {error}
+          </p>
+        )}
 
         {!isLoading && contract && (
-          <div>
-            <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
-              <strong>Form ID:</strong> {contract.formId}
+          <div className="space-y-5">
+            <div>
+              <h2 className="text-xl font-semibold text-ui-strong">
+                {contract.title}
+              </h2>
+              <p className="mt-1 text-sm text-ui-subtle">
+                {contract.steps.length} pages
+              </p>
             </div>
-            <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
-              <strong>Title:</strong> {contract.title}
-            </div>
-            <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
-              <strong>Version:</strong> {contract.version}
-            </div>
-            <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
-              <strong>Steps:</strong> {contract.steps.length}
-            </div>
-
-            {contract.steps.map((step) => (
-              <div
+            {contract.steps.map((step, index) => (
+              <section
                 key={step.stepId}
-                style={{
-                  marginBottom: 16,
-                  border: "1px solid var(--ui-hairline)",
-                  padding: 12,
-                  borderRadius: 4,
-                }}
+                className="rounded-lg border border-ui-hairline bg-ui-base p-5"
               >
-                <div className="mt-5 mb-2 text-[12px] font-semibold tracking-[0.05em] text-ui-subtle uppercase">
-                  {step.title} <Badge variant="secondary">{step.stepId}</Badge>
-                </div>
+                <p className="mb-1 text-xs text-ui-subtle">Page {index + 1}</p>
+                <h3 className="text-base font-semibold">{step.title}</h3>
                 {step.description && (
-                  <p style={{ color: "var(--ui-subtle)" }}>
+                  <p className="mt-2 text-sm text-ui-subtle">
                     {step.description}
                   </p>
                 )}
-                {step.elements.map((field) => (
-                  <div
-                    key={field.fieldId}
-                    data-field-row
-                    className="mb-1.5 flex min-w-0 flex-wrap items-center gap-2 rounded-lg border border-ui-hairline bg-ui-base px-3 py-2.25 transition-[border-color] duration-120 ease-[ease] hover:border-ui-inactive"
-                  >
-                    <span style={{ flex: 1 }}>
-                      {field.label}{" "}
-                      <Badge variant="secondary">{field.htmlType}</Badge>
-                    </span>
-                    <span
-                      style={{ color: "var(--ui-subtle)", fontSize: "0.8rem" }}
-                    >
-                      {field.fieldId}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                <ol className="mt-4 divide-y divide-ui-hairline">
+                  {step.elements.map((field) => (
+                    <li key={field.fieldId} className="py-3">
+                      <div className="flex flex-wrap justify-between gap-2 text-sm">
+                        <span className="font-medium">
+                          {field.label || field.fieldId}
+                        </span>
+                        <span className="text-xs text-ui-subtle">
+                          {field.validations?.required?.value
+                            ? "Required"
+                            : "Optional"}
+                        </span>
+                      </div>
+                      {field.hint && (
+                        <p className="mt-1 text-sm text-ui-subtle">
+                          {field.hint}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              </section>
             ))}
           </div>
         )}

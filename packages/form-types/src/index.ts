@@ -223,3 +223,4 @@ export type {
 } from "./form-summary.type";
 
 export { canonicalizeRecipe, serializeRecipe } from "./canonical-json";
+export * from "./service-workspace.type";

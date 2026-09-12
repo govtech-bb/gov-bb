@@ -2,7 +2,7 @@ import type { Dispatch } from "react";
 import { StackIcon, PlusIcon, FolderOpenIcon } from "@phosphor-icons/react";
 import { Button } from "../ui/button";
 import { Empty } from "../ui/empty";
-import { Elevated } from "../ui/surface";
+
 import { ScrollArea } from "../ui/scroll-area";
 import type {
   RecipeDraft,
@@ -22,6 +22,7 @@ interface BuilderPanelProps {
   dispatch: Dispatch<RecipeAction>;
   catalog: RegistryCatalog;
   selectedStep: RecipeStepDraft | null;
+  focusLogic?: boolean;
   mdaContacts: MdaContact[] | null;
   mdaContactsLoadError?: string | null;
   resolvedFieldIds: ReturnType<typeof resolveFieldIds>;
@@ -37,6 +38,7 @@ export function BuilderPanel({
   dispatch,
   catalog,
   selectedStep,
+  focusLogic,
   mdaContacts,
   mdaContactsLoadError,
   resolvedFieldIds,
@@ -71,6 +73,7 @@ export function BuilderPanel({
     return (
       <StepEditor
         step={selectedStep}
+        focusLogic={focusLogic}
         draft={draft}
         dispatch={dispatch}
         catalog={catalog}
@@ -90,11 +93,7 @@ export function BuilderPanel({
       viewportClassName="scroll-fade"
     >
       <div className="flex min-h-[min(38rem,65dvh)] items-center justify-center p-4 sm:p-8">
-        <Elevated
-          offset={1}
-          shadowLevel={2}
-          className="w-full max-w-xl rounded-xl"
-        >
+        <div className="w-full max-w-xl">
           <Empty
             icon={
               <span className="flex size-12 items-center justify-center rounded-xl bg-ui-recessed text-ui-subtle">
@@ -104,8 +103,8 @@ export function BuilderPanel({
             title={hasEditableSteps ? "Continue your form" : "Build your form"}
             description={
               hasEditableSteps
-                ? "Select a step from the outline to edit it, or add another step."
-                : "Add a step to start collecting information, or open an existing form. Your review, declaration, and confirmation steps are already included."
+                ? "Choose a page from the outline, or add a page to your application."
+                : "Start with a page, then add the questions people need to answer. Review, declaration, and confirmation pages are already included."
             }
             className="border-0 bg-transparent px-6 py-10 sm:px-10 sm:py-14"
             contents={
@@ -115,7 +114,7 @@ export function BuilderPanel({
                   onClick={onAddStep}
                   icon={<PlusIcon aria-hidden="true" />}
                 >
-                  {hasEditableSteps ? "Add a step" : "Add your first step"}
+                  {hasEditableSteps ? "Add a page" : "Add your first page"}
                 </Button>
                 <Button
                   variant="outline"
@@ -127,7 +126,7 @@ export function BuilderPanel({
               </div>
             }
           />
-        </Elevated>
+        </div>
       </div>
     </ScrollArea>
   );

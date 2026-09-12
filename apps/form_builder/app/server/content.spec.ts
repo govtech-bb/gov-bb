@@ -500,3 +500,66 @@ describe("content removal", () => {
     ).toBe(true);
   });
 });
+
+it("publishes a separate guidance file without writing the existing main/start page", async () => {
+  const help = "apps/landing/src/content/get-birth-certificate/help.md";
+  const writes: Array<{ path: string; content: string; sha?: string }> = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      if (url.includes("/pulls?state=open")) return json([]);
+      if (url.includes("/contents/") && method === "GET")
+        return json({ message: "Not found" }, 404);
+      if (url.endsWith("/git/ref/heads/main"))
+        return json({ object: { sha: "base-head" } });
+      if (url.endsWith("/git/refs") && method === "POST")
+        return json({ ref: "created" }, 201);
+      if (url.includes("/contents/") && method === "PUT") {
+        const body = JSON.parse(String(init?.body));
+        writes.push({
+          path: url.split("/contents/")[1],
+          content: Buffer.from(body.content, "base64").toString(),
+          sha: body.sha,
+        });
+        return json({ content: { sha: "help-sha" } }, 201);
+      }
+      if (url.endsWith("/pulls") && method === "POST")
+        return json(
+          {
+            number: 3000,
+            html_url: "https://github.com/govtech-bb/gov-bb/pull/3000",
+          },
+          201,
+        );
+      throw new Error(`Unexpected GitHub request: ${method} ${url}`);
+    }),
+  );
+  const result = await callServer<Awaited<ReturnType<typeof publishStartPage>>>(
+    publishStartPage,
+    {
+      data: {
+        prDescription: "Add separate guidance",
+        buttonLabel: "Start now",
+        formId: "get-birth-certificate",
+        slug: "get-birth-certificate/help",
+        path: help,
+        title: "Help getting a birth certificate",
+        body: "Separate guidance",
+        linkType: "none",
+        category: "family-birth-relationships",
+        visibility: "draft",
+        expectedRevision: { source: "absent" },
+      },
+      context: { session: { accessToken: "tok", login: "editor" } },
+    },
+  );
+  expect(result).toMatchObject({ status: "success", path: help });
+  expect(writes).toHaveLength(1);
+  expect(writes[0].path).toBe(help);
+  expect(writes[0].sha).toBeUndefined();
+  expect(writes[0].content).toContain("form_id: get-birth-certificate");
+  expect(writes[0].content).toContain("Separate guidance");
+  expect(writes[0].content).not.toContain("data-start-link");
+});

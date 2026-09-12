@@ -271,3 +271,62 @@ export function computeDiagramRect(
   }
   return { width, height };
 }
+
+/** Lay out explicit connections in order; return links do not move earlier nodes. */
+export function computeConnectionPositions(
+  flowState: FlowState,
+  connections: { from: string; to: string }[],
+): NodePositions {
+  const ids = Object.keys(computePositions(flowState));
+  const outgoing = new Map(ids.map((id) => [id, [] as string[]]));
+  for (const { from, to } of connections) {
+    if (from !== to && outgoing.has(to)) outgoing.get(from)?.push(to);
+  }
+  const visited = new Set<string>();
+  const visiting = new Set<string>();
+  const forward = new Map(ids.map((id) => [id, [] as string[]]));
+  const order: string[] = [];
+  const visit = (id: string) => {
+    if (visited.has(id)) return;
+    visiting.add(id);
+    for (const target of outgoing.get(id) ?? []) {
+      if (visiting.has(target)) continue;
+      forward.get(id)!.push(target);
+      visit(target);
+    }
+    visiting.delete(id);
+    visited.add(id);
+    order.unshift(id);
+  };
+  ids.forEach(visit);
+  const ranks = new Map(ids.map((id) => [id, 0]));
+  for (const id of order) {
+    for (const target of forward.get(id)!)
+      ranks.set(target, Math.max(ranks.get(target)!, ranks.get(id)! + 1));
+  }
+  const columns: string[][] = [];
+  for (const id of ids) (columns[ranks.get(id)!] ??= []).push(id);
+  const vertical = flowState.orientation === "vertical";
+  const mainSize = (id: string) =>
+    (vertical ? flowState.nodes[id]?.height : flowState.nodes[id]?.width) ?? 0;
+  const crossSize = (id: string) =>
+    (vertical ? flowState.nodes[id]?.width : flowState.nodes[id]?.height) ?? 0;
+  const columnHeights = columns.map(
+    (column) =>
+      column.reduce((sum, id) => sum + crossSize(id), 0) +
+      (column.length - 1) * 24,
+  );
+  const maxHeight = Math.max(0, ...columnHeights);
+  const positions: NodePositions = {};
+  let main = 0;
+  columns.forEach((column, index) => {
+    let cross =
+      flowState.align === "center" ? (maxHeight - columnHeights[index]) / 2 : 0;
+    for (const id of column) {
+      positions[id] = vertical ? { x: cross, y: main } : { x: main, y: cross };
+      cross += crossSize(id) + 24;
+    }
+    main += Math.max(0, ...column.map(mainSize)) + 80;
+  });
+  return positions;
+}

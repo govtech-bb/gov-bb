@@ -1,6 +1,6 @@
+import { Collapsible } from "../ui/collapsible";
 import { Banner } from "../ui/banner";
 import { InputArea } from "../ui/input/input-area";
-import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { useState } from "react";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
@@ -55,7 +55,7 @@ export function PublishModal({
     >
       <Dialog size="lg" showCloseButton={false} className="space-y-5">
         <div className="flex items-center justify-between gap-4">
-          <Dialog.Title>Deploy</Dialog.Title>
+          <Dialog.Title>Publish form</Dialog.Title>
           <Dialog.Close render={<Button variant="ghost" size="sm" />}>
             Close
           </Dialog.Close>
@@ -70,13 +70,12 @@ export function PublishModal({
                   // recipe was pushed onto it instead of opening a duplicate
                   // that would conflict with it on the same recipe file.
                   <>
-                    Pushed to the already-open PR{" "}
-                    <strong>#{publishSuccess.prNumber}</strong> for this form —
-                    no duplicate PR was created.
+                    Updated review <strong>#{publishSuccess.prNumber}</strong>{" "}
+                    with your latest changes.
                   </>
                 ) : (
                   <>
-                    PR <strong>#{publishSuccess.prNumber}</strong> opened on{" "}
+                    Review <strong>#{publishSuccess.prNumber}</strong> opened on{" "}
                     <code>{baseBranch}</code>.
                   </>
                 )}
@@ -87,10 +86,10 @@ export function PublishModal({
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  {publishSuccess.prUrl}
+                  Open review #{publishSuccess.prNumber}
                 </a>
               </p>
-              <p style={{ marginTop: 8, color: "var(--ui-subtle)" }}>
+              <p className="mt-3 text-ui-subtle">
                 A reviewer must approve and merge it. When merged, the recipe
                 becomes available on the next API deploy.
               </p>
@@ -99,45 +98,33 @@ export function PublishModal({
         ) : (
           <div>
             {isReadOnly && (
-              <Banner
-                variant="alert"
-                size="sm"
-                role="alert"
-                style={{ marginBottom: 8 }}
-              >
+              <Banner variant="alert" size="sm" role="alert" className="mb-4">
                 <div className="min-w-0 flex-1">
-                  Another user is currently editing this form. Deploying is
+                  Another user is currently editing this form. Publishing is
                   disabled until their editing session ends.
                 </div>
               </Banner>
             )}
-            <p style={{ color: "var(--ui-default)", marginTop: 0 }}>
-              This opens a pull request against <code>{baseBranch}</code> that
-              overwrites <code>recipes/{draft.formId}.json</code>. The PR is
-              authored by your GitHub account.
-            </p>
-
-            <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
-              <Input
-                type="text"
-                value={draft.title}
-                readOnly
-                label={"Form"}
-                className="w-full min-w-0"
-              />
-            </div>
-            <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
-              <Input
-                type="text"
-                value={draft.formId}
-                readOnly
-                label={"Form ID"}
-                className="w-full min-w-0"
-              />
-            </div>
-            <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+            <Dialog.Description className="mb-5">
+              Send <strong>{draft.title || "Untitled form"}</strong> for review.
+              Once approved and merged, the changes become available with the
+              next release.
+            </Dialog.Description>
+            <Collapsible.Root className="mb-5 rounded-lg border border-ui-hairline px-4 py-3 text-sm">
+              <Collapsible.DefaultTrigger className="cursor-pointer font-medium">
+                Publication details
+              </Collapsible.DefaultTrigger>
+              <Collapsible.Panel keepMounted>
+                <p className="mt-3 text-ui-subtle wrap-anywhere">
+                  A pull request from your GitHub account updates{" "}
+                  <code>recipes/{draft.formId}.json</code> on{" "}
+                  <code>{baseBranch}</code>.
+                </p>
+              </Collapsible.Panel>
+            </Collapsible.Root>
+            <div className="mb-5 flex flex-col gap-1.5">
               <label htmlFor="publish-description">
-                PR description (optional)
+                Description for the reviewer (optional)
               </label>
               <InputArea
                 id="publish-description"
@@ -149,12 +136,12 @@ export function PublishModal({
             </div>
 
             {publishError && (
-              <Banner variant="error" size="sm" style={{ marginBottom: 8 }}>
+              <Banner variant="error" size="sm" className="mb-4">
                 <div className="min-w-0 flex-1">{publishError}</div>
               </Banner>
             )}
 
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="primary"
@@ -162,7 +149,7 @@ export function PublishModal({
                 disabled={isPublishing || isReadOnly}
                 size="sm"
               >
-                {isPublishing ? "Opening PR…" : "Deploy"}
+                {isPublishing ? "Sending…" : "Send for review"}
               </Button>
               <Dialog.Close
                 render={<Button type="button" variant="secondary" size="sm" />}

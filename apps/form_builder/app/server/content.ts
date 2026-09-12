@@ -41,7 +41,9 @@ import {
  */
 
 export interface ContentPageSummary {
+  subcategory?: string;
   path: string;
+  isLocalDraft?: boolean;
   title: string;
   category: string;
   visibility: string;
@@ -142,6 +144,7 @@ function summarisePage(path: string, raw: string): ContentPageSummary {
       (Array.isArray(fm.categories) ? asString(fm.categories[0]) : ""),
     visibility: asString(fm.visibility) || "public",
     formId,
+    subcategory: asString(fm.subcategory),
     hasFormButton: !!formId && link !== null && link.href === "",
   };
 }

@@ -7,7 +7,7 @@ import { useMenuNavigation } from "./use-menu-navigation";
 export function menuBarVariants() {
   return cn(
     // Base styles
-    "flex rounded-lg border border-ui-tint bg-ui-tint pl-px shadow-xs transition-colors",
+    "flex rounded-lg border border-ui-recessed bg-ui-recessed pl-px shadow-xs transition-colors",
   );
 }
 /** Props for an individual menu option within a MenuBar. */
@@ -36,7 +36,7 @@ const MenuOption = ({
       data-ui-part="option"
       aria-label={tooltip}
       className={cn(
-        "relative -ml-px flex h-full w-11 cursor-pointer items-center justify-center rounded-md border-none bg-ui-tint transition-colors first:rounded-l-lg last:rounded-r-lg focus:z-3 focus:ring-ui-focus/50 focus:outline-none focus-visible:z-3 focus-visible:ring-2 focus-visible:ring-ui-brand",
+        "relative -ml-px flex h-full w-11 cursor-pointer items-center justify-center rounded-md border-none bg-ui-recessed transition-colors first:rounded-l-lg last:rounded-r-lg focus:z-3 focus:ring-ui-focus/50 focus:outline-none focus-visible:z-3 focus-visible:ring-2 focus-visible:ring-ui-brand",
         {
           "z-2 bg-ui-base shadow-xs transition-colors": isActive === id,
         },
@@ -69,7 +69,7 @@ export const MenuBar = ({
   return (
     <nav
       className={cn(
-        "isolate flex rounded-lg bg-ui-tint pl-px shadow-xs ring ring-ui-hairline transition-colors",
+        "isolate flex rounded-lg bg-ui-recessed pl-px shadow-xs ring ring-ui-line transition-colors",
         className,
       )}
       ref={menuRef}

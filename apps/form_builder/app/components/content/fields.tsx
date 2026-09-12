@@ -14,20 +14,17 @@ import { FormCombobox } from "./form-combobox";
 import type { EditorState } from "./use-editor-state";
 import type { BuilderFormSummary } from "../../types/index";
 
-/**
- * The editor's form fields, composed two ways by the parent: stacked when the
- * preview pane is open (narrow panel), and as a Payload-style main column +
- * settings rail when it's hidden (full page).
- */
 export function PageFields({
   ed,
   formOptions,
-  layout,
+  serviceFormId,
+  view,
   onAiAction,
 }: {
   ed: EditorState;
   formOptions: BuilderFormSummary[];
-  layout: "stacked" | "wide";
+  serviceFormId?: string;
+  view: "content" | "settings";
   onAiAction?: (request: AssistantRequest) => void;
 }) {
   const { state, set, setState } = ed;
@@ -66,7 +63,21 @@ export function PageFields({
         </small>
       ) : state.linkType === "form" ? (
         <div className="mt-2">
-          {formOptions.length === 0 ? (
+          {serviceFormId !== undefined ? (
+            <>
+              <Input
+                label="Service form"
+                value={serviceFormId || "No form yet"}
+                readOnly
+                className="w-full"
+              />
+              {!serviceFormId && (
+                <p className="mt-2 text-xs text-ui-subtle">
+                  Add the application form from this service in the library.
+                </p>
+              )}
+            </>
+          ) : formOptions.length === 0 ? (
             <>
               <label className="sr-only" htmlFor="sp-form-id">
                 Form ID
@@ -120,6 +131,7 @@ export function PageFields({
                 ? "/family-birth-relationships/get-birth-certificate"
                 : "https://example.gov.bb/apply"
             }
+            label="Destination URL"
             className="w-full min-w-0"
           />
           <small
@@ -167,9 +179,9 @@ export function PageFields({
   const pathField = ed.fixedPath ? (
     <div className="mb-4.5">
       <span className="mb-1.5 block text-[13px] font-medium text-ui-default">
-        File
+        Source file
       </span>
-      <small className="mt-1.25 block font-mono text-[12px] text-ui-subtle">
+      <small className="mt-1.25 block font-mono text-[12px] text-ui-subtle wrap-anywhere">
         {ed.fixedPath}
       </small>
       {collisionHelp}
@@ -180,7 +192,7 @@ export function PageFields({
         className="mb-1.5 block text-[13px] font-medium text-ui-default"
         htmlFor="sp-slug"
       >
-        Slug
+        URL name
       </label>
       <Input
         id="sp-slug"
@@ -192,7 +204,7 @@ export function PageFields({
       />
       {!ed.slugValid ? (
         <small className="mt-1.25 block text-[12px] text-ui-danger">
-          Must be kebab-case (lowercase, hyphens).
+          Use lowercase words and hyphens; separate nested pages with /.
         </small>
       ) : ed.collision ? (
         collisionHelp
@@ -206,7 +218,7 @@ export function PageFields({
 
   const categoryFields = (
     <>
-      <div className="flex gap-3.5 *:flex-1">
+      <div className="flex flex-wrap gap-3.5 *:min-w-0 *:flex-1 *:basis-56">
         <div className="mb-4.5">
           <label
             className="mb-1.5 block text-[13px] font-medium text-ui-default"
@@ -382,7 +394,7 @@ export function PageFields({
         className="mb-1.5 block text-[13px] font-medium text-ui-default"
         htmlFor="sp-body"
       >
-        Body
+        Content
       </label>
       <BodyEditor
         onAiAction={onAiAction}
@@ -398,38 +410,49 @@ export function PageFields({
     </div>
   );
 
-  if (layout === "stacked") {
-    return (
-      <>
-        {linkField}
-
-        {titleField}
-
-        {pathField}
-
-        {categoryFields}
-
-        {descriptionField}
-
-        {visibilityField}
-
-        {bodyField}
-      </>
-    );
-  }
   return (
-    <div className="flex items-start gap-8">
-      <div className="min-w-0 flex-1">
+    <>
+      <div hidden={view !== "content"} className="mx-auto max-w-4xl">
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-ui-strong">Page content</h2>
+          <p className="mt-1 text-sm text-ui-subtle">
+            Write what people need to know to use this service.
+          </p>
+        </div>
         {titleField}
         {bodyField}
       </div>
-      <aside className="sticky top-0 w-80 shrink-0 border-l border-ui-hairline pl-8">
-        {linkField}
-        {pathField}
-        {categoryFields}
-        {descriptionField}
-        {visibilityField}
-      </aside>
-    </div>
+      <div hidden={view !== "settings"} className="mx-auto max-w-2xl">
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-ui-strong">
+            Page settings
+          </h2>
+          <p className="mt-1 text-sm text-ui-subtle">
+            Choose where this page appears and what people can do next.
+          </p>
+        </div>
+        <section className="mb-6 border-b border-ui-hairline pb-3">
+          <h3 className="mb-4 text-sm font-semibold">
+            Where this page appears
+          </h3>
+          {descriptionField}
+          {categoryFields}
+          {visibilityField}
+        </section>
+        <section className="mb-6 border-b border-ui-hairline pb-3">
+          <h3 className="mb-4 text-sm font-semibold">Next action</h3>
+          {linkField}
+        </section>
+        <section>
+          <h3 className="mb-4 text-sm font-semibold">Page address</h3>
+          {ed.url && (
+            <p className="mb-4 text-sm text-ui-subtle wrap-anywhere">
+              {ed.url}
+            </p>
+          )}
+          {pathField}
+        </section>
+      </div>
+    </>
   );
 }

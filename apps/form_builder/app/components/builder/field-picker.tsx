@@ -1,4 +1,4 @@
-import { Badge } from "../ui/badge";
+import { PlusIcon } from "@phosphor-icons/react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { useState } from "react";
@@ -20,7 +20,12 @@ interface FieldPickerProps {
 }
 
 type Tab = "Components" | "Blocks" | "Custom";
-const TABS: Tab[] = ["Components", "Blocks", "Custom"];
+const TABS: Tab[] = ["Custom", "Components", "Blocks"];
+const TAB_LABELS = {
+  Custom: "Basic fields",
+  Components: "Common questions",
+  Blocks: "Question groups",
+};
 
 function matches(query: string, ...fields: Array<string | undefined>) {
   if (!query) return true;
@@ -29,7 +34,7 @@ function matches(query: string, ...fields: Array<string | undefined>) {
 }
 
 export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
-  const [activeTab, setActiveTab] = useState<Tab>("Components");
+  const [activeTab, setActiveTab] = useState<Tab>("Custom");
   const [query, setQuery] = useState("");
 
   const components = Object.entries(REGISTRY_COMPONENTS)
@@ -80,7 +85,7 @@ export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search fields…"
+          placeholder="Search questions and field types…"
           className="w-full pr-10"
           aria-label="Search fields"
         />
@@ -102,11 +107,12 @@ export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
       <Tabs
         tabs={TABS.map((tab) => ({
           value: tab,
-          label: `${tab} (${counts[tab]})`,
+          label: `${TAB_LABELS[tab]} (${counts[tab]})`,
         }))}
         value={activeTab}
         onValueChange={(tab) => setActiveTab(tab as Tab)}
         aria-label="Field source"
+        variant="underline"
         className="mb-3.5"
       />
 
@@ -140,15 +146,15 @@ export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
           )}
           {components.map(([ref, primitive]) => (
             <Button
-              variant="outline"
-              className="mb-2 h-auto min-h-11 w-full flex-wrap justify-between gap-3 whitespace-normal text-left"
+              variant="ghost"
+              className="h-auto min-h-11 w-full justify-between gap-3 rounded-none border-b border-ui-hairline whitespace-normal text-left"
               key={ref}
               onClick={() =>
                 onAddField({ kind: "component", ref, overrides: {} })
               }
             >
               <span style={{ flex: 1 }}>{primitive.label}</span>
-              <Badge variant="secondary">{primitive.fieldId}</Badge>
+              <PlusIcon aria-hidden="true" />
             </Button>
           ))}
         </div>
@@ -163,8 +169,8 @@ export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
           )}
           {blocks.map(([ref, block]) => (
             <Button
-              variant="outline"
-              className="mb-2 h-auto min-h-11 w-full flex-wrap justify-between gap-3 whitespace-normal text-left"
+              variant="ghost"
+              className="h-auto min-h-11 w-full justify-between gap-3 rounded-none border-b border-ui-hairline whitespace-normal text-left"
               key={ref}
               onClick={() =>
                 onAddField({
@@ -176,7 +182,7 @@ export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
               }
             >
               <span style={{ flex: 1 }}>{block.blockId}</span>
-              <Badge variant="secondary">{ref}</Badge>
+              <PlusIcon aria-hidden="true" />
             </Button>
           ))}
         </div>
@@ -189,8 +195,8 @@ export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
           )}
           {custom.map((row) => (
             <Button
-              variant="outline"
-              className="mb-2 h-auto min-h-11 w-full flex-wrap justify-between gap-3 whitespace-normal text-left"
+              variant="ghost"
+              className="h-auto min-h-11 w-full justify-between gap-3 rounded-none border-b border-ui-hairline whitespace-normal text-left"
               key={`${row.source}:${row.ref}`}
               onClick={() =>
                 onAddField(
@@ -201,7 +207,7 @@ export function FieldPicker({ catalog, onAddField }: FieldPickerProps) {
               }
             >
               <span style={{ flex: 1 }}>{row.label}</span>
-              <Badge variant="secondary">{row.badge}</Badge>
+              <PlusIcon aria-hidden="true" />
             </Button>
           ))}
         </div>

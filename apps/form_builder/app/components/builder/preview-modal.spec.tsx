@@ -46,7 +46,7 @@ describe("PreviewModal live preview link", () => {
       screen.queryByRole("link", { name: /preview saved form/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText(/save this recipe to enable a live preview link/i),
+      screen.getByText(/save a draft to preview the applicant journey/i),
     ).toBeInTheDocument();
   });
 });

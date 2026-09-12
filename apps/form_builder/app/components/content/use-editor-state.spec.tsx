@@ -3,11 +3,25 @@
  */
 import { act, renderHook } from "../../test/ui";
 import { useEditorState } from "./use-editor-state";
-import { draftKeyFor, readDraft, writeDraft } from "./draft-store";
+import { EMPTY_PAGE, buildDeployPayload } from "../../lib/content";
+import {
+  createPageDraft,
+  newPageDrafts,
+  draftKeyFor,
+  readDraft,
+  writeDraft,
+} from "./draft-store";
 
 const loadPageMock = vi.hoisted(() => vi.fn());
 vi.mock("../../server/content", () => ({
   loadLandingContentPage: loadPageMock,
+}));
+
+vi.mock("../../lib/service-drafts", () => ({
+  getServiceOwner: vi.fn(async () => ({ serviceId: null })),
+  getServiceDraft: vi.fn(),
+  saveServiceDraft: vi.fn(),
+  saveServicePage: vi.fn(),
 }));
 
 // A new page's autosave target is the empty init signature.
@@ -230,4 +244,61 @@ describe("useEditorState revision-bound drafts", () => {
     expect(result.current.canDeploy).toBe(false);
     expect(result.current.deployBlockReason).toMatch(/older page revision/);
   });
+});
+
+it("keeps a new guidance draft separate from the current start page, including deploy target and revision", async () => {
+  const startPath = "apps/landing/src/content/alpha/start.md";
+  const helpPath = "apps/landing/src/content/alpha/help.md";
+  loadPageMock.mockResolvedValue({
+    path: startPath,
+    sha: "base",
+    revision: { source: "base", sha: "base" },
+    frontmatter: { title: "Apply", form_id: "alpha" },
+    body: "Current page",
+  });
+  const current = renderHook(() =>
+    useEditorState([], { path: startPath }, [], true),
+  );
+  await act(async () => Promise.resolve());
+  act(() => current.result.current.set("body", "Unsaved main page changes"));
+  act(() => {
+    expect(current.result.current.persistDraft()).toBe(true);
+  });
+  createPageDraft(helpPath, {
+    ...EMPTY_PAGE,
+    formId: "alpha",
+    title: "Help",
+    slug: "alpha/help",
+    body: "Separate guidance",
+  });
+  current.unmount();
+  const help = renderHook(() =>
+    useEditorState([], { createPath: helpPath }, newPageDrafts(), true),
+  );
+  expect(help.result.current.fixedPath).toBe(helpPath);
+  expect(help.result.current.editing).toBe(false);
+  expect(help.result.current.canDeploy).toBe(true);
+  expect(help.result.current.state.body).toBe("Separate guidance");
+  expect(loadPageMock).toHaveBeenCalledTimes(1);
+  expect(readDraft(draftKeyFor(startPath))).toMatchObject({
+    revision: { source: "base", sha: "base" },
+    state: { body: "Unsaved main page changes" },
+  });
+  const ed = help.result.current;
+  expect(
+    buildDeployPayload({
+      state: ed.state,
+      slug: ed.slug,
+      prDescription: "Add guidance",
+      creatingCategory: false,
+      newCatSlug: "",
+      newCatTitle: "",
+      newCatDesc: "",
+      editPath: ed.editPath,
+      editSha: ed.editSha,
+      editRevision: ed.editRevision,
+      baseFrontmatter: ed.baseFrontmatter,
+      createPath: ed.createPath,
+    }),
+  ).toMatchObject({ path: helpPath, expectedRevision: { source: "absent" } });
 });

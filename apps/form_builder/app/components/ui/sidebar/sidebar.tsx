@@ -512,7 +512,7 @@ const SidebarRoot = forwardRef<HTMLElement, SidebarRootProps>(
       if (!isMobile) return;
       if (openMobile) {
         triggerRef.current = document.activeElement;
-        shouldRestoreFocusRef.current = false;
+        shouldRestoreFocusRef.current = true;
         // Wait a frame so the aside is no longer inert before focusing
         requestAnimationFrame(() => {
           const firstFocusable =
@@ -1114,7 +1114,7 @@ const SidebarMenuButton = forwardRef<HTMLButtonElement, SidebarMenuButtonProps>(
           "transition-transform duration-(--sidebar-animation-duration)",
         )}
       >
-        {iconNode}
+        {iconNode && <span className="flex shrink-0">{iconNode}</span>}
         <span
           className={cn(
             "flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-left",

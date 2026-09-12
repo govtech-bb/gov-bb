@@ -34,6 +34,9 @@ function renderToolbar(overrides: Partial<Parameters<typeof Toolbar>[0]> = {}) {
     ...overrides,
   };
   render(<Toolbar {...props} />);
+  const settings = screen.getByRole("button", { name: /Form settings/ });
+  if (settings.getAttribute("aria-expanded") === "false")
+    fireEvent.click(settings);
   return {
     onFormIdChange: props.onFormIdChange,
     onDiscard: props.onDiscard,
@@ -129,7 +132,8 @@ describe("Toolbar — Form ID input", () => {
 
 describe("Toolbar — unsaved changes + Discard", () => {
   function discardButton() {
-    return screen.getByRole("button", { name: /discard/i });
+    fireEvent.click(screen.getByRole("button", { name: "More form actions" }));
+    return screen.getByRole("menuitem", { name: /discard/i });
   }
   function saveDraftButton() {
     return screen.getByRole("button", { name: /save draft/i });
@@ -150,15 +154,15 @@ describe("Toolbar — unsaved changes + Discard", () => {
   it("enables Discard and calls onDiscard when there are unsaved changes", () => {
     const { onDiscard } = renderToolbar({ hasUnsavedChanges: true });
 
-    expect(discardButton()).toBeEnabled();
-    fireEvent.click(discardButton());
+    expect(discardButton()).not.toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(screen.getByRole("menuitem", { name: /discard/i }));
     expect(onDiscard).toHaveBeenCalledTimes(1);
   });
 
   it("disables Discard when the draft is clean", () => {
     renderToolbar({ hasUnsavedChanges: false });
 
-    expect(discardButton()).toBeDisabled();
+    expect(discardButton()).toHaveAttribute("aria-disabled", "true");
   });
 
   it("disables Save draft when the draft is clean", () => {
@@ -176,13 +180,13 @@ describe("Toolbar — unsaved changes + Discard", () => {
   it("disables Deploy when there are unsaved changes (#331)", () => {
     renderToolbar({ hasUnsavedChanges: true });
 
-    expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /publish/i })).toBeDisabled();
   });
 
   it("enables Deploy when the draft is clean", () => {
     renderToolbar({ hasUnsavedChanges: false });
 
-    expect(screen.getByRole("button", { name: /deploy/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /publish/i })).toBeEnabled();
   });
 });
 
@@ -190,33 +194,35 @@ describe("Toolbar — Deploy blocked while visibility is draft (#1682)", () => {
   it("disables Deploy when visibility is draft, even on a clean valid draft", () => {
     renderToolbar({ hasUnsavedChanges: false, visibility: "draft" });
 
-    expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /publish/i })).toBeDisabled();
   });
 
   it("shows a hint telling the author to set Preview or Public", () => {
     renderToolbar({ hasUnsavedChanges: false, visibility: "draft" });
 
     expect(
-      screen.getByText(/set visibility to preview or public to deploy/i),
+      screen.getByText(
+        /set visibility to preview or public in form settings to publish/i,
+      ),
     ).toBeInTheDocument();
   });
 
   it("enables Deploy when visibility is preview", () => {
     renderToolbar({ hasUnsavedChanges: false, visibility: "preview" });
 
-    expect(screen.getByRole("button", { name: /deploy/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /publish/i })).toBeEnabled();
   });
 
   it("enables Deploy when visibility is public", () => {
     renderToolbar({ hasUnsavedChanges: false, visibility: "public" });
 
-    expect(screen.getByRole("button", { name: /deploy/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /publish/i })).toBeEnabled();
   });
 
   it("enables Deploy when visibility is maintenance (#1694)", () => {
     renderToolbar({ hasUnsavedChanges: false, visibility: "maintenance" });
 
-    expect(screen.getByRole("button", { name: /deploy/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /publish/i })).toBeEnabled();
   });
 });
 
@@ -228,7 +234,7 @@ describe("Toolbar — read-only lock (#874)", () => {
 
   it("disables Deploy when read-only, even on a clean draft", () => {
     renderToolbar({ hasUnsavedChanges: false, isReadOnly: true });
-    expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /publish/i })).toBeDisabled();
   });
 
   it("disables the Form ID and Title inputs when read-only", () => {

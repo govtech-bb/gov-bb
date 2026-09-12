@@ -9,6 +9,12 @@ import {
 } from "@testing-library/react";
 import { getCatalog, type RecipeDraft } from "@govtech-bb/form-builder";
 import { Assistant } from "./assistant";
+import { useState } from "react";
+import {
+  GlobalAssistantProvider,
+  useGlobalAssistant,
+  WorkspaceAssistant,
+} from "../../global-assistant";
 import { prepareFormDraft } from "../../builder/form-assistant";
 import { restoreTranscript, historyKey } from "./history";
 import type { PreparedChange } from "./review";
@@ -116,17 +122,20 @@ it("requires a review and explicit approval before a client tool can change the 
   expect(button).not.toBeDisabled();
   expect(apply).not.toHaveBeenCalled();
   expect(
-    harness.options.tools[0].execute(proposal, { toolCallId: "call" }).applied,
+    (await harness.options.tools[0].execute(proposal, { toolCallId: "call" }))
+      .applied,
   ).toBe(false);
   fireEvent.click(button);
   expect(resolve).toHaveBeenCalledWith(true);
   expect(apply).not.toHaveBeenCalled();
   expect(
-    harness.options.tools[0].execute(proposal, { toolCallId: "call" }).applied,
+    (await harness.options.tools[0].execute(proposal, { toolCallId: "call" }))
+      .applied,
   ).toBe(true);
   expect(apply).toHaveBeenCalledTimes(1);
   expect(
-    harness.options.tools[0].execute(proposal, { toolCallId: "call" }).applied,
+    (await harness.options.tools[0].execute(proposal, { toolCallId: "call" }))
+      .applied,
   ).toBe(false);
 });
 
@@ -154,7 +163,8 @@ it("rechecks the current draft after async validation and after approval", async
   );
   expect(screen.getByRole("button", { name: "Apply to draft" })).toBeDisabled();
   expect(
-    harness.options.tools[0].execute(proposal, { toolCallId: "call" }).applied,
+    (await harness.options.tools[0].execute(proposal, { toolCallId: "call" }))
+      .applied,
   ).toBe(false);
   expect(apply).not.toHaveBeenCalled();
 });
@@ -179,7 +189,8 @@ it("disables proposals when the editing claim becomes read-only", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Apply to draft" }));
   view.rerender(<Assistant {...props} readOnly prepare={prepare} />);
   expect(
-    harness.options.tools[0].execute(proposal, { toolCallId: "call" }).applied,
+    (await harness.options.tools[0].execute(proposal, { toolCallId: "call" }))
+      .applied,
   ).toBe(false);
   expect(apply).not.toHaveBeenCalled();
 });
@@ -281,7 +292,8 @@ it("cancels and invalidates an approved edit when the assistant closes", async (
   view.rerender(<Assistant {...props} open={false} prepare={prepare} />);
   expect(harness.stop).toHaveBeenCalled();
   expect(
-    harness.options.tools[0].execute(proposal, { toolCallId: "call" }).applied,
+    (await harness.options.tools[0].execute(proposal, { toolCallId: "call" }))
+      .applied,
   ).toBe(false);
   expect(apply).not.toHaveBeenCalled();
 });
@@ -345,4 +357,110 @@ it("resolves clarification questions through TanStack client-tool results with t
     }),
   );
   expect(prepare).not.toHaveBeenCalled();
+});
+
+it("keeps one workspace conversation across editors and rejects an approval from the previous document", async () => {
+  const apply = vi.fn();
+  const prepare = async () => ({
+    before: {},
+    after: { title: "Proposed" },
+    warnings: [],
+    apply,
+  });
+  function Editor() {
+    const assistant = useGlobalAssistant();
+    const [documentId, setDocumentId] = useState("one");
+    return (
+      <>
+        <button onClick={() => assistant.setOpen(true)}>Ask AI</button>
+        <button onClick={() => setDocumentId("two")}>Open guidance page</button>
+        <WorkspaceAssistant
+          key={documentId}
+          {...props}
+          documentId={documentId}
+          document={{
+            title: documentId === "one" ? "Application form" : "Guidance page",
+          }}
+          kind={documentId === "one" ? "form" : "content"}
+          open={assistant.open}
+          onOpenChange={assistant.setOpen}
+          prepare={prepare}
+        />
+      </>
+    );
+  }
+  const ui = () => (
+    <GlobalAssistantProvider>
+      <Editor />
+    </GlobalAssistantProvider>
+  );
+  const view = render(ui());
+  fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+  const input = await screen.findByRole("textbox", {
+    name: "Message the assistant",
+  });
+  fireEvent.change(input, {
+    target: { value: "Help me improve this service" },
+  });
+  const thread = harness.options.threadId;
+  await propose();
+  view.rerender(ui());
+  const approve = await screen.findByRole("button", { name: "Apply to draft" });
+  await waitFor(() => expect(approve).not.toBeDisabled());
+  fireEvent.click(approve);
+  fireEvent.click(screen.getByRole("button", { name: "Open guidance page" }));
+  await waitFor(() =>
+    expect(screen.getByText(/· Guidance page/)).toBeInTheDocument(),
+  );
+  expect(
+    screen.getByRole("dialog", { name: "Workspace assistant" }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("textbox", { name: "Message the assistant" })).toBe(
+    input,
+  );
+  expect(input).toHaveValue("Help me improve this service");
+  expect(harness.options.threadId).toBe(thread);
+  expect(
+    (await harness.options.tools[0].execute(proposal, { toolCallId: "call" }))
+      .applied,
+  ).toBe(false);
+  expect(apply).not.toHaveBeenCalled();
+});
+
+it("reports a failed shared save and does not claim the AI edit was applied", async () => {
+  let fail!: (reason: Error) => void;
+  const apply = vi.fn(
+    () =>
+      new Promise<void>((_resolve, reject) => {
+        fail = reject;
+      }),
+  );
+  const prepare = async (): Promise<PreparedChange> => ({
+    before: { title: "Current" },
+    after: { title: "Proposed" },
+    warnings: [],
+    apply,
+  });
+  const view = render(<Assistant {...props} prepare={prepare} />);
+  await waitFor(() => expect(harness.options).toBeTruthy());
+  await propose();
+  await act(async () => {
+    view.rerender(<Assistant {...props} prepare={prepare} />);
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Apply to draft" }));
+  let result!: Promise<{ applied: boolean }>;
+  act(() => {
+    result = harness.options.tools[0].execute(proposal, { toolCallId: "call" });
+  });
+  expect(apply).toHaveBeenCalledTimes(1);
+  let finished = false;
+  result.then(() => {
+    finished = true;
+  });
+  await Promise.resolve();
+  expect(finished).toBe(false);
+  await act(async () => {
+    fail(new Error("A newer service revision exists"));
+  });
+  expect((await result).applied).toBe(false);
 });

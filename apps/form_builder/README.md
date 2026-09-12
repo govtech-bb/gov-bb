@@ -41,6 +41,68 @@ Copy [`.env.example`](./.env.example) to `.env`. Key variables:
 pnpm exec nx test form-builder-app   # Vitest 4
 ```
 
+## Workspace layout
+
+Services, forms, and content share a collapsible sidebar and top bar. The sidebar
+remembers its desktop state and lists the current service’s overview, application
+form, and content pages. Small screens use a navigation drawer. The form editor
+has a separate page outline; content editing has Write, Settings, and Preview tabs.
+Ask AI opens a global panel that stays mounted while navigating the workspace.
+
+## Services
+
+The service library is the starting point. Each service has one optional
+application and many content pages. The sidebar stays available throughout;
+Ask AI is global and keeps its conversation while you navigate.
+
+Create a service walks through three steps (name and category, application
+form, department contact) and creates the service with its entry page. The
+service overview then lists the journey in the order of the service content
+standards (entry page, start page, supporting pages, application form,
+confirmation, after submission) and the service details, each with its status
+and one action; the header button always names the next unfinished step and
+becomes **Publish** when everything is done. **Details** edits name, category,
+contact and release in place; **After submission** holds delivery settings.
+Department email uses
+the existing contact directory. Webhooks and payments use the existing application
+settings and processor editor. Saving these settings keeps the existing backend
+behaviour; this change does not add release-pinned configuration.
+
+Choose **Pages → Add page** for supporting pages such as `help`, or **Add start
+page** from the overview when people must prepare before they begin; the entry
+page's Start button then points at the start page.
+Each page has its own identity and URL. AI proposals to create a page preserve
+the open page. **Journey** shows page links, form pages, conditions, repeated pages,
+confirmation, and delivery actions; its outline lets you reorder optional pages.
+
+Service organisation, setup progress, and content drafts are saved in this
+browser, scoped to the signed-in author. Form drafts use the existing API and
+editing locks. The UI does not claim atomic saves across forms and content or
+shared service drafts. Keep named Git versions when work needs to leave this
+browser. A browser storage failure is reported without clearing the editor.
+
+**History** saves public service files in one Git commit and retains a named tag.
+Version shortcuts and recovery copies are kept in this browser. It also shows
+existing Git history for any service page or application. Restoring keeps a local
+recovery copy and retains the current environment's private configuration.
+Existing form identities and published page URLs cannot be silently removed.
+
+A selected version opens a PR containing the service manifest, pages, and recipe.
+Source revisions and overlapping PRs are checked first. Git stores public files;
+private payment and department settings continue to use the current API.
+A merged PR is reported as merged, not as a verified live deployment.
+
+**Preview service** captures the current snapshot, including unsaved editor
+changes, and uses the real content and form renderers. Sample uploads, payments,
+and submissions stay in preview. Set `VITE_LANDING_PREVIEW_URL` and
+`VITE_FORMS_PREVIEW_URL` on the builder to absolute URLs ending in
+`/preview-start-page` and `/preview-service`. Set `VITE_START_PAGE_EDITOR_ORIGIN`
+on the receiving apps to the builder's exact origin. Development accepts local
+loopback origins. Both origin and source window are checked.
+
+No new `form_builder_api` endpoints, database migrations, release-preparation
+commands, or submission-processing behaviour are required for this UI.
+
 ## Code organization
 
 - `app/routes` owns route configuration, page composition, and page-level state.
@@ -80,11 +142,18 @@ PR previews must not contain a `.` (see the root [CLAUDE.md](../../CLAUDE.md)).
 Shared AI UI lives in `app/components/ui/ai`; form and content adapters live in
 their respective component groups. Ask mode answers questions; Review
 edits shows a normalized before/after comparison and validation warnings before
-Apply. Changes remain local until the existing Save or Deploy action.
+Apply. Service edits remain local until Save draft, except creating a separate
+AI guidance page, which stores both content drafts in this browser after approval.
+Publication always uses a selected named service version.
 
-Conversations are stored on the current browser, scoped to the signed-in user
-and artifact. Restoring a conversation restores text only, never a draft or
-pending approval. Delete chat removes its transcript and document reference.
+The root `GlobalAssistantProvider` keeps one conversation available across the
+library and both editors. Editor adapters register the active document and its
+guarded apply callback. Library conversations use Ask mode; edits require an open
+form or content page. Moving to another document invalidates earlier approvals.
+
+Conversations are stored on the current browser and scoped to the signed-in user’s
+workspace. Restoring a conversation restores text only, never a draft or pending
+approval. Delete chat removes its transcript and document reference.
 
 Streams go directly to the API using a short-lived token obtained through an
 authenticated server function. Configure the API's `CORS_ORIGIN` to include

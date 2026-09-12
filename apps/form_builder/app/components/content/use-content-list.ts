@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { newPageDrafts } from "./draft-store";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   listLandingContentPages,
   listOpenContentPRs,
@@ -28,6 +29,7 @@ export interface ContentListState {
  * it loads lazily the first time the picker opens.
  */
 export function useContentList(enabled: boolean): ContentListState {
+  const [draftVersion, setDraftVersion] = useState(0);
   const [pages, setPages] = useState<ContentPageSummary[] | null>(null);
   const [openPRs, setOpenPRs] = useState<Map<string, ContentReviewClaim[]>>(
     new Map(),
@@ -93,8 +95,26 @@ export function useContentList(enabled: boolean): ContentListState {
     };
   }, [enabled, pages, load]);
 
+  useEffect(() => {
+    const refreshDrafts = () => setDraftVersion((version) => version + 1);
+    window.addEventListener("storage", refreshDrafts);
+    window.addEventListener("content-draft-change", refreshDrafts);
+    return () => {
+      window.removeEventListener("storage", refreshDrafts);
+      window.removeEventListener("content-draft-change", refreshDrafts);
+    };
+  }, []);
+  const inventory = useMemo(() => {
+    if (pages === null) return null;
+    const paths = new Set(pages.map((page) => page.path));
+    return [
+      ...pages,
+      ...newPageDrafts().filter((page) => !paths.has(page.path)),
+    ];
+  }, [pages, draftVersion]);
+
   return {
-    pages,
+    pages: inventory,
     openPRs,
     reviewSnapshot,
     loading,

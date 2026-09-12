@@ -97,6 +97,7 @@ const markdownComponents: MarkdownComponents = {
 export type AssistantProps = {
   user: string;
   documentId: string;
+  conversationScope?: string;
   kind: AiContext["kind"];
   document: Record<string, unknown>;
   revisionSource: unknown;
@@ -120,11 +121,13 @@ export function Assistant(props: AssistantProps) {
   const [thread, setThread] = useState("");
   const [storageError, setStorageError] = useState(false);
   const [dock, setDock] = useState<HTMLDivElement | null>(null);
-  const scope = historyKey(props.user, props.kind, props.documentId);
+  const scope = props.conversationScope
+    ? historyKey(props.user, "workspace", props.conversationScope)
+    : historyKey(props.user, props.kind, props.documentId);
   const source = JSON.stringify(props.revisionSource);
   const revision = useMemo(
     () => crypto.randomUUID(),
-    [source, props.documentId],
+    [source, props.user, props.kind, props.documentId],
   );
   const [mode, setMode] = useState<"ask" | "edit">("edit");
   const context: AiContext = {
@@ -239,10 +242,15 @@ export function Assistant(props: AssistantProps) {
 
       <div
         ref={setDock}
-        className="relative min-inline-0 flex-[0_0_var(--ai-width,450px)] data-[open=false]:hidden data-[expanded=true]:basis-[min(720px,55vw)] max-lg:basis-0"
+        className="relative min-inline-0 flex-[0_0_var(--ai-width)] transition-[flex-basis] duration-(--ui-enter) ease-out data-[open=false]:basis-0 data-[open=false]:duration-(--ui-moderate) motion-reduce:transition-none max-lg:basis-0"
         data-open={open}
-        data-expanded={expanded}
-        style={{ "--ai-width": width + "px" } as CSSProperties}
+        style={
+          {
+            "--ai-width": expanded
+              ? "min(720px,55cqi)"
+              : `min(${width}px,55cqi)`,
+          } as CSSProperties
+        }
       >
         <Dialog.Root
           open={open && dock !== null}
@@ -255,8 +263,14 @@ export function Assistant(props: AssistantProps) {
             keepMounted
             backdrop={compact}
             initialFocus={compact ? undefined : false}
-            className="absolute inset-0 m-0 flex h-full max-h-none w-full max-w-none translate-none flex-col overflow-hidden rounded-none border-0 border-s border-ui-hairline p-0 font-sans text-[14px] text-ui-default sm:w-full max-lg:fixed max-lg:h-dvh max-lg:w-screen max-lg:border-0 [:where(&)_p]:mt-0 [:where(&)_p]:mb-3 [:where(&)_p]:leading-[1.6]"
-            aria-label="Builder assistant"
+            className="absolute inset-0 m-0 flex h-full max-h-none w-screen max-w-none translate-none scale-100! flex-col overflow-hidden rounded-none border-0 border-s border-ui-hairline bg-ui-base shadow-none p-0 font-sans text-[14px] text-ui-default sm:w-screen lg:w-(--ai-width) max-lg:fixed max-lg:h-dvh max-lg:w-screen max-lg:border-0 [:where(&)_p]:mt-0 [:where(&)_p]:mb-3 [:where(&)_p]:leading-[1.6]"
+            aria-label={
+              props.conversationScope
+                ? "Workspace assistant"
+                : props.kind === "form"
+                  ? "Form assistant"
+                  : "Content assistant"
+            }
             showCloseButton={false}
           >
             <div
@@ -419,6 +433,10 @@ function ChatSession({
   const [selectedText, setSelectedText] = useState<string | null>();
   const [requestId, setRequestId] = useState<string>();
   useEffect(() => {
+    setSelectedText(undefined);
+    setRequestId(undefined);
+  }, [context.kind, context.documentId]);
+  useEffect(() => {
     if (!request) return;
     setInput(request.prompt);
     setSelectedText(request.selection);
@@ -462,7 +480,7 @@ function ChatSession({
     [],
   );
   const execute = useCallback(
-    (_input: Proposal, toolContext?: { toolCallId?: string }) => {
+    async (_input: Proposal, toolContext?: { toolCallId?: string }) => {
       const id = toolContext?.toolCallId ?? "";
       const change = approved.current.get(id);
       approved.current.delete(id);
@@ -479,10 +497,15 @@ function ChatSession({
             "The draft changed or approval is missing. Request a fresh proposal.",
         };
       try {
-        flushSync(() => change.apply());
+        let applied: void | Promise<void>;
+        flushSync(() => {
+          applied = change.apply();
+        });
+        await applied!;
         return {
           applied: true,
           message:
+            change.appliedMessage ??
             "Applied to the local draft. It has not been saved or deployed.",
         };
       } catch (error) {
@@ -739,8 +762,12 @@ function ChatSession({
     <>
       <div className="flex items-center gap-2 border-b border-ui-hairline px-4 py-2.25 text-[11px] text-ui-default [&_span]:min-inline-0 [&_span]:flex-1 [&_span]:truncate">
         <span>
-          {context.kind === "form" ? "Form" : "Content page"} ·{" "}
-          {String(context.document.title || "Untitled")}
+          {context.document.workspace
+            ? "Workspace"
+            : context.kind === "form"
+              ? "Form"
+              : "Content page"}{" "}
+          · {String(context.document.title || "Untitled")}
         </span>
         <Button
           type="button"
@@ -788,13 +815,20 @@ function ChatSession({
                 document. Review every change before applying it.
               </p>
               <div className="mt-6 grid gap-2 [&>button]:h-auto [&>button]:min-h-10 [&>button]:justify-between [&>button]:text-start [&>button]:whitespace-normal">
-                {[
-                  "Review this draft for clarity",
-                  "Make the wording easier to understand",
-                  context.kind === "form"
-                    ? "Help me build a new form"
-                    : "Improve the page structure",
-                ].map((text) => (
+                {(context.document.workspace
+                  ? [
+                      "Help me plan a service",
+                      "How should I structure the guidance pages?",
+                      "What makes a good application form?",
+                    ]
+                  : [
+                      "Review this draft for clarity",
+                      "Make the wording easier to understand",
+                      context.kind === "form"
+                        ? "Help me build a new form"
+                        : "Improve the page structure",
+                    ]
+                ).map((text) => (
                   <Button
                     type="button"
                     key={text}
@@ -1079,7 +1113,7 @@ function ChatSession({
             </div>
           </Banner>
         )}
-        {readOnly && (
+        {readOnly && !context.document.workspace && (
           <Banner variant="alert">
             <div className="min-w-0 space-y-2">
               This draft is read-only. You can still ask questions.
@@ -1108,6 +1142,11 @@ function ChatSession({
               )}
             </div>
           </Banner>
+        )}
+        {context.document.workspace === true && (
+          <p className="text-sm text-ui-subtle">
+            Open a form or content page to edit it with AI.
+          </p>
         )}
         <PromptBar
           attachments={
