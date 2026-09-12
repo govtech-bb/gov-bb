@@ -118,8 +118,12 @@ export const proposeFormTool = {
 export const proposeContentTool = {
   name: "apply_content_patch" as const,
   description:
-    "Propose changed page fields for review. Omit unchanged fields. This only updates the local draft; it does not save or deploy.",
-  inputSchema: z.object({ summary: shortText, patch: aiContentPatchSchema }),
+    "Propose changed page fields for review. Omit unchanged fields. Set operation to create, with a new slug, to propose a separate page instead of changing the open one. This only updates the local draft; it does not save or deploy.",
+  inputSchema: z.object({
+    operation: z.enum(["update", "create"]).default("update"),
+    summary: shortText,
+    patch: aiContentPatchSchema,
+  }),
   outputSchema: outcome,
   needsApproval: true as const,
 };
