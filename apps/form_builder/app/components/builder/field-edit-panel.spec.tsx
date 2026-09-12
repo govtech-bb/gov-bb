@@ -9,7 +9,7 @@ import type { Mock } from "vitest";
  * merge can override the base — otherwise the field is always required.
  */
 import "@testing-library/jest-dom";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { getCatalog } from "@govtech-bb/form-builder";
 import type { RecipeDraft, RecipeFieldDraft } from "@govtech-bb/form-builder";
@@ -169,10 +169,19 @@ it("writes required:{value:true} when requiring an optional field", async () => 
 // "back-to-default ⇒ undefined" behaviour. `ui` collapses to `undefined` when
 // it holds no set keys.
 
-const widthSelect = () =>
-  screen.getByRole("combobox", { name: /field width/i });
-const hideLabelCheckbox = () =>
-  screen.getByRole("checkbox", { name: /hide label/i });
+function openAdvancedSettings() {
+  const trigger = screen.getByRole("button", { name: "Advanced settings" });
+  if (trigger.getAttribute("aria-expanded") === "false")
+    fireEvent.click(trigger);
+}
+const widthSelect = () => {
+  openAdvancedSettings();
+  return screen.getByRole("combobox", { name: /field width/i });
+};
+const hideLabelCheckbox = () => {
+  openAdvancedSettings();
+  return screen.getByRole("checkbox", { name: /hide label/i });
+};
 
 function renderPanel(field: RecipeFieldDraft, dispatch = vi.fn()) {
   render(
@@ -286,9 +295,9 @@ it("humanizes a key name for the schema-driven fallback label", async () => {
 const fieldTypeSelect = () =>
   screen.getByRole("combobox", { name: /field type/i });
 
-it("shows the current registry ref for a non-block field", async () => {
+it("shows a readable field type for a non-block field", async () => {
   renderPanel(makeField("components/generic-text"));
-  expect(screen.getByText("components/generic-text")).toBeInTheDocument();
+  expect(fieldTypeSelect()).toHaveTextContent("Text");
 });
 
 it("offers the generic swap peers in the Field type picker", async () => {
@@ -307,12 +316,9 @@ it("offers the generic swap peers in the Field type picker", async () => {
   );
 });
 
-it("shows a read-only ref with a no-swap note for a singleton type", async () => {
+it("shows a readable name without a swap picker for a singleton type", async () => {
   renderPanel(makeField("components/generic-date"));
-  expect(screen.getByText("components/generic-date")).toBeInTheDocument();
-  expect(
-    screen.getByText(/no similar types to switch to/i),
-  ).toBeInTheDocument();
+  expect(screen.getByText("Date")).toBeInTheDocument();
   expect(
     screen.queryByRole("combobox", { name: /field type/i }),
   ).not.toBeInTheDocument();
@@ -414,6 +420,9 @@ it("surfaces a base component validation rule as an inherited, read-only row", a
 it("writes the base value into overrides when an inherited rule is overridden", async () => {
   const dispatch = renderPanel(makeField("components/national-id-number"));
 
+  await userEvent.click(
+    screen.getByRole("button", { name: "Validation rules" }),
+  );
   await userEvent.click(screen.getByRole("button", { name: /override/i }));
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
 

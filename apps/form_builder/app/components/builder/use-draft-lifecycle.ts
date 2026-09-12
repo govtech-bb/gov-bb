@@ -14,6 +14,7 @@ import type { RecipeAction } from "./recipe-reducer";
 
 interface UseDraftLifecycleParams {
   draft: RecipeDraft;
+  newDraft?: RecipeDraft;
   savedDraft: RecipeDraft | null;
   dispatch: Dispatch<RecipeAction>;
   setSavedDraft: (draft: RecipeDraft | null) => void;
@@ -44,6 +45,7 @@ interface UseDraftLifecycleParams {
  */
 export function useDraftLifecycle({
   draft,
+  newDraft,
   savedDraft,
   dispatch,
   setSavedDraft,
@@ -103,7 +105,9 @@ export function useDraftLifecycle({
   };
 
   const handleNew = () => {
-    dispatch({ type: "RESET" });
+    dispatch(
+      newDraft ? { type: "LOAD_DRAFT", draft: newDraft } : { type: "RESET" },
+    );
     // No saved baseline for a fresh form — unsaved tracking falls back to
     // isDirty until the first save/load.
     setSavedDraft(null);

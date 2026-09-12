@@ -3,10 +3,37 @@ import { respondToConfirmation } from "../../test/ui";
  * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom";
-import { createElement, type ReactElement } from "react";
+import { createElement, type ReactElement, type ReactNode } from "react";
 import { render, screen, fireEvent, within, waitFor } from "../../test/ui";
 import userEvent from "@testing-library/user-event";
 import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
+import type { UseBlockerOpts } from "@tanstack/react-router";
+import { act } from "../../test/ui";
+
+let mockLinkedDraft: RecipeDraft | null = null;
+let mockLinkedFormId: string | undefined;
+let mockSearch: {
+  service?: string;
+  formId?: string;
+  newFormId?: string;
+  title?: string;
+} = {};
+let mockBlocker: UseBlockerOpts;
+
+vi.mock("../../components/app-shell", () => ({
+  AppShell: ({
+    children,
+    assistant,
+  }: {
+    children: ReactNode;
+    assistant: ReactNode;
+  }) => (
+    <>
+      {children}
+      {assistant}
+    </>
+  ),
+}));
 
 // TanStack Start's createServerFn / react-router are ESM-only and pull network
 // at module-eval. The component only reads `Route.useLoaderData()` /
@@ -15,11 +42,19 @@ import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (config: Record<string, unknown>) => ({
     ...config,
-    useLoaderData: () => ({ catalog: CATALOG, baseBranch: "dev" }),
-    useSearch: () => ({}),
+    useLoaderData: () => ({
+      catalog: CATALOG,
+      baseBranch: "dev",
+      initialDraft: mockLinkedDraft,
+      initialFormId: mockLinkedFormId,
+    }),
+    useSearch: () => mockSearch,
     useRouteContext: () => ({ user: { login: "test" } }),
   }),
   useNavigate: () => vi.fn(),
+  useBlocker: (options: UseBlockerOpts) => {
+    mockBlocker = options;
+  },
 }));
 
 // validateRecipe is the only server fn a Save-draft click reaches (and only on
@@ -76,6 +111,10 @@ vi.mock("../../server/publish", () => ({
 }));
 vi.mock("../../components/builder/form-assistant", () => ({
   FormAssistant: () => null,
+}));
+
+vi.mock("../../components/content/use-content-list", () => ({
+  useContentList: () => ({ pages: [], loading: false }),
 }));
 
 // The Open picker's forms list is a slow GitHub-API waterfall; stub it out.
@@ -256,9 +295,108 @@ const { Route } = (await import("./index")) as unknown as {
   Route: { component: () => ReactElement };
 };
 
+function formMenuItem(name: string) {
+  if (!screen.queryByRole("menuitem", { name })) {
+    fireEvent.click(screen.getByRole("button", { name: "More form actions" }));
+  }
+  return screen.getByRole("menuitem", { name });
+}
+
 function renderBuilder() {
   return render(createElement(Route.component));
 }
+
+describe("BuilderPage — service workspace links", () => {
+  afterEach(() => {
+    mockLinkedDraft = null;
+    mockLinkedFormId = undefined;
+    mockSearch = {};
+  });
+
+  it("keeps the new form tied to the service even after discarding changes", async () => {
+    mockForms = [];
+    mockEmptyDraft = INVALID_DRAFT;
+    mockSearch = {
+      service: "page:apps/landing/src/content/pensions/index.md",
+      newFormId: "pensions",
+      title: "Pension advice",
+    };
+    renderBuilder();
+    expect(screen.getByLabelText("Form ID")).toHaveValue("pensions");
+    expect(screen.getByLabelText("Form ID")).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "New" }),
+    ).not.toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("Untitled form"), {
+      target: { value: "Changed title" },
+    });
+    fireEvent.click(formMenuItem("Discard changes"));
+    await respondToConfirmation("Discard changes");
+    expect(screen.getByLabelText("Form ID")).toHaveValue("pensions");
+    expect(screen.getByPlaceholderText("Untitled form")).toHaveValue(
+      "Pension advice",
+    );
+  });
+
+  it("asks before leaving unsaved work for the service library", async () => {
+    mockForms = [];
+    mockEmptyDraft = DIRTY_INVALID_DRAFT;
+    renderBuilder();
+    const navigation = {
+      current: {
+        routeId: "/builder/" as const,
+        fullPath: "/builder/" as const,
+        pathname: "/builder",
+        params: {},
+        search: {},
+      },
+      next: {
+        routeId: "/services" as const,
+        fullPath: "/services" as const,
+        pathname: "/services",
+        params: {},
+        search: {},
+      },
+      action: "BACK" as const,
+    };
+    expect(mockBlocker.enableBeforeUnload).toBe(true);
+    let decision: boolean | Promise<boolean>;
+    act(() => {
+      decision = mockBlocker.shouldBlockFn(navigation);
+    });
+    await respondToConfirmation("Cancel");
+    await expect(decision!).resolves.toBe(true);
+    act(() => {
+      decision = mockBlocker.shouldBlockFn(navigation);
+    });
+    await respondToConfirmation("Discard changes");
+    await expect(decision!).resolves.toBe(false);
+  });
+
+  it("opens the linked form as saved and preserves edits during background refresh", async () => {
+    const user = userEvent.setup();
+    mockForms = [];
+    mockEmptyDraft = INVALID_DRAFT;
+    mockLinkedDraft = VALID_DRAFT;
+    mockLinkedFormId = VALID_DRAFT.formId;
+    const view = renderBuilder();
+    expect(screen.getByLabelText("Form ID")).toHaveValue(VALID_DRAFT.formId);
+    expect(formMenuItem("Discard changes")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    const title = screen.getByPlaceholderText("Untitled form");
+    await user.clear(title);
+    await user.type(title, "Edited service title");
+    expect(formMenuItem("Discard changes")).not.toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    mockLinkedDraft = { ...VALID_DRAFT, title: "Background server title" };
+    view.rerender(createElement(Route.component));
+    expect(title).toHaveValue("Edited service title");
+  });
+});
 
 describe("BuilderPage — validate on Save draft click", () => {
   beforeEach(() => {
@@ -278,7 +416,9 @@ describe("BuilderPage — validate on Save draft click", () => {
     ).toBeInTheDocument();
     // User declined the "save anyway?" prompt, so the modal stays closed.
 
-    expect(screen.queryByText("Submit Recipe")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("dialog", { name: "Save draft" }),
+    ).not.toBeInTheDocument();
     // Pre-flight fails before the server is ever asked.
     expect(validateRecipe).not.toHaveBeenCalled();
   }, 30_000); // load (passes locally well under the limit). 30s gives headroom. See #625. // Heavy render + userEvent flow; 15s flakes under CI's concurrent test
@@ -297,7 +437,7 @@ describe("BuilderPage — validate on Save draft click", () => {
     // ...and on confirm, the version-entry modal opens just like a valid save.
 
     expect(
-      await screen.findByText("Submit Recipe", { selector: "h2" }),
+      await screen.findByText("Save draft", { selector: "h2" }),
     ).toBeInTheDocument();
   }, 30_000); // load (passes locally well under the limit). 30s gives headroom. See #625. // Heavy render + userEvent flow; 15s flakes under CI's concurrent test
 
@@ -308,10 +448,10 @@ describe("BuilderPage — validate on Save draft click", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
 
-    // The modal renders "Submit Recipe" as both its heading and its submit
+    // The modal renders "Save draft" as both its heading and its submit
     // button; the heading (a <strong>) is the unambiguous "modal is open" signal.
     expect(
-      await screen.findByText("Submit Recipe", { selector: "h2" }),
+      await screen.findByText("Save draft", { selector: "h2" }),
     ).toBeInTheDocument();
     expect(validateRecipe).toHaveBeenCalledTimes(1);
     // Valid drafts must never trigger the confirm prompt.
@@ -357,7 +497,9 @@ describe("BuilderPage — validate on Save draft click", () => {
     // "save anyway" confirm and the server is never asked.
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(validateRecipe).not.toHaveBeenCalled();
-    expect(screen.queryByText("Submit Recipe")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("dialog", { name: "Save draft" }),
+    ).not.toBeInTheDocument();
   }, 30_000); // load (passes locally well under the limit). 30s gives headroom. See #625. // Heavy render + userEvent flow; 15s flakes under CI's concurrent test
 });
 
@@ -380,7 +522,9 @@ describe("BuilderPage — incomplete payment config blocks save", () => {
       await screen.findByText(/payment processor is incomplete/i),
     ).toBeInTheDocument();
     // ...the modal never opens, no save-anyway prompt fires (hard gate)...
-    expect(screen.queryByText("Submit Recipe")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("dialog", { name: "Save draft" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     // ...and the server is never asked to validate or save.
     expect(validateRecipe).not.toHaveBeenCalled();
@@ -399,7 +543,7 @@ describe("BuilderPage — incomplete payment config blocks save", () => {
       screen.queryByText(/payment processor is incomplete/i),
     ).not.toBeInTheDocument();
     expect(
-      await screen.findByText("Submit Recipe", { selector: "h2" }),
+      await screen.findByText("Save draft", { selector: "h2" }),
     ).toBeInTheDocument();
     expect(validateRecipe).toHaveBeenCalledTimes(1);
   }, 30_000);
@@ -415,7 +559,7 @@ describe("BuilderPage — formId/title pre-flight on Validate", () => {
     mockEmptyDraft = { ...VALID_DRAFT, formId: "" };
     renderBuilder();
 
-    await userEvent.click(screen.getByRole("button", { name: /^validate$/i }));
+    await userEvent.click(formMenuItem("Check form"));
 
     expect(await screen.findByText(/form id is required/i)).toBeInTheDocument();
     expect(validateRecipe).not.toHaveBeenCalled();
@@ -425,7 +569,7 @@ describe("BuilderPage — formId/title pre-flight on Validate", () => {
     mockEmptyDraft = { ...VALID_DRAFT, formId: "Bad-Id-" };
     renderBuilder();
 
-    await userEvent.click(screen.getByRole("button", { name: /^validate$/i }));
+    await userEvent.click(formMenuItem("Check form"));
 
     expect(
       await screen.findByText(/lowercase letters, numbers, and hyphens only/i),
@@ -437,7 +581,7 @@ describe("BuilderPage — formId/title pre-flight on Validate", () => {
     mockEmptyDraft = { ...VALID_DRAFT, title: "" };
     renderBuilder();
 
-    await userEvent.click(screen.getByRole("button", { name: /^validate$/i }));
+    await userEvent.click(formMenuItem("Check form"));
 
     expect(await screen.findByText(/title is required/i)).toBeInTheDocument();
     expect(validateRecipe).not.toHaveBeenCalled();
@@ -447,7 +591,7 @@ describe("BuilderPage — formId/title pre-flight on Validate", () => {
     mockEmptyDraft = { ...VALID_DRAFT, formId: "", title: "" };
     renderBuilder();
 
-    await userEvent.click(screen.getByRole("button", { name: /^validate$/i }));
+    await userEvent.click(formMenuItem("Check form"));
 
     expect(await screen.findByText(/form id is required/i)).toBeInTheDocument();
     expect(screen.getByText(/title is required/i)).toBeInTheDocument();
@@ -459,7 +603,7 @@ describe("BuilderPage — formId/title pre-flight on Validate", () => {
     validateRecipe.mockResolvedValue({ ok: true });
     renderBuilder();
 
-    await userEvent.click(screen.getByRole("button", { name: /^validate$/i }));
+    await userEvent.click(formMenuItem("Check form"));
 
     expect(validateRecipe).toHaveBeenCalledTimes(1);
   });
@@ -473,7 +617,7 @@ describe("BuilderPage — unsaved changes + Discard", () => {
   });
 
   function discardButton() {
-    return screen.getByRole("button", { name: /discard/i });
+    return formMenuItem("Discard changes");
   }
   function saveDraftButton() {
     return screen.getByRole("button", { name: /save draft/i });
@@ -487,7 +631,7 @@ describe("BuilderPage — unsaved changes + Discard", () => {
     renderBuilder();
 
     expect(screen.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
-    expect(discardButton()).toBeDisabled();
+    expect(discardButton()).toHaveAttribute("aria-disabled", "true");
     expect(saveDraftButton()).toBeDisabled();
   });
 
@@ -505,7 +649,7 @@ describe("BuilderPage — unsaved changes + Discard", () => {
     mockEmptyDraft = VALID_DRAFT; // dirty, never saved ⇒ unsaved changes
     renderBuilder();
 
-    expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /publish/i })).toBeDisabled();
   });
 
   it("disables Deploy for a clean form whose visibility is draft (#1682)", async () => {
@@ -557,13 +701,15 @@ describe("BuilderPage — unsaved changes + Discard", () => {
     });
     renderBuilder();
 
-    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
+    await userEvent.click(formMenuItem("Open form"));
     await userEvent.click(await screen.findByText("WIP Form"));
     expect(await screen.findByDisplayValue("wip-form")).toBeInTheDocument();
 
-    expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /publish/i })).toBeDisabled();
     expect(
-      screen.getByText(/set visibility to preview or public to deploy/i),
+      screen.getByText(
+        /set visibility to preview or public in form settings to publish/i,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -588,11 +734,11 @@ describe("BuilderPage — unsaved changes + Discard", () => {
 
     // Save the draft so it becomes the baseline; the indicator then clears.
     await user.click(saveDraftButton());
-    const dialog = await screen.findByRole("dialog", { name: "Submit Recipe" });
+    const dialog = await screen.findByRole("dialog", { name: "Save draft" });
     await user.click(
-      within(dialog).getByRole("button", { name: "Submit Recipe" }),
+      within(dialog).getByRole("button", { name: "Save draft" }),
     );
-    await within(dialog).findByText(/recipe submitted successfully/i);
+    await within(dialog).findByText(/^Draft saved\./i);
     await user.click(within(dialog).getByRole("button", { name: "Close" }));
     await waitFor(() => expect(dialog).not.toBeInTheDocument());
     expect(screen.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
@@ -662,7 +808,7 @@ describe("BuilderPage — unsaved changes + Discard", () => {
     });
     renderBuilder();
 
-    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
+    await userEvent.click(formMenuItem("Open form"));
     await userEvent.click(await screen.findByText("Old Form"));
 
     // Once the load has applied (toolbar Form ID reflects it)…
@@ -692,9 +838,11 @@ describe("BuilderPage — Open picker freshness after save", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
     await userEvent.click(
-      await screen.findByRole("button", { name: "Submit Recipe" }),
+      within(
+        await screen.findByRole("dialog", { name: "Save draft" }),
+      ).getByRole("button", { name: "Save draft" }),
     );
-    await screen.findByText(/recipe submitted successfully/i);
+    await screen.findByText(/^Draft saved\./i);
 
     // A new form needs the server-merged row, so the slow refetch is acceptable…
     expect(mockRefetch).toHaveBeenCalledTimes(1);
@@ -753,7 +901,7 @@ describe("BuilderPage — Open picker freshness after save", () => {
     renderBuilder();
 
     // Load the existing form so the save reads as a re-save (formId unchanged).
-    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
+    await userEvent.click(formMenuItem("Open form"));
     await userEvent.click(await screen.findByText("Old Form"));
     expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
 
@@ -765,12 +913,14 @@ describe("BuilderPage — Open picker freshness after save", () => {
 
     // Save Changes now defaults to the loaded version (2.0.0), so the save
     // overwrites the draft in place rather than minting a new patch row (#329).
-    // A loaded form's modal reads "Save Changes" rather than "Submit Recipe".
+    // A loaded form's modal reads "Save draft" rather than "Save draft".
     await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
     await userEvent.click(
-      await screen.findByRole("button", { name: "Save Changes" }),
+      within(
+        await screen.findByRole("dialog", { name: "Save draft" }),
+      ).getByRole("button", { name: "Save draft" }),
     );
-    await screen.findByText(/recipe submitted successfully/i);
+    await screen.findByText(/^Draft saved\./i);
 
     // The same-version save routes through updateRecipe (PUT, overwrite), never
     // submitRecipe (POST create) — so no duplicate draft is created.
@@ -848,19 +998,19 @@ describe("BuilderPage — Open picker freshness after save", () => {
     });
     renderBuilder();
 
-    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
+    await userEvent.click(formMenuItem("Open form"));
     await userEvent.click(await screen.findByText("Old Form"));
     expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
 
     // Deploy from the toolbar opens the modal and resolves the target version.
-    await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
+    await userEvent.click(screen.getByRole("button", { name: /publish/i }));
     const publishModal = (
       screen
-        .getByText("Deploy", { selector: "h2" })
+        .getByText("Publish form", { selector: "h2" })
         .closest("div") as HTMLElement
     ).parentElement as HTMLElement;
     await userEvent.click(
-      within(publishModal).getByRole("button", { name: /deploy/i }),
+      within(publishModal).getByRole("button", { name: "Send for review" }),
     );
     await waitFor(() => expect(publishRecipe).toHaveBeenCalledTimes(1));
 
@@ -923,7 +1073,7 @@ describe("BuilderPage — Open picker freshness after save", () => {
     validateRecipe.mockResolvedValue({ ok: true });
     renderBuilder();
 
-    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
+    await userEvent.click(formMenuItem("Open form"));
     await userEvent.click(await screen.findByText("Old Form"));
     expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
 
@@ -933,9 +1083,11 @@ describe("BuilderPage — Open picker freshness after save", () => {
     fireEvent.change(titleField, { target: { value: "Old Form (edit 1)" } });
     await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
     await userEvent.click(
-      await screen.findByRole("button", { name: "Save Changes" }),
+      within(
+        await screen.findByRole("dialog", { name: "Save draft" }),
+      ).getByRole("button", { name: "Save draft" }),
     );
-    await screen.findByText(/recipe submitted successfully/i);
+    await screen.findByText(/^Draft saved\./i);
 
     await userEvent.click(screen.getByRole("button", { name: /^close$/i }));
     await waitFor(() =>
@@ -947,9 +1099,11 @@ describe("BuilderPage — Open picker freshness after save", () => {
     fireEvent.change(titleField, { target: { value: "Old Form (edit 2)" } });
     await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
     await userEvent.click(
-      await screen.findByRole("button", { name: "Save Changes" }),
+      within(
+        await screen.findByRole("dialog", { name: "Save draft" }),
+      ).getByRole("button", { name: "Save draft" }),
     );
-    await screen.findAllByText(/recipe submitted successfully/i);
+    await screen.findAllByText(/^Draft saved\./i);
 
     // Both saves are PUTs at the unchanged version; no POST ever fires, so the
     // backend keeps exactly one 2.0.0 draft instead of accumulating duplicates.
@@ -1036,7 +1190,7 @@ describe("BuilderPage — re-key (changing a loaded form's ID)", () => {
     submitRecipe.mockResolvedValue(undefined);
     renderBuilder();
 
-    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
+    await userEvent.click(formMenuItem("Open form"));
     await userEvent.click(await screen.findByText("Old Form"));
     expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
 
@@ -1047,9 +1201,11 @@ describe("BuilderPage — re-key (changing a loaded form's ID)", () => {
     await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
     await respondToConfirmation("Save draft");
     await userEvent.click(
-      await screen.findByRole("button", { name: "Save Changes" }),
+      within(
+        await screen.findByRole("dialog", { name: "Save draft" }),
+      ).getByRole("button", { name: "Save draft" }),
     );
-    await screen.findByText(/recipe submitted successfully/i);
+    await screen.findByText(/^Draft saved\./i);
 
     // An empty id is never a re-key — the rekey endpoint must not be hit.
     expect(rekeyRecipe).not.toHaveBeenCalled();
@@ -1071,7 +1227,7 @@ describe("BuilderPage — re-key (changing a loaded form's ID)", () => {
     rekeyRecipe.mockResolvedValue(undefined);
     renderBuilder();
 
-    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
+    await userEvent.click(formMenuItem("Open form"));
     await userEvent.click(await screen.findByText("Old Form"));
     expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
 
@@ -1082,9 +1238,11 @@ describe("BuilderPage — re-key (changing a loaded form's ID)", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
     await userEvent.click(
-      await screen.findByRole("button", { name: "Save Changes" }),
+      within(
+        await screen.findByRole("dialog", { name: "Save draft" }),
+      ).getByRole("button", { name: "Save draft" }),
     );
-    await screen.findByText(/recipe submitted successfully/i);
+    await screen.findByText(/^Draft saved\./i);
 
     // The save routed through the dedicated re-key endpoint, carrying the
     // *old* id so the API can move the rows.
@@ -1115,7 +1273,7 @@ describe("BuilderPage — re-key (changing a loaded form's ID)", () => {
     validateRecipe.mockResolvedValue({ ok: true });
     renderBuilder();
 
-    await userEvent.click(screen.getByRole("button", { name: /^open$/i }));
+    await userEvent.click(formMenuItem("Open form"));
     await userEvent.click(await screen.findByText("Pub Form"));
     expect(await screen.findByDisplayValue("pub-form")).toBeInTheDocument();
 
@@ -1175,7 +1333,10 @@ describe("BuilderPage — Preview modal recipe JSON (#744)", () => {
     await userEvent.click(screen.getByRole("button", { name: /^preview$/i }));
 
     expect(
-      await screen.findByText("Test Form", { selector: "div *" }),
+      within(await screen.findByRole("dialog", { name: "Preview" })).getByRole(
+        "heading",
+        { name: "Test Form" },
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /view recipe json/i }),
@@ -1187,14 +1348,16 @@ it("keeps the draft while collapsing the outline and editing a new step", async 
   mockEmptyDraft = INVALID_DRAFT;
   const user = userEvent.setup();
   renderBuilder();
+  await user.click(screen.getByRole("button", { name: /Form settings/ }));
   const title = screen.getByRole("textbox", { name: "Title" });
   fireEvent.change(title, { target: { value: "Community support" } });
-  await user.click(screen.getByRole("button", { name: "Add your first step" }));
-  expect(screen.getByRole("textbox", { name: "Step title" })).toBeVisible();
-  await user.click(screen.getByRole("button", { name: "Toggle form outline" }));
-  expect(
-    screen.getByRole("button", { name: "Toggle form outline" }),
-  ).toHaveAttribute("aria-expanded", "false");
+  await user.click(screen.getByRole("button", { name: "Add your first page" }));
+  expect(screen.getByRole("textbox", { name: "Page title" })).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "Form pages" }));
+  expect(screen.getByRole("button", { name: "Form pages" })).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
   expect(title).toHaveValue("Community support");
-  expect(screen.getByRole("textbox", { name: "Step title" })).toBeVisible();
+  expect(screen.getByRole("textbox", { name: "Page title" })).toBeVisible();
 });

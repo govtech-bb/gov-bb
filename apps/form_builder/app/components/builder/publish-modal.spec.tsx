@@ -88,13 +88,15 @@ describe("PublishModal base branch", () => {
 describe("PublishModal deploy button", () => {
   it("enables Deploy when not publishing or read-only (#1196: no version gate)", () => {
     renderModal({ isPublishing: false });
-    expect(screen.getByRole("button", { name: "Deploy" })).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Send for review" }),
+    ).toBeEnabled();
   });
 
   it("disables Deploy while publishing", () => {
     renderModal({ isPublishing: true });
     expect(
-      screen.getByRole("button", { name: /Opening PR…|Deploy/ }),
+      screen.getByRole("button", { name: /Sending…|Send for review/ }),
     ).toBeDisabled();
   });
 });
@@ -114,7 +116,7 @@ describe("PublishModal success copy (#2390)", () => {
     });
     // The wording spans a <strong>#7</strong> and a <code>dev</code>, so
     // match against the rendered text as a whole rather than a single node.
-    expect(container.textContent).toMatch(/PR #7 opened on dev/);
+    expect(container.textContent).toMatch(/Review #7 opened on dev/);
     expect(container.textContent).not.toMatch(/already-open PR/);
   });
 
@@ -128,9 +130,9 @@ describe("PublishModal success copy (#2390)", () => {
       },
     });
     expect(container.textContent).toMatch(
-      /Pushed to the already-open PR #7 for this form.*no duplicate PR was created/,
+      /Updated review #7 with your latest changes/,
     );
-    expect(container.textContent).not.toMatch(/PR #7 opened on/);
+    expect(container.textContent).not.toMatch(/Review #7 opened on/);
   });
 
   it("renders the PR link and reviewer note for the new-PR case", () => {
@@ -142,7 +144,7 @@ describe("PublishModal success copy (#2390)", () => {
       },
     });
     expect(
-      screen.getByRole("link", { name: "https://example.test/pr/7" }),
+      screen.getByRole("link", { name: "Open review #7" }),
     ).toHaveAttribute("href", "https://example.test/pr/7");
     expect(
       screen.getByText(/A reviewer must approve and merge it/),
@@ -158,7 +160,7 @@ describe("PublishModal success copy (#2390)", () => {
       },
     });
     expect(
-      screen.getByRole("link", { name: "https://example.test/pr/7" }),
+      screen.getByRole("link", { name: "Open review #7" }),
     ).toHaveAttribute("href", "https://example.test/pr/7");
     expect(
       screen.getByText(/A reviewer must approve and merge it/),

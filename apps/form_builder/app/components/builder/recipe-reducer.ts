@@ -152,6 +152,7 @@ function makeDefaultProcessors(): RecipeProcessorDraft[] {
 export type RecipeAction =
   | { type: "ADD_STEP" }
   | { type: "REMOVE_STEP"; stepId: string }
+  | { type: "DUPLICATE_STEP"; stepId: string; copy: RecipeStepDraft }
   | {
       type: "UPDATE_STEP_META";
       stepId: string;
@@ -172,6 +173,12 @@ export type RecipeAction =
       field: Omit<RecipeFieldDraft, "id">;
     }
   | { type: "REMOVE_FIELD"; stepId: string; fieldId: string }
+  | {
+      type: "DUPLICATE_FIELD";
+      stepId: string;
+      fieldId: string;
+      copy: RecipeFieldDraft;
+    }
   | {
       // Change a field's registry ref (its type) in place, replacing its
       // overrides with the migrated set the editor computed via
@@ -281,6 +288,21 @@ export function recipeReducer(
       return { ...state, steps: [...before, newStep, ...after] };
     }
 
+    case "DUPLICATE_STEP": {
+      const index = state.steps.findIndex(
+        (step) => step.stepId === action.stepId,
+      );
+      if (
+        index < 0 ||
+        isRequiredStep(action.stepId) ||
+        state.steps.some((step) => step.stepId === action.copy.stepId)
+      )
+        return state;
+      const steps = [...state.steps];
+      steps.splice(index + 1, 0, action.copy);
+      return { ...state, steps };
+    }
+
     case "REMOVE_STEP": {
       if (isRequiredStep(action.stepId)) return state; // ignore
       return {
@@ -321,6 +343,29 @@ export function recipeReducer(
           s.stepId === action.stepId
             ? { ...s, fields: [...s.fields, fieldWithId] }
             : s,
+        ),
+      };
+    }
+
+    case "DUPLICATE_FIELD": {
+      const step = state.steps.find((item) => item.stepId === action.stepId);
+      const index =
+        step?.fields.findIndex((field) => field.id === action.fieldId) ?? -1;
+      if (
+        !step ||
+        index < 0 ||
+        isNoFieldsStep(step.stepId) ||
+        state.steps.some((item) =>
+          item.fields.some((field) => field.id === action.copy.id),
+        )
+      )
+        return state;
+      const fields = [...step.fields];
+      fields.splice(index + 1, 0, action.copy);
+      return {
+        ...state,
+        steps: state.steps.map((item) =>
+          item === step ? { ...step, fields } : item,
         ),
       };
     }

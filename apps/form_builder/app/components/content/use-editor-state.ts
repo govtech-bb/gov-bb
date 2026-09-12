@@ -1,10 +1,20 @@
+import type { ServiceDraft } from "@govtech-bb/form-types";
+import {
+  getServiceDraft,
+  getServiceOwner,
+  saveServiceDraft,
+  saveServicePage,
+} from "../../lib/service-drafts";
 import { useConfirmation } from "../ui/dialog/confirmation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadLandingContentPage } from "../../server/content";
 import {
   asString,
+  appendServicePage,
+  buildServicePageDraft,
   CONTENT_ROOT,
-  isValidSlug,
+  isValidContentSlug,
+  isContentPath,
   isExternalHref,
   parseStartLink,
   applyStartLink,
@@ -33,10 +43,14 @@ import { draftKeyFor, readDraft, writeDraft, clearDraft } from "./draft-store";
 export interface EditSearch {
   /** Edit an existing page by repo path. */
   path?: string;
+  /** New page at a separate, explicitly selected path. */
+  createPath?: string;
   /** Or create a page for this form… */
   formId?: string;
   /** …of this kind (which sets the target file + a starter body). */
   kind?: "entry" | "start";
+  /** Return to the service workspace after editing. */
+  service?: string;
 }
 
 const EMPTY: FormState = {
@@ -75,6 +89,7 @@ const BODY_PLACEHOLDER = START_TEMPLATE;
 
 interface StoredEditorDraft {
   version: 2;
+  serviceRevision?: number;
   state: FormState;
   revision: ContentRevision;
 }
@@ -116,6 +131,7 @@ export function useEditorState(
   search: EditSearch,
   contentPages: ContentPageSummary[] | null,
   reviewComplete = true,
+  serviceFormId?: string,
 ) {
   const confirm = useConfirmation();
   const [state, setState] = useState<FormState>(EMPTY);
@@ -123,6 +139,8 @@ export function useEditorState(
   const [success, setSuccess] = useState<DeploySuccess | null>(null);
   const [loadingPage, setLoadingPage] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
+  const [serviceDraft, setServiceDraft] = useState<ServiceDraft | null>(null);
+  const [savingShared, setSavingShared] = useState(false);
 
   // Edit mode (existing page) vs create-at-fixed-path (new entry/start) vs
   // free create (top-level slug). `baseFrontmatter` preserves unmanaged keys.
@@ -161,17 +179,28 @@ export function useEditorState(
   // The autosave target for the page currently in the editor: its repo path,
   // or `formId:kind` for a not-yet-created page, or "" (→ ":") for a free new
   // page. Matches the URL-driven `initKey` used to (re)initialise below.
-  const initKey = search.path ?? `${search.formId ?? ""}:${search.kind ?? ""}`;
+  const initKey =
+    search.path ??
+    search.createPath ??
+    `${search.formId ?? ""}:${search.kind ?? ""}`;
   const draftKey = draftKeyFor(initKey);
 
   // Restore only against the revision the draft was based on. A stale draft
   // stays visible but cannot deploy until the author deliberately loads latest.
-  const applyStoredDraft = (baseline: FormState, revision: ContentRevision) => {
+  const applyStoredDraft = (
+    baseline: FormState,
+    revision: ContentRevision,
+    serviceRevision?: number,
+  ) => {
     const draft = readDraft<StoredEditorDraft | Partial<FormState>>(draftKey);
     if (!draft) return;
     if (isStoredEditorDraft(draft)) {
-      setState(draft.state);
-      setStaleDraft(revisionKey(draft.revision) !== revisionKey(revision));
+      setState({ ...draft.state, formId: serviceFormId || draft.state.formId });
+      setStaleDraft(
+        serviceRevision !== undefined
+          ? draft.serviceRevision !== serviceRevision
+          : revisionKey(draft.revision) !== revisionKey(revision),
+      );
       return;
     }
     // Legacy edit drafts have no revision proof. Preserve the text, but block
@@ -188,17 +217,25 @@ export function useEditorState(
     setDraftSaved(false);
     if (draftTimer.current) clearTimeout(draftTimer.current);
     draftTimer.current = setTimeout(() => {
-      writeDraft<StoredEditorDraft>(draftKey, {
+      const saved = writeDraft<StoredEditorDraft>(draftKey, {
         version: 2,
         state,
         revision: editRevision ?? { source: "absent" },
+        serviceRevision: serviceDraft?.revision,
       });
-      setDraftSaved(true);
+      setDraftSaved(saved);
     }, 400);
     return () => {
       if (draftTimer.current) clearTimeout(draftTimer.current);
     };
-  }, [state, dirty, loadingPage, draftKey, editRevision]);
+  }, [
+    state,
+    dirty,
+    loadingPage,
+    draftKey,
+    editRevision,
+    serviceDraft?.revision,
+  ]);
 
   useEffect(() => {
     if (!dirty) return;
@@ -244,8 +281,18 @@ export function useEditorState(
     }
   };
 
-  const markSaved = () => {
-    setSavedSnapshot(JSON.stringify(state));
+  const persistDraft = () => {
+    if (!dirty) return true;
+    return writeDraft<StoredEditorDraft>(draftKey, {
+      version: 2,
+      state,
+      revision: editRevision ?? { source: "absent" },
+      serviceRevision: serviceDraft?.revision,
+    });
+  };
+
+  const markSaved = (savedState = state) => {
+    setSavedSnapshot(JSON.stringify(savedState));
     clearDraft(draftKey);
     setDraftSaved(false);
     setDeployConflict(null);
@@ -267,17 +314,38 @@ export function useEditorState(
     setLoadingPage(true);
     setError(null);
     try {
-      const page = await loadLandingContentPage({ data: { path } });
+      const serviceId =
+        search.service && !search.service.includes(":")
+          ? search.service
+          : (await getServiceOwner({ data: { path } })).serviceId;
+      const service = serviceId
+        ? await getServiceDraft({ data: { serviceId } })
+        : null;
+      const savedPage = service?.pages.find((p) => p.path === path);
+      const page = savedPage
+        ? {
+            path,
+            sha: savedPage.baseSha ?? "",
+            frontmatter: savedPage.frontmatter,
+            body: savedPage.body,
+            revision: { source: "base" as const, sha: savedPage.baseSha ?? "" },
+            serviceDraft: service,
+            reviewBlock: undefined,
+          }
+        : {
+            ...(await loadLandingContentPage({ data: { path } })),
+            serviceDraft: null,
+          };
       if (loadRequestRef.current !== requestId) return;
       const fm = page.frontmatter;
-      const formId = asString(fm.form_id);
+      const formId = serviceFormId || asString(fm.form_id);
       const link = parseStartLink(page.body);
       let linkType: StartLinkType = "form";
       let linkHref = "";
       if (link?.href) {
         linkType = isExternalHref(link.href) ? "external" : "slug";
         linkHref = link.href;
-      } else if (!link && !formId) {
+      } else if (!link) {
         linkType = "none";
       }
       const loaded: FormState = {
@@ -294,6 +362,7 @@ export function useEditorState(
         linkHref,
         visibility: (asString(fm.visibility) as ViewLevel) || "public",
       };
+      setServiceDraft(page.serviceDraft ?? null);
       setState(loaded);
       setSavedSnapshot(JSON.stringify(loaded));
       setEditPath(page.path);
@@ -307,7 +376,7 @@ export function useEditorState(
       setCreatingCategory(false);
       setNewCatTitle("");
       setNewCatDesc("");
-      applyStoredDraft(loaded, page.revision);
+      applyStoredDraft(loaded, page.revision, page.serviceDraft?.revision);
     } catch (e) {
       if (loadRequestRef.current !== requestId) return;
       setError(e instanceof Error ? e.message : "Could not load page");
@@ -316,19 +385,32 @@ export function useEditorState(
     }
   };
 
-  const prefillCreate = (formId: string, kind: "entry" | "start") => {
+  const prefillCreate = (
+    formId: string,
+    kind: "entry" | "start" | "page",
+    path?: string,
+  ) => {
     const form = forms.find((f) => f.formId === formId);
     const leaf = kind === "start" ? "start" : "index";
     const prefilled: FormState = {
       ...EMPTY,
-      formId,
-      title: form?.title ?? "",
-      slug: `${formId}/${leaf}`,
-      body: kind === "start" ? START_TEMPLATE : ENTRY_TEMPLATE,
+      formId: serviceFormId || formId,
+      title: kind === "page" ? "" : (form?.title ?? ""),
+      slug: path
+        ? path.slice(CONTENT_ROOT.length).replace(/\.md$/, "")
+        : `${formId}/${leaf}`,
+      body:
+        kind === "page"
+          ? ""
+          : kind === "start"
+            ? START_TEMPLATE
+            : ENTRY_TEMPLATE,
+      linkType: kind === "page" ? "none" : "form",
     };
+    setServiceDraft(null);
     setState(prefilled);
     setSavedSnapshot(JSON.stringify(prefilled));
-    setCreatePath(`${CONTENT_ROOT}${formId}/${leaf}.md`);
+    setCreatePath(path ?? `${CONTENT_ROOT}${formId}/${leaf}.md`);
     setEditPath(null);
     setEditSha(null);
     setEditRevision(null);
@@ -341,6 +423,7 @@ export function useEditorState(
   };
 
   const resetNew = () => {
+    setServiceDraft(null);
     setState(EMPTY);
     setSavedSnapshot(JSON.stringify(EMPTY));
     setCreatingCategory(false);
@@ -366,7 +449,11 @@ export function useEditorState(
     setError(null);
     setSuccess(null);
     if (search.path) void loadPath(search.path, requestId);
-    else if (search.formId && search.kind)
+    else if (search.createPath) {
+      if (isContentPath(search.createPath))
+        prefillCreate(search.formId ?? "", "page", search.createPath);
+      else setError("Choose a valid content page path.");
+    } else if (search.formId && search.kind)
       prefillCreate(search.formId, search.kind);
     else resetNew();
     return () => {
@@ -374,11 +461,22 @@ export function useEditorState(
     };
   }, [initKey]);
 
+  useEffect(() => {
+    if (serviceFormId && !loadingPage)
+      setState((current) =>
+        current.formId === serviceFormId
+          ? current
+          : { ...current, formId: serviceFormId },
+      );
+  }, [serviceFormId, loadingPage]);
+
   const editing = editPath !== null;
-  const sourceReady = !search.path || editRevision !== null;
+  const sourceReady = search.path
+    ? editRevision !== null
+    : !search.createPath || isContentPath(search.createPath);
   const fixedPath = editPath ?? createPath;
   const slug = state.slug.trim() || state.formId;
-  const slugValid = slug === "" || isValidSlug(slug);
+  const slugValid = slug === "" || isValidContentSlug(slug);
   const subcats = subcategoriesFor(state.category);
 
   // Start-link target validation: internal paths must be rooted, external
@@ -398,7 +496,9 @@ export function useEditorState(
   const targetPath = fixedPath ?? (slug ? `${CONTENT_ROOT}${slug}.md` : "");
   const collision = useMemo(() => {
     if (editing || !targetPath) return null;
-    const paths = new Set((contentPages ?? []).map((p) => p.path));
+    const paths = new Set(
+      (contentPages ?? []).filter((p) => !p.isLocalDraft).map((p) => p.path),
+    );
     if (paths.size === 0) return null;
     if (paths.has(targetPath)) return "exists" as const;
     const flat = targetPath.replace(/\.md$/, "");
@@ -410,7 +510,7 @@ export function useEditorState(
   }, [editing, targetPath, contentPages]);
 
   const canDeploy =
-    reviewComplete &&
+    (serviceDraft !== null || reviewComplete) &&
     sourceReady &&
     !reviewBlock &&
     !deployConflict &&
@@ -421,37 +521,38 @@ export function useEditorState(
     collision === null &&
     (state.linkType !== "form" || !!state.formId) &&
     (!creatingCategory || !!newCatSlug) &&
-    (fixedPath ? true : isValidSlug(slug));
+    (fixedPath ? true : isValidContentSlug(slug));
 
   // The first unmet `canDeploy` condition, in the same order, so the disabled
   // deploy button can say *why*. Null exactly when `canDeploy` is true.
-  const deployBlockReason: string | null = !reviewComplete
-    ? "Refresh review status before deploying"
-    : !sourceReady
-      ? "Load the page before deploying"
-      : reviewBlock
-        ? reviewBlock.message
-        : deployConflict
-          ? deployConflict.message
-          : staleDraft
-            ? "This draft is based on an older page revision"
-            : !state.title.trim()
-              ? "Add a title"
-              : !state.body.trim()
-                ? "Add page content"
-                : !hrefValid
-                  ? "Add a valid Start link"
-                  : collision === "exists"
-                    ? "A page already exists at this path"
-                    : collision !== null
-                      ? "Slug collides with an existing page's URL"
-                      : state.linkType === "form" && !state.formId
-                        ? "Choose the form the Start button opens"
-                        : creatingCategory && !newCatSlug
-                          ? "Name the new category"
-                          : !fixedPath && !isValidSlug(slug)
-                            ? "Slug must be kebab-case"
-                            : null;
+  const deployBlockReason: string | null =
+    !serviceDraft && !reviewComplete
+      ? "Refresh review status before deploying"
+      : !sourceReady
+        ? "Load the page before deploying"
+        : reviewBlock
+          ? reviewBlock.message
+          : deployConflict
+            ? deployConflict.message
+            : staleDraft
+              ? "This draft is based on an older page revision"
+              : !state.title.trim()
+                ? "Add a title"
+                : !state.body.trim()
+                  ? "Add page content"
+                  : !hrefValid
+                    ? "Add a valid Start link"
+                    : collision === "exists"
+                      ? "A page already exists at this path"
+                      : collision !== null
+                        ? "Slug collides with an existing page's URL"
+                        : state.linkType === "form" && !state.formId
+                          ? "Choose the form the Start button opens"
+                          : creatingCategory && !newCatSlug
+                            ? "Name the new category"
+                            : !fixedPath && !isValidContentSlug(slug)
+                              ? "Slug must be kebab-case"
+                              : null;
 
   const formMissing =
     state.linkType === "form" &&
@@ -459,7 +560,7 @@ export function useEditorState(
     forms.length > 0 &&
     !forms.some((f) => f.formId === state.formId);
 
-  const url = state.category && slug ? startPageUrl(state.category, slug) : "";
+  const url = slug ? startPageUrl(state.category, slug, state.subcategory) : "";
 
   // What the preview renders: the body exactly as deploy would publish it —
   // marker stripped for "no button", href/label resolved otherwise. A not-yet-
@@ -486,9 +587,71 @@ export function useEditorState(
       ? `New ${pageKind}`
       : "New page";
 
+  const sharedPage = serviceDraft?.pages.find((p) => p.path === editPath);
+  const servicePreview =
+    serviceDraft && sharedPage
+      ? {
+          ...serviceDraft,
+          pages: serviceDraft.pages.map((p) =>
+            p.id === sharedPage.id ? buildServicePageDraft(state, p) : p,
+          ),
+        }
+      : null;
+  const saveShared = async () => {
+    if (!serviceDraft || !sharedPage || staleDraft || savingShared) return null;
+    const capturedState = state;
+    setSavingShared(true);
+    setError(null);
+    try {
+      const saved = await saveServicePage({
+        data: {
+          serviceId: serviceDraft.manifest.serviceId,
+          expectedRevision: serviceDraft.revision,
+          page: buildServicePageDraft(capturedState, sharedPage),
+        },
+      });
+      setServiceDraft(saved);
+      markSaved(capturedState);
+      return saved;
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "The service draft could not be saved",
+      );
+      return null;
+    } finally {
+      setSavingShared(false);
+    }
+  };
+  const createSharedPage = async (path: string, next: FormState) => {
+    if (!servicePreview || !serviceDraft || staleDraft || savingShared)
+      throw new Error("Reload the service before adding a page.");
+    setSavingShared(true);
+    const capturedState = state;
+    try {
+      const saved = await saveServiceDraft({
+        data: {
+          expectedRevision: serviceDraft.revision,
+          snapshot: appendServicePage(servicePreview, path, next),
+        },
+      });
+      setServiceDraft(saved);
+      markSaved(capturedState);
+      window.dispatchEvent(new Event("service-draft-saved"));
+      return saved;
+    } finally {
+      setSavingShared(false);
+    }
+  };
   return {
+    serviceDraft,
+    setServiceDraft,
+    servicePreview,
+    saveShared,
+    savingShared,
+    createSharedPage,
     state,
     setState,
+    persistDraft,
     set,
     error,
     setError,

@@ -1,6 +1,7 @@
+import { classifyRecipientField } from "@govtech-bb/form-types";
+import { submissionActionSummary } from "../../lib/submission-actions";
 import { useConfirmation } from "../ui/dialog/confirmation";
 import { ScrollArea } from "../ui/scroll-area";
-import { Elevated } from "../ui/surface";
 import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
 import { Select } from "../ui/select";
@@ -19,6 +20,7 @@ interface ProcessorsEditorProps {
   draft: RecipeDraft;
   dispatch: Dispatch<RecipeAction>;
   fields: ResolvedFieldId[];
+  embedded?: boolean;
 }
 
 const PROCESSOR_LABELS: Record<RecipeProcessorDraft["type"], string> = {
@@ -49,11 +51,21 @@ export function ProcessorsEditor({
   draft,
   dispatch,
   fields,
+  embedded = false,
 }: ProcessorsEditorProps) {
   const confirm = useConfirmation();
   const processors = draft.processors ?? [];
   const [addType, setAddType] = useState<AuthorableProcessorType>("email");
-  const hasEmail = processors.some((p) => p.type === "email");
+  const hasApplicantEmail = processors.some(
+    (p) =>
+      p.type === "email" &&
+      typeof p.config.recipientField === "string" &&
+      !!p.config.recipientField.trim() &&
+      classifyRecipientField(p.config.recipientField) === "submitted",
+  );
+  const questionLabels = Object.fromEntries(
+    fields.map((f) => [`${f.stepId}.${f.fieldId}`, f.display]),
+  );
   // `contactDetails.email` is now optional (issue #607), so a present
   // `contactDetails` object is no longer a sufficient gate — offer the
   // `contactDetails.email` recipient only when an email is actually set.
@@ -67,9 +79,9 @@ export function ProcessorsEditor({
   async function handleRemove(id: string) {
     if (
       !(await confirm({
-        title: "Remove processor?",
-        description: "Remove this processor?",
-        confirmLabel: "Remove processor",
+        title: "Remove this action?",
+        description: "It will stop running after you save the form.",
+        confirmLabel: "Remove action",
         destructive: true,
       }))
     )
@@ -77,98 +89,131 @@ export function ProcessorsEditor({
     dispatch({ type: "REMOVE_PROCESSOR", id });
   }
 
-  return (
-    <ScrollArea className="min-h-0 flex-1" viewportClassName="scroll-fade">
-      <div className="p-4 sm:p-6">
-        <Elevated
-          offset={1}
-          shadowLevel={2}
-          className="mx-auto max-w-5xl rounded-xl p-4 sm:p-6"
-        >
-          <div className="mt-5 mb-2 text-[12px] font-semibold tracking-[0.05em] text-ui-subtle uppercase">
-            Processors ({processors.length})
-          </div>
-
-          {!hasEmail && (
-            <Banner variant="alert" size="sm" role="alert">
-              <div className="min-w-0 flex-1">
-                No email confirmation processor is attached, so applicants
-                won&apos;t receive a confirmation email. You can still deploy.
-              </div>
-            </Banner>
+  const content = (
+    <div
+      className={
+        embedded ? "" : "mx-auto w-full max-w-4xl px-4 py-6 sm:px-8 sm:py-8"
+      }
+    >
+      <section className="space-y-5">
+        <div>
+          {!embedded && (
+            <h2 className="text-xl font-semibold text-ui-strong">
+              After submission
+            </h2>
           )}
+          <p className="mt-2 text-sm text-ui-subtle">
+            Each action runs separately. Applicant emails confirm receipt;
+            department emails send the application details.
+          </p>
+        </div>
 
-          <div className="mb-5 flex flex-wrap items-end gap-2">
-            <div className="min-w-0 flex-1 basis-56">
-              <Select
-                label="Processor type"
-                id="add-processor-type"
-                value={addType}
-                onValueChange={(nextValue) => {
-                  if (nextValue === null) return;
-                  setAddType(nextValue as AuthorableProcessorType);
-                }}
-                items={[
-                  ...ADDABLE.map((o) => ({ value: o.type, label: o.label })),
-                ]}
-              />
+        {!hasApplicantEmail && (
+          <Banner variant="alert" size="sm" role="alert">
+            <div className="min-w-0 flex-1">
+              Applicants will not receive a confirmation email. To send one, add
+              an email action and choose their email question as the recipient.
             </div>
-            <Button
-              type="button"
-              onClick={handleAdd}
-              variant="secondary"
-              size="sm"
+          </Banner>
+        )}
+
+        <div className="mb-5 flex flex-wrap items-end gap-2">
+          <div className="min-w-0 flex-1 basis-56">
+            <Select
+              label="Action"
+              id="add-processor-type"
+              value={addType}
+              onValueChange={(nextValue) => {
+                if (nextValue === null) return;
+                setAddType(nextValue as AuthorableProcessorType);
+              }}
+              items={[
+                ...ADDABLE.map((o) => ({ value: o.type, label: o.label })),
+              ]}
+            />
+          </div>
+          <Button
+            type="button"
+            onClick={handleAdd}
+            variant="secondary"
+            size="sm"
+          >
+            Add action
+          </Button>
+        </div>
+
+        {processors.length === 0 ? (
+          <div className="py-2 text-[13.5px] text-ui-subtle">
+            No actions added. Choose an action above to get started.
+          </div>
+        ) : (
+          processors.map((p) => (
+            <section
+              className={
+                embedded
+                  ? "border-t border-ui-hairline pt-5"
+                  : "rounded-lg border border-ui-hairline bg-ui-base p-5 sm:p-7"
+              }
+              key={p.id}
             >
-              Add processor
-            </Button>
-          </div>
-
-          {processors.length === 0 ? (
-            <div className="py-2 text-[13.5px] text-ui-subtle">
-              No processors yet.
-            </div>
-          ) : (
-            processors.map((p) => (
-              <Elevated
-                offset={1}
-                shadowLevel={2}
-                className="mb-4 rounded-xl p-3 sm:p-5"
-                key={p.id}
-              >
-                <div className="mb-3 flex items-center justify-between">
-                  {/* Prefer the per-instance label (e.g. seeded "Applicant Email" /
-                  "MDA Email", issue #501) so two email processors are
-                  distinguishable; fall back to the type label otherwise. */}
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <div>
                   <strong>
-                    {(p.type === "email" && p.config.label) ||
-                      PROCESSOR_LABELS[p.type]}
+                    {
+                      submissionActionSummary(
+                        p,
+                        questionLabels,
+                        draft.contactDetails?.email,
+                      ).title
+                    }
                   </strong>
-                  <Button
-                    type="button"
-                    onClick={() => handleRemove(p.id)}
-                    variant="secondary"
-                    size="sm"
-                  >
-                    Remove
-                  </Button>
+                  <p className="mt-1 text-sm text-ui-subtle">
+                    {
+                      submissionActionSummary(
+                        p,
+                        questionLabels,
+                        draft.contactDetails?.email,
+                      ).description
+                    }
+                  </p>
+                  {p.type === "email" && p.config.label && (
+                    <p className="mt-1 text-xs text-ui-subtle">
+                      {p.config.label}
+                    </p>
+                  )}
                 </div>
-                <ProcessorConfigForm
-                  processor={p}
-                  fields={fields}
-                  hasContactEmail={hasContactEmail}
-                  onConfigChange={(config) =>
-                    dispatch({
-                      type: "UPDATE_PROCESSOR_CONFIG",
-                      id: p.id,
-                      config,
-                    })
-                  }
-                />
-              </Elevated>
-            ))
-          )}
-        </Elevated>
-      </div>
+                <Button
+                  type="button"
+                  onClick={() => handleRemove(p.id)}
+                  variant="secondary"
+                  size="sm"
+                >
+                  Remove
+                </Button>
+              </div>
+              <ProcessorConfigForm
+                processor={p}
+                fields={fields}
+                hasContactEmail={hasContactEmail}
+                onConfigChange={(config) =>
+                  dispatch({
+                    type: "UPDATE_PROCESSOR_CONFIG",
+                    id: p.id,
+                    config,
+                  })
+                }
+              />
+            </section>
+          ))
+        )}
+      </section>
+    </div>
+  );
+  return embedded ? (
+    content
+  ) : (
+    <ScrollArea className="min-h-0 flex-1" viewportClassName="scroll-fade">
+      {content}
     </ScrollArea>
   );
 }

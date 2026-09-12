@@ -5,10 +5,15 @@ import {
 } from "@govtech-bb/form-builder";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
 import { submitRecipe, updateRecipe, rekeyRecipe } from "../../server/forms";
+import type { ServiceDraft } from "@govtech-bb/form-types";
+import { saveServiceForm } from "../../lib/service-drafts";
 import { publishRecipe } from "../../server/publish";
 import type { BuilderFormSummary } from "../../types/index";
 
 interface UseRecipeSaveParams {
+  serviceDraft?: ServiceDraft | null;
+  onServiceSaved?: (draft: ServiceDraft) => void;
+  onServicePublish?: () => void;
   draft: RecipeDraft;
   loadedFromId: string | null;
   forms: BuilderFormSummary[] | null;
@@ -32,6 +37,9 @@ interface UseRecipeSaveParams {
  * reset the submit banner they share.
  */
 export function useRecipeSave({
+  serviceDraft,
+  onServiceSaved,
+  onServicePublish,
   draft,
   loadedFromId,
   forms,
@@ -90,7 +98,23 @@ export function useRecipeSave({
       // from `recipe`). `null` when there are none — clears the DB key. A re-key
       // moves the whole form_config row, so it doesn't resend the siblings.
       const processors = extractDbProcessors(draft.processors);
-      if (isRekey) {
+      if (serviceDraft) {
+        if (isRekey)
+          throw new Error("The connected form identity cannot be changed");
+        const saved = await saveServiceForm({
+          data: {
+            serviceId: serviceDraft.manifest.serviceId,
+            expectedRevision: serviceDraft.revision,
+            recipe,
+            pendingConfig: {
+              mdaContactId:
+                mdaContactId ?? serviceDraft.pendingConfig.mdaContactId,
+              processors,
+            },
+          },
+        });
+        onServiceSaved?.(saved);
+      } else if (isRekey) {
         await rekeyRecipe({ data: { oldFormId, recipe } });
       } else if (isInPlaceUpdate) {
         await updateRecipe({
@@ -143,6 +167,10 @@ export function useRecipeSave({
   };
 
   const handleOpenPublish = () => {
+    if (serviceDraft) {
+      onServicePublish?.();
+      return;
+    }
     // #1196: publishing overwrites the canonical flat file — there is no
     // deploy-version to resolve, so just open the modal.
     setPublishSuccess(null);
@@ -151,6 +179,10 @@ export function useRecipeSave({
   };
 
   const handlePublish = async (description: string) => {
+    if (serviceDraft) {
+      onServicePublish?.();
+      return;
+    }
     // Deploy requires a saved draft (#331), and this is the one place the
     // check holds: the toolbar's disabled gate goes stale the moment the
     // author edits during the validate round-trip, while this handler is

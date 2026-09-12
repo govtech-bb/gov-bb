@@ -1,4 +1,8 @@
 import type { Mock } from "vitest";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { buildServiceRows } from "../components/services/service-model";
 /**
  * @vitest-environment node
  */
@@ -32,6 +36,7 @@ vi.mock("./api-client", () => {
 // the precedence tests don't hit GitHub.
 vi.mock("./github-recipes", () => ({
   getPublishedRecipe: vi.fn(),
+  RECIPES_BASE: "apps/api/src/forms/form-definitions/recipes",
 }));
 
 import { getSession } from "./session-cipher.server";
@@ -57,11 +62,13 @@ const apiGet = api.get as Mock;
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.stubEnv("BUILDER_API_URL", "https://builder-api.example.test");
   process.env.SESSION_SECRET = Buffer.alloc(32).toString("base64");
   (getSession as Mock).mockReturnValue(SESSION);
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   delete process.env.SESSION_SECRET;
 });
 
@@ -805,4 +812,118 @@ describe("listForms — hasDraftRow (#2411)", () => {
 
     expect(form).toMatchObject({ formId: "new-thing", hasDraftRow: true });
   });
+});
+
+it("connects local service pages to canonical recipes and opens them only in unconfigured development", async () => {
+  const root = await mkdtemp(join(tmpdir(), "service-forms-"));
+  const recipes = join(root, "apps/api/src/forms/form-definitions/recipes");
+  const recipe = {
+    formId: "get-birth-certificate",
+    title: "Get a birth certificate",
+    version: "1.0.0",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    steps: [],
+    meta: { visibility: "preview" },
+  };
+  const cwd = vi
+    .spyOn(process, "cwd")
+    .mockReturnValue(join(root, "apps/form_builder"));
+  try {
+    vi.stubEnv("DEV", true);
+    vi.stubEnv("BUILDER_API_URL", "");
+    apiGet.mockRejectedValue(new Error("BUILDER_API_URL is not set"));
+    await mkdir(join(recipes, recipe.formId), { recursive: true });
+    await writeFile(
+      join(recipes, `${recipe.formId}.json`),
+      JSON.stringify(recipe),
+    );
+    await writeFile(
+      join(recipes, recipe.formId, "0.1.0.json"),
+      JSON.stringify({ ...recipe, version: "0.1.0" }),
+    );
+    await writeFile(join(recipes, "README.md"), "Canonical recipes");
+
+    const forms = await listForms();
+    expect(forms).toEqual([
+      expect.objectContaining({
+        formId: recipe.formId,
+        title: recipe.title,
+        version: "1.0.0",
+        visibility: "preview",
+        isPublished: true,
+      }),
+    ]);
+    const pages = ["index", "start", "help"].map((name) => ({
+      path: `apps/landing/src/content/${recipe.formId}/${name}.md`,
+      title: recipe.title,
+      formId: name === "help" ? "" : recipe.formId,
+      category: "family-birth-relationships",
+      visibility: "public",
+      hasFormButton: name === "start",
+    }));
+    expect(buildServiceRows(forms, pages)).toEqual([
+      expect.objectContaining({
+        form: forms[0],
+        hasForm: true,
+        pages: expect.arrayContaining(pages),
+      }),
+    ]);
+    expect(
+      await getRecipe({
+        data: { formId: recipe.formId },
+        context: { session: SESSION },
+      } as never),
+    ).toEqual(recipe);
+    await expect(
+      getRecipe({
+        data: { formId: "../outside" },
+        context: { session: SESSION },
+      } as never),
+    ).rejects.toThrow();
+    expect(apiGet).not.toHaveBeenCalled();
+    expect(getPublishedRecipeMock).not.toHaveBeenCalled();
+
+    vi.stubEnv("BUILDER_API_URL", "http://127.0.0.1:3003");
+    apiGet.mockRejectedValue(new TypeError("fetch failed"));
+    expect(await listForms()).toEqual(forms);
+    expect(
+      await getRecipe({
+        data: { formId: recipe.formId },
+        context: { session: SESSION },
+      } as never),
+    ).toEqual(recipe);
+
+    apiGet.mockRejectedValue(new ApiError(401, "Not authorised"));
+    await expect(listForms()).rejects.toThrow("Not authorised");
+    await expect(
+      getRecipe({
+        data: { formId: recipe.formId },
+        context: { session: SESSION },
+      } as never),
+    ).rejects.toThrow("Not authorised");
+    vi.stubEnv("BUILDER_API_URL", "https://builder-api.example.test");
+    apiGet.mockRejectedValue(new TypeError("fetch failed"));
+    await expect(listForms()).rejects.toThrow("fetch failed");
+    await expect(
+      getRecipe({
+        data: { formId: recipe.formId },
+        context: { session: SESSION },
+      } as never),
+    ).rejects.toThrow("fetch failed");
+
+    vi.stubEnv("BUILDER_API_URL", "");
+    apiGet.mockRejectedValue(new Error("BUILDER_API_URL is not set"));
+    vi.stubEnv("DEV", false);
+    await expect(listForms()).rejects.toThrow("BUILDER_API_URL is not set");
+    await expect(
+      getRecipe({
+        data: { formId: recipe.formId },
+        context: { session: SESSION },
+      } as never),
+    ).rejects.toThrow("BUILDER_API_URL is not set");
+  } finally {
+    cwd.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
 });

@@ -1,9 +1,14 @@
 import { useConfirmation } from "../ui/dialog/confirmation";
-import type { RecipeStepDraft } from "@govtech-bb/form-builder";
+import {
+  getRegistryItem,
+  type RecipeStepDraft,
+  type RegistryCatalog,
+} from "@govtech-bb/form-builder";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
   DotsThreeIcon,
+  CopyIcon,
   EnvelopeSimpleIcon,
   GearSixIcon,
   LockSimpleIcon,
@@ -18,13 +23,16 @@ import { isRequiredStep, REQUIRED_STEP_IDS } from "./recipe-reducer";
 
 interface StepListProps {
   steps: RecipeStepDraft[];
+  catalog: RegistryCatalog;
   selectedStepId: string | null;
   onSelect: (stepId: string) => void;
   onAdd: () => void;
+  onDuplicate: (stepId: string) => void;
   onRemove: (stepId: string) => void;
   onMoveUp: (index: number) => void;
   onMoveDown: (index: number) => void;
   processorCount: number;
+  serviceScoped?: boolean;
   isProcessorsActive: boolean;
   onSelectProcessors: () => void;
   hasContactDetails: boolean;
@@ -44,8 +52,8 @@ export function StepList(props: StepListProps) {
 
   return (
     <Sidebar aria-label="Form outline">
-      <Sidebar.Header className="flex-row items-center justify-between px-4 py-5">
-        <h2 className="text-base font-semibold text-ui-strong">Form outline</h2>
+      <Sidebar.Header className="flex-row items-center justify-between px-4 py-4">
+        <h2 className="text-base font-semibold text-ui-strong">Form pages</h2>
         {isMobile && <Sidebar.Close />}
       </Sidebar.Header>
       <ScrollArea
@@ -55,7 +63,7 @@ export function StepList(props: StepListProps) {
       >
         <div className="space-y-6 px-3 pb-4">
           <Sidebar.Group>
-            <Sidebar.GroupLabel>Steps</Sidebar.GroupLabel>
+            <Sidebar.GroupLabel>Application journey</Sidebar.GroupLabel>
             <Sidebar.Menu>
               {props.steps.map((step, index) => {
                 const required = isRequiredStep(step.stepId);
@@ -73,7 +81,7 @@ export function StepList(props: StepListProps) {
                           : undefined
                       }
                       onClick={() => select(() => props.onSelect(step.stepId))}
-                      className="min-h-10 pe-9"
+                      className="min-h-10 pe-9 pointer-coarse:min-h-11 pointer-coarse:pe-13"
                       icon={
                         <span
                           className="flex size-5 shrink-0 items-center justify-center rounded-md bg-ui-recessed text-xs tabular-nums text-ui-subtle"
@@ -98,13 +106,25 @@ export function StepList(props: StepListProps) {
                               variant="ghost"
                               shape="square"
                               size="sm"
-                              className="absolute end-1 top-1.5"
+                              className="absolute end-1 top-1.5 pointer-coarse:top-0 pointer-coarse:size-11"
                               aria-label={`Actions for ${step.title || step.stepId}`}
                               icon={<DotsThreeIcon aria-hidden="true" />}
                             />
                           }
                         />
                         <DropdownMenu.Content align="start" side="right">
+                          <DropdownMenu.Item
+                            disabled={step.fields.some(
+                              (field) =>
+                                !getRegistryItem(field.ref, props.catalog),
+                            )}
+                            onClick={() =>
+                              select(() => props.onDuplicate(step.stepId))
+                            }
+                          >
+                            <CopyIcon aria-hidden="true" />
+                            Duplicate page
+                          </DropdownMenu.Item>
                           <DropdownMenu.Item
                             disabled={index === 0}
                             onClick={() => props.onMoveUp(index)}
@@ -150,11 +170,11 @@ export function StepList(props: StepListProps) {
               onClick={() => select(props.onAdd)}
               icon={<PlusIcon aria-hidden="true" />}
             >
-              Add Step
+              Add page
             </Button>
           </Sidebar.Group>
           <Sidebar.Group>
-            <Sidebar.GroupLabel>Form</Sidebar.GroupLabel>
+            <Sidebar.GroupLabel>Settings</Sidebar.GroupLabel>
             <Sidebar.Menu>
               <Sidebar.MenuButton
                 active={props.isContactDetailsActive}
@@ -167,28 +187,27 @@ export function StepList(props: StepListProps) {
                   />
                 }
               >
-                {`Contact Details ${props.hasContactDetails ? "✓" : "(none)"}`}
+                {`Contact details${props.hasContactDetails ? "" : " · Not set"}`}
               </Sidebar.MenuButton>
-              <Sidebar.MenuButton
-                active={props.isProcessorsActive}
-                aria-current={props.isProcessorsActive ? "true" : undefined}
-                onClick={() => select(props.onSelectProcessors)}
-                icon={
-                  <GearSixIcon
-                    className="size-4 shrink-0 text-ui-subtle"
-                    aria-hidden="true"
-                  />
-                }
-              >
-                {`Processors (${props.processorCount})`}
-              </Sidebar.MenuButton>
+              {!props.serviceScoped && (
+                <Sidebar.MenuButton
+                  active={props.isProcessorsActive}
+                  aria-current={props.isProcessorsActive ? "true" : undefined}
+                  onClick={() => select(props.onSelectProcessors)}
+                  icon={
+                    <GearSixIcon
+                      className="size-4 shrink-0 text-ui-subtle"
+                      aria-hidden="true"
+                    />
+                  }
+                >
+                  {`After submission (${props.processorCount})`}
+                </Sidebar.MenuButton>
+              )}
             </Sidebar.Menu>
           </Sidebar.Group>
         </div>
       </ScrollArea>
-      <Sidebar.Footer className="px-4 py-4 text-xs text-ui-subtle">
-        GovTech Barbados
-      </Sidebar.Footer>
     </Sidebar>
   );
 }

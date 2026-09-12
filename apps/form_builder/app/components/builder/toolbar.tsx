@@ -1,21 +1,25 @@
+import { Collapsible } from "../ui/collapsible";
 import { useConfirmation } from "../ui/dialog/confirmation";
 import { useState, type ReactNode } from "react";
 import {
   CheckCircleIcon,
   FilePlusIcon,
   FolderOpenIcon,
-  RocketLaunchIcon,
+  DotsThreeIcon,
   ArrowCounterClockwiseIcon,
   EyeIcon,
+  GearSixIcon,
 } from "@phosphor-icons/react";
 import type { RecipeVisibility } from "@govtech-bb/form-types";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Select } from "../ui/select";
+import { DropdownMenu } from "../ui/dropdown";
 import { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "./id-validation";
 
 interface ToolbarProps {
   leading?: ReactNode;
+  serviceScoped?: boolean;
   formId: string;
   title: string;
   idError?: string | null;
@@ -23,6 +27,7 @@ interface ToolbarProps {
   hasUnsavedChanges: boolean;
   isValidating: boolean;
   isPreviewing: boolean;
+  previewLabel?: string;
   isSubmitting: boolean;
   isPublishing: boolean;
   isReadOnly: boolean;
@@ -50,15 +55,15 @@ const VISIBILITY_OPTIONS = [
 export function Toolbar(props: ToolbarProps) {
   const confirm = useConfirmation();
   const [formIdError, setFormIdError] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const shownFormIdError = formIdError || props.idError || "";
   const deployHint = props.isReadOnly
     ? "Another user is editing this form"
     : props.hasUnsavedChanges
-      ? "Save draft before deploying"
+      ? "Save draft before publishing"
       : props.visibility === "draft"
-        ? "Set visibility to Preview or Public to deploy"
+        ? "Set visibility to Preview or Public in Form settings to publish"
         : undefined;
-
   async function handleNew() {
     if (
       props.isDirty &&
@@ -72,77 +77,70 @@ export function Toolbar(props: ToolbarProps) {
       return;
     props.onNew();
   }
-
   return (
-    <header className="z-20 flex shrink-0 flex-col gap-4 border-b border-ui-hairline bg-ui-base px-4 py-4 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-3">
+    <header className="@container z-20 shrink-0 border-b border-ui-hairline bg-ui-base">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 py-4 sm:px-6">
+        <div className="flex min-w-0 flex-1 basis-full items-center gap-3 @min-[48rem]:basis-0">
           {props.leading}
-          <h1 className="sr-only text-base font-semibold text-ui-strong sm:not-sr-only">
-            Form builder
-          </h1>
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-semibold text-ui-strong">
+              {props.title || "Untitled form"}
+            </h1>
+            <div
+              className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-ui-subtle"
+              role="status"
+            >
+              <span>Application form</span>
+              <span aria-hidden="true">·</span>
+              <span
+                className={
+                  props.lastSaveStatus === "error"
+                    ? "text-ui-danger"
+                    : undefined
+                }
+              >
+                {props.hasUnsavedChanges
+                  ? "Unsaved changes"
+                  : props.lastSaveStatus === "submitted"
+                    ? "Draft saved"
+                    : "No changes to save"}
+              </span>
+              {props.lastSaveStatus === "success" && (
+                <span className="text-ui-success">Checks passed</span>
+              )}
+              {props.lastSaveStatus === "error" && (
+                <span className="text-ui-danger">Check form errors</span>
+              )}
+            </div>
+          </div>
         </div>
         <div
-          className="flex flex-wrap items-center gap-1.5"
+          className="flex flex-wrap items-center gap-2 pointer-coarse:[&_button]:min-h-11 pointer-coarse:[&_button]:min-w-11"
           role="group"
           aria-label="Form actions"
         >
           <Button
-            variant="ghost"
-            shape="square"
-            title="New form"
-            aria-label="New"
-            onClick={handleNew}
-            icon={<FilePlusIcon aria-hidden="true" />}
-          />
-          <Button
-            variant="ghost"
-            shape="square"
-            title="Open form"
-            aria-label="Open"
-            onClick={props.onOpen}
-            icon={<FolderOpenIcon aria-hidden="true" />}
-          />
-          <span className="mx-1 h-5 w-px bg-ui-hairline" aria-hidden="true" />
-          <Button
-            variant="ghost"
-            shape="square"
-            title={props.isValidating ? "Validating…" : "Validate"}
-            aria-label="Validate"
-            loading={props.isValidating}
-            onClick={props.onValidate}
-            icon={<CheckCircleIcon aria-hidden="true" />}
-          />
-          <Button
-            variant="ghost"
-            shape="square"
-            title={props.isPreviewing ? "Previewing…" : "Preview"}
-            aria-label="Preview"
-            loading={props.isPreviewing}
+            size="sm"
+            variant="outline"
             onClick={props.onPreview}
+            loading={props.isPreviewing}
             icon={<EyeIcon aria-hidden="true" />}
-          />
+          >
+            {props.previewLabel ?? "Preview"}
+          </Button>
           <Button
-            variant="ghost"
-            shape="square"
-            title="Discard changes"
-            aria-label="Discard"
-            disabled={!props.hasUnsavedChanges}
-            onClick={props.onDiscard}
-            icon={<ArrowCounterClockwiseIcon aria-hidden="true" />}
-          />
-          <span className="mx-1 h-5 w-px bg-ui-hairline" aria-hidden="true" />
-          <Button
+            size="sm"
+            variant="outline"
             onClick={props.onSubmit}
             loading={props.isSubmitting}
             disabled={
               props.isValidating || !props.hasUnsavedChanges || props.isReadOnly
             }
-            title={props.isReadOnly ? deployHint : undefined}
           >
             Save draft
           </Button>
           <Button
+            size="sm"
             variant="primary"
             onClick={props.onPublish}
             loading={props.isPublishing}
@@ -153,86 +151,119 @@ export function Toolbar(props: ToolbarProps) {
               props.visibility === "draft"
             }
             title={deployHint}
-            icon={<RocketLaunchIcon aria-hidden="true" />}
           >
-            Deploy
+            Publish
           </Button>
+          <DropdownMenu>
+            <DropdownMenu.Trigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  shape="square"
+                  aria-label="More form actions"
+                  icon={<DotsThreeIcon aria-hidden="true" />}
+                />
+              }
+            />
+            <DropdownMenu.Content align="end">
+              <DropdownMenu.Item
+                disabled={props.isValidating}
+                onClick={props.onValidate}
+              >
+                <CheckCircleIcon aria-hidden="true" />
+                Check form
+              </DropdownMenu.Item>
+              <DropdownMenu.Item onClick={props.onOpen}>
+                <FolderOpenIcon aria-hidden="true" />
+                {props.serviceScoped ? "Manage form" : "Open form"}
+              </DropdownMenu.Item>
+              {!props.serviceScoped && (
+                <DropdownMenu.Item onClick={handleNew}>
+                  <FilePlusIcon aria-hidden="true" />
+                  New form
+                </DropdownMenu.Item>
+              )}
+              <DropdownMenu.Separator />
+              <DropdownMenu.Item
+                disabled={!props.hasUnsavedChanges || props.isReadOnly}
+                onClick={props.onDiscard}
+                className="text-ui-danger"
+              >
+                <ArrowCounterClockwiseIcon aria-hidden="true" />
+                Discard changes
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu>
         </div>
       </div>
-
-      <div className="grid min-w-0 grid-cols-2 gap-4 [&>:first-child]:col-span-2 sm:[&>:first-child]:col-span-1 sm:grid-cols-[minmax(0,1fr)_minmax(10rem,16rem)_10rem]">
-        <Input
-          label="Title"
-          name="title"
-          placeholder="Untitled form"
-          value={props.title}
-          title={props.title || undefined}
-          onChange={(event) => props.onTitleChange(event.target.value)}
-          disabled={props.isReadOnly}
-          className="w-full"
-        />
-        <Input
-          label="Form ID"
-          name="formId"
-          placeholder="form-id"
-          value={props.formId}
-          title={props.formId || undefined}
-          disabled={props.isReadOnly}
-          error={shownFormIdError}
-          className="w-full font-mono"
-          onChange={(event) => {
-            const raw = event.target.value.toLowerCase().replace(/\s+/g, "-");
-            // Keep the controlled value editable even when its format is invalid.
-            props.onFormIdChange(raw);
-            setFormIdError(
-              raw === ""
-                ? "Form ID is required"
-                : !KEBAB_ID_PATTERN.test(raw)
-                  ? KEBAB_ID_ERROR
-                  : "",
-            );
-          }}
-        />
-        <Select<RecipeVisibility>
-          label="Visibility"
-          name="visibility"
-          value={props.visibility}
-          items={VISIBILITY_OPTIONS}
-          onValueChange={(value) => {
-            if (value !== null) props.onVisibilityChange(value);
-          }}
-          disabled={props.isReadOnly}
-        />
-      </div>
-
-      <div
-        className="flex min-h-4 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ui-subtle"
-        role="status"
+      <Collapsible.Root
+        className="border-t border-ui-hairline px-4 sm:px-6"
+        open={settingsOpen || !!shownFormIdError}
+        onOpenChange={setSettingsOpen}
       >
-        {props.hasUnsavedChanges && (
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className="size-1.5 rounded-full bg-ui-warning"
-              aria-hidden="true"
+        <Collapsible.DefaultTrigger className="flex w-fit cursor-pointer items-center gap-2 rounded py-2.5 text-sm text-ui-subtle hover:text-ui-default focus-visible:outline-2 focus-visible:outline-ui-focus">
+          <span className="inline-flex items-center gap-2">
+            <GearSixIcon size={16} aria-hidden="true" />
+            Form settings
+            <span className="ms-1 text-xs">
+              {
+                VISIBILITY_OPTIONS.find(
+                  (item) => item.value === props.visibility,
+                )?.label
+              }
+            </span>
+          </span>
+        </Collapsible.DefaultTrigger>
+        <Collapsible.Panel keepMounted>
+          <div className="grid min-w-0 gap-4 pb-5 @min-[40rem]:grid-cols-[minmax(0,1fr)_minmax(10rem,18rem)_10rem]">
+            <Input
+              label="Title"
+              name="title"
+              placeholder="Untitled form"
+              value={props.title}
+              onChange={(event) => props.onTitleChange(event.target.value)}
+              disabled={props.isReadOnly}
+              className="w-full"
             />
-            Unsaved changes
-          </span>
-        )}
-        {props.lastSaveStatus !== "idle" && (
-          <span
-            className={
-              props.lastSaveStatus === "error"
-                ? "text-ui-danger"
-                : "text-ui-success"
-            }
-          >
-            {props.lastSaveStatus === "success" && "✓ Valid"}
-            {props.lastSaveStatus === "error" && "✗ Invalid"}
-            {props.lastSaveStatus === "submitted" && "✓ Submitted"}
-          </span>
-        )}
-        {deployHint && <span>{deployHint}</span>}
-      </div>
+            <Input
+              label="Form ID"
+              name="formId"
+              placeholder="form-id"
+              value={props.formId}
+              disabled={props.isReadOnly || props.serviceScoped}
+              error={shownFormIdError}
+              className="w-full font-mono"
+              onChange={(event) => {
+                const raw = event.target.value
+                  .toLowerCase()
+                  .replace(/\s+/g, "-");
+                props.onFormIdChange(raw);
+                setFormIdError(
+                  raw === ""
+                    ? "Form ID is required"
+                    : !KEBAB_ID_PATTERN.test(raw)
+                      ? KEBAB_ID_ERROR
+                      : "",
+                );
+              }}
+            />
+            <Select<RecipeVisibility>
+              label="Visibility"
+              name="visibility"
+              value={props.visibility}
+              items={VISIBILITY_OPTIONS}
+              onValueChange={(value) => {
+                if (value !== null) props.onVisibilityChange(value);
+              }}
+              disabled={props.isReadOnly}
+            />
+          </div>
+        </Collapsible.Panel>
+      </Collapsible.Root>
+      {deployHint && (
+        <p className="px-4 pb-2 text-xs text-ui-subtle sm:px-6">{deployHint}</p>
+      )}
     </header>
   );
 }

@@ -1,9 +1,10 @@
+import { Collapsible } from "../ui/collapsible";
 import { cn } from "../ui/utils/cn";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Select } from "../ui/select";
 import { Checkbox } from "../ui/checkbox";
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import {
   getRegistryItem,
   fieldIdDuplicatesAnother,
@@ -48,6 +49,7 @@ interface FieldEditPanelProps {
   stepId: string;
   dispatch: React.Dispatch<RecipeAction>;
   onClose: () => void;
+  notice?: ReactNode;
 }
 
 interface OverrideFormProps {
@@ -395,6 +397,7 @@ interface PlainOverrideFieldsProps {
   overrides: FieldOverrides;
   patch: (partial: Partial<FieldOverrides>) => void;
   fg: (isOverridden: boolean) => string;
+  defaultLabel?: string;
 }
 
 // The unconditional override fields: the free-text Label and Hint, and the
@@ -403,6 +406,7 @@ function PlainOverrideFields({
   overrides,
   patch,
   fg,
+  defaultLabel,
 }: PlainOverrideFieldsProps) {
   return (
     <>
@@ -424,6 +428,7 @@ function PlainOverrideFields({
             if (stripped !== e.target.value)
               patch({ label: stripped || undefined });
           }}
+          placeholder={defaultLabel}
           label={"Label"}
           className="w-full min-w-0"
         />
@@ -441,35 +446,44 @@ function PlainOverrideFields({
         />
       </div>
 
-      <div
-        className={cn(
-          fg(overrides.isDisabled === true),
-          "flex items-start gap-2 [&_label]:m-0 [&_label]:inline-flex [&_label]:items-center [&_label]:gap-1.5",
-        )}
-      >
-        <Checkbox
-          checked={overrides.isDisabled ?? false}
-          onCheckedChange={(nextChecked) => {
-            patch({ isDisabled: nextChecked || undefined });
-          }}
-          label={<> Disabled</>}
-        />
-      </div>
-
-      <div
-        className={cn(
-          fg(overrides.isHidden === true),
-          "flex items-start gap-2 [&_label]:m-0 [&_label]:inline-flex [&_label]:items-center [&_label]:gap-1.5",
-        )}
-      >
-        <Checkbox
-          checked={overrides.isHidden ?? false}
-          onCheckedChange={(nextChecked) => {
-            patch({ isHidden: nextChecked || undefined });
-          }}
-          label={<> Hidden</>}
-        />
-      </div>
+      <Collapsible.Root className="mb-4">
+        <Collapsible.DefaultTrigger className="cursor-pointer py-2 text-sm text-ui-subtle">
+          Availability
+        </Collapsible.DefaultTrigger>
+        <Collapsible.Panel keepMounted>
+          <div className="pt-2">
+            {" "}
+            <div
+              className={cn(
+                fg(overrides.isDisabled === true),
+                "flex items-start gap-2 [&_label]:m-0 [&_label]:inline-flex [&_label]:items-center [&_label]:gap-1.5",
+              )}
+            >
+              <Checkbox
+                checked={overrides.isDisabled ?? false}
+                onCheckedChange={(nextChecked) => {
+                  patch({ isDisabled: nextChecked || undefined });
+                }}
+                label={<> Disabled</>}
+              />
+            </div>
+            <div
+              className={cn(
+                fg(overrides.isHidden === true),
+                "flex items-start gap-2 [&_label]:m-0 [&_label]:inline-flex [&_label]:items-center [&_label]:gap-1.5",
+              )}
+            >
+              <Checkbox
+                checked={overrides.isHidden ?? false}
+                onCheckedChange={(nextChecked) => {
+                  patch({ isHidden: nextChecked || undefined });
+                }}
+                label={<> Hidden</>}
+              />
+            </div>
+          </div>
+        </Collapsible.Panel>
+      </Collapsible.Root>
     </>
   );
 }
@@ -495,27 +509,16 @@ function OverrideForm({
     onChange({ ...overrides, ...partial });
   }
 
-  function fg(isOverridden: boolean) {
-    return cn(
-      "mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full",
-      isOverridden && "border-l-2 border-l-(--ui-warning-text) -ml-3 pl-2.5",
-    );
+  function fg(_isOverridden: boolean) {
+    return "mb-4 flex flex-col gap-1.5 [&_input]:w-full [&_label]:text-sm [&_label]:font-medium";
   }
-
   return (
     <div>
-      <FieldIdOverrideInput
-        value={overrides.fieldId}
-        duplicate={fieldIdDuplicate}
-        onChange={(fieldId) => patch({ fieldId })}
+      <PlainOverrideFields
+        overrides={overrides}
+        patch={patch}
         fg={fg}
-      />
-      <PlainOverrideFields overrides={overrides} patch={patch} fg={fg} />
-      <UiPropertiesEditor
-        ui={overrides.ui}
-        baseUi={baseUi}
-        onChange={(ui) => patch({ ui })}
-        fg={fg}
+        defaultLabel={defaultLabel}
       />
       <RequiredRuleEditor
         validations={overrides.validations}
@@ -524,37 +527,6 @@ function OverrideForm({
         onChange={(validations) => patch({ validations })}
         fg={fg}
       />
-
-      <div className="mt-5 mb-2 text-[12px] font-semibold tracking-[0.05em] text-ui-subtle uppercase">
-        Validation Rules
-      </div>
-      <ValidationRulesEditor
-        htmlType={htmlType}
-        rules={overrides.validations}
-        baseRules={baseValidations}
-        fieldRefs={fieldRefs}
-        stepRefs={stepRefs}
-        onChange={(validations) => patch({ validations })}
-      />
-
-      <div className="mt-5 mb-2 text-[12px] font-semibold tracking-[0.05em] text-ui-subtle uppercase">
-        Field Behaviours
-      </div>
-      <BehavioursEditor
-        scope="field"
-        behaviours={overrides.behaviours ?? []}
-        fieldRefs={fieldRefs}
-        stepRefs={stepRefs}
-        currentStepId={currentStepId}
-        currentField={{
-          label: overrides.label || defaultLabel || "",
-          htmlType,
-        }}
-        onChange={(behaviours) =>
-          patch({ behaviours: behaviours.length > 0 ? behaviours : undefined })
-        }
-      />
-
       <OptionsSection
         htmlType={htmlType}
         options={overrides.options}
@@ -562,6 +534,63 @@ function OverrideForm({
         patch={patch}
         fg={fg}
       />
+      <Collapsible.Root className="mt-5 border-t border-ui-hairline">
+        <Collapsible.DefaultTrigger className="cursor-pointer py-4 text-sm font-medium">
+          Validation rules
+        </Collapsible.DefaultTrigger>
+        <Collapsible.Panel keepMounted>
+          <ValidationRulesEditor
+            htmlType={htmlType}
+            rules={overrides.validations}
+            baseRules={baseValidations}
+            fieldRefs={fieldRefs}
+            stepRefs={stepRefs}
+            onChange={(validations) => patch({ validations })}
+          />
+        </Collapsible.Panel>
+      </Collapsible.Root>
+      <Collapsible.Root className="border-t border-ui-hairline">
+        <Collapsible.DefaultTrigger className="cursor-pointer py-4 text-sm font-medium">
+          Logic and conditions
+        </Collapsible.DefaultTrigger>
+        <Collapsible.Panel keepMounted>
+          <BehavioursEditor
+            scope="field"
+            behaviours={overrides.behaviours ?? []}
+            fieldRefs={fieldRefs}
+            stepRefs={stepRefs}
+            currentStepId={currentStepId}
+            currentField={{
+              label: overrides.label || defaultLabel || "",
+              htmlType,
+            }}
+            onChange={(behaviours) =>
+              patch({
+                behaviours: behaviours.length > 0 ? behaviours : undefined,
+              })
+            }
+          />
+        </Collapsible.Panel>
+      </Collapsible.Root>
+      <Collapsible.Root className="border-t border-ui-hairline">
+        <Collapsible.DefaultTrigger className="cursor-pointer py-4 text-sm font-medium">
+          Advanced settings
+        </Collapsible.DefaultTrigger>
+        <Collapsible.Panel keepMounted>
+          <FieldIdOverrideInput
+            value={overrides.fieldId}
+            duplicate={fieldIdDuplicate}
+            onChange={(fieldId) => patch({ fieldId })}
+            fg={fg}
+          />
+          <UiPropertiesEditor
+            ui={overrides.ui}
+            baseUi={baseUi}
+            onChange={(ui) => patch({ ui })}
+            fg={fg}
+          />
+        </Collapsible.Panel>
+      </Collapsible.Root>
     </div>
   );
 }
@@ -597,6 +626,7 @@ function FieldEditForm({
   draft,
   stepId,
   dispatch,
+  notice,
 }: Omit<FieldEditPanelProps, "open" | "onClose" | "field"> & {
   field: RecipeFieldDraft;
 }) {
@@ -689,13 +719,14 @@ function FieldEditForm({
 
   return (
     <>
-      <div className="flex items-center justify-between gap-4">
-        <Dialog.Title>Edit Field: {item?.displayName ?? ref}</Dialog.Title>
+      <div className="sticky -top-6 z-10 -mx-6 -mt-6 flex items-center justify-between gap-4 border-b border-ui-hairline bg-ui-base px-6 py-4">
+        <Dialog.Title>Edit question</Dialog.Title>
         <Dialog.Close render={<Button variant="ghost" size="sm" />}>
           Close
         </Dialog.Close>
       </div>
 
+      {notice}
       {isBlock && blockDef ? (
         <div>
           {blockDef.block.elements.map((element) => {
@@ -739,9 +770,7 @@ function FieldEditForm({
         <>
           <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
             <label htmlFor="field-type-select">Field type</label>
-            <div>
-              <code>{ref}</code>
-            </div>
+
             {swappableRefs.length > 0 ? (
               <Select
                 id="field-type-select"
@@ -760,7 +789,7 @@ function FieldEditForm({
               />
             ) : (
               <span style={{ fontSize: "0.75rem", color: "var(--ui-subtle)" }}>
-                No similar types to switch to
+                {item?.displayName ?? ref}
               </span>
             )}
           </div>
@@ -796,7 +825,7 @@ function FieldEditForm({
         </>
       )}
 
-      <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
+      <div className="sticky -bottom-6 -mx-6 -mb-6 flex justify-end gap-2 border-t border-ui-hairline bg-ui-base px-6 py-4">
         <Dialog.Close
           render={<Button onClick={handleSave} variant="primary" size="sm" />}
         >

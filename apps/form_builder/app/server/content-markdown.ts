@@ -34,9 +34,9 @@ export interface RenderOptions {
  * Managed fields override any same-named keys from `baseFrontmatter`; all other
  * base keys are preserved.
  *
- * The Start button is set from the link type: `form` writes `form_id`
- * frontmatter and a bare `<a data-start-link>`; `slug`/`external` write an
- * `<a data-start-link href="…">` (no form_id). The marker is rewritten in place
+ * The service's `form_id` is independent of the Start button. `form` writes a
+ * bare `<a data-start-link>`; `slug`/`external` write an explicit href.
+ * The marker is rewritten in place
  * if the body already has one (preserving inline position) or appended when
  * there's a target — so a plain content page with no target stays untouched.
  */
@@ -54,7 +54,7 @@ export function renderStartPageMarkdown(
   }
   const formId = input.formId.trim();
   const linkType = input.linkType ?? "form";
-  if (linkType === "form" && formId && !isValidSlug(formId)) {
+  if (formId && !isValidSlug(formId)) {
     throw new Error(`Invalid formId: "${formId}"`);
   }
 
@@ -74,16 +74,16 @@ export function renderStartPageMarkdown(
   fm.publish_date = input.publishDate;
   fm.visibility = input.visibility;
 
+  if (formId) fm.form_id = formId;
+  else delete fm.form_id;
+
   let body: string;
   if (linkType === "none") {
-    // No start button: drop the form link and remove any existing marker.
-    delete fm.form_id;
+    // The page still belongs to the service when it has no Start button.
     body = stripStartLinks(input.body.trim());
   } else {
     const href = linkType === "form" ? "" : (input.linkHref?.trim() ?? "");
     const hasTarget = linkType === "form" ? !!formId : !!href;
-    if (linkType === "form" && formId) fm.form_id = formId;
-    else delete fm.form_id;
     body = applyStartLink(input.body.trim(), {
       href,
       label: input.buttonLabel.trim() || "Start now",

@@ -1,8 +1,16 @@
-import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { DropdownMenu } from "../ui/dropdown";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { DotsSixVerticalIcon } from "@phosphor-icons/react";
+import {
+  DotsSixVerticalIcon,
+  DotsThreeIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
+  TrashIcon,
+  PencilSimpleIcon,
+  CopyIcon,
+} from "@phosphor-icons/react";
 import type {
   RecipeFieldDraft,
   RegistryCatalog,
@@ -18,16 +26,10 @@ interface SortableFieldRowProps {
   onMoveUp: () => void;
   onMoveDown: () => void;
   onEdit: () => void;
+  onDuplicate: () => void;
   onRemove: () => void;
 }
 
-/**
- * A single, drag-sortable field row within the step editor.
- *
- * Dragging is via a dedicated grip handle (not the whole row) so it doesn't
- * fight the Edit / × / arrow button clicks. The handle supports pointer and
- * keyboard dragging; the arrow buttons offer single-step reordering.
- */
 export function SortableFieldRow({
   field,
   catalog,
@@ -36,6 +38,7 @@ export function SortableFieldRow({
   onMoveUp,
   onMoveDown,
   onEdit,
+  onDuplicate,
   onRemove,
 }: SortableFieldRowProps) {
   const {
@@ -47,83 +50,93 @@ export function SortableFieldRow({
     transition,
     isDragging,
   } = useSortable({ id: field.id });
-
   const item = getRegistryItem(field.ref, catalog);
   const label = resolveFieldLabel(field, item);
-  const displayName = item?.displayName ?? field.ref;
-  const showSecondary = displayName !== label;
-  const hasOverrides =
-    Object.keys(field.overrides ?? {}).length > 0 ||
-    (field.kind === "block" &&
-      Object.keys(field.childOverrides ?? {}).length > 0);
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : undefined,
-  };
-
+  const primitive = item && "primitive" in item ? item.primitive : undefined;
+  const hint = field.overrides?.hint ?? primitive?.hint;
+  const required =
+    field.overrides?.validations?.required ?? primitive?.validations?.required;
   return (
     <div
       ref={setNodeRef}
       data-field-row
-      className="mb-1.5 flex min-w-0 flex-wrap items-center gap-2 rounded-lg border border-ui-hairline bg-ui-base px-3 py-2.25 transition-[border-color] duration-120 ease-[ease] hover:border-ui-inactive"
-      style={style}
+      className="group/field mb-3 flex min-w-0 items-start gap-2 rounded-lg border border-ui-hairline bg-ui-base p-3 transition-colors hover:border-ui-line"
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : undefined,
+      }}
     >
       <button
         ref={setActivatorNodeRef}
         type="button"
-        className="flex size-7 shrink-0 cursor-grab touch-none items-center justify-center rounded border-0 bg-ui-base p-1 text-ui-subtle outline-hidden hover:bg-ui-recessed focus-visible:ring-2 focus-visible:ring-ui-brand active:cursor-grabbing"
-        title="Drag to reorder"
-        aria-label="Drag to reorder"
+        className="pointer-coarse:size-11 mt-0.5 flex size-8 shrink-0 cursor-grab touch-none items-center justify-center rounded text-ui-subtle hover:bg-ui-tint focus-visible:outline-2 focus-visible:outline-ui-focus active:cursor-grabbing"
+        aria-label={`Drag to reorder ${label}`}
         {...attributes}
         {...listeners}
       >
         <DotsSixVerticalIcon size={18} aria-hidden="true" />
       </button>
-      <div style={{ flex: 1 }}>
-        <div>
-          {hasOverrides && (
-            <span
-              className="mr-1.5 inline-block size-2 rounded-full bg-(--ui-warning-text) align-middle"
-              title="Has overrides"
-            />
-          )}
+      <button
+        type="button"
+        onClick={onEdit}
+        aria-label={`Edit ${label}`}
+        className="min-w-0 flex-1 rounded py-1 text-start focus-visible:outline-2 focus-visible:outline-ui-focus"
+      >
+        <span className="block text-base font-medium text-ui-strong wrap-anywhere">
           {label}
-        </div>
-        {showSecondary && (
-          <div className="text-[12px] text-ui-subtle">{displayName}</div>
+        </span>
+        {hint && (
+          <span className="mt-1 block text-sm text-ui-subtle wrap-anywhere">
+            {hint}
+          </span>
         )}
-      </div>
-      <Badge variant="secondary">{field.kind}</Badge>
-      <Button
-        type="button"
-        title="Move up"
-        disabled={isFirst}
-        onClick={onMoveUp}
-        variant="secondary"
-        size="sm"
-        aria-label={"Move up"}
-      >
-        ▲
-      </Button>
-      <Button
-        type="button"
-        title="Move down"
-        disabled={isLast}
-        onClick={onMoveDown}
-        variant="secondary"
-        size="sm"
-        aria-label={"Move down"}
-      >
-        ▼
-      </Button>
-      <Button type="button" onClick={onEdit} variant="secondary" size="sm">
-        Edit
-      </Button>
-      <Button type="button" onClick={onRemove} variant="secondary" size="sm">
-        ×
-      </Button>
+        <span className="mt-2 block text-xs text-ui-subtle">
+          {item?.displayName ?? field.ref}
+          {primitive &&
+            ` · ${required && required.value !== false ? "Required" : "Optional"}`}
+          {field.kind === "block" && " · Question group"}
+        </span>
+      </button>
+      <DropdownMenu>
+        <DropdownMenu.Trigger
+          render={
+            <Button
+              variant="ghost"
+              size="sm"
+              shape="square"
+              className="pointer-coarse:size-11"
+              aria-label={`Actions for ${label}`}
+              icon={<DotsThreeIcon aria-hidden="true" />}
+            />
+          }
+        />
+        <DropdownMenu.Content align="end">
+          <DropdownMenu.Item onClick={onEdit}>
+            <PencilSimpleIcon aria-hidden="true" />
+            Edit
+          </DropdownMenu.Item>
+          <DropdownMenu.Item disabled={!item} onClick={onDuplicate}>
+            <CopyIcon aria-hidden="true" />
+            {field.kind === "block"
+              ? "Duplicate question group"
+              : "Duplicate question"}
+          </DropdownMenu.Item>
+          <DropdownMenu.Item disabled={isFirst} onClick={onMoveUp}>
+            <ArrowUpIcon aria-hidden="true" />
+            Move up
+          </DropdownMenu.Item>
+          <DropdownMenu.Item disabled={isLast} onClick={onMoveDown}>
+            <ArrowDownIcon aria-hidden="true" />
+            Move down
+          </DropdownMenu.Item>
+          <DropdownMenu.Separator />
+          <DropdownMenu.Item onClick={onRemove} className="text-ui-danger">
+            <TrashIcon aria-hidden="true" />
+            Remove question
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu>
     </div>
   );
 }

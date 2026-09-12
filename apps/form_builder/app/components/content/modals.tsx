@@ -1,3 +1,4 @@
+import { Collapsible } from "../ui/collapsible";
 import { InputArea } from "../ui/input/input-area";
 import { Button } from "../ui/button";
 import { useState } from "react";
@@ -76,10 +77,10 @@ export function DeleteModal({
       onClose={onClose}
       closeDisabled={isDeleting}
     >
-      <p>
-        Open a pull request that removes{" "}
-        <code>{editPath.slice(CONTENT_ROOT.length)}</code> from the landing
-        site? It’s only gone once the PR is merged.
+      <p className="wrap-anywhere">
+        Request removal of <code>{editPath.slice(CONTENT_ROOT.length)}</code>.
+        The page stays available until a reviewer approves and merges the
+        removal.
       </p>
       {error && (
         <Banner variant="error" role="alert">
@@ -95,7 +96,7 @@ export function DeleteModal({
           size="sm"
         >
           <Delete02Icon size={15} />
-          {isDeleting ? "Opening PR…" : "Deploy removal"}
+          {isDeleting ? "Sending…" : "Request removal"}
         </Button>
         <Dialog.Close
           render={
@@ -130,26 +131,19 @@ export function DeployModal({
   return (
     <Modal
       open={open}
-      title={
-        openPR
-          ? `Update PR #${openPR.prNumber}`
-          : ed.editing
-            ? "Deploy update"
-            : "Deploy page"
-      }
+      title={openPR ? "Update review" : "Publish page"}
       onClose={onClose}
       onClosed={() => setPrDesc("")}
       closeDisabled={isPublishing}
     >
+      <p className="text-sm text-ui-subtle">
+        {openPR
+          ? "Send your latest changes to the existing review."
+          : "Send this page for review. It goes live after approval and publication."}
+      </p>
       <dl className="m-0 mb-1 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[13px] [&_dt]:text-ui-subtle [&_dd]:m-0 [&_dd]:wrap-anywhere">
-        <dt>File</dt>
-        <dd>
-          <code>
-            {(ed.fixedPath ?? `${CONTENT_ROOT}${ed.slug}.md`).slice(
-              CONTENT_ROOT.length,
-            )}
-          </code>
-        </dd>
+        <dt>Page</dt>
+        <dd className="font-medium">{ed.state.title || "Untitled page"}</dd>
         {ed.url && (
           <>
             <dt>URL</dt>
@@ -164,18 +158,30 @@ export function DeployModal({
           {VISIBILITY_LEVELS.find((v) => v.value === ed.state.visibility)
             ?.label ?? ed.state.visibility}
         </dd>
-        <dt>{openPR ? "PR targets" : "PR opens against"}</dt>
-        <dd>
-          <code>{baseBranch}</code>
-        </dd>
       </dl>
+      <Collapsible.Root className="rounded-lg border border-ui-hairline px-4 py-3 text-sm">
+        <Collapsible.DefaultTrigger className="cursor-pointer font-medium">
+          Publication details
+        </Collapsible.DefaultTrigger>
+        <Collapsible.Panel keepMounted>
+          <p className="mt-3 text-ui-subtle wrap-anywhere">
+            Updates{" "}
+            <code>
+              {(ed.fixedPath ?? `${CONTENT_ROOT}${ed.slug}.md`).slice(
+                CONTENT_ROOT.length,
+              )}
+            </code>{" "}
+            on <code>{baseBranch}</code> through a GitHub pull request.
+          </p>
+        </Collapsible.Panel>
+      </Collapsible.Root>
       {openPR && (
         <p className="py-2 text-[13px] text-ui-subtle [&_a]:text-ui-link">
-          This page is already in review in PR{" "}
+          Continue review{" "}
           <a href={openPR.prUrl} target="_blank" rel="noopener noreferrer">
             #{openPR.prNumber}
           </a>{" "}
-          — this update adds a commit there instead of opening a new PR.
+          with these changes.
         </p>
       )}
       <div className="mb-4.5 mt-2">
@@ -183,7 +189,9 @@ export function DeployModal({
           className="mb-1.5 block text-[13px] font-medium text-ui-default"
           htmlFor="sp-pr-desc"
         >
-          {openPR ? "Update note (optional)" : "PR description (optional)"}
+          {openPR
+            ? "Update note (optional)"
+            : "Description for the reviewer (optional)"}
         </label>
         <InputArea
           id="sp-pr-desc"
@@ -193,7 +201,7 @@ export function DeployModal({
           onChange={(e) => setPrDesc(e.target.value)}
           placeholder={
             openPR
-              ? "What changed in this update? This will be added as a PR comment."
+              ? "What should the reviewer know about this update?"
               : "What changed and why?"
           }
           className="w-full min-w-0"
@@ -215,11 +223,11 @@ export function DeployModal({
           <Rocket01Icon size={15} />
           {isPublishing
             ? openPR
-              ? "Updating PR…"
-              : "Opening PR…"
+              ? "Updating review…"
+              : "Sending…"
             : openPR
-              ? `Update PR #${openPR.prNumber}`
-              : "Deploy"}
+              ? `Update review #${openPR.prNumber}`
+              : "Send for review"}
         </Button>
         <Dialog.Close
           render={

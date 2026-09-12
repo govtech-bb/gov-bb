@@ -1,5 +1,4 @@
 import { ScrollArea } from "../ui/scroll-area";
-import { Elevated } from "../ui/surface";
 import { Banner } from "../ui/banner";
 import { Select } from "../ui/select";
 import { Button } from "../ui/button";
@@ -65,8 +64,8 @@ function NewMdaContactForm({
 }: NewMdaContactFormProps) {
   const { values, setValue, isCreating, createError } = form;
   return (
-    <Elevated offset={1} shadowLevel={2} className="mb-4 rounded-xl p-5">
-      <div className="mt-5 mb-2 text-[12px] font-semibold tracking-[0.05em] text-ui-subtle uppercase">
+    <section className="mb-5 rounded-lg border border-ui-hairline bg-ui-canvas p-5">
+      <div className="mt-5 mb-3 text-sm font-semibold text-ui-default">
         New MDA contact
       </div>
       {createError && (
@@ -74,7 +73,7 @@ function NewMdaContactForm({
           <div className="min-w-0 flex-1">{createError}</div>
         </Banner>
       )}
-      <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+      <div className="mb-4 flex flex-col gap-1.5 [&_label]:text-sm [&_label]:font-medium">
         <label htmlFor="nc-label">Label</label>
         <Input
           id="nc-label"
@@ -84,7 +83,7 @@ function NewMdaContactForm({
           className="w-full min-w-0"
         />
       </div>
-      <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+      <div className="mb-4 flex flex-col gap-1.5 [&_label]:text-sm [&_label]:font-medium">
         <label htmlFor="nc-title">Organisation title</label>
         <Input
           id="nc-title"
@@ -94,7 +93,7 @@ function NewMdaContactForm({
           className="w-full min-w-0"
         />
       </div>
-      <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+      <div className="mb-4 flex flex-col gap-1.5 [&_label]:text-sm [&_label]:font-medium">
         <label htmlFor="nc-telephone">Telephone number</label>
         <Input
           id="nc-telephone"
@@ -104,7 +103,7 @@ function NewMdaContactForm({
           className="w-full min-w-0"
         />
       </div>
-      <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+      <div className="mb-4 flex flex-col gap-1.5 [&_label]:text-sm [&_label]:font-medium">
         <label htmlFor="nc-email">Public email</label>
         <Input
           id="nc-email"
@@ -114,7 +113,7 @@ function NewMdaContactForm({
           className="w-full min-w-0"
         />
       </div>
-      <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+      <div className="mb-4 flex flex-col gap-1.5 [&_label]:text-sm [&_label]:font-medium">
         <label htmlFor="nc-mda-email">
           MDA notification email (per-environment)
         </label>
@@ -126,10 +125,10 @@ function NewMdaContactForm({
           className="w-full min-w-0"
         />
       </div>
-      <div className="mt-5 mb-2 text-[12px] font-semibold tracking-[0.05em] text-ui-subtle uppercase">
+      <div className="mt-5 mb-3 text-sm font-semibold text-ui-default">
         Address (optional)
       </div>
-      <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+      <div className="mb-4 flex flex-col gap-1.5 [&_label]:text-sm [&_label]:font-medium">
         <label htmlFor="nc-line1">Address line 1</label>
         <Input
           id="nc-line1"
@@ -139,7 +138,7 @@ function NewMdaContactForm({
           className="w-full min-w-0"
         />
       </div>
-      <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+      <div className="mb-4 flex flex-col gap-1.5 [&_label]:text-sm [&_label]:font-medium">
         <label htmlFor="nc-line2">Address line 2</label>
         <Input
           id="nc-line2"
@@ -149,7 +148,7 @@ function NewMdaContactForm({
           className="w-full min-w-0"
         />
       </div>
-      <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+      <div className="mb-4 flex flex-col gap-1.5 [&_label]:text-sm [&_label]:font-medium">
         <label htmlFor="nc-city">City</label>
         <Input
           id="nc-city"
@@ -159,7 +158,7 @@ function NewMdaContactForm({
           className="w-full min-w-0"
         />
       </div>
-      <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+      <div className="mb-4 flex flex-col gap-1.5 [&_label]:text-sm [&_label]:font-medium">
         <label htmlFor="nc-country">Country</label>
         <Input
           id="nc-country"
@@ -169,7 +168,7 @@ function NewMdaContactForm({
           className="w-full min-w-0"
         />
       </div>
-      <div className="mb-4 flex flex-wrap items-center gap-2 [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover">
+      <div className="mt-6 flex flex-wrap items-center gap-2">
         <Button
           type="button"
           onClick={async () => {
@@ -186,7 +185,7 @@ function NewMdaContactForm({
           Cancel
         </Button>
       </div>
-    </Elevated>
+    </section>
   );
 }
 
@@ -261,22 +260,18 @@ export function ContactDetailsEditor({
 
   return (
     <ScrollArea className="min-h-0 flex-1" viewportClassName="scroll-fade">
-      <div className="p-4 sm:p-6">
-        <Elevated
-          offset={1}
-          shadowLevel={2}
-          className="mx-auto max-w-5xl rounded-xl p-4 sm:p-6"
-        >
-          <div className="mt-5 mb-2 text-[12px] font-semibold tracking-[0.05em] text-ui-subtle uppercase">
-            Contact Details
-          </div>
+      <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-8 sm:py-8">
+        <section className="rounded-lg border border-ui-hairline bg-ui-base p-5 sm:p-7">
+          <h2 className="mb-2 text-xl font-semibold text-ui-strong">
+            Contact details
+          </h2>
 
-          <p className="max-w-[65ch] text-[12px] leading-[1.3] text-ui-subtle">
+          <p className="mb-5 max-w-prose text-sm leading-relaxed text-ui-subtle">
             Shown to applicants on the confirmation step so they know who to
             contact about the service. Leave the address blank to omit it.
           </p>
 
-          <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+          <div className="mb-4 flex flex-col gap-1.5 [&_label]:text-sm [&_label]:font-medium">
             <label htmlFor="cd-mda-contact">MDA contact</label>
             <Select
               id="cd-mda-contact"
@@ -295,7 +290,7 @@ export function ContactDetailsEditor({
               ]}
             />
             {contacts === null && !contactsLoadError && (
-              <p className="max-w-[65ch] text-[12px] leading-[1.3] text-ui-subtle">
+              <p className="mb-5 max-w-prose text-sm leading-relaxed text-ui-subtle">
                 Loading contacts…
               </p>
             )}
@@ -343,7 +338,7 @@ export function ContactDetailsEditor({
             </Banner>
           )}
 
-          <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+          <div className="mb-4 flex flex-col gap-1.5 [&_label]:text-sm [&_label]:font-medium">
             <label htmlFor="cd-title">Organisation title</label>
             <Input
               id="cd-title"
@@ -354,7 +349,7 @@ export function ContactDetailsEditor({
             />
           </div>
 
-          <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+          <div className="mb-4 flex flex-col gap-1.5 [&_label]:text-sm [&_label]:font-medium">
             <label htmlFor="cd-telephone">Telephone number</label>
             <Input
               id="cd-telephone"
@@ -365,7 +360,7 @@ export function ContactDetailsEditor({
             />
           </div>
 
-          <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+          <div className="mb-4 flex flex-col gap-1.5 [&_label]:text-sm [&_label]:font-medium">
             <label htmlFor="cd-email">Email</label>
             <Input
               id="cd-email"
@@ -376,11 +371,11 @@ export function ContactDetailsEditor({
             />
           </div>
 
-          <div className="mt-5 mb-2 text-[12px] font-semibold tracking-[0.05em] text-ui-subtle uppercase">
+          <div className="mt-5 mb-3 text-sm font-semibold text-ui-default">
             Address (optional)
           </div>
 
-          <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+          <div className="mb-4 flex flex-col gap-1.5 [&_label]:text-sm [&_label]:font-medium">
             <label htmlFor="cd-line1">Address line 1</label>
             <Input
               id="cd-line1"
@@ -391,7 +386,7 @@ export function ContactDetailsEditor({
             />
           </div>
 
-          <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+          <div className="mb-4 flex flex-col gap-1.5 [&_label]:text-sm [&_label]:font-medium">
             <label htmlFor="cd-line2">Address line 2</label>
             <Input
               id="cd-line2"
@@ -402,7 +397,7 @@ export function ContactDetailsEditor({
             />
           </div>
 
-          <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+          <div className="mb-4 flex flex-col gap-1.5 [&_label]:text-sm [&_label]:font-medium">
             <label htmlFor="cd-city">City</label>
             <Input
               id="cd-city"
@@ -413,7 +408,7 @@ export function ContactDetailsEditor({
             />
           </div>
 
-          <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+          <div className="mb-4 flex flex-col gap-1.5 [&_label]:text-sm [&_label]:font-medium">
             <label htmlFor="cd-country">Country</label>
             <Input
               id="cd-country"
@@ -424,7 +419,7 @@ export function ContactDetailsEditor({
             />
           </div>
 
-          <div className="mb-4 flex flex-wrap items-center gap-2 [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover">
+          <div className="mt-6 flex flex-wrap items-center gap-2">
             <Button
               type="button"
               onClick={form.save}
@@ -442,7 +437,7 @@ export function ContactDetailsEditor({
               Clear contact details
             </Button>
           </div>
-        </Elevated>
+        </section>
       </div>
     </ScrollArea>
   );

@@ -20,10 +20,7 @@ import {
   type SessionPayload,
 } from "../../server/session";
 import { safeEqual, setSession } from "../../server/session-cipher.server";
-import {
-  getGitHubOAuthCreds,
-  getSessionSecret,
-} from "../../server/secrets";
+import { getGitHubOAuthCreds, getSessionSecret } from "../../server/secrets";
 
 const QuerySchema = z.object({
   code: z.string().min(1),
@@ -73,7 +70,7 @@ const issueSessionCookie = createIsomorphicFn()
  * OAuth callback. Validates the CSRF state cookie, exchanges the code for a
  * token, checks the user's repo permission, and issues the session cookie —
  * all inline so the Set-Cookie header rides the same response as the
- * redirect to `/builder` (or `/auth/denied`).
+ * redirect to `/services` (or `/auth/denied`).
  *
  * See `auth.ts` for the rationale on why this is NOT a `createServerFn`.
  */
@@ -120,12 +117,14 @@ export const Route = createFileRoute("/auth/github_/callback")({
 
     if (!allowed) {
       // Clear the CSRF state cookie even on denial, so a retry starts clean.
-      setResponseCookies(serializeOAuthStateCookie("", { secure, clear: true }));
+      setResponseCookies(
+        serializeOAuthStateCookie("", { secure, clear: true }),
+      );
       throw redirect({ to: "/auth/denied" });
     }
 
     // Issue the session cookie and clear the CSRF cookie, both on this same
-    // response so they ride along with the 302 to /builder.
+    // response so they ride along with the 302 to /services.
     const sessionCookie = issueSessionCookie(
       {
         login,
@@ -141,6 +140,6 @@ export const Route = createFileRoute("/auth/github_/callback")({
     });
     setResponseCookies([sessionCookie, clearedStateCookie]);
 
-    throw redirect({ to: "/builder" });
+    throw redirect({ to: "/services" });
   },
 });

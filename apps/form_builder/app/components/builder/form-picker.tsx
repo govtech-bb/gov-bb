@@ -8,16 +8,18 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { useState } from "react";
 import { GitPullRequestIcon } from "hugeicons-react";
-import { getRecipe, getFormConfig } from "../../server/forms";
+import { getRecipe } from "../../server/forms";
 import type { OpenDeployPR } from "../../server/publish";
-import { deserializeRecipe, mergeDbProcessors } from "@govtech-bb/form-builder";
+import { deserializeRecipe } from "@govtech-bb/form-builder";
 import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
-import type { ServiceContractRecipe, Processor } from "@govtech-bb/form-types";
+import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 import type { BuilderFormSummary } from "../../types/index";
 import { Dialog } from "../ui/dialog";
+import { loadFormDraft } from "./load-form-draft";
 
 interface FormPickerProps {
   open: boolean;
+  allowDuplicate?: boolean;
   /** The forms to choose from, or `null` while the background fetch is in flight. */
   forms: BuilderFormSummary[] | null;
   /** A message if the background fetch failed, otherwise `null`. */
@@ -71,6 +73,7 @@ function PrBadge({ pr }: { pr: OpenDeployPR }) {
 
 export function FormPicker({
   open,
+  allowDuplicate = true,
   forms,
   loadError,
   isDirty,
@@ -109,35 +112,8 @@ export function FormPicker({
     setError(null);
     setLoadingId(form.formId);
     try {
-      // Fetch the recipe and the DB-only per-environment config together
-      // (issue #607). The recipe never carries mdaContactId, so it comes from
-      // the config sidecar and is stitched onto the deserialized draft. A config
-      // fetch that fails (e.g. older API) shouldn't block opening the form, so
-      // it degrades to "no selection".
-      const [recipe, config] = await Promise.all([
-        getRecipe({
-          data: { formId: form.formId },
-        }) as Promise<ServiceContractRecipe>,
-        getFormConfig({ data: { formId: form.formId } }).catch(
-          () =>
-            ({ mdaContactId: null, processors: null }) as {
-              mdaContactId: string | null;
-              processors: Processor[] | null;
-            },
-        ),
-      ]);
-      const draft = deserializeRecipe(recipe, catalog);
-      // Reconcile the recipe's processors with the DB-resident payment
-      // processors (#716): non-payment come from the recipe, payment from the
-      // DB. When the recipe still carries a payment processor and the DB has
-      // none, mergeDbProcessors lifts it into the editor — re-saving then
-      // persists it to the DB sibling and strips it from the recipe (#750).
-      const draftWithConfig: RecipeDraft = {
-        ...draft,
-        mdaContactId: config.mdaContactId,
-        processors: mergeDbProcessors(draft.processors, config.processors),
-      };
-      onLoad(draftWithConfig, form.formId);
+      const draft = await loadFormDraft(form.formId, catalog);
+      onLoad(draft, form.formId);
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load recipe");
@@ -296,7 +272,7 @@ export function FormPicker({
                       {form.formId}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {!form.isOrphanOverride && (
+                      {allowDuplicate && !form.isOrphanOverride && (
                         <Button
                           size="sm"
                           disabled={!!loadingId}

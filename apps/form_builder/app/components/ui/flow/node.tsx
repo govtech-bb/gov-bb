@@ -58,7 +58,7 @@ export const FlowNode = forwardRef<HTMLElement, FlowNodeProps>(
     const endAnchorOffsetRef = useRef<number | undefined>(undefined);
     const reportSize = useCallback(() => {
       if (!nodeRef.current) return;
-      const { width, height } = nodeRef.current.getBoundingClientRect();
+      const { offsetWidth: width, offsetHeight: height } = nodeRef.current;
       reportNode(id, {
         width,
         height,
@@ -94,7 +94,10 @@ export const FlowNode = forwardRef<HTMLElement, FlowNodeProps>(
           if (!nodeRef.current) return;
           const anchorRect = el.getBoundingClientRect();
           const nodeRect = nodeRef.current.getBoundingClientRect();
-          writeOffsets(anchorRect.top - nodeRect.top + anchorRect.height / 2);
+          const scale = nodeRect.width / nodeRef.current.offsetWidth || 1;
+          writeOffsets(
+            (anchorRect.top - nodeRect.top + anchorRect.height / 2) / scale,
+          );
           reportSize();
         };
         measure();

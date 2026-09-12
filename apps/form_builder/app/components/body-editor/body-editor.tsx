@@ -151,11 +151,11 @@ export function BodyEditor({
         >
           <ContentEditable
             id={`${id}-visual`}
-            className="h-105 overflow-y-auto rounded-b-md border border-ui-hairline bg-ui-base px-4 py-3.5 text-[14px] leading-[1.6] focus-visible:border-ui-subtle focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ui-default [&_p]:my-2"
+            className="min-h-105 rounded-b-md border border-ui-hairline bg-ui-base px-4 py-3.5 text-base leading-relaxed focus-visible:border-ui-subtle focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ui-default [&_p]:my-2"
             aria-label={ariaLabel}
             aria-placeholder="Write your content…"
             placeholder={
-              <span className="pointer-events-none absolute start-4 top-3.5 text-ui-default">
+              <span className="pointer-events-none absolute start-4 top-3.5 text-ui-placeholder">
                 Write your content…
               </span>
             }

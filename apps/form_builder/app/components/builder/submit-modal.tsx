@@ -1,5 +1,4 @@
 import { Banner } from "../ui/banner";
-import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
 import { formPreviewUrl } from "../../lib/form-url";
@@ -23,7 +22,6 @@ interface SubmitModalProps {
 export function SubmitModal({
   open,
   draft,
-  loadedFromId,
   isSubmitting,
   submitSuccess,
   submitError,
@@ -31,8 +29,7 @@ export function SubmitModal({
   onSubmit,
   onClose,
 }: SubmitModalProps) {
-  const isUpdate = loadedFromId !== null;
-  const mode = isUpdate ? "Save Changes" : "Submit Recipe";
+  const mode = "Save draft";
 
   return (
     <Dialog.Root
@@ -52,14 +49,14 @@ export function SubmitModal({
         {submitSuccess ? (
           <Banner variant="success" size="sm">
             <div className="min-w-0 flex-1">
-              Recipe submitted successfully!
-              <div style={{ marginTop: 8 }}>
+              Draft saved.
+              <div className="mt-2">
                 <a
                   href={formPreviewUrl(draft.formId)}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  🔗 Preview form
+                  Preview form
                 </a>
               </div>
             </div>
@@ -67,44 +64,26 @@ export function SubmitModal({
         ) : (
           <div>
             {isReadOnly && (
-              <Banner
-                variant="alert"
-                size="sm"
-                role="alert"
-                style={{ marginBottom: 8 }}
-              >
+              <Banner variant="alert" size="sm" role="alert" className="mb-4">
                 <div className="min-w-0 flex-1">
                   Another user is currently editing this form. Saving is
                   disabled until their editing session ends.
                 </div>
               </Banner>
             )}
-            <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
-              <Input
-                type="text"
-                value={draft.formId}
-                readOnly
-                label={"Form ID"}
-                className="w-full min-w-0"
-              />
-            </div>
-            <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
-              <Input
-                type="text"
-                value={draft.title}
-                readOnly
-                label={"Title"}
-                className="w-full min-w-0"
-              />
-            </div>
+            <Dialog.Description className="mb-5">
+              Save your changes to{" "}
+              <strong>{draft.title || "Untitled form"}</strong>. The published
+              form stays as it is until you publish an update.
+            </Dialog.Description>
 
             {submitError && (
-              <Banner variant="error" size="sm" style={{ marginBottom: 8 }}>
+              <Banner variant="error" size="sm" className="mb-4">
                 <div className="min-w-0 flex-1">{submitError}</div>
               </Banner>
             )}
 
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="primary"
@@ -112,7 +91,7 @@ export function SubmitModal({
                 disabled={isSubmitting || isReadOnly}
                 size="sm"
               >
-                {isSubmitting ? "Submitting…" : mode}
+                {isSubmitting ? "Saving…" : mode}
               </Button>
               <Dialog.Close
                 render={<Button type="button" variant="secondary" size="sm" />}

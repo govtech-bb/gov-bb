@@ -276,7 +276,7 @@ export function PromptBar({
             aria-label="Message the assistant"
             placeholder={
               mode === "ask"
-                ? "Ask about this draft…"
+                ? "Ask a question…"
                 : "Describe what you want to change…"
             }
             value={value}

@@ -9,17 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ServicesRouteImport } from './routes/services'
 import { Route as ContentRouteImport } from './routes/content'
 import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ContentIndexRouteImport } from './routes/content/index'
 import { Route as BuilderIndexRouteImport } from './routes/builder/index'
+import { Route as ServicesNewRouteImport } from './routes/services_.new'
 import { Route as DevUiRouteImport } from './routes/dev.ui'
 import { Route as ContentEditRouteImport } from './routes/content/edit'
 import { Route as AuthGithubRouteImport } from './routes/auth/github'
 import { Route as AuthDeniedRouteImport } from './routes/auth/denied'
 import { Route as AuthGithubCallbackRouteImport } from './routes/auth/github_.callback'
 
+const ServicesRoute = ServicesRouteImport.update({
+  id: '/services',
+  path: '/services',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContentRoute = ContentRouteImport.update({
   id: '/content',
   path: '/content',
@@ -44,6 +51,11 @@ const BuilderIndexRoute = BuilderIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => BuilderRoute,
+} as any)
+const ServicesNewRoute = ServicesNewRouteImport.update({
+  id: '/services_/new',
+  path: '/services/new',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DevUiRoute = DevUiRouteImport.update({
   id: '/dev/ui',
@@ -75,20 +87,24 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/builder': typeof BuilderRouteWithChildren
   '/content': typeof ContentRouteWithChildren
+  '/services': typeof ServicesRoute
   '/auth/denied': typeof AuthDeniedRoute
   '/auth/github': typeof AuthGithubRoute
   '/content/edit': typeof ContentEditRoute
   '/dev/ui': typeof DevUiRoute
+  '/services/new': typeof ServicesNewRoute
   '/builder/': typeof BuilderIndexRoute
   '/content/': typeof ContentIndexRoute
   '/auth/github/callback': typeof AuthGithubCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/services': typeof ServicesRoute
   '/auth/denied': typeof AuthDeniedRoute
   '/auth/github': typeof AuthGithubRoute
   '/content/edit': typeof ContentEditRoute
   '/dev/ui': typeof DevUiRoute
+  '/services/new': typeof ServicesNewRoute
   '/builder': typeof BuilderIndexRoute
   '/content': typeof ContentIndexRoute
   '/auth/github/callback': typeof AuthGithubCallbackRoute
@@ -98,10 +114,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/builder': typeof BuilderRouteWithChildren
   '/content': typeof ContentRouteWithChildren
+  '/services': typeof ServicesRoute
   '/auth/denied': typeof AuthDeniedRoute
   '/auth/github': typeof AuthGithubRoute
   '/content/edit': typeof ContentEditRoute
   '/dev/ui': typeof DevUiRoute
+  '/services_/new': typeof ServicesNewRoute
   '/builder/': typeof BuilderIndexRoute
   '/content/': typeof ContentIndexRoute
   '/auth/github_/callback': typeof AuthGithubCallbackRoute
@@ -112,20 +130,24 @@ export interface FileRouteTypes {
     | '/'
     | '/builder'
     | '/content'
+    | '/services'
     | '/auth/denied'
     | '/auth/github'
     | '/content/edit'
     | '/dev/ui'
+    | '/services/new'
     | '/builder/'
     | '/content/'
     | '/auth/github/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/services'
     | '/auth/denied'
     | '/auth/github'
     | '/content/edit'
     | '/dev/ui'
+    | '/services/new'
     | '/builder'
     | '/content'
     | '/auth/github/callback'
@@ -134,10 +156,12 @@ export interface FileRouteTypes {
     | '/'
     | '/builder'
     | '/content'
+    | '/services'
     | '/auth/denied'
     | '/auth/github'
     | '/content/edit'
     | '/dev/ui'
+    | '/services_/new'
     | '/builder/'
     | '/content/'
     | '/auth/github_/callback'
@@ -147,14 +171,23 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BuilderRoute: typeof BuilderRouteWithChildren
   ContentRoute: typeof ContentRouteWithChildren
+  ServicesRoute: typeof ServicesRoute
   AuthDeniedRoute: typeof AuthDeniedRoute
   AuthGithubRoute: typeof AuthGithubRoute
   DevUiRoute: typeof DevUiRoute
+  ServicesNewRoute: typeof ServicesNewRoute
   AuthGithubCallbackRoute: typeof AuthGithubCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/services': {
+      id: '/services'
+      path: '/services'
+      fullPath: '/services'
+      preLoaderRoute: typeof ServicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/content': {
       id: '/content'
       path: '/content'
@@ -189,6 +222,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/builder/'
       preLoaderRoute: typeof BuilderIndexRouteImport
       parentRoute: typeof BuilderRoute
+    }
+    '/services_/new': {
+      id: '/services_/new'
+      path: '/services/new'
+      fullPath: '/services/new'
+      preLoaderRoute: typeof ServicesNewRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dev/ui': {
       id: '/dev/ui'
@@ -256,9 +296,11 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BuilderRoute: BuilderRouteWithChildren,
   ContentRoute: ContentRouteWithChildren,
+  ServicesRoute: ServicesRoute,
   AuthDeniedRoute: AuthDeniedRoute,
   AuthGithubRoute: AuthGithubRoute,
   DevUiRoute: DevUiRoute,
+  ServicesNewRoute: ServicesNewRoute,
   AuthGithubCallbackRoute: AuthGithubCallbackRoute,
 }
 export const routeTree = rootRouteImport

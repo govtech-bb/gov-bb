@@ -64,7 +64,7 @@ const BUILDER_AUTHORED_RECIPE_FIELDS = new Set([
  * branch: those the builder does not author and the payload does not carry. A
  * field the payload does carry always wins — this only ever fills gaps.
  */
-function carryUnauthoredFields(
+export function carryUnauthoredFields(
   committed: Record<string, unknown> | undefined,
   published: Record<string, unknown>,
 ): Record<string, unknown> {

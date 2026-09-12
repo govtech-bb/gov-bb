@@ -245,7 +245,7 @@ describe("renderStartPageMarkdown", () => {
     expect(isKnownCategory("housing")).toBe(true);
   });
 
-  it("writes an internal-slug start link with an href and no form_id", () => {
+  it("writes an internal start link while keeping the service form association", () => {
     const { frontmatter, body } = parseContentMarkdown(
       renderStartPageMarkdown({
         ...base,
@@ -254,7 +254,7 @@ describe("renderStartPageMarkdown", () => {
         buttonLabel: "Start",
       }),
     );
-    expect(frontmatter.form_id).toBeUndefined();
+    expect(frontmatter.form_id).toBe(base.formId);
     expect(body).toContain(
       '<a data-start-link href="/family-birth-relationships/get-birth-certificate">Start</a>',
     );
@@ -268,13 +268,13 @@ describe("renderStartPageMarkdown", () => {
         linkHref: "https://ezpayplus.gov.bb",
       }),
     );
-    expect(frontmatter.form_id).toBeUndefined();
+    expect(frontmatter.form_id).toBe(base.formId);
     expect(body).toContain(
       '<a data-start-link href="https://ezpayplus.gov.bb">Start now</a>',
     );
   });
 
-  it("removes the marker and form_id when linkType is none", () => {
+  it("removes the marker while keeping the service form association when linkType is none", () => {
     const { frontmatter, body } = parseContentMarkdown(
       renderStartPageMarkdown({
         ...base,
@@ -282,7 +282,7 @@ describe("renderStartPageMarkdown", () => {
         linkType: "none",
       }),
     );
-    expect(frontmatter.form_id).toBeUndefined();
+    expect(frontmatter.form_id).toBe(base.formId);
     expect(body).not.toContain("data-start-link");
     expect(body).toContain("Intro");
     expect(body).toContain("More text");
@@ -620,4 +620,23 @@ describe("buildDeployPayload", () => {
     });
     expect(p.buttonLabel).toBe("Begin application");
   });
+});
+
+it("creates nested guidance paths and normalises their public URLs", () => {
+  expect(startPageContentPath("get-birth-certificate/help")).toBe(
+    "apps/landing/src/content/get-birth-certificate/help.md",
+  );
+  expect(startPageUrl("health", "health/alpha/index")).toBe("/health/alpha");
+  expect(startPageUrl("health", "alpha/help")).toBe("/health/alpha/help");
+  expect(() => startPageContentPath("alpha/../start")).toThrow();
+  expect(() => startPageContentPath("alpha//help")).toThrow();
+});
+
+it("keeps subsection URLs consistent with landing routing", () => {
+  expect(startPageUrl("health", "alpha/help", "licences")).toBe(
+    "/health/licences/alpha/help",
+  );
+  expect(
+    startPageUrl("health", "health/licences/alpha/index", "licences"),
+  ).toBe("/health/licences/alpha");
 });

@@ -67,7 +67,7 @@ function state(): Array<{ type: string; config: Record<string, unknown> }> {
 
 async function addProcessor(type: string) {
   await chooseOption(
-    screen.getByLabelText(/processor type/i),
+    screen.getByLabelText(/^action$/i),
     (
       {
         email: "Email confirmation",
@@ -78,7 +78,7 @@ async function addProcessor(type: string) {
       } as Record<string, string>
     )[type],
   );
-  await userEvent.click(screen.getByRole("button", { name: /add processor/i }));
+  await userEvent.click(screen.getByRole("button", { name: /add action/i }));
 }
 
 beforeEach(() => {});
@@ -110,7 +110,7 @@ it("adds a processor of each authorable type", async () => {
 
 it("offers payment as an addable type (#716)", async () => {
   render(<Harness initial={emptyDraft} />);
-  const select = screen.getByLabelText(/processor type/i);
+  const select = screen.getByLabelText(/^action$/i);
   expect(
     within(await openSelect(select)).queryByText(/payment/i),
   ).toBeInTheDocument();
@@ -349,14 +349,24 @@ it("removes a processor", async () => {
   await addProcessor("webhook");
   expect(state()).toHaveLength(1);
   await userEvent.click(screen.getByRole("button", { name: /^remove$/i }));
-  await respondToConfirmation("Remove processor");
+  await respondToConfirmation("Remove action");
   expect(state()).toHaveLength(0);
 });
 
-it("warns when no email processor is attached, and clears the warning once one is added", async () => {
+it("only clears the applicant warning after an applicant recipient is selected", async () => {
   render(<Harness initial={emptyDraft} />);
   expect(screen.getByRole("alert")).toHaveTextContent(/email/i);
   await addProcessor("email");
+  expect(screen.getByRole("alert")).toBeInTheDocument();
+  await chooseOption(
+    screen.getByLabelText(/recipient field/i),
+    /config\.mdaEmail/,
+  );
+  expect(screen.getByRole("alert")).toBeInTheDocument();
+  await chooseOption(
+    screen.getByLabelText(/recipient field/i),
+    "Email (contact.email)",
+  );
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 });
 
@@ -411,7 +421,7 @@ it("prunes the webhook headers key when the last header is removed", async () =>
   expect(state()[0].config).not.toHaveProperty("headers");
 });
 
-it("renders an email processor's per-instance label as its card header", async () => {
+it("preserves email labels alongside recipient descriptions", async () => {
   const initial: RecipeDraft = {
     formId: "f",
     title: "T",
@@ -434,13 +444,11 @@ it("renders an email processor's per-instance label as its card header", async (
   expect(screen.getByText("MDA Email")).toBeInTheDocument();
 });
 
-it("falls back to the type label when an email processor has no label", async () => {
+it("shows that a new email needs a recipient", async () => {
   render(<Harness initial={emptyDraft} />);
   await addProcessor("email");
-  // Scope to the card header <strong>; "Email confirmation" also appears as the
-  // add-processor dropdown option.
   expect(
-    screen.getByText("Email confirmation", { selector: "strong" }),
+    screen.getByText("Email recipient", { selector: "strong" }),
   ).toBeInTheDocument();
 });
 

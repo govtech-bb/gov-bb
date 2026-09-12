@@ -11,9 +11,16 @@ export type PreparedChange = {
   before: Record<string, unknown>;
   after: Record<string, unknown>;
   warnings: string[];
-  apply: () => void;
+  createPage?: boolean;
+  apply: () => void | Promise<void>;
+  appliedMessage?: string;
 };
-export type Proposal = { summary: string; recipe?: unknown; patch?: unknown };
+export type Proposal = {
+  summary: string;
+  operation?: "update" | "create";
+  recipe?: unknown;
+  patch?: unknown;
+};
 
 export function changedFields(
   before: Record<string, unknown>,
@@ -159,7 +166,9 @@ export function ReviewCard({
           ))}
 
           <p className="text-[12px] text-ui-default">
-            Applies to this draft. Save or deploy when you are ready.
+            {change.createPage
+              ? "Creates a separate page draft and keeps your current page. Deploy each page when ready."
+              : "Applies to this draft. Save or deploy when you are ready."}
           </p>
         </>
       )}
@@ -180,7 +189,11 @@ export function ReviewCard({
           variant="primary"
           size="sm"
         >
-          {change?.warnings.length ? "Apply with warnings" : "Apply to draft"}
+          {change?.createPage
+            ? "Create page draft"
+            : change?.warnings.length
+              ? "Apply with warnings"
+              : "Apply to draft"}
         </Button>
       </div>
     </Elevated>
