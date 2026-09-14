@@ -26,6 +26,21 @@ function makeService(repo: ReturnType<typeof makeRepo>, mailerSend = vi.fn()) {
 }
 
 describe("SubscriptionService.subscribe", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("links the public site when LANDING_BASE_URL is unset", async () => {
+    vi.stubEnv("LANDING_BASE_URL", "");
+    const { service, mailerSend } = makeService(makeRepo());
+
+    await service.subscribe("alice@example.com", "saint-michael");
+
+    const sent = JSON.stringify(mailerSend.mock.calls[0][0]);
+    expect(sent).toContain(
+      "https://alpha.gov.bb/health-and-emergency-services/water-outages/confirm?token=",
+    );
+    expect(sent).not.toContain("localhost");
+  });
+
   it("creates a brand-new pending subscriber and emails them", async () => {
     const repo = makeRepo();
     const { service, mailerSend } = makeService(repo);

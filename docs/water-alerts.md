@@ -58,8 +58,8 @@ The landing app uses its existing `VITE_FORMS_API_URL` to reach the API.
 | API variable          | Default                          | Purpose                                               |
 | --------------------- | -------------------------------- | ----------------------------------------------------- |
 | `BWA_FEED_URL`        | BWA Service Disruptions RSS feed | Optional feed override                                |
-| `LANDING_BASE_URL`    | `http://localhost:3000`          | Landing origin for confirmation and unsubscribe links |
-| `API_PUBLIC_URL`      | `http://localhost:3001`          | API origin for one-click unsubscribe headers          |
+| `LANDING_BASE_URL`    | `https://alpha.gov.bb`           | Landing origin for confirmation and unsubscribe links |
+| `API_PUBLIC_URL`      | Unset: headers omitted           | API origin for one-click unsubscribe headers          |
 | `WATER_OPS_RECIPIENT` | Unset                            | Optional inbox for checker failure notifications      |
 
 Set both public origins for each deployed environment. Email uses the existing

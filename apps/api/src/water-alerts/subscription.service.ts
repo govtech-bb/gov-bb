@@ -12,6 +12,7 @@ import {
 } from "@govtech-bb/database";
 import { SesMailer } from "../email/ses-mailer";
 import { buildConfirmEmail } from "./emails";
+import { landingOrigin } from "./origins";
 import { areaLabelFor } from "./parishes";
 import { WaterSubscriberRepository } from "./water-subscriber.repository";
 
@@ -46,13 +47,6 @@ export class SubscriptionService {
     private readonly subscribers: WaterSubscriberRepository,
     private readonly mailer: SesMailer,
   ) {}
-
-  private get siteUrl(): string {
-    return (process.env.LANDING_BASE_URL || "http://localhost:3000").replace(
-      /\/+$/,
-      "",
-    );
-  }
 
   async subscribe(email: string, area?: string): Promise<SubscribeResult> {
     const normEmail = email.toLowerCase();
@@ -152,7 +146,7 @@ export class SubscriptionService {
     area: string,
     confirmToken: string,
   ): Promise<boolean> {
-    const confirmUrl = `${this.siteUrl}${WATER_OUTAGES_PATH}/confirm?token=${confirmToken}`;
+    const confirmUrl = `${landingOrigin()}${WATER_OUTAGES_PATH}/confirm?token=${confirmToken}`;
     const { subject, html, text } = buildConfirmEmail(
       areaLabelFor(area),
       confirmUrl,

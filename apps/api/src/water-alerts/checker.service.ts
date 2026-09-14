@@ -7,6 +7,7 @@ import { SesMailer } from "../email/ses-mailer";
 import { type AlertNotice, buildAlertEmail, type EmailContent } from "./emails";
 import { FeedService } from "./feed.service";
 import { isPast, type Outage } from "./outages.domain";
+import { apiOrigin, landingOrigin } from "./origins";
 import { areaLabelFor } from "./parishes";
 import {
   type PendingAlert,
@@ -52,20 +53,6 @@ export class CheckerService {
     private readonly sentAlerts: WaterSentAlertRepository,
     private readonly mailer: SesMailer,
   ) {}
-
-  private get siteUrl(): string {
-    return (process.env.LANDING_BASE_URL || "http://localhost:3000").replace(
-      /\/+$/,
-      "",
-    );
-  }
-
-  private get apiUrl(): string {
-    return (process.env.API_PUBLIC_URL ?? "http://localhost:3001").replace(
-      /\/+$/,
-      "",
-    );
-  }
 
   /** The scheduled run: single-flight across API tasks via an advisory lock. */
   @Cron("*/30 * * * *")
@@ -203,8 +190,10 @@ export class CheckerService {
       summary: outage.summary,
       link: outage.link,
     };
-    const bodyUnsubUrl = `${this.siteUrl}${WATER_OUTAGES_PATH}/unsubscribe?token=${row.unsubscribeToken}`;
-    const oneClickUnsubUrl = `${this.apiUrl}/water-alerts/unsubscribe/${row.unsubscribeToken}`;
+    const bodyUnsubUrl = `${landingOrigin()}${WATER_OUTAGES_PATH}/unsubscribe?token=${row.unsubscribeToken}`;
+    const api = apiOrigin();
+    const oneClickUnsubUrl =
+      api && `${api}/water-alerts/unsubscribe/${row.unsubscribeToken}`;
 
     const content = buildAlertEmail(areaLabel, notice, bodyUnsubUrl);
     return this.sendAlert(row.email, content, oneClickUnsubUrl);
@@ -214,7 +203,7 @@ export class CheckerService {
   private async sendAlert(
     to: string,
     content: EmailContent,
-    oneClickUnsubUrl: string,
+    oneClickUnsubUrl: string | undefined,
   ): Promise<boolean> {
     try {
       await this.mailer.client.send(
@@ -228,13 +217,18 @@ export class CheckerService {
                 Html: { Data: content.html, Charset: "UTF-8" },
                 Text: { Data: content.text, Charset: "UTF-8" },
               },
-              Headers: [
-                { Name: "List-Unsubscribe", Value: `<${oneClickUnsubUrl}>` },
-                {
-                  Name: "List-Unsubscribe-Post",
-                  Value: "List-Unsubscribe=One-Click",
-                },
-              ],
+              ...(oneClickUnsubUrl && {
+                Headers: [
+                  {
+                    Name: "List-Unsubscribe",
+                    Value: `<${oneClickUnsubUrl}>`,
+                  },
+                  {
+                    Name: "List-Unsubscribe-Post",
+                    Value: "List-Unsubscribe=One-Click",
+                  },
+                ],
+              }),
             },
           },
           ...(this.mailer.configurationSet && {
