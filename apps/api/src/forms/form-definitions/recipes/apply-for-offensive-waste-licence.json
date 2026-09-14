@@ -235,6 +235,17 @@
       "behaviours": [],
       "elements": [
         {
+          "ref": "components/name",
+          "overrides": {
+            "label": "Business name",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
           "ref": "components/address-lookup",
           "overrides": {
             "fieldId": "work-address-line-1",
@@ -392,6 +403,10 @@
             "label": "Plans and details for the building",
             "hint": "These should show the rooms, work areas and how you will use them. You can upload more than one file.",
             "validations": {
+              "maxSize": {
+                "error": "Total file size must be no larger than 20 MB",
+                "value": 20971520
+              },
               "fileTypes": {
                 "error": "File must be a PDF, image or document",
                 "value": [
@@ -405,10 +420,6 @@
               "itemMaxSize": {
                 "error": "Each file must be no larger than 5 MB",
                 "value": 5242880
-              },
-              "maxSize": {
-                "error": "Total file size must be no larger than 20 MB",
-                "value": 20971520
               }
             },
             "ui": {
@@ -508,10 +519,10 @@
       }
     }
   ],
-  "createdAt": "2026-08-24T19:33:15.101Z",
-  "updatedAt": "2026-09-11T12:23:26.647Z",
+  "createdAt": "2026-09-14T14:49:41.764Z",
+  "updatedAt": "2026-09-14T14:49:41.764Z",
   "meta": {
-    "visibility": "preview"
+    "visibility": "draft"
   },
   "catchmentRouting": {
     "coordinatesField": "work-address.business-address-coordinates",

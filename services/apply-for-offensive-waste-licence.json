@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "serviceId": "apply-for-offensive-waste-licence",
+  "visibility": "draft",
+  "title": "Apply for a offensive trade licence with Environmental Health",
+  "description": "Apply for or renew a licence to carry out work that may produce fumes or strong smells.",
+  "category": "business-trade",
+  "subcategory": "",
+  "formId": "apply-for-offensive-waste-licence",
+  "entryPoint": "30a0dcfb-3130-4187-84de-80afb574e512",
+  "pages": [
+    {
+      "id": "30a0dcfb-3130-4187-84de-80afb574e512",
+      "path": "apps/landing/src/content/apply-for-offensive-waste-licence/index.md",
+      "title": "Apply for an offensive trade licence with Environmental Health",
+      "publicPath": "/business-trade/apply-for-offensive-waste-licence",
+      "kind": "main"
+    }
+  ],
+  "setup": {
+    "step": "about",
+    "delivery": "configured",
+    "applicantEmail": "undecided"
+  }
+}
