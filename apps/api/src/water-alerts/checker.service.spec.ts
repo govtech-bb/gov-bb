@@ -179,6 +179,25 @@ describe("CheckerService.runAlertCheck", () => {
     );
     expect(input.ConfigurationSetName).toBe("water-alerts");
   });
+
+  it("omits one-click headers and links the public site when origins are unset", async () => {
+    vi.stubEnv("LANDING_BASE_URL", "");
+    vi.stubEnv("API_PUBLIC_URL", "");
+    const send = vi.fn().mockResolvedValue({});
+    const { service } = makeDeps({
+      pendingUnsent: vi.fn().mockResolvedValue([PENDING_ROW]),
+      send,
+    });
+
+    await service.runAlertCheck({ notices: [outage()] });
+
+    const input = (send.mock.calls[0][0] as { input: any }).input;
+    expect(input.Content.Simple.Headers).toBeUndefined();
+    expect(input.Content.Simple.Body.Text.Data).toContain(
+      "https://alpha.gov.bb/health-and-emergency-services/water-outages/unsubscribe?token=u1",
+    );
+    expect(JSON.stringify(input)).not.toContain("localhost");
+  });
 });
 
 describe("CheckerService.scheduled", () => {
