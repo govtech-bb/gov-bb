@@ -8,7 +8,11 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Copy01Icon, CheckmarkCircle02Icon } from "hugeicons-react";
+import {
+  Copy01Icon,
+  CheckmarkCircle02Icon,
+  SourceCodeIcon,
+} from "hugeicons-react";
 
 export type DiffLine = {
   text: string;
@@ -82,12 +86,19 @@ export function CodeBlock({
       offset={1}
       shadowLevel={2}
       render={<div />}
-      className="my-2 min-inline-0 overflow-hidden rounded-lg text-[12px]"
+      className="my-3 min-inline-0 overflow-hidden rounded-xl text-[12px]"
     >
-      <div className="flex min-block-9.5 items-center gap-2 border-b border-ui-hairline px-2.5 py-1.25 text-[11px] [&>span:first-child]:min-inline-0 [&>span:first-child]:font-mono [&>span:first-child]:wrap-anywhere">
-        <span>{filename}</span>
+      <div className="flex min-block-11 items-center gap-2 border-b border-ui-hairline px-3 text-[12px]">
+        <SourceCodeIcon
+          size={15}
+          className="shrink-0 text-ui-subtle"
+          aria-hidden="true"
+        />
+        <span className="min-inline-0 truncate font-mono" title={filename}>
+          {filename}
+        </span>
         {before !== undefined && (
-          <span className="shrink-0 font-mono [&_[data-tone=add]]:text-ui-success [&_[data-tone=remove]]:text-ui-danger">
+          <span className="flex shrink-0 gap-2 font-mono text-[11px] tabular-nums [&_[data-tone=add]]:text-ui-success [&_[data-tone=remove]]:text-ui-danger">
             <span data-tone="add">
               +{lines.filter((line) => line.kind === "add").length}
             </span>{" "}
@@ -98,7 +109,8 @@ export function CodeBlock({
         )}
         <Button
           type="button"
-          className="ml-auto"
+          className="ms-auto h-7 gap-1 px-1.5 text-[12px] data-[copied=true]:text-ui-success"
+          data-copied={copyState === "Copied"}
           aria-label={`Copy ${filename}`}
           onClick={async () => {
             try {
@@ -118,11 +130,18 @@ export function CodeBlock({
           ) : (
             <Copy01Icon size={14} aria-hidden="true" />
           )}
-          <span>Copy</span>
+          <span>{copyState === "Copied" ? "Copied" : "Copy"}</span>
         </Button>
       </div>
       {copyState && (
-        <span role="status" className="block px-2.5 py-1 text-[11px]">
+        <span
+          role="status"
+          className={
+            copyState === "Copied"
+              ? "sr-only"
+              : "block px-3 py-2 text-[12px] text-ui-danger"
+          }
+        >
           {copyState}
         </span>
       )}
@@ -136,22 +155,30 @@ export function CodeBlock({
             : `${filename}: removed and added lines`
         }
       >
-        <div className="py-2.5 leading-[1.65]">
+        <div className="py-3 font-mono leading-[1.65]">
           {lines.map((line, i) => (
             <div
               key={i}
-              className="flex min-block-lh items-start [&>code]:min-inline-0 [&>code]:ps-1.75 [&>code]:pe-2.5 [&>code]:font-mono [&>code]:text-[12px] [&>code]:leading-[1.7] [&>code]:wrap-anywhere [&>code]:whitespace-pre-wrap data-[kind=add]:border-s-2 data-[kind=add]:border-s-(--ui-success-text) data-[kind=add]:bg-[color-mix(in_srgb,var(--ui-success-text)_9%,transparent)] data-[kind=remove]:border-s-2 data-[kind=remove]:border-s-(--ui-danger-text) data-[kind=remove]:bg-ui-danger-tint"
+              className="relative flex min-block-lh items-start [&>code]:min-inline-0 [&>code]:ps-2 [&>code]:pe-3 [&>code]:font-mono [&>code]:text-[12px] [&>code]:leading-[1.7] [&>code]:wrap-anywhere [&>code]:whitespace-pre-wrap data-[kind=add]:bg-ui-success-tint data-[kind=remove]:bg-ui-danger-tint"
               data-kind={line.kind}
             >
+              {line.kind !== "context" && (
+                <span
+                  aria-hidden="true"
+                  data-kind={line.kind}
+                  className="absolute inset-y-0 start-0 inline-0.5 bg-ui-success data-[kind=remove]:bg-ui-danger"
+                />
+              )}
               <span
-                className="inline-7.5 shrink-0 border-e border-ui-hairline px-1.25 text-end font-mono text-[10px] leading-[1.98] text-ui-default select-none"
+                className="inline-7 shrink-0 border-e border-ui-hairline px-1 text-end text-[11px] leading-[1.85] text-ui-subtle select-none"
                 aria-hidden="true"
               >
                 {line.kind === "remove" ? line.old : line.next}
               </span>
               {before !== undefined && (
                 <span
-                  className="inline-4.25 shrink-0 text-center select-none"
+                  className="inline-4 shrink-0 text-end text-ui-subtle select-none data-[kind=add]:text-ui-success data-[kind=remove]:text-ui-danger"
+                  data-kind={line.kind}
                   aria-label={
                     line.kind === "add"
                       ? "Added"

@@ -161,6 +161,14 @@ it("streams the official Bedrock adapter, forwards cancellation and ignores clie
   expect(signal).toBeInstanceOf(AbortSignal);
   expect(JSON.stringify(input?.toolConfig)).not.toContain("deploy_everything");
   expect(JSON.stringify(input?.toolConfig)).toContain("apply_form_draft");
+  for (const name of [
+    "apply_content_patch",
+    "update_service_details",
+    "read_service",
+    "read_page",
+    "read_form",
+  ])
+    expect(JSON.stringify(input?.toolConfig)).toContain(name);
 });
 
 it("pauses an edit for native approval, while Ask exposes no edit tool", async () => {
@@ -215,6 +223,59 @@ it("pauses an edit for native approval, while Ask exposes no edit tool", async (
   expect(
     JSON.stringify((inputs.at(-1) as { toolConfig: unknown }).toolConfig),
   ).not.toContain('"name":"apply_form_draft"');
+  const askTools = JSON.stringify(
+    (inputs.at(-1) as { toolConfig: unknown }).toolConfig,
+  );
+  expect(askTools).not.toContain('"name":"apply_content_patch"');
+  expect(askTools).not.toContain('"name":"update_service_details"');
+  expect(askTools).toContain('"name":"read_page"');
+});
+
+it("accepts workspace context and sends both drafting prompts with target guidance", async () => {
+  let input: Record<string, unknown> | undefined;
+  vi.spyOn(BedrockRuntimeClient.prototype, "send").mockImplementation(
+    (command: unknown) => {
+      input = (command as { input: Record<string, unknown> }).input;
+      return Promise.resolve({
+        stream: (async function* () {
+          yield { messageStart: { role: "assistant" } };
+          yield {
+            contentBlockDelta: {
+              contentBlockIndex: 0,
+              delta: { text: "Ready" },
+            },
+          };
+          yield { messageStop: { stopReason: "end_turn" } };
+        })(),
+      });
+    },
+  );
+  await request(app)
+    .post("/chat")
+    .set({ Authorization: "Bearer " + token(), Origin: origin })
+    .send({
+      ...body(),
+      forwardedProps: {
+        ...context,
+        kind: "workspace",
+        services: [
+          {
+            serviceId: "example",
+            title: "Example",
+            category: "education",
+            formId: null,
+            revision: 1,
+            pages: [],
+          },
+        ],
+      },
+    })
+    .expect(200);
+  const system = JSON.stringify(input?.system);
+  expect(system).toContain("Build forms.");
+  expect(system).toContain("builder-wide assistant");
+  expect(system).toContain("pagePath");
+  expect(system).toContain("example");
 });
 
 it("validates document type, size, signature and ownership", async () => {

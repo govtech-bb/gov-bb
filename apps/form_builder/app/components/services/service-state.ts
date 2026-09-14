@@ -157,6 +157,36 @@ export function useServiceState(service: ServiceRow) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+  useEffect(() => {
+    if (!draft) return;
+    let live = true;
+    const serviceId = draft.manifest.serviceId;
+    const refreshSaved = async () => {
+      try {
+        const latest = (await listServiceDrafts()).find(
+          (entry) => entry.manifest.serviceId === serviceId,
+        );
+        if (live && latest)
+          setDraft((current) =>
+            current && latest.revision > current.revision ? latest : current,
+          );
+      } catch (error) {
+        if (live)
+          setError(
+            error instanceof Error
+              ? error.message
+              : "Service drafts are unavailable",
+          );
+      }
+    };
+    window.addEventListener("service-draft-saved", refreshSaved);
+    window.addEventListener("storage", refreshSaved);
+    return () => {
+      live = false;
+      window.removeEventListener("service-draft-saved", refreshSaved);
+      window.removeEventListener("storage", refreshSaved);
+    };
+  }, [draft?.manifest.serviceId]);
   const save = async (
     snapshot: ServiceSnapshot,
   ): Promise<ServiceDraft | null> => {
@@ -165,7 +195,14 @@ export function useServiceState(service: ServiceRow) {
     setError(null);
     try {
       const result = await saveServiceDraft({
-        data: { expectedRevision: draft.revision, snapshot },
+        data: {
+          // Setup screens retain their own snapshot while other documents save.
+          expectedRevision:
+            "revision" in snapshot && typeof snapshot.revision === "number"
+              ? snapshot.revision
+              : draft.revision,
+          snapshot,
+        },
       });
       setDraft(result);
       window.dispatchEvent(new Event("service-draft-saved"));

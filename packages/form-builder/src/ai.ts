@@ -4,10 +4,20 @@ import {
   fieldOverridesSchema,
   contactDetailsSchema,
   processorSchema,
+  serviceIdSchema,
+  servicePagePathSchema,
 } from "@govtech-bb/form-types";
 
 const object = z.record(z.string(), z.unknown());
 const shortText = z.string().max(4000);
+
+export const aiTargetSchema = z
+  .object({
+    serviceId: serviceIdSchema,
+    pagePath: servicePagePathSchema.optional(),
+  })
+  .strict();
+const serviceTargetSchema = aiTargetSchema.omit({ pagePath: true });
 
 // Shape checks protect the editor; semantic validation remains a review warning.
 export const aiRecipeSchema = z.object({
@@ -58,12 +68,33 @@ export const aiContentPatchSchema = z
 
 export const aiContextSchema = z
   .object({
-    kind: z.enum(["form", "content"]),
+    kind: z.enum(["form", "content", "workspace"]),
     documentId: z.string().min(1).max(500),
     revision: z.string().min(1).max(100),
     mode: z.enum(["ask", "edit"]),
     selection: z.string().max(4000).optional(),
     document: object,
+    services: z
+      .array(
+        z.object({
+          serviceId: serviceIdSchema,
+          title: z.string().max(250),
+          category: z.string().max(100),
+          formId: z.string().max(100).nullable(),
+          revision: z.number().int().nonnegative(),
+          pages: z
+            .array(
+              z.object({
+                path: servicePagePathSchema,
+                title: z.string().max(250),
+                kind: z.enum(["main", "guidance", "start"]),
+              }),
+            )
+            .max(100),
+        }),
+      )
+      .max(50)
+      .default([]),
     attachments: z
       .array(
         z.object({
@@ -110,22 +141,80 @@ export type AiAnswers = z.infer<typeof askQuestionsTool.outputSchema>;
 export const proposeFormTool = {
   name: "apply_form_draft" as const,
   description:
-    "Propose a complete form draft for the author to review. Omit processors to keep them unchanged. Payment settings, metadata, routing and secrets are preserved. Never invent or alter credentials. This does not save or deploy.",
-  inputSchema: z.object({ summary: shortText, recipe: aiRecipeSchema }),
+    "Propose a complete form draft. Omit target for the open form, or provide a serviceId after reading its form. Omit processors to keep them unchanged. Payment settings, metadata, routing and secrets are preserved. Never invent or alter credentials. Only drafts are changed; nothing is published.",
+  inputSchema: z.object({
+    summary: shortText,
+    recipe: aiRecipeSchema,
+    target: serviceTargetSchema.optional(),
+  }),
   outputSchema: outcome,
   needsApproval: true as const,
 };
 export const proposeContentTool = {
   name: "apply_content_patch" as const,
   description:
-    "Propose changed page fields for review. Omit unchanged fields. Set operation to create, with a new slug, to propose a separate page instead of changing the open one. This only updates the local draft; it does not save or deploy.",
+    "Propose changed page fields. Omit target for the open page, or provide serviceId and pagePath after reading a service page. Omit unchanged fields. Set operation to create, with a new slug, to propose a separate page. Only drafts are changed; nothing is published.",
   inputSchema: z.object({
     operation: z.enum(["update", "create"]).default("update"),
     summary: shortText,
     patch: aiContentPatchSchema,
+    target: aiTargetSchema.optional(),
   }),
   outputSchema: outcome,
   needsApproval: true as const,
+};
+
+export const updateServiceDetailsTool = {
+  name: "update_service_details" as const,
+  description:
+    "Update a service draft's details after reading the service. Omit unchanged fields. This cannot publish, delete, attach, detach, or restore anything.",
+  inputSchema: z.object({
+    summary: shortText,
+    target: serviceTargetSchema,
+    patch: z
+      .object({
+        title: z.string().trim().min(1).max(250).optional(),
+        description: z.string().max(5000).optional(),
+        category: z.string().max(100).optional(),
+        subcategory: z.string().max(100).optional(),
+        setup: z
+          .object({
+            step: z
+              .enum(["about", "pages", "contacts", "delivery", "check"])
+              .optional(),
+            delivery: z.enum(["undecided", "configured", "none"]).optional(),
+            applicantEmail: z
+              .enum(["undecided", "configured", "none"])
+              .optional(),
+          })
+          .strict()
+          .optional(),
+      })
+      .strict(),
+  }),
+  outputSchema: outcome,
+  needsApproval: true as const,
+};
+export const readServiceTool = {
+  name: "read_service" as const,
+  description:
+    "Read the current service draft details and page index from this browser workspace. Read pages or the form separately before editing them.",
+  inputSchema: serviceTargetSchema,
+  outputSchema: object,
+};
+export const readPageTool = {
+  name: "read_page" as const,
+  description:
+    "Read one current page draft belonging to a service in this browser workspace before proposing page edits.",
+  inputSchema: aiTargetSchema.required(),
+  outputSchema: object,
+};
+export const readFormTool = {
+  name: "read_form" as const,
+  description:
+    "Read the existing application form draft belonging to a service in this browser workspace before proposing form edits. Credentials are redacted.",
+  inputSchema: serviceTargetSchema,
+  outputSchema: object,
 };
 
 export const documentTypes = {

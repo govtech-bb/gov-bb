@@ -1,6 +1,7 @@
 import { Elevated } from "../surface";
 import { Popover } from "../popover";
-import { Select } from "../select";
+import { PermissionMenu } from "./permission-menu";
+import type { Permission } from "./history";
 import { InputArea } from "../input/input-area";
 import { Button } from "../button";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
@@ -23,8 +24,8 @@ export function PromptBar({
   onAttachmentError,
   value,
   onChange,
-  mode,
-  onModeChange,
+  permission,
+  onPermissionChange,
   busy,
   pending,
   readOnly,
@@ -42,8 +43,8 @@ export function PromptBar({
   onAttachmentError: (message: string) => void;
   value: string;
   onChange: (value: string) => void;
-  mode: AiContext["mode"];
-  onModeChange: (mode: AiContext["mode"]) => void;
+  permission: Permission;
+  onPermissionChange: (permission: Permission) => void;
   busy: boolean;
   pending: boolean;
   readOnly?: boolean;
@@ -217,7 +218,7 @@ export function PromptBar({
               key={row.key}
               type="button"
               role="option"
-              className="grid h-auto w-full justify-stretch gap-1 text-left aria-selected:bg-ui-tint"
+              className="grid h-auto min-h-9 w-full justify-stretch gap-0.5 px-2.5 py-2 text-left text-[12px] aria-selected:bg-ui-tint"
               aria-selected={i === current}
               id={`${id}-${i}`}
               tabIndex={-1}
@@ -228,15 +229,17 @@ export function PromptBar({
               size="sm"
             >
               <span>{row.name}</span>
-              <small>{row.description}</small>
+              <small className="text-[11px] font-normal text-ui-subtle">
+                {row.description}
+              </small>
             </Button>
           ))}
           {rows.length === 0 && (
-            <p>
+            <p className="px-2.5 py-2 text-[12px] text-ui-subtle">
               No matching {token?.kind === "@" ? "references" : "commands"}.
             </p>
           )}
-          <div className="border-t border-ui-hairline p-1.75 text-[10px] text-ui-default">
+          <div className="mt-1 border-t border-ui-hairline px-2.5 py-1.5 text-[11px] text-ui-subtle">
             ↑ ↓ to choose · Enter to insert · Esc to close
           </div>
         </Popover.Content>
@@ -244,20 +247,20 @@ export function PromptBar({
           offset={1}
           shadowLevel={2}
           render={<form />}
-          className="overflow-hidden rounded-xl p-2 group-data-[dragging=true]/prompt-bar:outline-2 group-data-[dragging=true]/prompt-bar:outline-ui-default"
+          className="overflow-hidden rounded-2xl p-3 outline-offset-2 has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-ui-focus forced-colors:has-[textarea:focus-visible]:outline-[Highlight] group-data-[dragging=true]/prompt-bar:outline-2 group-data-[dragging=true]/prompt-bar:outline-ui-focus"
           onSubmit={(event) => {
             event.preventDefault();
             if (!busy && !pending && !blocked && value.trim()) onSend();
           }}
         >
-          {attachments && <div className="px-3 pt-3">{attachments}</div>}
+          {attachments && <div className="px-1 pb-2">{attachments}</div>}
           {dragging && (
-            <div className="bg-ui-tint px-3.5 py-2.25 text-[12px]">
+            <div className="mb-2 rounded-lg bg-ui-tint px-3 py-2 text-[12px]">
               Drop a PDF or image here
             </div>
           )}
           {selection && (
-            <div className="mx-2.5 mt-2.5 mb-0 flex items-center gap-1.5 rounded-md border border-ui-hairline bg-ui-recessed px-1.75 py-1 text-[11px] [&>span]:min-inline-0 [&>span]:flex-1 [&>span]:truncate">
+            <div className="mb-2 flex items-center gap-1.5 rounded-lg bg-ui-tint py-0.5 ps-2.5 pe-0.5 text-[11px] [&>span]:min-inline-0 [&>span]:flex-1 [&>span]:truncate">
               <span title={selection}>Selection: {selection}</span>
               <Button
                 type="button"
@@ -266,6 +269,7 @@ export function PromptBar({
                 onClick={onClearSelection}
                 variant="ghost"
                 size="sm"
+                shape="square"
               >
                 <Cancel01Icon size={13} aria-hidden="true" />
               </Button>
@@ -275,13 +279,13 @@ export function PromptBar({
             ref={input}
             aria-label="Message the assistant"
             placeholder={
-              mode === "ask"
-                ? "Ask a question…"
-                : "Describe what you want to change…"
+              readOnly ? "Ask a question…" : "Describe what you want to change…"
             }
             value={value}
             maxLength={16000}
-            rows={3}
+            autoResize
+            minRows={2}
+            maxRows={8}
             disabled={pending}
             onPaste={(event) => {
               if (event.clipboardData.files.length) {
@@ -332,10 +336,11 @@ export function PromptBar({
                   onSend();
               }
             }}
-            className="min-h-20 max-h-44 w-full resize-y [field-sizing:content]"
+            className="min-h-17 max-h-44 w-full rounded-none bg-transparent! px-1 py-2 text-[14px] leading-5 ring-0! focus-visible:outline-none!"
           />
-          <div className="flex items-center gap-1.75 px-2.5 pt-1.5 pb-2.5">
+          <div className="mt-2 flex items-center gap-1.5">
             <Button
+              type="button"
               variant="ghost"
               size="sm"
               shape="square"
@@ -360,23 +365,12 @@ export function PromptBar({
               }}
             />
             <div>
-              <Select
-                aria-label={"Assistant mode"}
-                value={mode}
+              <PermissionMenu
+                value={readOnly ? "ask" : permission}
                 disabled={busy || pending || readOnly}
-                onValueChange={(nextValue) => {
-                  if (nextValue === null) return;
-                  onModeChange(nextValue as AiContext["mode"]);
-                }}
-                items={[
-                  { value: "edit", label: "Review edits" },
-                  { value: "ask", label: "Ask" },
-                ]}
+                onValueChange={onPermissionChange}
               />
             </div>
-            <span className="ms-auto text-[10px] text-ui-default max-md:hidden">
-              @ references · / commands
-            </span>
             {busy ? (
               <Button
                 type="button"
@@ -385,7 +379,7 @@ export function PromptBar({
                 variant="primary"
                 size="sm"
                 shape="circle"
-                className="ml-auto shrink-0"
+                className="ms-auto shrink-0"
               >
                 <StopIcon size={15} aria-hidden="true" />
               </Button>
@@ -397,7 +391,7 @@ export function PromptBar({
                 variant="primary"
                 size="sm"
                 shape="circle"
-                className="ml-auto shrink-0"
+                className="ms-auto shrink-0"
               >
                 <ArrowUp01Icon size={18} aria-hidden="true" />
               </Button>

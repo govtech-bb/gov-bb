@@ -26,6 +26,55 @@ export function ServicePreview({
   initialStepId?: string;
   onClose: () => void;
 }) {
+  return (
+    <Dialog.Root
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <Dialog
+        size="xl"
+        showCloseButton={false}
+        className="flex h-[90dvh] w-[95vw] max-w-none flex-col gap-3 p-3 sm:p-5"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <Dialog.Title>{snapshot.manifest.title}</Dialog.Title>
+            <Dialog.Description>
+              Preview only. Sample answers are not submitted.
+            </Dialog.Description>
+          </div>
+          <Button
+            onClick={onClose}
+            variant="ghost"
+            shape="square"
+            aria-label="Close preview"
+            className="pointer-coarse:size-11"
+            icon={<XIcon aria-hidden="true" />}
+          />
+        </div>
+        <ServicePreviewBody
+          snapshot={snapshot}
+          initialPageId={initialPageId}
+          initialStepId={initialStepId}
+        />
+      </Dialog>
+    </Dialog.Root>
+  );
+}
+
+export function ServicePreviewBody({
+  snapshot,
+  initialPageId,
+  initialStepId,
+  compact = false,
+}: {
+  snapshot: ServiceSnapshot;
+  initialPageId?: string;
+  initialStepId?: string;
+  compact?: boolean;
+}) {
   // Capture once: navigation and later editor changes cannot mix revisions.
   const [captured] = useState(() => structuredClone(snapshot));
   const [pageId, setPageId] = useState(
@@ -159,139 +208,118 @@ export function ServicePreview({
     return () => window.removeEventListener("message", message);
   }, [origin, captured, pageMeta?.publicPath]);
   return (
-    <Dialog.Root
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-    >
-      <Dialog
-        size="xl"
-        showCloseButton={false}
-        className="flex h-[90dvh] w-[95vw] max-w-none flex-col gap-3 p-3 sm:p-5"
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div
+        className={
+          compact
+            ? "flex flex-col gap-3"
+            : "grid grid-cols-[minmax(0,1fr)_auto] gap-3 sm:flex"
+        }
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <Dialog.Title>{captured.manifest.title}</Dialog.Title>
-            <Dialog.Description>
-              Preview only. Sample answers are not submitted.
-            </Dialog.Description>
-          </div>
-          <Button
-            onClick={onClose}
-            variant="ghost"
-            shape="square"
-            aria-label="Close preview"
-            className="pointer-coarse:size-11"
-            icon={<XIcon aria-hidden="true" />}
-          />
-        </div>
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 sm:flex">
-          {!page && captured.recipe && (
-            <div className="col-span-2 min-w-0 sm:flex-1">
-              <Select
-                label="Form page"
-                className="w-full"
-                value={stepId}
-                onValueChange={(value) => {
-                  setStepId(String(value ?? ""));
-                  setError(null);
-                }}
-                items={[
-                  { value: "", label: "Preview from start" },
-                  ...captured.recipe.steps.map((step, index) => ({
-                    value: step.stepId,
-                    label: `${index + 1}. ${step.title || step.stepId}`,
-                  })),
-                ]}
-              />
-            </div>
-          )}
-          <div className="min-w-0 sm:flex-1">
+        {!page && captured.recipe && (
+          <div className="col-span-2 min-w-0 sm:flex-1">
             <Select
-              label="Service section"
+              label="Form page"
               className="w-full"
-              value={pageId}
-              onValueChange={(v) => {
-                setPageId(String(v));
-                setStepId("");
+              value={stepId}
+              onValueChange={(value) => {
+                setStepId(String(value ?? ""));
                 setError(null);
               }}
               items={[
-                ...captured.manifest.pages.map((p) => ({
-                  value: p.id,
-                  label: servicePageLabel(p),
+                { value: "", label: "Preview from start" },
+                ...captured.recipe.steps.map((step, index) => ({
+                  value: step.stepId,
+                  label: `${index + 1}. ${step.title || step.stepId}`,
                 })),
-                ...(captured.recipe
-                  ? [{ value: "form", label: "Application form" }]
-                  : []),
               ]}
             />
           </div>
+        )}
+        <div className="min-w-0 sm:flex-1">
           <Select
-            label="Preview width"
-            value={device}
-            onValueChange={(v) => setDevice(String(v))}
-            items={{ desktop: "Desktop", mobile: "Mobile" }}
+            label="Service section"
+            className="w-full"
+            value={pageId}
+            onValueChange={(v) => {
+              setPageId(String(v));
+              setStepId("");
+              setError(null);
+            }}
+            items={[
+              ...captured.manifest.pages.map((p) => ({
+                value: p.id,
+                label: servicePageLabel(p),
+              })),
+              ...(captured.recipe
+                ? [{ value: "form", label: "Application form" }]
+                : []),
+            ]}
           />
         </div>
-        {!page && stepId && (
-          <Banner
-            variant="secondary"
-            size="sm"
-            title="Previewing this page"
-            description="Earlier answers are empty and this page’s conditions are skipped."
-            action={
+        <Select
+          label="Preview width"
+          value={device}
+          onValueChange={(v) => setDevice(String(v))}
+          items={{ desktop: "Desktop", mobile: "Mobile" }}
+        />
+      </div>
+      {!page && stepId && (
+        <Banner
+          variant="secondary"
+          size="sm"
+          title="Previewing this page"
+          description="Earlier answers are empty and this page’s conditions are skipped."
+          action={
+            <Button
+              size="sm"
+              variant="outline"
+              className="pointer-coarse:min-h-11"
+              onClick={() => setStepId("")}
+            >
+              Preview from start
+            </Button>
+          }
+          className="[&>div]:flex-wrap"
+        />
+      )}
+      {error && (
+        <Banner variant="alert" role="status">
+          {error}
+        </Banner>
+      )}
+      <div className="relative flex min-h-0 flex-1 justify-center overflow-auto rounded-lg border border-ui-hairline bg-ui-recessed">
+        {origin && (
+          <iframe
+            key={`${src}:${attempt}:${stepId}`}
+            ref={frame}
+            src={src}
+            title="Service journey preview"
+            onLoad={send}
+            sandbox="allow-scripts allow-same-origin"
+            className={`h-full border-0 bg-white ${device === "mobile" ? "w-[390px] max-w-full" : "w-full"}`}
+          />
+        )}
+        {(!origin || (!connected && timedOut)) && (
+          <div className="absolute inset-0 grid place-items-center bg-ui-base p-6 text-center">
+            <div>
+              <p className="font-medium">Preview unavailable</p>
+              <p className="mt-2 text-sm text-ui-subtle">
+                The {page ? "content" : "form"} preview could not be reached.
+                Your draft is safe.
+              </p>
               <Button
-                size="sm"
-                variant="outline"
-                className="pointer-coarse:min-h-11"
-                onClick={() => setStepId("")}
+                className="mt-4"
+                onClick={() => {
+                  setAttempt((v) => v + 1);
+                }}
               >
-                Preview from start
+                Retry
               </Button>
-            }
-            className="[&>div]:flex-wrap"
-          />
-        )}
-        {error && (
-          <Banner variant="alert" role="status">
-            {error}
-          </Banner>
-        )}
-        <div className="relative flex min-h-0 flex-1 justify-center overflow-auto rounded-lg border border-ui-hairline bg-ui-recessed">
-          {origin && (
-            <iframe
-              key={`${src}:${attempt}:${stepId}`}
-              ref={frame}
-              src={src}
-              title="Service journey preview"
-              onLoad={send}
-              sandbox="allow-scripts allow-same-origin"
-              className={`h-full border-0 bg-white ${device === "mobile" ? "w-[390px] max-w-full" : "w-full"}`}
-            />
-          )}
-          {(!origin || (!connected && timedOut)) && (
-            <div className="absolute inset-0 grid place-items-center bg-ui-base p-6 text-center">
-              <div>
-                <p className="font-medium">Preview unavailable</p>
-                <p className="mt-2 text-sm text-ui-subtle">
-                  The {page ? "content" : "form"} preview could not be reached.
-                  Your draft is safe.
-                </p>
-                <Button
-                  className="mt-4"
-                  onClick={() => {
-                    setAttempt((v) => v + 1);
-                  }}
-                >
-                  Retry
-                </Button>
-              </div>
             </div>
-          )}
-        </div>
-      </Dialog>
-    </Dialog.Root>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

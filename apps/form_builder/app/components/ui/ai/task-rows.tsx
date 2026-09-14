@@ -19,10 +19,10 @@ export type TaskRow = {
 
 export function TaskRows({ rows }: { rows: TaskRow[] }) {
   return (
-    <div className="my-2.5 grid gap-1.75">
+    <div className="my-3 grid gap-2">
       {rows.map((row, i) => (
         <Collapsible
-          className="overflow-hidden rounded-[20px] open:rounded-xl [&>[data-panel-open]>svg:last-child]:rotate-180"
+          className="overflow-hidden rounded-3xl transition-[border-radius] duration-(--ui-moderate) has-[[data-panel-open]]:rounded-xl motion-reduce:transition-none [&>[data-panel-open]>svg:last-child]:rotate-180"
           key={row.id}
           render={<Elevated offset={1} shadowLevel={2} />}
         >
@@ -31,7 +31,7 @@ export function TaskRows({ rows }: { rows: TaskRow[] }) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-auto min-h-9 w-full justify-start whitespace-normal text-left"
+                className="h-auto min-h-11 w-full justify-start gap-2.5 rounded-[inherit] px-2.5 py-2 text-left whitespace-normal"
               />
             }
           >
@@ -45,7 +45,12 @@ export function TaskRows({ rows }: { rows: TaskRow[] }) {
               ) : row.status === "error" ? (
                 <AlertCircleIcon size={21} />
               ) : row.status === "running" ? (
-                <Loader size={18} />
+                <>
+                  <span className="absolute inset-0">
+                    <Loader size={24} />
+                  </span>
+                  <span>{i + 1}</span>
+                </>
               ) : (
                 <>
                   <span className="absolute inset-0 rounded-full border-[1.5px] border-ui-line" />
@@ -53,10 +58,11 @@ export function TaskRows({ rows }: { rows: TaskRow[] }) {
                 </>
               )}
             </span>
-            <span className="min-inline-0 flex-1 text-[12px] font-medium wrap-anywhere">
+            <span className="min-inline-0 flex-1 text-[13px] font-medium wrap-anywhere">
               {row.label}
             </span>
             <Badge
+              className="shrink-0 rounded-full text-[11px]"
               variant={
                 row.status === "error"
                   ? "destructive"
@@ -75,10 +81,14 @@ export function TaskRows({ rows }: { rows: TaskRow[] }) {
                 }[row.status]
               }
             </Badge>
-            <ArrowDown01Icon size={13} aria-hidden="true" />
+            <ArrowDown01Icon
+              size={13}
+              aria-hidden="true"
+              className="shrink-0 text-ui-subtle transition-[rotate] duration-(--ui-moderate) motion-reduce:transition-none"
+            />
           </Collapsible.Trigger>
-          <Collapsible.Panel>
-            <div className="mt-0 mr-3 mb-2.5 ml-5.5 border-s border-ui-hairline ps-5 text-[12px] text-ui-default [&>p]:mb-1.25">
+          <Collapsible.Panel className="h-[var(--collapsible-panel-height)] overflow-hidden transition-[height,opacity] duration-(--ui-moderate) ease-(--ui-ease) data-ending-style:h-0 data-ending-style:opacity-0 data-starting-style:h-0 data-starting-style:opacity-0 motion-reduce:transition-none [&[hidden]:not([hidden='until-found'])]:hidden">
+            <div className="me-3 mb-3 ms-5.5 border-s border-ui-hairline ps-5 text-[12px] leading-relaxed text-ui-subtle [&>p]:mb-1.5">
               <p>{row.detail}</p>
               {row.onRetry && (
                 <Button

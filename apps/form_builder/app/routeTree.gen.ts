@@ -17,6 +17,7 @@ import { Route as ContentIndexRouteImport } from './routes/content/index'
 import { Route as BuilderIndexRouteImport } from './routes/builder/index'
 import { Route as ServicesNewRouteImport } from './routes/services_.new'
 import { Route as DevUiRouteImport } from './routes/dev.ui'
+import { Route as DevAssistantRouteImport } from './routes/dev.assistant'
 import { Route as ContentEditRouteImport } from './routes/content/edit'
 import { Route as AuthGithubRouteImport } from './routes/auth/github'
 import { Route as AuthDeniedRouteImport } from './routes/auth/denied'
@@ -62,6 +63,11 @@ const DevUiRoute = DevUiRouteImport.update({
   path: '/dev/ui',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DevAssistantRoute = DevAssistantRouteImport.update({
+  id: '/dev/assistant',
+  path: '/dev/assistant',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContentEditRoute = ContentEditRouteImport.update({
   id: '/edit',
   path: '/edit',
@@ -91,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/auth/denied': typeof AuthDeniedRoute
   '/auth/github': typeof AuthGithubRoute
   '/content/edit': typeof ContentEditRoute
+  '/dev/assistant': typeof DevAssistantRoute
   '/dev/ui': typeof DevUiRoute
   '/services/new': typeof ServicesNewRoute
   '/builder/': typeof BuilderIndexRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/auth/denied': typeof AuthDeniedRoute
   '/auth/github': typeof AuthGithubRoute
   '/content/edit': typeof ContentEditRoute
+  '/dev/assistant': typeof DevAssistantRoute
   '/dev/ui': typeof DevUiRoute
   '/services/new': typeof ServicesNewRoute
   '/builder': typeof BuilderIndexRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/auth/denied': typeof AuthDeniedRoute
   '/auth/github': typeof AuthGithubRoute
   '/content/edit': typeof ContentEditRoute
+  '/dev/assistant': typeof DevAssistantRoute
   '/dev/ui': typeof DevUiRoute
   '/services_/new': typeof ServicesNewRoute
   '/builder/': typeof BuilderIndexRoute
@@ -134,6 +143,7 @@ export interface FileRouteTypes {
     | '/auth/denied'
     | '/auth/github'
     | '/content/edit'
+    | '/dev/assistant'
     | '/dev/ui'
     | '/services/new'
     | '/builder/'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/auth/denied'
     | '/auth/github'
     | '/content/edit'
+    | '/dev/assistant'
     | '/dev/ui'
     | '/services/new'
     | '/builder'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/auth/denied'
     | '/auth/github'
     | '/content/edit'
+    | '/dev/assistant'
     | '/dev/ui'
     | '/services_/new'
     | '/builder/'
@@ -174,6 +186,7 @@ export interface RootRouteChildren {
   ServicesRoute: typeof ServicesRoute
   AuthDeniedRoute: typeof AuthDeniedRoute
   AuthGithubRoute: typeof AuthGithubRoute
+  DevAssistantRoute: typeof DevAssistantRoute
   DevUiRoute: typeof DevUiRoute
   ServicesNewRoute: typeof ServicesNewRoute
   AuthGithubCallbackRoute: typeof AuthGithubCallbackRoute
@@ -235,6 +248,13 @@ declare module '@tanstack/react-router' {
       path: '/dev/ui'
       fullPath: '/dev/ui'
       preLoaderRoute: typeof DevUiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dev/assistant': {
+      id: '/dev/assistant'
+      path: '/dev/assistant'
+      fullPath: '/dev/assistant'
+      preLoaderRoute: typeof DevAssistantRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/content/edit': {
@@ -299,6 +319,7 @@ const rootRouteChildren: RootRouteChildren = {
   ServicesRoute: ServicesRoute,
   AuthDeniedRoute: AuthDeniedRoute,
   AuthGithubRoute: AuthGithubRoute,
+  DevAssistantRoute: DevAssistantRoute,
   DevUiRoute: DevUiRoute,
   ServicesNewRoute: ServicesNewRoute,
   AuthGithubCallbackRoute: AuthGithubCallbackRoute,

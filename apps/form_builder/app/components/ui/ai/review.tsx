@@ -1,11 +1,11 @@
 import { Collapsible } from "../collapsible";
 import { Banner } from "../banner";
-import { Elevated } from "../surface";
 import { Button } from "../button";
 import { useEffect, useState } from "react";
+import { ArrowDown01Icon } from "hugeicons-react";
 import { redactAiData } from "@govtech-bb/form-builder";
 import { CodeBlock } from "./code-block";
-import { TaskRows } from "./task-rows";
+import { LoadingState } from "./loading-state";
 
 export type PreparedChange = {
   before: Record<string, unknown>;
@@ -14,12 +14,14 @@ export type PreparedChange = {
   createPage?: boolean;
   apply: () => void | Promise<void>;
   appliedMessage?: string;
+  external?: boolean;
 };
 export type Proposal = {
   summary: string;
   operation?: "update" | "create";
   recipe?: unknown;
   patch?: unknown;
+  target?: { serviceId: string; pagePath?: string };
 };
 
 export function changedFields(
@@ -31,6 +33,62 @@ export function changedFields(
   );
 }
 
+export function ChangeDiff({
+  change,
+  showWarnings = true,
+}: {
+  change: Omit<PreparedChange, "apply">;
+  showWarnings?: boolean;
+}) {
+  const fields = changedFields(change.before, change.after);
+  return (
+    <>
+      {fields.length === 0 ? (
+        <p className="text-[12px] text-ui-subtle">
+          This proposal makes no changes.
+        </p>
+      ) : (
+        <p className="text-[12px] leading-5 text-ui-subtle">
+          {fields.length}{" "}
+          {fields.length === 1 ? "section changes" : "sections change"}:{" "}
+          {fields.join(", ")}
+        </p>
+      )}
+      {showWarnings && <ChangeWarnings warnings={change.warnings} />}
+      {fields.map((field) => (
+        <Collapsible
+          key={field}
+          className="[&>[data-panel-open]>svg:last-child]:rotate-180"
+        >
+          <Collapsible.Trigger
+            render={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto min-h-8 w-full justify-start gap-2 whitespace-normal px-0 text-left text-[12px]"
+              />
+            }
+          >
+            {field}
+            <ArrowDown01Icon
+              size={13}
+              aria-hidden="true"
+              className="ms-auto shrink-0 transition-transform duration-(--ui-fast) motion-reduce:transition-none"
+            />
+          </Collapsible.Trigger>
+          <Collapsible.Panel>
+            <CodeBlock
+              filename={field}
+              before={displayValue(change.before[field])}
+              code={displayValue(change.after[field])}
+            />
+          </Collapsible.Panel>
+        </Collapsible>
+      ))}
+    </>
+  );
+}
+
 export function ReviewCard({
   proposal,
   stale,
@@ -38,6 +96,7 @@ export function ReviewCard({
   prepare,
   onApprove,
   onReject,
+  onViewChanges,
 }: {
   proposal: Proposal;
   stale: boolean;
@@ -45,6 +104,7 @@ export function ReviewCard({
   prepare: () => Promise<PreparedChange>;
   onApprove: (change: PreparedChange) => void;
   onReject: () => void;
+  onViewChanges?: () => void;
 }) {
   const [change, setChange] = useState<PreparedChange>();
   const [error, setError] = useState("");
@@ -73,106 +133,84 @@ export function ReviewCard({
   }, [attempt, stale, prepare]);
   const fields = change ? changedFields(change.before, change.after) : [];
   return (
-    <Elevated
-      offset={1}
-      shadowLevel={2}
-      render={<section />}
-      className="my-3.5 rounded-xl p-4"
+    <section
+      className="my-3 min-w-0 overflow-hidden rounded-xl border border-ui-hairline bg-ui-base text-[13px] leading-5"
       aria-label="Review proposed changes"
     >
-      <div className="mb-2.25 text-[11px] font-[650] text-ui-default">
-        Proposed changes
-      </div>
-      <p>{proposal.summary}</p>
-      {!stale && (
-        <TaskRows
-          rows={[
-            {
-              id: "validation",
-              label: "Check proposed draft",
-              status: error ? "error" : change ? "done" : "running",
-              detail:
-                error ||
-                (change
-                  ? change.warnings.length
-                    ? `${change.warnings.length} warnings to review before saving.`
-                    : "The draft is ready for your review."
-                  : "Checking the proposal against the current draft and editing rules."),
-              ...(error
-                ? { onRetry: () => setAttempt((value) => value + 1) }
-                : {}),
-            },
-          ]}
-        />
-      )}
-      {stale ? (
-        <p role="status">
-          The draft changed or this conversation was restored. Ask for a new
-          proposal against the current draft.
+      <div className="space-y-3 p-3.5">
+        <p className="text-[11px] font-medium text-ui-subtle">
+          Proposed changes
         </p>
-      ) : error ? (
-        <>
-          <p role="alert">{error}</p>
-        </>
-      ) : !change ? (
-        <p role="status">Checking the proposed draft…</p>
-      ) : (
-        <>
-          {fields.length === 0 ? (
-            <p>This proposal makes no changes.</p>
-          ) : (
-            <p>
-              {fields.length}{" "}
-              {fields.length === 1 ? "section changes" : "sections change"}:{" "}
-              {fields.join(", ")}
-            </p>
-          )}
-
-          {change.warnings.length > 0 && (
-            <Banner variant="alert">
-              <div className="min-w-0 space-y-2">
-                <strong>Needs repair before saving or deploying</strong>
-                <ul>
-                  {change.warnings.map((warning, index) => (
-                    <li key={index}>{warning}</li>
-                  ))}
-                </ul>
-              </div>
-            </Banner>
-          )}
-
-          {fields.map((field) => (
-            <Collapsible key={field}>
-              <Collapsible.Trigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-auto min-h-9 w-full justify-start whitespace-normal text-left"
-                  />
-                }
-              >
-                {" "}
-                {field}
-              </Collapsible.Trigger>
-              <Collapsible.Panel>
-                <CodeBlock
-                  filename={field}
-                  before={displayValue(change.before[field])}
-                  code={displayValue(change.after[field])}
-                />
-              </Collapsible.Panel>
-            </Collapsible>
-          ))}
-
-          <p className="text-[12px] text-ui-default">
-            {change.createPage
-              ? "Creates a separate page draft and keeps your current page. Deploy each page when ready."
-              : "Applies to this draft. Save or deploy when you are ready."}
+        <p className="text-pretty text-ui-default">{proposal.summary}</p>
+        {stale ? (
+          <p role="status" className="text-ui-subtle">
+            The draft changed or this conversation was restored. Ask for a new
+            proposal against the current draft.
           </p>
-        </>
-      )}
-      <div className="mt-3.5 flex flex-wrap justify-end gap-2">
+        ) : error ? (
+          <div className="space-y-2">
+            <p role="alert" className="text-ui-danger">
+              {error}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={disabled}
+              onClick={() => setAttempt((value) => value + 1)}
+            >
+              Retry validation
+            </Button>
+          </div>
+        ) : !change ? (
+          <LoadingState label="Checking the proposed draft…" timer={false} />
+        ) : (
+          <>
+            <ChangeWarnings warnings={change.warnings} />
+            {fields.length === 0 ? (
+              <p className="text-[12px] text-ui-subtle">
+                This proposal makes no changes.
+              </p>
+            ) : onViewChanges ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="px-0"
+                onClick={onViewChanges}
+              >
+                View changes · {fields.length}{" "}
+                {fields.length === 1 ? "section" : "sections"}
+              </Button>
+            ) : (
+              <Collapsible className="[&>[data-panel-open]>svg:last-child]:rotate-180">
+                <Collapsible.Trigger
+                  render={
+                    <Button variant="ghost" size="sm" className="gap-2 px-0" />
+                  }
+                >
+                  View changes · {fields.length}{" "}
+                  {fields.length === 1 ? "section" : "sections"}
+                  <ArrowDown01Icon
+                    size={13}
+                    aria-hidden="true"
+                    className="transition-transform duration-(--ui-fast) motion-reduce:transition-none"
+                  />
+                </Collapsible.Trigger>
+                <Collapsible.Panel>
+                  <div className="space-y-2 pt-2">
+                    <ChangeDiff change={change} showWarnings={false} />
+                  </div>
+                </Collapsible.Panel>
+              </Collapsible>
+            )}
+            <p className="text-[12px] text-ui-subtle">
+              {change.createPage
+                ? "Creates a separate page draft and keeps your current page. Deploy each page when ready."
+                : "Applies to this draft. Save or deploy when you are ready."}
+            </p>
+          </>
+        )}
+      </div>
+      <div className="flex flex-wrap justify-end gap-2 border-t border-ui-hairline px-3 py-2.5">
         <Button
           type="button"
           disabled={disabled}
@@ -196,7 +234,23 @@ export function ReviewCard({
               : "Apply to draft"}
         </Button>
       </div>
-    </Elevated>
+    </section>
+  );
+}
+
+function ChangeWarnings({ warnings }: { warnings: string[] }) {
+  if (!warnings.length) return null;
+  return (
+    <Banner variant="alert" size="sm" className="text-[12px]">
+      <div className="min-w-0 space-y-1">
+        <p className="font-medium">Needs repair before saving or deploying</p>
+        <ul className="space-y-1">
+          {warnings.map((warning, index) => (
+            <li key={index}>{warning}</li>
+          ))}
+        </ul>
+      </div>
+    </Banner>
   );
 }
 

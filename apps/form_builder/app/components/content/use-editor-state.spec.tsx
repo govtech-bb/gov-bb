@@ -4,6 +4,8 @@
 import { act, renderHook } from "../../test/ui";
 import { useEditorState } from "./use-editor-state";
 import { EMPTY_PAGE, buildDeployPayload } from "../../lib/content";
+import { serviceDraftSchema } from "@govtech-bb/form-types";
+import { getServiceDraft, listServiceDrafts } from "../../lib/service-drafts";
 import {
   createPageDraft,
   newPageDrafts,
@@ -20,6 +22,7 @@ vi.mock("../../server/content", () => ({
 vi.mock("../../lib/service-drafts", () => ({
   getServiceOwner: vi.fn(async () => ({ serviceId: null })),
   getServiceDraft: vi.fn(),
+  listServiceDrafts: vi.fn(),
   saveServiceDraft: vi.fn(),
   saveServicePage: vi.fn(),
 }));
@@ -31,6 +34,65 @@ beforeEach(() => {
   localStorage.clear();
   loadPageMock.mockReset();
   vi.useFakeTimers();
+});
+
+it("advances the service revision after a sibling edit without replacing unsaved page text", async () => {
+  const path = "apps/landing/src/content/example/index.md";
+  const id = "aa984ddf-ac15-43dc-a817-4559cfb37c4d";
+  const draft = serviceDraftSchema.parse({
+    revision: 1,
+    updatedAt: "now",
+    updatedBy: "editor",
+    manifest: {
+      schemaVersion: 1,
+      serviceId: "example",
+      title: "Example",
+      formId: null,
+      entryPoint: id,
+      pages: [
+        { id, path, publicPath: "/example", title: "Main", kind: "main" },
+      ],
+    },
+    pages: [
+      {
+        id,
+        path,
+        frontmatter: { title: "Main" },
+        body: "Saved content",
+        baseSha: null,
+      },
+    ],
+    recipe: null,
+    pendingConfig: { mdaContactId: null, processors: null },
+  });
+  vi.mocked(getServiceDraft).mockResolvedValueOnce(draft);
+  const { result } = renderHook(() =>
+    useEditorState([], { path, service: "example" }, []),
+  );
+  await act(async () => Promise.resolve());
+  act(() => result.current.set("body", "Unsaved content"));
+  vi.mocked(listServiceDrafts).mockResolvedValueOnce([
+    { ...draft, revision: 2, ready: false, publishedRevision: null },
+  ]);
+  await act(async () => {
+    window.dispatchEvent(new Event("service-draft-saved"));
+  });
+  expect(result.current.serviceDraft?.revision).toBe(2);
+  expect(result.current.state.body).toBe("Unsaved content");
+  vi.mocked(listServiceDrafts).mockResolvedValueOnce([
+    {
+      ...draft,
+      revision: 3,
+      pages: [{ ...draft.pages[0], body: "Changed elsewhere" }],
+      ready: false,
+      publishedRevision: null,
+    },
+  ]);
+  await act(async () => {
+    window.dispatchEvent(new Event("service-draft-saved"));
+  });
+  expect(result.current.serviceDraft?.revision).toBe(2);
+  expect(result.current.state.body).toBe("Unsaved content");
 });
 afterEach(() => vi.useRealTimers());
 

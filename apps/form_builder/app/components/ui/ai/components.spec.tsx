@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
+import { expect } from "vitest";
 import {
   act,
   fireEvent,
@@ -8,13 +9,21 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { useRef, useState } from "react";
+import userEvent from "@testing-library/user-event";
+import { AppliedCard } from "./applied-card";
+import { PermissionMenu } from "./permission-menu";
 import { ApprovalCard } from "./approval-card";
 import { PromptBar } from "./prompt-bar";
 import { diffLines } from "./code-block";
 import { SelectionActions } from "./selection-actions";
 import { AttachmentCard } from "./attachments";
 import { attachmentMetadata, attachmentPart } from "./attachment-data";
-import { restoreTranscript } from "./history";
+import {
+  readConversations,
+  restoreTranscript,
+  writeConversations,
+  type Permission,
+} from "./history";
 
 const pdfMock = vi.hoisted(() => ({ getDocument: vi.fn() }));
 vi.mock("pdfjs-dist", () => ({
@@ -107,8 +116,8 @@ it("inserts keyboard-selected commands without sending, and accepts a pasted fil
       <PromptBar
         value={value}
         onChange={setValue}
-        mode="edit"
-        onModeChange={() => {}}
+        permission="ask"
+        onPermissionChange={() => {}}
         kind="form"
         busy={false}
         pending={false}
@@ -135,6 +144,116 @@ it("inserts keyboard-selected commands without sending, and accepts a pasted fil
   const file = new File(["image"], "scan.png", { type: "image/png" });
   fireEvent.paste(input, { clipboardData: { files: [file] } });
   expect(attach).toHaveBeenCalledWith(file);
+});
+
+it("selects the edit permission with radio semantics and closes after choosing", async () => {
+  const user = userEvent.setup();
+  function Menu() {
+    const [permission, setPermission] = useState<Permission>("ask");
+    return <PermissionMenu value={permission} onValueChange={setPermission} />;
+  }
+  render(<Menu />);
+  await user.click(screen.getByRole("button", { name: "Edit behavior: Ask" }));
+  expect(
+    await screen.findByRole("menuitemradio", { name: /Ask before editing/ }),
+  ).toHaveAttribute("aria-checked", "true");
+  await user.click(
+    await screen.findByRole("menuitemradio", { name: /Automatically edit/ }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument(),
+  );
+  await user.click(screen.getByRole("button", { name: "Edit behavior: Auto" }));
+  expect(
+    await screen.findByRole("menuitemradio", { name: /Automatically edit/ }),
+  ).toHaveAttribute("aria-checked", "true");
+  await user.keyboard("{Escape}");
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "Edit behavior: Auto" }),
+    ).toHaveFocus(),
+  );
+});
+
+it("shows a disabled Ask permission and question prompt in a read-only composer", () => {
+  render(
+    <PromptBar
+      value=""
+      onChange={() => {}}
+      permission="auto"
+      onPermissionChange={() => {}}
+      kind="form"
+      readOnly
+      busy={false}
+      pending={false}
+      onClearSelection={() => {}}
+      onSend={() => {}}
+      onStop={() => {}}
+      onAttach={() => {}}
+      onAttachmentError={() => {}}
+    />,
+  );
+  expect(
+    screen.getByRole("button", { name: "Edit behavior: Ask" }),
+  ).toBeDisabled();
+  expect(
+    screen.getByRole("textbox", { name: "Message the assistant" }),
+  ).toHaveAttribute("placeholder", "Ask a question…");
+});
+
+it("keeps an applied card stable across validation and reveals its warnings and diff", async () => {
+  const summary = "Clarify the service title";
+  const view = render(<AppliedCard summary={summary} state="validating" />);
+  const trigger = screen.getByRole("button", {
+    name: "Checking the proposed draft…",
+  });
+  view.rerender(
+    <AppliedCard
+      summary={summary}
+      state="applied"
+      change={{
+        before: { title: "Old title" },
+        after: { title: "New title" },
+        warnings: ["Check the linked form"],
+      }}
+      message="Saved to the draft."
+    />,
+  );
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "Applied to draft · 1 section changed",
+  );
+  expect(screen.getByText("1 warning")).toBeVisible();
+  expect(screen.getByRole("button", { name: /Applied to draft/ })).toBe(
+    trigger,
+  );
+  expect(screen.queryByText(summary)).not.toBeInTheDocument();
+  fireEvent.click(trigger);
+  expect(await screen.findByText(summary)).toBeVisible();
+  expect(screen.getByText("Check the linked form")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "title" }));
+  expect(await screen.findByText("Old title", { exact: false })).toBeVisible();
+  expect(screen.getByText("New title", { exact: false })).toBeVisible();
+  expect(screen.getByText("Saved to the draft.")).toBeVisible();
+});
+
+it("persists permission per conversation and normalizes missing or unknown permissions to Ask", () => {
+  const key = "permission-test";
+  writeConversations(key, [
+    { id: "one", title: "First", permission: "auto" },
+    { id: "two", title: "Second" },
+  ]);
+  expect(readConversations(key)).toEqual([
+    { id: "one", title: "First", permission: "auto" },
+    { id: "two", title: "Second", permission: "ask" },
+  ]);
+  localStorage.setItem(
+    key,
+    JSON.stringify([{ id: "legacy", title: "Earlier", permission: "edit" }]),
+  );
+  expect(readConversations(key)).toEqual([
+    { id: "legacy", title: "Earlier", permission: "ask" },
+  ]);
+  localStorage.removeItem(key);
 });
 
 it("reconstructs both versions from the diff for additions, removals, and unchanged text", () => {
@@ -181,6 +300,7 @@ it("hands real selected Markdown to the assistant without modifying the editor",
   input.focus();
   input.setSelectionRange(6, 20);
   fireEvent.select(input);
+  fireEvent.click(screen.getByRole("button", { name: "Show more actions" }));
   fireEvent.click(screen.getByText("Shorten"));
   expect(action).toHaveBeenCalledWith(
     expect.objectContaining({

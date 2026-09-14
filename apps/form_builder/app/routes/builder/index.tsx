@@ -52,7 +52,7 @@ import {
   firstStepId,
 } from "../../components/builder/recipe-reducer";
 import { ServicePreview } from "../../components/services/service-preview";
-import { getServiceDraft } from "../../lib/service-drafts";
+import { getServiceDraft, listServiceDrafts } from "../../lib/service-drafts";
 import type { ServiceDraft, ServiceSnapshot } from "@govtech-bb/form-types";
 import { extractDbProcessors } from "@govtech-bb/form-builder";
 import { loadFormWorkspace } from "../../components/builder/load-form-draft";
@@ -240,6 +240,36 @@ function BuilderPage() {
   const [serviceDraft, setServiceDraft] = useState<ServiceDraft | null>(
     initialService ?? null,
   );
+  useEffect(() => {
+    if (!serviceDraft) return;
+    let live = true;
+    const serviceId = serviceDraft.manifest.serviceId;
+    const refreshRevision = async () => {
+      try {
+        const latest = (await listServiceDrafts()).find(
+          (entry) => entry.manifest.serviceId === serviceId,
+        );
+        if (!live || !latest) return;
+        setServiceDraft((current) =>
+          current &&
+          latest.revision > current.revision &&
+          JSON.stringify([current.recipe, current.pendingConfig]) ===
+            JSON.stringify([latest.recipe, latest.pendingConfig])
+            ? latest
+            : current,
+        );
+      } catch {
+        // Keep the loaded revision so a later save still checks for conflicts.
+      }
+    };
+    window.addEventListener("service-draft-saved", refreshRevision);
+    window.addEventListener("storage", refreshRevision);
+    return () => {
+      live = false;
+      window.removeEventListener("service-draft-saved", refreshRevision);
+      window.removeEventListener("storage", refreshRevision);
+    };
+  }, [serviceDraft?.manifest.serviceId]);
   const [servicePreview, setServicePreview] = useState<ServiceSnapshot | null>(
     null,
   );
@@ -556,9 +586,8 @@ function BuilderPage() {
     if (result.valid) handleOpenPublish();
   };
 
-  const handlePreview = async () => {
-    if (serviceDraft) {
-      setServicePreview({
+  const previewSnapshot = serviceDraft
+    ? {
         ...serviceDraft,
         recipe: serializeRecipeDraft(draft),
         manifest: { ...serviceDraft.manifest, formId: draft.formId },
@@ -566,7 +595,12 @@ function BuilderPage() {
           mdaContactId: draft.mdaContactId ?? null,
           processors: extractDbProcessors(draft.processors),
         },
-      });
+      }
+    : null;
+
+  const handlePreview = async () => {
+    if (previewSnapshot) {
+      setServicePreview(previewSnapshot);
       return;
     }
     setIsPreviewOpen(true);
@@ -707,6 +741,16 @@ function BuilderPage() {
           draft={draft}
           catalog={catalog}
           readOnly={isReadOnly}
+          artifact={
+            previewSnapshot
+              ? {
+                  snapshot: previewSnapshot,
+                  pageId: "form",
+                  stepId:
+                    mainView === "step" ? selectedStep?.stepId : undefined,
+                }
+              : undefined
+          }
           selection={
             mainView === "step"
               ? selectedStep

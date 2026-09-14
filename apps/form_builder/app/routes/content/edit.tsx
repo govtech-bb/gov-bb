@@ -416,6 +416,16 @@ function StartPagesEditor() {
           documentId={ed.fixedPath ?? "new"}
           state={state}
           service={service}
+          artifact={
+            ed.servicePreview
+              ? {
+                  snapshot: ed.servicePreview,
+                  pageId: ed.servicePreview.pages.find(
+                    (page) => page.path === ed.fixedPath,
+                  )?.id,
+                }
+              : undefined
+          }
           pages={
             ed.serviceDraft
               ? (service?.pages ?? [])

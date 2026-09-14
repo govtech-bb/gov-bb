@@ -6,7 +6,12 @@ import {
 } from "@tanstack/ai-client";
 import { redactAiData } from "@govtech-bb/form-builder";
 
-export type Conversation = { id: string; title: string };
+export type Permission = "ask" | "auto";
+export type Conversation = {
+  id: string;
+  title: string;
+  permission?: Permission;
+};
 const storage = indexedDBPersistence({
   databaseName: "gov-bb-builder-ai",
   keyPrefix: "v1:",
@@ -30,6 +35,11 @@ export function readConversations(key: string): Conversation[] {
             typeof item?.id === "string" && typeof item?.title === "string",
         )
         .slice(0, 50)
+        .map(({ id, title, permission }) => ({
+          id,
+          title,
+          permission: permission === "auto" ? "auto" : "ask",
+        }))
     : [];
 }
 export function writeConversations(key: string, conversations: Conversation[]) {
