@@ -2,6 +2,7 @@ import type { ServiceDraft } from "@govtech-bb/form-types";
 import {
   getServiceDraft,
   getServiceOwner,
+  listServiceDrafts,
   saveServiceDraft,
   saveServicePage,
 } from "../../lib/service-drafts";
@@ -9,20 +10,17 @@ import { useConfirmation } from "../ui/dialog/confirmation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadLandingContentPage } from "../../server/content";
 import {
-  asString,
+  pageToFormState,
   appendServicePage,
   buildServicePageDraft,
   CONTENT_ROOT,
   isValidContentSlug,
   isContentPath,
-  isExternalHref,
   parseStartLink,
   applyStartLink,
   stripStartLinks,
   startPageUrl,
   subcategoriesFor,
-  type ViewLevel,
-  type StartLinkType,
   type FormState,
 } from "../../lib/content";
 import type {
@@ -175,6 +173,44 @@ export function useEditorState(
     JSON.stringify(EMPTY),
   );
   const dirty = JSON.stringify(state) !== savedSnapshot;
+
+  useEffect(() => {
+    if (!serviceDraft || !editPath) return;
+    let live = true;
+    const serviceId = serviceDraft.manifest.serviceId;
+    const refreshRevision = async () => {
+      try {
+        const latest = (await listServiceDrafts()).find(
+          (draft) => draft.manifest.serviceId === serviceId,
+        );
+        if (!live || !latest) return;
+        setServiceDraft((current) =>
+          current &&
+          latest.revision > current.revision &&
+          JSON.stringify(
+            current.pages.find((page) => page.path === editPath),
+          ) ===
+            JSON.stringify(latest.pages.find((page) => page.path === editPath))
+            ? latest
+            : current,
+        );
+      } catch (error) {
+        if (live)
+          setError(
+            error instanceof Error
+              ? error.message
+              : "Service drafts are unavailable",
+          );
+      }
+    };
+    window.addEventListener("service-draft-saved", refreshRevision);
+    window.addEventListener("storage", refreshRevision);
+    return () => {
+      live = false;
+      window.removeEventListener("service-draft-saved", refreshRevision);
+      window.removeEventListener("storage", refreshRevision);
+    };
+  }, [serviceDraft?.manifest.serviceId, editPath]);
 
   // The autosave target for the page currently in the editor: its repo path,
   // or `formId:kind` for a not-yet-created page, or "" (→ ":") for a free new
@@ -338,30 +374,7 @@ export function useEditorState(
           };
       if (loadRequestRef.current !== requestId) return;
       const fm = page.frontmatter;
-      const formId = serviceFormId || asString(fm.form_id);
-      const link = parseStartLink(page.body);
-      let linkType: StartLinkType = "form";
-      let linkHref = "";
-      if (link?.href) {
-        linkType = isExternalHref(link.href) ? "external" : "slug";
-        linkHref = link.href;
-      } else if (!link) {
-        linkType = "none";
-      }
-      const loaded: FormState = {
-        formId,
-        slug: path.slice(CONTENT_ROOT.length).replace(/\.md$/, ""),
-        title: asString(fm.title),
-        description: asString(fm.description),
-        category:
-          asString(fm.category) ||
-          (Array.isArray(fm.categories) ? asString(fm.categories[0]) : ""),
-        subcategory: asString(fm.subcategory),
-        body: page.body,
-        linkType,
-        linkHref,
-        visibility: (asString(fm.visibility) as ViewLevel) || "public",
-      };
+      const loaded = pageToFormState(page, serviceFormId);
       setServiceDraft(page.serviceDraft ?? null);
       setState(loaded);
       setSavedSnapshot(JSON.stringify(loaded));

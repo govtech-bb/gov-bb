@@ -152,6 +152,34 @@ export function asString(v: unknown): string {
   return typeof v === "string" ? v : "";
 }
 
+export function pageToFormState(
+  page: { path: string; frontmatter: Record<string, unknown>; body: string },
+  formId?: string,
+): FormState {
+  const fm = page.frontmatter;
+  const link = parseStartLink(page.body);
+  return {
+    formId: formId || asString(fm.form_id),
+    slug: page.path.slice(CONTENT_ROOT.length).replace(/\.md$/, ""),
+    title: asString(fm.title),
+    description: asString(fm.description),
+    category:
+      asString(fm.category) ||
+      (Array.isArray(fm.categories) ? asString(fm.categories[0]) : ""),
+    subcategory: asString(fm.subcategory),
+    body: page.body,
+    linkType: link?.href
+      ? isExternalHref(link.href)
+        ? "external"
+        : "slug"
+      : link
+        ? "form"
+        : "none",
+    linkHref: link?.href ?? "",
+    visibility: (asString(fm.visibility) as ViewLevel) || "public",
+  };
+}
+
 /** The kebab-case validator used for slugs (shared with formIds). */
 export function isValidSlug(slug: string): boolean {
   return KEBAB_ID_PATTERN.test(slug);

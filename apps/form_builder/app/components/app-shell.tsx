@@ -340,21 +340,21 @@ function AppShellLayout({
         {assistant ?? (
           <WorkspaceAssistant
             user={user}
-            kind="content"
+            kind="workspace"
             documentId={service?.key ?? "workspace"}
             document={{
               title: service?.title ?? "Service library",
               workspace: true,
               service,
               instructions:
-                "Help plan services and answer questions. A service owns one application form and multiple content pages. Open a page or form to propose edits.",
+                "Help plan and edit service drafts. A service owns one application form and multiple content pages. Read the target before proposing edits; changes never publish.",
             }}
             revisionSource={service?.key ?? "workspace"}
-            readOnly
+            readOnly={false}
             open={globalAssistant.open}
             onOpenChange={globalAssistant.setOpen}
             prepare={async () => {
-              throw new Error("Open a content page or form to apply changes.");
+              throw new Error("Choose a service target for this edit.");
             }}
           />
         )}

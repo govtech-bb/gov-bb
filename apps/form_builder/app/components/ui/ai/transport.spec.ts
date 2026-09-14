@@ -95,6 +95,7 @@ it("sends document names and OCR references, never private attachment URLs, to t
       documentId: "d",
       revision: "r",
       mode: "edit",
+      services: [],
       document: {},
       attachments: [{ name: "form.pdf", reference: "owned-job" }],
     },

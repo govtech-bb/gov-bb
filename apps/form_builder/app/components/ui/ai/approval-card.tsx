@@ -67,7 +67,10 @@ export function ApprovalCard({
   };
   if (sent)
     return (
-      <p role="status" className="flex items-center gap-1.75 text-[12px]">
+      <p
+        role="status"
+        className="inline-flex items-center gap-1.5 rounded-full bg-ui-tint px-2.5 py-1.5 text-[12px] text-ui-subtle"
+      >
         <CheckmarkCircle02Icon size={16} aria-hidden="true" />
         Response sent
       </p>
@@ -76,8 +79,8 @@ export function ApprovalCard({
     <Elevated
       render={<section />}
       offset={1}
-      shadowLevel={2}
-      className="my-3 rounded-xl p-4"
+      shadowLevel={1}
+      className="my-3 w-full max-w-md rounded-xl p-3.5"
       aria-label="Questions from the assistant"
     >
       <form
@@ -92,12 +95,12 @@ export function ApprovalCard({
         <fieldset
           disabled={disabled || sending}
           key={index}
-          className="m-0 min-inline-0 border-0 p-0 motion-safe:animate-ai-appear [&_legend]:mb-2 [&_legend]:p-0 [&_legend]:text-[14px] [&_legend]:font-[550] [&_legend]:wrap-anywhere"
+          className="m-0 min-inline-0 border-0 p-0 motion-safe:animate-ai-appear [&_legend]:mb-1.5 [&_legend]:p-0 [&_legend]:text-[14px] [&_legend]:leading-5 [&_legend]:font-medium [&_legend]:wrap-anywhere"
         >
           <legend ref={heading} tabIndex={-1}>
             {question.question}
           </legend>
-          <span className="mb-2.5 block text-[11px] text-ui-default">
+          <span className="mb-2 block text-[11px] text-ui-subtle">
             {question.type === "check" ? "Choose any that apply" : "Choose one"}
           </span>
           {question.type === "radio" ? (
@@ -111,23 +114,29 @@ export function ApprovalCard({
                   [index]: { choices: [choice], custom: "" },
                 })
               }
-              appearance="card"
+              className="gap-0 [&>div]:gap-1"
             >
               <Radio.Legend className="sr-only">
                 {question.question}
               </Radio.Legend>
               {question.options.map((option) => (
-                <Radio.Item key={option} value={option} label={option} />
+                <Radio.Item
+                  key={option}
+                  value={option}
+                  label={option}
+                  className="min-h-9 w-full items-center rounded-lg px-2 py-1.5 hover:bg-ui-tint has-[[data-checked]]:bg-ui-tint [&>span]:text-[13px] [&>span]:leading-5"
+                />
               ))}
             </Radio>
           ) : (
-            <div className="space-y-3">
+            <div className="grid gap-1">
               {question.options.map((option) => (
-                <Checkbox
+                <Checkbox.Item
                   key={option}
                   label={option}
                   disabled={disabled || sending}
                   checked={value.choices.includes(option)}
+                  className="min-h-9 w-full items-center rounded-lg px-2 py-1.5 hover:bg-ui-tint has-[[data-checked]]:bg-ui-tint [&>span]:text-[13px] [&>span]:leading-5"
                   onCheckedChange={(checked) =>
                     setAnswers({
                       ...answers,
@@ -143,12 +152,13 @@ export function ApprovalCard({
               ))}
             </div>
           )}
-          <div className="grid gap-1.5 pt-2.5 pb-1 text-[11px] text-ui-default">
+          <div className="pt-2">
             <Input
               aria-label="Custom answer"
               placeholder="Write your answer…"
               value={value.custom}
               maxLength={2000}
+              size="sm"
               onChange={(event) =>
                 setAnswers({
                   ...answers,
@@ -158,13 +168,17 @@ export function ApprovalCard({
                   },
                 })
               }
-              className="w-full min-w-0"
+              className="h-9 w-full min-w-0 bg-transparent text-[13px]"
             />
           </div>
         </fieldset>
-        {error && <p role="alert">{error}</p>}
-        <footer className="mt-3.5 flex flex-wrap items-center gap-1.5 border-t border-ui-hairline pt-3">
-          <div className="me-auto flex items-center gap-0.75 text-[11px]">
+        {error && (
+          <p role="alert" className="mt-2 text-[12px] text-ui-danger">
+            {error}
+          </p>
+        )}
+        <footer className="mt-3 flex flex-wrap items-center gap-1 border-t border-ui-hairline pt-2.5">
+          <div className="me-auto flex items-center gap-0.5 text-[11px] text-ui-subtle">
             <Button
               type="button"
               aria-label="Previous question"
@@ -172,6 +186,7 @@ export function ApprovalCard({
               onClick={() => setIndex(index - 1)}
               variant="ghost"
               size="sm"
+              shape="square"
             >
               <ArrowLeft01Icon size={14} aria-hidden="true" />
             </Button>
@@ -185,6 +200,7 @@ export function ApprovalCard({
               onClick={() => setIndex(index + 1)}
               variant="ghost"
               size="sm"
+              shape="square"
             >
               <ArrowRight01Icon size={14} aria-hidden="true" />
             </Button>
@@ -198,6 +214,7 @@ export function ApprovalCard({
             }}
             variant="ghost"
             size="sm"
+            className="text-[12px]"
           >
             Skip
           </Button>
@@ -206,6 +223,7 @@ export function ApprovalCard({
             disabled={disabled || sending || !hasAnswer}
             variant="primary"
             size="sm"
+            className="text-[12px]"
           >
             {sending ? "Sending…" : last ? "Send answers" : "Continue"}
           </Button>
@@ -217,6 +235,7 @@ export function ApprovalCard({
         onClick={() => void submit(true)}
         variant="ghost"
         size="sm"
+        className="mt-1 text-[11px] font-normal"
       >
         Skip all questions
       </Button>

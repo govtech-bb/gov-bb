@@ -20,7 +20,7 @@ export function ThinkingState({
   const open = expanded ?? working;
   return (
     <Collapsible
-      className="my-2.5 min-inline-0"
+      className="my-3 min-inline-0"
       open={open}
       onOpenChange={setExpanded}
     >
@@ -29,12 +29,12 @@ export function ThinkingState({
           <Button
             variant="ghost"
             size="sm"
-            className="h-auto w-full justify-start whitespace-normal text-left"
+            className="-ms-1.5 h-auto min-h-7 max-w-full justify-start gap-1.5 px-1.5 py-1 text-left text-[12px] whitespace-normal"
           />
         }
       >
         {working ? (
-          <LoadingState label={active} />
+          <LoadingState label={active} timer />
         ) : (
           <>
             <AiMagicIcon size={15} aria-hidden="true" />
@@ -44,12 +44,12 @@ export function ThinkingState({
         )}
         <ArrowDown01Icon
           size={13}
-          className="shrink-0 transition-[rotate] duration-180 ease-[ease] data-[open=true]:rotate-180 motion-reduce:transition-none"
+          className="shrink-0 transition-[rotate] duration-(--ui-moderate) ease-(--ui-ease) data-[open=true]:rotate-180 motion-reduce:transition-none"
           data-open={open}
           aria-hidden="true"
         />
       </Collapsible.Trigger>
-      <Collapsible.Panel className="mt-1.5 mb-0 ml-1.5 border-s border-ui-line ps-2.5">
+      <Collapsible.Panel className="mt-1 h-[var(--collapsible-panel-height)] overflow-hidden transition-[height,opacity] duration-(--ui-moderate) ease-(--ui-ease) data-ending-style:h-0 data-ending-style:opacity-0 data-starting-style:h-0 data-starting-style:opacity-0 motion-reduce:transition-none [&[hidden]:not([hidden='until-found'])]:hidden">
         {children}
       </Collapsible.Panel>
     </Collapsible>

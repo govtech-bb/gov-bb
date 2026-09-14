@@ -7,10 +7,19 @@ import { createElement, type ReactElement, type ReactNode } from "react";
 import { render, screen, fireEvent, within, waitFor } from "../../test/ui";
 import userEvent from "@testing-library/user-event";
 import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
+import { serializeRecipeDraft } from "@govtech-bb/form-builder";
+import {
+  serviceDraftSchema,
+  type ServiceDraft,
+  type ServiceSnapshot,
+} from "@govtech-bb/form-types";
 import type { UseBlockerOpts } from "@tanstack/react-router";
 import { act } from "../../test/ui";
 
 let mockLinkedDraft: RecipeDraft | null = null;
+let mockInitialService: ServiceDraft | null = null;
+let mockAssistantSnapshot: ServiceSnapshot | undefined;
+const mockListServiceDrafts = vi.fn(async () => [] as ServiceDraft[]);
 let mockLinkedFormId: string | undefined;
 let mockSearch: {
   service?: string;
@@ -47,6 +56,7 @@ vi.mock("@tanstack/react-router", () => ({
       baseBranch: "dev",
       initialDraft: mockLinkedDraft,
       initialFormId: mockLinkedFormId,
+      initialService: mockInitialService,
     }),
     useSearch: () => mockSearch,
     useRouteContext: () => ({ user: { login: "test" } }),
@@ -110,7 +120,14 @@ vi.mock("../../server/publish", () => ({
   eraseRecipe: vi.fn(),
 }));
 vi.mock("../../components/builder/form-assistant", () => ({
-  FormAssistant: () => null,
+  FormAssistant: (props: { artifact?: { snapshot: ServiceSnapshot } }) => {
+    mockAssistantSnapshot = props.artifact?.snapshot;
+    return null;
+  },
+}));
+vi.mock("../../lib/service-drafts", async (original) => ({
+  ...(await original<typeof import("../../lib/service-drafts")>()),
+  listServiceDrafts: () => mockListServiceDrafts(),
 }));
 
 vi.mock("../../components/content/use-content-list", () => ({
@@ -309,6 +326,8 @@ function renderBuilder() {
 describe("BuilderPage — service workspace links", () => {
   afterEach(() => {
     mockLinkedDraft = null;
+    mockInitialService = null;
+    mockListServiceDrafts.mockResolvedValue([]);
     mockLinkedFormId = undefined;
     mockSearch = {};
   });
@@ -395,6 +414,72 @@ describe("BuilderPage — service workspace links", () => {
     mockLinkedDraft = { ...VALID_DRAFT, title: "Background server title" };
     view.rerender(createElement(Route.component));
     expect(title).toHaveValue("Edited service title");
+  });
+
+  it("refreshes sibling page saves without replacing the open form or accepting a changed form baseline", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    mockLinkedDraft = VALID_DRAFT;
+    mockLinkedFormId = VALID_DRAFT.formId;
+    const id = "aa984ddf-ac15-43dc-a817-4559cfb37c4d";
+    const path = "apps/landing/src/content/example/index.md";
+    const initial = serviceDraftSchema.parse({
+      revision: 1,
+      updatedAt: "now",
+      updatedBy: "editor",
+      manifest: {
+        schemaVersion: 1,
+        serviceId: "example",
+        title: "Example",
+        formId: VALID_DRAFT.formId,
+        entryPoint: id,
+        pages: [
+          { id, path, title: "Main", publicPath: "/example", kind: "main" },
+        ],
+      },
+      pages: [
+        {
+          id,
+          path,
+          frontmatter: { title: "Main" },
+          body: "Original page",
+          baseSha: null,
+        },
+      ],
+      recipe: serializeRecipeDraft(VALID_DRAFT),
+      pendingConfig: { mdaContactId: null, processors: null },
+    });
+    mockInitialService = initial;
+    mockListServiceDrafts.mockResolvedValue([initial]);
+    renderBuilder();
+    fireEvent.change(screen.getByPlaceholderText("Untitled form"), {
+      target: { value: "Unsaved form title" },
+    });
+    const latest = {
+      ...initial,
+      revision: 2,
+      pages: [{ ...initial.pages[0], body: "Updated page" }],
+    };
+    mockListServiceDrafts.mockResolvedValue([latest]);
+    await act(async () => {
+      window.dispatchEvent(new Event("service-draft-saved"));
+    });
+    expect(mockAssistantSnapshot?.pages[0].body).toBe("Updated page");
+    expect(mockAssistantSnapshot?.recipe?.title).toBe("Unsaved form title");
+    mockListServiceDrafts.mockResolvedValue([
+      {
+        ...latest,
+        revision: 3,
+        recipe: { ...initial.recipe!, title: "Concurrent form edit" },
+        pages: [{ ...initial.pages[0], body: "Later page" }],
+      },
+    ]);
+    await act(async () => {
+      window.dispatchEvent(new Event("storage"));
+    });
+    expect(mockAssistantSnapshot?.pages[0].body).toBe("Updated page");
+    expect(screen.getByPlaceholderText("Untitled form")).toHaveValue(
+      "Unsaved form title",
+    );
   });
 });
 

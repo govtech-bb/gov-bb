@@ -16,6 +16,7 @@ const AssistantWorkspace = createContext<{
 
 export function GlobalAssistantProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [harness, setHarness] = useState(false);
   const [config, setConfig] = useState<AssistantProps | null>(null);
   const register = setConfig;
   const controls = useMemo(
@@ -25,13 +26,20 @@ export function GlobalAssistantProvider({ children }: { children: ReactNode }) {
   return (
     <AssistantWorkspace.Provider value={controls}>
       <div className="@container/assistant flex h-dvh min-h-0 overflow-hidden bg-ui-canvas">
-        <div className="min-h-0 min-w-0 flex-1 overflow-auto">{children}</div>
+        <div
+          hidden={open && harness}
+          className="min-h-0 min-w-0 flex-1 overflow-auto"
+        >
+          {children}
+        </div>
         {config && (
           <Assistant
             {...config}
             conversationScope="workspace"
             open={open}
             onOpenChange={setOpen}
+            harness={harness}
+            onHarnessChange={setHarness}
           />
         )}
       </div>

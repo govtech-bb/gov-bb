@@ -1,208 +1,70 @@
 ---
 name: Gov BB authoring assistant
-description: A contextual conversation and review panel within the existing authoring interface.
-colors:
-  ui-base: "var(--ui-base)"
-  ui-surface-2: "var(--ui-surface-2)"
-  ui-canvas: "var(--ui-canvas)"
-  ui-tint: "var(--ui-tint)"
-  ui-hairline: "var(--ui-hairline)"
-  ui-line: "var(--ui-line)"
-  ui-brand-hover: "var(--ui-brand-hover)"
-  ui-brand: "var(--ui-brand)"
-  ui-default: "var(--ui-default)"
-  ui-inverse: "var(--ui-inverse)"
-  ui-success-text: "var(--ui-success-text)"
-  ui-danger-text: "var(--ui-danger-text)"
-  ui-danger-tint: "var(--ui-danger-tint)"
+description: A shared authoring chat, draft review, and contextual preview using the builder design tokens.
+reference: https://github.com/slev12397/beautiful-ui/tree/main/app/harness
 typography:
-  body:
-    fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'
-    fontSize: "14px"
-    lineHeight: 1.6
-    letterSpacing: "-0.15px"
-  markdown:
-    fontSize: "14px"
-    lineHeight: 1.65
-  heading:
-    fontSize: "16px"
-    lineHeight: 1.4
-  label:
-    fontSize: "12px"
-  activity:
-    fontSize: "13px"
-    fontWeight: 500
-  code:
-    fontFamily: "ui-monospace, monospace"
-    fontSize: "12px"
-    lineHeight: 1.7
-rounded:
-  rad-s: "6px"
-  rad-m: "8px"
-  rad-l: "12px"
-spacing:
-  gap: "8px"
-  inset: "12px"
-  section: "16px"
-components:
-  button-primary:
-    backgroundColor: "{colors.ui-brand}"
-    textColor: "{colors.ui-inverse}"
-    rounded: "{rounded.rad-m}"
-    padding: "7px 10px"
-  button-primary-hover:
-    backgroundColor: "{colors.ui-brand-hover}"
-  button-secondary:
-    backgroundColor: "{colors.ui-base}"
-    textColor: "{colors.ui-default}"
-    rounded: "{rounded.rad-m}"
-    padding: "7px 10px"
-  button-secondary-hover:
-    backgroundColor: "{colors.ui-tint}"
-  conversation-select:
-    textColor: "{colors.ui-default}"
-    padding: "6px 0"
-  mode-select:
-    backgroundColor: "{colors.ui-canvas}"
-    textColor: "{colors.ui-default}"
-    typography: "{typography.label}"
-    rounded: "20px"
-    padding: "6px 8px"
-  composer:
-    backgroundColor: "{colors.ui-base}"
-    textColor: "{colors.ui-default}"
-    rounded: "16px"
-  assistant-message:
-    backgroundColor: "{colors.ui-base}"
-    textColor: "{colors.ui-default}"
-    rounded: "{rounded.rad-l}"
-    padding: "15px"
-  review-card:
-    backgroundColor: "{colors.ui-base}"
-    textColor: "{colors.ui-default}"
-    rounded: "{rounded.rad-l}"
-    padding: "16px"
-  loading-state:
-    textColor: "{colors.ui-brand-hover}"
-    typography: "{typography.activity}"
-  code-block:
-    backgroundColor: "{colors.ui-canvas}"
-    textColor: "{colors.ui-default}"
-    typography: "{typography.code}"
-    rounded: "{rounded.rad-m}"
-  clarification-question:
-    textColor: "{colors.ui-default}"
-  attachment-card:
-    backgroundColor: "{colors.ui-canvas}"
-    textColor: "{colors.ui-default}"
-    rounded: "{rounded.rad-m}"
-    padding: "8px"
+  family: Inter
+  reply: 13px / 1.75
+  welcome: 26px / normal
+  activity: 13px
+  supporting: 12px
+  code: 12px / 1.7 monospace
 ---
 
-# Design System: Gov BB authoring assistant
+# Gov BB authoring assistant
 
-## Overview
+The assistant follows [beautiful-ui’s harness](https://github.com/slev12397/beautiful-ui/blob/main/components/site/IceCreamHarness.tsx) and its component composition while retaining the builder’s tokens, Inter typography, Hugeicons, shared controls, and light/dark themes. The visual changes apply to the shared assistant and its development demo.
 
-**Creative North Star: "The contextual authoring assistant"**
+## Layout and tokens
 
-This record covers only `app/components/ui/ai`. The assistant inherits the authoring application's neutral light/dark surfaces, Inter typography, and compact native controls. Conversation and review remain close to the current form or content page.
+- The assistant opens in a 450px dock, resizable from 360px to 720px; keyboard resizing uses 20px steps. Expand shows the same chat at full width. The editor stays mounted while hidden, and Narrow restores it.
+- Both views use one header with the conversation dropdown, New conversation, conversation actions, Expand/Narrow, and Close. Delete chat lives in conversation actions. New conversation is disabled at 50 conversations.
+- Expanded messages occupy a reading column up to 720px wide. Assistant replies sit directly on the thread surface; user messages use a subdued bubble. Message groups have generous spacing, and reply actions appear on hover or keyboard focus.
+- Empty chat centers a two-line greeting, the composer, and three plain suggestion rows. During conversation, the composer floats above a soft token-colored fade. A height observer reserves scrolling space; the same textarea remains mounted across first send, Expand, and Narrow. Scroll-follow releases when the author reads earlier messages, and Jump to latest restores it.
+- The expanded right pane appears for a new proposal or explicit Preview. Closing persists for the current proposal; a new proposal reopens Changes. Manual tab selection survives validation updates. The pane occupies the smaller of 400px and 40% of the container.
+- At 1023px or below, the assistant is a full-width modal with dynamic viewport height. Resize, Expand, and the artifact pane are unavailable. Composer spacing includes the bottom safe area.
 
-The panel uses restrained tonal separation and readable evidence. Its visual hierarchy leads from the current artifact through conversation to an explicit decision about proposed changes.
+Use `ui-base` for the thread and principal surfaces, `ui-canvas` around expanded panels, and `ui-recessed`/`ui-tint` for quieter controls. Primary text uses `ui-default`; supporting copy uses `ui-subtle`. Actions retain `ui-brand` and `ui-inverse`; state indicators use existing success, warning, and danger tokens with text or symbols alongside color. Dividers use `ui-hairline`. Local surfaces and controls use the established radius and elevation utilities; no global palette or typography changes are introduced.
 
-**Key Characteristics:**
-
-- Neutral surfaces that follow the host theme.
-- Compact Inter text with generous conversation line spacing.
-- Native controls and disclosures with visible keyboard focus.
-- Unified before/after changes presented with validation before Apply.
-- Activity and attachment states driven by the current operation.
-
-Evidence: [PRODUCT.md](../../../../PRODUCT.md), [assistant.tsx](./assistant.tsx), and [theme tokens](../styles/tokens.css). This is a record of implemented components, not a new application identity.
-
-## Colors
-
-A warm neutral surface family becomes a charcoal family in dark mode. Frontmatter colors retain the actual CSS custom-property bindings so they follow both themes; their values remain owned by [the content theme](../styles/tokens.css) and [the matching builder theme](../../../styles/builder.global.css).
-
-### Primary
-
-- **Inverse action:** `ui-brand` with `ui-inverse` identifies Apply and Send; hover uses `ui-brand-hover`.
-
-### Secondary
-
-- **Success and additions:** the existing `ui-success-text` token marks completed tasks and added lines, falling back to `ui-default` where the host supplies no success color.
-- **Errors and removals:** `ui-danger-text` and `ui-danger-tint` mark failed activity and removed lines. Status text and addition/removal signs preserve meaning without color.
-
-### Neutral
-
-- **Panel and cards:** `ui-surface-2` backs the dock; `ui-base` backs the header, assistant messages, review cards, and composer.
-- **Inset surfaces:** `ui-canvas` backs code, tool chips, attachment cards, warnings, and selected or hovered question options. `ui-tint` backs user messages and secondary-button hover.
-- **Dividers:** `ui-hairline` separates regions; `ui-line` outlines controls and review cards.
-- **Readable copy:** `ui-default` carries primary text. `ui-brand-hover` carries supporting text, solid loading labels, and prompt/question placeholders at full opacity.
-
-**The Theme Pairing Rule.** Keep inverse actions paired with `ui-inverse`, and retain solid `ui-brand-hover` for loading labels and prompt/question placeholders across themes.
-
-Evidence: [actions and supporting text](./assistant.tsx), [shared color roles](../styles/tokens.css).
-
-## Typography
-
-Inter and its existing sans-serif fallback stack are inherited from the host. Body copy uses the compact body role; Markdown has a slightly more open reading rhythm, with all rendered heading levels constrained to the same heading size. Tool activity, warnings, and review support use the label size.
-
-The welcome title is a local introduction (22px, weight 550, tracking -0.6px), not a reusable application display scale. Conversation titles use weight 550. Code fences, tool payloads, and unified diffs share the monospace code role, with wrapped lines and explicit addition/removal signs. Elapsed time and question counters use tabular numbers.
-
-Evidence: [host type](../../../styles/builder.global.css), [welcome and Markdown](./assistant.tsx), [code](./code-block.tsx) and [activity text](./loading-state.tsx).
-
-## Layout
-
-On desktop, the assistant occupies a right dock beside the editor. It starts at 450px, resizes between 360px and 720px, and supports keyboard resizing in 20px steps. Expanded width is capped at the smaller of 720px and 55vw. A fixed header and anchored composer frame the independently scrolling conversation. The empty conversation supplies three starter actions.
-
-At viewport widths of 1023px or below, the same native dialog opens modally at full viewport width and dynamic viewport height. Resize and expand controls disappear; buttons have a 36px minimum height and the composer respects the bottom safe area. At 48rem or below, prompt and question fields and the selection instruction input use 16px text; the shortcut hint is hidden.
-
-Spacing is compact around controls and more open between messages. Review disclosures contain one unified before/after diff, with line numbers and added/removed counts. Code regions scroll within 320px; attachment activity scrolls within the smaller of 240px and 25dvh inside the composer. Prompt menus open above it. Clarification questions appear one at a time inside the existing assistant message.
-
-Evidence: [dock sizing and dialog behavior](./assistant.tsx), [resize control](./assistant.tsx), [dock responsive rules](./assistant.tsx), [prompt](./prompt-bar.tsx), [question](./approval-card.tsx), and [selection layout](./selection-actions.tsx).
-
-## Elevation & Depth
-
-Borders and tonal surfaces establish depth. The conversation alone carries a faint dotted field; this local texture is not a global background rule. Jump to latest, the prompt menu, and selection actions use small local shadows; the compact modal uses a translucent backdrop. Clarification questions are borderless within the assistant message, with the question legend carrying the heading. These local treatments do not establish a general card-elevation scale.
-
-New messages, questions, and selection actions use short opacity/vertical entrances. Activity pixels and spinners animate only when reduced motion is not requested. Loading labels remain solid; a real elapsed timer accompanies the pixels. Text communicates status independently of animation.
-
-Evidence: [feed texture](./assistant.tsx), [floating control](./assistant.tsx), [message motion](./assistant.tsx), [shared animations](../styles/motion.css) and [selection actions](./selection-actions.tsx).
-
-## Shapes
-
-Use the existing small radius for warnings and question options; medium for buttons, code blocks, and attachment cards; large for assistant messages and review cards. The prompt has its own softer silhouette (16px). Task rows change from a pill to the large radius when expanded. User messages retain an asymmetric corner, the mode selector is pill shaped, and Send is circular. Clarification questions add no enclosing card. These silhouettes identify component roles rather than introducing new global radius tokens.
-
-Evidence: [messages](./assistant.tsx), [review](./assistant.tsx), [prompt](./prompt-bar.tsx), [tasks](./task-rows.tsx), [attachments](./attachments.tsx), and [questions](./approval-card.tsx).
+Motion uses existing duration/easing tokens and respects reduced motion. Streaming, activity, elapsed time, and completion represent actual runtime state.
 
 ## Components
 
-- **Actions and conversation:** bordered secondary buttons, inverse primary buttons, transparent header controls, and a native conversation select. Keyboard focus remains visible. The prompt uses one surrounding focus outline; its native file input remains transparent when disabled while the attachment control dims.
-- **PromptBar:** native textarea with Review edits/Ask modes and Send/Stop. `@` inserts a reference to the current draft, an existing selection, or a ready attached document; `/review`, `/simplify`, `/structure`, and `/summarize` insert editable instructions. Arrow keys choose, Enter inserts, and Escape dismisses the menu. Outside it, Enter sends and Shift+Enter adds a line. Pending questions or proposal review block new input; unready attachments block Send. Ask remains read-only.
-- **Attachments:** one PDF (up to 20 MB) or PNG/JPEG (up to 10 MB) enters through the file picker, drop, or paste. Composer cards show filename, size, real status, and Remove; saved chat retains attachment metadata and native image/document parts. Local images use object URLs; PDFs lazily render the first page with bundled PDF.js and its worker. Local files and preview data are not persisted, so restored cards retain file identity with a type fallback. Private originals are represented to the model by authenticated Textract text, not public preview URLs.
-- **LoadingState, ThinkingState, and ToolChips:** pixel activity and a measured elapsed timer accompany a solid status label. Expandable activity contains actual tool calls and their running, waiting, complete, failed, or interrupted state; disclosures show redacted inputs/results. It records observable work, not invented reasoning or a fabricated timeline.
-- **TaskRows:** native disclosures expose upload, extraction, and draft-validation progress. Waiting, In progress, Completed, Failed, and Paused labels follow real state. Retry targets the failed stage; extraction retries reuse the existing upload.
-- **ApprovalCard:** `ask_questions` supplies native radio or checkbox choices plus a custom answer. A borderless fieldset shows one question at a time inside the assistant reply. Selecting an option does not advance or send; navigation, Continue, Send answers, Skip, and Skip all questions are explicit. Sending errors remain retryable. Answers return to the conversation and do not apply draft changes.
-- **Messages and CodeBlock:** user text retains its tinted bubble; assistant replies retain the bordered surface. TanStack Markdown streams replies with HTML disabled and underlined links. Code fences, tool payloads, and proposal diffs share line-numbered, scrollable CodeBlock output and Copy feedback. Markdown images remain text alternatives; document attachments use the separate metadata/thumbnail cards.
-- **ReviewCard:** a populated summary identifies changed sections. Native disclosures show unified before/after changes with removed/added signs and counts. Validation, stale, no-change, error, and warning states remain explicit. Apply is disabled until a nonempty current proposal is prepared; warnings change its label to “Apply with warnings.”
-- **SelectionActions:** the content editor's real Visual or Markdown selection offers Improve, Shorten, Fix grammar, Explain, and a custom instruction. An action opens and prefills the assistant with the selected text; the author still sends the request and reviews proposed edits. A changed source invalidates the selection.
+| Component         | Implemented treatment and behavior                                                                                                                                                                                                                                                                                                 |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Selection Actions | A compact contextual bar exposes Explain and Improve, with Shorten, Fix grammar, and custom instructions under More. It captures the actual Visual/Markdown editor selection, then opens and prefills chat without sending or editing. Source changes invalidate the selection. Escape and Dismiss close the bar.                  |
+| Code Block        | A compact filename header, Copy feedback, line-number gutter, and explicit added/removed signs are shared by Markdown, tool details, and diffs. Code scrolls within 320px. Clipboard failures remain visible; the text remains selectable. The bounded prefix/suffix diff preserves both versions without promising minimal hunks. |
+| Prompt Bar        | One elevated surface contains a transparent textarea, attachment/context chips, and a compact toolbar for attachment, Ask/Auto, and Send/Stop. Focus outlines the surrounding composer. References and slash commands insert editable text; they never send automatically.                                                         |
+| Chat              | Borderless assistant replies, subdued user bubbles, one compact header, a centered reading column, quiet reply controls, and the shared floating composer. No separate history sidebar or conversation tabs.                                                                                                                       |
+| Task Rows         | Expandable capsules show step indicators, status, details, and Retry for real upload/extraction stages. Retrying extraction reuses the upload. A single draft validation uses Loading State instead.                                                                                                                               |
+| Tool Chips        | Compact tool labels, contextual chips, and subtle chevrons expose redacted inputs/results on expansion. Status follows running, waiting, complete, failed, or interrupted tool execution.                                                                                                                                          |
+| Approval Card     | One question appears in a restrained surface with native radio/checkbox choices, custom answers, a compact counter/navigation row, and footer actions. Selecting an answer does not advance or send. Continue, Send answers, Skip, and Skip all are explicit; submission failures remain retryable.                                |
+| Streaming Text    | A small wrapper renders incoming TanStack Markdown immediately with a visual cursor while streaming. HTML is disabled, links use allowed URL schemes, and Markdown images become text alternatives. Code uses the shared Code Block.                                                                                               |
+| Thinking          | A compact expandable activity heading reveals actual tool work, opens while working, and collapses after completion unless manually toggled. It does not invent reasoning or a timeline.                                                                                                                                           |
+| Loading State     | A small pixel indicator and one accessible status label, with an optional measured elapsed timer. Animation is decorative; text communicates progress.                                                                                                                                                                             |
 
-**The Review Before Apply Rule.** Keep the proposed values and validation state available beside an explicit Apply action. Apply changes only the local draft; the author retains the existing Save or Deploy step.
+Draft-change review uses a single compact surface with summary, one validation/error-and-retry area, visible warnings, and Apply/Reject. Apply stays disabled until a current, nonempty change has been prepared. Warnings change the label to “Apply with warnings.” Full change details live in the open pane; otherwise an inline disclosure exposes them. Warnings appear only once within the review card.
 
-Evidence: [assistant integration](./assistant.tsx), [prompt](./prompt-bar.tsx), [attachment card](./attachments.tsx), [local thumbnails](./file-thumbnail.tsx), [attachment parts](./attachment-data.ts), [saved transcript](./history.ts), [authenticated document transport](./transport.ts), [loading](./loading-state.tsx), [activity](./thinking-state.tsx), [tool details](./tool-chips.tsx), [tasks](./task-rows.tsx), [questions](./approval-card.tsx), [code/diff](./code-block.tsx), [review](./review.tsx), [selection](./selection-actions.tsx), and [editor integration](../../body-editor/body-editor.tsx).
+Applied changes become compact, initially collapsed outcome rows, retaining the changed-section count, warning badge, summary, diff, and outcome message. The trigger stays stable from validation to completion. Failed outcomes show their error outside the collapsed details.
 
-## Do's and Don'ts
+The contextual pane has Preview/Changes tabs and Close. An explicit request selects its tab once; a new proposal defaults to Changes. Its pending message is not a second live validation announcement. Preview embeds the existing service journey and refreshes with the artifact revision. External-target changes keep their diff even when the current editor preview represents another document.
 
-### Do:
+## Input, persistence, and attachments
 
-- Do inherit the host theme, Inter stack, and existing radius tokens.
-- Do preserve native controls, keyboard focus, and the compact modal behavior.
-- Do present unified before/after changes and validation before enabling Apply.
-- Do bind activity, question choices, references, and file states to the actual conversation.
-- Do keep loading labels and prompt/question placeholders solid and readable with the supporting-text token.
+Ask is the default per conversation. The conversation index stores Auto only for that conversation. The permission control and menu use neutral styling without selected backgrounds or checkmarks; the label identifies the current mode and radio semantics remain accessible. The label stays visible while busy/pending and displays Ask when read-only. Read-only capability removes edit tools; Ask itself still permits proposed edits for explicit approval.
 
-### Don't:
+The prompt supports current-draft, selected-text, and ready-document references through `@`, plus `/review`, `/simplify`, `/structure`, and `/summarize`. Arrow keys choose, Enter inserts, and Escape dismisses the menu. Outside the menu, Enter sends and Shift+Enter adds a line. Pending questions or proposal review block new input; unready attachments block Send.
 
-- Don't hardcode a light-theme foreground on inverse actions.
-- Don't imply that a selection action, question answer, or Apply saves or deploys the artifact.
-- Don't promote the conversation texture or local message silhouettes into application-wide rules.
+One PDF up to 20 MB or PNG/JPEG up to 10 MB enters through the picker, drop, or paste. Attachment cards show filename, size, actual status, and Remove. PDFs lazily render their first page with bundled PDF.js; local images use object URLs. Local files and preview data are not persisted: restored cards retain metadata and a type fallback. Saved conversation data retains attachment metadata and native document/image parts. Private originals reach the model through authenticated Textract text, not public preview URLs.
+
+Conversation history and permissions are scoped to the user and workspace in this browser. Storage failures are surfaced rather than implying that history was saved. Restored transcripts are inert and cannot resume tool execution or Auto approval.
+
+## Runtime invariants
+
+- Ask requires explicit approval after guarded preparation. Auto uses the same preparation/execution path and only permits `apply_form_draft`, `apply_content_patch`, and `update_service_details`. Warnings remain inspectable; failed execution is reported to the model.
+- Every execution requires a live run binding, an open mounted assistant, editable capability, and a single-use prepared change. Stop, close, and invalidated runs cannot apply delayed results. Open-document revision drift invalidates local changes.
+- Open-document edits update the current editor draft. Other service targets use the existing browser-scoped workspace save methods and captured expected revision; changed recipes also use API save and editing-claim checks. External targets retain optimistic concurrency protection.
+- Read tools require membership in adopted browser drafts, redact sensitive values, and reject results above 200,000 serialized characters. The model receives at most 50 service index entries; published-only services must first be opened in the workspace.
+- Saved-draft events refresh workspace state and advance open-editor revisions when their own document is unchanged. Publishing, deleting, attaching/detaching, and restoring are outside the Auto allowlist. A selection action, question answer, or draft save never implies publishing.
+
+Implementation: [assistant](./assistant.tsx), [global editor integration](../../global-assistant.tsx), [tokens](../styles/tokens.css), and [motion](../styles/motion.css). The development route `/dev/assistant` exercises the shared components and scripted chat transport without requiring a model connection.
