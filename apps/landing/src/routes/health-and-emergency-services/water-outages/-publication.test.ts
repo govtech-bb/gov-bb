@@ -40,17 +40,29 @@ describe('water service publication', () => {
     }
   })
 
-  it('registers the service and honors preview and runtime publication', () => {
+  it('registers the service, publishes by default and honors runtime withdrawal', () => {
     expect(PAGES.find((p) => p.url === META.url)?.frontmatter.title).toBe(
       META.title,
     )
+    const published = call(index.options.beforeLoad, {
+      context: { level: 'public', serviceStatuses: [] },
+    })
+    const head = call(index.options.head, { match: { context: published } })
+    expect(head.links).toContainEqual(
+      expect.objectContaining({ rel: 'canonical' }),
+    )
+    expect(head.meta).not.toContainEqual({
+      name: 'robots',
+      content: 'noindex',
+    })
+    const withdrawn = [[META.url, 'disabled']]
     expect(() =>
       call(index.options.beforeLoad, {
-        context: { level: 'public', serviceStatuses: [] },
+        context: { level: 'public', serviceStatuses: withdrawn },
       }),
     ).toThrow()
     const preview = call(index.options.beforeLoad, {
-      context: { level: 'preview', serviceStatuses: [] },
+      context: { level: 'preview', serviceStatuses: withdrawn },
     })
     expect(
       call(index.options.head, { match: { context: preview } }).meta,
@@ -58,15 +70,6 @@ describe('water service publication', () => {
       name: 'robots',
       content: 'noindex',
     })
-    const published = call(index.options.beforeLoad, {
-      context: {
-        level: 'public',
-        serviceStatuses: [[META.url, 'enabled']],
-      },
-    })
-    expect(
-      call(index.options.head, { match: { context: published } }).links,
-    ).toContainEqual(expect.objectContaining({ rel: 'canonical' }))
   })
 
   it('keeps emailed confirmation and opt-out links reachable and out of search engines', () => {

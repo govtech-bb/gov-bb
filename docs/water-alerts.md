@@ -70,9 +70,10 @@ resident can retry; it does not claim that confirmation mail was sent.
 
 ## Preview and local development
 
-The service starts with `visibility: 'preview'` in `-meta.ts`. Use the existing
-`?preview=<PREVIEW_SECRET>` flow for testing. Publish through the feature-flagging
-UI by enabling `health-and-emergency-services/water-outages`, or change its default visibility.
+The service is `visibility: 'public'` in `-meta.ts`; it launched on 14 September
+2026, when the production `service_status` row was set to `enabled`. Withdraw it
+through the feature-flagging UI by setting `health-and-emergency-services/water-outages`
+to disabled; the existing `?preview=<PREVIEW_SECRET>` flow still shows a withdrawn service.
 Confirmation and unsubscribe pages remain reachable without a preview cookie,
 including after withdrawing the service, and are excluded from search indexing.
 

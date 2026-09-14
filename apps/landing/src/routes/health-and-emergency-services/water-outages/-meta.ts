@@ -19,5 +19,5 @@ export const META = {
     'parish',
     'service disruption',
   ],
-  visibility: 'preview',
+  visibility: 'public',
 } satisfies FeatureMeta
