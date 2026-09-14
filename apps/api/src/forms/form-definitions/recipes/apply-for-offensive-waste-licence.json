@@ -235,6 +235,18 @@
       "behaviours": [],
       "elements": [
         {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "business-name",
+            "label": "Business name",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
           "ref": "components/address-lookup",
           "overrides": {
             "fieldId": "work-address-line-1",
@@ -509,7 +521,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:33:15.101Z",
-  "updatedAt": "2026-09-11T12:23:26.647Z",
+  "updatedAt": "2026-09-14T14:57:38.479Z",
   "meta": {
     "visibility": "preview"
   },
