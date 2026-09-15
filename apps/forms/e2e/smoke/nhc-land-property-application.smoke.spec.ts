@@ -317,12 +317,10 @@ async function fillCoApplicantSteps(page: Page, person: Person): Promise<void> {
   await expect(page.locator("h1")).toContainText(
     "Give us your co-applicant's contact details",
   );
-  // Note the missing dash — the recipe's fieldId really is
-  // `co-applicantaddress-line-1`.
   await fillField(
     page,
     step,
-    "co-applicantaddress-line-1",
+    "co-applicant-address-line-1",
     person.addressLine1,
   );
   await fillField(
@@ -463,11 +461,12 @@ test.describe("NHC Application to Purchase Land or Property — Live Smoke", () 
     await advance(page, step);
 
     step = expectStep(page, "financing-details", { exact: true });
+    await fillField(page, step, "lending-institution", faker.company.name());
     await fillField(
       page,
       step,
-      "lending-institution",
-      `${faker.company.name()} — Bridgetown branch`,
+      "lending-institution-branch",
+      `${faker.location.street()} branch`,
     );
     await fillField(page, step, "deposit-available", money(5000, 40000));
     await fillField(page, step, "qualifying-amount", money(100000, 400000));
