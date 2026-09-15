@@ -29,20 +29,6 @@
           "ref": "components/title",
           "overrides": {
             "fieldId": "applicant-title",
-            "options": [
-              {
-                "label": "Mr",
-                "value": "mr"
-              },
-              {
-                "label": "Ms",
-                "value": "miss"
-              },
-              {
-                "label": "Mrs",
-                "value": "mrs"
-              }
-            ],
             "validations": {
               "required": {
                 "error": "Title is required",
@@ -565,20 +551,6 @@
           "ref": "components/title",
           "overrides": {
             "fieldId": "emergency-title",
-            "options": [
-              {
-                "label": "Mr",
-                "value": "mr"
-              },
-              {
-                "label": "Ms",
-                "value": "miss"
-              },
-              {
-                "label": "Mrs",
-                "value": "mrs"
-              }
-            ],
             "validations": {
               "required": {
                 "error": "Title is required",
@@ -1394,5 +1366,5 @@
     }
   ],
   "createdAt": "2026-06-09T17:09:06.077Z",
-  "updatedAt": "2026-08-10T17:36:02.548Z"
+  "updatedAt": "2026-09-15T13:25:18.188Z"
 }
