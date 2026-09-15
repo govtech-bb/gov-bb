@@ -136,15 +136,30 @@ test.describe("Step 1 — Personal Details validations", () => {
     await form.expectError("You must be at least 18 years old");
   });
 
-  test("date: year before 1900 fails the shared date validation", async ({
-    page,
-  }) => {
-    const form = new FormPage(page);
-    await form.goto();
-    await form.fillDate("step-1-personal-details_date-of-birth", 1, 1, 1899);
-    await form.clickContinue();
-    await form.expectError("Year must include 4 numbers");
-  });
+  // The year box has no maxLength, so all of these are typeable. #2221: a
+  // four-digit year is not an *incomplete* one — 1899/1800/0090 fail the
+  // plausibility bound, only a wrong number of digits gets the "4 numbers"
+  // message. Years are strings so the leading zeros survive.
+  const YEAR_CASES: [year: string, error: string][] = [
+    ["1899", "Year must be 1900 or later"],
+    ["1800", "Year must be 1900 or later"],
+    ["0090", "Year must be 1900 or later"],
+    ["90", "Year must include 4 numbers"],
+    ["12345", "Year must include 4 numbers"],
+  ];
+
+  for (const [year, error] of YEAR_CASES) {
+    test(`date: year "${year}" shows "${error}"`, async ({ page }) => {
+      const form = new FormPage(page);
+      const dob = "step-1-personal-details_date-of-birth";
+      await form.goto();
+      await form.fillText(`${dob}-day`, "1");
+      await form.fillText(`${dob}-month`, "1");
+      await form.fillText(`${dob}-year`, year);
+      await form.clickContinue();
+      await form.expectError(error);
+    });
+  }
 
   test("pattern: NINO format is enforced", async ({ page }) => {
     const form = new FormPage(page);

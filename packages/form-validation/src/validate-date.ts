@@ -151,8 +151,10 @@ const joinParts = (parts: readonly DatePart[]): string => parts.join(" and ");
  *
  * 1. Missing or incomplete information — "Enter [label]" when nothing is
  *    entered (required only), "[label] must include a [day/month/year]" when
- *    partially entered, "Year must include 4 numbers".
- * 2. Information that cannot be correct — "[label] must be a real date",
+ *    partially entered, "Year must include 4 numbers" when the year box does
+ *    not hold exactly four digits.
+ * 2. Information that cannot be correct — "Year must be 1900 or later" for a
+ *    four-digit but implausible year, otherwise "[label] must be a real date",
  *    highlighting the impossible part (or the whole input when more than one
  *    part is wrong).
  * 3. Information that fails validation for another reason — the configured
@@ -216,10 +218,10 @@ export function validateDateField(
     };
   }
 
-  // A sensible 4-digit year: 1900–9999. Anything below reads as a too-short or
-  // implausible year ("90", "925", "1899"); proper lower-bound messaging is
-  // what the configurable minYear rule is for.
-  if (year < 1900 || year > 9999) {
+  // The year box must hold exactly four digits. Tested on the raw part rather
+  // than the parsed number so "0090" counts as four numbers (it is implausible,
+  // not incomplete — the bound below catches it) and "12345" does not.
+  if (!/^\d{4}$/.test(String(value.year))) {
     return {
       message: "Year must include 4 numbers",
       parts: ["year"],
@@ -228,6 +230,18 @@ export function validateDateField(
   }
 
   // ── Priority 2: information that cannot be correct ─────────────────────
+  // A four-digit year can still be implausible ("0090", "1800"). This floor
+  // stays here rather than deferring to the configurable minYear rule: only one
+  // recipe sets minYear, so dropping it would let year 0005 through everywhere
+  // else. Wording matches minYearRunner's default (rules/date.ts).
+  if (year < 1900) {
+    return {
+      message: "Year must be 1900 or later",
+      parts: ["year"],
+      code: "invalid_date",
+    };
+  }
+
   const badParts: DatePart[] = [];
   if (!Number.isInteger(month) || month < 1 || month > 12) {
     badParts.push("month");
