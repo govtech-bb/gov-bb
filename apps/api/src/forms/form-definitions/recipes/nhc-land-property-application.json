@@ -427,7 +427,7 @@
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "co-applicantaddress-line-1",
+            "fieldId": "co-applicant-address-line-1",
             "label": "Address line 1"
           }
         },
@@ -1110,12 +1110,30 @@
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "lending-institution",
-            "label": "Lending institution and branch",
+            "label": "Lending institution",
+            "hint": "For example, Republic Bank",
             "validations": {
               "required": {
-                "error": "Enter the lending institution and branch",
+                "error": "Enter the lending institution",
                 "value": true
               }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "lending-institution-branch",
+            "label": "Branch",
+            "hint": "For example, Broad Street",
+            "validations": {
+              "required": {
+                "error": "Enter the branch",
+                "value": true
+              }
+            },
+            "ui": {
+              "width": "medium"
             }
           }
         },
@@ -1294,5 +1312,5 @@
     }
   ],
   "createdAt": "2026-06-17T13:00:42.221Z",
-  "updatedAt": "2026-08-24T17:50:23.026Z"
+  "updatedAt": "2026-09-15T13:24:57.100Z"
 }
