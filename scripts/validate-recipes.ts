@@ -15,6 +15,7 @@ import {
 } from "./recipe-ref-guards";
 import { checkWebhookRecipe } from "./webhook-recipe-guards";
 import { checkFileFieldsDeclareTypes } from "./file-field-guards";
+import { checkRequiredErrorsAreSpecific } from "./required-error-guards";
 
 // Recipes live colocated with the API's form-definitions module — the same
 // path the API file loader, the dump script, the Dockerfile, and the form
@@ -106,6 +107,9 @@ async function main(): Promise<void> {
 
     errors.push(...checkWebhookRecipe(recipe, relative));
     errors.push(...checkFileFieldsDeclareTypes(recipe, relative));
+    errors.push(
+      ...checkRequiredErrorsAreSpecific(recipe, relative, BUILTIN_REGISTRY),
+    );
     allRefs.push(...refsOf(recipe, file));
   }
 
