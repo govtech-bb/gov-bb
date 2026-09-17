@@ -436,7 +436,7 @@ Clean-slate building blocks with no purpose-specific validations baked in. Use a
             "label": "Display label",
             "hint": "Helper text",
             "validations": {
-              "required": {"value": true, "error": "Error message"}
+              "required": {"value": true, "error": "Display label is required"}
             },
             "ui": {"width": "short", "hideLabel": false}
           }
@@ -491,7 +491,7 @@ Block overrides are keyed by the element's fieldId within the block, so those ke
 ---
 
 ## Validation Types
-- required: {"value": true, "error": "..."}
+- required: {"value": true, "error": "..."} — the error MUST name the field, house pattern \`"{Label} is required"\` (e.g. \`"Date of endorsement is required"\`). It is also the error-summary link text, so NEVER "This field is required" or any message that names no field.
 - minLength: {"value": 2, "error": "..."}
 - maxLength: {"value": 100, "error": "..."}
 - email: {"value": true, "error": "..."}
@@ -628,11 +628,11 @@ Lets the applicant complete a step several times ("Add another?") — e.g. listi
 A repeatable step is almost always GATED by a yes/no question on an earlier step, paired via \`stepConditionalOn\`: a \`components/generic-radio\` "Do you have any endorsements?" (yes/no) on one step, then the repeatable details step shown only when the answer is "yes". Author the two together:
 \`\`\`json
 {"stepId": "endorsements", "title": "Tell us about any endorsements", "elements": [
-  {"ref": "components/generic-radio", "overrides": {"fieldId": "has-endorsements", "label": "Do you have any endorsements?", "options": [{"label": "Yes", "value": "yes"}, {"label": "No", "value": "no"}], "validations": {"required": {"value": true, "error": "Select an option"}}}}
+  {"ref": "components/generic-radio", "overrides": {"fieldId": "has-endorsements", "label": "Do you have any endorsements?", "options": [{"label": "Yes", "value": "yes"}, {"label": "No", "value": "no"}], "validations": {"required": {"value": true, "error": "Select whether you have any endorsements"}}}}
 ]}
 {"stepId": "endorsement-details", "title": "Your endorsements", "elements": [
-  {"ref": "components/generic-text", "overrides": {"fieldId": "licence-type", "label": "Type of licence"}},
-  {"ref": "components/generic-date", "overrides": {"fieldId": "endorsement-date", "label": "Date of endorsement"}}
+  {"ref": "components/generic-text", "overrides": {"fieldId": "licence-type", "label": "Type of licence", "validations": {"required": {"value": true, "error": "Type of licence is required"}}}},
+  {"ref": "components/generic-date", "overrides": {"fieldId": "endorsement-date", "label": "Date of endorsement", "validations": {"required": {"value": true, "error": "Date of endorsement is required"}}}}
 ], "behaviours": [
   {"type": "repeatable", "min": 1, "max": 5, "addAnotherLabel": "Do you need to add another endorsement?"},
   {"type": "stepConditionalOn", "targetStepId": "endorsements", "targetFieldId": "has-endorsements", "operator": "equal", "value": "yes"}

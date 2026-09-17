@@ -135,7 +135,7 @@ it("leaves an optional field unchecked and adds no override when untouched", asy
   expect(requiredCheckbox()).not.toBeChecked();
 });
 
-it("writes required:{value:true} when requiring an optional field", async () => {
+it("writes a required rule naming the field when requiring an optional field", async () => {
   const dispatch = vi.fn();
   const field = makeField("components/middle-name");
   render(
@@ -153,10 +153,16 @@ it("writes required:{value:true} when requiring an optional field", async () => 
   await userEvent.click(requiredCheckbox());
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
+  // The rule used to be a bare `{ value: true }`, which left the field falling
+  // through to the runtime's generic message (#2710).
   expect(dispatch).toHaveBeenCalledWith(
     expect.objectContaining({
       type: "UPDATE_FIELD_OVERRIDES",
-      overrides: { validations: { required: { value: true } } },
+      overrides: {
+        validations: {
+          required: { value: true, error: "Middle name is required" },
+        },
+      },
     }),
   );
 });
@@ -476,11 +482,14 @@ it("writes required:{ value: true, error } when a message is typed", async () =>
   const dispatch = renderPanel(makeField("components/middle-name"));
 
   await userEvent.click(requiredCheckbox()); // make it effectively required
-  await userEvent.type(requiredErrorInput()!, "Middle name is required");
+  // Ticking now seeds "Middle name is required" (#2710), so clear it first —
+  // this is the hand-typed path.
+  await userEvent.clear(requiredErrorInput()!);
+  await userEvent.type(requiredErrorInput()!, "Enter your middle name");
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
   expect(lastOverrides(dispatch).validations).toEqual({
-    required: { value: true, error: "Middle name is required" },
+    required: { value: true, error: "Enter your middle name" },
   });
 });
 
@@ -516,4 +525,106 @@ it("clears the override to restore inheritance when the message is emptied on a 
   // Base already requires the field, so dropping the override restores
   // inheritance rather than persisting a redundant `{ value: true }`.
   expect(lastOverrides(dispatch).validations).toBeUndefined();
+});
+
+// --- The required message names the field (#2710) -------------------------
+// Three surfaces produced the generic "This field is required": the checkbox
+// clobbered the base's message, the message box was blank behind a placeholder
+// that made the blank look filled, and nothing tied the message to the label.
+// The editor now carries the base message forward, and keeps an auto-derived
+// message naming the field as the label is edited.
+
+const labelInput = () => screen.getByLabelText(/^label$/i);
+const genericWarning = () => screen.queryByText(/doesn't name the field/i);
+
+it("inherits the base message when Required is re-ticked on a base-required field", async () => {
+  const dispatch = renderPanel(
+    makeFieldWith("components/last-name", {
+      validations: { required: { value: false } },
+    }),
+  );
+
+  await userEvent.click(requiredCheckbox());
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+  // Writing `{ value: true }` here used to replace the base's whole `required`
+  // object, destroying "Last name is required".
+  expect(lastOverrides(dispatch).validations).toBeUndefined();
+});
+
+it("writes a message that names the field when Required is ticked on a generic primitive", async () => {
+  const dispatch = renderPanel(
+    makeFieldWith("components/generic-text", {
+      label: "Employer name",
+      validations: { required: { value: false } },
+    }),
+  );
+
+  await userEvent.click(requiredCheckbox());
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+  // generic-text's base message is the sentinel, so carrying it forward would
+  // just relocate the defect.
+  expect(lastOverrides(dispatch).validations).toEqual({
+    required: { value: true, error: "Employer name is required" },
+  });
+});
+
+it("fills the message from the label as it is typed", async () => {
+  const dispatch = renderPanel(makeField("components/generic-text"));
+
+  await userEvent.type(labelInput(), "Employer name");
+
+  expect(requiredErrorInput()).toHaveValue("Employer name is required");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch).validations).toEqual({
+    required: { value: true, error: "Employer name is required" },
+  });
+});
+
+it("re-derives a message that still names the old label", async () => {
+  renderPanel(
+    makeFieldWith("components/generic-text", {
+      label: "Employer",
+      validations: { required: { value: true, error: "Employer is required" } },
+    }),
+  );
+
+  await userEvent.type(labelInput(), " name");
+
+  expect(requiredErrorInput()).toHaveValue("Employer name is required");
+});
+
+it("leaves a hand-written message alone when the label is renamed", async () => {
+  renderPanel(
+    makeFieldWith("components/generic-text", {
+      label: "Employer",
+      validations: {
+        required: { value: true, error: "Enter your employer's name" },
+      },
+    }),
+  );
+
+  await userEvent.type(labelInput(), " name");
+
+  expect(requiredErrorInput()).toHaveValue("Enter your employer's name");
+});
+
+it("adds no validations when the label is edited on an optional field", async () => {
+  const dispatch = renderPanel(makeField("components/middle-name"));
+
+  await userEvent.type(labelInput(), "Other name");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+  expect(lastOverrides(dispatch).validations).toBeUndefined();
+});
+
+it("flags a required field whose effective message is generic", async () => {
+  renderPanel(makeField("components/generic-text"));
+  expect(genericWarning()).toBeInTheDocument();
+});
+
+it("does not flag a required field that inherits a message naming it", async () => {
+  renderPanel(makeField("components/last-name"));
+  expect(genericWarning()).not.toBeInTheDocument();
 });

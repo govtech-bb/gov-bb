@@ -40,6 +40,8 @@ Invariants (enforced at API boot — a violation aborts deploys):
 
 Optional fields: set `"required": {"value": false}` explicitly. Omitting the rule does NOT make a field optional — generic primitives (and many named components, e.g. `components/address`) inherit `required: true` from the registry, so omission silently ships a mandatory field. The renderer derives a muted "(optional)" label suffix from `value: false`; never write "(optional)" into `label` or `hint` text — it would render doubled.
 
+Required fields: give every required field a `required.error` that names it — the house pattern is `"{Label} is required"`, e.g. `"required": {"value": true, "error": "Date of endorsement is required"}`. Every `components/generic-*` primitive except `generic-tel` ships the generic `"This field is required"` as its base message, so omitting `error` silently ships an error that names no field. That message is also the error-summary link text, so it must read correctly standing alone.
+
 ## Step 3 — Verify
 
 After writing or editing any recipe:
