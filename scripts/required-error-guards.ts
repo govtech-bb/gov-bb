@@ -28,7 +28,10 @@
  */
 import type { Block, FieldOverrides, Primitive } from "@govtech-bb/form-types";
 import { applyFieldOverrides } from "@govtech-bb/form-types";
-import { defaultValidationMessage } from "@govtech-bb/form-validation";
+import {
+  defaultValidationMessage,
+  requiredMessageDefect,
+} from "@govtech-bb/form-validation";
 
 interface Elementish {
   ref?: unknown;
@@ -39,24 +42,16 @@ function isBlock(entry: Primitive | Block): entry is Block {
   return "blockId" in entry;
 }
 
-/** Mirrors validateFieldEntries: `required` present and not explicitly false. */
-function isEffectivelyRequired(field: Primitive): boolean {
-  const required = field.validations?.required;
-  return required !== undefined && required.value !== false;
-}
-
 function checkField(field: Primitive, where: string): string | null {
-  if (field.htmlType === "date" || !isEffectivelyRequired(field)) return null;
+  // The rule lives in @govtech-bb/form-validation so the Form Builder's Deploy
+  // gate applies exactly the same one (#2714); only the wording is local.
+  const defect = requiredMessageDefect(field);
+  if (!defect) return null;
 
   const generic = defaultValidationMessage("required");
-  const error = field.validations?.required?.error;
-  if (error === undefined) {
-    return `${where} has no required.error and would show the generic "${generic}" — add an error naming what to enter`;
-  }
-  if (error === generic) {
-    return `${where} uses the generic "${generic}" as its required.error — replace it with an error naming what to enter`;
-  }
-  return null;
+  return defect === "missing"
+    ? `${where} has no required.error and would show the generic "${generic}" — add an error naming what to enter`
+    : `${where} uses the generic "${generic}" as its required.error — replace it with an error naming what to enter`;
 }
 
 export function checkRequiredErrorsAreSpecific(

@@ -5,6 +5,8 @@ import type {
   FieldOverrides,
 } from "@govtech-bb/form-types";
 import { applyFieldOverrides } from "@govtech-bb/form-types";
+import { requiredMessageDefect } from "@govtech-bb/form-validation";
+import type { RequiredMessageDefect } from "@govtech-bb/form-validation";
 import type { RegistryCatalog } from "./catalog";
 import type { ComponentDefinition, BlockDefinition } from "./definition-types";
 import { getRegistryItem } from "./catalog";
@@ -38,6 +40,73 @@ export function collectUnknownRefs(
 }
 
 /**
+ * The fields one recipe element resolves to: a component is itself, a block is
+ * each of its children, in both cases with the element's overrides applied.
+ */
+function resolveElementFields(
+  element: { ref: string; overrides?: unknown },
+  item: ComponentDefinition | BlockDefinition,
+): Primitive[] {
+  if (element.ref.startsWith("blocks/")) {
+    const childOverrides =
+      (element.overrides as Record<string, FieldOverrides> | undefined) ?? {};
+    return (item as BlockDefinition).block.elements.map((child) =>
+      applyFieldOverrides(child, childOverrides[child.fieldId] ?? {}),
+    );
+  }
+  return [
+    applyFieldOverrides(
+      (item as ComponentDefinition).primitive,
+      (element.overrides as FieldOverrides | undefined) ?? {},
+    ),
+  ];
+}
+
+export interface GenericRequiredMessage {
+  path: string;
+  fieldId: string;
+  defect: RequiredMessageDefect;
+}
+
+/**
+ * Collect every effectively-required field in `recipe` that would show the
+ * applicant a message naming no field, resolved against `catalog` the way the
+ * serving path does.
+ *
+ * The effective message can come from either side of the merge: the generic
+ * primitives ship the sentinel, so a recipe that overrides only `fieldId` and
+ * `label` inherits it; and because `validations` merge per rule key, an
+ * override that restates `required: { value: true }` over a component with a
+ * good message replaces the whole rule and drops it (#2710). Both resolve here.
+ *
+ * The rule itself is `requiredMessageDefect` in @govtech-bb/form-validation —
+ * shared with the `pnpm validate-recipes` guard so the trunk check and the
+ * Deploy gate cannot disagree (#2227, #2714). Unresolved refs are skipped;
+ * `collectUnknownRefs` owns those and runs first.
+ */
+export function collectGenericRequiredMessages(
+  recipe: ServiceContractRecipe,
+  catalog: RegistryCatalog,
+): GenericRequiredMessage[] {
+  const found: GenericRequiredMessage[] = [];
+
+  recipe.steps.forEach((recipeStep) => {
+    recipeStep.elements.forEach((element, index) => {
+      const item = getRegistryItem(element.ref, catalog);
+      if (!item) return;
+
+      const path = `steps[${recipeStep.stepId}].elements[${index}]`;
+      for (const field of resolveElementFields(element, item)) {
+        const defect = requiredMessageDefect(field);
+        if (defect) found.push({ path, fieldId: field.fieldId, defect });
+      }
+    });
+  });
+
+  return found;
+}
+
+/**
  * Resolve a ServiceContractRecipe into a full ServiceContract by expanding
  * component and block refs using the provided catalog.
  */
@@ -62,22 +131,11 @@ export function hydrateForm(
       // Guaranteed present: collectUnknownRefs above already rejected misses.
       const item = getRegistryItem(field.ref, catalog)!;
 
-      if (field.ref.startsWith("components/")) {
-        const componentDef = item as ComponentDefinition;
-        const overrides =
-          (field as { ref: string; overrides?: FieldOverrides }).overrides ??
-          {};
-        elements.push(applyFieldOverrides(componentDef.primitive, overrides));
-      } else if (field.ref.startsWith("blocks/")) {
-        const blockDef = item as BlockDefinition;
-        const childOverrides =
-          (field as { ref: string; overrides?: Record<string, FieldOverrides> })
-            .overrides ?? {};
-
-        for (const element of blockDef.block.elements) {
-          const childOverride = childOverrides[element.fieldId] ?? {};
-          elements.push(applyFieldOverrides(element, childOverride));
-        }
+      if (
+        field.ref.startsWith("components/") ||
+        field.ref.startsWith("blocks/")
+      ) {
+        elements.push(...resolveElementFields(field, item));
       }
     });
 

@@ -45,7 +45,12 @@ export {
 } from "./processor-config";
 
 // Core utilities
-export { hydrateForm, collectUnknownRefs } from "./resolution";
+export {
+  hydrateForm,
+  collectUnknownRefs,
+  collectGenericRequiredMessages,
+} from "./resolution";
+export type { GenericRequiredMessage } from "./resolution";
 export { UnknownRefError } from "./errors";
 export type { UnknownRef } from "./errors";
 export { serializeRecipeDraft, deserializeRecipe } from "./serialization";
