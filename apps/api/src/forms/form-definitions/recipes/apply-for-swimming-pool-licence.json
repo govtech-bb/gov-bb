@@ -74,6 +74,7 @@
             "label": "Is this a new application or a renewal?",
             "validations": {
               "required": {
+                "error": "Select whether this is a new application or a renewal",
                 "value": true
               }
             },
@@ -344,6 +345,7 @@
             "label": "Describe how is the pool mainly used",
             "validations": {
               "required": {
+                "error": "Enter how the pool is mainly used",
                 "value": true
               }
             },

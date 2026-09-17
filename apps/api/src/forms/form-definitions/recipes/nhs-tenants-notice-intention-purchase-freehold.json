@@ -63,12 +63,7 @@
           "ref": "components/email",
           "overrides": {
             "label": "Email address",
-            "fieldId": "email",
-            "validations": {
-              "required": {
-                "value": true
-              }
-            }
+            "fieldId": "email"
           }
         }
       ],

@@ -50,6 +50,12 @@
             "fieldId": "vehicle-licence",
             "label": "Vehicle registration number",
             "hint": "The registration number of the vehicle",
+            "validations": {
+              "required": {
+                "error": "Vehicle registration number is required",
+                "value": true
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -249,6 +255,7 @@
             "label": "Parish / City / Town",
             "validations": {
               "required": {
+                "error": "Parish / City / Town is required",
                 "value": true
               }
             },
@@ -308,12 +315,7 @@
         {
           "ref": "components/email",
           "overrides": {
-            "fieldId": "email",
-            "validations": {
-              "required": {
-                "value": true
-              }
-            }
+            "fieldId": "email"
           }
         },
         {
@@ -339,14 +341,26 @@
           "ref": "components/generic-number",
           "overrides": {
             "fieldId": "male-staff-count",
-            "label": "Number of male staff"
+            "label": "Number of male staff",
+            "validations": {
+              "required": {
+                "error": "Number of male staff is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-number",
           "overrides": {
             "fieldId": "female-staff-count",
-            "label": "Number of female staff"
+            "label": "Number of female staff",
+            "validations": {
+              "required": {
+                "error": "Number of female staff is required",
+                "value": true
+              }
+            }
           }
         },
         {

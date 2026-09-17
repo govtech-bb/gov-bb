@@ -132,21 +132,39 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Place of birth",
-            "fieldId": "place-of-birth"
+            "fieldId": "place-of-birth",
+            "validations": {
+              "required": {
+                "error": "Place of birth is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Religion",
-            "fieldId": "religion"
+            "fieldId": "religion",
+            "validations": {
+              "required": {
+                "error": "Religion is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Church or social group",
-            "fieldId": "church-social-group"
+            "fieldId": "church-social-group",
+            "validations": {
+              "required": {
+                "error": "Church or social group is required",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -186,7 +204,13 @@
           "overrides": {
             "hint": "For example, rural area, town centre, near landmarks",
             "label": "Location of house",
-            "fieldId": "location-of-house"
+            "fieldId": "location-of-house",
+            "validations": {
+              "required": {
+                "error": "Location of house is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -404,14 +428,26 @@
                 "label": "Other sources of income",
                 "value": "other-income"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select the types of income you receive",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Former or current occupation",
-            "fieldId": "former-occupation"
+            "fieldId": "former-occupation",
+            "validations": {
+              "required": {
+                "error": "Former or current occupation is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -419,7 +455,13 @@
           "overrides": {
             "hint": "For example, sports, hobbies, clubs, volunteer work",
             "label": "Social interests",
-            "fieldId": "social-interests"
+            "fieldId": "social-interests",
+            "validations": {
+              "required": {
+                "error": "Social interests are required",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -514,14 +556,26 @@
           "ref": "components/generic-number",
           "overrides": {
             "label": "Age",
-            "fieldId": "household-member-age"
+            "fieldId": "household-member-age",
+            "validations": {
+              "required": {
+                "error": "Age is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Sources of income",
-            "fieldId": "household-member-sources-of-income"
+            "fieldId": "household-member-sources-of-income",
+            "validations": {
+              "required": {
+                "error": "Sources of income are required",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -560,7 +614,13 @@
                 "label": "Uses spectacles",
                 "value": "uses-spectacles"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Sight is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -581,7 +641,13 @@
                 "operator": "in",
                 "targetFieldId": "sight"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter a brief description of the applicant's sight",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -606,7 +672,13 @@
                 "label": "Abnormal",
                 "value": "abnormal"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Hearing is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -628,7 +700,13 @@
                 "operator": "in",
                 "targetFieldId": "hearing"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter a brief description of the applicant's hearing",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -653,7 +731,13 @@
                 "label": "Abnormal",
                 "value": "abnormal"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Speech is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -675,7 +759,13 @@
                 "operator": "in",
                 "targetFieldId": "speech"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter a brief description of the applicant's speech",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -699,7 +789,13 @@
                 "label": "Abnormal",
                 "value": "abnormal"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Behaviour is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -717,7 +813,13 @@
                 "operator": "equal",
                 "targetFieldId": "behaviour"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter a brief description of the applicant's behaviour",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -734,7 +836,13 @@
                 "label": "Fair",
                 "value": "fair"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Memory is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -752,7 +860,13 @@
                 "operator": "equal",
                 "targetFieldId": "memory"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter a brief description of the applicant's memory",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -780,7 +894,13 @@
                 "label": "Tall",
                 "value": "tall"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Height is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -801,7 +921,13 @@
                 "label": "Obese",
                 "value": "obese"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Size or build is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -830,7 +956,13 @@
                 "label": "Other",
                 "value": "other"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Mobility is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -898,7 +1030,13 @@
                 "label": "Applicant is healthy",
                 "value": "healthy"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select which of the conditions listed affect the applicant",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -922,7 +1060,8 @@
             ],
             "validations": {
               "required": {
-                "value": true
+                "value": true,
+                "error": "Enter more details about your health"
               }
             }
           }
@@ -968,7 +1107,13 @@
                 "label": "Other",
                 "value": "other"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select the areas in which assistance is needed",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1008,7 +1153,13 @@
           "overrides": {
             "hint": "For example, a hospital, doctor, social worker, or friend",
             "label": "Who referred the applicant?",
-            "fieldId": "referred-by"
+            "fieldId": "referred-by",
+            "validations": {
+              "required": {
+                "error": "Enter who referred the applicant",
+                "value": true
+              }
+            }
           }
         },
         {

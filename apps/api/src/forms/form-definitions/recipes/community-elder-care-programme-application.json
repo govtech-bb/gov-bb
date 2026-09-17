@@ -53,21 +53,39 @@
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "place-of-birth",
-            "label": "Place of birth"
+            "label": "Place of birth",
+            "validations": {
+              "required": {
+                "error": "Place of birth is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "religion",
-            "label": "Religion"
+            "label": "Religion",
+            "validations": {
+              "required": {
+                "error": "Religion is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "church-social-group",
-            "label": "Church or social group"
+            "label": "Church or social group",
+            "validations": {
+              "required": {
+                "error": "Church or social group is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -116,12 +134,7 @@
           "ref": "components/address",
           "overrides": {
             "fieldId": "address-line-1",
-            "label": "Address line 1",
-            "validations": {
-              "required": {
-                "value": true
-              }
-            }
+            "label": "Address line 1"
           }
         },
         {
@@ -171,12 +184,7 @@
           "ref": "components/name",
           "overrides": {
             "fieldId": "emergency-contact-name",
-            "label": "Full name",
-            "validations": {
-              "required": {
-                "value": true
-              }
-            }
+            "label": "Full name"
           }
         },
         {
@@ -186,7 +194,8 @@
             "label": "Is this person's address the same as the applicant's?",
             "validations": {
               "required": {
-                "value": true
+                "value": true,
+                "error": "Select whether this person's address is the same as the applicant's"
               }
             },
             "options": [
@@ -270,12 +279,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "emergency-contact-telephone",
-            "validations": {
-              "required": {
-                "value": true
-              }
-            }
+            "fieldId": "emergency-contact-telephone"
           }
         },
         {
@@ -318,7 +322,13 @@
                 "label": "Overseas pension",
                 "value": "overseas-pension"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select at least one income source",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -328,7 +338,8 @@
             "label": "Former occupation",
             "validations": {
               "required": {
-                "value": true
+                "value": true,
+                "error": "Former occupation is required"
               }
             }
           }
@@ -337,7 +348,13 @@
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "referred-by",
-            "label": "Who referred you to the programme?"
+            "label": "Who referred you to the programme?",
+            "validations": {
+              "required": {
+                "error": "Enter who referred you to the programme",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -351,14 +368,26 @@
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "income-source-name",
-            "label": "Source name"
+            "label": "Source name",
+            "validations": {
+              "required": {
+                "error": "Source name is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-number",
           "overrides": {
             "fieldId": "income-source-amount",
-            "label": "Amount (in dollars)"
+            "label": "Amount (in dollars)",
+            "validations": {
+              "required": {
+                "error": "Amount (in dollars) is required",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -397,23 +426,13 @@
           "ref": "components/name",
           "overrides": {
             "fieldId": "household-member-name",
-            "label": "Full name",
-            "validations": {
-              "required": {
-                "value": true
-              }
-            }
+            "label": "Full name"
           }
         },
         {
           "ref": "components/relationship",
           "overrides": {
-            "fieldId": "household-member-relationship",
-            "validations": {
-              "required": {
-                "value": true
-              }
-            }
+            "fieldId": "household-member-relationship"
           }
         },
         {
@@ -440,7 +459,13 @@
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "household-member-income",
-            "label": "Source of income"
+            "label": "Source of income",
+            "validations": {
+              "required": {
+                "error": "Source of income is required",
+                "value": true
+              }
+            }
           }
         }
       ],

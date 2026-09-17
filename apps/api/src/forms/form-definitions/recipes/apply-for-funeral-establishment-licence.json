@@ -177,7 +177,13 @@
           "overrides": {
             "fieldId": "max-bodies",
             "label": "Maximum number of bodies",
-            "hint": "What's the maximum number of bodies that can be stored?"
+            "hint": "What's the maximum number of bodies that can be stored?",
+            "validations": {
+              "required": {
+                "error": "Maximum number of bodies is required",
+                "value": true
+              }
+            }
           }
         }
       ]
@@ -191,14 +197,26 @@
           "ref": "components/generic-number",
           "overrides": {
             "fieldId": "male-embalmers",
-            "label": "Number of male embalmers"
+            "label": "Number of male embalmers",
+            "validations": {
+              "required": {
+                "error": "Number of male embalmers is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-number",
           "overrides": {
             "fieldId": "female-embalmers",
-            "label": "Number of female embalmers"
+            "label": "Number of female embalmers",
+            "validations": {
+              "required": {
+                "error": "Number of female embalmers is required",
+                "value": true
+              }
+            }
           }
         },
         {

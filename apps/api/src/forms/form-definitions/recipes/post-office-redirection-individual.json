@@ -151,7 +151,8 @@
                 "value": 6
               },
               "required": {
-                "value": true
+                "value": true,
+                "error": "Passport Number is required"
               }
             },
             "behaviours": [
