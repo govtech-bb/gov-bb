@@ -124,7 +124,13 @@
                 "label": "No",
                 "value": "no"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select whether you have a disability",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -364,7 +370,8 @@
             ],
             "validations": {
               "required": {
-                "value": true
+                "value": true,
+                "error": "Enter your disability or long-term health condition"
               },
               "minLength": {
                 "value": 5
@@ -396,7 +403,8 @@
             },
             "validations": {
               "required": {
-                "value": true
+                "value": true,
+                "error": "Enter your disability or long-term health condition"
               }
             },
             "fieldId": "disability-additional-details"
@@ -630,7 +638,13 @@
                 "value": "other"
               }
             ],
-            "placeholder": "Select relationship"
+            "placeholder": "Select relationship",
+            "validations": {
+              "required": {
+                "error": "Relationship is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1052,7 +1066,13 @@
                 "operator": "equal",
                 "targetFieldId": "has-previous-paid-job"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter when you started this job",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1068,7 +1088,13 @@
                 "operator": "equal",
                 "targetFieldId": "has-previous-paid-job"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter when you ended this job",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1110,7 +1136,13 @@
                 "targetStepId": "previous-paid-job",
                 "targetFieldId": "has-previous-paid-job"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select whether you want to tell us about another paid job",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1157,7 +1189,13 @@
               "width": "medium"
             },
             "label": "Name of employer",
-            "fieldId": "previous-employer-name"
+            "fieldId": "previous-employer-name",
+            "validations": {
+              "required": {
+                "error": "Name of employer is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1167,7 +1205,13 @@
               "width": "medium"
             },
             "label": "Occupation",
-            "fieldId": "previous-occupation"
+            "fieldId": "previous-occupation",
+            "validations": {
+              "required": {
+                "error": "Occupation is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1177,7 +1221,13 @@
               "width": "medium"
             },
             "label": "When did you start this job?",
-            "fieldId": "previous-job-start"
+            "fieldId": "previous-job-start",
+            "validations": {
+              "required": {
+                "error": "Enter when you started this job",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1188,7 +1238,13 @@
             },
             "hint": "Provide the month and year (for example, December 2023)",
             "label": "When did you end this job?",
-            "fieldId": "previous-job-end"
+            "fieldId": "previous-job-end",
+            "validations": {
+              "required": {
+                "error": "Enter when you ended this job",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1210,7 +1266,13 @@
               "width": "medium"
             },
             "label": "Your main tasks",
-            "fieldId": "previous-main-tasks"
+            "fieldId": "previous-main-tasks",
+            "validations": {
+              "required": {
+                "error": "Your main tasks are required",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -1279,7 +1341,7 @@
             ],
             "validations": {
               "required": {
-                "error": "This field is required",
+                "error": "Select whether you are willing to work some night shifts",
                 "value": true
               }
             }

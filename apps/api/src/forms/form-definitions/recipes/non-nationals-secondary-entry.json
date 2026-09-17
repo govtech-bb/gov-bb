@@ -11,7 +11,13 @@
           "overrides": {
             "label": "First Name",
             "fieldId": "child-first-name",
-            "required": true
+            "required": true,
+            "validations": {
+              "required": {
+                "error": "First Name is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -19,7 +25,13 @@
           "overrides": {
             "label": "Surname",
             "fieldId": "child-surname",
-            "required": true
+            "required": true,
+            "validations": {
+              "required": {
+                "error": "Surname is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -27,7 +39,13 @@
           "overrides": {
             "label": "Other Name(s)",
             "fieldId": "child-other-names",
-            "required": false
+            "required": false,
+            "validations": {
+              "required": {
+                "error": "Other Name(s) are required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -35,7 +53,13 @@
           "overrides": {
             "label": "Country of Birth",
             "fieldId": "country-of-birth",
-            "required": true
+            "required": true,
+            "validations": {
+              "required": {
+                "error": "Country of Birth is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -43,7 +67,13 @@
           "overrides": {
             "label": "Name of Present School",
             "fieldId": "present-school",
-            "required": true
+            "required": true,
+            "validations": {
+              "required": {
+                "error": "Name of Present School is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -51,7 +81,13 @@
           "overrides": {
             "label": "Gender",
             "fieldId": "gender",
-            "required": true
+            "required": true,
+            "validations": {
+              "required": {
+                "error": "Gender is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -60,7 +96,13 @@
             "label": "Date of Birth of Child",
             "fieldId": "date-of-birth",
             "required": true,
-            "inputType": "date"
+            "inputType": "date",
+            "validations": {
+              "required": {
+                "error": "Date of Birth of Child is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -78,7 +120,13 @@
                 "value": "no"
               }
             ],
-            "required": true
+            "required": true,
+            "validations": {
+              "required": {
+                "error": "Select whether the child is a CARICOM national",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -93,7 +141,13 @@
           "overrides": {
             "label": "Title",
             "fieldId": "guardian-title",
-            "required": false
+            "required": false,
+            "validations": {
+              "required": {
+                "error": "Title is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -101,7 +155,13 @@
           "overrides": {
             "label": "First Name",
             "fieldId": "guardian-first-name",
-            "required": true
+            "required": true,
+            "validations": {
+              "required": {
+                "error": "First Name is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -109,7 +169,13 @@
           "overrides": {
             "label": "Last Name",
             "fieldId": "guardian-last-name",
-            "required": true
+            "required": true,
+            "validations": {
+              "required": {
+                "error": "Last Name is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -117,7 +183,13 @@
           "overrides": {
             "label": "Address",
             "fieldId": "guardian-address",
-            "required": true
+            "required": true,
+            "validations": {
+              "required": {
+                "error": "Address is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -132,7 +204,13 @@
           "overrides": {
             "label": "Country of Birth of Parent/Guardian",
             "fieldId": "guardian-country-of-birth",
-            "required": true
+            "required": true,
+            "validations": {
+              "required": {
+                "error": "Country of Birth of Parent/Guardian is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -140,7 +218,13 @@
           "overrides": {
             "label": "Status",
             "fieldId": "guardian-status",
-            "required": true
+            "required": true,
+            "validations": {
+              "required": {
+                "error": "Status is required",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -173,6 +257,10 @@
               "itemMaxSize": {
                 "value": 5242880,
                 "error": "Each file must be 5 MB or smaller"
+              },
+              "required": {
+                "error": "Birth Certificate is required",
+                "value": true
               }
             }
           }
@@ -192,6 +280,10 @@
               "itemMaxSize": {
                 "value": 5242880,
                 "error": "Each file must be 5 MB or smaller"
+              },
+              "required": {
+                "error": "Upload the immigration status document",
+                "value": true
               }
             }
           }
@@ -208,7 +300,13 @@
           "overrides": {
             "label": "Signature",
             "fieldId": "applicant-signature",
-            "required": true
+            "required": true,
+            "validations": {
+              "required": {
+                "error": "Signature is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -217,7 +315,13 @@
             "label": "Date",
             "fieldId": "applicant-date",
             "required": true,
-            "inputType": "date"
+            "inputType": "date",
+            "validations": {
+              "required": {
+                "error": "Date is required",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -235,7 +339,13 @@
             "fieldId": "official-certification",
             "disabled": true,
             "required": false,
-            "inputType": "textarea"
+            "inputType": "textarea",
+            "validations": {
+              "required": {
+                "error": "Certification is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -243,7 +353,13 @@
           "overrides": {
             "label": "Signature",
             "fieldId": "official-signature",
-            "required": false
+            "required": false,
+            "validations": {
+              "required": {
+                "error": "Signature is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -252,7 +368,13 @@
             "label": "Date",
             "fieldId": "official-date",
             "required": false,
-            "inputType": "date"
+            "inputType": "date",
+            "validations": {
+              "required": {
+                "error": "Date is required",
+                "value": true
+              }
+            }
           }
         }
       ],

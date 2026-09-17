@@ -280,7 +280,13 @@
                 "operator": "equal",
                 "value": "other"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter details of your employment status",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -326,7 +332,13 @@
                 "operator": "equal",
                 "value": "yes"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Organisation 1 is required",
+                "value": true
+              }
+            }
           }
         },
         {

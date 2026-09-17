@@ -393,6 +393,12 @@
             "fieldId": "licence-type",
             "ui": {
               "width": "medium"
+            },
+            "validations": {
+              "required": {
+                "error": "Type of licence is required",
+                "value": true
+              }
             }
           }
         },
@@ -414,6 +420,12 @@
             "fieldId": "endorsement-duration",
             "ui": {
               "width": "medium"
+            },
+            "validations": {
+              "required": {
+                "error": "Enter how long the endorsement appeared on your licence",
+                "value": true
+              }
             }
           }
         }
@@ -474,7 +486,13 @@
                 "operator": "equal",
                 "value": "yes"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Court name is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -489,7 +507,13 @@
                 "operator": "equal",
                 "value": "yes"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Court reason for disqualification is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -525,7 +549,13 @@
                 "operator": "equal",
                 "value": "yes"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Length of disqualification is required",
+                "value": true
+              }
+            }
           }
         }
       ],

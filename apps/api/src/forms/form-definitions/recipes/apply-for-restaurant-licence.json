@@ -86,11 +86,6 @@
           "ref": "components/parish",
           "overrides": {
             "fieldId": "parish",
-            "validations": {
-              "required": {
-                "value": true
-              }
-            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -487,7 +482,13 @@
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "other-establishment-name",
-            "label": "Establishment name"
+            "label": "Establishment name",
+            "validations": {
+              "required": {
+                "error": "Establishment name is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -660,6 +661,12 @@
             "fieldId": "tracking-number-instead",
             "label": "Planning and Development application number",
             "hint": "This is the application number you received when you submitted your building plans to the Planning and Development Department",
+            "validations": {
+              "required": {
+                "error": "Planning and Development application number is required",
+                "value": true
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",

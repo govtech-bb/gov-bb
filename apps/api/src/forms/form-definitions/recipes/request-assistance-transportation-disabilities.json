@@ -511,7 +511,8 @@
             "label": "Job interests and skills",
             "validations": {
               "required": {
-                "value": true
+                "value": true,
+                "error": "Job interests and skills are required"
               }
             },
             "ui": {

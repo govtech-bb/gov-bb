@@ -245,7 +245,13 @@
             "rows": 4,
             "label": "Comments",
             "fieldId": "comments",
-            "fullWidth": true
+            "fullWidth": true,
+            "validations": {
+              "required": {
+                "error": "Comments are required",
+                "value": true
+              }
+            }
           }
         }
       ],

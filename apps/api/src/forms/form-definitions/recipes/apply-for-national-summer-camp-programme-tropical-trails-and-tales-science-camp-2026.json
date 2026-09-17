@@ -293,7 +293,12 @@
                 "value": "other"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Enter your relationship to the camper",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -511,7 +516,12 @@
                 "targetFieldId": "health-condition-question"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Enter the health condition camp staff should know about",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -550,7 +560,12 @@
                 "targetFieldId": "allergies-question"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Enter what the camper is allergic to",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -589,7 +604,12 @@
                 "targetFieldId": "medicine-question"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Name of medicine is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -606,7 +626,12 @@
                 "targetFieldId": "medicine-question"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Enter how much medicine the camper takes and when",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -684,7 +709,12 @@
                 "value": "yes"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Enter what help the camper needs",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -776,7 +806,12 @@
                 ]
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Enter details of the food allergy",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -794,7 +829,12 @@
                 ]
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Enter details of the other food need",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -909,7 +949,12 @@
                 "targetFieldId": "emergency-is-mobile"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Select whether we can call this mobile number",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -975,7 +1020,12 @@
                 "targetFieldId": "doctor-question"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Name of doctor or polyclinic is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1041,7 +1091,12 @@
                 "targetFieldId": "emergency-medical-care-question"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Enter what camp staff should do in an emergency",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -1090,7 +1145,12 @@
                 "targetFieldId": "all-activities-question"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Enter which activities the camper should not take part in",
+                "value": true
+              }
+            }
           }
         }
       ],
