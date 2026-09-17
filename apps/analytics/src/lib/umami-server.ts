@@ -10,6 +10,7 @@ import {
   UmamiClient,
   aggregateFormEvents,
   buildSources,
+  eventName,
   startOfDayInTz,
   tallyFieldErrors,
   tzOffsetMs,
@@ -309,9 +310,9 @@ export function shapeSearch(
 
 export function buildFunnelSteps(formId: string): FunnelStepInput[] {
   return [
-    { type: 'event', value: `${formId}:form-start` },
-    { type: 'event', value: `${formId}:form-review` },
-    { type: 'event', value: `${formId}:form-submit` },
+    { type: 'event', value: eventName(formId, 'form-start') },
+    { type: 'event', value: eventName(formId, 'form-review') },
+    { type: 'event', value: eventName(formId, 'form-submit') },
   ]
 }
 
@@ -327,7 +328,7 @@ export function buildFunnelSteps(formId: string): FunnelStepInput[] {
 export function buildVisitFunnelSteps(formId: string): FunnelStepInput[] {
   return [
     { type: 'path', value: `/forms/${formId}*` },
-    { type: 'event', value: `${formId}:form-start` },
+    { type: 'event', value: eventName(formId, 'form-start') },
   ]
 }
 
@@ -1294,42 +1295,42 @@ export async function fetchFormDetailData(
       eventValues(
         client,
         cfg.formsWebsiteId,
-        `${formId}:form-step-view`,
+        eventName(formId, 'form-step-view'),
         'step',
         r,
       ),
       eventValues(
         client,
         cfg.formsWebsiteId,
-        `${formId}:form-submit`,
+        eventName(formId, 'form-submit'),
         'duration_seconds',
         r,
       ),
       eventValues(
         client,
         cfg.formsWebsiteId,
-        `${formId}:form-validation-error`,
+        eventName(formId, 'form-validation-error'),
         'errorCount',
         r,
       ),
       eventValues(
         client,
         cfg.formsWebsiteId,
-        `${formId}:form-validation-error`,
+        eventName(formId, 'form-validation-error'),
         'fieldErrors',
         r,
       ),
       eventValues(
         client,
         cfg.formsWebsiteId,
-        `${formId}:form-submit-error`,
+        eventName(formId, 'form-submit-error'),
         'errors',
         r,
       ),
       eventValues(
         client,
         cfg.formsWebsiteId,
-        `${formId}:payment-returned`,
+        eventName(formId, 'payment-returned'),
         'outcome',
         r,
       ),
