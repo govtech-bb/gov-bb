@@ -4,7 +4,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Select } from "../ui/select";
 import { Checkbox } from "../ui/checkbox";
-import { useState, useMemo, type ReactNode } from "react";
+import { useState, useMemo, useId, type ReactNode } from "react";
 import {
   getRegistryItem,
   fieldIdDuplicatesAnother,
@@ -33,6 +33,12 @@ import { ValidationRulesEditor } from "./validation-rules-editor";
 import { BehavioursEditor } from "./behaviours-editor";
 import { OptionsEditor } from "./options-editor";
 import { KEBAB_ID_PATTERN, kebabize } from "./id-validation";
+import {
+  GENERIC_REQUIRED_MSG,
+  effectiveRequiredMessage,
+  requiredRuleOnTick,
+  syncRequiredMessageToLabel,
+} from "./required-message";
 
 import { Dialog } from "../ui/dialog";
 
@@ -89,11 +95,8 @@ function isRequiredRule(rule: { value?: unknown } | undefined): boolean {
   return rule !== undefined && rule.value !== false;
 }
 
-// Mirrors `DEFAULT_MSG` in packages/form-validation/src/rules/required.ts —
-// the message the runtime falls back to when `required.error` is unset. Shown
-// as the Required error-message placeholder (the inherited hint) so an author
-// sees what they'd get if they leave it blank.
-const DEFAULT_REQUIRED_MSG = "This field is required";
+const GENERIC_REQUIRED_WARNING =
+  "This message doesn't name the field — every blank field on the page shows the same sentence. Write one that names it, e.g. “Employer name is required”.";
 
 // Per-key presentation metadata for the schema-driven `ui` editor. Keys absent
 // here fall back to a humanized key name; enum keys may declare the `default`
@@ -278,6 +281,9 @@ interface RequiredRuleEditorProps {
   // and whether unchecking must persist an explicit `value: false`).
   defaultRequired: boolean;
   baseValidations: ValidationRule | undefined;
+  // The applicant-visible label (override ?? base), which an auto-derived
+  // required message names (#2710).
+  label: string | undefined;
   onChange: (validations: FieldOverrides["validations"]) => void;
   fg: (isOverridden: boolean) => string;
 }
@@ -289,6 +295,7 @@ function RequiredRuleEditor({
   validations,
   defaultRequired,
   baseValidations,
+  label,
   onChange,
   fg,
 }: RequiredRuleEditorProps) {
@@ -296,6 +303,13 @@ function RequiredRuleEditor({
     validations?.required !== undefined
       ? isRequiredRule(validations.required)
       : defaultRequired;
+
+  const effectiveMessage = effectiveRequiredMessage(
+    validations,
+    baseValidations,
+  );
+  const isGeneric = effectiveMessage === GENERIC_REQUIRED_MSG;
+  const warningId = useId();
 
   return (
     <>
@@ -310,7 +324,17 @@ function RequiredRuleEditor({
           onCheckedChange={(nextChecked) => {
             const next = { ...(validations ?? {}) };
             if (nextChecked) {
-              next.required = { value: true };
+              // Never a bare `{ value: true }`: validations merge shallow at
+              // the rule level, so that would replace the base's whole
+              // `required` object and discard the message it ships (#2710).
+              const rule = requiredRuleOnTick({
+                validations,
+                baseValidations,
+                defaultRequired,
+                label,
+              });
+              if (rule) next.required = rule;
+              else delete next.required;
             } else if (defaultRequired) {
               // Base requires the field; write an explicit false to override it.
               next.required = { value: false };
@@ -328,9 +352,12 @@ function RequiredRuleEditor({
           <Input
             type="text"
             value={validations?.required?.error ?? ""}
-            placeholder={
-              baseValidations?.required?.error ?? DEFAULT_REQUIRED_MSG
-            }
+            // The message an empty box really falls back to. Once the field
+            // declares a `required` rule of its own the base's message is gone
+            // from the merge, so showing it here would claim an inheritance
+            // that no longer exists.
+            placeholder={effectiveMessage}
+            aria-describedby={isGeneric ? warningId : undefined}
             onChange={(e) => {
               const text = e.target.value;
               const next = { ...(validations ?? {}) };
@@ -352,6 +379,14 @@ function RequiredRuleEditor({
             label={"Required error message"}
             className="w-full min-w-0"
           />
+          {isGeneric && (
+            <span
+              id={warningId}
+              style={{ fontSize: "0.75rem", color: "var(--ui-warning-text)" }}
+            >
+              {GENERIC_REQUIRED_WARNING}
+            </span>
+          )}
         </div>
       )}
     </>
@@ -506,7 +541,25 @@ function OverrideForm({
     checkDuplicateFieldId?.(overrides.fieldId ?? "") ?? false;
 
   function patch(partial: Partial<FieldOverrides>) {
-    onChange({ ...overrides, ...partial });
+    const next = { ...overrides, ...partial };
+    // A renamed field keeps a required message that names it — the one place
+    // both this form and the block-child forms funnel a label edit through
+    // (#2710). Only an auto-derived message is rewritten; authored copy stays.
+    if ("label" in partial) {
+      const synced = syncRequiredMessageToLabel({
+        validations: next.validations,
+        baseValidations,
+        defaultRequired,
+        previousLabel: overrides.label ?? defaultLabel,
+        // Only an authored label: clearing the override falls back to the
+        // registry's label, which for the generic primitives is a developer
+        // placeholder ("Text"), and deriving from it would just restate the
+        // generic message.
+        nextLabel: next.label,
+      });
+      if (synced !== next.validations) next.validations = synced;
+    }
+    onChange(next);
   }
 
   function fg(_isOverridden: boolean) {
@@ -524,6 +577,7 @@ function OverrideForm({
         validations={overrides.validations}
         defaultRequired={defaultRequired}
         baseValidations={baseValidations}
+        label={overrides.label ?? defaultLabel}
         onChange={(validations) => patch({ validations })}
         fg={fg}
       />

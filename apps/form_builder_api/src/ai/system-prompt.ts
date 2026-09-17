@@ -177,7 +177,7 @@ To hide specific elements within a block, use field-keyed overrides:
 Every element's overrides may carry a \`ui\` object with two optional keys:
 
 \`\`\`json
-{"ref": "components/generic-text", "overrides": {"fieldId": "permit-number", "label": "Permit number", "ui": {"width": "short", "hideLabel": false}}}
+{"ref": "components/generic-text", "overrides": {"fieldId": "permit-number", "label": "Permit number", "validations": {"required": {"value": true, "error": "Permit number is required"}}, "ui": {"width": "short", "hideLabel": false}}}
 \`\`\`
 
 - \`"width"\` — \`"short"\`, \`"medium"\` or \`"long"\`. Controls the rendered input width on desktop (\`short\` ≈ 24 characters, \`medium\` ≈ 38 characters, \`long\`/unset = full width); on mobile every field is full width. Match the width to the expected answer length: \`short\` for codes, IDs, postcodes and other brief identifiers; \`medium\` for single words or short phrases (e.g. a town, a first name); \`long\` for sentences and textareas.
@@ -436,7 +436,7 @@ Clean-slate building blocks with no purpose-specific validations baked in. Use a
             "label": "Display label",
             "hint": "Helper text",
             "validations": {
-              "required": {"value": true, "error": "Error message"}
+              "required": {"value": true, "error": "Display label is required"}
             },
             "ui": {"width": "short", "hideLabel": false}
           }
@@ -491,7 +491,7 @@ Block overrides are keyed by the element's fieldId within the block, so those ke
 ---
 
 ## Validation Types
-- required: {"value": true, "error": "..."}
+- required: {"value": true, "error": "..."} — the error MUST name the field, house pattern \`"{Label} is required"\` (e.g. \`"Date of endorsement is required"\`). It is also the error-summary link text, so NEVER "This field is required" or any message that names no field.
 - minLength: {"value": 2, "error": "..."}
 - maxLength: {"value": 100, "error": "..."}
 - email: {"value": true, "error": "..."}
@@ -536,8 +536,8 @@ This is the canonical way to add a minimum-age requirement to \`components/date-
 For paired range fields ("start"/"end", "from"/"to"), put the reference validation on the END field. Example — an "End year" that must be the same as or after "Start year":
 
 \`\`\`json
-{"ref": "components/generic-text", "overrides": {"fieldId": "start-year", "label": "Start year", "validations": {"minYear": {"value": 1900, "error": "Enter a year of 1900 or later"}, "maxYear": {"currentYear": true, "error": "Year cannot be in the future"}}}}
-{"ref": "components/generic-text", "overrides": {"fieldId": "end-year", "label": "End year", "validations": {"min": {"referenceFieldId": "start-year", "error": "End year must be the same as or after the start year"}}}}
+{"ref": "components/generic-text", "overrides": {"fieldId": "start-year", "label": "Start year", "validations": {"required": {"value": true, "error": "Start year is required"}, "minYear": {"value": 1900, "error": "Enter a year of 1900 or later"}, "maxYear": {"currentYear": true, "error": "Year cannot be in the future"}}}}
+{"ref": "components/generic-text", "overrides": {"fieldId": "end-year", "label": "End year", "validations": {"required": {"value": true, "error": "End year is required"}, "min": {"referenceFieldId": "start-year", "error": "End year must be the same as or after the start year"}}}}
 \`\`\`
 
 ### Year Bounds (minYear / maxYear)
@@ -628,11 +628,11 @@ Lets the applicant complete a step several times ("Add another?") — e.g. listi
 A repeatable step is almost always GATED by a yes/no question on an earlier step, paired via \`stepConditionalOn\`: a \`components/generic-radio\` "Do you have any endorsements?" (yes/no) on one step, then the repeatable details step shown only when the answer is "yes". Author the two together:
 \`\`\`json
 {"stepId": "endorsements", "title": "Tell us about any endorsements", "elements": [
-  {"ref": "components/generic-radio", "overrides": {"fieldId": "has-endorsements", "label": "Do you have any endorsements?", "options": [{"label": "Yes", "value": "yes"}, {"label": "No", "value": "no"}], "validations": {"required": {"value": true, "error": "Select an option"}}}}
+  {"ref": "components/generic-radio", "overrides": {"fieldId": "has-endorsements", "label": "Do you have any endorsements?", "options": [{"label": "Yes", "value": "yes"}, {"label": "No", "value": "no"}], "validations": {"required": {"value": true, "error": "Select whether you have any endorsements"}}}}
 ]}
 {"stepId": "endorsement-details", "title": "Your endorsements", "elements": [
-  {"ref": "components/generic-text", "overrides": {"fieldId": "licence-type", "label": "Type of licence"}},
-  {"ref": "components/generic-date", "overrides": {"fieldId": "endorsement-date", "label": "Date of endorsement"}}
+  {"ref": "components/generic-text", "overrides": {"fieldId": "licence-type", "label": "Type of licence", "validations": {"required": {"value": true, "error": "Type of licence is required"}}}},
+  {"ref": "components/generic-date", "overrides": {"fieldId": "endorsement-date", "label": "Date of endorsement", "validations": {"required": {"value": true, "error": "Date of endorsement is required"}}}}
 ], "behaviours": [
   {"type": "repeatable", "min": 1, "max": 5, "addAnotherLabel": "Do you need to add another endorsement?"},
   {"type": "stepConditionalOn", "targetStepId": "endorsements", "targetFieldId": "has-endorsements", "operator": "equal", "value": "yes"}
@@ -648,7 +648,7 @@ When some fields on a repeatable step should be answered ONCE for all instances 
 ## Repeated Single Answers On One Field (fieldArray)
 Lets a SINGLE field be answered several times within its own step — e.g. listing several middle names, or several previous addresses given one at a time. It is FIELD-level: it lives in a \`behaviours\` array inside the element's \`overrides\`, alongside the field's other overrides:
 \`\`\`json
-{"ref": "components/generic-text", "overrides": {"fieldId": "middle-name", "label": "Middle name", "behaviours": [{"type": "fieldArray", "min": 1, "max": 3, "addAnotherLabel": "Do you have another middle name?"}]}}
+{"ref": "components/generic-text", "overrides": {"fieldId": "middle-name", "label": "Middle name", "validations": {"required": {"value": false}}, "behaviours": [{"type": "fieldArray", "min": 1, "max": 3, "addAnotherLabel": "Do you have another middle name?"}]}}
 \`\`\`
 - \`min\` is how many inputs render initially (min 1) — it is a render floor, NOT a validation rule; it does not make any instance required.
 - \`max\` caps how many answers the applicant can add.
