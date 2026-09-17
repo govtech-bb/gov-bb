@@ -628,3 +628,39 @@ it("does not flag a required field that inherits a message naming it", async () 
   renderPanel(makeField("components/last-name"));
   expect(genericWarning()).not.toBeInTheDocument();
 });
+
+it("flags a bare rule that has already discarded the base's message", async () => {
+  // The state the clobber left 9 live recipes in: the override's `required`
+  // object replaced the base's, so the applicant sees the sentinel even though
+  // components/last-name ships "Last name is required". The editor must not
+  // report that base message as if it were still in play.
+  renderPanel(
+    makeFieldWith("components/last-name", {
+      validations: { required: { value: true } },
+    }),
+  );
+
+  expect(genericWarning()).toBeInTheDocument();
+  expect(requiredErrorInput()).toHaveAttribute(
+    "placeholder",
+    "This field is required",
+  );
+});
+
+it("does not derive a message from the registry's placeholder label", async () => {
+  // Clearing the Label override falls back to the registry label, which for
+  // the generic primitives is a developer placeholder ("Text") — deriving
+  // "Text is required" from it would just be the generic message again.
+  renderPanel(
+    makeFieldWith("components/generic-text", {
+      label: "Employer name",
+      validations: {
+        required: { value: true, error: "Employer name is required" },
+      },
+    }),
+  );
+
+  await userEvent.clear(labelInput());
+
+  expect(requiredErrorInput()).not.toHaveValue("Text is required");
+});

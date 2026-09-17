@@ -286,6 +286,18 @@ describe("AI system prompt", () => {
     expect(prompt).toContain('NEVER "This field is required"');
   });
 
+  it("states the required rule on every generic-primitive element example", () => {
+    // The generic primitives are required-by-default, so an example that omits
+    // the rule silently emits a required field carrying the sentinel — which is
+    // invisible to the check above, since it inspects rules that are present.
+    // One element object per line is this prompt's house style.
+    const silent = prompt
+      .split("\n")
+      .filter((line) => /^\s*\{"ref": "components\/generic-/.test(line))
+      .filter((line) => !line.includes('"required"'));
+    expect(silent).toEqual([]);
+  });
+
   it("makes the repeatable-step example's detail fields explicitly required", () => {
     // This example is copied near-verbatim into real recipes, and
     // components/generic-* are required-by-default — omitting the rule ships

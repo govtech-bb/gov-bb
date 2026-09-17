@@ -11,6 +11,7 @@
 import {
   GENERIC_REQUIRED_MSG,
   deriveRequiredMessage,
+  effectiveRequiredMessage,
   requiredRuleOnTick,
   syncRequiredMessageToLabel,
 } from "./required-message";
@@ -25,6 +26,43 @@ describe("deriveRequiredMessage", () => {
   it("trims the label so a half-typed trailing space doesn't double up", () => {
     expect(deriveRequiredMessage("Employer name ")).toBe(
       "Employer name is required",
+    );
+  });
+});
+
+describe("effectiveRequiredMessage", () => {
+  it("is the base's message when the field declares no rule of its own", () => {
+    expect(
+      effectiveRequiredMessage(undefined, {
+        required: { value: true, error: "Email address is required" },
+      }),
+    ).toBe("Email address is required");
+  });
+
+  it("is the sentinel when the field's own rule carries no message", () => {
+    // The override's `required` object *replaces* the base's whole object in
+    // the merge, so the base's message is gone — it is not inherited key by
+    // key. This is the state 9 live recipes are in.
+    expect(
+      effectiveRequiredMessage(
+        { required: { value: true } },
+        { required: { value: true, error: "Email address is required" } },
+      ),
+    ).toBe(GENERIC_REQUIRED_MSG);
+  });
+
+  it("is the field's own message when it has one", () => {
+    expect(
+      effectiveRequiredMessage(
+        { required: { value: true, error: "Enter your employer's name" } },
+        { required: { value: true, error: "Email address is required" } },
+      ),
+    ).toBe("Enter your employer's name");
+  });
+
+  it("is the sentinel when neither declares a message", () => {
+    expect(effectiveRequiredMessage(undefined, undefined)).toBe(
+      GENERIC_REQUIRED_MSG,
     );
   });
 });
@@ -88,7 +126,9 @@ describe("requiredRuleOnTick", () => {
     ).toBeUndefined();
   });
 
-  it("keeps a message the author already typed", () => {
+  // Reachable from a hand-authored or AI-authored recipe, not from the
+  // checkbox: unticking drops the message along with the rule.
+  it("keeps a message the field already carries", () => {
     expect(
       requiredRuleOnTick({
         validations: {
@@ -168,6 +208,26 @@ describe("syncRequiredMessageToLabel", () => {
       }),
     ).toEqual({
       required: { value: true, error: "Work email address is required" },
+    });
+  });
+
+  it("re-derives when a bare rule has already discarded the base's message", () => {
+    // `required: { value: true }` over a base shipping "Address is required"
+    // resolves to the sentinel, so a rename must be free to fix it — reading
+    // the base's message here would leave the field stuck on the sentinel.
+    expect(
+      syncRequiredMessageToLabel({
+        ...args,
+        validations: { required: { value: true } },
+        baseValidations: {
+          required: { value: true, error: "Address is required" },
+        },
+        defaultRequired: true,
+        previousLabel: "Address line 1",
+        nextLabel: "Home address line 1",
+      }),
+    ).toEqual({
+      required: { value: true, error: "Home address line 1 is required" },
     });
   });
 

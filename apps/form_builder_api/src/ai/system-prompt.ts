@@ -177,7 +177,7 @@ To hide specific elements within a block, use field-keyed overrides:
 Every element's overrides may carry a \`ui\` object with two optional keys:
 
 \`\`\`json
-{"ref": "components/generic-text", "overrides": {"fieldId": "permit-number", "label": "Permit number", "ui": {"width": "short", "hideLabel": false}}}
+{"ref": "components/generic-text", "overrides": {"fieldId": "permit-number", "label": "Permit number", "validations": {"required": {"value": true, "error": "Permit number is required"}}, "ui": {"width": "short", "hideLabel": false}}}
 \`\`\`
 
 - \`"width"\` — \`"short"\`, \`"medium"\` or \`"long"\`. Controls the rendered input width on desktop (\`short\` ≈ 24 characters, \`medium\` ≈ 38 characters, \`long\`/unset = full width); on mobile every field is full width. Match the width to the expected answer length: \`short\` for codes, IDs, postcodes and other brief identifiers; \`medium\` for single words or short phrases (e.g. a town, a first name); \`long\` for sentences and textareas.
@@ -536,8 +536,8 @@ This is the canonical way to add a minimum-age requirement to \`components/date-
 For paired range fields ("start"/"end", "from"/"to"), put the reference validation on the END field. Example — an "End year" that must be the same as or after "Start year":
 
 \`\`\`json
-{"ref": "components/generic-text", "overrides": {"fieldId": "start-year", "label": "Start year", "validations": {"minYear": {"value": 1900, "error": "Enter a year of 1900 or later"}, "maxYear": {"currentYear": true, "error": "Year cannot be in the future"}}}}
-{"ref": "components/generic-text", "overrides": {"fieldId": "end-year", "label": "End year", "validations": {"min": {"referenceFieldId": "start-year", "error": "End year must be the same as or after the start year"}}}}
+{"ref": "components/generic-text", "overrides": {"fieldId": "start-year", "label": "Start year", "validations": {"required": {"value": true, "error": "Start year is required"}, "minYear": {"value": 1900, "error": "Enter a year of 1900 or later"}, "maxYear": {"currentYear": true, "error": "Year cannot be in the future"}}}}
+{"ref": "components/generic-text", "overrides": {"fieldId": "end-year", "label": "End year", "validations": {"required": {"value": true, "error": "End year is required"}, "min": {"referenceFieldId": "start-year", "error": "End year must be the same as or after the start year"}}}}
 \`\`\`
 
 ### Year Bounds (minYear / maxYear)
@@ -648,7 +648,7 @@ When some fields on a repeatable step should be answered ONCE for all instances 
 ## Repeated Single Answers On One Field (fieldArray)
 Lets a SINGLE field be answered several times within its own step — e.g. listing several middle names, or several previous addresses given one at a time. It is FIELD-level: it lives in a \`behaviours\` array inside the element's \`overrides\`, alongside the field's other overrides:
 \`\`\`json
-{"ref": "components/generic-text", "overrides": {"fieldId": "middle-name", "label": "Middle name", "behaviours": [{"type": "fieldArray", "min": 1, "max": 3, "addAnotherLabel": "Do you have another middle name?"}]}}
+{"ref": "components/generic-text", "overrides": {"fieldId": "middle-name", "label": "Middle name", "validations": {"required": {"value": false}}, "behaviours": [{"type": "fieldArray", "min": 1, "max": 3, "addAnotherLabel": "Do you have another middle name?"}]}}
 \`\`\`
 - \`min\` is how many inputs render initially (min 1) — it is a render floor, NOT a validation rule; it does not make any instance required.
 - \`max\` caps how many answers the applicant can add.

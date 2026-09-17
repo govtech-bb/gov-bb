@@ -1,7 +1,7 @@
 import type { ValidationConfig, ValidationRule } from "@govtech-bb/form-types";
 
 // The message the runtime falls back to when `required.error` is unset, and
-// the message all 11 `components/generic-*` primitives ship as their base
+// the message every `components/generic-*` primitive but `generic-tel` ships
 // (mirrors `defaultValidationMessage("required")` in
 // packages/form-validation/src/default-messages.ts). It names no field, and
 // the forms error summary uses the message verbatim as its link text — so a
@@ -15,11 +15,31 @@ export function deriveRequiredMessage(label: string): string {
   return `${label.trim()} is required`;
 }
 
+/**
+ * The message the applicant actually sees.
+ *
+ * Not a key-by-key fallback: `shallowMergeDefined` merges `validations` at the
+ * *rule* level, so once the field declares a `required` rule of its own the
+ * base's whole object — message included — is out of the picture. A bare
+ * `{ value: true }` over a base that ships "Email address is required"
+ * therefore resolves to the generic sentinel, not to the base's message.
+ */
+export function effectiveRequiredMessage(
+  validations: ValidationRule | undefined,
+  baseValidations: ValidationRule | undefined,
+): string {
+  const rule =
+    validations?.required !== undefined
+      ? validations.required
+      : baseValidations?.required;
+  return rule?.error ?? GENERIC_REQUIRED_MSG;
+}
+
 function isDerivedOrGeneric(
-  message: string | undefined,
+  message: string,
   label: string | undefined,
 ): boolean {
-  if (message === undefined || message === GENERIC_REQUIRED_MSG) return true;
+  if (message === GENERIC_REQUIRED_MSG) return true;
   return label !== undefined && message === deriveRequiredMessage(label);
 }
 
@@ -107,8 +127,7 @@ export function syncRequiredMessageToLabel({
   if (!isEffectivelyRequired(validations, defaultRequired)) return validations;
   if (!nextLabel?.trim()) return validations;
 
-  const current =
-    validations?.required?.error ?? baseValidations?.required?.error;
+  const current = effectiveRequiredMessage(validations, baseValidations);
   if (!isDerivedOrGeneric(current, previousLabel)) return validations;
 
   return {
