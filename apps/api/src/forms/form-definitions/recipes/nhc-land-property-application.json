@@ -103,7 +103,8 @@
             "hint": "Enter your valid National ID Number (for example, 450702-0130)",
             "validations": {
               "required": {
-                "value": true
+                "value": true,
+                "error": "National ID number is required"
               }
             }
           }
@@ -113,7 +114,8 @@
           "overrides": {
             "validations": {
               "required": {
-                "value": true
+                "value": true,
+                "error": "TAMIS number is required"
               }
             }
           }
@@ -170,21 +172,39 @@
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "employer",
-            "label": "Employer"
+            "label": "Employer",
+            "validations": {
+              "required": {
+                "error": "Employer is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "occupation",
-            "label": "Occupation"
+            "label": "Occupation",
+            "validations": {
+              "required": {
+                "error": "Occupation is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "period-of-employment",
-            "label": "Period of employment"
+            "label": "Period of employment",
+            "validations": {
+              "required": {
+                "error": "Period of employment is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -392,7 +412,8 @@
             "hint": "Enter your valid National ID Number (for example, 450702-0130)",
             "validations": {
               "required": {
-                "value": true
+                "value": true,
+                "error": "National Registration Number is required"
               }
             }
           }
@@ -404,7 +425,8 @@
             "label": "TAMIS number",
             "validations": {
               "required": {
-                "value": true
+                "value": true,
+                "error": "TAMIS number is required"
               }
             }
           }
@@ -499,21 +521,39 @@
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "co-applicant-employer",
-            "label": "Employer"
+            "label": "Employer",
+            "validations": {
+              "required": {
+                "error": "Employer is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "co-applicant-occupation",
-            "label": "Occupation"
+            "label": "Occupation",
+            "validations": {
+              "required": {
+                "error": "Occupation is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "co-applicant-period-of-employment",
-            "label": "Period of employment"
+            "label": "Period of employment",
+            "validations": {
+              "required": {
+                "error": "Period of employment is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1203,7 +1243,8 @@
             "label": "Bank statement",
             "validations": {
               "required": {
-                "value": true
+                "value": true,
+                "error": "Bank statement is required"
               },
               "fileTypes": {
                 "error": "Upload a PDF, JPG or PNG",
@@ -1236,7 +1277,8 @@
             "label": "Mortgage certificate",
             "validations": {
               "required": {
-                "value": true
+                "value": true,
+                "error": "Mortgage certificate is required"
               },
               "fileTypes": {
                 "error": "Upload a PDF, JPG or PNG",

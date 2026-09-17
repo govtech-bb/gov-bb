@@ -185,6 +185,12 @@
           "overrides": {
             "fieldId": "salon-name",
             "label": "What is the name of the salon?",
+            "validations": {
+              "required": {
+                "error": "Enter the name of the salon",
+                "value": true
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -258,6 +264,12 @@
           "overrides": {
             "fieldId": "somewhere-else",
             "label": "Where else do you plan to work?",
+            "validations": {
+              "required": {
+                "error": "Enter where else you plan to work",
+                "value": true
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",

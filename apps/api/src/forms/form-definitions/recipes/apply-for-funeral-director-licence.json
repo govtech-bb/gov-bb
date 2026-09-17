@@ -189,6 +189,12 @@
           "overrides": {
             "fieldId": "funeral-establishment-name",
             "label": "What is the name of the funeral establishment?",
+            "validations": {
+              "required": {
+                "error": "Enter the name of the funeral establishment",
+                "value": true
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -262,6 +268,12 @@
           "overrides": {
             "fieldId": "somewhere-else",
             "label": "Where else do you plan to work?",
+            "validations": {
+              "required": {
+                "error": "Enter where else you plan to work",
+                "value": true
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -289,6 +301,7 @@
             "hint": "This photograph should have been taken recently.",
             "validations": {
               "required": {
+                "error": "Upload your passport-size photograph",
                 "value": true
               },
               "fileTypes": {

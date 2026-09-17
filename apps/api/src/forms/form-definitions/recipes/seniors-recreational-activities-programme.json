@@ -129,12 +129,7 @@
           "ref": "components/address",
           "overrides": {
             "label": "Address line 1",
-            "fieldId": "address-line-1",
-            "validations": {
-              "required": {
-                "value": true
-              }
-            }
+            "fieldId": "address-line-1"
           }
         },
         {
@@ -220,7 +215,8 @@
             ],
             "validations": {
               "required": {
-                "value": true
+                "value": true,
+                "error": "Select your current health status"
               }
             }
           }
@@ -246,7 +242,8 @@
             ],
             "validations": {
               "required": {
-                "value": true
+                "value": true,
+                "error": "Enter a description of the health condition or disability"
               }
             }
           }

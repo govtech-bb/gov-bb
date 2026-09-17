@@ -212,7 +212,13 @@
                 "label": "Male",
                 "value": "male"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Sex is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -362,7 +368,13 @@
                 "operator": "equal",
                 "targetFieldId": "give-back-volunteer"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Institution is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -377,7 +389,13 @@
                 "operator": "equal",
                 "targetFieldId": "give-back-volunteer"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Area of study is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1128,7 +1146,13 @@
                 "operator": "equal",
                 "targetFieldId": "still-in-role"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Reason for leaving is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1316,7 +1340,13 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Address",
-            "fieldId": "organisation-address"
+            "fieldId": "organisation-address",
+            "validations": {
+              "required": {
+                "error": "Address is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1784,7 +1814,13 @@
                 "operator": "equal",
                 "targetFieldId": "concerns-about-responsibility"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter details of your concerns",
+                "value": true
+              }
+            }
           }
         }
       ],

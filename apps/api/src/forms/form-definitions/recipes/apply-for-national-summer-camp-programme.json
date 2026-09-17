@@ -290,6 +290,10 @@
               "pattern": {
                 "error": "",
                 "value": "^$"
+              },
+              "required": {
+                "error": "First choice location is required",
+                "value": true
               }
             }
           }
@@ -598,6 +602,10 @@
               "pattern": {
                 "error": "",
                 "value": "^$"
+              },
+              "required": {
+                "error": "Second choice location is required",
+                "value": true
               }
             }
           }
@@ -914,6 +922,10 @@
               "pattern": {
                 "error": "",
                 "value": "^$"
+              },
+              "required": {
+                "error": "Third choice location is required",
+                "value": true
               }
             }
           }
@@ -1960,7 +1972,12 @@
             "label": "Camp rules",
             "fieldId": "camp-rules",
             "isHidden": true,
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Camp rules are required",
+                "value": true
+              }
+            }
           }
         },
         {

@@ -180,6 +180,12 @@
           "overrides": {
             "fieldId": "funeral-establishment-name",
             "label": "What is the name of the funeral establishment?",
+            "validations": {
+              "required": {
+                "error": "Enter the name of the funeral establishment",
+                "value": true
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",

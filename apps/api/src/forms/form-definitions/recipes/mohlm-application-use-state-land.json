@@ -39,7 +39,8 @@
             "label": "National Identification (ID) Number",
             "validations": {
               "required": {
-                "value": true
+                "value": true,
+                "error": "National Identification (ID) Number is required"
               }
             }
           }
@@ -139,7 +140,13 @@
                 "operator": "equal",
                 "targetFieldId": "applying-as"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Business name is required",
+                "value": true
+              }
+            }
           }
         },
         {
