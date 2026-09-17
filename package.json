@@ -43,6 +43,7 @@
     "@eslint/json": "^1.2.0",
     "@govtech-bb/content": "workspace:*",
     "@govtech-bb/form-types": "workspace:*",
+    "@govtech-bb/form-validation": "workspace:*",
     "@govtech-bb/registry": "workspace:*",
     "@nx/eslint": "^22.7.7",
     "@nx/js": "^22.7.7",
