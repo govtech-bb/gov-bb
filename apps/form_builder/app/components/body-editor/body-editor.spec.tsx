@@ -40,6 +40,25 @@ describe("BodyEditor", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it("renders list markers and underlined links in Visual mode", async () => {
+    render(
+      <BodyEditor
+        id="body"
+        ariaLabel="Page body"
+        value={"- Passport\n\n1. Apply\n\n[Guidance](https://gov.bb/guidance)"}
+        onChange={vi.fn()}
+        profile={{ kind: "landing-page", startLinkType: "none" }}
+      />,
+    );
+
+    await act(async () => undefined);
+    expect(document.querySelector("ul")).toHaveClass("list-disc");
+    expect(document.querySelector("ol")).toHaveClass("list-decimal");
+    expect(screen.getByRole("link", { name: "Guidance" })).toHaveClass(
+      "underline",
+    );
+  });
+
   it("keeps unsupported specialist content safely in Markdown mode", () => {
     render(
       <BodyEditor
