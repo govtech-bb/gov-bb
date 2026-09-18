@@ -128,15 +128,12 @@ export function hydrateForm(
     const elements: Primitive[] = [];
 
     recipeStep.elements.forEach((field) => {
-      // Guaranteed present: collectUnknownRefs above already rejected misses.
+      // Guaranteed present: collectUnknownRefs above already rejected misses,
+      // and getRegistryItem returns undefined for any other ref prefix — so a
+      // prefix check here would always pass. collectGenericRequiredMessages
+      // resolves the same way.
       const item = getRegistryItem(field.ref, catalog)!;
-
-      if (
-        field.ref.startsWith("components/") ||
-        field.ref.startsWith("blocks/")
-      ) {
-        elements.push(...resolveElementFields(field, item));
-      }
+      elements.push(...resolveElementFields(field, item));
     });
 
     return {

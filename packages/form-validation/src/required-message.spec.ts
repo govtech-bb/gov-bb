@@ -24,14 +24,42 @@ it("flags a required field with no message", () => {
   ).toBe("missing");
 });
 
-it("flags a required field whose message is blank", () => {
+it("flags a required field whose message is blank, distinctly from missing", () => {
   // `config.error ?? default` treats "" as authored, so the applicant gets an
   // empty error rather than the fallback — worse than generic, not better.
+  // The gates say so in their own words, hence a defect of its own.
   expect(
     requiredMessageDefect(
       field({ validations: { required: { value: true, error: "  " } } }),
     ),
-  ).toBe("missing");
+  ).toBe("blank");
+});
+
+it("flags a required field whose rule omits `value`", () => {
+  // The runtime counts `required` present-and-not-false as required
+  // (validate-field.ts), so an omitted `value` is still required.
+  expect(
+    requiredMessageDefect(
+      field({ validations: { required: { error: "This field is required" } } }),
+    ),
+  ).toBe("generic");
+});
+
+it("flags generic wording that differs only in punctuation or case", () => {
+  // Trimming, casing and a trailing period change nothing for the applicant,
+  // so they must not buy a way past the gate.
+  for (const error of [
+    "This field is required.",
+    "this field is required",
+    "  This field is required  ",
+    "THIS FIELD IS REQUIRED!",
+  ]) {
+    expect(
+      requiredMessageDefect(
+        field({ validations: { required: { value: true, error } } }),
+      ),
+    ).toBe("generic");
+  }
 });
 
 it("flags a required field carrying the generic default verbatim", () => {

@@ -4,11 +4,27 @@ import { defaultValidationMessage } from "./default-messages";
 /**
  * Why a resolved field's required-error message is unusable:
  *
- *  - `missing` — no `error` (or a blank one), so the applicant gets the
- *    runtime's generic fallback, or literally nothing.
- *  - `generic` — the message is the fallback, authored verbatim.
+ *  - `missing` — no `error` at all, so `requiredRunner` falls back and the
+ *    applicant reads the generic default, which names no field.
+ *  - `blank` — an `error` of only whitespace. `requiredRunner` reads
+ *    `config.error ?? defaultValidationMessage("required")`, and `??` treats
+ *    `""` as authored, so no fallback happens: the submission is still
+ *    blocked, but the applicant is shown an error with no text at all.
+ *  - `generic` — the default's wording, authored verbatim.
  */
-export type RequiredMessageDefect = "missing" | "generic";
+export type RequiredMessageDefect = "missing" | "blank" | "generic";
+
+/**
+ * Compare on wording alone. Casing, surrounding space and a trailing period
+ * change nothing for the applicant — the sentence still names no field — so
+ * they must not buy a way past the gate.
+ */
+function wording(message: string): string {
+  return message
+    .trim()
+    .toLowerCase()
+    .replace(/[.!]+$/, "");
+}
 
 /**
  * Whether a **resolved** field (registry base merged with its recipe
@@ -33,6 +49,9 @@ export function requiredMessageDefect(
   if (required === undefined || required.value === false) return null;
 
   const error = required.error;
-  if (error === undefined || error.trim() === "") return "missing";
-  return error === defaultValidationMessage("required") ? "generic" : null;
+  if (error === undefined) return "missing";
+  if (error.trim() === "") return "blank";
+  return wording(error) === wording(defaultValidationMessage("required"))
+    ? "generic"
+    : null;
 }

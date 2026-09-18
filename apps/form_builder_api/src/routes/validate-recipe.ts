@@ -5,6 +5,7 @@ import {
   collectUnknownRefs,
   collectGenericRequiredMessages,
 } from "@govtech-bb/form-builder";
+import type { RequiredMessageDefect } from "@govtech-bb/form-builder";
 import type { ValidationResult, ValidationIssue } from "@govtech-bb/form-types";
 import { getFullCatalog } from "../catalog.js";
 
@@ -35,6 +36,25 @@ import { getFullCatalog } from "../catalog.js";
  * from the client one. Returns the same
  * `{ ok: true, data } | { ok: false, issues }` shape /validate emits.
  */
+/**
+ * What each defect actually does to the applicant, said accurately — the three
+ * are not interchangeable. An absent message falls back to the generic default;
+ * a blank one does not fall back at all, because `requiredRunner` reads
+ * `config.error ?? default` and `??` takes `""` as authored, so the applicant
+ * is shown an error with no text.
+ *
+ * The sentinel itself is never quoted here — @govtech-bb/form-validation owns
+ * that string, and a copy would drift the day it changes.
+ */
+const REQUIRED_DEFECT_CAUSE: Record<RequiredMessageDefect, string> = {
+  generic:
+    "is required, but its error message is the generic default and names no field.",
+  missing:
+    "is required but has no error message, so it falls back to a generic default that names no field.",
+  blank:
+    "is required but its error message is blank, so the applicant sees an error with no text at all.",
+};
+
 export async function validateRecipeFully(
   recipe: unknown,
 ): Promise<ValidationResult> {
@@ -66,12 +86,7 @@ export async function validateRecipeFully(
     collectGenericRequiredMessages(result.data, catalog).map(
       ({ path, fieldId, defect }) => ({
         path,
-        // The sentinel itself is never quoted here — @govtech-bb/form-validation
-        // owns that string, and a copy would drift the day it changes.
-        message:
-          defect === "generic"
-            ? `"${fieldId}" is required, but its error message is the generic default and names no field. Write one that names it, e.g. "Employer name is required".`
-            : `"${fieldId}" is required but has no error message, so it falls back to a generic default that names no field. Write one that names it, e.g. "Employer name is required".`,
+        message: `"${fieldId}" ${REQUIRED_DEFECT_CAUSE[defect]} Write one that names it, e.g. "Employer name is required".`,
       }),
     );
   if (genericRequiredIssues.length > 0) {

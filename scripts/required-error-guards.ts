@@ -49,9 +49,16 @@ function checkField(field: Primitive, where: string): string | null {
   if (!defect) return null;
 
   const generic = defaultValidationMessage("required");
-  return defect === "missing"
-    ? `${where} has no required.error and would show the generic "${generic}" — add an error naming what to enter`
-    : `${where} uses the generic "${generic}" as its required.error — replace it with an error naming what to enter`;
+  switch (defect) {
+    case "missing":
+      return `${where} has no required.error and would show the generic "${generic}" — add an error naming what to enter`;
+    // Not a fallback: `config.error ?? default` takes "" as authored, so the
+    // applicant is shown an error with no text rather than the generic one.
+    case "blank":
+      return `${where} has a blank required.error, so the applicant sees an error with no text — add an error naming what to enter`;
+    case "generic":
+      return `${where} uses the generic "${generic}" as its required.error — replace it with an error naming what to enter`;
+  }
 }
 
 export function checkRequiredErrorsAreSpecific(
