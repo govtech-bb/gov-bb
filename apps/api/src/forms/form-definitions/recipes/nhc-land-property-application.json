@@ -100,7 +100,7 @@
         {
           "ref": "components/national-id-number",
           "overrides": {
-            "hint": "Enter your valid National ID Number (for example, 450702-0130)",
+            "hint": "Enter your valid National ID number (for example, 450702-0130)",
             "validations": {
               "required": {
                 "value": true,
@@ -408,12 +408,11 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "co-applicant-national-id-number",
-            "label": "National Registration Number",
-            "hint": "Enter your valid National ID Number (for example, 450702-0130)",
+            "hint": "Enter your valid National ID number (for example, 450702-0130)",
             "validations": {
               "required": {
                 "value": true,
-                "error": "National Registration Number is required"
+                "error": "National ID number is required"
               }
             }
           }

@@ -37,7 +37,7 @@ NHC may offer you a property in a different parish from the one you ask for, dep
 
 You will need:
 
--   your National Registration Number (NRN)
+-   your National ID number
 -   your TAMIS number
 -   contact details we can reach you on
 -   details of your employer, salary, and pay period
