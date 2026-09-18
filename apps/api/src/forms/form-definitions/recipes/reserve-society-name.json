@@ -25,7 +25,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select what you want to do",
                 "value": true
               }
             }

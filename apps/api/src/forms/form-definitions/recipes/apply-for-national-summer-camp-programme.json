@@ -315,7 +315,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether you want to add a second choice",
                 "value": true
               }
             }
@@ -635,7 +635,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether you want to add a third choice",
                 "value": true
               }
             }
@@ -1022,7 +1022,7 @@
             "fieldId": "child-sex",
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select the child's sex",
                 "value": true
               }
             }
@@ -1142,7 +1142,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select your relationship to the child",
                 "value": true
               }
             }
@@ -1249,7 +1249,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether your address is the same as the child's address",
                 "value": true
               }
             }
@@ -1347,7 +1347,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the child has a health condition camp staff should know about",
                 "value": true
               }
             }
@@ -1391,7 +1391,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the child has any allergies",
                 "value": true
               }
             }
@@ -1435,7 +1435,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the child takes any medicine",
                 "value": true
               }
             }
@@ -1509,7 +1509,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the child will need to take medicine during camp",
                 "value": true
               }
             }
@@ -1540,7 +1540,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the child needs help to take part in camp",
                 "value": true
               }
             }
@@ -1591,7 +1591,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether there is any food the child cannot eat",
                 "value": true
               }
             }
@@ -1634,7 +1634,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select at least one option",
+                "error": "Select at least one food need",
                 "value": true
               }
             }
@@ -1757,7 +1757,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the child has a doctor or polyclinic they usually attend",
                 "value": true
               }
             }
@@ -1833,7 +1833,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether camp staff can get medical help for the child in an emergency",
                 "value": true
               }
             }
@@ -1887,7 +1887,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the child can take part in all camp activities",
                 "value": true
               }
             }
@@ -1942,7 +1942,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether you give permission for photos and videos",
                 "value": true
               }
             }

@@ -36,7 +36,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are registering for yourself or for someone else",
                 "value": true
               }
             }
@@ -68,7 +68,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are also the emergency contact person",
                 "value": true
               }
             }

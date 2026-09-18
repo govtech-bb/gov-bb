@@ -132,7 +132,7 @@
             "label": "What is your relationship to the restaurant?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select your relationship to the restaurant",
                 "value": true
               }
             },
@@ -192,7 +192,7 @@
             "label": "What are you applying to do?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select what you are applying to do",
                 "value": true
               }
             },
@@ -260,7 +260,7 @@
             "label": "Is the restaurant already open for business?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether the restaurant is already open for business",
                 "value": true
               }
             },
@@ -288,7 +288,13 @@
                 "operator": "equal",
                 "value": "no"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the date you expect the restaurant to start operations"
+              }
+            }
           }
         },
         {
@@ -355,7 +361,7 @@
             "label": "Is the property owned, rented, or something else?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether the property is owned, rented, or something else",
                 "value": true
               }
             },
@@ -429,7 +435,7 @@
             "label": "Where will the food or drink be prepared?",
             "validations": {
               "required": {
-                "error": "Select at least one option",
+                "error": "Select where the food or drink will be prepared",
                 "value": true
               }
             },

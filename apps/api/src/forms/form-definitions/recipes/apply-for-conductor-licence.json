@@ -286,7 +286,7 @@
             "label": "Have you had a conductor or driving licence before?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have had a conductor or driving licence before",
                 "value": true
               }
             },
@@ -363,7 +363,7 @@
             "label": "Do you have any endorsements?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have any endorsements",
                 "value": true
               }
             },
@@ -410,6 +410,11 @@
             "hint": "For example, 15 12 2025",
             "ui": {
               "width": "medium"
+            },
+            "validations": {
+              "required": {
+                "value": true
+              }
             }
           }
         },
@@ -458,7 +463,7 @@
             "label": "Have you ever been disqualified?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have ever been disqualified",
                 "value": true
               }
             },
@@ -573,7 +578,7 @@
             "label": "Have you ever had any criminal convictions?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have ever had any criminal convictions",
                 "value": true
               }
             },

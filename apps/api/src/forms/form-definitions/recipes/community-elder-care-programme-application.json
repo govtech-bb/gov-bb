@@ -489,7 +489,7 @@
             "label": "Sight",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select your sight",
                 "value": true
               }
             },
@@ -541,7 +541,7 @@
             "label": "Hearing",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select your hearing",
                 "value": true
               }
             },
@@ -589,7 +589,7 @@
             "label": "Speech",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select your speech",
                 "value": true
               }
             },
@@ -644,7 +644,7 @@
             "label": "Behaviour",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select your behaviour",
                 "value": true
               }
             },
@@ -685,7 +685,7 @@
             "label": "Memory",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select your memory",
                 "value": true
               }
             },
@@ -733,7 +733,7 @@
             "label": "Height",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select your height",
                 "value": true
               }
             },
@@ -760,7 +760,7 @@
             "label": "Size and build",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select your size and build",
                 "value": true
               }
             },
@@ -787,7 +787,7 @@
             "label": "Mobility",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select your mobility",
                 "value": true
               }
             },

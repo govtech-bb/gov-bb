@@ -185,7 +185,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select yes or no",
+                "error": "Select whether you have previously been granted term's leave",
                 "value": true
               }
             }

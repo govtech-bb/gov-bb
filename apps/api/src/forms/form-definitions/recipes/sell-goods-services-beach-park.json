@@ -354,7 +354,7 @@
             "label": "Selling goods or services",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are selling goods or services",
                 "value": true
               }
             },
@@ -384,7 +384,7 @@
             "label": "Where are the goods from?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select where the goods are from",
                 "value": true
               }
             },
