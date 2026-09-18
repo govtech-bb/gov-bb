@@ -6,5 +6,8 @@
   "types": "./src/index.d.ts",
   "scripts": {
     "test": "vitest run"
+  },
+  "dependencies": {
+    "@govtech-bb/analytics": "workspace:*"
   }
 }
