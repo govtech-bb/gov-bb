@@ -53,7 +53,7 @@ There is no application fee. If you are organising the event and it falls outsid
 -   The overtime fees are **payable in advance**, to the Accountant General or the Permanent Secretary of the Ministry of Health and Wellness— do not make cheques payable to the polyclinic. This is set by regulation 7(2) of the Health Services (Assignment of Public Health Inspectors to Private Businesses) Regulations, 1986.
 -   Pay at least 2 days before the event.
 -   Pay by cash or cheque only. Make cheques payable to the Accountant General.
--   Take your payment with a copy of the invoice to the polyclinic or to the Environmental Health Department, Ministry of Health and Wellness, Frank Walcott Building, Culloden Road, St Michael.
+-   Take your payment with a copy of the invoice to the polyclinic or to the Environmental Health Department, Ministry of Health and Wellness, Frank Walcott Building, Culloden Road, St. Michael.
 -   You will get a receipt.
 
 [Request an environmental health officer](/business-trade/request-an-environmental-health-officer)
@@ -128,4 +128,4 @@ You do not need to choose a polyclinic. When you apply, your application will be
 
 -   Telephone: [1 (246) 536-3800](tel:+12465363800)
 -   Email: [info@health.gov.bb](mailto:info@health.gov.bb)
--   Frank Walcott Building, Culloden Road, St Michael
+-   Frank Walcott Building, Culloden Road, St. Michael
