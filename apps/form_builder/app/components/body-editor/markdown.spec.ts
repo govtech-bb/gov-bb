@@ -73,6 +73,34 @@ describe("body editor Markdown conversion", () => {
     expect(roundTrip(markdown)).toBe(markdown);
   });
 
+  it("round-trips lists and re-nests 2-space sub-items on Lexical's 4-space grid", () => {
+    const flat = [
+      "- Passport",
+      "- Proof of address",
+      "",
+      "1. Apply",
+      "2. Pay",
+    ].join("\n");
+    expect(roundTrip(flat)).toBe(flat);
+    expect(
+      roundTrip("- Also called:\n  - NHC\n  - National Housing Corporation"),
+    ).toBe("- Also called:\n    - NHC\n    - National Housing Corporation");
+  });
+
+  it("round-trips links whose URL contains parentheses", () => {
+    const plain = "Read the [guidance](https://gov.bb/guidance) first.";
+    const url =
+      "https://oag.gov.bb/attachments/Health%20Services%20(Food%20Hygiene)%20Regulations,%201969%20Cap44'M.PDF";
+    const link = (href: string) =>
+      `Read the [Health Services (Food Hygiene) Regulations](${href}) for details.`;
+
+    const escaped = url.replaceAll(/[()]/g, "\\$&");
+
+    expect(roundTrip(plain)).toBe(plain);
+    expect(roundTrip(link(escaped))).toBe(link(escaped));
+    expect(roundTrip(link(url))).toBe(link(escaped));
+  });
+
   it("keeps an indented start marker inside an ordered application list", () => {
     const markdown = [
       "1. Apply online:",
