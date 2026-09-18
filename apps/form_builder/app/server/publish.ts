@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSession } from "./auth/require-session";
 import {
+  deployBranchMatchesFormId,
   deployBranchName,
   eraseBranchName,
   formIdFromDeployBranch,
@@ -257,15 +258,16 @@ export const publishRecipe = createServerFn({ method: "POST" })
 
       // Reuse an already-open Deploy PR for this form instead of opening a
       // duplicate that would conflict with it on the same recipe file (#2390).
-      // Matching is by branch name via formIdFromDeployBranch, never a
-      // `startsWith(deployBranchPrefix(...))` prefix test — see that
+      // Matching is by branch name via deployBranchMatchesFormId, never a
+      // bare `startsWith(deployBranchPrefix(...))` prefix test — see that
       // function's doc comment for why a sibling form (e.g. "passport" vs
       // "passport-renewal") would otherwise cross-match and push the wrong
-      // recipe onto the wrong PR.
+      // recipe onto the wrong PR. It also holds for over-length ids, whose
+      // branch carries a truncated, hashed label (#2488).
       const existingPR = await findOpenPRByHeadRef(
         token,
         baseBranch,
-        (headRef) => formIdFromDeployBranch(headRef) === recipe.formId,
+        (headRef) => deployBranchMatchesFormId(headRef, recipe.formId),
       );
 
       if (existingPR) {

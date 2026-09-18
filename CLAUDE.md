@@ -97,6 +97,19 @@ name" step fails fast in CI, and a local PreToolUse hook
 (`.claude/hooks/block-dotted-branch.sh`) blocks branch-creating git commands
 with a dotted name.
 
+### Keep a branch name to 63 characters once `/` becomes `-`
+
+The same preview host is a single DNS label, capped at **63 characters**, and
+Amplify builds it from the branch with every `/` turned into `-`. A longer
+branch gets a hostname that never resolves (`ERR_NAME_NOT_RESOLVED`), so the
+A11y scan and forms smoke gate fail on infrastructure rather than on the
+change and read as "flaky, merge anyway" (#2488). The same two guards enforce
+this. The form builder's auto-generated branches (`form-builder/<id>-<ts>`,
+`start-page-<slug>-<ts>`) fit themselves via `fitBranchSegment` in
+`@govtech-bb/form-types`, which truncates the id or slug and appends a short
+hash when the name would overshoot — so an over-length form shows a shortened
+label, not its full id, in the open-deploy-PRs list.
+
 ### When creating a GitHub issue, assign it to the author
 
 Whenever you create a GitHub issue (`gh issue create`), always assign it to the

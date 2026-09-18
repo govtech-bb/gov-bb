@@ -1,3 +1,4 @@
+import { fitBranchSegment } from "@govtech-bb/form-types";
 import {
   deleteContentPage,
   listOpenContentPRs,
@@ -7,7 +8,13 @@ import {
 
 const PATH =
   "apps/landing/src/content/funeral-establishment-licence-application/index.md";
-const BRANCH = "start-page-funeral-establishment-licence-application-index-123";
+// This slug (47 chars) is over the Amplify preview label budget, so the real
+// branch carries the truncated, hashed segment — build it the way content.ts
+// does rather than spelling out a name the code no longer generates (#2488).
+const BRANCH = `start-page-${fitBranchSegment(
+  "start-page-",
+  "funeral-establishment-licence-application-index",
+)}-123`;
 const PR_URL = "https://github.com/govtech-bb/gov-bb/pull/2450";
 const EQUIVALENT_PATH =
   "apps/landing/src/content/funeral-establishment-licence-application.md";
@@ -562,4 +569,62 @@ it("publishes a separate guidance file without writing the existing main/start p
   expect(writes[0].content).toContain("form_id: get-birth-certificate");
   expect(writes[0].content).toContain("Separate guidance");
   expect(writes[0].content).not.toContain("data-start-link");
+});
+
+it("keeps the created branch within the 63-char Amplify preview label for a long path (#2488)", async () => {
+  // 78-char slug — the longest on main; the raw branch would be 103.
+  const longPath =
+    "apps/landing/src/content/youth-and-community/skills-trades/vocational-training/web-design-entrepreneurs.md";
+  const createdRefs: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      if (url.includes("/pulls?state=open")) return json([]);
+      if (url.includes("/contents/") && method === "GET")
+        return json({ message: "Not found" }, 404);
+      if (url.endsWith("/git/ref/heads/main"))
+        return json({ object: { sha: "base-head" } });
+      if (url.endsWith("/git/refs") && method === "POST") {
+        createdRefs.push(JSON.parse(String(init?.body)).ref);
+        return json({ ref: "created" }, 201);
+      }
+      if (url.includes("/contents/") && method === "PUT")
+        return json({ content: { sha: "page-sha" } }, 201);
+      if (url.endsWith("/pulls") && method === "POST")
+        return json(
+          {
+            number: 3001,
+            html_url: "https://github.com/govtech-bb/gov-bb/pull/3001",
+          },
+          201,
+        );
+      throw new Error(`Unexpected GitHub request: ${method} ${url}`);
+    }),
+  );
+  const result = await callServer<Awaited<ReturnType<typeof publishStartPage>>>(
+    publishStartPage,
+    {
+      data: {
+        prDescription: "Add the web design page",
+        buttonLabel: "Start now",
+        formId: "web-design-entrepreneurs",
+        slug: "youth-and-community/skills-trades/vocational-training/web-design-entrepreneurs",
+        path: longPath,
+        title: "Web design for entrepreneurs",
+        body: "Training details",
+        linkType: "none",
+        category: "youth-and-community",
+        visibility: "draft",
+        expectedRevision: { source: "absent" },
+      },
+      context: { session: { accessToken: "tok", login: "editor" } },
+    },
+  );
+  expect(result).toMatchObject({ status: "success", path: longPath });
+  expect(createdRefs).toHaveLength(1);
+  const branch = createdRefs[0].replace(/^refs\/heads\//, "");
+  expect(branch).toMatch(/^start-page-[a-z0-9-]+-\d+$/);
+  expect(branch.replace(/\//g, "-").length).toBeLessThanOrEqual(63);
 });

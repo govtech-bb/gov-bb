@@ -207,7 +207,9 @@ export type {
 export {
   deployBranchPrefix,
   deployBranchName,
+  deployBranchMatchesFormId,
   eraseBranchName,
+  fitBranchSegment,
   formIdFromDeployBranch,
 } from "./deploy-branch";
 
