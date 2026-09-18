@@ -3,6 +3,7 @@ import type { Mock } from "vitest";
  * @vitest-environment node
  */
 import {
+  deployBranchPrefix,
   serializeRecipe,
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
@@ -674,6 +675,93 @@ describe("publishRecipe", () => {
       prNumber: 42,
       updatedExistingPR: false,
     });
+  });
+
+  it("a form whose id begins with 'erase-' does not reuse another form's Erase PR", async () => {
+    // eraseBranchName("passport") and deployBranchName("erase-passport") are
+    // the same string, so only the parser's erase-namespace check keeps a
+    // Deploy from landing a recipe on a branch whose job is deleting one.
+    const eraseLikeRecipe: ServiceContractRecipe = {
+      ...RECIPE,
+      formId: "erase-passport",
+      title: "Erase passport",
+    };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      // GET open PRs — only "passport"'s Erase PR is open
+      .mockResolvedValueOnce(
+        jsonResponse(200, [
+          openPR(5, "form-builder/erase-passport-1699999999999"),
+        ]),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(200, { object: { sha: "devsha123" } }),
+      ) // GET base ref
+      .mockResolvedValueOnce(jsonResponse(201, { ref: "refs/heads/x" })) // POST create branch
+      .mockResolvedValueOnce(emptyResponse(404)) // GET existing flat file — none yet
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c1" } })) // PUT contents
+      .mockResolvedValueOnce(
+        jsonResponse(201, {
+          number: 44,
+          html_url: "https://github.com/govtech-bb/gov-bb/pull/44",
+        }),
+      ); // POST pulls — its own new PR
+    globalThis.fetch = fetchMock;
+
+    const result = await publishRecipe({
+      data: { recipe: eraseLikeRecipe, description: "" },
+      context: { session: SESSION },
+    });
+
+    expect(result).toEqual({
+      prUrl: "https://github.com/govtech-bb/gov-bb/pull/44",
+      prNumber: 44,
+      updatedExistingPR: false,
+    });
+    const createBody = JSON.parse(
+      (fetchMock.mock.calls[2][1] as RequestInit).body as string,
+    );
+    expect(createBody.ref).toBe(
+      "refs/heads/form-builder/erase-passport-1700000000000",
+    );
+  });
+
+  it("reuses the open Deploy PR of a form whose id is too long for the branch to carry in full (#2488)", async () => {
+    // 84 chars — a real recipe id on main. Its branch carries a truncated,
+    // hashed label, so the reuse lookup must compare labels, not ids.
+    const longId =
+      "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026";
+    const longRecipe: ServiceContractRecipe = {
+      ...RECIPE,
+      formId: longId,
+      title: "Summer camp",
+    };
+    const head = `${deployBranchPrefix(longId)}1699999999999`;
+    expect(head).not.toContain(longId);
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse(200, [openPR(17, head)])) // GET open PRs
+      .mockResolvedValueOnce(jsonResponse(200, { sha: "pr-blob-sha" })) // GET file on the PR branch
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c2" } })); // PUT contents
+    globalThis.fetch = fetchMock;
+
+    const result = await publishRecipe({
+      data: { recipe: longRecipe, description: "" },
+      context: { session: SESSION },
+    });
+
+    expect(result).toEqual({
+      prUrl: "https://github.com/govtech-bb/gov-bb/pull/17",
+      prNumber: 17,
+      updatedExistingPR: true,
+    });
+    expect(fetchMock.mock.calls[1][0]).toContain(
+      `/contents/apps/api/src/forms/form-definitions/recipes/${longId}.json`,
+    );
+    const putBody = JSON.parse(
+      (fetchMock.mock.calls[2][1] as RequestInit).body as string,
+    );
+    expect(putBody.branch).toBe(head);
   });
 
   it("posts no PR comment when the description is empty", async () => {
