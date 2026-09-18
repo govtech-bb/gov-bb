@@ -345,12 +345,39 @@
           }
         },
         {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "experience-route",
+            "label": "Which of these describes your funeral directing experience?",
+            "validations": {
+              "required": {
+                "error": "Select the option that describes your funeral directing experience",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Supervised by a licensed funeral director for more than 2 years",
+                "value": "supervised-two-years"
+              },
+              {
+                "label": "Worked in a funeral director's office for more than 3 years before the 1984 regulations",
+                "value": "office-three-years"
+              }
+            ]
+          }
+        },
+        {
           "ref": "components/upload-document",
           "overrides": {
             "fieldId": "letter-evidencing",
             "label": "Upload letter of evidence",
-            "hint": "If you have been engaged in the business of funeral directing under the direct supervision of a licence funeral director for over two years or have been working in a funeral director's office for over three years, prior to the regulations coming into operation in 1984, then you need to provide a letter of evidence.",
+            "hint": "The letter must confirm the experience you selected above.",
             "validations": {
+              "required": {
+                "error": "Upload your letter of evidence",
+                "value": true
+              },
               "fileTypes": {
                 "error": "Upload your letter of evidence in PDF, JPEG or PNG format",
                 "value": [
@@ -452,7 +479,7 @@
     }
   ],
   "createdAt": "2026-08-25T14:05:00.922Z",
-  "updatedAt": "2026-09-09T23:42:12.289Z",
+  "updatedAt": "2026-09-18T00:00:00.000Z",
   "meta": {
     "visibility": "preview"
   },
