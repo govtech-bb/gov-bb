@@ -1,6 +1,6 @@
 import {
   AMPLIFY_BRANCH_LABEL_MAX,
-  deployBranchMatchesFormId,
+  deployBranchLabel,
   deployBranchName,
   deployBranchPrefix,
   eraseBranchName,
@@ -203,64 +203,49 @@ describe("over-length branch names (#2488)", () => {
     });
   });
 
-  describe("deployBranchMatchesFormId", () => {
-    it("matches a form's own deploy branch", () => {
-      expect(
-        deployBranchMatchesFormId(
-          deployBranchName("passport-renewal"),
-          "passport-renewal",
-        ),
-      ).toBe(true);
+  // The artifact↔PR join (ADR 0070): the candidate-free parser recovers the
+  // branch's label, and the caller compares it to deployBranchLabel(formId).
+  describe("deployBranchLabel ↔ formIdFromDeployBranch", () => {
+    it("is the id itself when it fits", () => {
+      expect(deployBranchLabel("passport-renewal")).toBe("passport-renewal");
+    });
+
+    it("is the fitted segment for an over-length id", () => {
+      expect(deployBranchLabel(LONG_ID)).toBe(
+        fitBranchSegment("form-builder/", LONG_ID),
+      );
+      expect(deployBranchLabel(LONG_ID)).not.toBe(LONG_ID);
+    });
+
+    it("round-trips: the parser recovers exactly the label from a form's own branch, short or long", () => {
+      for (const id of ["passport-renewal", LONG_ID]) {
+        expect(formIdFromDeployBranch(deployBranchName(id))).toBe(
+          deployBranchLabel(id),
+        );
+      }
     });
 
     it("does not let a shorter sibling claim a longer form's branch (#2390)", () => {
       expect(
-        deployBranchMatchesFormId(
-          "form-builder/passport-renewal-1712345678901",
-          "passport",
-        ),
-      ).toBe(false);
+        formIdFromDeployBranch("form-builder/passport-renewal-1712345678901"),
+      ).not.toBe(deployBranchLabel("passport"));
     });
 
-    it("matches a long form's own truncated branch", () => {
-      expect(
-        deployBranchMatchesFormId(deployBranchName(LONG_ID), LONG_ID),
-      ).toBe(true);
+    it("keeps two long ids that share a truncated head apart", () => {
+      expect(formIdFromDeployBranch(deployBranchName(LONG_ID))).not.toBe(
+        deployBranchLabel(LONG_SIBLING),
+      );
     });
 
-    it("does not match a different long id that shares the truncated head", () => {
-      expect(
-        deployBranchMatchesFormId(deployBranchName(LONG_ID), LONG_SIBLING),
-      ).toBe(false);
-    });
-
-    it("rejects a non-numeric tail", () => {
-      expect(
-        deployBranchMatchesFormId(
-          "form-builder/passport-renewal-abc",
-          "passport-renewal",
-        ),
-      ).toBe(false);
-    });
-
-    it("never matches an Erase branch", () => {
-      expect(
-        deployBranchMatchesFormId(
-          eraseBranchName("passport-renewal"),
-          "passport-renewal",
-        ),
-      ).toBe(false);
-    });
-  });
-
-  describe("formIdFromDeployBranch on a truncated branch", () => {
-    it("recovers the truncated label, not the full id (accepted degradation)", () => {
-      // The branch no longer carries the full id, so the open-deploy-PRs list
-      // shows the shortened label for these forms. PR reuse is unaffected —
-      // it goes through deployBranchMatchesFormId.
-      const recovered = formIdFromDeployBranch(deployBranchName(LONG_ID));
-      expect(recovered).toBe(fitBranchSegment("form-builder/", LONG_ID));
-      expect(recovered).not.toBe(LONG_ID);
+    it("never joins an Erase branch to a form whose id begins with 'erase-'", () => {
+      // eraseBranchName("passport") and deployBranchName("erase-passport") are
+      // the same string; only the parser's namespace check tells them apart,
+      // which is why the join must go through the parser and not a prefix
+      // test that takes the candidate id.
+      expect(eraseBranchName("passport")).toBe(
+        deployBranchName("erase-passport"),
+      );
+      expect(formIdFromDeployBranch(eraseBranchName("passport"))).toBeNull();
     });
   });
 });

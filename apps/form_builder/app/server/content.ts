@@ -289,7 +289,9 @@ function exactContentBranch(path: string, branch: string): boolean {
     /[.*+?^${}()|[\]\\]/g,
     "\\$&",
   );
-  return new RegExp(`^start-page-${escaped}-\\d+$`).test(branch);
+  return new RegExp(`^${START_PAGE_BRANCH_PREFIX}${escaped}-\\d+$`).test(
+    branch,
+  );
 }
 
 async function listPRFiles(

@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSession } from "./auth/require-session";
 import {
-  deployBranchMatchesFormId,
+  deployBranchLabel,
   deployBranchName,
   eraseBranchName,
   formIdFromDeployBranch,
@@ -258,16 +258,18 @@ export const publishRecipe = createServerFn({ method: "POST" })
 
       // Reuse an already-open Deploy PR for this form instead of opening a
       // duplicate that would conflict with it on the same recipe file (#2390).
-      // Matching is by branch name via deployBranchMatchesFormId, never a
-      // bare `startsWith(deployBranchPrefix(...))` prefix test — see that
+      // Matching is by branch name via formIdFromDeployBranch, never a
+      // `startsWith(deployBranchPrefix(...))` prefix test — see that
       // function's doc comment for why a sibling form (e.g. "passport" vs
       // "passport-renewal") would otherwise cross-match and push the wrong
-      // recipe onto the wrong PR. It also holds for over-length ids, whose
-      // branch carries a truncated, hashed label (#2488).
+      // recipe onto the wrong PR. The parser recovers the branch's label,
+      // which for an over-length id is not the id itself (#2488), so the
+      // comparison is against deployBranchLabel, not recipe.formId.
       const existingPR = await findOpenPRByHeadRef(
         token,
         baseBranch,
-        (headRef) => deployBranchMatchesFormId(headRef, recipe.formId),
+        (headRef) =>
+          formIdFromDeployBranch(headRef) === deployBranchLabel(recipe.formId),
       );
 
       if (existingPR) {
@@ -381,6 +383,9 @@ export const getPublishBaseBranch = createServerFn({ method: "GET" }).handler(
 
 /** One open Deploy PR, as surfaced to the builder's Open picker (#2390). */
 export interface OpenDeployPR {
+  /** What the branch carries: the form id, or for an over-length id its
+   * truncated, hashed label (#2488). Join to a form with
+   * `deployBranchLabel(form.formId)`, never `form.formId` directly. */
   formId: string;
   prNumber: number;
   prUrl: string;

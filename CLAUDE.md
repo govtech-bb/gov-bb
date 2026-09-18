@@ -107,8 +107,10 @@ change and read as "flaky, merge anyway" (#2488). The same two guards enforce
 this. The form builder's auto-generated branches (`form-builder/<id>-<ts>`,
 `start-page-<slug>-<ts>`) fit themselves via `fitBranchSegment` in
 `@govtech-bb/form-types`, which truncates the id or slug and appends a short
-hash when the name would overshoot — so an over-length form shows a shortened
-label, not its full id, in the open-deploy-PRs list.
+hash when the name would overshoot. So a branch carries a *label* derived from
+the id, not necessarily the id: join an open Deploy PR to a form with
+`formIdFromDeployBranch(headRef) === deployBranchLabel(formId)` (see ADR 0070
+for why the parser takes no candidate), never by comparing to `formId`.
 
 ### When creating a GitHub issue, assign it to the author
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { deployBranchLabel } from "@govtech-bb/form-types";
 import { listForms } from "../../server/forms";
 import { listOpenDeployPRs, type OpenDeployPR } from "../../server/publish";
 import type { BuilderFormSummary } from "../../types/index";
@@ -61,16 +62,24 @@ export function useFormsList(): FormsListState {
         if (!isActive()) return;
         setForms(result);
         // Sorted ascending so the highest-numbered PR is written last and
-        // therefore wins the formId key — the same tie-break
-        // findOpenPRByHeadRef applies server-side (#2390). Without it the
-        // badge could link to one open Deploy PR while the next Deploy pushes
-        // onto a different one.
+        // therefore wins the key — the same tie-break findOpenPRByHeadRef
+        // applies server-side (#2390). Without it the badge could link to one
+        // open Deploy PR while the next Deploy pushes onto a different one.
+        const byLabel = new Map(
+          prs
+            .slice()
+            .sort((a, b) => a.prNumber - b.prNumber)
+            .map((pr) => [pr.formId, pr]),
+        );
+        // `pr.formId` is the label the branch carries, which for an
+        // over-length id is not the id (#2488) — re-key by the real formId so
+        // consumers can look a form up directly.
         setOpenPRs(
           new Map(
-            prs
-              .slice()
-              .sort((a, b) => a.prNumber - b.prNumber)
-              .map((pr) => [pr.formId, pr]),
+            result.flatMap((form) => {
+              const pr = byLabel.get(deployBranchLabel(form.formId));
+              return pr ? [[form.formId, pr] as const] : [];
+            }),
           ),
         );
       })

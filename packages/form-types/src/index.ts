@@ -206,8 +206,8 @@ export type {
 
 export {
   deployBranchPrefix,
+  deployBranchLabel,
   deployBranchName,
-  deployBranchMatchesFormId,
   eraseBranchName,
   fitBranchSegment,
   formIdFromDeployBranch,

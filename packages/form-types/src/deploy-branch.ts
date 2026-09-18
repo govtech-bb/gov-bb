@@ -64,11 +64,19 @@ function dotless(segment: string): string {
   return segment.replace(/\./g, "-");
 }
 
+/** The id segment a form's Deploy branch carries: the form id itself, or its
+ * fitted (truncated + hashed) form when the full id would push the preview
+ * label past 63 chars (#2488). This — not the id — is what
+ * `formIdFromDeployBranch` recovers from a head ref, so the artifact↔PR join
+ * is `formIdFromDeployBranch(headRef) === deployBranchLabel(formId)`. */
+export function deployBranchLabel(formId: string): string {
+  return fitBranchSegment("form-builder/", dotless(formId));
+}
+
 /** Prefix shared by every Deploy branch for a form — `deployBranchName` minus
- * the timestamp. Exported so the publish flow can recognise open deploy PRs for
- * a form without duplicating the naming scheme. */
+ * the timestamp. */
 export function deployBranchPrefix(formId: string): string {
-  return `form-builder/${fitBranchSegment("form-builder/", dotless(formId))}-`;
+  return `form-builder/${deployBranchLabel(formId)}-`;
 }
 
 /** Branch for a Deploy PR, e.g. `form-builder/passport-renewal-<ts>`. Recipe
@@ -84,32 +92,14 @@ export function eraseBranchName(formId: string): string {
 }
 
 /**
- * True when `headRef` is a Deploy branch for `formId`: the form's exact
- * `deployBranchPrefix` followed by nothing but a timestamp. Requiring the
- * all-digit tail is what stops `deployBranchPrefix("passport")` from claiming
- * `form-builder/passport-renewal-<ts>` (#2390) — the tail there is
- * `renewal-<ts>`. For an over-length id the prefix carries a hash of the full
- * id, so two long ids sharing a truncated head can't cross-match either
- * (#2488). The publish flow uses this to reuse an already-open Deploy PR
- * instead of opening a duplicate.
- */
-export function deployBranchMatchesFormId(
-  headRef: string,
-  formId: string,
-): boolean {
-  const prefix = deployBranchPrefix(formId);
-  return (
-    headRef.startsWith(prefix) && /^[0-9]+$/.test(headRef.slice(prefix.length))
-  );
-}
-
-/**
- * Recovers the form id from a Deploy branch's head ref, or `null` if the ref
- * isn't one — a non-form-builder (e.g. content) branch, an Erase branch, or a
- * branch missing its trailing timestamp. Feeds the open-deploy-PRs listing;
- * PR reuse goes through `deployBranchMatchesFormId`. For an over-length id
- * the branch carries `fitBranchSegment`'s truncated, hashed label rather than
- * the full id, and that label is what comes back (#2488).
+ * Recovers the Deploy branch label from a head ref, or `null` if the ref isn't
+ * a Deploy branch — a non-form-builder (e.g. content) branch, an Erase branch,
+ * or a branch missing its trailing timestamp. The label is the form id unless
+ * the id was too long for the branch to carry, in which case it is
+ * `deployBranchLabel(formId)`'s truncated, hashed form (#2488) — so callers
+ * join a candidate form with `=== deployBranchLabel(formId)`, never
+ * `=== formId`. The publish flow uses that join to spot an already-open Deploy
+ * PR for a form and reuse it instead of opening a duplicate (#2390).
  *
  * Deliberately does NOT test `headRef.startsWith(deployBranchPrefix(formId))`
  * for a candidate formId — `deployBranchPrefix("passport")` is
