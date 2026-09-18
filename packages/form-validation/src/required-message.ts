@@ -18,12 +18,22 @@ export type RequiredMessageDefect = "missing" | "blank" | "generic";
  * Compare on wording alone. Casing, surrounding space and a trailing period
  * change nothing for the applicant — the sentence still names no field — so
  * they must not buy a way past the gate.
+ *
+ * The trailing run is walked off by index rather than matched with `/[.!]+$/`:
+ * that anchored-quantifier shape backtracks quadratically on a string of many
+ * `!`, which CodeQL flags as js/polynomial-redos. The message reaching here is
+ * recipe-authored, so it is not ours to trust with that.
  */
 function wording(message: string): string {
-  return message
-    .trim()
-    .toLowerCase()
-    .replace(/[.!]+$/, "");
+  const normalised = message.trim().toLowerCase();
+  let end = normalised.length;
+  while (
+    end > 0 &&
+    (normalised[end - 1] === "." || normalised[end - 1] === "!")
+  ) {
+    end--;
+  }
+  return normalised.slice(0, end);
 }
 
 /**
