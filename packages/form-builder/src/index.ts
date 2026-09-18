@@ -45,7 +45,15 @@ export {
 } from "./processor-config";
 
 // Core utilities
-export { hydrateForm, collectUnknownRefs } from "./resolution";
+export {
+  hydrateForm,
+  collectUnknownRefs,
+  collectGenericRequiredMessages,
+} from "./resolution";
+export type { GenericRequiredMessage } from "./resolution";
+// Re-exported so a consumer of GenericRequiredMessage can name the type of
+// its `defect` field without depending on @govtech-bb/form-validation.
+export type { RequiredMessageDefect } from "@govtech-bb/form-validation";
 export { UnknownRefError } from "./errors";
 export type { UnknownRef } from "./errors";
 export { serializeRecipeDraft, deserializeRecipe } from "./serialization";
