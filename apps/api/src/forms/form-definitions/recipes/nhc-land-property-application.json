@@ -295,7 +295,7 @@
             "label": "Are you applying with a co-applicant?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are applying with a co-applicant",
                 "value": true
               }
             },
@@ -738,7 +738,7 @@
             "label": "Do you have children?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have children",
                 "value": true
               }
             },
@@ -816,7 +816,7 @@
             "label": "Are there any persons with disabilities in the household?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether there are any persons with disabilities in the household",
                 "value": true
               }
             },
@@ -847,7 +847,7 @@
             "hint": "Do not include the salary you have already told us about.",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have any other sources of income",
                 "value": true
               }
             },
@@ -958,7 +958,7 @@
             "label": "Are you currently renting?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are currently renting",
                 "value": true
               }
             },
@@ -1023,7 +1023,7 @@
             "label": "Do you own land and want NHC to provide a housing solution?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you own land and want NHC to provide a housing solution",
                 "value": true
               }
             },
@@ -1046,7 +1046,7 @@
             "label": "Are you a tenant of the land you wish to build on?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are a tenant of the land you wish to build on",
                 "value": true
               }
             },

@@ -274,7 +274,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select your relationship to the camper",
                 "value": true
               }
             }
@@ -352,7 +352,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether we can call this mobile number",
                 "value": true
               }
             }
@@ -396,7 +396,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether your address is the same as the camper's address",
                 "value": true
               }
             }
@@ -497,7 +497,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the camper has a health condition camp staff should know about",
                 "value": true
               }
             }
@@ -541,7 +541,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the camper has any allergies",
                 "value": true
               }
             }
@@ -585,7 +585,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the camper takes any medicine",
                 "value": true
               }
             }
@@ -659,7 +659,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the camper will need to take medicine during camp",
                 "value": true
               }
             }
@@ -690,7 +690,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the camper needs help to take part in camp",
                 "value": true
               }
             }
@@ -741,7 +741,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether there is any food the camper cannot eat",
                 "value": true
               }
             }
@@ -785,7 +785,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select at least one option",
+                "error": "Select at least one food need",
                 "value": true
               }
             }
@@ -919,7 +919,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether this is a mobile number",
                 "value": true
               }
             }
@@ -1001,7 +1001,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the camper has a doctor or polyclinic they usually attend",
                 "value": true
               }
             }
@@ -1072,7 +1072,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether camp staff can get medical help for the camper in an emergency",
                 "value": true
               }
             }
@@ -1126,7 +1126,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the camper can take part in all camp activities",
                 "value": true
               }
             }
@@ -1181,7 +1181,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether you give permission for photos and videos",
                 "value": true
               }
             }
@@ -1212,7 +1212,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the camper can make their own way home",
                 "value": true
               }
             }

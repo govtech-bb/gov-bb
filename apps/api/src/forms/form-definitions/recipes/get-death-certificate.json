@@ -448,7 +448,12 @@
                 "operator": "equal",
                 "value": "yes"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": true
+              }
+            }
           }
         },
         {
