@@ -1,7 +1,7 @@
 /**
  * Lint the required-message convention (#2227) on a parsed recipe: every field
  * a citizen must fill in has to fail with a message that names the field, not
- * the generic "This field is required".
+ * a field-less one like "This field is required" or "Select an option".
  *
  * The error summary lists each field's message as the link text, so when two
  * required fields on one step both fall through to the generic default the
@@ -45,16 +45,43 @@ function isEffectivelyRequired(field: Primitive): boolean {
   return required !== undefined && required.value !== false;
 }
 
-function checkField(field: Primitive, where: string): string | null {
-  if (field.htmlType === "date" || !isEffectivelyRequired(field)) return null;
+/**
+ * Messages that identify no field: the runtime default, plus the stock phrases
+ * authors reach for on a choice field. They fail the same way — two of them on
+ * one step give the error summary two identical links. A message that names
+ * what to pick ("Select your parish") is fine.
+ *
+ * Compared after `normalise`, because punctuation and casing drift while the
+ * message stays just as field-less — trailing full stops are a live habit in
+ * the recipe set ("Enter your address.").
+ */
+const normalise = (message: string): string =>
+  message.trim().replace(/\.$/, "").toLowerCase();
 
-  const generic = defaultValidationMessage("required");
+const FIELDLESS_MESSAGES = new Set(
+  [
+    defaultValidationMessage("required"),
+    "Select an option",
+    "Select an answer",
+    "Select yes or no",
+    "Select at least one option",
+  ].map(normalise),
+);
+
+function checkField(field: Primitive, where: string): string | null {
+  if (!isEffectivelyRequired(field)) return null;
+
   const error = field.validations?.required?.error;
   if (error === undefined) {
+    // An unauthored date is exempt: validateDateField composes its own
+    // label-aware `Enter ${label}` rather than reaching the required runner.
+    if (field.htmlType === "date") return null;
+    const generic = defaultValidationMessage("required");
     return `${where} has no required.error and would show the generic "${generic}" — add an error naming what to enter`;
   }
-  if (error === generic) {
-    return `${where} uses the generic "${generic}" as its required.error — replace it with an error naming what to enter`;
+  // An authored message IS shown verbatim, dates included, so it is not exempt.
+  if (FIELDLESS_MESSAGES.has(normalise(error))) {
+    return `${where} uses the generic "${error}" as its required.error — replace it with an error naming the field`;
   }
   return null;
 }
