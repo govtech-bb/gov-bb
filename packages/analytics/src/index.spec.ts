@@ -1,5 +1,8 @@
 import {
+  canonicalEvent,
   deriveStartEventName,
+  eventName,
+  stepFromEvent,
   stepNumberToWord,
   trackEvent,
   trackPageview,
@@ -164,5 +167,83 @@ describe("stepNumberToWord", () => {
   });
   it("falls back to the digit beyond ten", () => {
     expect(stepNumberToWord(11)).toBe("11");
+  });
+});
+
+describe("eventName — 50-char cap (#2682)", () => {
+  const SHORT_ID = "get-birth-certificate"; // 21 chars
+  const LONG_ID = "apply-for-temporary-restaurant-permit"; // 37 chars
+  const LONGER_ID = "request-an-environmental-health-officer"; // 39 chars
+
+  it("returns the full name when it fits (short-id forms unchanged)", () => {
+    expect(eventName(SHORT_ID, "form-step-view")).toBe(
+      "get-birth-certificate:form-step-view",
+    );
+    expect(eventName(SHORT_ID, "form-confirmation-view")).toBe(
+      "get-birth-certificate:form-confirmation-view",
+    );
+  });
+
+  it("falls back to a compact code when the full name would overflow 50", () => {
+    expect(eventName(LONG_ID, "form-step-view")).toBe(`${LONG_ID}:sview`);
+    expect(eventName(LONG_ID, "form-confirmation-view")).toBe(
+      `${LONG_ID}:fconf`,
+    );
+    expect(eventName(LONG_ID, "form-validation-error")).toBe(
+      `${LONG_ID}:fverr`,
+    );
+    expect(eventName(LONG_ID, "form-step-one")).toBe(`${LONG_ID}:s1`);
+    // events short enough to fit keep their full name even on a long id
+    expect(eventName(LONG_ID, "form-start")).toBe(`${LONG_ID}:form-start`);
+  });
+
+  it("keeps every produced name within the 50-char limit, incl. the longest id", () => {
+    for (const id of [SHORT_ID, LONG_ID, LONGER_ID]) {
+      for (const ev of [
+        "form-start",
+        "form-step-view",
+        "form-confirmation-view",
+        "form-validation-error",
+        "form-step-ten",
+      ]) {
+        expect(eventName(id, ev).length).toBeLessThanOrEqual(50);
+      }
+    }
+  });
+
+  it("distinguishes per-step events on a long id (no collision)", () => {
+    const names = [1, 2, 3].map((n) =>
+      eventName(LONG_ID, `form-step-${stepNumberToWord(n)}`),
+    );
+    expect(new Set(names).size).toBe(3);
+  });
+
+  it("truncates to 50 as a last resort for an unmapped overflowing event", () => {
+    const name = eventName(LONGER_ID, "some-unmapped-really-long-event-name");
+    expect(name.length).toBe(50);
+    expect(name.startsWith(`${LONGER_ID}:`)).toBe(true);
+  });
+});
+
+describe("canonicalEvent / stepFromEvent (#2682)", () => {
+  it("maps a compact code back to its canonical event; passes through the rest", () => {
+    expect(canonicalEvent("sview")).toBe("form-step-view");
+    expect(canonicalEvent("fconf")).toBe("form-confirmation-view");
+    expect(canonicalEvent("form-start")).toBe("form-start");
+    expect(canonicalEvent("unknown")).toBe("unknown");
+  });
+
+  it("reads a step number from both full names and compact codes", () => {
+    expect(stepFromEvent("form-step-one")).toBe(1);
+    expect(stepFromEvent("form-step-ten")).toBe(10);
+    expect(stepFromEvent("s3")).toBe(3);
+    expect(stepFromEvent("s10")).toBe(10);
+  });
+
+  it("is null for non-step events (incl. the form-step-* non-steps)", () => {
+    expect(stepFromEvent("form-step-view")).toBeNull();
+    expect(stepFromEvent("form-step-back")).toBeNull();
+    expect(stepFromEvent("sview")).toBeNull();
+    expect(stepFromEvent("form-start")).toBeNull();
   });
 });
