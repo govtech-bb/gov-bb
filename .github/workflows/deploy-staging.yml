@@ -119,12 +119,18 @@ jobs:
           # triggered on push:staging.)
           main-branch-name: main
           workflow-id: deploy-staging.yml
+          # This workflow only runs via workflow_dispatch. The action's default
+          # last-successful-event is push, which never matched a staging run, so
+          # every deploy fell back to HEAD~1 with only a warning (run 35656441931)
+          # and under-deployed whenever a promotion had been skipped.
+          last-successful-event: workflow_dispatch
+          error-on-no-successful-workflow: true
 
       - name: Compute affected deploy targets
         id: affected
         run: |
           AFFECTED=$(pnpm exec nx show projects \
-            --affected --base="$NX_BASE" --head="$NX_HEAD" --type app --json 2>/dev/null || echo '[]')
+            --affected --base="$NX_BASE" --head="$NX_HEAD" --type app --json)
           echo "Affected apps: $AFFECTED"
           has() { echo "$AFFECTED" | jq -e --arg p "$1" 'index($p)' >/dev/null && echo true || echo false; }
 
