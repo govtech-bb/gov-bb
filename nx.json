@@ -41,6 +41,10 @@
     "lint": {
       "inputs": ["default", "{workspaceRoot}/eslint.config.mts"],
       "cache": true
+    },
+    "typecheck": {
+      "cache": true,
+      "inputs": ["default", "^production"]
     }
   },
   "analytics": false

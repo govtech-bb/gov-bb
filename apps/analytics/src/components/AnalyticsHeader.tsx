@@ -1,5 +1,5 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { RANGE_OPTIONS } from '../lib/umami-server'
+import { DEFAULT_RANGE, RANGE_OPTIONS } from '../lib/umami-server'
 import { GovbbLogo } from './GovbbLogo'
 
 // Full-width blue site bar shared by the overview and per-form pages: the
@@ -23,6 +23,7 @@ export function AnalyticsHeader({
       <div className="container flex h-16 items-center gap-m">
         <Link
           to="/"
+          search={{ range: range ?? DEFAULT_RANGE }}
           aria-label="Alpha.gov.bb analytics — home"
           className="flex items-center gap-s focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-teal-100"
         >

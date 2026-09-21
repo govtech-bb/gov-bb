@@ -33,6 +33,9 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
+          # Full history so nx-set-shas can find the last successful run on the
+          # base branch and nx affected can diff against it.
+          fetch-depth: 0
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
@@ -56,8 +59,15 @@ jobs:
           exit ${PIPESTATUS[0]}
         continue-on-error: true
 
-      - name: Type check landing
-        run: pnpm exec nx run landing:typecheck
+      # tsc -b above covers the projects the root tsconfig references; the Vite
+      # apps and source-only packages are not referenceable, so they carry a
+      # typecheck target instead.
+      - name: Derive affected base/head
+        uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
+        with:
+          main-branch-name: ${{ github.base_ref || github.ref_name }}
+      - name: Type check affected apps and packages
+        run: pnpm exec nx affected -t typecheck --nxBail=false
 
       - name: Report type check results
         if: steps.typecheck.outcome == 'failure'

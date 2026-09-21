@@ -84,6 +84,7 @@ const COERCERS: Record<HtmlTypes, Coercer> = {
   textarea: (_f, raw) => ({ value: raw }),
   email: (_f, raw) => ({ value: raw }),
   tel: (_f, raw) => ({ value: raw }),
+  time: (_f, raw) => ({ value: raw }),
   number: (_f, raw) => {
     const n = Number(raw);
     return Number.isFinite(n) ? { value: n } : { error: "must be a number" };
@@ -97,6 +98,7 @@ const COERCERS: Record<HtmlTypes, Coercer> = {
   select: coerceEnum,
   radio: coerceEnum,
   checkbox: coerceCheckbox,
+  "checkbox-accordion": coerceCheckbox,
   file: () => ({ error: "file fields can't be completed in chat" }),
   "show-hide": (_f, raw) => coerceBoolean(raw),
   // Weekly opening hours: the stored value is a string array of

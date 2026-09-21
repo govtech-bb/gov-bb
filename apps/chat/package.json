@@ -19,7 +19,8 @@
     "db:reset": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env src/lib/db/reset.ts",
     "ingest": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env src/ingest/cli.ts",
     "eval:sweep": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env eval/sweep.ts",
-    "eval:responses": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env eval/responses/run.ts"
+    "eval:responses": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env eval/responses/run.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1136.0",

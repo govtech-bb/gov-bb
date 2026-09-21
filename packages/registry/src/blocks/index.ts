@@ -30,7 +30,7 @@ const ALL_BLOCKS = [
 
 // Completeness guard: bump the literal type whenever you add a block to
 // ALL_BLOCKS, so a registered-but-unlisted block fails the build.
-const _blockCount: 8 = ALL_BLOCKS.length;
+export const BLOCK_COUNT: 8 = ALL_BLOCKS.length;
 
 export const REGISTRY_BLOCKS: Record<`blocks/${string}`, Block> =
   Object.fromEntries(ALL_BLOCKS.map((b) => [`blocks/${b.blockId}`, b]));

@@ -1,5 +1,5 @@
-import { FieldValue } from "./validation.type";
-import { SubmissionValues } from "./submission.type";
+import type { FieldValue } from "./validation.type";
+import type { SubmissionValues } from "./submission.type";
 import { valueIsEmpty } from "./value-empty";
 
 /** A collected value with its resolved step and field, ready to bucket. */
