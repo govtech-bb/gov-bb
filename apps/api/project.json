@@ -9,7 +9,7 @@
       "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "apps/api/dist",
-        "tsConfig": "apps/api/tsconfig.json",
+        "tsConfig": "apps/api/tsconfig.build.json",
         "main": "apps/api/src/main.ts",
         "assets": [
           {
