@@ -82,6 +82,11 @@
  *    `letter-evidencing`, the last added by #2583) use
  *    `components/upload-document` with `multiple: false`, so each is a single
  *    confirmed upload via `uploadOne`, not `uploadMany`.
+ *  - `documents` also carries the statutory eligibility gate (#2475):
+ *    `experience-route` is a required 2-option radio naming which test under
+ *    the 1984 regulations the applicant claims, and `letter-evidencing` is
+ *    required (it was an ungated optional upload before). Both must be
+ *    answered for this step to advance.
  *  - The confirmation step's `nextSteps` copy (fixed off "hairdresser licence"
  *    in this PR) has no `{polyclinic}` placeholder, so there is no
  *    resolved-catchment name on screen to assert. Catchment routing still
@@ -98,6 +103,7 @@ import {
   fillField,
   fillGeocodedAddress,
   selectDropdown,
+  selectRadio,
   submitAndConfirm,
   tickCheckbox,
   uploadOne,
@@ -309,7 +315,7 @@ export async function fillWorkplaceDetails(
   await advance(page, step);
 }
 
-/** Step 3 — both required documents. */
+/** Step 3 — the three required documents and the eligibility route. */
 export async function fillDocuments(page: Page): Promise<void> {
   const step = expectStep(page, "documents");
   await expect(page.locator("h1")).toContainText("Add your documents");
@@ -323,6 +329,7 @@ export async function fillDocuments(page: Page): Promise<void> {
     mimeType: TEST_PNG.mimeType,
     buffer: TEST_PNG.buffer,
   });
+  await selectRadio(page, step, "experience-route", "supervised-two-years");
   await uploadOne(page, step, "letter-evidencing", {
     name: "letter-of-evidence.png",
     mimeType: TEST_PNG.mimeType,
