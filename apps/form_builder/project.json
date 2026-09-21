@@ -13,12 +13,52 @@
     },
     "build": {
       "executor": "nx:run-commands",
-      "outputs": ["{projectRoot}/dist"],
+      "outputs": ["{projectRoot}/dist", "{projectRoot}/.amplify-hosting"],
       "options": {
         "command": "npm run build",
         "cwd": "apps/form_builder"
       },
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "inputs": [
+        "production",
+        "^production",
+        {
+          "env": "BUILDER_API_URL"
+        },
+        {
+          "env": "FORM_BUILDER_GITHUB_OAUTH_SECRET_ARN"
+        },
+        {
+          "env": "FORM_BUILDER_TOKENS_SECRET_ARN"
+        },
+        {
+          "env": "GITHUB_ORG"
+        },
+        {
+          "env": "GITHUB_TEAM_SLUG"
+        },
+        {
+          "env": "NITRO_PRESET"
+        },
+        {
+          "env": "OAUTH_REDIRECT_BASE"
+        },
+        {
+          "env": "PUBLISH_BASE_BRANCH"
+        },
+        {
+          "env": "VITE_FORMS_PREVIEW_URL"
+        },
+        {
+          "env": "VITE_FORMS_URL"
+        },
+        {
+          "env": "VITE_LANDING_PREVIEW_URL"
+        },
+        {
+          "env": "VITE_RECIPE_PREVIEW_TOKEN"
+        }
+      ]
     },
     "lint": {
       "executor": "@nx/eslint:lint",
