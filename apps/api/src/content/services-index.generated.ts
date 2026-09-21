@@ -370,13 +370,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     slug: "health-and-emergency-services/free-or-subsidised-medication",
     title: "Get free or subsidised medication",
     category: "health-and-emergency-services",
-    visibility: "preview",
+    visibility: "public",
   },
   {
     slug: "health-and-emergency-services/prescription-colours",
     title: "What prescription colours mean",
     category: "health-and-emergency-services",
-    visibility: "preview",
+    visibility: "public",
   },
   {
     slug: "health-and-emergency-services/stormready",

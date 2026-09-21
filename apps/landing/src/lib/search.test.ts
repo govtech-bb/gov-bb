@@ -98,7 +98,11 @@ describe('full search', () => {
   })
 
   it('preserves frontmatter and overlay visibility', () => {
-    expect(search('prescription colours')).toEqual([])
+    expect(search('temporary teacher')).toEqual([])
+    expect(search('temporary teacher', 'preview').length).toBeGreaterThan(0)
+    expect(search('prescription colours')[0]?.href).toBe(
+      '/health-and-emergency-services/prescription-colours',
+    )
 
     const overlay = new Map<string, ViewLevel>([
       ['get-death-certificate', 'preview'],

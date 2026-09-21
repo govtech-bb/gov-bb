@@ -4,7 +4,7 @@ description: >-
   What the different prescription colours mean in Barbados, and how the colour
   can affect which pharmacy can fill your prescription.
 stage: alpha
-visibility: preview
+visibility: public
 featured: false
 publish_date: '2026-05-15'
 category: health-and-emergency-services
