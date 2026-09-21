@@ -96,17 +96,38 @@ recipes matched the near-miss pattern, so this is hardening rather than a fix
 — but the gate is the thing standing between an author and the defect, and a
 period should not buy a way past it.
 
-**`"Select an option"` (52 fields) and `"Select an answer"` (30) stay out.**
-#2710 scoped them out as their own copy-standard question. Since both gates now
-share one predicate, adding them here would immediately fail
-`pnpm validate-recipes` on `main` for 82 fields. They need a copy standard and a
-recipe fix first — and, per the paragraph above, that work belongs in
-`requiredMessageDefect`, which wires it into both gates at once.
+**`"Select an option"` (52 fields) and `"Select an answer"` (30) are now in.**
+They were scoped out while this branch was written: both gates share one
+predicate, so banning them would have failed `pnpm validate-recipes` on `main`
+for 82 fields that no one had corrected yet.
+
+#2729 then merged and did exactly that correction — it rewrote 93 recipe
+fields, added the four stock choice-field wordings to the trunk lint, and
+narrowed the date exemption to unauthored dates only. `origin/main` now carries
+zero occurrences of any of them, so the reason to hold them back is gone.
+
+Merging `main` into this branch conflicted on `scripts/required-error-guards.ts`,
+where both sides had rewritten `checkField`. Resolving it by keeping this
+branch's delegation alone would have silently dropped #2729's four wordings and
+re-widened the date exemption — the drift both PRs exist to prevent. So the
+resolution moves #2729's rules *into* `requiredMessageDefect` instead:
+
+- `FIELDLESS_WORDINGS` — the runtime default plus the four stock phrases,
+  compared through the same `wording()` normaliser, so punctuation and casing
+  do not buy a way past either gate.
+- The date exemption applies only when nothing is authored. `generic-date`
+  ships the sentinel, so a recipe overriding just `fieldId` + `label` inherits
+  it and the applicant reads it verbatim — five recipes were in that state
+  until #2729 fixed them, and the gate now holds the line.
+
+`pnpm validate-recipes` is 90/90 on the merge.
 
 ## Open questions
 
-- The `"Select an option"` / `"Select an answer"` copy standard is unraised as
-  an issue. #2710 names it as out of scope; nothing tracks it yet.
+- The copy standard behind `"Select an option"` / `"Select an answer"` is still
+  unraised as an issue. #2729 replaced the 82 occurrences field-by-field and
+  both gates now reject them, but nothing writes down what a choice field's
+  required message *should* say.
 - #2710 stays open until #2227 closes — its own acceptance criteria are now all
   met, but it also carries the recipe half.
 - #2227 recommends a label-aware default in

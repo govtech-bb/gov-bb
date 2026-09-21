@@ -9,7 +9,10 @@ export type { ValidateOptions } from "./validate-fields";
 export { validateFields as validate } from "./validate-fields";
 export { validateField, validateFieldEntries } from "./validate-field";
 export { defaultValidationMessage } from "./default-messages";
-export { requiredMessageDefect } from "./required-message";
+export {
+  requiredMessageDefect,
+  isFieldlessRequiredWording,
+} from "./required-message";
 export type { RequiredMessageDefect } from "./required-message";
 export {
   validateDateField,

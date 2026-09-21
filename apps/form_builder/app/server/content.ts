@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { fitBranchSegment } from "@govtech-bb/form-types";
 import { requireSession } from "./auth/require-session";
 import { sessionTokenOrDev } from "./auth/session-or-dev";
 import { resolveBaseBranch } from "./publish";
@@ -284,11 +285,13 @@ function normaliseChangeType(status: string): ContentReviewChangeType {
 }
 
 function exactContentBranch(path: string, branch: string): boolean {
-  const escaped = branchSlugFromPath(path).replace(
+  const escaped = startPageBranchSegment(path).replace(
     /[.*+?^${}()|[\]\\]/g,
     "\\$&",
   );
-  return new RegExp(`^start-page-${escaped}-\\d+$`).test(branch);
+  return new RegExp(`^${START_PAGE_BRANCH_PREFIX}${escaped}-\\d+$`).test(
+    branch,
+  );
 }
 
 async function listPRFiles(
@@ -622,6 +625,15 @@ function branchSlugFromPath(path: string): string {
       .replace(/^-+|-+$/g, "")
       .toLowerCase() || "page"
   );
+}
+
+const START_PAGE_BRANCH_PREFIX = "start-page-";
+
+/** Branch segment for a start-page PR: the path slug, truncated and hashed
+ * when the full slug would push the Amplify preview host past the 63-char DNS
+ * label cap (#2488). Pure, so exactContentBranch regenerates it from the path. */
+function startPageBranchSegment(path: string): string {
+  return fitBranchSegment(START_PAGE_BRANCH_PREFIX, branchSlugFromPath(path));
 }
 
 /** Flat and folder-index files can claim the same public URL. */
@@ -1135,9 +1147,10 @@ export const publishStartPage = createServerFn({ method: "POST" })
       );
     }
 
-    // Dot-free branch name: the Amplify preview cert is single-label (see
-    // CLAUDE.md "Never put a `.` in a branch name").
-    const branch = `start-page-${branchSlugFromPath(targetPath)}-${Date.now()}`;
+    // Dot-free, ≤63-char branch name: the Amplify preview cert is single-label
+    // and its host is one DNS label (see CLAUDE.md "Never put a `.` in a
+    // branch name", #2488).
+    const branch = `${START_PAGE_BRANCH_PREFIX}${startPageBranchSegment(targetPath)}-${Date.now()}`;
     await createBranchFrom(token, baseBranch, branch);
     let openingPullRequest = false;
 
@@ -1277,7 +1290,7 @@ export const deleteContentPage = createServerFn({ method: "POST" })
         );
       }
 
-      const branch = `start-page-${branchSlugFromPath(data.path)}-${Date.now()}`;
+      const branch = `${START_PAGE_BRANCH_PREFIX}${startPageBranchSegment(data.path)}-${Date.now()}`;
       await createBranchFrom(token, baseBranch, branch);
       let openingPullRequest = false;
 

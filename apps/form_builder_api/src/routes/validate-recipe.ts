@@ -10,6 +10,25 @@ import type { ValidationResult, ValidationIssue } from "@govtech-bb/form-types";
 import { getFullCatalog } from "../catalog.js";
 
 /**
+ * What each defect actually does to the applicant, said accurately — the three
+ * are not interchangeable. An absent message falls back to a field-less
+ * default; a blank one does not fall back at all, because `requiredRunner`
+ * reads `config.error ?? default` and `??` takes `""` as authored, so the
+ * applicant is shown an error with no text.
+ *
+ * No wording is quoted here — @govtech-bb/form-validation owns the field-less
+ * set, and a copy would drift the day it changes.
+ */
+const REQUIRED_DEFECT_CAUSE: Record<RequiredMessageDefect, string> = {
+  generic:
+    "is required, but its error message is a stock phrase that names no field.",
+  missing:
+    "is required but has no error message, so it falls back to a generic default that names no field.",
+  blank:
+    "is required but its error message is blank, so the applicant sees an error with no text at all.",
+};
+
+/**
  * The full author-time recipe validation, in four layers, run against the live
  * catalog (builtin + DB custom components):
  *
@@ -36,25 +55,6 @@ import { getFullCatalog } from "../catalog.js";
  * from the client one. Returns the same
  * `{ ok: true, data } | { ok: false, issues }` shape /validate emits.
  */
-/**
- * What each defect actually does to the applicant, said accurately — the three
- * are not interchangeable. An absent message falls back to the generic default;
- * a blank one does not fall back at all, because `requiredRunner` reads
- * `config.error ?? default` and `??` takes `""` as authored, so the applicant
- * is shown an error with no text.
- *
- * The sentinel itself is never quoted here — @govtech-bb/form-validation owns
- * that string, and a copy would drift the day it changes.
- */
-const REQUIRED_DEFECT_CAUSE: Record<RequiredMessageDefect, string> = {
-  generic:
-    "is required, but its error message is the generic default and names no field.",
-  missing:
-    "is required but has no error message, so it falls back to a generic default that names no field.",
-  blank:
-    "is required but its error message is blank, so the applicant sees an error with no text at all.",
-};
-
 export async function validateRecipeFully(
   recipe: unknown,
 ): Promise<ValidationResult> {

@@ -5,7 +5,10 @@
  * two cannot drift on what counts as generic.
  */
 import type { Primitive } from "@govtech-bb/form-types";
-import { requiredMessageDefect } from "./required-message";
+import {
+  requiredMessageDefect,
+  isFieldlessRequiredWording,
+} from "./required-message";
 
 function field(partial: Partial<Primitive>): Primitive {
   return {
@@ -112,4 +115,63 @@ it("passes a date field with no message", () => {
 
 it("passes a field with no validations at all", () => {
   expect(requiredMessageDefect(field({}))).toBeNull();
+});
+
+it.each([
+  "Select an option",
+  "Select an answer",
+  "Select yes or no",
+  "Select at least one option",
+])("flags the stock choice-field wording %j", (error) => {
+  // #2227 widened the set past the runtime default: these name no field
+  // either, so two of them on one step give the summary identical links.
+  expect(
+    requiredMessageDefect(
+      field({
+        htmlType: "radio",
+        validations: { required: { value: true, error } },
+      }),
+    ),
+  ).toBe("generic");
+});
+
+it("flags a date field whose field-less message is authored", () => {
+  // The date exemption only holds while nothing is authored: validate-date
+  // reads `requiredConfig?.error ?? \`Enter ${asPhrase(label)}\``, so an
+  // authored message is shown verbatim on a date like anywhere else.
+  expect(
+    requiredMessageDefect(
+      field({
+        htmlType: "date",
+        validations: {
+          required: { value: true, error: "This field is required" },
+        },
+      }),
+    ),
+  ).toBe("generic");
+});
+
+it("treats a non-string message as missing rather than throwing", () => {
+  // A DB custom component's definition reaches the gate as
+  // `Record<string, unknown>` cast through Primitive with no write-path
+  // validation, so `error` is not ours to trust as a string.
+  for (const error of [null, 42, {}]) {
+    expect(
+      requiredMessageDefect(
+        field({
+          validations: {
+            required: { value: true, error },
+          },
+        } as unknown as Partial<Primitive>),
+      ),
+    ).toBe("missing");
+  }
+});
+
+it("exposes the wording test for the authoring surfaces", () => {
+  // The editor holds a string, not a resolved field, and must warn on exactly
+  // what the Deploy gate rejects (#2715).
+  expect(isFieldlessRequiredWording("This field is required.")).toBe(true);
+  expect(isFieldlessRequiredWording("SELECT AN OPTION")).toBe(true);
+  expect(isFieldlessRequiredWording("Select your parish")).toBe(false);
 });

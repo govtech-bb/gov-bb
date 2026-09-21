@@ -34,7 +34,7 @@ import { BehavioursEditor } from "./behaviours-editor";
 import { OptionsEditor } from "./options-editor";
 import { KEBAB_ID_PATTERN, kebabize } from "./id-validation";
 import {
-  GENERIC_REQUIRED_MSG,
+  isFieldlessRequiredWording,
   effectiveRequiredMessage,
   requiredRuleOnTick,
   syncRequiredMessageToLabel,
@@ -308,7 +308,7 @@ function RequiredRuleEditor({
     validations,
     baseValidations,
   );
-  const isGeneric = effectiveMessage === GENERIC_REQUIRED_MSG;
+  const isGeneric = isFieldlessRequiredWording(effectiveMessage);
   const warningId = useId();
 
   return (

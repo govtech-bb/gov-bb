@@ -177,7 +177,7 @@
             "label": "Which best describes your application?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select the option that best describes your application",
                 "value": true
               }
             },

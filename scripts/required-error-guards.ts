@@ -1,7 +1,7 @@
 /**
  * Lint the required-message convention (#2227) on a parsed recipe: every field
  * a citizen must fill in has to fail with a message that names the field, not
- * the generic "This field is required".
+ * a field-less one like "This field is required" or "Select an option".
  *
  * The error summary lists each field's message as the link text, so when two
  * required fields on one step both fall through to the generic default the
@@ -48,16 +48,19 @@ function checkField(field: Primitive, where: string): string | null {
   const defect = requiredMessageDefect(field);
   if (!defect) return null;
 
-  const generic = defaultValidationMessage("required");
   switch (defect) {
-    case "missing":
+    case "missing": {
+      const generic = defaultValidationMessage("required");
       return `${where} has no required.error and would show the generic "${generic}" — add an error naming what to enter`;
+    }
     // Not a fallback: `config.error ?? default` takes "" as authored, so the
     // applicant is shown an error with no text rather than the generic one.
     case "blank":
       return `${where} has a blank required.error, so the applicant sees an error with no text — add an error naming what to enter`;
+    // Quote what was authored, not the default: the field-less set is five
+    // wordings now, so naming the default would point at the wrong string.
     case "generic":
-      return `${where} uses the generic "${generic}" as its required.error — replace it with an error naming what to enter`;
+      return `${where} uses the generic "${field.validations?.required?.error}" as its required.error — replace it with an error naming the field`;
   }
 }
 

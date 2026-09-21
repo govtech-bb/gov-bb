@@ -141,11 +141,18 @@ describe("POST /builder/registry/validate — required-message check", () => {
   });
 
   it("accepts a required date field with no message", async () => {
-    // validateDateField composes its own label-aware "Enter ${label}".
+    // validateDateField composes its own label-aware "Enter ${label}" — but
+    // only when nothing is authored. Restating `required` replaces the base
+    // rule wholesale (validations merge per rule key), which is what drops
+    // generic-date's sentinel and leaves the derived message in play.
     const recipe = makeRecipe([
       {
         ref: "components/generic-date",
-        overrides: { fieldId: "date-of-birth", label: "Date of birth" },
+        overrides: {
+          fieldId: "date-of-birth",
+          label: "Date of birth",
+          validations: { required: { value: true } },
+        },
       },
     ]);
     const res = mockRes();
@@ -153,6 +160,26 @@ describe("POST /builder/registry/validate — required-message check", () => {
     await validateHandler({ body: { recipe } } as Request, res);
 
     expect(res.body).toMatchObject({ ok: true });
+  });
+
+  it("rejects a date field inheriting the sentinel from generic-date", async () => {
+    // The exemption is for an *unauthored* date. `components/generic-date`
+    // ships `error: "This field is required"`, so a recipe that overrides
+    // only fieldId + label inherits it and the applicant reads it verbatim.
+    const recipe = makeRecipe([
+      {
+        ref: "components/generic-date",
+        overrides: { fieldId: "date-of-marriage", label: "Date of marriage" },
+      },
+    ]);
+    const res = mockRes();
+
+    await validateHandler({ body: { recipe } } as Request, res);
+
+    expect(res.body).toMatchObject({
+      ok: false,
+      issues: [{ path: "steps[step-1].elements[0]" }],
+    });
   });
 
   it("accepts an optional field with no message", async () => {

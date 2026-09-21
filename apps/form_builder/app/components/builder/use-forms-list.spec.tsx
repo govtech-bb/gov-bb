@@ -2,6 +2,7 @@
  * @vitest-environment jsdom
  */
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { deployBranchLabel } from "@govtech-bb/form-types";
 import { useFormsList } from "./use-forms-list";
 import { listForms } from "../../server/forms";
 import { listOpenDeployPRs, type OpenDeployPR } from "../../server/publish";
@@ -123,6 +124,34 @@ describe("useFormsList", () => {
       await waitFor(() => expect(result.current.forms).toEqual(FORMS));
       expect(result.current.openPRs).toEqual(new Map());
       expect(result.current.loadError).toBeNull();
+    });
+
+    it("joins a PR whose branch carries a truncated label back to its form (#2488)", async () => {
+      // 84 chars — a real recipe id on main. The server returns the label the
+      // branch carries, which is not the id, so the map must be keyed by
+      // matching labels to the loaded forms or the badge silently misses.
+      const longId =
+        "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026";
+      const longForm: BuilderFormSummary = {
+        id: longId,
+        formId: longId,
+        title: "Summer camp",
+        version: "1.0.0",
+        isPublished: true,
+      };
+      const label = deployBranchLabel(longId);
+      expect(label).not.toBe(longId);
+      const pr: OpenDeployPR = {
+        formId: label,
+        prNumber: 11,
+        prUrl: "https://example.test/11",
+        branch: `form-builder/${label}-1700000000000`,
+      };
+      mockListForms.mockResolvedValue([...FORMS, longForm]);
+      mockListOpenDeployPRs.mockResolvedValue([pr]);
+      const { result } = renderHook(() => useFormsList());
+      await waitFor(() => expect(result.current.openPRs.size).toBe(1));
+      expect(result.current.openPRs.get(longId)).toEqual(pr);
     });
   });
 

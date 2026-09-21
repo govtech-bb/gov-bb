@@ -100,11 +100,11 @@
         {
           "ref": "components/national-id-number",
           "overrides": {
-            "hint": "Enter your valid National ID Number (for example, 450702-0130)",
+            "hint": "Enter your valid National Identification (ID) number (for example, 450702-0130)",
             "validations": {
               "required": {
                 "value": true,
-                "error": "National ID number is required"
+                "error": "National Identification (ID) number is required"
               }
             }
           }
@@ -295,7 +295,7 @@
             "label": "Are you applying with a co-applicant?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are applying with a co-applicant",
                 "value": true
               }
             },
@@ -408,12 +408,11 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "co-applicant-national-id-number",
-            "label": "National Registration Number",
-            "hint": "Enter your valid National ID Number (for example, 450702-0130)",
+            "hint": "Enter your valid National Identification (ID) number (for example, 450702-0130)",
             "validations": {
               "required": {
                 "value": true,
-                "error": "National Registration Number is required"
+                "error": "National Identification (ID) number is required"
               }
             }
           }
@@ -738,7 +737,7 @@
             "label": "Do you have children?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have children",
                 "value": true
               }
             },
@@ -816,7 +815,7 @@
             "label": "Are there any persons with disabilities in the household?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether there are any persons with disabilities in the household",
                 "value": true
               }
             },
@@ -847,7 +846,7 @@
             "hint": "Do not include the salary you have already told us about.",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have any other sources of income",
                 "value": true
               }
             },
@@ -958,7 +957,7 @@
             "label": "Are you currently renting?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are currently renting",
                 "value": true
               }
             },
@@ -1023,7 +1022,7 @@
             "label": "Do you own land and want NHC to provide a housing solution?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you own land and want NHC to provide a housing solution",
                 "value": true
               }
             },
@@ -1046,7 +1045,7 @@
             "label": "Are you a tenant of the land you wish to build on?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are a tenant of the land you wish to build on",
                 "value": true
               }
             },
