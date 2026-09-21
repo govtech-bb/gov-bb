@@ -92,6 +92,11 @@
  *    the 1984 regulations the applicant claims, and `letter-evidencing` is
  *    required (it was an ungated optional upload before). Both must be
  *    answered for this step to advance.
+ *  - Both of those are gated on `application-type` being `new`: the 1984
+ *    experience tests are what qualify someone for a first licence, and a
+ *    renewal has already met them. Answer `application-type` first — on
+ *    `renewal` neither field renders, and the step advances with the two
+ *    uploads alone.
  *  - The confirmation step's `nextSteps` copy (fixed off "hairdresser licence"
  *    in this PR) has no `{polyclinic}` placeholder, so there is no
  *    resolved-catchment name on screen to assert. Catchment routing still
@@ -359,6 +364,9 @@ export async function fillDocuments(page: Page): Promise<void> {
     mimeType: TEST_PNG.mimeType,
     buffer: TEST_PNG.buffer,
   });
+  // `experience-route` and `letter-evidencing` are gated on a new licence,
+  // so this has to be answered first or neither renders.
+  await selectRadio(page, step, "application-type", "new");
   await selectRadio(page, step, "experience-route", "supervised-two-years");
   await uploadOne(page, step, "letter-evidencing", {
     name: "letter-of-evidence.png",
