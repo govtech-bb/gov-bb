@@ -3,14 +3,57 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/landing/src",
   "projectType": "application",
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*", "sharedGlobals"]
+  },
   "targets": {
     "build": {
       "executor": "nx:run-commands",
-      "outputs": ["{projectRoot}/dist"],
+      "outputs": ["{projectRoot}/dist", "{projectRoot}/.amplify-hosting"],
       "options": {
         "command": "npm run build",
         "cwd": "apps/landing"
-      }
+      },
+      "inputs": [
+        "production",
+        "^production",
+        {
+          "env": "DRAFT_SECRET"
+        },
+        {
+          "env": "PREVIEW_COOKIE_DOMAIN"
+        },
+        {
+          "env": "PREVIEW_SECRET"
+        },
+        {
+          "env": "VITE_ALLOW_INDEXING"
+        },
+        {
+          "env": "VITE_CHAT_URL"
+        },
+        {
+          "env": "VITE_FORMS_API_URL"
+        },
+        {
+          "env": "VITE_FORMS_URL"
+        },
+        {
+          "env": "VITE_SITE_URL"
+        },
+        {
+          "env": "VITE_START_PAGE_EDITOR_ORIGIN"
+        },
+        {
+          "env": "VITE_TRACKER_URL"
+        },
+        {
+          "env": "VITE_UMAMI_SRC"
+        },
+        {
+          "env": "VITE_UMAMI_WEBSITE_ID"
+        }
+      ]
     },
     "dev": {
       "executor": "nx:run-commands",
