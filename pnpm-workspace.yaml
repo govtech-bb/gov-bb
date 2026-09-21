@@ -22,6 +22,7 @@ overrides:
   brace-expansion@>=5.0.0 <5.0.9: ^5.0.9 # nx
   multer@<2.3.0: ^2.3.0 # @nestjs/platform-express
   qs@<6.16.0: ^6.16.0 # express 4, body-parser 1
+  smol-toml@<1.7.1: ^1.7.1 # nx (GHSA-7w5x-hrqm-74c2)
 
 # pnpm blocks dependency build scripts by default; allowBuilds is the
 # reviewed decision list. true = must run (fetch/verify native binaries).
