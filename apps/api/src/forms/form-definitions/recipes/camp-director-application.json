@@ -327,7 +327,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select at least one option",
+                "error": "Select at least one description that applies to you",
                 "value": true
               }
             }
@@ -350,7 +350,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are a Give Back volunteer",
                 "value": true
               }
             }
@@ -571,7 +571,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have any health conditions or support needs to report",
                 "value": true
               }
             }
@@ -796,7 +796,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are currently taking any medicine",
                 "value": true
               }
             }
@@ -843,7 +843,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are allergic to any medicine",
                 "value": true
               }
             }
@@ -897,7 +897,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have camp experience",
                 "value": true
               }
             }
@@ -1023,7 +1023,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have paid or volunteer work experience",
                 "value": true
               }
             }
@@ -1110,7 +1110,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are still in this role",
                 "value": true
               }
             }
@@ -1128,7 +1128,12 @@
                 "operator": "equal",
                 "targetFieldId": "still-in-role"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1284,7 +1289,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you belong to any organisations",
                 "value": true
               }
             }
@@ -1586,7 +1591,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have any skills or activities you can lead or help with at camp",
                 "value": true
               }
             }
@@ -1685,7 +1690,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select how you can support this activity",
                 "value": true
               }
             }
@@ -1793,7 +1798,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have any concerns about being responsible for children for at least 7 hours a day",
                 "value": true
               }
             }

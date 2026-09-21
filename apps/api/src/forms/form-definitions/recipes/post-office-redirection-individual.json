@@ -479,7 +479,7 @@
             "label": "Are there any minor dependents who also need their mail to be redirected to the new address?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether any minor dependents also need their mail redirected",
                 "value": true
               }
             },
@@ -637,7 +637,7 @@
             "label": "Are there any adults who also need their mail to be redirected to the new address?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether any adults also need their mail redirected",
                 "value": true
               }
             },

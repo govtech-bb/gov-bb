@@ -117,7 +117,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select yes or no",
+                "error": "Select whether you experienced any technical problems",
                 "value": true
               }
             }

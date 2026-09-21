@@ -299,7 +299,7 @@
             "label": "Are you using an assistive device?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are using an assistive device",
                 "value": true
               }
             },
@@ -392,7 +392,7 @@
             "label": "In the event of an emergency or natural disaster, would you need evacuation from your home?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you would need evacuation from your home in an emergency or natural disaster",
                 "value": true
               }
             },
@@ -415,7 +415,7 @@
             "label": "Can your home be accessed by vehicle?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether your home can be accessed by vehicle",
                 "value": true
               }
             },
@@ -477,7 +477,7 @@
             "label": "Are you seeking employment?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are seeking employment",
                 "value": true
               }
             },

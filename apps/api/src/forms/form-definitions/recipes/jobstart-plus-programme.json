@@ -1017,7 +1017,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have had a paid job",
                 "value": true
               }
             }
