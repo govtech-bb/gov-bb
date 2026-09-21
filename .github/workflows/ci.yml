@@ -799,8 +799,52 @@ jobs:
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           exit 1
 
+  affected-apps:
+    # Which deployable apps this change touches, so the Docker jobs below only
+    # build an image whose inputs changed. Workspace-level Docker inputs that Nx
+    # cannot attribute to a project (.dockerignore, pnpm-workspace.yaml,
+    # patches/, this workflow) force all three.
+    name: Detect affected apps
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      api: ${{ steps.affected.outputs.api }}
+      fbapi: ${{ steps.affected.outputs.fbapi }}
+      chat: ${{ steps.affected.outputs.chat }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Derive affected base/head
+        uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
+        with:
+          main-branch-name: ${{ github.base_ref || github.ref_name }}
+      - name: Compute affected apps
+        id: affected
+        run: |
+          AFFECTED=$(pnpm exec nx show projects --affected --base="$NX_BASE" --head="$NX_HEAD" --type app --json)
+          echo "Affected apps: $AFFECTED"
+          has() { echo "$AFFECTED" | jq -e --arg p "$1" 'index($p)' >/dev/null && echo true || echo false; }
+          if git diff --name-only "$NX_BASE" "$NX_HEAD" \
+              | grep -qE '^(\.dockerignore|pnpm-workspace\.yaml|patches/.*|\.github/workflows/ci\.yml)$'; then
+            echo "Workspace-level Docker input changed: building all images"
+            printf 'api=true\nfbapi=true\nchat=true\n' >> "$GITHUB_OUTPUT"
+          else
+            echo "api=$(has api)" >> "$GITHUB_OUTPUT"
+            echo "fbapi=$(has form-builder-api)" >> "$GITHUB_OUTPUT"
+            echo "chat=$(has chat)" >> "$GITHUB_OUTPUT"
+          fi
+
   docker-build:
-    # Build every deployed Dockerfile on every PR, then load the image and
+    # Build each deployed Dockerfile when the change can reach it (see
+    # affected-apps above), then load the image and
     # require its whole compiled module graph. Catches refactors that orphan a
     # `COPY` path (a8d25528 deleted apps/form_builder/app/server/ai-builder/prompts
     # while the form_builder_api Dockerfile still referenced it) AND the
@@ -813,6 +857,7 @@ jobs:
     # so a change to one doesn't bust the others; deploy-*.yml read the same
     # scopes so deploys don't build cold.
     name: Docker Build (${{ matrix.label }})
+    needs: affected-apps
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -821,6 +866,7 @@ jobs:
         include:
           - label: api
             dockerfile: apps/api/Dockerfile
+            affected_key: api
             # Env the ConfigModule validates at import time — dummy values,
             # nothing connects. NODE_ENV=development so no RDS SSL is expected.
             smoke_args: >-
@@ -829,6 +875,7 @@ jobs:
             smoke: require('/app/dist/src/app.module.js')
           - label: form-builder-api
             dockerfile: apps/form_builder_api/Dockerfile
+            affected_key: fbapi
             smoke_args: -e NODE_ENV=development
             smoke: require('reflect-metadata'); require('/app/dist/app.js')
           # Build only, no smoke: a one-shot tsx job, not a server. Nothing in
@@ -836,15 +883,21 @@ jobs:
           # but the Main CI Required ruleset still lists this check — #2670.
           - label: chat-ingest
             dockerfile: apps/chat/Dockerfile.ingest
+            affected_key: chat
     steps:
+      # Step-level gating (not job-level) so a skipped image still reports the
+      # required check as success instead of leaving it pending.
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        if: needs.affected-apps.outputs[matrix.affected_key] == 'true'
         with:
           persist-credentials: false
 
       - name: Set up Docker Buildx
+        if: needs.affected-apps.outputs[matrix.affected_key] == 'true'
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
       - name: Build ${{ matrix.label }}
+        if: needs.affected-apps.outputs[matrix.affected_key] == 'true'
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
@@ -857,7 +910,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=ci-${{ matrix.label }}
 
       - name: Smoke — the image loads its compiled module graph
-        if: matrix.smoke != ''
+        if: matrix.smoke != '' && needs.affected-apps.outputs[matrix.affected_key] == 'true'
         env:
           IMAGE: ci-${{ matrix.label }}:smoke
           SMOKE: ${{ matrix.smoke }}
@@ -865,3 +918,9 @@ jobs:
         run: |
           # shellcheck disable=SC2086 # SMOKE_ARGS is a list of -e flags
           docker run --rm $SMOKE_ARGS --entrypoint node "$IMAGE" -e "$SMOKE"
+
+      - name: Not affected
+        if: needs.affected-apps.outputs[matrix.affected_key] != 'true'
+        env:
+          LABEL: ${{ matrix.label }}
+        run: echo "$LABEL image inputs did not change in this PR; build skipped."
