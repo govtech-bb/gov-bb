@@ -7,7 +7,7 @@ applications:
         preBuild:
           commands:
             - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
-            - npm install -g pnpm@11.6.0
+            - npm install -g "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")"
             - pnpm install --frozen-lockfile --store-dir .pnpm-store
         build:
           commands:
@@ -19,7 +19,6 @@ applications:
       cache:
         paths:
           - .pnpm-store/**/*
-          - .nx/cache/**/*
       customHeaders:
         - pattern: "**/*"
           headers:
@@ -49,7 +48,7 @@ applications:
         preBuild:
           commands:
             - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
-            - npm install -g pnpm@11.6.0
+            - npm install -g "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")"
             - pnpm install --frozen-lockfile --store-dir .pnpm-store
         build:
           commands:
@@ -61,7 +60,6 @@ applications:
       cache:
         paths:
           - .pnpm-store/**/*
-          - .nx/cache/**/*
       customHeaders:
         - pattern: "**/*"
           headers:
@@ -84,12 +82,10 @@ applications:
         preBuild:
           commands:
             - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
-            - npm install -g pnpm@11.6.0
+            - npm install -g "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")"
             - pnpm install --frozen-lockfile --store-dir .pnpm-store
         build:
           commands:
-            - pnpm exec nx run form-types:build
-            - pnpm exec nx run form-conditions:build
             - pnpm exec nx run forms:build
       artifacts:
         baseDirectory: apps/forms/dist
@@ -98,7 +94,6 @@ applications:
       cache:
         paths:
           - .pnpm-store/**/*
-          - .nx/cache/**/*
       customHeaders:
         - pattern: "**/*"
           headers:
@@ -125,7 +120,7 @@ applications:
         preBuild:
           commands:
             - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
-            - npm install -g pnpm@11.6.0
+            - npm install -g "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")"
             - pnpm install --frozen-lockfile --store-dir .pnpm-store
         build:
           commands:
@@ -137,7 +132,6 @@ applications:
       cache:
         paths:
           - .pnpm-store/**/*
-          - .nx/cache/**/*
       customHeaders:
         - pattern: "**/*"
           headers:
@@ -162,7 +156,7 @@ applications:
         preBuild:
           commands:
             - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
-            - npm install -g pnpm@11.6.0
+            - npm install -g "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")"
             - pnpm install --frozen-lockfile --store-dir .pnpm-store
         build:
           commands:
@@ -174,7 +168,6 @@ applications:
       cache:
         paths:
           - .pnpm-store/**/*
-          - .nx/cache/**/*
       customHeaders:
         - pattern: "**/*"
           headers:
@@ -200,7 +193,7 @@ applications:
         preBuild:
           commands:
             - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
-            - npm install -g pnpm@11.6.0
+            - npm install -g "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")"
             - pnpm install --frozen-lockfile --store-dir .pnpm-store
         build:
           commands:
@@ -212,7 +205,6 @@ applications:
       cache:
         paths:
           - .pnpm-store/**/*
-          - .nx/cache/**/*
       customHeaders:
         - pattern: "**/*"
           headers:
