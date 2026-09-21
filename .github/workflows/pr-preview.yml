@@ -121,7 +121,7 @@ jobs:
           NX_HEAD: HEAD
         run: |
           AFFECTED=$(pnpm exec nx show projects \
-            --affected --base="$NX_BASE" --head="$NX_HEAD" --type app --json 2>/dev/null || echo '[]')
+            --affected --base="$NX_BASE" --head="$NX_HEAD" --type app --json)
           echo "Affected apps: $AFFECTED"
           has() { echo "$AFFECTED" | jq -e --arg p "$1" 'index($p)' >/dev/null && echo true || echo false; }
 

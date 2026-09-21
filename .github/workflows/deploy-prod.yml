@@ -243,7 +243,7 @@ jobs:
           fi
 
           AFFECTED=$(pnpm exec nx show projects \
-            --affected --base="$NX_BASE" --head="$NX_HEAD" --type app --json 2>/dev/null || echo '[]')
+            --affected --base="$NX_BASE" --head="$NX_HEAD" --type app --json)
           echo "Affected apps: $AFFECTED"
           has() {
             if [ "$DEPLOY_ALL" = "true" ]; then echo true; return; fi

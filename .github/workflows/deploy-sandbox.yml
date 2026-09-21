@@ -129,12 +129,16 @@ jobs:
           # workflow triggered on push:sandbox.)
           main-branch-name: main
           workflow-id: deploy-sandbox.yml
+          # When no successful run exists the action would silently fall back to
+          # HEAD~1 and under-deploy a multi-commit push (deploy-prod.yml documents
+          # the 96-commit incident). Fail instead; re-run with an explicit base.
+          error-on-no-successful-workflow: true
 
       - name: Compute affected deploy targets
         id: affected
         run: |
           AFFECTED=$(pnpm exec nx show projects \
-            --affected --base="$NX_BASE" --head="$NX_HEAD" --type app --json 2>/dev/null || echo '[]')
+            --affected --base="$NX_BASE" --head="$NX_HEAD" --type app --json)
           echo "Affected apps: $AFFECTED"
           has() { echo "$AFFECTED" | jq -e --arg p "$1" 'index($p)' >/dev/null && echo true || echo false; }
 
