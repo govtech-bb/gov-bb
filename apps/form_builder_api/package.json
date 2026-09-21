@@ -9,13 +9,12 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1085.0",
-    "@aws-sdk/client-textract": "^3.1064.0",
-    "@aws-sdk/s3-presigned-post": "^3.1085.0",
+    "@aws-sdk/client-s3": "^3.1136.0",
+    "@aws-sdk/client-textract": "^3.1136.0",
+    "@aws-sdk/s3-presigned-post": "^3.1136.0",
     "@govtech-bb/database": "workspace:*",
     "@govtech-bb/form-builder": "workspace:*",
     "@govtech-bb/form-types": "workspace:*",
-    "@govtech-bb/git-publish": "workspace:*",
     "@tanstack/ai": "^0.53.0",
     "@tanstack/ai-bedrock": "0.3.7",
     "cors": "^2.8.5",
@@ -27,7 +26,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@aws-sdk/client-bedrock-runtime": "^3.1057.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1136.0",
     "@tanstack/ai-client": "^0.31.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",

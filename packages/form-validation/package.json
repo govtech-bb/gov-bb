@@ -11,8 +11,7 @@
     "*.ts": "npx prettier --write"
   },
   "devDependencies": {
-    "@types/luxon": "^3.7.1",
-    "lint-staged": "^16.4.0"
+    "@types/luxon": "^3.7.1"
   },
   "dependencies": {
     "@govtech-bb/expressions": "workspace:*",
