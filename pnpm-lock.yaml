@@ -1337,6 +1337,9 @@ importers:
       '@govtech-bb/form-types':
         specifier: workspace:*
         version: link:../form-types
+      '@govtech-bb/form-validation':
+        specifier: workspace:*
+        version: link:../form-validation
       '@govtech-bb/registry':
         specifier: workspace:*
         version: link:../registry

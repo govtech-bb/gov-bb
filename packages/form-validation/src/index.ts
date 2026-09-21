@@ -10,6 +10,11 @@ export { validateFields as validate } from "./validate-fields";
 export { validateField, validateFieldEntries } from "./validate-field";
 export { defaultValidationMessage } from "./default-messages";
 export {
+  requiredMessageDefect,
+  isFieldlessRequiredWording,
+} from "./required-message";
+export type { RequiredMessageDefect } from "./required-message";
+export {
   validateDateField,
   isDateValidationError,
   isCompleteDateValue,

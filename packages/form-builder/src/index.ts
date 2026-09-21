@@ -45,7 +45,19 @@ export {
 } from "./processor-config";
 
 // Core utilities
-export { hydrateForm, collectUnknownRefs } from "./resolution";
+export {
+  hydrateForm,
+  collectUnknownRefs,
+  collectGenericRequiredMessages,
+} from "./resolution";
+export type { GenericRequiredMessage } from "./resolution";
+// Re-exported so a consumer of GenericRequiredMessage can name the type of
+// its `defect` field without depending on @govtech-bb/form-validation.
+export type { RequiredMessageDefect } from "@govtech-bb/form-validation";
+// Same reason, for the authoring surfaces: the editor's generic-message
+// warning has to test the wording the Deploy gate tests, or it stays silent
+// on copy the gate will reject (#2715).
+export { isFieldlessRequiredWording } from "@govtech-bb/form-validation";
 export { UnknownRefError } from "./errors";
 export type { UnknownRef } from "./errors";
 export { serializeRecipeDraft, deserializeRecipe } from "./serialization";

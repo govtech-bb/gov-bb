@@ -1,4 +1,8 @@
 import type { ValidationConfig, ValidationRule } from "@govtech-bb/form-types";
+import { isFieldlessRequiredWording } from "@govtech-bb/form-builder";
+
+// Re-exported so the editor surfaces test the wording through one import.
+export { isFieldlessRequiredWording };
 
 // The message the runtime falls back to when `required.error` is unset, and
 // the message every `components/generic-*` primitive but `generic-tel` ships
@@ -39,7 +43,7 @@ function isDerivedOrGeneric(
   message: string,
   label: string | undefined,
 ): boolean {
-  if (message === GENERIC_REQUIRED_MSG) return true;
+  if (isFieldlessRequiredWording(message)) return true;
   return label !== undefined && message === deriveRequiredMessage(label);
 }
 
@@ -77,13 +81,13 @@ export function requiredRuleOnTick({
   label,
 }: RequiredRuleOnTickArgs): ValidationConfig | undefined {
   const authored = validations?.required?.error;
-  if (authored !== undefined && authored !== GENERIC_REQUIRED_MSG) {
+  if (authored !== undefined && !isFieldlessRequiredWording(authored)) {
     return { value: true, error: authored };
   }
 
   const inherited = baseValidations?.required?.error;
   const inheritedIsUsable =
-    inherited !== undefined && inherited !== GENERIC_REQUIRED_MSG;
+    inherited !== undefined && !isFieldlessRequiredWording(inherited);
 
   // The base already requires the field and says something useful — inherit it
   // rather than persisting a copy that would go stale if the registry changed.

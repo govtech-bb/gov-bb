@@ -28,7 +28,10 @@
  */
 import type { Block, FieldOverrides, Primitive } from "@govtech-bb/form-types";
 import { applyFieldOverrides } from "@govtech-bb/form-types";
-import { defaultValidationMessage } from "@govtech-bb/form-validation";
+import {
+  defaultValidationMessage,
+  requiredMessageDefect,
+} from "@govtech-bb/form-validation";
 
 interface Elementish {
   ref?: unknown;
@@ -39,51 +42,26 @@ function isBlock(entry: Primitive | Block): entry is Block {
   return "blockId" in entry;
 }
 
-/** Mirrors validateFieldEntries: `required` present and not explicitly false. */
-function isEffectivelyRequired(field: Primitive): boolean {
-  const required = field.validations?.required;
-  return required !== undefined && required.value !== false;
-}
-
-/**
- * Messages that identify no field: the runtime default, plus the stock phrases
- * authors reach for on a choice field. They fail the same way — two of them on
- * one step give the error summary two identical links. A message that names
- * what to pick ("Select your parish") is fine.
- *
- * Compared after `normalise`, because punctuation and casing drift while the
- * message stays just as field-less — trailing full stops are a live habit in
- * the recipe set ("Enter your address.").
- */
-const normalise = (message: string): string =>
-  message.trim().replace(/\.$/, "").toLowerCase();
-
-const FIELDLESS_MESSAGES = new Set(
-  [
-    defaultValidationMessage("required"),
-    "Select an option",
-    "Select an answer",
-    "Select yes or no",
-    "Select at least one option",
-  ].map(normalise),
-);
-
 function checkField(field: Primitive, where: string): string | null {
-  if (!isEffectivelyRequired(field)) return null;
+  // The rule lives in @govtech-bb/form-validation so the Form Builder's Deploy
+  // gate applies exactly the same one (#2714); only the wording is local.
+  const defect = requiredMessageDefect(field);
+  if (!defect) return null;
 
-  const error = field.validations?.required?.error;
-  if (error === undefined) {
-    // An unauthored date is exempt: validateDateField composes its own
-    // label-aware `Enter ${label}` rather than reaching the required runner.
-    if (field.htmlType === "date") return null;
-    const generic = defaultValidationMessage("required");
-    return `${where} has no required.error and would show the generic "${generic}" — add an error naming what to enter`;
+  switch (defect) {
+    case "missing": {
+      const generic = defaultValidationMessage("required");
+      return `${where} has no required.error and would show the generic "${generic}" — add an error naming what to enter`;
+    }
+    // Not a fallback: `config.error ?? default` takes "" as authored, so the
+    // applicant is shown an error with no text rather than the generic one.
+    case "blank":
+      return `${where} has a blank required.error, so the applicant sees an error with no text — add an error naming what to enter`;
+    // Quote what was authored, not the default: the field-less set is five
+    // wordings now, so naming the default would point at the wrong string.
+    case "generic":
+      return `${where} uses the generic "${field.validations?.required?.error}" as its required.error — replace it with an error naming the field`;
   }
-  // An authored message IS shown verbatim, dates included, so it is not exempt.
-  if (FIELDLESS_MESSAGES.has(normalise(error))) {
-    return `${where} uses the generic "${error}" as its required.error — replace it with an error naming the field`;
-  }
-  return null;
 }
 
 export function checkRequiredErrorsAreSpecific(
