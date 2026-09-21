@@ -48,6 +48,15 @@ COPY --chown=app:app packages/ packages/
 
 RUN pnpm exec nx build api
 
+# Each workspace package compiles into its own packages/<name>/dist (so its
+# declarations resolve externals from the package's own node_modules). Gather
+# them under dist/packages/<name> — the layout the runner stage symlinks.
+RUN for d in packages/*/dist; do \
+      [ -d "$d" ] || continue; \
+      n=$(basename "$(dirname "$d")"); \
+      mkdir -p "dist/packages/$n" && cp -R "$d/." "dist/packages/$n/"; \
+    done
+
 # ---- dev ----------------------------------------------------------------
 # Hot-reload image used by docker-compose for local iteration. Reuses the
 # builder stage (deps already installed, source already copied, prod build
@@ -70,10 +79,15 @@ CMD ["pnpm", "exec", "nx", "dev", "api"]
 # AWS Inspector scans and every task start pulls. Linked from the cache-mount
 # store where possible and fetched otherwise: when the install layer above is
 # CACHED it never ran in this build, so the mount is empty.
+#
+# node-linker=hoisted here only: the workspace installs with pnpm's default
+# isolated layout (ADR 0004), but the runner resolves everything from a single
+# /app/node_modules, so this stage lays the prod deps out flat, npm-style.
 FROM builder AS prod-deps
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
     rm -rf node_modules apps/api/node_modules packages/*/node_modules && \
     pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts --prefer-offline --prod \
+      --config.node-linker=hoisted \
       --filter @govtech-bb/api... --filter @govtech-bb/modular-forms-monorepo
 
 # ---- runner -------------------------------------------------------------
@@ -123,11 +137,11 @@ COPY --chown=app:app certs/rds-global-bundle.pem /app/rds-ca-bundle.pem
 RUN chown app:app /app
 USER app
 
-COPY --from=builder --chown=app:app /app/dist/apps/api/ ./dist/
+COPY --from=builder --chown=app:app /app/apps/api/dist/ ./dist/
 COPY --from=builder --chown=app:app /app/dist/packages/ ./packages/
 COPY --from=prod-deps --chown=app:app /app/node_modules/ ./node_modules/
 
-# pnpm (hoisted mode) keeps workspace-package symlinks in the consumer's
+# pnpm (hoisted layout) keeps workspace-package symlinks in the consumer's
 # own node_modules (apps/api/node_modules/@govtech-bb/*). The runtime
 # entry is /app/dist/src/main.js, and Node's module-lookup walks up from
 # there — it never enters apps/api/. Expose the workspace packages at the

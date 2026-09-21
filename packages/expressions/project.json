@@ -10,7 +10,7 @@
         "{options.outputPath}"
       ],
       "options": {
-        "outputPath": "dist/packages/expressions",
+        "outputPath": "packages/expressions/dist",
         "tsConfig": "packages/expressions/tsconfig.json",
         "main": "packages/expressions/src/index.ts"
       }

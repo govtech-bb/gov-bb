@@ -1,7 +1,7 @@
 # 0003 — Containerised api needs explicit workspace symlinks at root `node_modules`
 
 **Date:** 2026-05-21
-**Status:** Accepted
+**Status:** Accepted — amended by [ADR 0004](./0004-pnpm-uses-the-default-isolated-node-linker.md) (2026-09-21): the workspace now installs isolated; the flat runtime layout this ADR relies on is produced explicitly by the `prod-deps` stage (`--config.node-linker=hoisted`), and the compiled api lives at `apps/api/dist`
 
 ## Context
 
@@ -18,7 +18,7 @@ require stack:
 Why this happens:
 
 - pnpm runs in `hoisted` linker mode ([ADR 0002](./0002-pnpm-uses-hoisted-node-linker.md)) — external deps land in root `node_modules`, but **workspace** packages are linked into the consumer's own `node_modules`, i.e. `apps/api/node_modules/@govtech-bb/*`.
-- The runtime stage of `apps/api/Dockerfile` copies `dist/apps/api/*` and renames it to `dist/*`. The entry point becomes `/app/dist/src/main.js`.
+- The runtime stage of `apps/api/Dockerfile` copies `apps/api/dist/*` (formerly `dist/apps/api/*`) to `dist/*`. The entry point becomes `/app/dist/src/main.js`.
 - Node's module-lookup algorithm walks up the filesystem from the requiring module, checking each ancestor's `node_modules`. From `/app/dist/src/main.js` it checks `/app/dist/src/node_modules`, `/app/dist/node_modules`, `/app/node_modules`, `/node_modules`. **It never enters `/app/apps/api/node_modules`** — that path isn't an ancestor of the requiring file.
 
 The previous Dockerfile (under npm workspaces, before [ADR 0002](./0002-pnpm-uses-hoisted-node-linker.md)) happened to work because npm hoisted workspace packages to root `node_modules/` as real directories. Under pnpm `hoisted`, workspace packages stay isolated per consumer.

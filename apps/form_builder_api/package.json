@@ -27,6 +27,8 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1057.0",
+    "@tanstack/ai-client": "^0.31.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",

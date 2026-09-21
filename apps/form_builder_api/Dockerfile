@@ -31,15 +31,29 @@ COPY --chown=app:app packages/ packages/
 # Build the API and all workspace deps (Nx handles the dependency graph via dependsOn: ["^build"])
 RUN pnpm exec nx build form-builder-api
 
+# Each workspace package compiles into its own packages/<name>/dist (so its
+# declarations resolve externals from the package's own node_modules). Gather
+# them under dist/packages/<name> — the layout the runner stage symlinks.
+RUN for d in packages/*/dist; do \
+      [ -d "$d" ] || continue; \
+      n=$(basename "$(dirname "$d")"); \
+      mkdir -p "dist/packages/$n" && cp -R "$d/." "dist/packages/$n/"; \
+    done
+
 # ---- prod-deps ---------------------------------------------------------------
 # Runtime node_modules: only @govtech-bb/form-builder-api's graph (plus the root
 # project, whose runtime deps it shares), no devDependencies. Linked from the
 # cache-mount store where possible, fetched otherwise (a CACHED install layer
 # leaves the mount empty). Mirrors apps/api/Dockerfile.
+#
+# node-linker=hoisted here only: the workspace installs with pnpm's default
+# isolated layout (ADR 0004), but the runner resolves everything from a single
+# /app/node_modules, so this stage lays the prod deps out flat, npm-style.
 FROM builder AS prod-deps
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
     rm -rf node_modules apps/form_builder_api/node_modules packages/*/node_modules && \
     pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts --prefer-offline --prod \
+      --config.node-linker=hoisted \
       --filter @govtech-bb/form-builder-api... --filter @govtech-bb/modular-forms-monorepo
 
 # ---- runner ----------------------------------------------------------------
@@ -87,7 +101,7 @@ USER app
 # Compiled API output
 COPY --from=builder --chown=app:app /app/apps/form_builder_api/dist/ ./dist/
 
-# Compiled workspace packages (built by nx via dependsOn — emitted to dist/packages/{name}/src/*.js).
+# Compiled workspace packages (built by nx via dependsOn into packages/{name}/dist, gathered into dist/packages/{name}/src/*.js above).
 # Matches main API pattern: each workspace package's package.json declares main: "./src/index.js",
 # so dist/packages/{name}/src/index.js lands at packages/{name}/src/index.js to resolve correctly.
 COPY --from=builder --chown=app:app /app/dist/packages/ ./packages/
