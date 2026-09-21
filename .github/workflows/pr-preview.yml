@@ -64,7 +64,11 @@ jobs:
       # cert is a single-label wildcard (*.<appId>.amplifyapp.com), so a
       # dotted branch produces a multi-label subdomain whose preview fails
       # TLS with ERR_CERT_COMMON_NAME_INVALID — unreachable for humans and
-      # the smoke test alike. Fail fast with a clear message instead.
+      # the smoke test alike. And reject names whose preview label (the
+      # branch with '/' → '-', see SUBDOMAIN below) exceeds 63 characters:
+      # that is one DNS label, so the host never resolves and the A11y +
+      # smoke gates fail on infrastructure rather than on the change (#2488).
+      # Fail fast with a clear message instead.
       - name: Guard branch name
         env:
           BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
@@ -82,6 +86,14 @@ jobs:
               echo "   to use '-' instead of '.' (e.g. 'feature-v1-3-0')."
               exit 1 ;;
           esac
+          LABEL="${BRANCH_NAME//\//-}"
+          if [ "${#LABEL}" -gt 63 ]; then
+            echo "❌ Refusing PR preview for branch name '$BRANCH_NAME' — its preview label '$LABEL' is ${#LABEL} characters."
+            echo "   A DNS label is capped at 63, so the preview host would never resolve (ERR_NAME_NOT_RESOLVED)"
+            echo "   and the A11y scan and forms smoke gate would run against a dead URL (#2488). Shorten the"
+            echo "   branch so that, with '/' replaced by '-', it is 63 characters or fewer."
+            exit 1
+          fi
 
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
