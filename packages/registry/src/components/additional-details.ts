@@ -1,4 +1,4 @@
-import { TextAreaPrimitive } from "@govtech-bb/form-types";
+import type { TextAreaPrimitive } from "@govtech-bb/form-types";
 
 export const AdditionalDetails: TextAreaPrimitive = {
   fieldId: "additional-details",

@@ -1,4 +1,4 @@
-import { Block } from "@govtech-bb/form-types";
+import type { Block } from "@govtech-bb/form-types";
 import { UploadDocument } from "../components";
 
 export const SupportingDocuments: Block = {

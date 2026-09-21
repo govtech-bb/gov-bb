@@ -15,6 +15,13 @@
       "options": {
         "lintFilePatterns": ["scripts/**/*.ts"]
       }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p tsconfig.json",
+        "cwd": "scripts"
+      }
     }
   },
   "tags": []

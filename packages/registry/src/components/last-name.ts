@@ -1,4 +1,4 @@
-import { TextPrimitive } from "@govtech-bb/form-types";
+import type { TextPrimitive } from "@govtech-bb/form-types";
 import {
   PERSON_NAME_PATTERN,
   PERSON_NAME_ALLOWED,

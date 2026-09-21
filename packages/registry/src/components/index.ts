@@ -167,7 +167,7 @@ const ALL = [
 
 // Completeness guard: bump the literal type whenever you add a component to
 // ALL, so a registered-but-unlisted component fails the build.
-const _componentCount: 52 = ALL.length;
+export const COMPONENT_COUNT: 52 = ALL.length;
 
 export const REGISTRY_COMPONENTS: Record<`components/${string}`, Primitive> =
   Object.fromEntries(ALL.map((c) => [`components/${c.fieldId}`, c]));

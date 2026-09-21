@@ -159,6 +159,7 @@ export interface FunnelStepResult {
 
 /** One journey path row. */
 export interface JourneyPath {
-  items: string[];
+  /** null for steps a session never reached (Umami pads shorter paths). */
+  items: (string | null)[];
   count: number;
 }
