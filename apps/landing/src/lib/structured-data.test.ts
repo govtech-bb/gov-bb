@@ -109,7 +109,7 @@ describe('buildBreadcrumbLd', () => {
     expect(items.map((item) => item.name)).toEqual([
       'Home',
       'Health and emergency services',
-      'Find Barbados Drug Service prescription medication',
+      'Find a pharmacy and check what Barbados Drug Service benefits it offers',
       'Get free or subsidised medication',
     ])
     expect(items.map((item) => item.item)).toEqual([

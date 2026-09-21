@@ -59,7 +59,7 @@ describe('Breadcrumbs', () => {
     expect(links.map((link) => link.textContent)).toEqual([
       'Home',
       'Health and emergency services',
-      'Find Barbados Drug Service prescription medication',
+      'Find a pharmacy and check what Barbados Drug Service benefits it offers',
     ])
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
       '/',
