@@ -8,7 +8,6 @@
     "ignoreDeprecations": "5.0",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "importHelpers": true,
     "target": "ES2022",
     "module": "ESNext",
     "lib": ["ES2022"],

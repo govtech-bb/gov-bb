@@ -8,7 +8,7 @@ applications:
           commands:
             - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
             - npm install -g pnpm@11.6.0
-            - pnpm install --frozen-lockfile
+            - pnpm install --frozen-lockfile --store-dir .pnpm-store
         build:
           commands:
             - pnpm exec nx run landing:build
@@ -18,7 +18,7 @@ applications:
           - "**/*"
       cache:
         paths:
-          - node_modules/**/*
+          - .pnpm-store/**/*
           - .nx/cache/**/*
       customHeaders:
         - pattern: "**/*"
@@ -50,7 +50,7 @@ applications:
           commands:
             - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
             - npm install -g pnpm@11.6.0
-            - pnpm install --frozen-lockfile
+            - pnpm install --frozen-lockfile --store-dir .pnpm-store
         build:
           commands:
             - pnpm exec nx run chat:build
@@ -60,7 +60,7 @@ applications:
           - "**/*"
       cache:
         paths:
-          - node_modules/**/*
+          - .pnpm-store/**/*
           - .nx/cache/**/*
       customHeaders:
         - pattern: "**/*"
@@ -85,7 +85,7 @@ applications:
           commands:
             - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
             - npm install -g pnpm@11.6.0
-            - pnpm install --frozen-lockfile
+            - pnpm install --frozen-lockfile --store-dir .pnpm-store
         build:
           commands:
             - pnpm exec nx run form-types:build
@@ -97,7 +97,7 @@ applications:
           - "**/*"
       cache:
         paths:
-          - node_modules/**/*
+          - .pnpm-store/**/*
           - .nx/cache/**/*
       customHeaders:
         - pattern: "**/*"
@@ -126,7 +126,7 @@ applications:
           commands:
             - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
             - npm install -g pnpm@11.6.0
-            - pnpm install --frozen-lockfile
+            - pnpm install --frozen-lockfile --store-dir .pnpm-store
         build:
           commands:
             - pnpm exec nx run form-builder-app:build
@@ -136,7 +136,7 @@ applications:
           - "**/*"
       cache:
         paths:
-          - node_modules/**/*
+          - .pnpm-store/**/*
           - .nx/cache/**/*
       customHeaders:
         - pattern: "**/*"
@@ -163,7 +163,7 @@ applications:
           commands:
             - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
             - npm install -g pnpm@11.6.0
-            - pnpm install --frozen-lockfile
+            - pnpm install --frozen-lockfile --store-dir .pnpm-store
         build:
           commands:
             - pnpm exec nx run feature-flagging-app:build
@@ -173,7 +173,7 @@ applications:
           - "**/*"
       cache:
         paths:
-          - node_modules/**/*
+          - .pnpm-store/**/*
           - .nx/cache/**/*
       customHeaders:
         - pattern: "**/*"
@@ -201,7 +201,7 @@ applications:
           commands:
             - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
             - npm install -g pnpm@11.6.0
-            - pnpm install --frozen-lockfile
+            - pnpm install --frozen-lockfile --store-dir .pnpm-store
         build:
           commands:
             - pnpm exec nx run analytics-app:build
@@ -211,7 +211,7 @@ applications:
           - "**/*"
       cache:
         paths:
-          - node_modules/**/*
+          - .pnpm-store/**/*
           - .nx/cache/**/*
       customHeaders:
         - pattern: "**/*"

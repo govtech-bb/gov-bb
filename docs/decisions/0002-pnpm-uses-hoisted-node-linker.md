@@ -1,7 +1,7 @@
 # 0002 — pnpm uses the `hoisted` node-linker
 
 **Date:** 2026-05-20
-**Status:** Accepted
+**Status:** Superseded by [ADR 0004](./0004-pnpm-uses-the-default-isolated-node-linker.md) (2026-09-21)
 
 ## Context
 

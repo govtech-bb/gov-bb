@@ -8,7 +8,7 @@
       "executor": "@nx/js:tsc",
       "outputs": ["{options.outputPath}"],
       "options": {
-        "outputPath": "dist/packages/content",
+        "outputPath": "packages/content/dist",
         "tsConfig": "packages/content/tsconfig.json",
         "main": "packages/content/src/index.ts"
       }

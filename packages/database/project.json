@@ -10,7 +10,7 @@
         "{options.outputPath}"
       ],
       "options": {
-        "outputPath": "dist/packages/database",
+        "outputPath": "packages/database/dist",
         "tsConfig": "packages/database/tsconfig.json",
         "main": "packages/database/src/index.ts"
       }

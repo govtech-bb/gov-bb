@@ -2,10 +2,6 @@ packages:
   - "apps/*"
   - "packages/*"
 
-# was .npmrc node-linker=hoisted; lives here so npm stops warning
-# about unknown config — see docs/decisions/0002
-nodeLinker: hoisted
-
 # pnpm 11 supply-chain hardening: no git/URL deps in the transitive graph.
 # NOTE: trustPolicy no-downgrade was tried and reverted — it blocks
 # @govtech-bb/design and @govtech-bb/react@1.0.0-alpha.16, which were
@@ -26,6 +22,9 @@ overrides:
   brace-expansion@>=5.0.0 <5.0.9: ^5.0.9 # nx
   multer@<2.3.0: ^2.3.0 # @nestjs/platform-express
   qs@<6.16.0: ^6.16.0 # express 4, body-parser 1
+  # Types-only package; one copy so AWS SDK client types stay identical across
+  # client releases (aws-sdk-client-mock vs @aws-sdk/client-s3 in api specs).
+  "@smithy/types@<4.16.1": ^4.16.1
 
 # pnpm blocks dependency build scripts by default; allowBuilds is the
 # reviewed decision list. true = must run (fetch/verify native binaries).

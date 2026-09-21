@@ -191,6 +191,12 @@ file list"):
    `"references": [{ "path": "../B" }]` — so tsc uses B's declarations instead
    of pulling B's `.ts` source into A's program.
 
+Library builds emit into the package's own `packages/<name>/dist` (the api into
+`apps/api/dist`), so declarations and compiled code resolve their externals from
+that package's `node_modules`. pnpm uses its default isolated linker (ADR 0004):
+a project only sees dependencies its own `package.json` declares, so declare
+every import where it is used rather than relying on a sibling to pull it in.
+
 A package that is only consumed by a Vite/bundler app (which bundles source
 directly) can get away without a build target — but the moment a strict `tsc`
 library imports it, both requirements above apply. This is what broke the build
