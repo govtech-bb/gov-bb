@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, sandbox, staging, dev]
+    branches: [main]
   # Re-validate the trunk after every merge. CI otherwise runs only on
   # pull_request, so a break that emerges from the COMBINATION of two
   # independently-green PRs (e.g. #1875's recipes + #1970's new lint, incident
@@ -28,6 +28,7 @@ jobs:
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
@@ -81,6 +82,7 @@ jobs:
   secrets-scan:
     name: Secrets Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       security-events: write
@@ -92,7 +94,10 @@ jobs:
 
       - name: Install Gitleaks
         run: |
-          wget https://github.com/gitleaks/gitleaks/releases/download/v8.18.2/gitleaks_8.18.2_linux_x64.tar.gz
+          wget -q https://github.com/gitleaks/gitleaks/releases/download/v8.18.2/gitleaks_8.18.2_linux_x64.tar.gz
+          # sha256 from the release's gitleaks_8.18.2_checksums.txt; a tampered or
+          # truncated download fails here instead of running against the checkout.
+          echo "6298c9235dfc9278c14b28afd9b7fa4e6f4a289cb1974bd27949fc1e9122bdee  gitleaks_8.18.2_linux_x64.tar.gz" | sha256sum -c -
           tar -xzf gitleaks_8.18.2_linux_x64.tar.gz
           chmod +x gitleaks
           sudo mv gitleaks /usr/local/bin/
@@ -233,10 +238,8 @@ jobs:
 
   security:
     name: Security Scan
-    # Skip CodeQL on staging-bound PRs: same code already scanned on the
-    # upstream sandbox PR. Staging is a promotion gate, not a new-code gate.
-    if: github.base_ref != 'staging'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       security-events: write
@@ -262,14 +265,25 @@ jobs:
 
       - name: Parse and report security results
         if: always()
+        env:
+          CODEQL_OUTCOME: ${{ steps.codeql.outcome }}
         run: |
+          # The analyze step is continue-on-error so this step can summarise, but
+          # a failed or silent CodeQL run must fail the gate, not pass it green.
+          if [ "$CODEQL_OUTCOME" != "success" ]; then
+            echo "## ❌ Security Scan Failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "CodeQL analysis step outcome: \`$CODEQL_OUTCOME\`. See the step log above." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
           SARIF_FILE=$(find sarif-results -name "*.sarif" -type f | head -n 1)
 
           if [ -z "$SARIF_FILE" ]; then
-            echo "## ✅ Security Scan Complete" >> $GITHUB_STEP_SUMMARY
+            echo "## ❌ Security Scan Failed" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "No SARIF results file found. CodeQL analysis may still be processing." >> $GITHUB_STEP_SUMMARY
-            exit 0
+            echo "CodeQL reported success but produced no SARIF results file." >> $GITHUB_STEP_SUMMARY
+            exit 1
           fi
 
           python3 << 'EOF' >> $GITHUB_STEP_SUMMARY
@@ -444,17 +458,19 @@ jobs:
                   sys.exit(1)
 
           except Exception as e:
-              print("## ⚠️ Security Scan Complete")
+              print("## ❌ Security Scan Failed")
               print("")
               print(f"Could not parse SARIF results: {e}")
               print("")
               print("**View details**: Go to the Security tab → Code scanning alerts")
+              sys.exit(1)
 
           EOF
 
   test:
     name: Test
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
@@ -544,8 +560,9 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     # Decoupled from typecheck/test/security: runs in parallel as its own
-    # required check. CodeQL no longer gates here — it runs nightly (codeql.yml).
+    # required check. CodeQL gates in the Security Scan job.
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
@@ -592,11 +609,8 @@ jobs:
 
   validate-recipes:
     name: Validate Recipes
-    # Skip recipe validation on staging-bound PRs: recipes don't change in
-    # promotion-only flow. Sandbox/dev PRs (where recipes are actually edited)
-    # remain gated.
-    if: github.base_ref != 'staging'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
@@ -623,10 +637,8 @@ jobs:
     # form_builder Content flow writes pages through the GitHub contents API
     # with no checkout and no pnpm, so it can never run the generators itself
     # and every page it adds would otherwise land red.
-    # Skipped on staging-bound PRs (promotion-only, content doesn't change),
-    # matching validate-recipes.
-    if: github.base_ref != 'staging'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       # On `pull_request` the default ref is the merge commit, which cannot be
       # pushed back to the branch. Check out the PR head SHA instead (works for
@@ -738,6 +750,7 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
@@ -801,6 +814,7 @@ jobs:
     # scopes so deploys don't build cold.
     name: Docker Build (${{ matrix.label }})
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
