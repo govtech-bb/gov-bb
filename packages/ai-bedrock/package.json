@@ -7,7 +7,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.ts"
+    "test": "vitest run"
   },
   "dependencies": {
     "@tanstack/ai": "catalog:"
