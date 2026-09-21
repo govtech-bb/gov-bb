@@ -1,4 +1,4 @@
-import { vi, type Mock } from "vitest";
+import { vi } from "vitest";
 import type { Request, Response } from "express";
 
 /** Minimal express mocks for unit-testing route handlers directly. */

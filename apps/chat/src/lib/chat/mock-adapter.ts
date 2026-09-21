@@ -115,7 +115,6 @@ export class MockTextAdapter extends BaseTextAdapter<
     this.formId = formId;
   }
 
-  // eslint-disable-next-line require-yield -- the mock never produces structured output
   async structuredOutput(): Promise<StructuredOutputResult<unknown>> {
     throw new Error("MockTextAdapter: structuredOutput is not supported");
   }
