@@ -22,7 +22,7 @@
     "eval:responses": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env eval/responses/run.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-bedrock-runtime": "^3.1057.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1136.0",
     "@fontsource/figtree": "^5.2.10",
     "@govtech-bb/ai-bedrock": "workspace:*",
     "@govtech-bb/aws-secrets": "workspace:*",
