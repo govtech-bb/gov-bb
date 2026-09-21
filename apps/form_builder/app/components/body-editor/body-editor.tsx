@@ -54,7 +54,7 @@ const bodyEditorExtension = defineExtension({
     SelectBlockExtension,
   ],
   theme: {
-    link: "text-ui-link decoration-1 underline-offset-2",
+    link: "text-ui-link underline decoration-1 underline-offset-2",
     quote: "my-2.5 border-s-3 border-ui-line py-0.5 ps-3 text-ui-subtle",
     hr: "my-3.5 border-0 border-t border-ui-line",
     heading: {
@@ -64,8 +64,9 @@ const bodyEditorExtension = defineExtension({
     },
     list: {
       listitem: "my-0.75",
-      ol: "my-2 ps-6",
-      ul: "my-2 ps-6",
+      nested: { listitem: "list-none" },
+      ol: "my-2 ps-6 list-decimal",
+      ul: "my-2 ps-6 list-disc",
     },
     table: "my-2.5 w-full border-collapse",
     tableCell: "border border-ui-hairline px-2.5 py-1.5 text-[13px]",
