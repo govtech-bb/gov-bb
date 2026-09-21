@@ -13,8 +13,6 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@govtech-bb/analytics": ["../../packages/analytics/src/index.ts"],
-      "@govtech-bb/form-builder": ["../../packages/form-builder/src/index.ts"],
       "@govtech-bb/form-types": ["../../packages/form-types/src/index.ts"],
       "@govtech-bb/expressions": ["../../packages/expressions/src/index.ts"],
       "@govtech-bb/form-conditions": [
@@ -24,17 +22,10 @@
         "../../packages/form-validation/src/index.ts"
       ],
       "@govtech-bb/registry": ["../../packages/registry/src/index.ts"],
-      "@govtech-bb/database": ["../../packages/database/src/index.ts"],
-      "@govtech-bb/git-publish": ["../../packages/git-publish/src/index.ts"],
-      "@govtech-bb/umami-analytics": [
-        "../../packages/umami-analytics/src/index.ts"
-      ]
+      "@govtech-bb/database": ["../../packages/database/src/index.ts"]
     }
   },
   "references": [
-    {
-      "path": "../../packages/umami-analytics"
-    },
     {
       "path": "../../packages/database"
     },

@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "references": [
+    {
+      "path": "../../packages/database"
+    },
+    {
+      "path": "../../packages/form-types"
+    },
+    {
+      "path": "../../packages/form-validation"
+    },
+    {
+      "path": "../../packages/form-conditions"
+    },
+    {
+      "path": "../../packages/registry"
+    }
+  ],
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "**/*.spec.ts"]
+}
