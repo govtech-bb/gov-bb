@@ -289,6 +289,10 @@ describe("WebhookProcessor — mapped mode (per-MDA destination)", () => {
       },
       meta: {
         submittedAt: "2026-06-18T09:00:00.000Z",
+        activeStepIds: ["child", "contact", "declaration"],
+        hiddenStepIds: [],
+        activeFieldIds: {},
+        hiddenFieldIds: {},
       } as unknown as SubmissionCreatedEvent["meta"],
     };
   }
@@ -321,7 +325,51 @@ describe("WebhookProcessor — mapped mode (per-MDA destination)", () => {
       },
       form_data: {},
       submitted_at: "2026-06-18T09:00:00.000Z",
+      sections: [],
     });
+  });
+
+  it("sends the answers as labelled sections, filtered by the audit trail (#2587)", async () => {
+    const processor = new WebhookProcessor(
+      http,
+      makeDestinations(DEST),
+      formDefinitions,
+    );
+    findByFormId.mockResolvedValue({
+      formId: "science-camp",
+      version: "1.4.0",
+      steps: [
+        {
+          stepId: "child",
+          title: "About the child",
+          elements: [
+            { fieldId: "first", label: "First name", htmlType: "text" },
+            { fieldId: "last", label: "Last name", htmlType: "text" },
+          ],
+        },
+      ],
+    });
+    const payload = makeMappedPayload();
+    payload.meta = {
+      submittedAt: "2026-06-18T09:00:00.000Z",
+      activeStepIds: ["child"],
+      hiddenStepIds: [],
+      activeFieldIds: { child: ["first"] },
+      hiddenFieldIds: {},
+    } as unknown as SubmissionCreatedEvent["meta"];
+
+    await processor.process(payload);
+
+    const body = JSON.parse(reqConfig().data);
+    expect(body.form_id).toBe("science-camp");
+    expect(body.form_version).toBe("1.4.0");
+    expect(body.sections).toEqual([
+      {
+        stepId: "child",
+        title: "About the child",
+        fields: [{ fieldId: "first", label: "First name", value: "Ada" }],
+      },
+    ]);
   });
 
   it("fails loud (WebhookConfigError, no request) when no MDA destination resolves", async () => {

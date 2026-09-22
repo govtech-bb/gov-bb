@@ -299,4 +299,143 @@ describe("webhook-mapping", () => {
       expect(payload.programme_code).toBe("STATIC");
     });
   });
+
+  // The CMS renders raw form_data keys, so a reviewer sees "CHILD DOB" and a
+  // date exploded into DAY / YEAR / MONTH while the MDA email for the same
+  // submission reads cleanly. Send the email's sections alongside form_data.
+  describe("labelled sections (#2587)", () => {
+    const SECTION_CONTRACT = {
+      formId: "science-camp",
+      title: "Science Camp",
+      version: "1.2.0",
+      steps: [
+        {
+          stepId: "child-details",
+          title: "About the child",
+          elements: [
+            {
+              fieldId: "child-first-name",
+              label: "Child's first name",
+              htmlType: "text",
+            },
+            { fieldId: "child-dob", label: "Date of birth", htmlType: "date" },
+            {
+              fieldId: "consent-form",
+              label: "Signed consent form",
+              htmlType: "file",
+            },
+          ],
+        },
+        {
+          stepId: "your-interest",
+          title: "Why you are applying",
+          elements: [
+            {
+              fieldId: "motivation",
+              label: "Why do you want to take part?",
+              htmlType: "text",
+            },
+            {
+              fieldId: "bursary",
+              label: "Do you need a bursary?",
+              htmlType: "text",
+            },
+          ],
+        },
+      ],
+    } as unknown as ServiceContract;
+
+    const SECTION_VALUES = {
+      "child-details": {
+        "child-first-name": "Ada",
+        "child-dob": { day: "5", month: "6", year: "2015" },
+        "consent-form": [{ key: "uploads/abc", name: "consent.pdf" }],
+      },
+      "your-interest": { motivation: "Robots", bursary: "Yes" },
+    } as unknown as SubmissionValues;
+
+    const VISIBILITY = {
+      activeStepIds: ["child-details", "your-interest"],
+      hiddenStepIds: [],
+      activeFieldIds: {},
+      hiddenFieldIds: {},
+    };
+
+    const build = (over: Record<string, unknown> = {}) =>
+      buildMappedCasePayload({
+        mapping: MAPPING,
+        values: SECTION_VALUES,
+        referenceCode: "R",
+        submittedAt: "2026-06-18T09:00:00.000Z",
+        contract: SECTION_CONTRACT,
+        visibility: VISIBILITY,
+        ...over,
+      });
+
+    it("names the form and version that rendered the sections", () => {
+      const p = build();
+      expect(p.form_id).toBe("science-camp");
+      expect(p.form_version).toBe("1.2.0");
+    });
+
+    it("sends each step's questions in contract order, with their labels", () => {
+      const p = build();
+      expect(p.sections?.map((s) => [s.stepId, s.title])).toEqual([
+        ["child-details", "About the child"],
+        ["your-interest", "Why you are applying"],
+      ]);
+      expect(p.sections?.[1].fields).toEqual([
+        {
+          fieldId: "motivation",
+          label: "Why do you want to take part?",
+          value: "Robots",
+        },
+        { fieldId: "bursary", label: "Do you need a bursary?", value: "Yes" },
+      ]);
+    });
+
+    it("formats a date instead of shipping day/month/year parts", () => {
+      const dob = build().sections?.[0].fields.find(
+        (f) => f.fieldId === "child-dob",
+      );
+      expect(dob?.value).toBe("5 June 2015");
+    });
+
+    it("keeps file answers as nodes so the CMS can still link and thumbnail them", () => {
+      const file = build().sections?.[0].fields.find(
+        (f) => f.fieldId === "consent-form",
+      );
+      expect(file?.value).toEqual([
+        { key: "uploads/abc", name: "consent.pdf" },
+      ]);
+    });
+
+    it("leaves out a question the applicant never saw", () => {
+      const p = build({
+        visibility: {
+          ...VISIBILITY,
+          hiddenFieldIds: { "your-interest": ["bursary"] },
+        },
+      });
+      expect(p.sections?.[1].fields.map((f) => f.fieldId)).toEqual([
+        "motivation",
+      ]);
+    });
+
+    it("leaves form_data exactly as it was — sections are additive", () => {
+      expect(build().form_data).toEqual(
+        buildMappedCasePayload({
+          mapping: MAPPING,
+          values: SECTION_VALUES,
+          referenceCode: "R",
+          submittedAt: "2026-06-18T09:00:00.000Z",
+          contract: SECTION_CONTRACT,
+        }).form_data,
+      );
+    });
+
+    it("omits sections for a submission with no audit trail", () => {
+      expect(build({ visibility: undefined }).sections).toBeUndefined();
+    });
+  });
 });

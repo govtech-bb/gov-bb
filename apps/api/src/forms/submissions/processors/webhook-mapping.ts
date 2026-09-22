@@ -5,9 +5,13 @@ import type {
 } from "@govtech-bb/form-types";
 import type { SubmissionValues } from "../submissions.types";
 import {
+  buildSubmissionSections,
   isOptionField,
   resolveOptionDisplay,
+  type SubmissionVisibility,
+  type SummarySection,
 } from "@govtech-bb/submission-summary";
+import type { StepScopedValues } from "@govtech-bb/form-conditions";
 
 /**
  * Builds the external "case" payload from a submission using the recipe's
@@ -179,6 +183,15 @@ export interface MappedCasePayload {
   /** Derived reviewer signal (#2065): present only for forms that carry a
    * checkbox-accordion field, so other forms' payloads are unchanged. */
   higher_risk?: boolean;
+  /** The form and published version whose contract produced `sections` — the
+   * payload never named the form before (#2587). */
+  form_id?: string;
+  form_version?: string;
+  /** The submission as the applicant answered it: step headings, the question
+   * text each answer was given under, in contract order, with branch-skipped
+   * questions absent. The same rendering as the MDA email. `form_data` is
+   * untouched and stays the machine-readable record for export and search. */
+  sections?: SummarySection[];
 }
 
 export function buildMappedCasePayload(args: {
@@ -193,8 +206,13 @@ export function buildMappedCasePayload(args: {
    *  `mapping.programmeCode`. */
   programmeCodeOverride?: string;
   /** Hydrated form contract; when present, option field values in `form_data`
-   *  are resolved to their display labels (#842). Omitted ⇒ raw passthrough. */
+   *  are resolved to their display labels (#842), and the payload names the
+   *  form it came from. Omitted ⇒ raw passthrough. */
   contract?: ServiceContract;
+  /** The submission's audit trail. With `contract`, it drives the labelled
+   *  `sections` block (#2587) — it is what makes a branch-skipped question
+   *  absent rather than blank. Omitted ⇒ no sections. */
+  visibility?: SubmissionVisibility;
 }): MappedCasePayload {
   const {
     mapping,
@@ -204,6 +222,7 @@ export function buildMappedCasePayload(args: {
     higherRisk,
     programmeCodeOverride,
     contract,
+    visibility,
   } = args;
   const namePaths = Array.isArray(mapping.applicant.name)
     ? mapping.applicant.name
@@ -227,5 +246,19 @@ export function buildMappedCasePayload(args: {
     submitted_at: submittedAt,
     ...(higherRisk !== null &&
       higherRisk !== undefined && { higher_risk: higherRisk }),
+    ...(contract && {
+      form_id: contract.formId,
+      form_version: contract.version,
+    }),
+    // Additive: the CMS reads whichever it understands, and legacy cases — or
+    // a submission whose audit trail predates this — simply carry no sections.
+    ...(contract &&
+      visibility && {
+        sections: buildSubmissionSections({
+          contract,
+          values: values as StepScopedValues,
+          visibility,
+        }),
+      }),
   };
 }
