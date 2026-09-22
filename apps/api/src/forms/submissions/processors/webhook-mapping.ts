@@ -4,7 +4,10 @@ import type {
   WebhookMapping,
 } from "@govtech-bb/form-types";
 import type { SubmissionValues } from "../submissions.types";
-import { isOptionField, resolveOptionDisplay } from "@/forms/field-display";
+import {
+  isOptionField,
+  resolveOptionDisplay,
+} from "@govtech-bb/submission-summary";
 
 /**
  * Builds the external "case" payload from a submission using the recipe's

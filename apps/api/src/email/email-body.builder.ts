@@ -5,27 +5,18 @@ import MarkdownIt from "markdown-it";
 import { DateTime } from "luxon";
 import type {
   ContactDetails,
-  FormStep,
-  Primitive,
   ServiceContract,
   SubmissionValues,
 } from "@govtech-bb/form-types";
 import {
-  isCompleteDateValue,
-  formatDateValue,
-} from "@govtech-bb/form-validation";
-import {
-  resolveFieldLabel,
-  resolveStepTitle,
   interpolateConfirmationMarkdown,
   resolveConditionalMarkdown,
   type StepScopedValues,
 } from "@govtech-bb/form-conditions";
+import { buildSubmissionSections } from "@govtech-bb/submission-summary";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import { deriveHigherRiskSelection } from "../forms/submissions/derive-higher-risk";
-import { isOptionField, resolveOptionDisplay } from "../forms/field-display";
 import type {
-  SubmissionAuditTrail,
   SubmissionCreatedEvent,
   SubmissionPaymentSummary,
 } from "../forms/submissions/submissions.types";
@@ -156,46 +147,24 @@ export class EmailBodyBuilder {
 
     const suppressedSteps = SUPPRESSED_STEPS.get(contract.formId);
 
-    const sections = contract.steps
-      .filter((step) => meta.activeStepIds.includes(step.stepId))
-      .filter((step) => !meta.hiddenStepIds.includes(step.stepId))
-      .filter((step) => !suppressedSteps?.has(step.stepId))
-      .flatMap((step) => {
-        const rawVal = values[step.stepId];
-
-        // Resolve any per-answer title override (#871) against the submitted
-        // values, so the email section header matches the heading the
-        // applicant saw while filling in the form. Falls back to the static
-        // title for steps without a `conditionalTitle`.
-        const stepTitle = resolveStepTitle(step, values as StepScopedValues);
-
-        if (Array.isArray(rawVal)) {
-          // Repeatable step (V2 submission values) — one section per instance.
-          // Number titles only when there is more than one instance so that a
-          // single-instance repeatable reads identically to a normal step.
-          const needsIndex = rawVal.length > 1;
-          return rawVal
-            .map((instance, i) =>
-              this.buildSection(
-                step,
-                instance as Record<string, unknown>,
-                meta,
-                values as StepScopedValues,
-                needsIndex ? `${stepTitle} (${i + 1})` : stepTitle,
-              ),
-            )
-            .filter((s) => s.fields.length > 0);
-        }
-
-        const section = this.buildSection(
-          step,
-          (rawVal as Record<string, unknown>) ?? {},
-          meta,
-          values as StepScopedValues,
-          stepTitle,
-        );
-        return section.fields.length > 0 ? [section] : [];
-      });
+    // Ordering, section titles, field labels, option/date rendering and the
+    // visibility filtering are shared with the mapped case webhook and the
+    // printed confirmation through @govtech-bb/submission-summary. What stays
+    // here is email-specific: the per-form step suppression below, and
+    // flattening file nodes to the filename list this template renders.
+    const sections: EmailSection[] = buildSubmissionSections({
+      contract,
+      values: values as StepScopedValues,
+      visibility: meta,
+    })
+      .filter((section) => !suppressedSteps?.has(section.stepId))
+      .map((section) => ({
+        title: section.title,
+        fields: section.fields.map((field) => ({
+          label: field.label,
+          value: stringifyValue(field.value),
+        })),
+      }));
 
     // Derived reviewer signal (#2065): when the form has a checkbox-accordion
     // field, surface whether any higher-risk category was selected so reviewers
@@ -309,118 +278,22 @@ export class EmailBodyBuilder {
     this.contractCache.set(formId, contract);
     return contract;
   }
-
-  private buildSection(
-    step: FormStep,
-    stepValues: Record<string, unknown>,
-    meta: SubmissionAuditTrail,
-    allValues: StepScopedValues,
-    titleOverride?: string,
-  ): EmailSection {
-    // When activeFieldIds for a step is absent, default to showing all fields.
-    // This keeps new form versions working correctly even if the submission
-    // audit trail schema is extended later without recording per-field visibility.
-    //
-    // V2 audit trails (repeatable steps, PR #156) store per-instance arrays as
-    // string[][] instead of string[]. Flatten to a union set so that .includes()
-    // works correctly regardless of schema version.
-    const rawActive: unknown = meta.activeFieldIds[step.stepId];
-    const activeFieldIds: string[] | undefined =
-      rawActive === undefined
-        ? undefined
-        : isNestedArray(rawActive)
-          ? [...new Set((rawActive as string[][]).flat())]
-          : (rawActive as string[]);
-
-    const rawHidden: unknown = meta.hiddenFieldIds[step.stepId];
-    const hiddenFieldIds: string[] =
-      rawHidden === undefined
-        ? []
-        : isNestedArray(rawHidden)
-          ? [...new Set((rawHidden as string[][]).flat())]
-          : (rawHidden as string[]);
-
-    const SKIP_TYPES = new Set<Primitive["htmlType"]>(["show-hide", "content"]);
-
-    const fields = step.elements
-      .filter((el) => !SKIP_TYPES.has(el.htmlType))
-      // `ui.hidden` fields are machine-written and were never shown to the
-      // applicant — in production that is the geocoded routing coordinate. They
-      // carry data the CMS payload needs, but printing
-      // "Address coordinates: 13.09,-59.57" shows the citizen and the polyclinic
-      // a row neither asked for and neither can act on. check-your-answers
-      // already filters them the same way (review.tsx).
-      .filter((el) => !el.ui?.hidden)
-      .filter((el) =>
-        activeFieldIds === undefined
-          ? true
-          : activeFieldIds.includes(el.fieldId),
-      )
-      .filter((el) => !hiddenFieldIds.includes(el.fieldId))
-      .map((el) => ({
-        // Resolve any per-answer label override (#2521) the same way the step
-        // title is resolved above, so the email names each answer exactly as
-        // the applicant was asked for it.
-        label: resolveFieldLabel(el, allValues),
-        value: this.formatValue(el, stepValues[el.fieldId]),
-      }))
-      .filter((f) => f.value !== "");
-
-    return { title: titleOverride ?? step.title, fields };
-  }
-
-  private formatValue(field: Primitive, raw: unknown): string {
-    if (raw === null || raw === undefined || raw === "") return "";
-
-    // Option fields (radio/select/checkbox/checkbox-accordion) resolve value
-    // slugs to labels via the shared helper — the same resolution the CMS
-    // webhook payload uses (#842) — then render as a comma-joined string.
-    if (isOptionField(field)) {
-      const display = resolveOptionDisplay(field, raw);
-      return Array.isArray(display) ? display.join(", ") : String(display);
-    }
-
-    switch (field.htmlType) {
-      case "file": {
-        // Stored answer is an array of { key, name, size, type } upload items.
-        // Mirror FilesService.collectFileEntries: only items with a non-empty
-        // string `key` were durably uploaded; display `name`, falling back to
-        // the key's basename. Anything else → "" so the row is omitted.
-        if (!Array.isArray(raw)) return "";
-        return (raw as Array<Record<string, unknown>>)
-          .filter(
-            (item) => typeof item?.key === "string" && item.key.length > 0,
-          )
-          .map((item) =>
-            typeof item.name === "string" && item.name.length > 0
-              ? item.name
-              : ((item.key as string).split("/").pop() ?? (item.key as string)),
-          )
-          .join(", ");
-      }
-
-      case "date": {
-        if (isCompleteDateValue(raw)) return formatDateValue(raw);
-        // Legacy submissions stored ISO strings — pass them through. Any
-        // other shape (partial/malformed object) would stringify to
-        // "[object Object]", so omit the row instead.
-        return typeof raw === "string" ? raw : "";
-      }
-
-      default:
-        // Multi-value string answers (fieldArray, opening-hours entries)
-        // join like every other list in the email — ", ", not the bare
-        // comma String() would produce.
-        return Array.isArray(raw) ? raw.map(String).join(", ") : String(raw);
-    }
-  }
 }
 
 /**
- * Returns true when `value` is a non-empty array whose first element is also
- * an array — i.e. the `string[][]` shape used by V2 audit trails for repeatable
- * steps.  A plain `string[]` (V1) returns false.
+ * Flattens a summary value to the string this template renders. Every field
+ * type but `file` arrives already formatted; a file answer arrives as its raw
+ * upload nodes (so the CMS can render them as links and thumbnails), which the
+ * email names instead — `name`, falling back to the key's basename. The nodes
+ * have already been filtered to those durably uploaded.
  */
-function isNestedArray(value: unknown): boolean {
-  return Array.isArray(value) && value.length > 0 && Array.isArray(value[0]);
+function stringifyValue(value: unknown): string {
+  if (!Array.isArray(value)) return String(value);
+  return (value as Array<Record<string, unknown>>)
+    .map((item) =>
+      typeof item.name === "string" && item.name.length > 0
+        ? item.name
+        : ((item.key as string).split("/").pop() ?? (item.key as string)),
+    )
+    .join(", ");
 }
