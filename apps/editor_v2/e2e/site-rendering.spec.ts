@@ -14,6 +14,7 @@ import {
   PHARMACY_URL,
   SEVERANCE_URL,
   calendarTable,
+  goToYear,
   gotoSite,
   resultItems,
 } from "./support";
@@ -112,7 +113,7 @@ test.describe("the bank holiday calendar — intro prose plus data", () => {
     page,
   }) => {
     await gotoSite(page, CALENDAR_URL);
-    await page.getByRole("combobox", { name: "Year" }).selectOption("2023");
+    await goToYear(page, 2023);
     await expect(
       calendarTable(page).getByRole("row").filter({ hasText: "in lieu of" }),
     ).not.toHaveCount(0);

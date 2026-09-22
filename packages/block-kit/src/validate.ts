@@ -221,8 +221,10 @@ export function validateDocument(
 
       if (block.type === "calendar") {
         for (const column of block.columns) {
-          // `date` is computed from the rule, never stored on the row.
-          if (column.field !== "date" && !fields.has(column.field)) {
+          // `date` and `day` are computed from the rule, never stored on
+          // the row, so neither is a field of the collection.
+          const computed = column.field === "date" || column.field === "day";
+          if (!computed && !fields.has(column.field)) {
             errors.push({
               blockId: block.id,
               rule: 7,

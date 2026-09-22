@@ -11,6 +11,7 @@ import {
   CALENDAR_URL,
   DOC,
   calendarTable,
+  goToYear,
   gotoSite,
   holidayRow,
   openBlockSettings,
@@ -34,7 +35,7 @@ test.describe("rules are data", () => {
     await saveAndExpectSuccess(page);
 
     await gotoSite(page, CALENDAR_URL);
-    await page.getByRole("combobox", { name: "Year" }).selectOption("2026");
+    await goToYear(page, 2026);
 
     // Easter Sunday 2026 is 5 April, so Easter + 7 is 12 April. The date is
     // computed by the ported arithmetic, never stored.
@@ -57,7 +58,7 @@ test.describe("rules are data", () => {
 
     await gotoSite(page, CALENDAR_URL);
     for (const year of ["2020", "2026", "2050"]) {
-      await page.getByRole("combobox", { name: "Year" }).selectOption(year);
+      await goToYear(page, Number(year));
       await expect(holidayRow(page, "Census Day")).toContainText(
         `14 March ${year}`,
       );
@@ -121,7 +122,7 @@ test.describe("formulas are code", () => {
     };
 
     for (const [year, holidays] of Object.entries(expected)) {
-      await page.getByRole("combobox", { name: "Year" }).selectOption(year);
+      await goToYear(page, Number(year));
       for (const [name, date] of Object.entries(holidays)) {
         await expect(holidayRow(page, name)).toContainText(date);
       }
@@ -134,13 +135,13 @@ test.describe("formulas are code", () => {
     await gotoSite(page, CALENDAR_URL);
 
     // 1 January 2023 was a Sunday → the Monday is granted.
-    await page.getByRole("combobox", { name: "Year" }).selectOption("2023");
+    await goToYear(page, 2023);
     await expect(holidayRow(page, "lieu of New Year's Day")).toContainText(
       "2 January 2023",
     );
 
     // 1 January 2022 was a Saturday → the Act grants nothing.
-    await page.getByRole("combobox", { name: "Year" }).selectOption("2022");
+    await goToYear(page, 2022);
     await expect(holidayRow(page, "lieu of New Year's Day")).toHaveCount(0);
     // But 1 August 2022 was a Monday → Emancipation Day moves to the Tuesday.
     await expect(holidayRow(page, "lieu of Emancipation Day")).toContainText(
@@ -162,7 +163,7 @@ test.describe("formulas are code", () => {
     await saveAndExpectSuccess(page);
 
     await gotoSite(page, CALENDAR_URL);
-    await page.getByRole("combobox", { name: "Year" }).selectOption("2023");
+    await goToYear(page, 2023);
     await expect(calendarTable(page).getByText("lieu of")).toHaveCount(0);
   });
 
@@ -176,10 +177,17 @@ test.describe("formulas are code", () => {
     await saveAndExpectSuccess(page);
 
     await gotoSite(page, CALENDAR_URL);
-    const years = await page
-      .getByRole("combobox", { name: "Year" })
-      .getByRole("option")
-      .allInnerTexts();
-    expect(years).toEqual(["2024", "2025", "2026", "2027"]);
+
+    // The bounds are visible rather than buried in a list: at the end of the
+    // range the button that would leave it is disabled.
+    await goToYear(page, 2024);
+    await expect(
+      page.getByRole("button", { name: /Previous year/ }),
+    ).toBeDisabled();
+
+    await goToYear(page, 2027);
+    await expect(
+      page.getByRole("button", { name: /Next year/ }),
+    ).toBeDisabled();
   });
 });

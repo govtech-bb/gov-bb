@@ -306,10 +306,30 @@ export const resultCount = (page: Page): Locator =>
 export const pagination = (page: Page): Locator =>
   page.getByRole("navigation", { name: "Pagination" });
 
+/**
+ * The calendar splits into "still to come" and "already been", so there are
+ * two tables and each names its own section. Most assertions want whichever
+ * one holds the holiday they are looking for, so this spans both.
+ */
 export const calendarTable = (page: Page): Locator =>
-  page.getByRole("table", { name: "Bank holidays" });
+  page.getByRole("table", { name: /^Bank holidays/ });
 
 /** The row for a named holiday in a given year's section of the calendar. */
 export function holidayRow(page: Page, name: string): Locator {
-  return calendarTable(page).getByRole("row").filter({ hasText: name });
+  return page
+    .getByRole("table", { name: /^Bank holidays/ })
+    .getByRole("row")
+    .filter({ hasText: name });
+}
+
+/** Move the calendar's year. It is Previous/Next, not a dropdown. */
+export async function goToYear(page: Page, year: number): Promise<void> {
+  const current = page.locator(".bk-year-current");
+  for (let guard = 0; guard < 40; guard++) {
+    const shown = Number((await current.innerText()).trim());
+    if (shown === year) return;
+    const label = shown < year ? /Next year/ : /Previous year/;
+    await page.getByRole("button", { name: label }).click();
+  }
+  throw new Error(`Could not reach ${year}`);
 }

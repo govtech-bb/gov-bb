@@ -181,6 +181,7 @@ const bankHolidays: SeedDocument = {
         show_past: true,
         columns: [
           { field: "date", label: "Date", format: "long_date" },
+          { field: "day", label: "Day" },
           { field: "name", label: "Holiday" },
           { field: "note", label: "Notes" },
         ],

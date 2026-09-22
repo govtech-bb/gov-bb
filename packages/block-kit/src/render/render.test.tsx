@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { BANK_HOLIDAY_RULES } from "../holiday-rules";
-import type { Block, PageDocument } from "../types";
+import type { Block, CalendarBlock, PageDocument } from "../types";
+import { CalendarIsland } from "./calendar";
 import { RenderDocument } from "./document";
 
 const doc = (blocks: Block[]): PageDocument => ({
@@ -20,6 +21,23 @@ const doc = (blocks: Block[]): PageDocument => ({
 
 const render = (blocks: Block[], data = {}) =>
   renderToStaticMarkup(<RenderDocument doc={doc(blocks)} data={data} />);
+
+/**
+ * The calendar rendered at a fixed instant.
+ *
+ * Rendered directly rather than through RenderDocument, because "what does
+ * this look like on a given day" is a question only the calendar has, and
+ * threading a clock through the whole renderer to answer it would put a
+ * test's need into everything else's signature.
+ */
+const renderCalendar = (
+  block: CalendarBlock,
+  data: Record<string, Array<Record<string, unknown>>>,
+  today: Date,
+) =>
+  renderToStaticMarkup(
+    <CalendarIsland block={block} ctx={{ data, refs: {} }} today={today} />,
+  );
 
 describe("prose blocks", () => {
   it("renders marks as nested elements, not as escaped text", () => {
@@ -264,8 +282,8 @@ describe("the calendar island", () => {
 
   it("renders a column per configured column", () => {
     const html = render([calendar], data);
-    expect(html).toContain('<th scope="col">Date</th>');
-    expect(html).toContain('<th scope="col">Holiday</th>');
+    expect(html).toContain(">Date</th>");
+    expect(html).toContain(">Holiday</th>");
   });
 
   it("renders every holiday for the current year", () => {
@@ -275,11 +293,69 @@ describe("the calendar island", () => {
     expect(html).toContain("Independence Day");
   });
 
-  it("offers the configured year range", () => {
+  it("moves the year by Previous and Next, not a dropdown", () => {
+    // The live page does this, and it is the better affordance: the common
+    // move is one click and the bounds of the range are visible.
     const html = render([calendar], data);
-    expect(html).toContain('<option value="2020">');
-    expect(html).toContain('<option value="2050">');
-    expect(html).not.toContain('<option value="2051">');
+    expect(html).toContain("Previous year");
+    expect(html).toContain("Next year");
+    expect(html).not.toContain("<option");
+  });
+
+  it("calls out the next holiday with a countdown", () => {
+    // "When is the next one" is the question almost everyone arrives with.
+    const html = render([calendar], data);
+    expect(html).toContain("Next bank holiday");
+    expect(html).toMatch(/Today|Tomorrow|\d+ days away/);
+  });
+
+  it("shows a substitution against the holiday it stands in for", () => {
+    // Listed on its own, "Public Holiday in lieu of Christmas Day" tells
+    // you nothing about why it exists.
+    const withSubstitute = renderCalendar(
+      calendar as CalendarBlock,
+      data,
+      new Date("2022-12-01"),
+    );
+    expect(withSubstitute).toContain("Substitute day:");
+    // And never as a row of its own.
+    expect(withSubstitute).not.toContain("<td>Public Holiday in lieu of");
+  });
+
+  it("separates what is still to come from what has been", () => {
+    const html = renderCalendar(
+      calendar as CalendarBlock,
+      data,
+      new Date("2026-07-01"),
+    );
+    expect(html).toContain("Still to come");
+    expect(html).toContain("Already been");
+  });
+
+  it("hides what has been when the block says not to show it", () => {
+    const html = renderCalendar(
+      { ...calendar, show_past: false } as CalendarBlock,
+      data,
+      new Date("2026-07-01"),
+    );
+    expect(html).toContain("Still to come");
+    expect(html).not.toContain("Already been");
+  });
+
+  it("renders the day of the week when a column asks for one", () => {
+    const html = render(
+      [
+        {
+          ...calendar,
+          columns: [...calendar.columns, { field: "day", label: "Day" }],
+        } as Block,
+      ],
+      data,
+    );
+    expect(html).toContain(">Day</th>");
+    expect(html).toMatch(
+      /Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday/,
+    );
   });
 });
 

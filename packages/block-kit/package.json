@@ -14,13 +14,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "@govtech-bb/react": "1.0.0-alpha.29"
   },
   "peerDependencies": {
     "react": "catalog:"
   },
   "devDependencies": {
-    "@govtech-bb/react": "1.0.0-alpha.29",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "react": "catalog:",
