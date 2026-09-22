@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "serviceId": "apply-for-food-business-licence",
+  "visibility": "draft",
+  "title": "Apply to Environmental Health for a food business licence",
+  "description": "Apply for a food business licence in Barbados",
+  "category": "business-trade",
+  "subcategory": "",
+  "formId": "apply-for-food-business-licence",
+  "entryPoint": "f5ffed96-5a12-4c3d-8f9b-8cdf4ecdf71f",
+  "pages": [
+    {
+      "id": "f5ffed96-5a12-4c3d-8f9b-8cdf4ecdf71f",
+      "path": "apps/landing/src/content/apply-for-food-business-licence/index.md",
+      "title": "Apply for a food business licence",
+      "publicPath": "/business-trade/apply-for-food-business-licence",
+      "kind": "main"
+    }
+  ],
+  "setup": {
+    "step": "about",
+    "delivery": "configured",
+    "applicantEmail": "undecided"
+  }
+}

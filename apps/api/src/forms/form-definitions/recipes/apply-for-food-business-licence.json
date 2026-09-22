@@ -130,7 +130,7 @@
                 "type": "fieldArray",
                 "min": 1,
                 "max": 4,
-                "addAnotherLabel": "Add another telephone number"
+                "addAnotherLabel": "Add another number"
               }
             ]
           }
@@ -338,7 +338,7 @@
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "application-type",
-                "targetStepId": "application-details",
+                "targetStepId": "applicant-details",
                 "operator": "equal",
                 "value": "first-time"
               }
@@ -437,19 +437,6 @@
             "validations": {
               "required": {
                 "value": false
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/town",
-          "overrides": {
-            "fieldId": "business-location-town",
-            "label": "Town or district",
-            "validations": {
-              "required": {
-                "error": "Enter the town or district.",
-                "value": true
               }
             }
           }
@@ -677,13 +664,13 @@
             "fieldId": "male-staff-count",
             "label": "How many male staff will prepare or handle food or drink?",
             "validations": {
-              "required": {
-                "error": "Enter the number of male staff",
-                "value": true
-              },
               "min": {
                 "error": "Enter a number of 0 or more",
                 "value": 0
+              },
+              "required": {
+                "error": "Enter the number of male staff",
+                "value": true
               }
             }
           }
@@ -694,13 +681,13 @@
             "fieldId": "female-staff-count",
             "label": "How many female staff will prepare or handle food or drink?",
             "validations": {
-              "required": {
-                "error": "Enter the number of female staff",
-                "value": true
-              },
               "min": {
                 "error": "Enter a number of 0 or more",
                 "value": 0
+              },
+              "required": {
+                "error": "Enter the number of female staff",
+                "value": true
               }
             }
           }
@@ -738,6 +725,10 @@
             "label": "Upload medical certificates for your staff",
             "hint": "You can upload more than one file. PDF, JPG or PNG, up to 5MB each. If you do not have them now, you can bring them to the inspection.",
             "validations": {
+              "maxSize": {
+                "error": "The medical certificates must be smaller than 20MB in total.",
+                "value": 20971520
+              },
               "fileTypes": {
                 "error": "Each medical certificate must be a PDF, JPG or PNG.",
                 "value": [
@@ -749,10 +740,6 @@
               "itemMaxSize": {
                 "error": "Each medical certificate must be smaller than 5MB.",
                 "value": 5242880
-              },
-              "maxSize": {
-                "error": "The medical certificates must be smaller than 20MB in total.",
-                "value": 20971520
               }
             },
             "multiple": true
@@ -826,7 +813,7 @@
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "behaviours": [],
-      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\nEnvironmental Health will review your application and an officer will be assigned to your case.\n\nThey must inspect the food business before they can issue a licence. More than one visit may be required before the issuing of a licence.\n\nIf there are any contraventions of the Health Services (Food Hygiene) Regulations, you will be given instructions to rectify them within a specified time period. Until the contraventions are rectified, you will be unable to operate the food business. Failure to comply may result in receiving recommendations to cancel the licence, close the establishment, or be subject to prosecution.\n\n**Obtaining your licence:**\n\nIf your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n## Contact\n\nIf you need help, contact your Environmental Health Service office.\n\n{polyclinicContact}",
+      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\nEnvironmental Health will review your application and an officer will be assigned to your case.\n\nThey must inspect the food business before they can issue a licence. More than one visit may be required before the issuing of a licence.\n\nIf there are any contraventions of the Health Services (Food Hygiene) Regulations, you will be given instructions to rectify them within a specified time period. Until the contraventions are rectified, you will be unable to operate the food business. Failure to comply may result in receiving recommendations to cancel the licence, close the establishment, or be subject to prosecution.\n\n**Obtaining your licence:**\n\nIf your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n## Contact\n\nIf you need help, contact the relevant Environmental Health Service office.\n\n- Branford Taitt Polyclinic - [536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)\n- David Thompson Health and Social Services Complex - [536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)\n- Eunice Gibson Polyclinic - [536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)\n- Maurice Byer Polyclinic - [536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)\n- Randall Phillips Polyclinic - [536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)\n- St. Phillip Polyclinic - [536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)\n- Winston Scott Polyclinic - [536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)",
       "elements": []
     }
   ],
@@ -859,8 +846,8 @@
               "about-you.your-first-name",
               "about-you.your-last-name"
             ],
-            "email": "applicant-details.applicant-email",
-            "phone": "applicant-details.applicant-phone"
+            "email": "about-you.your-email",
+            "phone": "about-you.your-telephone"
           },
           "excludeSteps": [
             "check-your-answers",
@@ -873,10 +860,10 @@
       }
     }
   ],
-  "createdAt": "2026-08-18T20:19:05.878Z",
-  "updatedAt": "2026-09-09T23:42:12.289Z",
+  "createdAt": "2026-09-22T18:22:44.022Z",
+  "updatedAt": "2026-09-22T18:22:44.022Z",
   "meta": {
-    "visibility": "preview"
+    "visibility": "draft"
   },
   "catchmentRouting": {
     "coordinatesField": "about-the-food-business.business-location-address-coordinates",
