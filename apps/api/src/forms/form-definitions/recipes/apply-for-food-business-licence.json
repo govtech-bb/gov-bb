@@ -158,6 +158,20 @@
           "ref": "components/country"
         },
         {
+          "ref": "components/town",
+          "overrides": {
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "country",
+                "targetStepId": "applicant-details",
+                "operator": "notEqual",
+                "value": "barbados"
+              }
+            ]
+          }
+        },
+        {
           "ref": "components/parish",
           "overrides": {
             "fieldId": "applicant-parish",
