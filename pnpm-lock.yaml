@@ -123,6 +123,9 @@ importers:
       '@govtech-bb/content':
         specifier: workspace:*
         version: link:packages/content
+      '@govtech-bb/form-conditions':
+        specifier: workspace:*
+        version: link:packages/form-conditions
       '@govtech-bb/form-types':
         specifier: workspace:*
         version: link:packages/form-types
