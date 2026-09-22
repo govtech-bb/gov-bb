@@ -187,3 +187,62 @@ describe("delete", () => {
     expect(await store.list()).toHaveLength(DOCUMENTS.length - 1);
   });
 });
+
+describe("editing a collection's records", () => {
+  it("adds a record, and the finder and calendar can read it", async () => {
+    // Collections were read-only: a block could be configured over one but
+    // the collection itself could not be touched, which made the brief's
+    // requirement that bank holiday rules be editable rows impossible.
+    await store.saveRecord("bank-holiday-rules", "spike-day", {
+      key: "spike-day",
+      name: "Spike Day",
+      rule: { kind: "easter_offset", days: 7 },
+    });
+
+    const rows = await store.recordRows("bank-holiday-rules");
+    expect(rows.map((row) => row.record_key)).toContain("spike-day");
+    expect(await store.records("bank-holiday-rules")).toContainEqual(
+      expect.objectContaining({ name: "Spike Day" }),
+    );
+  });
+
+  it("replaces a record in place rather than duplicating it", async () => {
+    const before = (await store.recordRows("environmental-health-offices"))
+      .length;
+    await store.saveRecord(
+      "environmental-health-offices",
+      "st-philip-polyclinic",
+      {
+        key: "st-philip-polyclinic",
+        name: "St. Philip Polyclinic",
+        phone: "(246) 000-0000",
+        email: "StPhilipEHD@health.gov.bb",
+      },
+    );
+    const after = await store.recordRows("environmental-health-offices");
+    expect(after).toHaveLength(before);
+    expect(
+      after.find((row) => row.record_key === "st-philip-polyclinic")?.data,
+    ).toMatchObject({ phone: "(246) 000-0000" });
+  });
+
+  it("renames a record without leaving the old key behind", async () => {
+    // record_key is half the primary key, so an upsert alone would keep the
+    // original row and the collection would quietly grow.
+    await store.saveRecord(
+      "parishes",
+      "saint-lucy",
+      { key: "saint-lucy", name: "Saint Lucy" },
+      "st-lucy",
+    );
+    const keys = (await store.recordRows("parishes")).map((r) => r.record_key);
+    expect(keys).toContain("saint-lucy");
+    expect(keys).not.toContain("st-lucy");
+  });
+
+  it("removes a record", async () => {
+    const before = (await store.recordRows("parishes")).length;
+    await store.deleteRecord("parishes", "christ-church");
+    expect(await store.recordRows("parishes")).toHaveLength(before - 1);
+  });
+});

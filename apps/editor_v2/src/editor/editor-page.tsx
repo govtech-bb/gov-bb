@@ -98,14 +98,6 @@ export function EditorPage() {
 
   const renderData = useRenderData(draft);
 
-  // The store, reachable from the page. `validation.spec.ts` uses it to
-  // push a block type the palette does not offer straight at the store, and
-  // assert it is refused there too rather than only being absent from the
-  // slash menu.
-  useEffect(() => {
-    (window as unknown as { __spikeStore: unknown }).__spikeStore = store;
-  }, [store]);
-
   /**
    * The save itself. Kept in a ref so the debounce timer always calls the
    * current one without resetting on every keystroke.

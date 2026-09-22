@@ -19,6 +19,8 @@ export interface DocumentSummary {
   url: string;
   title: string;
   schema_name: SchemaName;
+  /** What kind of thing this is within its service — a start page, a form. */
+  document_type: string;
   updated_at: string;
 }
 
@@ -58,7 +60,7 @@ export class PgliteStore implements DocumentStore {
 
   async list(): Promise<DocumentSummary[]> {
     const result = await this.db.query<DocumentSummary>(
-      `select id::text as id, url, title, schema_name,
+      `select id::text as id, url, title, schema_name, document_type,
               updated_at::text as updated_at
          from content_pages
         order by url`,
@@ -99,6 +101,59 @@ export class PgliteStore implements DocumentStore {
       [collectionKey],
     );
     return result.rows.map((row) => row.data);
+  }
+
+  /** Records with their keys, for editing rather than rendering. */
+  async recordRows(
+    collectionKey: string,
+  ): Promise<Array<{ record_key: string; data: Record<string, unknown> }>> {
+    const result = await this.db.query<{
+      record_key: string;
+      data: Record<string, unknown>;
+    }>(
+      `select record_key, data from collection_records
+        where collection_key = $1 and status = 'published'
+        order by record_key`,
+      [collectionKey],
+    );
+    return result.rows;
+  }
+
+  /**
+   * Insert or replace one record.
+   *
+   * Collections were read-only until now: a block could be configured *over*
+   * a collection but the collection itself could not be touched, which made
+   * the brief's own requirement that bank holiday rules be editable rows
+   * impossible to satisfy.
+   *
+   * `previousKey` handles a rename, since `record_key` is half the primary
+   * key and an upsert alone would leave the old row behind.
+   */
+  async saveRecord(
+    collectionKey: string,
+    recordKey: string,
+    data: Record<string, unknown>,
+    previousKey?: string,
+  ): Promise<void> {
+    if (previousKey && previousKey !== recordKey) {
+      await this.deleteRecord(collectionKey, previousKey);
+    }
+    await this.db.query(
+      `insert into collection_records (collection_key, record_key, data)
+       values ($1, $2, $3)
+       on conflict (collection_key, record_key)
+       do update set data = excluded.data, updated_at = now()`,
+      [collectionKey, recordKey, JSON.stringify(data)],
+    );
+  }
+
+  async deleteRecord(collectionKey: string, recordKey: string): Promise<void> {
+    await this.db.query(
+      `delete from collection_records
+        where collection_key = $1 and record_key = $2`,
+      [collectionKey, recordKey],
+    );
   }
 
   /** The context the nine rules need, read fresh on every save. */

@@ -166,6 +166,35 @@ two statements conflict; the resolution taken here is that
 **`bank-holiday-rules` records are editable and pharmacy records are not**,
 which is what makes the data/code seam testable at all.
 
+### Navigation and collections
+
+The editor's front door is a hierarchy, not a flat list: category → service
+→ page → editor. `doc-list` is gone with the flat list it named.
+
+| Handle                                     | Meaning                                                                                                                                                            |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `service-list`                             | Services grouped under their category titles, with a page count each. A page with no category files under "Island-wide (no category)" rather than an invented one. |
+| `service-<slug>`                           | A service. Opens its items.                                                                                                                                        |
+| `service-items`                            | One service's pages, with a Kind column distinguishing a start page from a form — the reason to group them at all.                                                 |
+| `item-<documentId>`                        | One page. Opens the editor.                                                                                                                                        |
+| `collection-list` / `collection-<key>`     | The collections behind finders, calendars and tables.                                                                                                              |
+| `record-table`                             | One collection's records.                                                                                                                                          |
+| `record-<recordKey>`                       | One record row.                                                                                                                                                    |
+| `field-<recordKey>-<fieldKey>`             | One editable cell. Commits on blur. Editing the collection's `record_key` field renames the row.                                                                   |
+| `add-record` / `remove-record-<recordKey>` | Add and remove.                                                                                                                                                    |
+
+Fields come from the collection's own `schema`, the same list validation
+rules 6 and 7 resolve names against, so what is editable here and what a
+block may reference cannot drift apart. A field holding an object or an
+array — a pharmacy's weekly hours, a holiday's `rule` — is shown as
+read-only JSON: a generic editor for those is a real feature, and inventing
+a bad one would teach the spike nothing.
+
+`openDocument` resolves a page through `window.__spikeStore` rather than by
+clicking a list, because finding a page by title would otherwise mean
+knowing which service it lives under. `hierarchy.spec.ts` walks the browse
+path deliberately; everything else goes straight to the document.
+
 ### Site
 
 Accessible names only:

@@ -84,10 +84,29 @@ export async function openBlockSettings(
   return popover;
 }
 
-/** Open a seeded document by its title. */
+/**
+ * Open a seeded document by its title.
+ *
+ * Resolved through the store rather than by clicking a list, because the
+ * editor's front door is now a category → service hierarchy: finding a page
+ * by title would mean knowing which service it lives under, which is not
+ * what most of these tests are about. `hierarchy.spec.ts` walks the browse
+ * path deliberately; everything else goes straight to the document.
+ */
 export async function openDocument(page: Page, title: string): Promise<void> {
   await gotoEditor(page);
-  await page.getByTestId("doc-list").getByRole("link", { name: title }).click();
+  const id = await page.evaluate(async (wanted) => {
+    const store = (
+      window as unknown as {
+        __spikeStore: {
+          list: () => Promise<Array<{ id: string; title: string }>>;
+        };
+      }
+    ).__spikeStore;
+    return (await store.list()).find((doc) => doc.title === wanted)?.id ?? null;
+  }, title);
+  if (!id) throw new Error(`No seeded document titled "${title}"`);
+  await page.goto(`/editor/${id}`);
   await expect(editorSurface(page)).toBeVisible();
 }
 

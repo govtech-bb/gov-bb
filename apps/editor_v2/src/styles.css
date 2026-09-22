@@ -768,3 +768,55 @@ button,
   color: var(--red);
   font-size: 0.875rem;
 }
+
+/* Service and collection browsing. */
+.ed-group {
+  margin: 1.75rem 0;
+}
+
+.ed-group-title {
+  margin: 0 0 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 1rem;
+}
+
+.ed-service-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ed-service-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.375rem 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.ed-count {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.ed-breadcrumb {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin: 0 0 0.5rem;
+}
+
+.ed-json-cell {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.ed-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

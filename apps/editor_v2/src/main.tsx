@@ -13,10 +13,12 @@ import "@govtech-bb/block-kit/styles.css";
 import "./styles.css";
 import { editorRoutes } from "./editor/routes";
 import { Chrome } from "./chrome";
+import { StoreBridge } from "./editor/store-bridge";
 
 const rootRoute = createRootRoute({
   component: () => (
     <Chrome>
+      <StoreBridge />
       <Outlet />
     </Chrome>
   ),
