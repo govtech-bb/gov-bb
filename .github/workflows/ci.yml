@@ -633,6 +633,30 @@ jobs:
       - name: Validate recipe files
         run: pnpm validate-recipes
 
+  validate-content:
+    name: Validate Content
+    # Deliberately its own job, not a step in Validate Recipes. This gate reads
+    # landing markdown, which nx excludes from every cached target's inputs
+    # (`default` drops `**/*.md`), so it cannot ride on an affected-scoped job
+    # without replaying a stale green. It also has to stay visible to the
+    # content-only CI fast lane proposed in #2264, whose landing-content lane
+    # skips `Validate Recipes` by name — that would have skipped this guard on
+    # exactly the markdown-only PRs it exists to catch.
+    #
+    # Runs unconditionally: unlike recipes, landing copy is not promotion-only,
+    # and an always-run walk is the whole point (#504).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+
       - name: Validate canonical service names
         run: pnpm validate-content-names
 
