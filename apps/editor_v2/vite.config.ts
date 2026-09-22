@@ -1,3 +1,4 @@
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
@@ -12,7 +13,9 @@ export default defineConfig({
   // Pinned to this directory so the dev server serves index.html whatever
   // the cwd is (nx, pnpm --filter, or a bare `vite` from the repo root).
   root: import.meta.dirname,
-  plugins: [react()],
+  // Tailwind v4, because @govtech-bb/frontend ships its theme as a
+  // Tailwind layer and the design system's components are built on it.
+  plugins: [tailwindcss(), react()],
   server: { port: 3010 },
   worker: { format: "es" },
   optimizeDeps: {

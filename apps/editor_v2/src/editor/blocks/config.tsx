@@ -10,7 +10,6 @@ import type {
 import { COMPUTED_FACETS } from "@govtech-bb/block-kit";
 import {
   CheckField,
-  Field,
   KeyListField,
   NumberField,
   Repeatable,
@@ -71,20 +70,16 @@ function FieldSelect({
   if (value && !options.some((o) => o.value === value)) {
     options.push({ value, label: `${value} — not a field of this collection` });
   }
+  // Through SelectField so it is the design system's Select, like every
+  // other control in the editor.
   return (
-    <Field label={label} hint={hint}>
-      <select
-        className="ed-input"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </Field>
+    <SelectField
+      label={label}
+      hint={hint}
+      value={value}
+      options={options}
+      onChange={onChange}
+    />
   );
 }
 

@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Button } from "@govtech-bb/react";
 
 export function Modal({
   title,
@@ -75,14 +76,14 @@ export function Modal({
         <header className="ed-modal-head">
           <h2 className="ed-modal-title">{title}</h2>
           {actions}
-          <button
+          <Button
             type="button"
-            className="ed-secondary"
+            variant="secondary"
             data-testid="modal-close"
             onClick={onClose}
           >
             Close
-          </button>
+          </Button>
         </header>
 
         {description ? (
@@ -118,9 +119,9 @@ export function CopyButton({
   }, [copied]);
 
   return (
-    <button
+    <Button
       type="button"
-      className="ed-secondary"
+      variant="secondary"
       data-testid="copy-json"
       onClick={async () => {
         try {
@@ -134,6 +135,6 @@ export function CopyButton({
       }}
     >
       {copied ? "Copied" : label}
-    </button>
+    </Button>
   );
 }

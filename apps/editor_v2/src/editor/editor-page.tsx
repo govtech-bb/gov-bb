@@ -29,6 +29,7 @@ import { clearDraft, readDraft, writeDraft } from "./drafts";
 import { CopyButton, Modal } from "./modal";
 import { CATEGORY_SLUGS, PageProperties } from "./page-properties";
 import { servicesInUse } from "./page-url";
+import { Button } from "@govtech-bb/react";
 
 /**
  * How long typing must pause before the draft is cached locally.
@@ -230,23 +231,23 @@ export function EditorPage() {
           <span className="ed-status" data-testid="save-status">
             {status}
           </span>
-          <button
+          <Button
             type="button"
-            className="ed-primary"
+            variant="primary"
             data-testid="save"
             onClick={flush}
             disabled={saving || !dirty}
           >
             {saving ? "Saving…" : "Save"}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="ed-secondary"
+            variant="secondary"
             data-testid="doc-json-toggle"
             onClick={() => setShowJson(true)}
           >
             View schema
-          </button>
+          </Button>
           <a
             className="ed-secondary"
             href={draft.url}
@@ -264,14 +265,14 @@ export function EditorPage() {
               They are not on the site yet. Choose <em>Save</em> to publish
               them, or discard them to go back to the stored version.
             </p>
-            <button
+            <Button
               type="button"
-              className="ed-secondary"
+              variant="secondary"
               data-testid="discard-draft"
               onClick={reload}
             >
               Discard local changes
-            </button>
+            </Button>
           </div>
         ) : null}
 
@@ -285,9 +286,9 @@ export function EditorPage() {
               The save was refused because <code>updated_at</code> no longer
               matches the value loaded — nothing was overwritten.
             </p>
-            <button type="button" className="ed-secondary" onClick={reload}>
+            <Button type="button" variant="secondary" onClick={reload}>
               Discard my changes and reload
-            </button>
+            </Button>
           </div>
         ) : null}
 

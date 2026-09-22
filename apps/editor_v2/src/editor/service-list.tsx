@@ -22,6 +22,7 @@ import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { CATEGORY_SLUGS } from "./page-properties";
 import { splitUrl } from "./page-url";
+import { Button } from "@govtech-bb/react";
 
 const CATEGORY_TITLES = new Map(
   CATEGORY_TAXONOMY.map((category) => [category.slug, category.title]),
@@ -71,9 +72,9 @@ export function ServiceList() {
       </p>
 
       <p>
-        <button
+        <Button
           type="button"
-          className="ed-secondary"
+          variant="secondary"
           data-testid="reset-data"
           disabled={resetting}
           onClick={async () => {
@@ -86,7 +87,7 @@ export function ServiceList() {
           }}
         >
           {resetting ? "Resetting…" : "Reset to the seeded content"}
-        </button>
+        </Button>
       </p>
 
       {documents === undefined ? (

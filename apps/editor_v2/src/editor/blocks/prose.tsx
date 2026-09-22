@@ -10,6 +10,7 @@ import type {
 import { CheckField, SelectField, TextField } from "../fields";
 import { newId } from "../new-block";
 import { SpanEditor } from "../span-editor";
+import { Button } from "@govtech-bb/react";
 
 export function ParagraphEditor({
   block,
@@ -68,9 +69,9 @@ export function HeadingEditor({
           value={block.anchor}
           onChange={(anchor) => onChange({ ...block, anchor })}
         />
-        <button
+        <Button
           type="button"
-          className="ed-secondary"
+          variant="secondary"
           onClick={() =>
             onChange({
               ...block,
@@ -79,7 +80,7 @@ export function HeadingEditor({
           }
         >
           Regenerate from text
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -114,9 +115,9 @@ export function ListEditor({
                 })
               }
             />
-            <button
+            <Button
               type="button"
-              className="ed-danger ed-small"
+              variant="secondary"
               onClick={() =>
                 onChange({
                   ...block,
@@ -125,13 +126,13 @@ export function ListEditor({
               }
             >
               Remove item
-            </button>
+            </Button>
           </li>
         ))}
       </ol>
-      <button
+      <Button
         type="button"
-        className="ed-add"
+        variant="secondary"
         onClick={() =>
           onChange({
             ...block,
@@ -143,7 +144,7 @@ export function ListEditor({
         }
       >
         Add item
-      </button>
+      </Button>
     </div>
   );
 }

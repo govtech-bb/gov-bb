@@ -1,3 +1,20 @@
+/*
+ * The GOV.BB design system first, then the editor's own chrome.
+ *
+ * `@govtech-bb/frontend/tailwind` carries the theme — the colour scale, the
+ * type scale, the spacing — and `/css` the component styles that
+ * `@govtech-bb/react` renders against. Without both, a <Button> from the
+ * design system renders as an unstyled button and quietly stops looking
+ * like government.
+ *
+ * Editor chrome below stays hand-rolled where the design system has no
+ * equivalent: there is no component for a block control strip or a slash
+ * menu, and inventing a GOV.BB-looking one would be worse than owning it.
+ */
+@import "tailwindcss";
+@import "@govtech-bb/frontend/tailwind";
+@import "@govtech-bb/frontend/css" layer(components);
+
 :root {
   --ink: #0b0c0c;
   --muted: #505a5f;
@@ -342,7 +359,11 @@ button,
   align-items: flex-end;
 }
 .ed-row > * {
-  flex: 1 1 10rem;
+  /* The design system's inputs are taller and wider than the hand-rolled
+     controls these replaced, so a field needs more room before it wraps —
+     at 10rem the labels break mid-word. */
+  flex: 1 1 14rem;
+  min-width: 0;
 }
 
 .ed-field {

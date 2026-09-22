@@ -18,7 +18,7 @@ import { BLOCK_LABELS } from "../new-block";
 import { BlockSettings } from "./block-settings";
 
 const MARGIN = 12;
-const WIDTH = 520;
+const WIDTH = 660;
 
 export function BlockPopover({
   block,

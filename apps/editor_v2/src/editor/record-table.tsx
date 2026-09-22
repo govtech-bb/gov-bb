@@ -21,6 +21,7 @@
 import type { CollectionDefinition } from "@govtech-bb/block-kit";
 import { useCollectionRows, useStore } from "@govtech-bb/spike-db/react";
 import { useState } from "react";
+import { Button } from "@govtech-bb/react";
 
 const isScalar = (value: unknown): boolean =>
   value === null ||
@@ -68,15 +69,15 @@ export function RecordTable({
     <>
       <p className="ed-record-summary">
         {rows.length} records · keyed by <code>{collection.record_key}</code>
-        <button
+        <Button
           type="button"
-          className="ed-secondary"
+          variant="secondary"
           data-testid="add-record"
           disabled={busy}
           onClick={addRecord}
         >
           Add a record
-        </button>
+        </Button>
       </p>
 
       <div className="ed-table-scroll">
@@ -135,9 +136,9 @@ export function RecordTable({
                   );
                 })}
                 <td>
-                  <button
+                  <Button
                     type="button"
-                    className="ed-danger"
+                    variant="secondary"
                     data-testid={`remove-record-${row.record_key}`}
                     disabled={busy}
                     onClick={() =>
@@ -145,7 +146,7 @@ export function RecordTable({
                     }
                   >
                     Remove
-                  </button>
+                  </Button>
                 </td>
               </tr>
             ))}
