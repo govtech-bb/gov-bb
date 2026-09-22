@@ -1,5 +1,5 @@
 /**
- * The four seeded page documents, plus two stubs.
+ * The five seeded page documents, plus two stubs.
  *
  * The stub exists because the brief's own seed data fails its own rule 8:
  * the severance start page carries `target_kind: "page"` pointing at
@@ -10,7 +10,7 @@
  * Recorded in the findings.
  */
 
-import type { Block, SchemaName } from "@govtech-bb/block-kit";
+import type { Block, Ref, SchemaName } from "@govtech-bb/block-kit";
 
 export interface SeedDocument {
   url: string;
@@ -20,7 +20,7 @@ export interface SeedDocument {
   title: string;
   description: string | null;
   is_draft: boolean;
-  body: { version: 1; blocks: Block[]; refs: Record<string, never> };
+  body: { version: 1; blocks: Block[]; refs: Record<string, Ref> };
 }
 
 /* ----------------------------------------------- the prose case */
@@ -433,6 +433,503 @@ const cropOverPermitsForm: SeedDocument = {
   },
 };
 
+/* --------------------------------------- the reference-and-table case */
+
+/**
+ * The hairdressing and beautician business licence page.
+ *
+ * The first seeded page to use `body.refs` at all, and it uses both kinds:
+ * an `external` ref behind an inline link to the Regulations, and a `query`
+ * ref that the contact list reads through. Until this page, `refs` was `{}`
+ * on every document and the `data_table` block existed without a single
+ * consumer — the brief's own control case, never actually controlled.
+ *
+ * The seven Environmental Health offices were a hand-typed markdown list
+ * repeated across Environmental Health pages. Here they are a collection,
+ * and the page holds a query over it: change a polyclinic's phone number
+ * once and every page that lists it is correct.
+ *
+ * The online application form is out of scope for the spike, so "How to
+ * apply" keeps both routes as content but carries no start_link — which is
+ * also why this page needs no stub to satisfy rule 8.
+ */
+const hairSalonLicence: SeedDocument = {
+  url: "/business-trade/apply-for-hair-salon-licence",
+  slug: "apply-for-hair-salon-licence",
+  schema_name: "guide",
+  document_type: "licence_guide",
+  title: "Apply for a hairdressing and beautician business licence",
+  description:
+    "Register a new hair, beauty, manicure or pedicure business, or renew your existing registration with Environmental Health.",
+  is_draft: false,
+  body: {
+    version: 1,
+    blocks: [
+      {
+        id: "b_hs01",
+        type: "paragraph",
+        content: [
+          {
+            text: "Use this service to apply for or renew a hairdressing salon licence.",
+          },
+        ],
+      },
+      {
+        id: "b_hs02",
+        type: "heading",
+        level: 2,
+        anchor: "who-is-this-licence-for",
+        content: [
+          {
+            text: "Who is this licence for",
+          },
+        ],
+      },
+      {
+        id: "b_hs03",
+        type: "paragraph",
+        content: [
+          {
+            text: "You must apply for a hairdressing salon licence if your business provides any of these services to the public:",
+          },
+        ],
+      },
+      {
+        id: "b_hs04",
+        type: "list",
+        ordered: false,
+        items: [
+          {
+            id: "b_hs04a",
+            content: [
+              {
+                text: "hairdressing or barbering",
+              },
+            ],
+          },
+          {
+            id: "b_hs04b",
+            content: [
+              {
+                text: "beauty services",
+              },
+            ],
+          },
+          {
+            id: "b_hs04c",
+            content: [
+              {
+                text: "manicures",
+              },
+            ],
+          },
+          {
+            id: "b_hs04d",
+            content: [
+              {
+                text: "pedicures",
+              },
+            ],
+          },
+          {
+            id: "b_hs04e",
+            content: [
+              {
+                text: "hair braiding",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "b_hs05",
+        type: "paragraph",
+        content: [
+          {
+            text: "Anyone providing these services also needs their own personal hairdressers licence. The business licence does not give the owner or staff a licence.",
+          },
+        ],
+      },
+      {
+        id: "b_hs06",
+        type: "paragraph",
+        content: [
+          {
+            text: "This applies whether you provide services:",
+          },
+        ],
+      },
+      {
+        id: "b_hs07",
+        type: "list",
+        ordered: false,
+        items: [
+          {
+            id: "b_hs07a",
+            content: [
+              {
+                text: "at a business location",
+              },
+            ],
+          },
+          {
+            id: "b_hs07b",
+            content: [
+              {
+                text: "from home (for example, at-home hairdressers)",
+              },
+            ],
+          },
+          {
+            id: "b_hs07c",
+            content: [
+              {
+                text: "at clients' locations or from a vehicle",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "b_hs08",
+        type: "paragraph",
+        content: [
+          {
+            text: "If your business is not licensed, Environmental Health will contact you and inform you that you need to apply. They may issue a notice if an application is not made.",
+          },
+        ],
+      },
+      {
+        id: "b_hs09",
+        type: "heading",
+        level: 2,
+        anchor: "before-you-start",
+        content: [
+          {
+            text: "Before you start",
+          },
+        ],
+      },
+      {
+        id: "b_hs10",
+        type: "paragraph",
+        content: [
+          {
+            text: "You will need:",
+          },
+        ],
+      },
+      {
+        id: "b_hs11",
+        type: "list",
+        ordered: false,
+        items: [
+          {
+            id: "b_hs11a",
+            content: [
+              {
+                text: "your current hairdressing salon licence number (if renewing)",
+              },
+            ],
+          },
+          {
+            id: "b_hs11b",
+            content: [
+              {
+                text: "the name and address of the business",
+              },
+            ],
+          },
+          {
+            id: "b_hs11c",
+            content: [
+              {
+                text: "the name and address of the owner or operator",
+              },
+            ],
+          },
+          {
+            id: "b_hs11d",
+            content: [
+              {
+                text: "a document listing your hairdressing staff, giving each person's name and gender (staff list)",
+              },
+            ],
+          },
+          {
+            id: "b_hs11e",
+            content: [
+              {
+                text: "medical certificates of all hairdressing staff",
+              },
+            ],
+          },
+          {
+            id: "b_hs11f",
+            content: [
+              {
+                text: "a vehicle registration number if the business uses a vehicle",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "b_hs12",
+        type: "paragraph",
+        content: [
+          {
+            text: "Uploading medical certificates is optional. You can show them during the inspection instead.",
+          },
+        ],
+      },
+      {
+        id: "b_hs13",
+        type: "paragraph",
+        content: [
+          {
+            text: "Read the ",
+          },
+          {
+            text: "Health Services (Hairdressers) Regulations, 1970",
+            ref: "r_regulations",
+          },
+          {
+            text: " for the full legal requirements.",
+          },
+        ],
+      },
+      {
+        id: "b_hs14",
+        type: "heading",
+        level: 2,
+        anchor: "when-to-apply",
+        content: [
+          {
+            text: "When to apply",
+          },
+        ],
+      },
+      {
+        id: "b_hs15",
+        type: "paragraph",
+        content: [
+          {
+            text: "Your licence expires on December 31st each year. You need to renew it by the first business day in January each year. It is suggested that you submit your application by December 1st.",
+          },
+        ],
+      },
+      {
+        id: "b_hs16",
+        type: "heading",
+        level: 2,
+        anchor: "how-to-apply",
+        content: [
+          {
+            text: "How to apply",
+          },
+        ],
+      },
+      {
+        id: "b_hs17",
+        type: "list",
+        ordered: true,
+        items: [
+          {
+            id: "b_hs17a",
+            content: [
+              {
+                text: "Apply for a licence online.",
+                marks: ["strong"],
+              },
+              {
+                text: " Allow about 15 minutes to complete the form.",
+              },
+            ],
+          },
+          {
+            id: "b_hs17b",
+            content: [
+              {
+                text: "Get a paper application from the polyclinic.",
+                marks: ["strong"],
+              },
+              {
+                text: " You must complete it by hand and submit it to the polyclinic for the district where the salon is located. Contact details are at the bottom of this page.",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "b_hs18",
+        type: "heading",
+        level: 2,
+        anchor: "cost",
+        content: [
+          {
+            text: "Cost",
+          },
+        ],
+      },
+      {
+        id: "b_hs19",
+        type: "paragraph",
+        content: [
+          {
+            text: "There is neither a cost to apply, nor to receive your licence.",
+          },
+        ],
+      },
+      {
+        id: "b_hs20",
+        type: "heading",
+        level: 2,
+        anchor: "what-happens-after-you-apply",
+        content: [
+          {
+            text: "What happens after you apply",
+          },
+        ],
+      },
+      {
+        id: "b_hs21",
+        type: "paragraph",
+        content: [
+          {
+            text: "Environmental Health will review your application and inspect the business.",
+          },
+        ],
+      },
+      {
+        id: "b_hs22",
+        type: "paragraph",
+        content: [
+          {
+            text: "During the inspection, you will need to show:",
+          },
+        ],
+      },
+      {
+        id: "b_hs23",
+        type: "list",
+        ordered: false,
+        items: [
+          {
+            id: "b_hs23a",
+            content: [
+              {
+                text: "your cleaning schedule of the premises and equipment",
+              },
+            ],
+          },
+          {
+            id: "b_hs23b",
+            content: [
+              {
+                text: "the cleaning and sanitation process of the equipment including towels",
+              },
+            ],
+          },
+          {
+            id: "b_hs23c",
+            content: [
+              {
+                text: "facilities with hot and cold water",
+              },
+            ],
+          },
+          {
+            id: "b_hs23d",
+            content: [
+              {
+                text: "any staff medical certificates you did not upload",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "b_hs24",
+        type: "paragraph",
+        content: [
+          {
+            text: "If you provide services from a vehicle, Environmental Health will need to arrange an inspection of the vehicle.",
+          },
+        ],
+      },
+      {
+        id: "b_hs25",
+        type: "notice",
+        variant: "info",
+        content: [
+          {
+            text: "Obtaining your licence. ",
+            marks: ["strong"],
+          },
+          {
+            text: "If your application is approved you will receive a confirmation email, and the Environmental Health Office will post your licence. You can also ask to collect it from your assigned polyclinic. Once you receive it, it must be displayed in the establishment.",
+          },
+        ],
+      },
+      {
+        id: "b_hs26",
+        type: "heading",
+        level: 2,
+        anchor: "contact",
+        content: [
+          {
+            text: "Contact",
+          },
+        ],
+      },
+      {
+        id: "b_hs27",
+        type: "paragraph",
+        content: [
+          {
+            text: "If you need help, contact the relevant Environmental Health Service office.",
+          },
+        ],
+      },
+      {
+        id: "b_hs28",
+        type: "data_table",
+        source: "r_eh_offices",
+        columns: [
+          {
+            field: "name",
+            label: "Office",
+          },
+          {
+            field: "phone",
+            label: "Phone",
+          },
+          {
+            field: "email",
+            label: "Email",
+          },
+        ],
+        empty_message: "No offices are listed.",
+      },
+    ] as Block[],
+    refs: {
+      r_regulations: {
+        kind: "external",
+        href: "https://oag.gov.bb/attachments/Health%20Services%20(Hairdressers)%20Regulations,%201970%20Cap44'N.PDF",
+      },
+      r_eh_offices: {
+        kind: "query",
+        collection: "environmental-health-offices",
+        order_by: {
+          field: "name",
+          direction: "asc",
+        },
+      },
+    } as Record<string, Ref>,
+  },
+};
+
 export const DOCUMENTS: SeedDocument[] = [
   pharmacyFinder,
   bankHolidays,
@@ -440,4 +937,5 @@ export const DOCUMENTS: SeedDocument[] = [
   severanceForm,
   cropOverPermits,
   cropOverPermitsForm,
+  hairSalonLicence,
 ];

@@ -27,7 +27,32 @@ function resolveSpanValue(span: Span, ctx: RenderContext): string {
   return value == null ? "" : String(value);
 }
 
-function markUp(text: string, span: Span, key: number): ReactNode {
+/**
+ * The href a span links to, or null when it is not a link.
+ *
+ * A span with BOTH text and a ref is linked text; a span with a ref and no
+ * text is a value reference. That is the whole distinction, and it is why
+ * the model needs no separate "link" mark.
+ */
+function resolveSpanHref(span: Span, ctx: RenderContext): string | null {
+  if (!span.ref || span.text === undefined) return null;
+  const ref = ctx.refs[span.ref];
+  if (!ref) return null;
+  if (ref.kind === "external") {
+    return ctx.resolveHref?.("external", ref.href) ?? ref.href;
+  }
+  if (ref.kind === "page") {
+    return ctx.resolveHref?.("page", ref.url) ?? ref.url;
+  }
+  return null;
+}
+
+function markUp(
+  text: string,
+  span: Span,
+  key: number,
+  ctx: RenderContext,
+): ReactNode {
   let node: ReactNode = text;
   // Applied outermost-last so <strong><em> nests predictably.
   for (const mark of span.marks ?? []) {
@@ -35,6 +60,21 @@ function markUp(text: string, span: Span, key: number): ReactNode {
     else if (mark === "em") node = <em>{node}</em>;
     else if (mark === "code") node = <code>{node}</code>;
   }
+
+  const href = resolveSpanHref(span, ctx);
+  if (href) {
+    const external = href.startsWith("http");
+    node = (
+      <a
+        className="bk-link"
+        href={href}
+        {...(external ? { rel: "noreferrer noopener" } : {})}
+      >
+        {node}
+      </a>
+    );
+  }
+
   return <span key={key}>{node}</span>;
 }
 
@@ -48,7 +88,7 @@ export function Spans({
   return (
     <>
       {content.map((span, index) =>
-        markUp(span.text ?? resolveSpanValue(span, ctx), span, index),
+        markUp(span.text ?? resolveSpanValue(span, ctx), span, index, ctx),
       )}
     </>
   );

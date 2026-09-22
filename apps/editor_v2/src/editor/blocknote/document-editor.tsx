@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BlockNoteView } from "@blocknote/mantine";
 import { SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
 import { filterSuggestionItems } from "@blocknote/core";
-import type { Block, BlockType } from "@govtech-bb/block-kit";
+import type { Block, BlockType, Ref } from "@govtech-bb/block-kit";
 import { newId } from "../new-block";
 import {
   DocumentMemo,
@@ -37,11 +37,14 @@ import "@blocknote/mantine/style.css";
 
 export function DocumentEditor({
   blocks,
+  refs,
   onChange,
   onRequestSave,
 }: {
   blocks: Block[];
-  onChange: (blocks: Block[]) => void;
+  refs: Record<string, Ref>;
+  /** Refs come back too: a link typed in the editor mints one. */
+  onChange: (blocks: Block[], refs: Record<string, Ref>) => void;
   onRequestSave: () => void;
 }) {
   // One memo per mounted document. It carries the list container ids and
@@ -60,7 +63,7 @@ export function DocumentEditor({
   const hoveredId = useRef<string | null>(null);
 
   const initialContent = useMemo(
-    () => toBlockNote(blocks, memo.current),
+    () => toBlockNote(blocks, memo.current, refs),
     // Deliberately once: after mount the editor owns the document, and
     // re-seeding it from props would fight the user's cursor.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -69,12 +72,22 @@ export function DocumentEditor({
 
   const editor = useCreateBlockNote({
     schema: editorSchema,
-    initialContent: initialContent.length > 0 ? initialContent : undefined,
+    initialContent:
+      initialContent.length > 0 ? (initialContent as never) : undefined,
   });
+
+  const refsRef = useRef(refs);
+  refsRef.current = refs;
 
   const serialize = useCallback(() => {
     const document = editor.document as unknown as BnBlock[];
-    onChange(fromBlockNote(document, memo.current, () => newId()));
+    const next = fromBlockNote(
+      document,
+      memo.current,
+      () => newId(),
+      refsRef.current,
+    );
+    onChange(next.blocks, next.refs);
   }, [editor, onChange]);
 
   const insert = useCallback(

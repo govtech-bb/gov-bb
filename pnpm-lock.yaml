@@ -642,6 +642,9 @@ importers:
       '@govtech-bb/block-kit':
         specifier: workspace:*
         version: link:../../packages/block-kit
+      '@govtech-bb/content':
+        specifier: workspace:*
+        version: link:../../packages/content
       '@govtech-bb/landing-v2':
         specifier: workspace:*
         version: link:../landing_v2

@@ -14,7 +14,7 @@
 **Yes for the document model. Qualified yes for the editor. No for the idea
 that a finder's behaviour is data.**
 
-All four pages round-trip through one `{version, blocks, refs}` document,
+All five pages round-trip through one `{version, blocks, refs}` document,
 render through one renderer, and are edited in one editor. The severance
 page and the bank holiday calendar are comfortable. The pharmacy finder
 works — a content designer can add a facet, reorder it, relabel it, change
@@ -222,6 +222,48 @@ freelancing.
 One corollary worth carrying: the notice is also the first seeded block that
 is neither a paragraph nor a heading and still carries marks. Bold inside a
 non-paragraph block round-trips, which had been assumed rather than tested.
+
+### The model could express an inline link; nothing could render one
+
+The hairdressing licence page was added as a fifth case and immediately
+broke something the first four had hidden. Its prose links out to the
+Hairdressers Regulations, and **no seeded page before it contained a single
+inline link**.
+
+The format was fine. `Span` is `{ text?, marks?, ref?, field? }` and `Ref`
+already has `external` and `page` kinds, so linked text is a span with both
+`text` and a `ref` — and a span with a `ref` and _no_ text is a value
+reference. One field, two meanings, cleanly separated.
+
+What did not exist was anything downstream. The renderer ignored `ref` on a
+span that had text and rendered the words unlinked; the editor's adapter
+dropped the ref entirely, so opening a page with a link and saving it turned
+that link into plain text with no warning. A lossy round trip that no test
+caught, because no fixture had a link in it.
+
+**The lesson is about coverage, not design.** Three pages chosen to be
+awkward in three different ways still shared an accident — none of them
+linked anywhere — and the gap survived a full renderer, a full adapter and a
+round-trip test suite. When picking fixtures for the real migration, pick
+them for the _features_ they exercise, not only for the shapes they are.
+
+### `refs` and `data_table` had never been exercised at all
+
+Every document seeded before the hairdressing page had `refs: {}`, and the
+`data_table` block — built deliberately as the brief's control case, to
+prove the config-block pattern generalised beyond the two blocks that needed
+it — had no consumer anywhere.
+
+That page uses both: an `external` ref behind the Regulations link, and a
+`query` ref that a `data_table` reads the seven Environmental Health offices
+through. The offices had been a hand-typed markdown list repeated across
+Environmental Health pages; as a collection, changing a polyclinic's phone
+number once fixes every page listing it.
+
+The control case worked — `data_table` needed no changes to render real
+data, which is the evidence the brief wanted that config blocks generalise.
+But it is worth being blunt that it went four pages without a single user,
+and a block type with no consumer is a block type nobody has checked.
 
 ### Substitution is per-holiday, not one policy per calendar
 

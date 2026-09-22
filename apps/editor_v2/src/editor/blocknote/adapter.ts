@@ -27,7 +27,7 @@
  *    edited serializes back to exactly what was loaded.
  */
 
-import type { Block, ListBlock, Mark, Span } from "@govtech-bb/block-kit";
+import type { Block, ListBlock, Mark, Ref, Span } from "@govtech-bb/block-kit";
 
 /* ----------------------------------------------------------- BlockNote-ish
  * A structural subset of BlockNote's types. Deliberately local: it keeps the
@@ -54,7 +54,14 @@ export interface BnValueRef {
   content?: undefined;
 }
 
-export type BnInline = BnText | BnValueRef;
+/** BlockNote's link: styled text wrapped in an href. */
+export interface BnLink {
+  type: "link";
+  href: string;
+  content: BnText[];
+}
+
+export type BnInline = BnText | BnValueRef | BnLink;
 
 export interface BnBlock {
   id: string;
@@ -79,25 +86,79 @@ const STYLE_TO_MARK: Array<[keyof BnStyles, Mark]> = [
   ["code", "code"],
 ];
 
-export function spansToInline(spans: Span[]): BnInline[] {
+/** The href a ref points at, or null when it is not a link. */
+function hrefOf(ref: Ref | undefined): string | null {
+  if (!ref) return null;
+  if (ref.kind === "external") return ref.href;
+  if (ref.kind === "page") return ref.url;
+  return null;
+}
+
+export function spansToInline(
+  spans: Span[],
+  refs: Record<string, Ref> = {},
+): BnInline[] {
   return spans.map((span) => {
+    // A ref with no text is a value reference; a ref WITH text is a link.
     if (span.ref !== undefined && span.text === undefined) {
       return {
         type: "valueRef",
         props: { refKey: span.ref, field: span.field ?? "" },
       };
     }
+
     const styles: BnStyles = {};
     for (const mark of span.marks ?? []) styles[MARK_TO_STYLE[mark]] = true;
-    return { type: "text", text: span.text ?? "", styles };
+    const text: BnText = { type: "text", text: span.text ?? "", styles };
+
+    const href = span.ref ? hrefOf(refs[span.ref]) : null;
+    return href ? { type: "link", href, content: [text] } : text;
   });
 }
 
-export function inlineToSpans(content: BnInline[] | undefined): Span[] {
+/**
+ * Turns BlockNote inline content back into spans, minting a ref for any link
+ * whose href the document does not already name.
+ *
+ * `refs` is read AND written: an author typing a new link in the editor has
+ * to produce a ref, or validation rule 4 fails on a span pointing at nothing.
+ */
+export function inlineToSpans(
+  content: BnInline[] | undefined,
+  refs: Record<string, Ref> = {},
+  mintRefKey: () => string = () => `r_${Object.keys(refs).length + 1}`,
+): Span[] {
   if (!content) return [];
   const spans: Span[] = [];
 
+  const keyForHref = (href: string): string => {
+    for (const [key, ref] of Object.entries(refs)) {
+      if (hrefOf(ref) === href) return key;
+    }
+    const key = mintRefKey();
+    refs[key] = href.startsWith("/")
+      ? { kind: "page", url: href }
+      : { kind: "external", href };
+    return key;
+  };
+
   for (const item of content) {
+    if (item.type === "link") {
+      const key = keyForHref(item.href);
+      for (const run of item.content) {
+        const marks: Mark[] = [];
+        for (const [style, mark] of STYLE_TO_MARK) {
+          if (run.styles?.[style]) marks.push(mark);
+        }
+        spans.push(
+          marks.length > 0
+            ? { text: run.text, marks, ref: key }
+            : { text: run.text, ref: key },
+        );
+      }
+      continue;
+    }
+
     if (item.type === "valueRef") {
       const span: Span = { ref: item.props.refKey };
       if (item.props.field) span.field = item.props.field;
@@ -117,6 +178,7 @@ export function inlineToSpans(content: BnInline[] | undefined): Span[] {
     if (
       previous &&
       previous.text !== undefined &&
+      previous.ref === undefined &&
       sameMarks(previous.marks, marks)
     ) {
       previous.text += item.text;
@@ -215,6 +277,7 @@ export function isConfigType(type: string): boolean {
 export function toBlockNote(
   blocks: Block[],
   registry: DocumentMemo,
+  refs: Record<string, Ref> = {},
 ): BnBlock[] {
   registry.clear();
   const out: BnBlock[] = [];
@@ -225,7 +288,7 @@ export function toBlockNote(
         out.push({
           id: block.id,
           type: "paragraph",
-          content: spansToInline(block.content),
+          content: spansToInline(block.content, refs),
         });
         break;
 
@@ -237,7 +300,7 @@ export function toBlockNote(
           id: block.id,
           type: "heading",
           props: { level: block.level },
-          content: spansToInline(block.content),
+          content: spansToInline(block.content, refs),
         });
         break;
 
@@ -246,7 +309,7 @@ export function toBlockNote(
           id: block.id,
           type: "notice",
           props: { variant: block.variant },
-          content: spansToInline(block.content),
+          content: spansToInline(block.content, refs),
         });
         break;
 
@@ -259,7 +322,7 @@ export function toBlockNote(
           out.push({
             id: item.id,
             type: block.ordered ? "numberedListItem" : "bulletListItem",
-            content: spansToInline(item.content),
+            content: spansToInline(item.content, refs),
           });
         }
         break;
@@ -286,11 +349,19 @@ function stripId(block: Block): Record<string, unknown> {
 
 /* ---------------------------------------------------------------- inward */
 
+export interface Deserialized {
+  blocks: Block[];
+  /** The document's refs, with any link typed in the editor added. */
+  refs: Record<string, Ref>;
+}
+
 export function fromBlockNote(
   bnBlocks: BnBlock[],
   registry: DocumentMemo,
   mintId: () => string,
-): Block[] {
+  existingRefs: Record<string, Ref> = {},
+): Deserialized {
+  const refs: Record<string, Ref> = { ...existingRefs };
   const out: Block[] = [];
   let index = 0;
 
@@ -313,7 +384,7 @@ export function fromBlockNote(
         ordered,
         items: group.map((item) => ({
           id: item.id,
-          content: inlineToSpans(item.content),
+          content: inlineToSpans(item.content, refs),
         })),
       };
       out.push(list);
@@ -327,7 +398,7 @@ export function fromBlockNote(
         out.push({
           id: bn.id,
           type: "paragraph",
-          content: inlineToSpans(bn.content),
+          content: inlineToSpans(bn.content, refs),
         });
         break;
 
@@ -340,7 +411,7 @@ export function fromBlockNote(
           // silently changes the fragment. A brand-new heading has none,
           // and `deriveAnchors` mints one from its text.
           anchor: registry.anchorFor(bn.id) ?? "",
-          content: inlineToSpans(bn.content),
+          content: inlineToSpans(bn.content, refs),
         });
         break;
 
@@ -349,7 +420,7 @@ export function fromBlockNote(
           id: bn.id,
           type: "notice",
           variant: (bn.props?.variant as "info" | "warning") ?? "info",
-          content: inlineToSpans(bn.content),
+          content: inlineToSpans(bn.content, refs),
         });
         break;
 
@@ -366,5 +437,5 @@ export function fromBlockNote(
     }
   }
 
-  return out;
+  return { blocks: out, refs };
 }

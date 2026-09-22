@@ -3,6 +3,7 @@ import type { Block } from "@govtech-bb/block-kit";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createMemoryDb } from "./client";
 import { ConflictError, PgliteStore, ValidationFailedError } from "./store";
+import { COLLECTIONS } from "./seed-data/collections";
 import { DOCUMENTS } from "./seed-data/documents";
 
 let db: PGliteInterface;
@@ -38,11 +39,9 @@ describe("list and get", () => {
 
   it("reads collections and their records", async () => {
     const collections = await store.listCollections();
-    expect(collections.map((c) => c.key)).toEqual([
-      "bank-holiday-rules",
-      "parishes",
-      "pharmacies",
-    ]);
+    expect(collections.map((c) => c.key)).toEqual(
+      COLLECTIONS.map((c) => c.key).sort(),
+    );
     expect(await store.records("pharmacies")).toHaveLength(163);
   });
 });

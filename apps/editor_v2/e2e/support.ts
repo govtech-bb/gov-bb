@@ -33,6 +33,7 @@ export const CALENDAR_URL = "/bank-holiday-calendar";
 export const PHARMACY_URL =
   "/health-and-emergency-services/find-an-open-pharmacy/find";
 export const CROP_OVER_URL = "/business-trade/crop-over-permits";
+export const HAIR_SALON_URL = "/business-trade/apply-for-hair-salon-licence";
 
 /** Titles as seeded, used to pick a document out of the editor's list. */
 export const DOC = {
@@ -40,14 +41,17 @@ export const DOC = {
   calendar: "Check bank holiday dates",
   pharmacies: "Search for pharmacies",
   cropOver: "Find the permits you need for a Crop Over event",
+  hairSalon: "Apply for a hairdressing and beautician business licence",
 } as const;
 
 /**
- * Four content pages plus two stubs. The stubs exist because rule 8 makes an
+ * Five content pages plus two stubs. The stubs exist because rule 8 makes an
  * internal `start_link` resolve, and both the severance and Crop Over start
- * pages point at a form — so a seed without them cannot save.
+ * pages point at a form — so a seed without them cannot save. The hair salon
+ * page needs none, because its application form is out of scope and it
+ * carries no start_link.
  */
-export const SEEDED_DOCUMENT_COUNT = 6;
+export const SEEDED_DOCUMENT_COUNT = 7;
 
 /**
  * PGlite compiles WASM and runs the migration and seed on first paint.

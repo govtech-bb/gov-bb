@@ -705,3 +705,66 @@ button,
   color: var(--muted);
   font-size: 0.875rem;
 }
+
+/* The page title: the document's own heading, not a labelled form field. */
+.ed-doc-title {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  /* The title grows to its content, so the drag handle would only ever let
+     someone break the layout. `resize` is not in Baseline yet, but it has
+     been supported everywhere for years and degrades to a usable handle. */
+  /* eslint-disable-next-line css/use-baseline */
+  resize: none;
+  margin: 0.5rem 0 0.25rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.ed-doc-title::placeholder {
+  color: #b1b4b6;
+}
+
+.ed-doc-title:focus {
+  outline: 3px solid var(--blue);
+  outline-offset: 4px;
+}
+
+/* Page properties: collapsed by default, because the address is set once. */
+.ed-properties {
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+}
+
+.ed-properties-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.ed-properties-url {
+  color: var(--ink);
+  font-size: 0.8125rem;
+}
+
+.ed-properties-body {
+  padding: 0.25rem 0.75rem 0.875rem;
+  border-top: 1px solid var(--line-soft);
+}
+
+.ed-properties-clash {
+  margin: 0.5rem 0;
+  color: var(--red);
+  font-size: 0.875rem;
+}

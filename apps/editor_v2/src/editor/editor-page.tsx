@@ -3,20 +3,31 @@ import {
   validateDocument,
   type Block,
   type PageDocument,
+  type Ref,
   type ValidationError,
 } from "@govtech-bb/block-kit";
 import { ConflictError, ValidationFailedError } from "@govtech-bb/spike-db";
 import {
   useCollections,
   useDocument,
+  useDocumentList,
   useRenderData,
   useStore,
 } from "@govtech-bb/spike-db/react";
 import { Link, useParams } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { DocumentEditor } from "./blocknote/document-editor";
 import { EditorBlockProvider } from "./blocknote/context";
 import { clearDraft, readDraft, writeDraft } from "./drafts";
+import { CATEGORY_SLUGS, PageProperties } from "./page-properties";
+import { servicesInUse } from "./page-url";
 
 /**
  * How long typing must pause before the draft is cached locally.
@@ -31,6 +42,7 @@ export function EditorPage() {
   const store = useStore();
   const loaded = useDocument(id);
   const collections = useCollections();
+  const allDocuments = useDocumentList();
 
   /** The draft. `loadedAt` is the updated_at every save is conditioned on. */
   const [draft, setDraft] = useState<PageDocument | null>(null);
@@ -138,13 +150,18 @@ export function EditorPage() {
     return () => clearTimeout(timer);
   }, [draft, dirty, loadedAt]);
 
-  const onBlocksChange = useCallback((blocks: Block[]) => {
-    setDraft((current) =>
-      current ? { ...current, body: { ...current.body, blocks } } : current,
-    );
-    setDirty(true);
-    setErrors([]);
-  }, []);
+  const onBlocksChange = useCallback(
+    (blocks: Block[], refs: Record<string, Ref>) => {
+      setDraft((current) =>
+        current
+          ? { ...current, body: { ...current.body, blocks, refs } }
+          : current,
+      );
+      setDirty(true);
+      setErrors([]);
+    },
+    [],
+  );
 
   const updateEnvelope = (patch: Partial<PageDocument>) => {
     setDraft((current) => (current ? { ...current, ...patch } : current));
@@ -318,35 +335,78 @@ export function EditorPage() {
           </pre>
         ) : null}
 
-        <div className="ed-envelope">
-          <label className="ed-field">
-            <span className="ed-field-label">Title</span>
-            <input
-              className="ed-input ed-title"
-              data-testid="document-title"
-              value={draft.title}
-              onChange={(event) =>
-                updateEnvelope({ title: event.target.value })
-              }
-            />
-          </label>
-          <label className="ed-field">
-            <span className="ed-field-label">URL</span>
-            <input
-              className="ed-input"
-              data-testid="document-url"
-              value={draft.url}
-              onChange={(event) => updateEnvelope({ url: event.target.value })}
-            />
-          </label>
-        </div>
+        {/*
+          The title is the page's h1. It reads as the document's own heading
+          rather than as a labelled form field — Notion's treatment — while
+          still writing straight to `content_pages.title`.
+        */}
+        <PageTitle
+          value={draft.title}
+          onChange={(title) => updateEnvelope({ title })}
+        />
+
+        <PageProperties
+          url={draft.url}
+          description={draft.description}
+          services={servicesInUse(
+            (allDocuments ?? []).map((entry) => entry.url),
+            CATEGORY_SLUGS,
+          )}
+          urlsInUse={(allDocuments ?? [])
+            .filter((entry) => entry.id !== draft.id)
+            .map((entry) => entry.url)}
+          onUrlChange={(url) => updateEnvelope({ url })}
+          onDescriptionChange={(description) => updateEnvelope({ description })}
+        />
 
         <DocumentEditor
           blocks={draft.body.blocks}
+          refs={draft.body.refs}
           onChange={onBlocksChange}
           onRequestSave={flush}
         />
       </div>
     </EditorBlockProvider>
+  );
+}
+
+/**
+ * The page's h1.
+ *
+ * A textarea rather than an input, because a title wraps — several of these
+ * pages have titles that do not fit one line, and an input would scroll them
+ * out of sight instead. It grows to its content so it never scrolls at all.
+ */
+function PageTitle({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const field = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    const node = field.current;
+    if (!node) return;
+    node.style.height = "auto";
+    node.style.height = `${node.scrollHeight}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={field}
+      className="ed-doc-title"
+      data-testid="document-title"
+      aria-label="Page title"
+      placeholder="Untitled page"
+      rows={1}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      // Enter belongs to the document, not to the title.
+      onKeyDown={(event) => {
+        if (event.key === "Enter") event.preventDefault();
+      }}
+    />
   );
 }

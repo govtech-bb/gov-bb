@@ -18,6 +18,7 @@
     "@electric-sql/pglite": "^0.5.8",
     "@electric-sql/pglite-react": "^0.4.8",
     "@govtech-bb/block-kit": "workspace:*",
+    "@govtech-bb/content": "workspace:*",
     "@govtech-bb/landing-v2": "workspace:*",
     "@govtech-bb/react": "1.0.0-alpha.29",
     "@govtech-bb/spike-db": "workspace:*",

@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { createMemoryDb } from "./client";
 import { migrate } from "./migrate";
 import { seed } from "./seed";
+import { COLLECTIONS, RECORDS_BY_COLLECTION } from "./seed-data/collections";
 import { DOCUMENTS } from "./seed-data/documents";
 
 let db: PGliteInterface;
@@ -20,7 +21,7 @@ const count = async (table: string) => {
 
 describe("migrate and seed", () => {
   it("loads the collections, the records and the documents", async () => {
-    expect(await count("data_collections")).toBe(3);
+    expect(await count("data_collections")).toBe(COLLECTIONS.length);
     expect(await count("content_pages")).toBe(DOCUMENTS.length);
 
     const pharmacies = await db.query<{ n: string }>(
@@ -35,7 +36,13 @@ describe("migrate and seed", () => {
     expect(await migrate(db)).toEqual([]);
     expect(await seed(db)).toBe(false);
     expect(await count("content_pages")).toBe(before);
-    expect(await count("collection_records")).toBe(163 + 12 + 12);
+    // Summed from the seed rather than written out, so a new collection is
+    // not a puzzling arithmetic failure here.
+    const seeded = Object.values(RECORDS_BY_COLLECTION).reduce(
+      (total, records) => total + records.length,
+      0,
+    );
+    expect(await count("collection_records")).toBe(seeded);
   });
 
   it("enforces the url unique constraint", async () => {

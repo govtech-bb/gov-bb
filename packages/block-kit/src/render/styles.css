@@ -297,3 +297,12 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+.bk-link {
+  color: var(--bk-blue);
+  text-underline-offset: 0.1em;
+}
+
+.bk-link:hover {
+  color: var(--bk-ink);
+}
