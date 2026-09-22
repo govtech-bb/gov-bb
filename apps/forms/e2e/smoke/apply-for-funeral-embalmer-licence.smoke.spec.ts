@@ -38,9 +38,14 @@
  *    Unlike apply-for-hairdresser-licence, which gates the whole
  *    `workplace-details` step behind a separate `workplace-known` step, that
  *    gating step does not exist here, so the journey is always
- *    personal-details → contact-details → workplace-details → documents →
- *    check-your-answers → declaration → submission-confirmation. One test
- *    covers the whole form.
+ *    application-type → personal-details → contact-details →
+ *    workplace-details → documents → check-your-answers → declaration →
+ *    submission-confirmation. One test covers the whole form.
+ *  - `application-type` is the route question added by #2717: a required
+ *    2-option radio ("new" / "renewal"). Choosing "renewal" reveals the
+ *    inline `embalmer-licence-number` field (`fieldConditionalOn`), which is
+ *    required on that branch only. This walk takes the renewal branch so the
+ *    reveal and the field are both exercised.
  *  - `workplace-details` does carry ELEMENT-level reveals, on the individual
  *    fields (`overrides.behaviours`, not the step's):
  *    `funeral-establishment-name`, `-address-line-1`, `-address-line-2` and
@@ -115,6 +120,7 @@ import {
   fillField,
   fillGeocodedAddress,
   selectDropdown,
+  selectRadio,
   submitAndConfirm,
   tickCheckbox,
   uploadOne,
@@ -197,6 +203,9 @@ export function buildData() {
     email: "testing@govtech.bb",
     phone: bbMobileNumber(),
 
+    // Only asked on the renewal branch, which is the one this walk takes (#2717).
+    licenceNumber: `FEM-${faker.string.numeric(6)}`,
+
     // Timestamped so the resulting submission is easy to find in the target env.
     establishmentName: `Smoke Test Funeral Establishment ${new Date().toISOString()}`,
     establishmentAddressLine1: faker.location.streetAddress(),
@@ -226,6 +235,26 @@ async function fillMaskedNationalId(
   await expect(input, "Maskito did not format the National ID").toHaveValue(
     /^\d{6}-\d{4}$/,
   );
+}
+
+/**
+ * The route question (#2717) — the form's first step. Choosing "renewal"
+ * reveals `embalmer-licence-number` inline, so this walk takes the renewal
+ * branch and asserts the reveal (hidden → select → visible) rather than just
+ * the happy path.
+ */
+export async function fillApplicationType(
+  page: Page,
+  data: ReturnType<typeof buildData>,
+): Promise<void> {
+  const step = expectStep(page, "application-type");
+  await expect(page.locator("h1")).toContainText("about your application");
+  const licenceNumber = page.locator(`[id="${step}_embalmer-licence-number"]`);
+  await expect(licenceNumber).toBeHidden();
+  await selectRadio(page, step, "application-type", "renewal");
+  await expect(licenceNumber).toBeVisible({ timeout: STEP_TIMEOUT });
+  await licenceNumber.fill(data.licenceNumber);
+  await advance(page, step);
 }
 
 /** Step 1 — the applicant. */
@@ -391,6 +420,7 @@ test.describe("Funeral Embalmer Licence Application — Live Smoke", () => {
       console.log("[smoke-data]", JSON.stringify(data, null, 2));
 
     await openForm(page);
+    await fillApplicationType(page, data);
     await fillPersonalDetails(page, data);
     await fillContactDetails(page, data);
     await fillWorkplaceDetails(page, data);
@@ -400,6 +430,7 @@ test.describe("Funeral Embalmer Licence Application — Live Smoke", () => {
     const step = expectStep(page, "check-your-answers");
     await expect(page.locator("h1")).toContainText("Check your answers");
     await expect(page.getByText(data.establishmentName).first()).toBeVisible();
+    await expect(page.getByText(data.licenceNumber).first()).toBeVisible();
     // SMOKE_HOLD_CYA=1 pauses a headed run here so the review screen can be
     // inspected before anything is submitted (matches the sibling specs).
     if (process.env.SMOKE_HOLD_CYA) await page.pause();
