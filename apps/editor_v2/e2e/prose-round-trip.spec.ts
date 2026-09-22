@@ -26,7 +26,9 @@ import {
   openDocument,
   preview,
   replaceText,
+  localDraftKeys,
   saveAndExpectSuccess,
+  saveButton,
   saveStatus,
 } from "./support";
 
@@ -232,49 +234,111 @@ test.describe("editing prose", () => {
   });
 });
 
-test.describe("autosave", () => {
-  test("an edit saves itself without anyone pressing anything", async ({
+test.describe("autosave keeps a draft, Save publishes it", () => {
+  test("an edit is cached in this browser and does not reach the database", async ({
     page,
   }) => {
-    // The one test that waits for the debounce rather than forcing a flush.
-    // Everywhere else uses Ctrl/Cmd+S, so that a test about facets is not
-    // also a test about timing.
+    // The distinction the whole save model rests on. Autosave protects the
+    // author against a closed tab; it must not make every keystroke a
+    // publication, because the row it would write is what the site serves.
     await openDocument(page, DOC.severance);
     await expect(saveStatus(page)).toHaveText(/^saved$/i);
 
     await replaceText(page, "b_sv04", "About 6 minutes.");
+    await expect(saveStatus(page)).toHaveText(/draft kept in this browser/i);
+    expect(await localDraftKeys(page)).not.toHaveLength(0);
+
+    // Still "unsaved", because the site is not serving it.
     await expect(saveStatus(page)).toHaveText(/unsaved/i);
 
-    // No flushSave() here on purpose.
-    await expect(saveStatus(page)).toHaveText(/^saved$/i);
+    const stored = await page.evaluate(async () => {
+      const store = (
+        window as unknown as {
+          __spikeStore: {
+            list: () => Promise<Array<{ id: string; url: string }>>;
+            get: (id: string) => Promise<{ body: { blocks: unknown[] } }>;
+          };
+        }
+      ).__spikeStore;
+      const [summary] = (await store.list()).filter((d) =>
+        d.url.includes("severance-pay/start"),
+      );
+      return JSON.stringify((await store.get(summary.id)).body);
+    });
+    expect(stored).toContain("About 3 minutes.");
+    expect(stored).not.toContain("About 6 minutes.");
+  });
+
+  test("the draft is restored on reload, announced, and still unsaved", async ({
+    page,
+  }) => {
+    await openDocument(page, DOC.severance);
+    await replaceText(page, "b_sv04", "About 7 minutes.");
+    await expect(saveStatus(page)).toHaveText(/draft kept in this browser/i);
 
     await page.reload();
     await expect(editorSurface(page)).toBeVisible();
-    expect(await bodyJson(page)).toContain("About 6 minutes.");
+
+    await expect(page.getByTestId("draft-notice")).toBeVisible();
+    await expect(saveStatus(page)).toHaveText(/unsaved/i);
+    expect(await bodyJson(page)).toContain("About 7 minutes.");
   });
 
-  test("Ctrl/Cmd+S flushes immediately rather than waiting", async ({
+  test("discarding a draft goes back to the stored version", async ({
     page,
   }) => {
     await openDocument(page, DOC.severance);
     await replaceText(page, "b_sv04", "About 8 minutes.");
-    await expect(saveStatus(page)).toHaveText(/unsaved/i);
+    await expect(saveStatus(page)).toHaveText(/draft kept in this browser/i);
 
-    await page.keyboard.press("ControlOrMeta+s");
-    await expect(saveStatus(page)).toHaveText(/^saved$/i, { timeout: 2_000 });
+    await page.getByTestId("discard-draft").click();
+    await expect(editorSurface(page)).toBeVisible();
+
+    expect(await bodyJson(page)).toContain("About 3 minutes.");
+    expect(await localDraftKeys(page)).toHaveLength(0);
   });
 
-  test("the browser Save dialog never opens", async ({ page }) => {
-    // Ctrl/Cmd+S must be intercepted. If preventDefault is missing the test
-    // machine gets a native dialog and every later test in the file hangs.
+  test("Save publishes it and clears the draft", async ({ page }) => {
+    await openDocument(page, DOC.severance);
+    await replaceText(page, "b_sv04", "About 9 minutes.");
+
+    await saveButton(page).click();
+    await expect(saveStatus(page)).toHaveText(/^saved$/i);
+    expect(await localDraftKeys(page)).toHaveLength(0);
+
+    await page.reload();
+    await expect(editorSurface(page)).toBeVisible();
+    await expect(page.getByTestId("draft-notice")).toHaveCount(0);
+    expect(await bodyJson(page)).toContain("About 9 minutes.");
+  });
+
+  test("Ctrl/Cmd+S publishes without opening the browser Save dialog", async ({
+    page,
+  }) => {
+    // If preventDefault is missing the test machine gets a native dialog and
+    // every later test in the file hangs.
     await openDocument(page, DOC.severance);
     let dialogOpened = false;
     page.on("dialog", () => {
       dialogOpened = true;
     });
-    await replaceText(page, "b_sv04", "About 9 minutes.");
+
+    await replaceText(page, "b_sv04", "About 10 minutes.");
     await page.keyboard.press("ControlOrMeta+s");
     await expect(saveStatus(page)).toHaveText(/^saved$/i);
     expect(dialogOpened).toBe(false);
+  });
+
+  test("Save is offered only when there is something to save", async ({
+    page,
+  }) => {
+    await openDocument(page, DOC.severance);
+    await expect(saveButton(page)).toBeDisabled();
+
+    await replaceText(page, "b_sv04", "About 11 minutes.");
+    await expect(saveButton(page)).toBeEnabled();
+
+    await saveButton(page).click();
+    await expect(saveButton(page)).toBeDisabled();
   });
 });

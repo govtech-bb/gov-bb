@@ -13,6 +13,7 @@ import {
   calendarTable,
   gotoSite,
   holidayRow,
+  openBlockSettings,
   openDocument,
   saveAndExpectSuccess,
 } from "./support";
@@ -22,6 +23,7 @@ test.describe("rules are data", () => {
     page,
   }) => {
     await openDocument(page, DOC.calendar);
+    await openBlockSettings(page, "b_bh01");
 
     await page.getByTestId("add-rule").click();
     await page.getByTestId("rule-key-new").fill("spike-day");
@@ -43,6 +45,7 @@ test.describe("rules are data", () => {
     page,
   }) => {
     await openDocument(page, DOC.calendar);
+    await openBlockSettings(page, "b_bh01");
     await page.getByTestId("add-rule").click();
     await page.getByTestId("rule-key-new").fill("census-day");
     await page.getByTestId("rule-name-new").fill("Census Day");
@@ -68,6 +71,7 @@ test.describe("rules are data", () => {
     await expect(holidayRow(page, "Kadooment Day")).toBeVisible();
 
     await openDocument(page, DOC.calendar);
+    await openBlockSettings(page, "b_bh01");
     await page.getByTestId("remove-rule-kadooment-day").click();
     await saveAndExpectSuccess(page);
 
@@ -81,6 +85,7 @@ test.describe("rules are data", () => {
     page,
   }) => {
     await openDocument(page, DOC.calendar);
+    await openBlockSettings(page, "b_bh01");
     await page
       .getByTestId("rule-name-errol-barrow-day")
       .fill("Errol Barrow Day (National)");
@@ -152,6 +157,7 @@ test.describe("formulas are code", () => {
   }) => {
     // The policy is a block field, so it has to actually do something.
     await openDocument(page, DOC.calendar);
+    await openBlockSettings(page, "b_bh01");
     await page.getByTestId("substitution-rule").selectOption("none");
     await saveAndExpectSuccess(page);
 
@@ -164,6 +170,7 @@ test.describe("formulas are code", () => {
     page,
   }) => {
     await openDocument(page, DOC.calendar);
+    await openBlockSettings(page, "b_bh01");
     await page.getByTestId("year-range-min").fill("2024");
     await page.getByTestId("year-range-max").fill("2027");
     await saveAndExpectSuccess(page);

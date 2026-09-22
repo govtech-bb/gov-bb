@@ -55,6 +55,22 @@ export async function gotoEditor(page: Page): Promise<void> {
   await waitForReady(page);
 }
 
+/** Open a block's settings popover, from "Edit" above "Delete". */
+export async function openBlockSettings(
+  page: Page,
+  blockId: string,
+): Promise<Locator> {
+  // Hover near the block's top-left: a finder is over a thousand pixels
+  // tall, and hovering its centre scrolls it out from under the pointer.
+  const box = await block(page, blockId).boundingBox();
+  await page.mouse.move((box?.x ?? 0) + 10, (box?.y ?? 0) + 10);
+  await page.getByRole("button", { name: "Open block menu" }).click();
+  await page.getByTestId("block-menu-edit").click();
+  const popover = page.getByTestId("block-popover");
+  await expect(popover).toBeVisible();
+  return popover;
+}
+
 /** Open a seeded document by its title. */
 export async function openDocument(page: Page, title: string): Promise<void> {
   await gotoEditor(page);
@@ -84,7 +100,12 @@ export const block = (page: Page, id: string): Locator =>
 export const blockByType = (page: Page, type: string): Locator =>
   page.locator(`[data-block-type="${type}"]`).first();
 
-export const preview = (page: Page): Locator => page.getByTestId("preview");
+/**
+ * There is no preview pane any more — the document *is* the preview, so an
+ * assertion about "what the author sees rendered" is an assertion about the
+ * editing surface. Kept as a name because that is what the tests mean.
+ */
+export const preview = editorSurface;
 
 /** Ids of the blocks currently in the document, in document order. */
 export async function blockIds(page: Page): Promise<string[]> {
@@ -169,16 +190,25 @@ export async function deleteBlock(page: Page, blockId: string): Promise<void> {
 /* --------------------------------------------------------------- saving */
 
 /**
- * The editor autosaves on a debounce. Ctrl/Cmd+S forces that flush to happen
- * now, which is what makes these tests deterministic without any of them
- * having to sleep for the debounce window.
+ * Persist to Postgres. Autosave only ever writes a draft to localStorage, so
+ * this is the only thing that changes what the site serves.
  *
- * The `autosave` block in prose-round-trip.spec.ts covers the debounce firing
- * on its own; everywhere else uses the explicit flush, because a test about
- * facet configuration should not also be a test about timing.
+ * Ctrl/Cmd+S and the Save button are the same act; the keyboard route is
+ * used here because it works wherever the caret happens to be.
  */
 export async function flushSave(page: Page): Promise<void> {
   await page.keyboard.press("ControlOrMeta+s");
+}
+
+export const saveButton = (page: Page): Locator => page.getByTestId("save");
+
+/** Keys the editor caches drafts under, for asserting what autosave did. */
+export async function localDraftKeys(page: Page): Promise<string[]> {
+  return page.evaluate(() =>
+    Object.keys(window.localStorage).filter((key) =>
+      key.startsWith("spike:draft:"),
+    ),
+  );
 }
 
 export const saveStatus = (page: Page): Locator =>

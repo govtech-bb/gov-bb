@@ -47,10 +47,25 @@ the canonical document remains `{version, blocks, refs}` in
 `content_pages.body`, and a tested adapter converts between them in both
 directions.**
 
-**Saving is a debounced autosave with a `Ctrl/Cmd+S` flush.** There is no
-Save button. The flush is deterministic, must `preventDefault` so the
-browser's own Save dialog never opens, and is what the test suite uses
-everywhere except the one spec that deliberately waits for the debounce.
+**Saving is a debounced autosave to `localStorage`, and an explicit Save —
+the button, or `Ctrl/Cmd+S` — to Postgres.** Autosave never writes to the
+database.
+
+_(Revised 22 September 2026. This decision originally autosaved straight to
+Postgres. That was wrong for a publishing tool: it made every keystroke a
+publication, so a half-finished sentence was what the site served, and there
+was no moment at which an author could be said to have decided anything.
+Caching locally keeps the protection against a closed tab — which is all
+autosave was ever really buying — while leaving publication a deliberate
+act. The `ifUpdatedAt` check now happens at that deliberate moment, which is
+where a conflict is actually meaningful to a person.)_
+
+The brief rejected `localStorage` as the spike's _storage_, and rightly: its
+API is synchronous, which pulls code toward synchronous reads in render
+paths and `useState` initialisers. None of that applies to a draft cache. It
+is read once when a document is opened and written on a timer; it is never
+the source of truth, never rendered from, and never read back by anything
+but the editor that wrote it.
 
 Corollaries:
 
@@ -65,14 +80,24 @@ Corollaries:
   adapter sets BlockNote's `id` from ours. The `data-id` this puts in the
   DOM is what the E2E suite addresses blocks by, which makes "ids were not
   reassigned" an assertion the selectors make for free.
-- **Autosave makes the conflict path load-bearing.** This is a feature: the
-  brief wanted the `ifUpdatedAt` call sites and UI to exist from day one so
-  that pointing the store at a server later is nothing. Under autosave they
-  are exercised constantly rather than theoretically.
-- **A rejected save must leave the document visibly dirty.** With no human
-  deciding when to save, the only guard against the editor drifting away
-  from what the site serves is that validation failure keeps the status at
-  "Unsaved changes" and leaves the stored row untouched.
+- **"Saved" means one thing: it is in Postgres.** Anything a local draft is
+  holding still reads as unsaved, because the site is not serving it. The
+  status says so explicitly — "Unsaved changes · draft kept in this
+  browser" — rather than letting a cached draft masquerade as a save.
+- **A restored draft is announced, not applied silently.** Reopening a
+  document with a cached draft restores it, says so, and offers to discard
+  it. `ifUpdatedAt` still carries the `updated_at` the draft was based on,
+  so a draft that has gone stale against someone else's write surfaces as a
+  conflict at Save rather than overwriting them.
+- **A rejected save leaves the document visibly dirty** and the stored row
+  untouched, so the site keeps serving the last good version.
+- **Every block's settings live in one popover**, opened from "Edit" above
+  "Delete" in the block's own menu. Moving prose into the document took the
+  old per-block forms with it, and with them the things that are not text: a
+  heading's anchor, a notice's variant, and every configuration block's
+  entire contents. One route to "everything about this block that is not its
+  words" is more discoverable than the bespoke affordance per block type
+  that the split pane had.
 - **The slash menu is the closed palette.** §3.6 of the brief says the
   insert menu _is_ the content model made visible; a `/` menu restricted to
   the nine types states that more strongly than a dropdown does.

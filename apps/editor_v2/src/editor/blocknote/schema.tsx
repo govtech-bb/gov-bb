@@ -15,7 +15,6 @@ import { BlockNoteSchema, defaultBlockSpecs } from "@blocknote/core";
 import { createReactBlockSpec } from "@blocknote/react";
 import type { Block, NoticeBlock } from "@govtech-bb/block-kit";
 import { ConfigBlockShell } from "./config-block";
-import { useEditorBlockContext } from "./context";
 
 /** Configuration travels as JSON in one prop — see the adapter's note. */
 const configProps = { config: { default: "{}" } } as const;
@@ -28,23 +27,14 @@ function configSpec(type: string) {
   return createReactBlockSpec(
     { type, content: "none", propSchema: configProps },
     {
-      render: ({ block, editor }) => {
+      // Read-only in the document: the block renders its output, and its
+      // settings are edited in the popover the block menu opens.
+      render: ({ block }) => {
         const value = {
           id: block.id,
           ...(JSON.parse(String(block.props.config) || "{}") as object),
         } as Block;
-
-        const onChange = (next: Block) => {
-          const { id: _id, ...rest } = next as unknown as Record<
-            string,
-            unknown
-          > & { id: string };
-          editor.updateBlock(block, {
-            props: { config: JSON.stringify(rest) },
-          });
-        };
-
-        return <ConfigBlockShell block={value} onChange={onChange} />;
+        return <ConfigBlockShell block={value} />;
       },
     },
   );
@@ -91,31 +81,6 @@ const noticeSpec = createReactBlockSpec(
     },
   },
 );
-
-/** A heading needs its anchor visible and editable; it is a URL fragment. */
-const headingAnchorTestId = (id: string) => `anchor-${id}`;
-
-export const AnchorField = ({
-  blockId,
-  value,
-  onChange,
-}: {
-  blockId: string;
-  value: string;
-  onChange: (next: string) => void;
-}) => {
-  const { errorsFor } = useEditorBlockContext();
-  const invalid = errorsFor(blockId).some((error) => error.rule === 9);
-  return (
-    <input
-      className={`bn-anchor${invalid ? " bn-anchor-invalid" : ""}`}
-      aria-label="Heading anchor"
-      data-testid={headingAnchorTestId(blockId)}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-    />
-  );
-};
 
 export const editorSchema = BlockNoteSchema.create({
   blockSpecs: {

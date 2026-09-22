@@ -10,8 +10,8 @@ say why — that is a finding about the design. Quietly rewriting a spec to
 match whatever the code happens to render turns the suite into a description
 of the implementation, which is worth nothing.
 
-The editing surface is **BlockNote** and saving is **debounced autosave with
-a Ctrl/Cmd+S flush** — see [ADR 0074](../../../docs/decisions/0074-the-block-editor-spike-edits-on-blocknote-over-a-canonical-json-body.md).
+The editing surface is **BlockNote**. Autosave writes a draft to
+`localStorage`; **Save** (the button, or Ctrl/Cmd+S) is what reaches Postgres — see [ADR 0074](../../../docs/decisions/0074-the-block-editor-spike-edits-on-blocknote-over-a-canonical-json-body.md).
 
 ## Running it
 
@@ -93,31 +93,45 @@ Service Standards, so the suite pins the accessible path as the primary one:
 
 ### Editor shell
 
-| Handle                         | Meaning                                                                                                                                  |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `doc-list`                     | Container of document links. Each document is a `link` whose accessible name is its title.                                               |
-| `editor-surface`               | The BlockNote contenteditable holding the whole document.                                                                                |
-| `[data-id="<blockId>"]`        | One block. Not a test id — BlockNote's own attribute, seeded from our block id. Receives focus from an error link.                       |
-| `[data-block-type="<type>"]`   | One block addressed by type, for asserting a type is present without knowing its id.                                                     |
-| `document-title`               | Editable envelope title.                                                                                                                 |
-| `preview`                      | Live preview, rendered by `block-kit`'s renderer — the same one the site uses. Earns its place for config blocks, which are not WYSIWYG. |
-| `doc-json-toggle` / `doc-json` | Read-only serialized body. Makes round-trip observable. Not an escape hatch: read-only, and not in the slash menu.                       |
-| `save-status`                  | `Saved` when clean, `Unsaved changes` when dirty, `Saving…` in flight.                                                                   |
-| `error-summary`                | Present only when a save was rejected. A rejected save must leave the status dirty.                                                      |
-| `error-link-<blockId>`         | Summary entry that moves focus to its block.                                                                                             |
-| `block-error-<blockId>`        | Inline error against a config block.                                                                                                     |
-| `conflict-notice`              | Shown when a save was refused because `updated_at` was stale.                                                                            |
-| `reset-data`                   | Drop, migrate, reseed.                                                                                                                   |
-| `slash-menu`                   | The closed palette. `role="listbox"`, `aria-label` matching /insert/i, exactly nine `option`s, keyboard navigable.                       |
-| `slash-item-<type>`            | One palette entry.                                                                                                                       |
-| `block-handle-<blockId>`       | Drag handle, revealed on hover. Opens the block menu.                                                                                    |
-| `block-menu-delete`            | Delete, from the block handle menu.                                                                                                      |
+| Handle                                  | Meaning                                                                                                                                                                                                                     |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `doc-list`                              | Container of document links. Each document is a `link` whose accessible name is its title.                                                                                                                                  |
+| `editor-surface`                        | The BlockNote contenteditable holding the whole document.                                                                                                                                                                   |
+| `[data-id="<blockId>"]`                 | One block. Not a test id — BlockNote's own attribute, seeded from our block id. Receives focus from an error link.                                                                                                          |
+| `[data-block-type="<type>"]`            | One block addressed by type, for asserting a type is present without knowing its id.                                                                                                                                        |
+| `document-title`                        | Editable envelope title.                                                                                                                                                                                                    |
+| `doc-json-toggle` / `doc-json`          | Read-only serialized body. Makes round-trip observable. Not an escape hatch: read-only, and not in the slash menu.                                                                                                          |
+| `save-status`                           | `Saved` only when it is in Postgres; `Unsaved changes · draft kept in this browser` once autosave has cached it; `Unsaved changes` before that; `Saving…` in flight.                                                        |
+| `save`                                  | Publishes to Postgres. Disabled when there is nothing to save.                                                                                                                                                              |
+| `draft-notice` / `discard-draft`        | Shown when a cached draft was restored on open, with the way back to the stored version.                                                                                                                                    |
+| `error-summary`                         | Present only when a save was rejected. A rejected save must leave the status dirty.                                                                                                                                         |
+| `error-link-<blockId>`                  | Summary entry that moves focus to its block.                                                                                                                                                                                |
+| `block-error-<blockId>`                 | Inline error against a config block.                                                                                                                                                                                        |
+| `conflict-notice`                       | Shown when a save was refused because `updated_at` was stale.                                                                                                                                                               |
+| `reset-data`                            | Drop, migrate, reseed.                                                                                                                                                                                                      |
+| `slash-menu`                            | The closed palette. `role="listbox"`, `aria-label` matching /insert/i, exactly nine `option`s, keyboard navigable.                                                                                                          |
+| `slash-item-<type>`                     | One palette entry.                                                                                                                                                                                                          |
+| `button` named **Open block menu**      | The drag handle, revealed on hover. Not a test id — BlockNote's own control, and it has an accessible name. Hover near a block's top-left: a finder is over a thousand pixels tall and hovering its centre scrolls it away. |
+| `block-menu-edit`                       | **Edit**, above Delete in that menu. Opens the settings popover.                                                                                                                                                            |
+| `block-popover` / `block-popover-close` | The settings dialog: `role="dialog"`, labelled `Edit <Type> block`, closed by Escape, by clicking outside, or by its Done button.                                                                                           |
+| `RemoveBlockItem` labelled **Delete**   | Below Edit in the same menu.                                                                                                                                                                                                |
 
-There is **no Save button**. Editing autosaves on a debounce; `Ctrl/Cmd+S`
-forces the flush immediately, and must `preventDefault` so the browser's own
-Save dialog never opens. Every spec but `prose-round-trip.spec.ts`'s autosave
-block uses the explicit flush, so that a test about facet configuration is
-not also a test about timing.
+**Autosave never writes to the database.** It caches a draft under
+`spike:draft:<documentId>` in `localStorage`, which protects an author
+against a closed tab without making every keystroke a publication. Only
+**Save** — the button or `Ctrl/Cmd+S` — writes the row the site serves, and
+`Ctrl/Cmd+S` must `preventDefault` so the browser's own Save dialog never
+opens.
+
+"Saved" therefore means one thing: it is in Postgres. A cached draft still
+reads as unsaved, because the site is not serving it.
+
+**Everything about a block that is not its text is in the popover**, reached
+through Edit in the block's own menu — a heading's anchor and level, a
+notice's variant, and every configuration block's entire contents. Moving
+prose into the document took the old per-block forms with it; this is where
+they come back, behind one consistent route rather than a bespoke affordance
+per block type.
 
 ### Finder configuration
 

@@ -8,7 +8,7 @@
  * and it removes the split-brain failure where the two halves disagree.
  */
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BlockNoteView } from "@blocknote/mantine";
 import { SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
 import { filterSuggestionItems } from "@blocknote/core";
@@ -17,9 +17,13 @@ import { newId } from "../new-block";
 import {
   DocumentMemo,
   fromBlockNote,
+  isConfigType,
   toBlockNote,
   type BnBlock,
 } from "./adapter";
+import { BlockPopover } from "./block-popover";
+import { BlockSideMenu } from "./block-menu";
+import { useEditorBlockContext } from "./context";
 import { editorSchema } from "./schema";
 import {
   SlashMenu,
@@ -43,6 +47,17 @@ export function DocumentEditor({
   // One memo per mounted document. It carries the list container ids and
   // heading anchors BlockNote's model has nowhere to store.
   const memo = useRef(new DocumentMemo());
+  const { collections, refKeys } = useEditorBlockContext();
+
+  /** The block whose settings popover is open, if any. */
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  /**
+   * The block the pointer is over. BlockNote's side-menu renderer receives
+   * no block, so the hover that reveals the drag handle is what records
+   * which block the menu belongs to.
+   */
+  const hoveredId = useRef<string | null>(null);
 
   const initialContent = useMemo(
     () => toBlockNote(blocks, memo.current),
@@ -72,6 +87,38 @@ export function DocumentEditor({
 
   const items = useMemo(() => paletteItems(insert), [insert]);
 
+  /**
+   * Apply a settings change from the popover.
+   *
+   * Three destinations, because three kinds of thing live in three places: a
+   * heading's anchor is in the memo (BlockNote's heading has no prop for
+   * it), a notice's variant and a config block's payload are BlockNote
+   * props. Only the memo case needs an explicit re-serialize — the other two
+   * go through `updateBlock`, which fires `onChange` itself.
+   */
+  const applyBlockChange = useCallback(
+    (id: string, next: Block) => {
+      if (next.type === "heading") {
+        memo.current.rememberAnchor(id, next.anchor);
+        editor.updateBlock(id, { props: { level: next.level } });
+      } else if (next.type === "notice") {
+        editor.updateBlock(id, { props: { variant: next.variant } });
+      } else if (isConfigType(next.type)) {
+        const { id: _id, ...rest } = next as unknown as Record<
+          string,
+          unknown
+        > & { id: string };
+        editor.updateBlock(id, { props: { config: JSON.stringify(rest) } });
+      }
+      serialize();
+    },
+    [editor, serialize],
+  );
+
+  const editing = editingId
+    ? (blocks.find((block) => block.id === editingId) ?? null)
+    : null;
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const mod = event.metaKey || event.ctrlKey;
@@ -90,10 +137,22 @@ export function DocumentEditor({
   }, [onRequestSave]);
 
   return (
-    <div className="bn-surface" data-testid="editor-surface">
+    <div
+      className="bn-surface"
+      data-testid="editor-surface"
+      onPointerOver={(event) => {
+        const node = (event.target as HTMLElement).closest?.("[data-id]");
+        const id = node?.getAttribute("data-id");
+        if (id) hoveredId.current = id;
+      }}
+    >
       <BlockNoteView
         editor={editor}
+        // Both replaced below: the palette is closed, and the block menu
+        // carries Edit above Delete. Leaving the defaults mounted renders a
+        // second side menu on top of ours.
         slashMenu={false}
+        sideMenu={false}
         onChange={serialize}
         theme="light"
       >
@@ -104,7 +163,21 @@ export function DocumentEditor({
           }
           suggestionMenuComponent={SlashMenu as never}
         />
+        <BlockSideMenu onEdit={() => setEditingId(hoveredId.current)} />
       </BlockNoteView>
+
+      {editing ? (
+        <BlockPopover
+          block={editing}
+          anchor={document.querySelector<HTMLElement>(
+            `[data-id="${editing.id}"]`,
+          )}
+          collections={collections}
+          refKeys={refKeys}
+          onChange={(next) => applyBlockChange(editing.id, next)}
+          onClose={() => setEditingId(null)}
+        />
+      ) : null}
     </div>
   );
 }

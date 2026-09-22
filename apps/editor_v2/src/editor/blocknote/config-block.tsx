@@ -4,31 +4,27 @@
  * This is the shape the spike is really testing. A finder cannot be edited
  * by typing into it, but that does not mean it belongs in a pane beside the
  * document. Notion's answer for an inline database is that the block renders
- * the real thing and its settings open from controls attached to it — so
- * that is what this does. The block shows the live finder, over the real 163
- * records; hovering reveals "Configure"; the form opens in document flow
- * directly beneath.
+ * the real thing in place, and its settings open from the block's own menu —
+ * so that is what this does. Here the block is only ever the live output,
+ * over the real records; "Edit" in the drag-handle menu opens the settings
+ * popover.
  *
- * `contentEditable={false}` on every region here is not decoration. The
- * block sits inside ProseMirror's contenteditable, and without it the
- * editor swallows clicks and keystrokes meant for the form.
+ * `contentEditable={false}` is not decoration. The block sits inside
+ * ProseMirror's contenteditable, and without it the editor swallows clicks
+ * and keystrokes meant for the rendered controls.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { RenderBlock, type Block } from "@govtech-bb/block-kit";
-import { BlockEditor } from "../blocks";
 import { useEditorBlockContext } from "./context";
 
 interface ConfigBlockShellProps {
   /** The canonical block, rebuilt from the JSON prop. */
   block: Block;
-  onChange: (next: Block) => void;
 }
 
-export function ConfigBlockShell({ block, onChange }: ConfigBlockShellProps) {
-  const { collections, data, refs, refKeys, loading, errorsFor } =
-    useEditorBlockContext();
-  const [open, setOpen] = useState(false);
+export function ConfigBlockShell({ block }: ConfigBlockShellProps) {
+  const { data, refs, loading, errorsFor } = useEditorBlockContext();
 
   const errors = errorsFor(block.id);
   const ctx = useMemo(() => ({ data, refs, loading }), [data, refs, loading]);
@@ -48,19 +44,6 @@ export function ConfigBlockShell({ block, onChange }: ConfigBlockShellProps) {
         <RenderBlock block={block} ctx={ctx} />
       </div>
 
-      <div className="bn-config-bar" contentEditable={false}>
-        <button
-          type="button"
-          className="bn-config-toggle"
-          data-testid={`configure-${block.id}`}
-          aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
-        >
-          {open ? "Done" : "Configure"}
-        </button>
-        <span className="bn-config-kind">{block.type.replace("_", " ")}</span>
-      </div>
-
       {errors.length > 0 ? (
         <ul
           className="bn-config-errors"
@@ -73,17 +56,6 @@ export function ConfigBlockShell({ block, onChange }: ConfigBlockShellProps) {
             </li>
           ))}
         </ul>
-      ) : null}
-
-      {open ? (
-        <div className="bn-config-panel" contentEditable={false}>
-          <BlockEditor
-            block={block}
-            onChange={onChange}
-            collections={collections}
-            refKeys={refKeys}
-          />
-        </div>
       ) : null}
     </div>
   );

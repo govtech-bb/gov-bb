@@ -16,9 +16,15 @@ import { Link, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DocumentEditor } from "./blocknote/document-editor";
 import { EditorBlockProvider } from "./blocknote/context";
+import { clearDraft, readDraft, writeDraft } from "./drafts";
 
-/** How long typing must pause before the draft is written. */
-const AUTOSAVE_MS = 800;
+/**
+ * How long typing must pause before the draft is cached locally.
+ *
+ * This timer never touches Postgres. Persisting is an explicit act, so a
+ * half-finished edit cannot reach the row the site is serving.
+ */
+const DRAFT_MS = 600;
 
 export function EditorPage() {
   const { id } = useParams({ from: "/editor/$id" });
@@ -34,15 +40,31 @@ export function EditorPage() {
   const [conflict, setConflict] = useState(false);
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [showJson, setShowJson] = useState(false);
+  const [draftCached, setDraftCached] = useState(false);
+  const [restoredDraft, setRestoredDraft] = useState(false);
 
   // Adopt the loaded document once; after that the draft is ours. A live
   // update from another tab surfaces as a conflict on save rather than
   // silently overwriting what is being typed.
   useEffect(() => {
-    if (loaded && draft === null) {
-      setDraft(loaded);
-      setLoadedAt(loaded.updated_at);
+    if (!loaded || draft !== null) return;
+
+    // A cached draft wins over the stored row, because it is the work in
+    // progress. `loadedAt` still comes from the row it was based on, so if
+    // someone else has since written, Save surfaces the conflict rather
+    // than quietly overwriting them.
+    const cached = readDraft(loaded.id);
+    if (cached) {
+      setDraft(cached.doc);
+      setLoadedAt(cached.basedOn ?? loaded.updated_at);
+      setDirty(true);
+      setDraftCached(true);
+      setRestoredDraft(true);
+      return;
     }
+
+    setDraft(loaded);
+    setLoadedAt(loaded.updated_at);
   }, [loaded, draft]);
 
   const liveErrors = useMemo(() => {
@@ -89,6 +111,10 @@ export function EditorPage() {
       setDraft(saved);
       setLoadedAt(saved.updated_at);
       setDirty(false);
+      // The work is in Postgres now; the local copy would only go stale.
+      clearDraft(saved.id);
+      setDraftCached(false);
+      setRestoredDraft(false);
     } catch (error) {
       if (error instanceof ValidationFailedError) setErrors(error.errors);
       else if (error instanceof ConflictError) setConflict(true);
@@ -102,13 +128,15 @@ export function EditorPage() {
     void saveRef.current();
   }, []);
 
-  // Debounced autosave. There is no Save button: an editor that looks like
-  // Notion gets used as though it saves itself, so it had better.
+  // Debounced autosave — to localStorage, never to the database. Typing is
+  // protected against a closed tab; publishing stays a decision.
   useEffect(() => {
-    if (!dirty || conflict) return;
-    const timer = setTimeout(flush, AUTOSAVE_MS);
+    if (!draft || !dirty) return;
+    const timer = setTimeout(() => {
+      setDraftCached(writeDraft(draft.id, draft, loadedAt));
+    }, DRAFT_MS);
     return () => clearTimeout(timer);
-  }, [dirty, conflict, draft, flush]);
+  }, [draft, dirty, loadedAt]);
 
   const onBlocksChange = useCallback((blocks: Block[]) => {
     setDraft((current) =>
@@ -121,6 +149,7 @@ export function EditorPage() {
   const updateEnvelope = (patch: Partial<PageDocument>) => {
     setDraft((current) => (current ? { ...current, ...patch } : current));
     setDirty(true);
+    setDraftCached(false);
     setErrors([]);
   };
 
@@ -155,13 +184,24 @@ export function EditorPage() {
   }
   if (!draft) return <p className="ed-page">Loading…</p>;
 
-  const status = saving ? "Saving…" : dirty ? "Unsaved changes" : "Saved";
+  // "Saved" means one thing only: it is in Postgres. Anything a local draft
+  // is holding still reads as unsaved, because the site is not serving it.
+  const status = saving
+    ? "Saving…"
+    : dirty
+      ? draftCached
+        ? "Unsaved changes · draft kept in this browser"
+        : "Unsaved changes"
+      : "Saved";
 
   const reload = () => {
+    if (draft) clearDraft(draft.id);
     setDraft(null);
     setLoadedAt(null);
     setConflict(false);
     setDirty(false);
+    setDraftCached(false);
+    setRestoredDraft(false);
     setErrors([]);
   };
 
@@ -175,6 +215,15 @@ export function EditorPage() {
           <span className="ed-status" data-testid="save-status">
             {status}
           </span>
+          <button
+            type="button"
+            className="ed-primary"
+            data-testid="save"
+            onClick={flush}
+            disabled={saving || !dirty}
+          >
+            {saving ? "Saving…" : "Save"}
+          </button>
           <button
             type="button"
             className="ed-secondary"
@@ -193,6 +242,24 @@ export function EditorPage() {
             View on the site
           </a>
         </header>
+
+        {restoredDraft && !conflict ? (
+          <div className="ed-alert ed-alert-draft" data-testid="draft-notice">
+            <strong>Unsaved changes were restored from this browser.</strong>
+            <p>
+              They are not on the site yet. Choose <em>Save</em> to publish
+              them, or discard them to go back to the stored version.
+            </p>
+            <button
+              type="button"
+              className="ed-secondary"
+              data-testid="discard-draft"
+              onClick={reload}
+            >
+              Discard local changes
+            </button>
+          </div>
+        ) : null}
 
         {conflict ? (
           <div

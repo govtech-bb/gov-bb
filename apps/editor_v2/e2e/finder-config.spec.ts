@@ -13,6 +13,7 @@ import {
   PHARMACY_URL,
   filterSidebar,
   gotoSite,
+  openBlockSettings,
   openDocument,
   pagination,
   preview,
@@ -26,6 +27,7 @@ test.describe("configuring the finder", () => {
     page,
   }) => {
     await openDocument(page, DOC.pharmacies);
+    await openBlockSettings(page, "b_ph01");
 
     // The facet does not exist yet.
     await expect(
@@ -69,6 +71,7 @@ test.describe("configuring the finder", () => {
     ).toBeVisible();
 
     await openDocument(page, DOC.pharmacies);
+    await openBlockSettings(page, "b_ph01");
     await page.getByTestId("remove-facet-parish").click();
     await saveAndExpectSuccess(page);
 
@@ -91,6 +94,7 @@ test.describe("configuring the finder", () => {
     const pagesAt20 = await pagination(page).getByRole("listitem").count();
 
     await openDocument(page, DOC.pharmacies);
+    await openBlockSettings(page, "b_ph01");
     await page.getByTestId("results-per-page").fill("5");
     await saveAndExpectSuccess(page);
 
@@ -104,6 +108,7 @@ test.describe("configuring the finder", () => {
     page,
   }) => {
     await openDocument(page, DOC.pharmacies);
+    await openBlockSettings(page, "b_ph01");
     await page
       .getByTestId("empty-message")
       .fill("Nothing here. Try a different parish.");
@@ -121,6 +126,7 @@ test.describe("configuring the finder", () => {
 
   test("renaming a facet renames it for the citizen", async ({ page }) => {
     await openDocument(page, DOC.pharmacies);
+    await openBlockSettings(page, "b_ph01");
     await page.getByTestId("facet-name-openNow").fill("Open right now");
     await saveAndExpectSuccess(page);
 

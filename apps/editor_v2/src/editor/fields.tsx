@@ -30,17 +30,21 @@ export function TextField({
   onChange,
   hint,
   placeholder,
+  testId,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   hint?: string;
   placeholder?: string;
+  /** A stable handle for the behavioural suite; see e2e/README.md. */
+  testId?: string;
 }) {
   return (
     <Field label={label} hint={hint}>
       <input
         className="ed-input"
+        data-testid={testId}
         value={value}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
@@ -54,16 +58,19 @@ export function TextAreaField({
   value,
   onChange,
   hint,
+  testId,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   hint?: string;
+  testId?: string;
 }) {
   return (
     <Field label={label} hint={hint}>
       <textarea
         className="ed-input ed-textarea"
+        data-testid={testId}
         value={value}
         rows={2}
         onChange={(event) => onChange(event.target.value)}
@@ -79,6 +86,7 @@ export function NumberField({
   hint,
   min,
   max,
+  testId,
 }: {
   label: string;
   value: number;
@@ -86,11 +94,13 @@ export function NumberField({
   hint?: string;
   min?: number;
   max?: number;
+  testId?: string;
 }) {
   return (
     <Field label={label} hint={hint}>
       <input
         className="ed-input ed-input-narrow"
+        data-testid={testId}
         type="number"
         value={value}
         min={min}
@@ -107,17 +117,20 @@ export function SelectField<T extends string>({
   options,
   onChange,
   hint,
+  testId,
 }: {
   label: string;
   value: T;
   options: ReadonlyArray<{ value: T; label: string }>;
   onChange: (value: T) => void;
   hint?: string;
+  testId?: string;
 }) {
   return (
     <Field label={label} hint={hint}>
       <select
         className="ed-input"
+        data-testid={testId}
         value={value}
         onChange={(event) => onChange(event.target.value as T)}
       >
@@ -136,16 +149,19 @@ export function CheckField({
   checked,
   onChange,
   hint,
+  testId,
 }: {
   label: string;
   checked: boolean;
   onChange: (value: boolean) => void;
   hint?: string;
+  testId?: string;
 }) {
   return (
     <label className="ed-check">
       <input
         type="checkbox"
+        data-testid={testId}
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
       />

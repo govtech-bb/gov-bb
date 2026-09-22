@@ -649,3 +649,59 @@ button,
   color: var(--muted);
   font-size: 0.75rem;
 }
+
+/* The block settings popover, opened from "Edit" in the block menu. */
+.bn-popover {
+  position: fixed;
+  z-index: 60;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  box-shadow: 0 10px 34px rgb(11 12 12 / 22%);
+}
+
+.bn-popover-head {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--bg);
+}
+
+.bn-popover-title {
+  margin: 0;
+  font-size: 0.9375rem;
+}
+
+.bn-popover-id {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.bn-popover-close {
+  margin-left: auto;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.bn-popover-body {
+  padding: 0.875rem;
+}
+
+.ed-alert-draft {
+  border-left: 4px solid var(--blue);
+  background: #eef4fa;
+}
+
+.ed-hint {
+  color: var(--muted);
+  font-size: 0.875rem;
+}

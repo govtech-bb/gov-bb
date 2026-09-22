@@ -22,6 +22,7 @@ import {
   editorSurface,
   gotoSite,
   insertBlockAfter,
+  openBlockSettings,
   openDocument,
   openSlashMenu,
   saveAndExpectRejection,
@@ -33,6 +34,7 @@ test.describe("a document that breaks a rule cannot be saved", () => {
     page,
   }) => {
     await openDocument(page, DOC.pharmacies);
+    await openBlockSettings(page, "b_ph01");
     await page.getByTestId("finder-collection").fill("pharmacys");
 
     const summary = await saveAndExpectRejection(page);
@@ -50,6 +52,7 @@ test.describe("a document that breaks a rule cannot be saved", () => {
     page,
   }) => {
     await openDocument(page, DOC.pharmacies);
+    await openBlockSettings(page, "b_ph01");
 
     await page.getByTestId("add-facet").click();
     await page.getByTestId("facet-key-new").fill("opening_time");
@@ -66,6 +69,7 @@ test.describe("a document that breaks a rule cannot be saved", () => {
     page,
   }) => {
     await openDocument(page, DOC.pharmacies);
+    await openBlockSettings(page, "b_ph01");
 
     await page.getByTestId("add-facet").click();
     await page.getByTestId("facet-key-new").fill("opening_time");
@@ -84,6 +88,7 @@ test.describe("a document that breaks a rule cannot be saved", () => {
     // `pppStatus`. The brief's single-field `computed_from` cannot express
     // the real finder — this is the test that pins the widened form.
     await openDocument(page, DOC.pharmacies);
+    await openBlockSettings(page, "b_ph01");
 
     await page.getByTestId("add-facet").click();
     await page.getByTestId("facet-key-new").fill("fullPriceOnly");
@@ -99,6 +104,7 @@ test.describe("a document that breaks a rule cannot be saved", () => {
     page,
   }) => {
     await openDocument(page, DOC.pharmacies);
+    await openBlockSettings(page, "b_ph01");
     await page.getByTestId("result-metadata").fill("parish, type, pharmacist");
 
     const summary = await saveAndExpectRejection(page);
@@ -109,6 +115,7 @@ test.describe("a document that breaks a rule cannot be saved", () => {
     page,
   }) => {
     await openDocument(page, DOC.severance);
+    await openBlockSettings(page, "b_sv08");
     await page
       .getByTestId("start-link-target")
       .fill("/money-financial-support/calculate-severance-pay/frm");
@@ -120,6 +127,7 @@ test.describe("a document that breaks a rule cannot be saved", () => {
 
   test("rule 9 — two headings cannot share an anchor", async ({ page }) => {
     await openDocument(page, DOC.severance);
+    await openBlockSettings(page, "b_sv05");
     await page.getByTestId("anchor-b_sv05").fill("how-long-does-it-take");
 
     const summary = await saveAndExpectRejection(page);
@@ -133,6 +141,7 @@ test.describe("a document that breaks a rule cannot be saved", () => {
     // still be serving the last good version. With autosave there is no
     // moment where a human decides not to save, so this is the only guard.
     await openDocument(page, DOC.pharmacies);
+    await openBlockSettings(page, "b_ph01");
     const good = await bodyJson(page);
 
     await page.getByTestId("finder-collection").fill("nope");
@@ -150,6 +159,7 @@ test.describe("a document that breaks a rule cannot be saved", () => {
     page,
   }) => {
     await openDocument(page, DOC.pharmacies);
+    await openBlockSettings(page, "b_ph01");
     await page.getByTestId("finder-collection").fill("nope");
     await saveAndExpectRejection(page);
 
