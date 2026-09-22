@@ -27,7 +27,7 @@ You will need:
 - the operator's name, phone number and email address, if you are not the operator
 - the hotel's name and address
 - the maximum number of guests who can stay at the hotel at one time
-- the number of bedrooms, occupants, water closets, baths and basins on each floor, and how many rooms have their own water closet, bath or basin
+- the number of bedrooms, occupants, water closets (toilet), baths and basins on each floor, and how many rooms have their own water closet, bath or basin
 - the number of male and female staff, and the changing rooms, lockers, hand wash basins and water closets provided for them
 - new licences: a site plan of the hotel, or the application number from the Planning and Development Department (previously called Town and Country Planning)
 - licence renewals: your current hotel licence number
