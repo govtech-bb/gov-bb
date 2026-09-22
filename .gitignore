@@ -161,5 +161,8 @@ cicd-policy*.json
 # @-mention (the file picker respects .gitignore). A PreToolUse hook
 # (.claude/hooks/block-commit-plans.sh) blocks staging/committing them.
 
+# Claude Code: only .claude/settings.json is shared; local overrides stay private.
+.claude/settings.local.json
+
 # Playwright live-run output (smoke / a11y)
 apps/forms/test-results/

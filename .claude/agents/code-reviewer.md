@@ -30,9 +30,8 @@ Figure out what changed before reviewing. In order of preference:
 
 1. If the human named a base branch or PR, diff against that.
 2. Otherwise, review the merge-base diff for the current branch. The repo's
-   default PR base is `sandbox` (per CLAUDE.md), with `dev` as the main branch.
-   Determine the base, then run e.g.:
-   - `git merge-base HEAD origin/sandbox` then `git diff <base>...HEAD`
+   PR base is `main` (trunk-based; see CLAUDE.md). Run e.g.:
+   - `git merge-base HEAD origin/main` then `git diff <base>...HEAD`
    - Also check `git status` / `git diff` for uncommitted changes and include them.
 
 Read the full changed files (not just the hunks) when context matters — a hunk
@@ -63,9 +62,10 @@ Report findings in these four categories. Lead with the ones that matter.
      internal import (`@govtech-bb/X`), confirm X has a `project.json` with an
      `@nx/js:tsc` build target AND the importing package's `tsconfig.json` lists
      X in `references`. Missing either causes `TS6059`/`TS6307` build failures.
-   - PRs target `sandbox` by default.
-   - Build/test gotcha: `landing`'s prebuild hits a live API, so offline builds
-     should exclude it (`--exclude=landing`).
+   - PRs target `main`; `sandbox`/`staging`/`prod` are deploy pointers.
+   - The pre-PR gate is `pnpm test:pr` (CLAUDE.md → Pre-PR Quality Gate).
+   - Read the nested `CLAUDE.md` for the area under review (`apps/*/CLAUDE.md`,
+     `.github/CLAUDE.md`) and check the diff against its rules too.
 
 ## How to report
 

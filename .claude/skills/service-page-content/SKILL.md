@@ -105,7 +105,7 @@ pnpm exec nx run landing:test
 
 This covers the content registry, the frontmatter contract, and the markdown plugins that rewrite start links. Fix failures before presenting the work as done.
 
-Do not run `landing:build` to check your work — its prebuild fetches from a live external forms API, so it fails offline for reasons that have nothing to do with your page. CI builds it.
+`pnpm exec nx run landing:build` also works offline if you want the full build; CI builds it too.
 
 ## Common mistakes
 
