@@ -34,11 +34,12 @@
  * Form-specific notes:
  *  - Four branches interlock, so the two tests are picked to walk both sides of
  *    each of them:
- *      · `completing-for` = "someone-else" reveals `applicant-type` inline; that
- *        answering "individual" in turn reveals the applicant's own contact and
- *        address block. "myself" hides the whole block.
- *      · `relationship-to-business` = "something-else" reveals
- *        `other-relationship`.
+ *      · `completing-for` = "someone-else" reveals `food-business-relationship`
+ *        inline — a SELECT (`components/relationship`), not a radio group. The other option's value is **"yes"** ("applying as an owner"),
+ *        not "myself" — the question was reworded to a yes/no shape but only
+ *        the first value was renamed, so the pair reads `yes` / `someone-else`.
+ *      · On `applicant-details`, `country` gates the last field both ways:
+ *        "barbados" shows `applicant-parish`, anything else shows `town`.
  *      · `application-type` = "renewal" reveals `licence-number` AND hides
  *        `business-already-open` on the next step — which transitively hides
  *        both start-date fields, since each is gated on that answer. So the
@@ -46,13 +47,15 @@
  *      · `preparation-location` including "at-another-food-business" or
  *        "at-another-location" puts the repeatable `other-preparation-locations`
  *        step into the journey (stepConditionalOn, `in`).
- *  - `your-country` is gated `notEqual st-michael` on `your-parish`, so it is
- *    VISIBLE while parish is still blank and disappears once St. Michael is
- *    picked. Test 1 picks St. Michael (country hidden), test 2 picks another
- *    parish (country shown and required — components/country defaults to
- *    required, the recipe adds no override).
- *  - `your-telephone` carries a `fieldArray` behaviour (min 1, max 4). Row 0
- *    keeps the plain `${stepId}_your-telephone` id — only rows 1+ are
+ *  - `about-you` now holds ONLY `completing-for`, `food-business-relationship`
+ *    and the three name fields. The contact and address block that used to sit
+ *    beside them moved to `applicant-details` and was renamed `your-*` →
+ *    `applicant-*`; `application-type` / `licence-number` moved the other way,
+ *    onto their own `application-details` step. There is no
+ *    `relationship-to-business`, `other-relationship` or `applicant-type` any
+ *    more — `food-business-relationship` on step 1 replaced all three.
+ *  - `applicant-phone` carries a `fieldArray` behaviour (min 1, max 4). Row 0
+ *    keeps the plain `${stepId}_applicant-phone` id — only rows 1+ are
  *    index-suffixed — so one `fillField` is enough and the "Add another
  *    telephone number" button is left alone.
  *  - Telephone fields run libphonenumber-js `.isValid()`, so a random
@@ -167,20 +170,15 @@ export function buildData() {
     yourFirstName: faker.person.firstName(),
     yourMiddleName: faker.person.middleName(),
     yourLastName: faker.person.lastName(),
-    yourTelephone: bbMobileNumber(),
-    // Goes to the monitored test inbox so a real run is verifiable end-to-end.
-    yourEmail: "testing@govtech.bb",
-    yourAddressLine1: faker.location.streetAddress(),
-    yourAddressLine2: faker.location.street(),
-    yourTown: faker.location.city(),
-    yourParish: faker.helpers.arrayElement(NON_ST_MICHAEL_PARISHES),
 
-    otherRelationship: "Family member helping with the application",
     applicantTelephone: bbMobileNumber(),
+    // Goes to the monitored test inbox so a real run is verifiable end-to-end.
     applicantEmail: "testing@govtech.bb",
     applicantAddressLine1: faker.location.streetAddress(),
     applicantAddressLine2: faker.location.street(),
     applicantParish: faker.helpers.arrayElement(NON_ST_MICHAEL_PARISHES),
+    // Only asked when the applicant's country is not Barbados.
+    applicantTown: faker.location.city(),
     licenceNumber: `FBL-${faker.string.numeric(5)}`,
 
     foodBusinessType: "Takeaway",
@@ -212,114 +210,118 @@ export async function openForm(page: Page): Promise<void> {
 }
 
 /**
- * Step 1 — the person filling the form in. `parish` = "st-michael" hides
- * `your-country`; anything else leaves it visible and required.
+ * Step 1 — the person filling the form in, and their relationship to the
+ * business. Note the option value is "yes" (applying as an owner), not
+ * "myself" — see the header note. "someone-else" reveals
+ * `food-business-relationship`.
  */
 export async function fillAboutYou(
   page: Page,
   data: ReturnType<typeof buildData>,
-  completingFor: "myself" | "someone-else",
-  parish: string,
+  completingFor: "yes" | "someone-else",
+  relationship?:
+    | "owner"
+    | "co-owner"
+    | "director-co"
+    | "manager-operator"
+    | "rep"
+    | "something-else",
 ): Promise<void> {
   const step = expectStep(page, "about-you");
   await expect(page.locator("h1")).toContainText("About you");
+
+  // `food-business-relationship` is `components/relationship`, a SELECT — not
+  // a radio group like `completing-for` beside it.
+  const relationshipSelect = page.locator(
+    `select[id="${step}_food-business-relationship"]`,
+  );
+  await expect(relationshipSelect).toBeHidden();
+
   await selectRadio(page, step, "completing-for", completingFor);
+  if (completingFor === "someone-else") {
+    await expect(relationshipSelect).toBeVisible({ timeout: STEP_TIMEOUT });
+    await selectDropdown(
+      page,
+      step,
+      "food-business-relationship",
+      relationship ?? "rep",
+    );
+  } else {
+    // The gate's whole purpose: an owner is not asked how they relate to their
+    // own business.
+    await expect(relationshipSelect).toBeHidden();
+  }
+
   await fillField(page, step, "your-first-name", data.yourFirstName);
   await fillField(page, step, "your-middle-name", data.yourMiddleName);
   await fillField(page, step, "your-last-name", data.yourLastName);
-  // fieldArray row 0 keeps the unsuffixed id — see the header note.
-  await fillField(page, step, "your-telephone", data.yourTelephone);
-  await fillField(page, step, "your-email", data.yourEmail);
-  await fillField(page, step, "your-address-line-1", data.yourAddressLine1);
-  await fillField(page, step, "your-address-line-2", data.yourAddressLine2);
-  await fillField(page, step, "your-town", data.yourTown);
+  await advance(page, step);
+}
 
-  const country = page.locator(`select[id="${step}_your-country"]`);
-  await selectDropdown(page, step, "your-parish", parish);
-  if (parish === "st-michael") {
-    await expect(country).toBeHidden({ timeout: STEP_TIMEOUT });
+/**
+ * Step 2 — the applicant's contact details and address. `country` gates the
+ * last field both ways: "barbados" shows `applicant-parish`, anything else
+ * shows `town`. Whichever branch is not taken must render nothing — asserted,
+ * so a conditional that stops resolving fails here loudly.
+ */
+export async function fillApplicantDetails(
+  page: Page,
+  data: ReturnType<typeof buildData>,
+  country: string,
+): Promise<void> {
+  const step = expectStep(page, "applicant-details");
+  await expect(page.locator("h1")).toContainText("Applicant details");
+
+  await fillField(page, step, "applicant-email", data.applicantEmail);
+  // fieldArray row 0 keeps the unsuffixed id — see the header note.
+  await fillField(page, step, "applicant-phone", data.applicantTelephone);
+  await fillField(
+    page,
+    step,
+    "applicant-address-line-1",
+    data.applicantAddressLine1,
+  );
+  await fillField(
+    page,
+    step,
+    "applicant-address-line-2",
+    data.applicantAddressLine2,
+  );
+
+  const parish = page.locator(`select[id="${step}_applicant-parish"]`);
+  const town = page.locator(`[id="${step}_town"]`);
+  await selectDropdown(page, step, "country", country);
+  if (country === "barbados") {
+    await expect(parish).toBeVisible({ timeout: STEP_TIMEOUT });
+    await expect(town).toBeHidden();
+    await selectDropdown(page, step, "applicant-parish", data.applicantParish);
   } else {
-    await expect(country).toBeVisible({ timeout: STEP_TIMEOUT });
-    await selectDropdown(page, step, "your-country", "barbados");
+    await expect(town).toBeVisible({ timeout: STEP_TIMEOUT });
+    await expect(parish).toBeHidden();
+    await town.fill(data.applicantTown);
   }
 
   await advance(page, step);
 }
 
 /**
- * Step 2 — who the licence is for. `applicant-type` only exists when step 1 said
- * "someone else"; answering "individual" there reveals the applicant's own
- * contact and address block.
+ * Step 3 — new or renewal. This pair used to sit at the foot of
+ * `applicant-details`; it now has its own step. "renewal" reveals
+ * `licence-number` here AND hides `business-already-open` on the next step,
+ * which transitively hides both start-date fields.
  */
-export async function fillApplicantDetails(
+export async function fillApplicationDetails(
   page: Page,
   data: ReturnType<typeof buildData>,
-  opts: {
-    relationship: "owner" | "something-else";
-    applicantType?: "individual" | "business-or-organisation";
-    applicationType: "first-time" | "renewal";
-  },
+  applicationType: "first-time" | "renewal",
 ): Promise<void> {
-  const step = expectStep(page, "applicant-details");
-  await expect(page.locator("h1")).toContainText("Applicant details");
-
-  const otherRelationship = page.locator(`[id="${step}_other-relationship"]`);
-  await expect(otherRelationship).toBeHidden();
-  await selectRadio(page, step, "relationship-to-business", opts.relationship);
-  if (opts.relationship === "something-else") {
-    await expect(otherRelationship).toBeVisible({ timeout: STEP_TIMEOUT });
-    await otherRelationship.fill(data.otherRelationship);
-  } else {
-    await expect(otherRelationship).toBeHidden();
-  }
-
-  // `applicant-type` itself is conditional on step 1's `completing-for`.
-  const applicantEmail = page.locator(`[id="${step}_applicant-email"]`);
-  if (opts.applicantType) {
-    await selectRadio(page, step, "applicant-type", opts.applicantType);
-    if (opts.applicantType === "individual") {
-      await expect(applicantEmail).toBeVisible({ timeout: STEP_TIMEOUT });
-      await fillField(
-        page,
-        step,
-        "applicant-telephone",
-        data.applicantTelephone,
-      );
-      await fillField(page, step, "applicant-email", data.applicantEmail);
-      await fillField(
-        page,
-        step,
-        "applicant-address-line-1",
-        data.applicantAddressLine1,
-      );
-      await fillField(
-        page,
-        step,
-        "applicant-address-line-2",
-        data.applicantAddressLine2,
-      );
-      await selectDropdown(
-        page,
-        step,
-        "applicant-parish",
-        data.applicantParish,
-      );
-      await selectDropdown(page, step, "applicant-country", "barbados");
-    }
-  } else {
-    // "Myself" — the whole applicant block stays out of the way.
-    await expect(
-      page.locator(
-        `fieldset[id="${step}_applicant-type"] input[type=radio][value="individual"]`,
-      ),
-    ).toBeHidden();
-    await expect(applicantEmail).toBeHidden();
-  }
+  const step = expectStep(page, "application-details");
+  await expect(page.locator("h1")).toContainText("Application details");
 
   const licenceNumber = page.locator(`[id="${step}_licence-number"]`);
   await expect(licenceNumber).toBeHidden();
-  await selectRadio(page, step, "application-type", opts.applicationType);
-  if (opts.applicationType === "renewal") {
+  await selectRadio(page, step, "application-type", applicationType);
+  if (applicationType === "renewal") {
     await expect(licenceNumber).toBeVisible({ timeout: STEP_TIMEOUT });
     await licenceNumber.fill(data.licenceNumber);
   } else {
@@ -330,7 +332,7 @@ export async function fillApplicantDetails(
 }
 
 /**
- * Step 3 — the business itself, including the geocoded address.
+ * Step 4 — the business itself, including the geocoded address.
  * `business-already-open` is only asked on a first-time application, and both
  * date fields hang off its answer.
  */
@@ -553,12 +555,11 @@ test.describe("Apply for a Food Business Licence — Live Smoke", () => {
       console.log("[smoke-data]", JSON.stringify(data, null, 2));
 
     await openForm(page);
-    // St. Michael hides `your-country`.
-    await fillAboutYou(page, data, "myself", "st-michael");
-    await fillApplicantDetails(page, data, {
-      relationship: "owner",
-      applicationType: "first-time",
-    });
+    // "yes" — an owner is never asked how they relate to the business.
+    await fillAboutYou(page, data, "yes");
+    // Barbados shows the parish and hides the town.
+    await fillApplicantDetails(page, data, "barbados");
+    await fillApplicationDetails(page, data, "first-time");
     await fillAboutTheFoodBusiness(page, data, {
       premisesType: "fixed-property",
       alreadyOpen: "yes",
@@ -593,13 +594,11 @@ test.describe("Apply for a Food Business Licence — Live Smoke", () => {
       console.log("[smoke-data]", JSON.stringify(data, null, 2));
 
     await openForm(page);
-    // Any parish but St. Michael leaves `your-country` visible and required.
-    await fillAboutYou(page, data, "someone-else", data.yourParish);
-    await fillApplicantDetails(page, data, {
-      relationship: "something-else",
-      applicantType: "individual",
-      applicationType: "renewal",
-    });
+    // "someone-else" reveals the relationship question.
+    await fillAboutYou(page, data, "someone-else", "something-else");
+    // A non-Barbados country shows the town and hides the parish.
+    await fillApplicantDetails(page, data, "jamaica");
+    await fillApplicationDetails(page, data, "renewal");
     // A renewal never asks whether the business is open, so no dates.
     await fillAboutTheFoodBusiness(page, data, { premisesType: "mobile-van" });
     await fillWhereFoodIsPrepared(page, "at-another-food-business");
@@ -610,7 +609,7 @@ test.describe("Apply for a Food Business Licence — Live Smoke", () => {
     const step = expectStep(page, "check-your-answers");
     await expect(page.locator("h1")).toContainText("Check your answers");
     // Every revealed field made it into the review.
-    await expect(page.getByText(data.otherRelationship).first()).toBeVisible();
+    await expect(page.getByText(data.applicantTown).first()).toBeVisible();
     await expect(page.getByText(data.licenceNumber).first()).toBeVisible();
     await expect(
       page.getByText(data.vehicleRegistrationNumber).first(),
