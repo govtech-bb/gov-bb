@@ -1,0 +1,13 @@
+{
+  "name": "editor-v2",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/editor_v2/src",
+  "projectType": "application",
+  "targets": {
+    "e2e": {
+      "executor": "nx:run-commands",
+      "options": { "command": "npm run test:e2e", "cwd": "apps/editor_v2" }
+    }
+  },
+  "tags": ["spike"]
+}

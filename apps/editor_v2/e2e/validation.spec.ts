@@ -1,0 +1,206 @@
+/**
+ * Validation rules 5 to 7 and the closed palette, exercised through the UI.
+ *
+ * These rules are the only thing standing between a JSONB field and a
+ * dangling collection reference — Postgres cannot put a foreign key inside
+ * `body`. So the question is not "does the validator return an error", which
+ * a unit test answers; it is "does a content designer who makes this mistake
+ * get stopped, and told which block is wrong".
+ */
+
+import { expect, test } from "@playwright/test";
+import {
+  DOC,
+  PHARMACY_URL,
+  bodyJson,
+  gotoSite,
+  insertBlock,
+  openDocument,
+  saveAndExpectRejection,
+  saveAndExpectSuccess,
+} from "./support";
+
+test.describe("a document that breaks a rule cannot be saved", () => {
+  test("rule 5 — a finder naming a collection that does not exist is rejected, and the block is named", async ({
+    page,
+  }) => {
+    await openDocument(page, DOC.pharmacies);
+    await page.getByTestId("finder-collection").fill("pharmacys");
+
+    const summary = await saveAndExpectRejection(page);
+    await expect(summary).toContainText("pharmacys");
+    await expect(summary).toContainText("data_collections");
+
+    // The failing block is identified, not just the document.
+    await expect(page.getByTestId("block-error-b_ph01")).toBeVisible();
+    // And the error summary links to it, the GOV.UK way.
+    await summary.getByRole("link").first().click();
+    await expect(page.getByTestId("block-b_ph01")).toBeFocused();
+  });
+
+  test("rule 6 — a facet key that is not a field and is not computed is rejected", async ({
+    page,
+  }) => {
+    await openDocument(page, DOC.pharmacies);
+
+    await page.getByTestId("add-facet").click();
+    await page.getByTestId("facet-key-new").fill("opening_time");
+    await page.getByTestId("facet-name-new").fill("Opening time");
+    await page.getByTestId("facet-type-new").selectOption("checkbox");
+    await page.getByTestId("confirm-facet").click();
+
+    const summary = await saveAndExpectRejection(page);
+    await expect(summary).toContainText("opening_time");
+    await expect(page.getByTestId("block-error-b_ph01")).toBeVisible();
+  });
+
+  test("rule 6 — the same facet is accepted once it declares what it is computed from", async ({
+    page,
+  }) => {
+    await openDocument(page, DOC.pharmacies);
+
+    await page.getByTestId("add-facet").click();
+    await page.getByTestId("facet-key-new").fill("opening_time");
+    await page.getByTestId("facet-name-new").fill("Opening time");
+    await page.getByTestId("facet-type-new").selectOption("checkbox");
+    await page.getByTestId("facet-computed-from-new").fill("hours");
+    await page.getByTestId("confirm-facet").click();
+
+    await saveAndExpectSuccess(page);
+  });
+
+  test("rule 7 — result metadata naming a field the collection does not have is rejected", async ({
+    page,
+  }) => {
+    await openDocument(page, DOC.pharmacies);
+    await page.getByTestId("result-metadata").fill("parish, type, pharmacist");
+
+    const summary = await saveAndExpectRejection(page);
+    await expect(summary).toContainText("pharmacist");
+  });
+
+  test("rule 8 — a start link pointing at a page that does not exist is rejected", async ({
+    page,
+  }) => {
+    await openDocument(page, DOC.severance);
+    await page
+      .getByTestId("start-link-target")
+      .fill("/money-financial-support/calculate-severance-pay/frm");
+
+    const summary = await saveAndExpectRejection(page);
+    await expect(summary).toContainText("content_pages");
+    await expect(page.getByTestId("block-error-b_sv08")).toBeVisible();
+  });
+
+  test("rule 9 — two headings cannot share an anchor", async ({ page }) => {
+    await openDocument(page, DOC.severance);
+    await page.getByTestId("anchor-b_sv05").fill("how-long-does-it-take");
+
+    const summary = await saveAndExpectRejection(page);
+    await expect(summary).toContainText("how-long-does-it-take");
+  });
+
+  test("a rejected save leaves the stored document untouched", async ({
+    page,
+  }) => {
+    // The important half of "must not save": the citizen-facing page has to
+    // still be serving the last good version.
+    await openDocument(page, DOC.pharmacies);
+    const good = await bodyJson(page);
+
+    await page.getByTestId("finder-collection").fill("nope");
+    await saveAndExpectRejection(page);
+
+    await page.reload();
+    await expect(page.getByTestId("block-list")).toBeVisible();
+    expect(await bodyJson(page)).toBe(good);
+
+    await gotoSite(page, PHARMACY_URL);
+    await expect(page.getByRole("searchbox")).toBeVisible();
+  });
+});
+
+test.describe("the closed palette", () => {
+  test("the insert menu offers exactly the nine block types", async ({
+    page,
+  }) => {
+    await openDocument(page, DOC.severance);
+    await page.getByTestId("insert-block").click();
+
+    const items = page.getByTestId("insert-menu").getByRole("menuitem");
+    await expect(items).toHaveCount(9);
+
+    // No escape hatch: the menu is the content model made visible.
+    for (const forbidden of [
+      "HTML",
+      "Raw",
+      "JSON",
+      "Code",
+      "Embed",
+      "Script",
+    ]) {
+      await expect(
+        page.getByTestId("insert-menu").getByText(forbidden, { exact: false }),
+      ).toHaveCount(0);
+    }
+  });
+
+  test("every one of the nine inserts and saves", async ({ page }) => {
+    // data_table and image_placeholder are not used by any of the three
+    // pages. They are in the palette precisely so the config-block pattern
+    // is shown to generalise rather than being three bespoke forms.
+    const types = [
+      "paragraph",
+      "heading",
+      "list",
+      "notice",
+      "start_link",
+      "finder",
+      "calendar",
+      "data_table",
+      "image_placeholder",
+    ];
+
+    await openDocument(page, DOC.severance);
+    for (const type of types) {
+      await insertBlock(page, type);
+      await expect(page.getByTestId(`block-type-${type}`).last()).toBeVisible();
+    }
+  });
+
+  test("a block type outside the nine is refused even when forced into the body", async ({
+    page,
+  }) => {
+    // The insert menu is the honest defence; this is the one behind it. A
+    // hand-written body arriving from an import or an older client must not
+    // be storable.
+    await openDocument(page, DOC.severance);
+
+    const rejected = await page.evaluate(async () => {
+      const store = (
+        window as unknown as {
+          __spikeStore: {
+            get: (id: string) => Promise<Record<string, unknown>>;
+            save: (doc: unknown, ifUpdatedAt: string) => Promise<unknown>;
+            list: () => Promise<Array<{ id: string; url: string }>>;
+          };
+        }
+      ).__spikeStore;
+      const [summary] = (await store.list()).filter((d) =>
+        d.url.includes("severance"),
+      );
+      const doc = await store.get(summary.id);
+      const body = doc.body as { blocks: unknown[] };
+      body.blocks.push({ id: "b_evil", type: "raw_html", html: "<script>" });
+      try {
+        await store.save(doc, doc.updated_at as string);
+        return null;
+      } catch (error) {
+        return (error as Error).message;
+      }
+    });
+
+    expect(rejected).toBeTruthy();
+    expect(rejected).toMatch(/raw_html|invalid|block/i);
+  });
+});
