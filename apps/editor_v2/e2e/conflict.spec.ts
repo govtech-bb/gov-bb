@@ -11,7 +11,10 @@ import {
   DOC,
   bodyJson,
   openDocument,
-  save,
+  editorSurface,
+  flushSave,
+  replaceText,
+  saveStatus,
   saveAndExpectSuccess,
 } from "./support";
 
@@ -26,27 +29,21 @@ test.describe("a stale save is refused", () => {
     await openDocument(first, DOC.severance);
     await openDocument(second, DOC.severance);
 
-    await first
-      .getByTestId("block-b_sv04")
-      .getByRole("textbox")
-      .fill("About 5 minutes.");
+    await replaceText(first, "b_sv04", "About 5 minutes.");
     await saveAndExpectSuccess(first);
 
     // The second tab is now holding the updated_at it loaded, which is stale.
-    await second
-      .getByTestId("block-b_sv04")
-      .getByRole("textbox")
-      .fill("About 90 minutes.");
-    await save(second);
+    await replaceText(second, "b_sv04", "About 90 minutes.");
+    await flushSave(second);
 
     const conflict = second.getByTestId("conflict-notice");
     await expect(conflict).toBeVisible();
     await expect(conflict).toContainText(/changed/i);
-    await expect(second.getByTestId("save-status")).toHaveText(/unsaved/i);
+    await expect(saveStatus(second)).toHaveText(/unsaved/i);
 
     // The winning write stands; the losing one was not silently applied.
     await first.reload();
-    await expect(first.getByTestId("block-list")).toBeVisible();
+    await expect(editorSurface(first)).toBeVisible();
     expect(await bodyJson(first)).toContain("About 5 minutes.");
     expect(await bodyJson(first)).not.toContain("About 90 minutes.");
   });
@@ -59,18 +56,18 @@ test.describe("a stale save is refused", () => {
     await openDocument(first, DOC.severance);
     await openDocument(second, DOC.severance);
 
-    await first.getByTestId("block-b_sv04").getByRole("textbox").fill("One.");
+    await replaceText(first, "b_sv04", "One.");
     await saveAndExpectSuccess(first);
 
-    await second.getByTestId("block-b_sv04").getByRole("textbox").fill("Two.");
-    await save(second);
+    await replaceText(second, "b_sv04", "Two.");
+    await flushSave(second);
     await expect(second.getByTestId("conflict-notice")).toBeVisible();
 
     await second.reload();
-    await expect(second.getByTestId("block-list")).toBeVisible();
+    await expect(editorSurface(second)).toBeVisible();
     await expect(second.getByTestId("conflict-notice")).toHaveCount(0);
 
-    await second.getByTestId("block-b_sv04").getByRole("textbox").fill("Two.");
+    await replaceText(second, "b_sv04", "Two.");
     await saveAndExpectSuccess(second);
     expect(await bodyJson(second)).toContain("Two.");
   });
@@ -82,10 +79,10 @@ test.describe("a stale save is refused", () => {
     // or the second save collides with the tab's own first one.
     await openDocument(page, DOC.severance);
 
-    await page.getByTestId("block-b_sv04").getByRole("textbox").fill("First.");
+    await replaceText(page, "b_sv04", "First.");
     await saveAndExpectSuccess(page);
 
-    await page.getByTestId("block-b_sv04").getByRole("textbox").fill("Second.");
+    await replaceText(page, "b_sv04", "Second.");
     await saveAndExpectSuccess(page);
 
     await expect(page.getByTestId("conflict-notice")).toHaveCount(0);

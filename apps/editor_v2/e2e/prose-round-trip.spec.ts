@@ -1,28 +1,42 @@
 /**
  * The severance start page: all prose, no configuration.
  *
- * The round trip is the thing under test. A block editor that quietly
- * rewrites an em dash, drops a bold run or renumbers an anchor is not a
- * content model, it is a lossy import — and the damage is invisible until
- * someone diffs two years of content.
+ * The round trip is the thing under test, and it matters more now than it
+ * did when these were written against a plain form surface. The canonical
+ * document is our `{version, blocks, refs}`; BlockNote's own block shape is
+ * not (ADR 0074). Everything here is really testing one adapter, in both
+ * directions, and a block editor that quietly rewrites an em dash, drops a
+ * bold run or renumbers an anchor is not a content model — it is a lossy
+ * import, and the damage is invisible until someone diffs two years of
+ * content.
  */
 
 import { expect, test } from "@playwright/test";
 import {
   DOC,
   SEVERANCE_URL,
+  block,
+  blockIds,
   bodyJson,
+  deleteBlock,
+  editorSurface,
   gotoSite,
+  insertBlockAfter,
+  moveBlockUp,
   openDocument,
   preview,
-  save,
+  replaceText,
   saveAndExpectSuccess,
+  saveStatus,
 } from "./support";
 
 test.describe("round trip", () => {
   test("saving with no edits leaves the body byte-identical", async ({
     page,
   }) => {
+    // Loading the document into BlockNote and serializing it back out must
+    // be a no-op. If the adapter injects BlockNote's default props —
+    // textColor, backgroundColor, textAlignment — this is where it shows.
     await openDocument(page, DOC.severance);
 
     const before = await bodyJson(page);
@@ -42,7 +56,7 @@ test.describe("round trip", () => {
     await saveAndExpectSuccess(page);
 
     await page.reload();
-    await expect(page.getByTestId("block-list")).toBeVisible();
+    await expect(editorSurface(page)).toBeVisible();
     await saveAndExpectSuccess(page);
 
     expect(await bodyJson(page)).toBe(original);
@@ -54,13 +68,10 @@ test.describe("round trip", () => {
     await openDocument(page, DOC.severance);
 
     // Touch one unrelated paragraph, then check the canaries are intact.
-    await page
-      .getByTestId("block-b_sv04")
-      .getByRole("textbox")
-      .fill("About 4 minutes.");
+    await replaceText(page, "b_sv04", "About 4 minutes.");
     await saveAndExpectSuccess(page);
     await page.reload();
-    await expect(page.getByTestId("block-list")).toBeVisible();
+    await expect(editorSurface(page)).toBeVisible();
 
     const body = await bodyJson(page);
 
@@ -85,54 +96,65 @@ test.describe("round trip", () => {
         }),
       ]),
     });
-    // And the edit actually landed.
     expect(body).toContain("About 4 minutes.");
+  });
+
+  test("typing an em dash and bold through the editor round-trips too", async ({
+    page,
+  }) => {
+    // The seeded document proves the adapter reads correctly. This proves it
+    // writes correctly, which is the direction that actually loses data.
+    await openDocument(page, DOC.severance);
+
+    await replaceText(page, "b_sv04", "Roughly 3 minutes — maybe 4.");
+    await block(page, "b_sv04").click({ clickCount: 3 });
+    await page.keyboard.press("ControlOrMeta+b");
+    await saveAndExpectSuccess(page);
+
+    await page.reload();
+    await expect(editorSurface(page)).toBeVisible();
+
+    const sv04 = JSON.parse(await bodyJson(page)).blocks.find(
+      (b: { id: string }) => b.id === "b_sv04",
+    );
+    expect(sv04.content).toEqual([
+      { text: "Roughly 3 minutes — maybe 4.", marks: ["strong"] },
+    ]);
   });
 
   test("block ids are never reassigned by an edit", async ({ page }) => {
     // Ids are what future diffing, commenting and per-block approval anchor
     // to. A renumber on save would invalidate all of it silently.
     await openDocument(page, DOC.severance);
-    const idsBefore = JSON.parse(await bodyJson(page)).blocks.map(
-      (b: { id: string }) => b.id,
-    );
+    const before = await blockIds(page);
 
-    await page
-      .getByTestId("block-b_sv01")
-      .getByRole("textbox")
-      .fill("You should complete the calculator in one sitting.");
+    await replaceText(
+      page,
+      "b_sv01",
+      "You should complete the calculator in one sitting.",
+    );
     await saveAndExpectSuccess(page);
 
-    const idsAfter = JSON.parse(await bodyJson(page)).blocks.map(
-      (b: { id: string }) => b.id,
-    );
-    expect(idsAfter).toEqual(idsBefore);
+    expect(await blockIds(page)).toEqual(before);
   });
 
   test("an inserted block gets an id that is new and stable", async ({
     page,
   }) => {
     await openDocument(page, DOC.severance);
-    const idsBefore: string[] = JSON.parse(await bodyJson(page)).blocks.map(
-      (b: { id: string }) => b.id,
-    );
+    const before = await blockIds(page);
 
-    await page.getByTestId("insert-block").click();
-    await page.getByTestId("insert-paragraph").click();
+    await insertBlockAfter(page, "b_sv01", "paragraph");
+    await page.keyboard.type("One more thing.");
     await saveAndExpectSuccess(page);
 
-    const idsAfter: string[] = JSON.parse(await bodyJson(page)).blocks.map(
-      (b: { id: string }) => b.id,
-    );
-    const added = idsAfter.filter((id) => !idsBefore.includes(id));
+    const after = await blockIds(page);
+    const added = after.filter((id) => !before.includes(id));
     expect(added).toHaveLength(1);
 
     await page.reload();
-    await expect(page.getByTestId("block-list")).toBeVisible();
-    const idsReloaded = JSON.parse(await bodyJson(page)).blocks.map(
-      (b: { id: string }) => b.id,
-    );
-    expect(idsReloaded).toEqual(idsAfter);
+    await expect(editorSurface(page)).toBeVisible();
+    expect(await blockIds(page)).toEqual(after);
   });
 });
 
@@ -143,9 +165,8 @@ test.describe("editing prose", () => {
     // The anchor is a URL fragment. Someone has linked to it. Retyping the
     // heading text must not silently break that link.
     await openDocument(page, DOC.severance);
-    const heading = page.getByTestId("block-b_sv05");
 
-    await heading.getByRole("textbox").fill("What you need to have ready");
+    await replaceText(page, "b_sv05", "What you need to have ready");
 
     await expect(
       preview(page).getByRole("heading", {
@@ -155,22 +176,19 @@ test.describe("editing prose", () => {
 
     await saveAndExpectSuccess(page);
     expect(JSON.parse(await bodyJson(page)).blocks).toContainEqual(
-      expect.objectContaining({
-        id: "b_sv05",
-        anchor: "what-you-will-need",
-      }),
+      expect.objectContaining({ id: "b_sv05", anchor: "what-you-will-need" }),
     );
   });
 
-  test("reordering blocks reorders the rendered page", async ({ page }) => {
+  test("reordering by keyboard reorders the rendered page", async ({
+    page,
+  }) => {
     await openDocument(page, DOC.severance);
 
-    await page.getByTestId("block-b_sv03").getByTestId("move-up").click();
+    await moveBlockUp(page, "b_sv03");
     await saveAndExpectSuccess(page);
 
-    const order = JSON.parse(await bodyJson(page)).blocks.map(
-      (b: { id: string }) => b.id,
-    );
+    const order = await blockIds(page);
     expect(order.indexOf("b_sv03")).toBeLessThan(order.indexOf("b_sv02"));
 
     await gotoSite(page, SEVERANCE_URL);
@@ -180,28 +198,81 @@ test.describe("editing prose", () => {
     const paragraphBox = await page
       .getByText("This tool only gives an")
       .boundingBox();
-    expect(headingBox!.y).toBeLessThan(paragraphBox!.y);
+    expect(headingBox?.y ?? 0).toBeLessThan(paragraphBox?.y ?? 0);
+  });
+
+  test("reordering by dragging the block handle has the same effect", async ({
+    page,
+  }) => {
+    // The mouse affordance, covered once. Keyboard is what the rest of the
+    // suite uses, because it is the one that must not regress.
+    await openDocument(page, DOC.severance);
+    const before = await blockIds(page);
+
+    await block(page, "b_sv03").hover();
+    await page.getByTestId("block-handle-b_sv03").dragTo(block(page, "b_sv02"));
+    await saveAndExpectSuccess(page);
+
+    const after = await blockIds(page);
+    expect(after).not.toEqual(before);
+    expect(after.indexOf("b_sv03")).toBeLessThan(after.indexOf("b_sv02"));
+    // A reorder must move blocks, never mint or drop them.
+    expect([...after].sort()).toEqual([...before].sort());
   });
 
   test("deleting a block removes it from the page", async ({ page }) => {
     await openDocument(page, DOC.severance);
-    await page.getByTestId("block-b_sv04").getByTestId("delete-block").click();
+    await deleteBlock(page, "b_sv04");
     await saveAndExpectSuccess(page);
 
     await gotoSite(page, SEVERANCE_URL);
     await expect(page.getByText("About 3 minutes.")).toHaveCount(0);
   });
+});
 
-  test("leaving with unsaved changes is flagged, not silently discarded", async ({
+test.describe("autosave", () => {
+  test("an edit saves itself without anyone pressing anything", async ({
+    page,
+  }) => {
+    // The one test that waits for the debounce rather than forcing a flush.
+    // Everywhere else uses Ctrl/Cmd+S, so that a test about facets is not
+    // also a test about timing.
+    await openDocument(page, DOC.severance);
+    await expect(saveStatus(page)).toHaveText(/^saved$/i);
+
+    await replaceText(page, "b_sv04", "About 6 minutes.");
+    await expect(saveStatus(page)).toHaveText(/unsaved/i);
+
+    // No flushSave() here on purpose.
+    await expect(saveStatus(page)).toHaveText(/^saved$/i);
+
+    await page.reload();
+    await expect(editorSurface(page)).toBeVisible();
+    expect(await bodyJson(page)).toContain("About 6 minutes.");
+  });
+
+  test("Ctrl/Cmd+S flushes immediately rather than waiting", async ({
     page,
   }) => {
     await openDocument(page, DOC.severance);
-    await expect(page.getByTestId("save-status")).toHaveText(/saved/i);
+    await replaceText(page, "b_sv04", "About 8 minutes.");
+    await expect(saveStatus(page)).toHaveText(/unsaved/i);
 
-    await page.getByTestId("block-b_sv04").getByRole("textbox").fill("Ages.");
-    await expect(page.getByTestId("save-status")).toHaveText(/unsaved/i);
+    await page.keyboard.press("ControlOrMeta+s");
+    await expect(saveStatus(page)).toHaveText(/^saved$/i, { timeout: 2_000 });
+  });
 
-    await save(page);
-    await expect(page.getByTestId("save-status")).toHaveText(/saved/i);
+  test("the browser Save dialog never opens", async ({ page }) => {
+    // Ctrl/Cmd+S must be intercepted. If preventDefault is missing the test
+    // machine gets a native dialog and every later test in the file hangs.
+    await openDocument(page, DOC.severance);
+    let dialogOpened = false;
+    page.on("dialog", () => {
+      dialogOpened = true;
+    });
+    await replaceText(page, "b_sv04", "About 9 minutes.");
+    await page.keyboard.press("ControlOrMeta+s");
+    await expect(saveStatus(page)).toHaveText(/^saved$/i);
+    expect(dialogOpened).toBe(false);
   });
 });

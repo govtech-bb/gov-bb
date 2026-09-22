@@ -16,6 +16,7 @@ import {
   gotoSite,
   openDocument,
   resultItems,
+  replaceText,
   saveAndExpectSuccess,
 } from "./support";
 
@@ -29,10 +30,11 @@ test.describe("editor in one tab, site in another", () => {
 
     const editor = await context.newPage();
     await openDocument(editor, DOC.calendar);
-    await editor
-      .getByTestId("block-b_bh01")
-      .getByRole("textbox")
-      .fill("Public holidays in Barbados, updated live.");
+    await replaceText(
+      editor,
+      "b_bh01",
+      "Public holidays in Barbados, updated live.",
+    );
     await saveAndExpectSuccess(editor);
 
     // No site.reload() anywhere in this test. The live query has to do it.
@@ -83,14 +85,11 @@ test.describe("editor in one tab, site in another", () => {
     await openDocument(a, DOC.severance);
     await openDocument(b, DOC.calendar);
 
-    await a.getByTestId("block-b_sv04").getByRole("textbox").fill("Minutes.");
+    await replaceText(a, "b_sv04", "Minutes.");
     await saveAndExpectSuccess(a);
 
     await expect(b.getByTestId("conflict-notice")).toHaveCount(0);
-    await b
-      .getByTestId("block-b_bh01")
-      .getByRole("textbox")
-      .fill("Holidays for the current year.");
+    await replaceText(b, "b_bh01", "Holidays for the current year.");
     await saveAndExpectSuccess(b);
   });
 });
