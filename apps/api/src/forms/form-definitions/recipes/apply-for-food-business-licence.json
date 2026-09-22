@@ -155,6 +155,9 @@
           }
         },
         {
+          "ref": "components/country"
+        },
+        {
           "ref": "components/town",
           "overrides": {
             "behaviours": [
@@ -167,9 +170,6 @@
               }
             ]
           }
-        },
-        {
-          "ref": "components/country"
         },
         {
           "ref": "components/parish",
@@ -442,19 +442,6 @@
           }
         },
         {
-          "ref": "components/town",
-          "overrides": {
-            "fieldId": "business-location-town",
-            "label": "Town or district",
-            "validations": {
-              "required": {
-                "error": "Enter the town or district.",
-                "value": true
-              }
-            }
-          }
-        },
-        {
           "ref": "components/parish",
           "overrides": {
             "fieldId": "business-location-parish",
@@ -626,19 +613,6 @@
             "validations": {
               "required": {
                 "value": false
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/town",
-          "overrides": {
-            "fieldId": "other-prep-town",
-            "label": "Town or district",
-            "validations": {
-              "required": {
-                "error": "Enter the town or district.",
-                "value": true
               }
             }
           }

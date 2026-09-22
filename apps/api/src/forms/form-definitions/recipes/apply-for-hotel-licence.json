@@ -413,7 +413,12 @@
           "ref": "components/address",
           "overrides": {
             "fieldId": "hotel-address-line-2",
-            "label": "Address line 2"
+            "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
