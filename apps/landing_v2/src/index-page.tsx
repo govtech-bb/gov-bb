@@ -8,7 +8,7 @@ export function SiteIndex() {
     <div className="bk-document">
       <h1 className="bk-title">Block editor spike</h1>
       <p className="bk-description">
-        Four pages, chosen because they are awkward in different ways. Each is
+        Five pages, chosen because they are awkward in different ways. Each is
         rendered from a block document in the local Postgres by the same
         renderer the editor edits with.
       </p>

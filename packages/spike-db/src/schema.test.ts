@@ -45,6 +45,27 @@ describe("migrate and seed", () => {
     expect(await count("collection_records")).toBe(seeded);
   });
 
+  it("adds a page that was not there before, without touching the rest", async () => {
+    // The bug this guards: seed() used to bail out entirely when
+    // content_pages was non-empty, so a page added to the seed never
+    // reached a database that had been seeded before. No error, nothing to
+    // suggest anything had been skipped — the new page simply never
+    // appeared.
+    const [victim] = DOCUMENTS;
+    await db.query("delete from content_pages where url = $1", [victim.url]);
+    await db.query("update content_pages set title = 'edited by hand'");
+    expect(await count("content_pages")).toBe(DOCUMENTS.length - 1);
+
+    expect(await seed(db)).toBe(true);
+
+    expect(await count("content_pages")).toBe(DOCUMENTS.length);
+    // The rows that were already there keep their edits.
+    const edited = await db.query<{ n: string }>(
+      "select count(*)::text as n from content_pages where title = 'edited by hand'",
+    );
+    expect(Number(edited.rows[0].n)).toBe(DOCUMENTS.length - 1);
+  });
+
   it("enforces the url unique constraint", async () => {
     await expect(
       db.query(
