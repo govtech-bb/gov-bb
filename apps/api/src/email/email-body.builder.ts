@@ -13,7 +13,10 @@ import {
   resolveConditionalMarkdown,
   type StepScopedValues,
 } from "@govtech-bb/form-conditions";
-import { buildSubmissionSections } from "@govtech-bb/submission-summary";
+import {
+  buildSubmissionSections,
+  summaryValueToText,
+} from "@govtech-bb/submission-summary";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import { deriveHigherRiskSelection } from "../forms/submissions/derive-higher-risk";
 import type {
@@ -162,7 +165,7 @@ export class EmailBodyBuilder {
         title: section.title,
         fields: section.fields.map((field) => ({
           label: field.label,
-          value: stringifyValue(field.value),
+          value: summaryValueToText(field.value),
         })),
       }));
 
@@ -278,22 +281,4 @@ export class EmailBodyBuilder {
     this.contractCache.set(formId, contract);
     return contract;
   }
-}
-
-/**
- * Flattens a summary value to the string this template renders. Every field
- * type but `file` arrives already formatted; a file answer arrives as its raw
- * upload nodes (so the CMS can render them as links and thumbnails), which the
- * email names instead — `name`, falling back to the key's basename. The nodes
- * have already been filtered to those durably uploaded.
- */
-function stringifyValue(value: unknown): string {
-  if (!Array.isArray(value)) return String(value);
-  return (value as Array<Record<string, unknown>>)
-    .map((item) =>
-      typeof item.name === "string" && item.name.length > 0
-        ? item.name
-        : ((item.key as string).split("/").pop() ?? (item.key as string)),
-    )
-    .join(", ");
 }

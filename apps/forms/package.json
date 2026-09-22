@@ -9,6 +9,7 @@
     "@govtech-bb/form-conditions": "workspace:*",
     "@govtech-bb/form-types": "workspace:*",
     "@govtech-bb/form-validation": "workspace:*",
+    "@govtech-bb/submission-summary": "workspace:*",
     "@govtech-bb/frontend": "1.0.0-alpha.29",
     "@govtech-bb/react": "1.0.0-alpha.29",
     "@maskito/core": "^5.2.2",

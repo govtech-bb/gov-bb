@@ -35,6 +35,7 @@ import {
   clearFormStartTime,
 } from "../../../lib/session-storage";
 import { elapsedSeconds } from "../../../lib/submit-duration";
+import { buildPrintedAnswers } from "../../../lib/printed-answers";
 import {
   formatDataForSubmission,
   postFormSubmission,
@@ -264,9 +265,15 @@ function FormView() {
       // render-mutated conditionallyHidden flag goes stale for fields that
       // never re-mounted after their controlling answer flipped, which
       // would leak de-selected answers into the payload.
+      // Keyed by stepId, the visible field ids per step — the submission
+      // payload's hidden set is its complement, and the printed confirmation's
+      // answers are built from it below, so the two cannot disagree.
+      const visibleFieldIdsByStep: Record<string, string[]> = {};
       const hiddenFields = visibleSteps.flatMap((step) => {
-        const visibleFieldIds = new Set(
-          getVisibleFields(step, form).map((field) => field.id),
+        const visible = getVisibleFields(step, form);
+        const visibleFieldIds = new Set(visible.map((field) => field.id));
+        visibleFieldIdsByStep[step.stepId] = visible.map(
+          (field) => field.fieldId,
         );
         return step.fields.filter((field) => !visibleFieldIds.has(field.id));
       });
@@ -348,9 +355,19 @@ function FormView() {
           )
         : undefined;
 
+      // Same moment, same reason (#2587): build the answers for the printed
+      // confirmation while they are still here. Built from the shared summary
+      // builder, so the paper copy reads like the email the MDA received.
+      const printedAnswers = buildPrintedAnswers({
+        steps: formMeta.steps,
+        visibleFieldIdsByStep,
+        values: formattedData,
+      });
+
       const { subState, event } = resolveSubmissionOutcome(
         response,
         resolvedMarkdown,
+        printedAnswers,
       );
       if (subState) {
         setSubmissionState(subState);

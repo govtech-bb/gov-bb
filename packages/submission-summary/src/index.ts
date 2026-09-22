@@ -1,4 +1,3 @@
-import type { FormStep, Primitive } from "@govtech-bb/form-types";
 import {
   isCompleteDateValue,
   formatDateValue,
@@ -9,53 +8,47 @@ import {
   type StepScopedValues,
 } from "@govtech-bb/form-conditions";
 import { isOptionField, resolveOptionDisplay } from "./field-display";
+import type {
+  SubmissionVisibility,
+  SummaryContract,
+  SummaryElement,
+  SummarySection,
+  SummaryStep,
+} from "./types";
 
 export { isOptionField, resolveOptionDisplay } from "./field-display";
-
-/** One answered question: the contract's field id, the label the applicant was
- * asked under, and the answer rendered for a human. */
-export interface SummaryField {
-  fieldId: string;
-  label: string;
-  /** Formatted for display for every field type EXCEPT `file`, which stays the
-   * raw array of upload nodes so each surface can render them its own way —
-   * the email joins filenames, the CMS merges signed URLs and shows
-   * thumbnails. */
-  value: unknown;
-}
-
-/** One step's worth of answers, in contract order. */
-export interface SummarySection {
-  stepId: string;
-  title: string;
-  fields: SummaryField[];
-}
+export type {
+  SubmissionVisibility,
+  SummaryContract,
+  SummaryElement,
+  SummaryField,
+  SummarySection,
+  SummaryStep,
+} from "./types";
 
 /**
- * Which steps and fields the applicant actually saw, as recorded on the
- * submission audit trail.
- *
- * `activeFieldIds` / `hiddenFieldIds` hold `string[][]` for repeatable steps —
- * one entry per instance (V2 audit trails, PR #156) — and `string[]` otherwise.
- * A step with no entry at all means "show every field": a new audit-trail
- * schema must never silently blank an existing form's answers.
+ * Renders a summary value as plain text: the form the MDA email and the
+ * printed confirmation both need. Every type but `file` is already a string;
+ * a file arrives as its upload nodes, named here — `name`, falling back to the
+ * key's basename. The nodes have already been filtered to those durably
+ * uploaded.
  */
-export interface SubmissionVisibility {
-  activeStepIds: string[];
-  hiddenStepIds: string[];
-  activeFieldIds: Record<string, string[] | string[][]>;
-  hiddenFieldIds: Record<string, string[] | string[][]>;
-}
-
-/** The part of a service contract this builder reads. Declared structurally so
- * both the API's full `ServiceContract` and the trimmed contract the forms
- * client holds satisfy it. */
-export interface SummaryContract {
-  steps: FormStep[];
+export function summaryValueToText(value: unknown): string {
+  if (!Array.isArray(value)) return String(value);
+  return (value as Array<Record<string, unknown>>)
+    .map((item) =>
+      typeof item.name === "string" && item.name.length > 0
+        ? item.name
+        : ((item.key as string).split("/").pop() ?? (item.key as string)),
+    )
+    .join(", ");
 }
 
 // Elements that carry no answer — guidance copy and reveal wrappers.
-const SKIP_TYPES = new Set<Primitive["htmlType"]>(["show-hide", "content"]);
+const SKIP_TYPES = new Set<SummaryElement["htmlType"]>([
+  "show-hide",
+  "content",
+]);
 
 /**
  * Render a submission as ordered, labelled sections: the single source of truth
@@ -118,7 +111,7 @@ export function buildSubmissionSections({
 }
 
 function buildSection(
-  step: FormStep,
+  step: SummaryStep,
   stepValues: Record<string, unknown>,
   visibility: SubmissionVisibility,
   allValues: StepScopedValues,
@@ -172,7 +165,7 @@ function flattenIds(value: unknown): string[] {
 
 /** `""` means "no answer" — the caller drops the row, and a section left with
  * no rows at all. */
-function formatValue(field: Primitive, raw: unknown): unknown {
+function formatValue(field: SummaryElement, raw: unknown): unknown {
   if (raw === null || raw === undefined || raw === "") return "";
 
   // Option fields (radio/select/checkbox/checkbox-accordion) resolve value
