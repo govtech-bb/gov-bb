@@ -1,0 +1,67 @@
+import type { ReactNode } from 'react'
+import type { Ref, Span } from '../types'
+
+export interface RenderContext {
+  /** Collection records, keyed by collection key. */
+  data: Record<string, Array<Record<string, unknown>>>
+  refs: Record<string, Ref>
+  /** Turns a start_link target into an href. */
+  resolveHref?: (kind: 'form' | 'page' | 'external', target: string) => string
+}
+
+/**
+ * Resolve a value-reference span: `{ ref, field }` with no text. None of the
+ * three seeded pages uses one — it is handled here so the shape is fixed and
+ * the renderer does not have to change when references arrive.
+ */
+function resolveSpanValue(span: Span, ctx: RenderContext): string {
+  if (!span.ref) return ''
+  const ref = ctx.refs[span.ref]
+  if (!ref || ref.kind !== 'record') return ''
+  const record = (ctx.data[ref.collection] ?? []).find(
+    (row) => row.slug === ref.record || row.key === ref.record,
+  )
+  const value = span.field ? record?.[span.field] : undefined
+  return value == null ? '' : String(value)
+}
+
+function markUp(text: string, span: Span, key: number): ReactNode {
+  let node: ReactNode = text
+  // Applied outermost-last so <strong><em> nests predictably.
+  for (const mark of span.marks ?? []) {
+    if (mark === 'strong') node = <strong>{node}</strong>
+    else if (mark === 'em') node = <em>{node}</em>
+    else if (mark === 'code') node = <code>{node}</code>
+  }
+  return <span key={key}>{node}</span>
+}
+
+export function Spans({
+  content,
+  ctx,
+}: {
+  content: Span[]
+  ctx: RenderContext
+}) {
+  return (
+    <>
+      {content.map((span, index) =>
+        markUp(span.text ?? resolveSpanValue(span, ctx), span, index),
+      )}
+    </>
+  )
+}
+
+/** The plain-text projection of a run of spans — used for anchors and alt text. */
+export function spansToText(content: Span[]): string {
+  return content.map((span) => span.text ?? '').join('')
+}
+
+/** A URL fragment derived from heading text, generated once at creation. */
+export function anchorFromText(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80)
+}

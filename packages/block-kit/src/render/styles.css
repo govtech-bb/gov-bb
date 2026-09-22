@@ -1,0 +1,245 @@
+/*
+ * Renderer styles. Deliberately plain: the spike is testing a document
+ * format, not a visual design. Colours track the GOV.BB palette closely
+ * enough that the three pages read as the real thing side by side.
+ */
+
+.bk-document {
+  --bk-ink: #0b0c0c;
+  --bk-muted: #505a5f;
+  --bk-line: #b1b4b6;
+  --bk-blue: #1d70b8;
+  --bk-green: #00703c;
+  --bk-green-dark: #005a30;
+  --bk-yellow: #ffdd00;
+
+  max-width: 44rem;
+  color: var(--bk-ink);
+  font-family: system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  line-height: 1.5;
+}
+
+.bk-document.bk-wide {
+  max-width: none;
+}
+
+.bk-title {
+  font-size: 2.25rem;
+  line-height: 1.1;
+  font-weight: 700;
+  margin: 0 0 1rem;
+}
+
+.bk-description {
+  font-size: 1.125rem;
+  color: var(--bk-muted);
+  margin: 0 0 1.5rem;
+}
+
+.bk-paragraph {
+  margin: 0 0 1.25rem;
+  font-size: 1.125rem;
+}
+
+.bk-heading {
+  font-weight: 700;
+  margin: 2rem 0 1rem;
+  scroll-margin-top: 1rem;
+}
+.bk-h2 { font-size: 1.5rem; }
+.bk-h3 { font-size: 1.25rem; }
+
+.bk-list {
+  margin: 0 0 1.25rem;
+  padding-left: 1.25rem;
+  font-size: 1.125rem;
+}
+.bk-list li { margin-bottom: 0.5rem; }
+
+.bk-notice {
+  border-left: 10px solid var(--bk-blue);
+  padding: 0.75rem 1rem;
+  margin: 0 0 1.25rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.bk-notice-warning {
+  border-left-color: var(--bk-ink);
+}
+
+.bk-start { margin: 1.75rem 0; }
+
+.bk-start-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bk-green);
+  box-shadow: 0 2px 0 var(--bk-green-dark);
+  color: #fff;
+  font-size: 1.375rem;
+  font-weight: 700;
+  padding: 0.625rem 1.25rem;
+  text-decoration: none;
+  border-radius: 2px;
+}
+.bk-start-button:hover { background: var(--bk-green-dark); }
+.bk-start-button:focus-visible {
+  background: var(--bk-yellow);
+  color: var(--bk-ink);
+  outline: 3px solid transparent;
+  box-shadow: 0 -2px var(--bk-yellow), 0 4px var(--bk-ink);
+}
+
+.bk-image-placeholder { margin: 0 0 1.5rem; }
+.bk-image-box {
+  display: grid;
+  place-items: center;
+  height: 12rem;
+  background: #f3f2f1;
+  border: 1px dashed var(--bk-line);
+  color: var(--bk-muted);
+  font-size: 0.875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.bk-image-placeholder figcaption {
+  font-size: 0.9375rem;
+  color: var(--bk-muted);
+  margin-top: 0.5rem;
+}
+
+/* ------------------------------------------------------------- tables */
+
+.bk-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 1.5rem;
+  font-size: 1rem;
+}
+.bk-table th,
+.bk-table td {
+  text-align: left;
+  padding: 0.625rem 0.75rem 0.625rem 0;
+  border-bottom: 1px solid var(--bk-line);
+  vertical-align: top;
+}
+.bk-table th { font-weight: 700; }
+.bk-substitute td { color: var(--bk-muted); font-style: italic; }
+
+.bk-calendar-year {
+  display: inline-block;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+.bk-calendar-year select,
+.bk-sort select {
+  font: inherit;
+  padding: 0.35rem 0.5rem;
+  border: 2px solid var(--bk-ink);
+  border-radius: 0;
+  background: #fff;
+}
+
+/* ------------------------------------------------------------- finder */
+
+.bk-finder {
+  display: grid;
+  grid-template-columns: minmax(0, 17rem) minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (max-width: 48rem) {
+  .bk-finder { grid-template-columns: minmax(0, 1fr); }
+}
+
+.bk-finder-sidebar {
+  border: 1px solid var(--bk-line);
+  padding: 1rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.bk-facet {
+  border: 0;
+  padding: 0;
+  margin: 0 0 1.25rem;
+}
+.bk-facet:last-child { margin-bottom: 0; }
+
+.bk-facet-name {
+  display: block;
+  font-weight: 700;
+  padding: 0;
+  margin-bottom: 0.5rem;
+}
+
+.bk-facet-large {
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.bk-facet-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.bk-facet-option input { width: 1.125rem; height: 1.125rem; }
+
+.bk-search-input {
+  width: 100%;
+  font: inherit;
+  padding: 0.5rem;
+  border: 2px solid var(--bk-ink);
+}
+
+.bk-finder-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--bk-line);
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+}
+.bk-result-count { font-weight: 700; margin: 0; }
+
+.bk-result-list { list-style: none; margin: 0; padding: 0; }
+.bk-result {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--bk-line);
+}
+.bk-result-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--bk-blue);
+}
+.bk-result-meta { margin: 0.25rem 0 0; color: var(--bk-muted); }
+
+.bk-empty {
+  padding: 1.5rem 0;
+  color: var(--bk-muted);
+  font-size: 1.0625rem;
+}
+
+.bk-pagination {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 1.25rem;
+}
+.bk-pagination button {
+  font: inherit;
+  padding: 0.4rem 0.9rem;
+  border: 2px solid var(--bk-ink);
+  background: #fff;
+  cursor: pointer;
+}
+.bk-pagination button[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
