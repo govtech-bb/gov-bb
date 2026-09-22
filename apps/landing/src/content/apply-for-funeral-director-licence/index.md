@@ -17,20 +17,21 @@ You will need this licence if you conduct funeral directing services in Barbados
 
 ## Before you start
 
-You must:
+You must be at least 18 years old.
 
--   be at least 18 years old
--   provide a photo or a scanned copy of your Barbados National Identification card
--   provide a passport sized photograph
--   have been engaged in the business of funeral directing, under the supervision of a licensed funeral director for more than two (2) years or;
--   have been engaged in the business of funeral directing prior to the regulations in 1984 for more than three (3) years
+If you are applying for a new licence, you must also have been engaged in the business of funeral directing:
+
+-   under the direct supervision of a licensed funeral director for at least 2 years, or
+-   for at least 3 years before the regulations came into operation in 1984
+
+You will need:
+
+-   a photo or a scanned copy of your Barbados National Identification card
+-   a passport sized photograph
+-   new licences: a letter that confirms your funeral directing experience
+-   licence renewals: your current funeral directors licence number
 
 Read the [Health Services (Embalmers and Funeral Directors) Regulations 1984](https://oag.gov.bb/attachments/Health%20Services%20(Embalmers%20and%20Funeral%20Directors)%20Regulations,%201984%20Cap44'L.PDF) for the full legal requirements.
-
-You may need to provide:
-
--   your current funeral directors licence number (if renewing)
--   a letter evidencing you have been engaged in the business of funeral directing under the direct supervision of a licensed funeral director for over two (2) years or have been working in a funeral director's office for over three (3) years, if you were engaged in the business prior to the regulations coming into operation in 1984
 
 ## When to apply
 

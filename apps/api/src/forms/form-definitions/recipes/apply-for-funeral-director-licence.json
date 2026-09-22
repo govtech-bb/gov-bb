@@ -420,11 +420,11 @@
             ],
             "options": [
               {
-                "label": "Supervised by a licensed funeral director for more than 2 years",
+                "label": "Supervised by a licensed funeral director for at least 2 years",
                 "value": "supervised-two-years"
               },
               {
-                "label": "Worked in a funeral director's office for more than 3 years before the 1984 regulations",
+                "label": "Engaged in the business of funeral directing for at least 3 years before the 1984 regulations",
                 "value": "office-three-years"
               }
             ]
