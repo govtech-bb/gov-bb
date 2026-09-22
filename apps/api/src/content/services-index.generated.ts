@@ -362,7 +362,8 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "health-and-emergency-services/find-an-open-pharmacy",
-    title: "Find Barbados Drug Service prescription medication",
+    title:
+      "Find a pharmacy and check what Barbados Drug Service benefits it offers",
     category: "health-and-emergency-services",
     visibility: "public",
   },
