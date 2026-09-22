@@ -76,7 +76,9 @@ test.describe("round trip", () => {
     const body = await bodyJson(page);
 
     // The em dash, not a hyphen and not an HTML entity.
-    expect(body).toContain("gross pay — include overtime or bonuses");
+    expect(body).toContain(
+      "gross pay (weekly or monthly) — include overtime or bonuses",
+    );
     // The bold run is still its own span carrying the mark.
     expect(JSON.parse(body)).toMatchObject({
       blocks: expect.arrayContaining([
