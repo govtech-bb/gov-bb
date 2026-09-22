@@ -409,6 +409,15 @@
                 "value": true
               }
             },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "targetStepId": "application-type",
+                "operator": "equal",
+                "value": "new"
+              }
+            ],
             "options": [
               {
                 "label": "Supervised by a licensed funeral director for more than 2 years",
@@ -444,7 +453,16 @@
                 "error": "File must be 5 MB or smaller",
                 "value": 5242880
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "targetStepId": "application-type",
+                "operator": "equal",
+                "value": "new"
+              }
+            ]
           }
         }
       ]

@@ -92,6 +92,11 @@
  *    the 1984 regulations the applicant claims, and `letter-evidencing` is
  *    required (it was an ungated optional upload before). Both must be
  *    answered for this step to advance.
+ *  - Both of those are gated on `application-type` being `new`: the 1984
+ *    experience tests are what qualify someone for a first licence, and a
+ *    renewal has already met them. Answer `application-type` first — on
+ *    `renewal` neither field renders, and the step advances with the two
+ *    uploads alone.
  *  - The confirmation step's `nextSteps` copy (fixed off "hairdresser licence"
  *    in this PR) has no `{polyclinic}` placeholder, so there is no
  *    resolved-catchment name on screen to assert. Catchment routing still
@@ -359,12 +364,16 @@ export async function fillDocuments(page: Page): Promise<void> {
     mimeType: TEST_PNG.mimeType,
     buffer: TEST_PNG.buffer,
   });
-  await selectRadio(page, step, "experience-route", "supervised-two-years");
-  await uploadOne(page, step, "letter-evidencing", {
-    name: "letter-of-evidence.png",
-    mimeType: TEST_PNG.mimeType,
-    buffer: TEST_PNG.buffer,
-  });
+  // This walk answered `application-type` as "renewal" on the first step, so
+  // the two statutory questions (#2475) are gated off here — a renewing
+  // director has already met the 1984 experience tests. Assert the gate holds
+  // rather than filling them; the step advances on the two uploads alone.
+  await expect(
+    page.locator(`fieldset[id="${step}_experience-route"]`),
+  ).toBeHidden();
+  await expect(
+    page.locator(`input[type=file][id="${step}_letter-evidencing"]`),
+  ).toBeHidden();
   await advance(page, step);
 }
 
