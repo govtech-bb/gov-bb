@@ -401,6 +401,13 @@
                 "targetStepId": "documents",
                 "operator": "equal",
                 "value": true
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "targetStepId": "application-type",
+                "operator": "equal",
+                "value": "new"
               }
             ]
           }
@@ -409,7 +416,16 @@
           "ref": "components/show-hide",
           "overrides": {
             "fieldId": "use-reference-letter",
-            "label": "Use reference letter instead"
+            "label": "Use reference letter instead",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "targetStepId": "application-type",
+                "operator": "equal",
+                "value": "new"
+              }
+            ]
           }
         },
         {
@@ -443,6 +459,13 @@
                 "targetStepId": "documents",
                 "operator": "equal",
                 "value": true
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "targetStepId": "application-type",
+                "operator": "equal",
+                "value": "new"
               }
             ]
           }
@@ -533,7 +556,7 @@
     }
   ],
   "createdAt": "2026-08-25T14:05:29.888Z",
-  "updatedAt": "2026-09-21T00:00:00.000Z",
+  "updatedAt": "2026-09-22T00:00:00.000Z",
   "meta": {
     "visibility": "preview"
   },
