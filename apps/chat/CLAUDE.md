@@ -27,3 +27,14 @@ Then, before and after you write:
 
 - **Verify against the installed version, not your memory.** Read the package's
   `.d.ts` in `node_modules` before calling an API.
+
+## What is different about this app
+
+- **Not deployed from this repo.** Since #2163 the govtech-bb/govbb-chatbot repository builds and
+  deploys the assistant. CI here still builds `Dockerfile.ingest` only because the "Main CI Required"
+  ruleset lists that check (#2670).
+- **Tests run on node's test runner** via `tsx --test` (`pnpm exec nx run chat:test`). There is
+  no Vitest config here.
+- **Not type-checked by CI.** Run `pnpm exec tsc --noEmit -p apps/chat` before pushing.
+- The Playwright suite under `e2e/` hits the live sandbox forms API; do not run it without AWS
+  access.
