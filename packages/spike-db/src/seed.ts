@@ -1,6 +1,6 @@
-import type { PGliteInterface } from '@electric-sql/pglite'
-import { COLLECTIONS, RECORDS_BY_COLLECTION } from './seed-data/collections'
-import { DOCUMENTS } from './seed-data/documents'
+import type { PGliteInterface } from "@electric-sql/pglite";
+import { COLLECTIONS, RECORDS_BY_COLLECTION } from "./seed-data/collections";
+import { DOCUMENTS } from "./seed-data/documents";
 
 /**
  * Loads the collections, their records and the page documents — but only
@@ -9,9 +9,9 @@ import { DOCUMENTS } from './seed-data/documents'
  */
 export async function seed(db: PGliteInterface): Promise<boolean> {
   const existing = await db.query<{ count: string }>(
-    'select count(*)::text as count from content_pages',
-  )
-  if (Number(existing.rows[0].count) > 0) return false
+    "select count(*)::text as count from content_pages",
+  );
+  if (Number(existing.rows[0].count) > 0) return false;
 
   for (const collection of COLLECTIONS) {
     await db.query(
@@ -24,16 +24,16 @@ export async function seed(db: PGliteInterface): Promise<boolean> {
         collection.record_key,
         JSON.stringify(collection.schema),
       ],
-    )
+    );
 
-    const records = RECORDS_BY_COLLECTION[collection.key] ?? []
+    const records = RECORDS_BY_COLLECTION[collection.key] ?? [];
     for (const record of records) {
       await db.query(
         `insert into collection_records (collection_key, record_key, data)
          values ($1, $2, $3)
          on conflict (collection_key, record_key) do nothing`,
         [collection.key, record.record_key, JSON.stringify(record.data)],
-      )
+      );
     }
   }
 
@@ -53,8 +53,8 @@ export async function seed(db: PGliteInterface): Promise<boolean> {
         doc.is_draft,
         JSON.stringify(doc.body),
       ],
-    )
+    );
   }
 
-  return true
+  return true;
 }

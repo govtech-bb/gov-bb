@@ -5,76 +5,76 @@ import type {
   NoticeBlock,
   ParagraphBlock,
   StartLinkBlock,
-} from '../types'
-import { Spans, type RenderContext } from './spans'
+} from "../types";
+import { Spans, type RenderContext } from "./spans";
 
 export function Paragraph({
   block,
   ctx,
 }: {
-  block: ParagraphBlock
-  ctx: RenderContext
+  block: ParagraphBlock;
+  ctx: RenderContext;
 }) {
   return (
     <p className="bk-paragraph">
       <Spans content={block.content} ctx={ctx} />
     </p>
-  )
+  );
 }
 
 export function Heading({
   block,
   ctx,
 }: {
-  block: HeadingBlock
-  ctx: RenderContext
+  block: HeadingBlock;
+  ctx: RenderContext;
 }) {
   // The anchor is a URL fragment, so it is rendered from the stored value
   // and never re-derived from the text at render time.
-  const Tag = block.level === 2 ? 'h2' : 'h3'
+  const Tag = block.level === 2 ? "h2" : "h3";
   return (
     <Tag id={block.anchor} className={`bk-heading bk-h${block.level}`}>
       <Spans content={block.content} ctx={ctx} />
     </Tag>
-  )
+  );
 }
 
 export function List({ block, ctx }: { block: ListBlock; ctx: RenderContext }) {
-  const Tag = block.ordered ? 'ol' : 'ul'
+  const Tag = block.ordered ? "ol" : "ul";
   return (
-    <Tag className={`bk-list ${block.ordered ? 'bk-list-ordered' : ''}`}>
+    <Tag className={`bk-list ${block.ordered ? "bk-list-ordered" : ""}`}>
       {block.items.map((item) => (
         <li key={item.id}>
           <Spans content={item.content} ctx={ctx} />
         </li>
       ))}
     </Tag>
-  )
+  );
 }
 
 export function Notice({
   block,
   ctx,
 }: {
-  block: NoticeBlock
-  ctx: RenderContext
+  block: NoticeBlock;
+  ctx: RenderContext;
 }) {
   return (
     <div className={`bk-notice bk-notice-${block.variant}`} role="note">
       <Spans content={block.content} ctx={ctx} />
     </div>
-  )
+  );
 }
 
 export function StartLink({
   block,
   ctx,
 }: {
-  block: StartLinkBlock
-  ctx: RenderContext
+  block: StartLinkBlock;
+  ctx: RenderContext;
 }) {
   const href =
-    ctx.resolveHref?.(block.target_kind, block.target) ?? block.target
+    ctx.resolveHref?.(block.target_kind, block.target) ?? block.target;
   return (
     <p className="bk-start">
       <a className="bk-start-button" href={href} data-kind={block.target_kind}>
@@ -87,11 +87,18 @@ export function StartLink({
           aria-hidden="true"
           focusable="false"
         >
-          <path d="M5 12h12m0 0-5-5m5 5-5 5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d="M5 12h12m0 0-5-5m5 5-5 5"
+            stroke="currentColor"
+            strokeWidth="2"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       </a>
     </p>
-  )
+  );
 }
 
 export function ImagePlaceholder({ block }: { block: ImagePlaceholderBlock }) {
@@ -104,5 +111,5 @@ export function ImagePlaceholder({ block }: { block: ImagePlaceholderBlock }) {
       </div>
       {block.caption ? <figcaption>{block.caption}</figcaption> : null}
     </figure>
-  )
+  );
 }

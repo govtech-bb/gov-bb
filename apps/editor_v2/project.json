@@ -14,6 +14,10 @@
       "options": { "command": "npm run build", "cwd": "apps/editor_v2" },
       "dependsOn": ["^build"]
     },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": { "command": "vitest run", "cwd": "apps/editor_v2" }
+    },
     "typecheck": {
       "executor": "nx:run-commands",
       "options": { "command": "tsc --noEmit", "cwd": "apps/editor_v2" }

@@ -1,6 +1,6 @@
-import { createRoute, type AnyRoute } from '@tanstack/react-router'
-import { SiteIndex } from './index-page'
-import { SitePageFromLocation } from './page'
+import { createRoute, type AnyRoute } from "@tanstack/react-router";
+import { SiteIndex } from "./index-page";
+import { SitePageFromLocation } from "./page";
 
 /**
  * The site's route tree, mounted by `apps/editor_v2`'s Vite dev server.
@@ -15,11 +15,15 @@ import { SitePageFromLocation } from './page'
  */
 export function siteRoutes(rootRoute: AnyRoute): AnyRoute[] {
   return [
-    createRoute({ getParentRoute: () => rootRoute, path: '/', component: SiteIndex }),
     createRoute({
       getParentRoute: () => rootRoute,
-      path: '$',
+      path: "/",
+      component: SiteIndex,
+    }),
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: "$",
       component: SitePageFromLocation,
     }),
-  ]
+  ];
 }

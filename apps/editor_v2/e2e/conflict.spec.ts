@@ -6,81 +6,89 @@
  * so pointing `DocumentStore` at a server later is not a refactor.
  */
 
-import { expect, test } from '@playwright/test'
-import { DOC, bodyJson, openDocument, save, saveAndExpectSuccess } from './support'
+import { expect, test } from "@playwright/test";
+import {
+  DOC,
+  bodyJson,
+  openDocument,
+  save,
+  saveAndExpectSuccess,
+} from "./support";
 
-test.describe('a stale save is refused', () => {
-  test('the second tab is told its copy is out of date, and nothing is lost', async ({
+test.describe("a stale save is refused", () => {
+  test("the second tab is told its copy is out of date, and nothing is lost", async ({
     context,
   }) => {
-    const first = await context.newPage()
-    const second = await context.newPage()
+    const first = await context.newPage();
+    const second = await context.newPage();
 
     // Both tabs load the same document at the same version.
-    await openDocument(first, DOC.severance)
-    await openDocument(second, DOC.severance)
+    await openDocument(first, DOC.severance);
+    await openDocument(second, DOC.severance);
 
-    await first.getByTestId('block-b_sv04').getByRole('textbox').fill(
-      'About 5 minutes.',
-    )
-    await saveAndExpectSuccess(first)
+    await first
+      .getByTestId("block-b_sv04")
+      .getByRole("textbox")
+      .fill("About 5 minutes.");
+    await saveAndExpectSuccess(first);
 
     // The second tab is now holding the updated_at it loaded, which is stale.
-    await second.getByTestId('block-b_sv04').getByRole('textbox').fill(
-      'About 90 minutes.',
-    )
-    await save(second)
+    await second
+      .getByTestId("block-b_sv04")
+      .getByRole("textbox")
+      .fill("About 90 minutes.");
+    await save(second);
 
-    const conflict = second.getByTestId('conflict-notice')
-    await expect(conflict).toBeVisible()
-    await expect(conflict).toContainText(/changed/i)
-    await expect(second.getByTestId('save-status')).toHaveText(/unsaved/i)
+    const conflict = second.getByTestId("conflict-notice");
+    await expect(conflict).toBeVisible();
+    await expect(conflict).toContainText(/changed/i);
+    await expect(second.getByTestId("save-status")).toHaveText(/unsaved/i);
 
     // The winning write stands; the losing one was not silently applied.
-    await first.reload()
-    await expect(first.getByTestId('block-list')).toBeVisible()
-    expect(await bodyJson(first)).toContain('About 5 minutes.')
-    expect(await bodyJson(first)).not.toContain('About 90 minutes.')
-  })
+    await first.reload();
+    await expect(first.getByTestId("block-list")).toBeVisible();
+    expect(await bodyJson(first)).toContain("About 5 minutes.");
+    expect(await bodyJson(first)).not.toContain("About 90 minutes.");
+  });
 
-  test('reloading the stale tab clears the conflict and lets the edit through', async ({
+  test("reloading the stale tab clears the conflict and lets the edit through", async ({
     context,
   }) => {
-    const first = await context.newPage()
-    const second = await context.newPage()
-    await openDocument(first, DOC.severance)
-    await openDocument(second, DOC.severance)
+    const first = await context.newPage();
+    const second = await context.newPage();
+    await openDocument(first, DOC.severance);
+    await openDocument(second, DOC.severance);
 
-    await first.getByTestId('block-b_sv04').getByRole('textbox').fill('One.')
-    await saveAndExpectSuccess(first)
+    await first.getByTestId("block-b_sv04").getByRole("textbox").fill("One.");
+    await saveAndExpectSuccess(first);
 
-    await second.getByTestId('block-b_sv04').getByRole('textbox').fill('Two.')
-    await save(second)
-    await expect(second.getByTestId('conflict-notice')).toBeVisible()
+    await second.getByTestId("block-b_sv04").getByRole("textbox").fill("Two.");
+    await save(second);
+    await expect(second.getByTestId("conflict-notice")).toBeVisible();
 
-    await second.reload()
-    await expect(second.getByTestId('block-list')).toBeVisible()
-    await expect(second.getByTestId('conflict-notice')).toHaveCount(0)
+    await second.reload();
+    await expect(second.getByTestId("block-list")).toBeVisible();
+    await expect(second.getByTestId("conflict-notice")).toHaveCount(0);
 
-    await second.getByTestId('block-b_sv04').getByRole('textbox').fill('Two.')
-    await saveAndExpectSuccess(second)
-    expect(await bodyJson(second)).toContain('Two.')
-  })
+    await second.getByTestId("block-b_sv04").getByRole("textbox").fill("Two.");
+    await saveAndExpectSuccess(second);
+    expect(await bodyJson(second)).toContain("Two.");
+  });
 
-  test('saving twice in a row from the same tab does not self-conflict', async ({
+  test("saving twice in a row from the same tab does not self-conflict", async ({
     page,
   }) => {
     // The version the tab holds has to advance on every successful save,
     // or the second save collides with the tab's own first one.
-    await openDocument(page, DOC.severance)
+    await openDocument(page, DOC.severance);
 
-    await page.getByTestId('block-b_sv04').getByRole('textbox').fill('First.')
-    await saveAndExpectSuccess(page)
+    await page.getByTestId("block-b_sv04").getByRole("textbox").fill("First.");
+    await saveAndExpectSuccess(page);
 
-    await page.getByTestId('block-b_sv04').getByRole('textbox').fill('Second.')
-    await saveAndExpectSuccess(page)
+    await page.getByTestId("block-b_sv04").getByRole("textbox").fill("Second.");
+    await saveAndExpectSuccess(page);
 
-    await expect(page.getByTestId('conflict-notice')).toHaveCount(0)
-    expect(await bodyJson(page)).toContain('Second.')
-  })
-})
+    await expect(page.getByTestId("conflict-notice")).toHaveCount(0);
+    expect(await bodyJson(page)).toContain("Second.");
+  });
+});

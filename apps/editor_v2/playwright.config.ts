@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test'
+import { defineConfig, devices } from "@playwright/test";
 
 /**
  * Behavioural E2E for the block editor spike.
@@ -16,33 +16,33 @@ import { defineConfig, devices } from '@playwright/test'
  *
  * A dedicated port (3092) avoids colliding with a hand-run `pnpm dev`.
  */
-const PORT = 3092
-const BASE_URL = `http://localhost:${PORT}`
+const PORT = 3092;
+const BASE_URL = `http://localhost:${PORT}`;
 
 export default defineConfig({
-  testDir: './e2e',
+  testDir: "./e2e",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: 0,
   workers: 1,
-  reporter: [['list']],
+  reporter: [["list"]],
   // Booting PGlite and seeding 163 pharmacy records takes a moment on the
   // first paint of every test; give assertions room.
   expect: { timeout: 20_000 },
   use: {
     baseURL: BASE_URL,
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
     command: `pnpm exec vite dev --port ${PORT}`,
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
-    stdout: 'ignore',
-    stderr: 'pipe',
+    stdout: "ignore",
+    stderr: "pipe",
   },
-})
+});

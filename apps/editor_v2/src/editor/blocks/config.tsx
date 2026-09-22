@@ -6,8 +6,8 @@ import type {
   FacetValue,
   FinderBlock,
   SortOption,
-} from '@govtech-bb/block-kit'
-import { COMPUTED_FACETS } from '@govtech-bb/block-kit'
+} from "@govtech-bb/block-kit";
+import { COMPUTED_FACETS } from "@govtech-bb/block-kit";
 import {
   CheckField,
   Field,
@@ -17,7 +17,7 @@ import {
   SelectField,
   TextAreaField,
   TextField,
-} from '../fields'
+} from "../fields";
 
 /**
  * The config block editors. Typed sub-forms over the block's JSONB, with a
@@ -30,21 +30,21 @@ import {
  */
 
 interface ConfigProps<T> {
-  block: T
-  onChange: (block: T) => void
-  collections: CollectionDefinition[]
+  block: T;
+  onChange: (block: T) => void;
+  collections: CollectionDefinition[];
 }
 
 const collectionOptions = (collections: CollectionDefinition[]) => [
-  { value: '', label: '— choose a collection —' },
+  { value: "", label: "— choose a collection —" },
   ...collections.map((c) => ({ value: c.key, label: `${c.title} (${c.key})` })),
-]
+];
 
 const fieldsOf = (
   collections: CollectionDefinition[],
   key: string,
-): CollectionDefinition['schema']['fields'] =>
-  collections.find((c) => c.key === key)?.schema.fields ?? []
+): CollectionDefinition["schema"]["fields"] =>
+  collections.find((c) => c.key === key)?.schema.fields ?? [];
 
 function FieldSelect({
   label,
@@ -54,22 +54,22 @@ function FieldSelect({
   extra = [],
   onChange,
 }: {
-  label: string
-  hint?: string
-  value: string
-  fields: CollectionDefinition['schema']['fields']
-  extra?: Array<{ value: string; label: string }>
-  onChange: (value: string) => void
+  label: string;
+  hint?: string;
+  value: string;
+  fields: CollectionDefinition["schema"]["fields"];
+  extra?: Array<{ value: string; label: string }>;
+  onChange: (value: string) => void;
 }) {
   const options = [
-    { value: '', label: '— choose a field —' },
+    { value: "", label: "— choose a field —" },
     ...fields.map((f) => ({ value: f.key, label: `${f.label} (${f.key})` })),
     ...extra,
-  ]
+  ];
   // A value that no longer resolves must stay visible, or editing a
   // collection silently discards the configuration built against the old one.
   if (value && !options.some((o) => o.value === value)) {
-    options.push({ value, label: `${value} — not a field of this collection` })
+    options.push({ value, label: `${value} — not a field of this collection` });
   }
   return (
     <Field label={label} hint={hint}>
@@ -85,7 +85,7 @@ function FieldSelect({
         ))}
       </select>
     </Field>
-  )
+  );
 }
 
 /* ------------------------------------------------------------- finder */
@@ -96,18 +96,18 @@ function FacetEditor({
   collections,
   collectionKey,
 }: {
-  facet: Facet
-  onChange: (facet: Facet) => void
-  collections: CollectionDefinition[]
-  collectionKey: string
+  facet: Facet;
+  onChange: (facet: Facet) => void;
+  collections: CollectionDefinition[];
+  collectionKey: string;
 }) {
-  const fields = fieldsOf(collections, collectionKey)
+  const fields = fieldsOf(collections, collectionKey);
   const computed = Array.isArray(facet.computed_from)
     ? facet.computed_from
     : facet.computed_from
       ? [facet.computed_from]
-      : []
-  const hasPredicate = facet.key in COMPUTED_FACETS
+      : [];
+  const hasPredicate = facet.key in COMPUTED_FACETS;
 
   return (
     <div className="ed-stack">
@@ -127,14 +127,14 @@ function FacetEditor({
           label="Control"
           value={facet.type}
           options={[
-            { value: 'checkbox', label: 'Checkboxes' },
-            { value: 'radio', label: 'Radios' },
+            { value: "checkbox", label: "Checkboxes" },
+            { value: "radio", label: "Radios" },
           ]}
           onChange={(type) => onChange({ ...facet, type })}
         />
       </div>
 
-      <p className={hasPredicate ? 'ed-note ed-note-ok' : 'ed-note'}>
+      <p className={hasPredicate ? "ed-note ed-note-ok" : "ed-note"}>
         {hasPredicate
           ? `"${facet.key}" has a developer-shipped predicate — it filters on more than one field.`
           : `"${facet.key}" has no shipped predicate, so it matches on the field value directly.`}
@@ -156,9 +156,9 @@ function FacetEditor({
         <SelectField
           label="Options from"
           hint="Draw the choices from another collection's records."
-          value={facet.allowed_values_from ?? ''}
+          value={facet.allowed_values_from ?? ""}
           options={[
-            { value: '', label: '— list them below —' },
+            { value: "", label: "— list them below —" },
             ...collections.map((c) => ({ value: c.key, label: c.key })),
           ]}
           onChange={(key) =>
@@ -168,7 +168,9 @@ function FacetEditor({
         <CheckField
           label="Scrollable group"
           checked={facet.large ?? false}
-          onChange={(large) => onChange({ ...facet, large: large || undefined })}
+          onChange={(large) =>
+            onChange({ ...facet, large: large || undefined })
+          }
         />
       </div>
 
@@ -177,23 +179,37 @@ function FacetEditor({
           legend="Options"
           items={facet.allowed_values ?? []}
           onChange={(allowed_values) => onChange({ ...facet, allowed_values })}
-          create={() => ({ value: '', label: '' })}
-          itemLabel={(option) => option.label || option.value || 'New option'}
+          create={() => ({ value: "", label: "" })}
+          itemLabel={(option) => option.label || option.value || "New option"}
           renderItem={(option, update) => (
             <div className="ed-row">
-              <TextField label="Value" value={option.value} onChange={(value) => update({ ...option, value })} />
-              <TextField label="Label" value={option.label} onChange={(label) => update({ ...option, label })} />
-              <CheckField label="Selected by default" checked={option.default ?? false} onChange={(on) => update({ ...option, default: on || undefined })} />
+              <TextField
+                label="Value"
+                value={option.value}
+                onChange={(value) => update({ ...option, value })}
+              />
+              <TextField
+                label="Label"
+                value={option.label}
+                onChange={(label) => update({ ...option, label })}
+              />
+              <CheckField
+                label="Selected by default"
+                checked={option.default ?? false}
+                onChange={(on) =>
+                  update({ ...option, default: on || undefined })
+                }
+              />
             </div>
           )}
         />
       )}
 
       <p className="ed-field-hint">
-        Fields available: {fields.map((f) => f.key).join(', ') || 'none'}
+        Fields available: {fields.map((f) => f.key).join(", ") || "none"}
       </p>
     </div>
-  )
+  );
 }
 
 export function FinderEditor({
@@ -201,7 +217,7 @@ export function FinderEditor({
   onChange,
   collections,
 }: ConfigProps<FinderBlock>) {
-  const fields = fieldsOf(collections, block.collection)
+  const fields = fieldsOf(collections, block.collection);
 
   return (
     <div className="ed-stack">
@@ -272,8 +288,8 @@ export function FinderEditor({
         legend="Facets"
         items={block.facets}
         onChange={(facets) => onChange({ ...block, facets })}
-        create={() => ({ key: '', name: 'New filter', type: 'checkbox' })}
-        itemLabel={(facet) => facet.name || facet.key || 'New facet'}
+        create={() => ({ key: "", name: "New filter", type: "checkbox" })}
+        itemLabel={(facet) => facet.name || facet.key || "New facet"}
         renderItem={(facet, update) => (
           <FacetEditor
             facet={facet}
@@ -288,14 +304,32 @@ export function FinderEditor({
         legend="Sort options"
         items={block.sort}
         onChange={(sort) => onChange({ ...block, sort })}
-        create={() => ({ key: '', name: '' })}
-        itemLabel={(option) => option.name || option.key || 'New sort'}
+        create={() => ({ key: "", name: "" })}
+        itemLabel={(option) => option.name || option.key || "New sort"}
         renderItem={(option, update) => (
           <div className="ed-row">
-            <TextField label="Key" value={option.key} onChange={(key) => update({ ...option, key })} />
-            <TextField label="Label" value={option.name} onChange={(name) => update({ ...option, name })} />
-            <CheckField label="Default" checked={option.default ?? false} onChange={(on) => update({ ...option, default: on || undefined })} />
-            <CheckField label="Needs geolocation" checked={option.requires === 'geolocation'} onChange={(on) => update({ ...option, requires: on ? 'geolocation' : undefined })} />
+            <TextField
+              label="Key"
+              value={option.key}
+              onChange={(key) => update({ ...option, key })}
+            />
+            <TextField
+              label="Label"
+              value={option.name}
+              onChange={(name) => update({ ...option, name })}
+            />
+            <CheckField
+              label="Default"
+              checked={option.default ?? false}
+              onChange={(on) => update({ ...option, default: on || undefined })}
+            />
+            <CheckField
+              label="Needs geolocation"
+              checked={option.requires === "geolocation"}
+              onChange={(on) =>
+                update({ ...option, requires: on ? "geolocation" : undefined })
+              }
+            />
           </div>
         )}
       />
@@ -337,7 +371,7 @@ export function FinderEditor({
         />
       </fieldset>
     </div>
-  )
+  );
 }
 
 /* ----------------------------------------------------------- calendar */
@@ -347,7 +381,7 @@ export function CalendarEditor({
   onChange,
   collections,
 }: ConfigProps<CalendarBlock>) {
-  const fields = fieldsOf(collections, block.collection)
+  const fields = fieldsOf(collections, block.collection);
 
   return (
     <div className="ed-stack">
@@ -379,9 +413,9 @@ export function CalendarEditor({
         hint="The per-holiday trigger is data on each rule row; this selects which policy reads it."
         value={block.substitution_rule}
         options={[
-          { value: 'cap-352', label: 'Public Holidays Act, Cap. 352' },
-          { value: 'next-working-day', label: 'Next working day (naive)' },
-          { value: 'none', label: 'No substitutions' },
+          { value: "cap-352", label: "Public Holidays Act, Cap. 352" },
+          { value: "next-working-day", label: "Next working day (naive)" },
+          { value: "none", label: "No substitutions" },
         ]}
         onChange={(substitution_rule) =>
           onChange({ ...block, substitution_rule })
@@ -394,11 +428,11 @@ export function CalendarEditor({
         onChange={(show_past) => onChange({ ...block, show_past })}
       />
 
-      <Repeatable<CalendarBlock['columns'][number]>
+      <Repeatable<CalendarBlock["columns"][number]>
         legend="Columns"
         items={block.columns}
         onChange={(columns) => onChange({ ...block, columns })}
-        create={() => ({ field: 'name', label: 'Holiday' })}
+        create={() => ({ field: "name", label: "Holiday" })}
         itemLabel={(column) => column.label || column.field}
         renderItem={(column, update) => (
           <div className="ed-row">
@@ -407,16 +441,20 @@ export function CalendarEditor({
               value={column.field}
               fields={fields}
               // `date` is computed from the rule and never stored on the row.
-              extra={[{ value: 'date', label: 'Date (computed)' }]}
+              extra={[{ value: "date", label: "Date (computed)" }]}
               onChange={(field) => update({ ...column, field })}
             />
-            <TextField label="Heading" value={column.label} onChange={(label) => update({ ...column, label })} />
+            <TextField
+              label="Heading"
+              value={column.label}
+              onChange={(label) => update({ ...column, label })}
+            />
             <SelectField
               label="Format"
-              value={column.format ?? 'long_date'}
+              value={column.format ?? "long_date"}
               options={[
-                { value: 'long_date', label: 'Monday, 1 January 2026' },
-                { value: 'short_date', label: '1 Jan 2026' },
+                { value: "long_date", label: "Monday, 1 January 2026" },
+                { value: "short_date", label: "1 Jan 2026" },
               ]}
               onChange={(format) => update({ ...column, format })}
             />
@@ -424,7 +462,7 @@ export function CalendarEditor({
         )}
       />
     </div>
-  )
+  );
 }
 
 /* --------------------------------------------------------- data table */
@@ -452,22 +490,30 @@ export function DataTableEditor({
         value={block.empty_message}
         onChange={(empty_message) => onChange({ ...block, empty_message })}
       />
-      <Repeatable<DataTableBlock['columns'][number]>
+      <Repeatable<DataTableBlock["columns"][number]>
         legend="Columns"
         items={block.columns}
         onChange={(columns) => onChange({ ...block, columns })}
-        create={() => ({ field: '', label: '' })}
-        itemLabel={(column) => column.label || column.field || 'New column'}
+        create={() => ({ field: "", label: "" })}
+        itemLabel={(column) => column.label || column.field || "New column"}
         renderItem={(column, update) => (
           <div className="ed-row">
-            <TextField label="Field" value={column.field} onChange={(field) => update({ ...column, field })} />
-            <TextField label="Heading" value={column.label} onChange={(label) => update({ ...column, label })} />
+            <TextField
+              label="Field"
+              value={column.field}
+              onChange={(field) => update({ ...column, field })}
+            />
+            <TextField
+              label="Heading"
+              value={column.label}
+              onChange={(label) => update({ ...column, label })}
+            />
           </div>
         )}
       />
       <p className="ed-field-hint">
-        Collections available: {collections.map((c) => c.key).join(', ')}
+        Collections available: {collections.map((c) => c.key).join(", ")}
       </p>
     </div>
-  )
+  );
 }

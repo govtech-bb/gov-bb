@@ -1,15 +1,15 @@
-import { useDocumentList } from '@govtech-bb/spike-db/react'
-import { Link } from '@tanstack/react-router'
+import { useDocumentList } from "@govtech-bb/spike-db/react";
+import { Link } from "@tanstack/react-router";
 
 export function SiteIndex() {
-  const documents = useDocumentList()
+  const documents = useDocumentList();
 
   return (
     <div className="bk-document">
       <h1 className="bk-title">Block editor spike</h1>
       <p className="bk-description">
-        Three pages, chosen because they are awkward in different ways. Each
-        is rendered from a block document in the local Postgres by the same
+        Three pages, chosen because they are awkward in different ways. Each is
+        rendered from a block document in the local Postgres by the same
         renderer the editor previews with.
       </p>
 
@@ -36,5 +36,5 @@ export function SiteIndex() {
         </Link>
       </p>
     </div>
-  )
+  );
 }

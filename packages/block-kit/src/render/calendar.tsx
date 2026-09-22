@@ -1,46 +1,51 @@
-import { useMemo, useState } from 'react'
-import { fmtFullDate, startOfDay } from '../dates'
-import { holidaysForYear, type HolidayRuleRecord } from '../holidays'
-import type { CalendarBlock } from '../types'
-import type { RenderContext } from './spans'
+import { useMemo, useState } from "react";
+import { fmtFullDate, startOfDay } from "../dates";
+import { holidaysForYear, type HolidayRuleRecord } from "../holidays";
+import type { CalendarBlock } from "../types";
+import type { RenderContext } from "./spans";
 
 const shortDate = (d: Date) =>
-  `${d.getUTCDate()} ${d.toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' })} ${d.getUTCFullYear()}`
+  `${d.getUTCDate()} ${d.toLocaleString("en-GB", { month: "short", timeZone: "UTC" })} ${d.getUTCFullYear()}`;
 
 export function CalendarIsland({
   block,
   ctx,
   today = new Date(),
 }: {
-  block: CalendarBlock
-  ctx: RenderContext
-  today?: Date
+  block: CalendarBlock;
+  ctx: RenderContext;
+  today?: Date;
 }) {
-  const rules = (ctx.data[block.collection] ??
-    []) as unknown as HolidayRuleRecord[]
+  // Memoised: `ctx.data[key] ?? []` is a fresh array on every render, which
+  // would make the rows useMemo below recompute each time.
+  const rules = useMemo(
+    () => (ctx.data[block.collection] ?? []) as unknown as HolidayRuleRecord[],
+    [ctx.data, block.collection],
+  );
 
-  const thisYear = today.getUTCFullYear()
+  const thisYear = today.getUTCFullYear();
   const [year, setYear] = useState(() =>
     Math.min(Math.max(thisYear, block.year_range.min), block.year_range.max),
-  )
+  );
 
   const years = useMemo(() => {
-    const out: number[] = []
-    for (let y = block.year_range.min; y <= block.year_range.max; y++) out.push(y)
-    return out
-  }, [block.year_range.min, block.year_range.max])
+    const out: number[] = [];
+    for (let y = block.year_range.min; y <= block.year_range.max; y++)
+      out.push(y);
+    return out;
+  }, [block.year_range.min, block.year_range.max]);
 
   const rows = useMemo(() => {
-    const all = holidaysForYear(rules, year, block.substitution_rule)
-    if (block.show_past) return all
-    const cutoff = startOfDay(today)
-    return all.filter((holiday) => holiday.date >= cutoff)
-  }, [rules, year, block.substitution_rule, block.show_past, today])
+    const all = holidaysForYear(rules, year, block.substitution_rule);
+    if (block.show_past) return all;
+    const cutoff = startOfDay(today);
+    return all.filter((holiday) => holiday.date >= cutoff);
+  }, [rules, year, block.substitution_rule, block.show_past, today]);
 
   return (
     <div className="bk-calendar">
       <label className="bk-calendar-year">
-        Year{' '}
+        Year{" "}
         <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
           {years.map((option) => (
             <option key={option} value={option}>
@@ -64,25 +69,25 @@ export function CalendarIsland({
           {rows.map((holiday, index) => (
             <tr
               key={`${holiday.name}-${index}`}
-              className={holiday.substitute ? 'bk-substitute' : undefined}
+              className={holiday.substitute ? "bk-substitute" : undefined}
             >
               {block.columns.map((column) => {
-                if (column.field === 'date') {
+                if (column.field === "date") {
                   return (
                     <td key={column.field}>
-                      {column.format === 'short_date'
+                      {column.format === "short_date"
                         ? shortDate(holiday.date)
                         : fmtFullDate(holiday.date)}
                     </td>
-                  )
+                  );
                 }
                 const value =
-                  column.field === 'name'
+                  column.field === "name"
                     ? holiday.name
-                    : column.field === 'note'
-                      ? (holiday.note ?? '')
-                      : ''
-                return <td key={column.field}>{value}</td>
+                    : column.field === "note"
+                      ? (holiday.note ?? "")
+                      : "";
+                return <td key={column.field}>{value}</td>;
               })}
             </tr>
           ))}
@@ -90,9 +95,9 @@ export function CalendarIsland({
       </table>
       {rows.length === 0 ? (
         <p className="bk-empty">
-          {ctx.loading ? 'Loading…' : `No holidays left in ${year}.`}
+          {ctx.loading ? "Loading…" : `No holidays left in ${year}.`}
         </p>
       ) : null}
     </div>
-  )
+  );
 }

@@ -1,18 +1,18 @@
-import { getDb, type SpikeDb } from '@govtech-bb/spike-db'
-import { SpikeDbProvider } from '@govtech-bb/spike-db/react'
-import { siteRoutes } from '@govtech-bb/landing-v2'
+import { getDb, type SpikeDb } from "@govtech-bb/spike-db";
+import { SpikeDbProvider } from "@govtech-bb/spike-db/react";
+import { siteRoutes } from "@govtech-bb/landing-v2";
 import {
   createRootRoute,
   createRouter,
   Outlet,
   RouterProvider,
-} from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
-import { createRoot } from 'react-dom/client'
-import '@govtech-bb/block-kit/styles.css'
-import './styles.css'
-import { editorRoutes } from './editor/routes'
-import { Chrome } from './chrome'
+} from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { createRoot } from "react-dom/client";
+import "@govtech-bb/block-kit/styles.css";
+import "./styles.css";
+import { editorRoutes } from "./editor/routes";
+import { Chrome } from "./chrome";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -20,7 +20,7 @@ const rootRoute = createRootRoute({
       <Outlet />
     </Chrome>
   ),
-})
+});
 
 // Two trees, one router: /editor/* is the editor, everything else is the
 // site. Order matters — the site's splat route would otherwise swallow
@@ -31,17 +31,17 @@ const router = createRouter({
     ...siteRoutes(rootRoute),
   ]),
   defaultPreload: false,
-})
+});
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface Register {
-    router: typeof router
+    router: typeof router;
   }
 }
 
 function Boot() {
-  const [db, setDb] = useState<SpikeDb | null>(null)
-  const [error, setError] = useState<Error | null>(null)
+  const [db, setDb] = useState<SpikeDb | null>(null);
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     // Async by construction. This is the whole reason PGlite replaced the
@@ -51,10 +51,10 @@ function Boot() {
     getDb().then((ready) => {
       // Spike convenience: the console is the fastest way to ask the
       // database a question while building. Never ships anywhere.
-      ;(window as unknown as { db: SpikeDb }).db = ready
-      setDb(ready)
-    }, setError)
-  }, [])
+      (window as unknown as { db: SpikeDb }).db = ready;
+      setDb(ready);
+    }, setError);
+  }, []);
 
   if (error) {
     return (
@@ -62,16 +62,16 @@ function Boot() {
         <h1>The database did not start</h1>
         <pre>{error.message}</pre>
       </div>
-    )
+    );
   }
 
-  if (!db) return <div className="boot">Starting Postgres…</div>
+  if (!db) return <div className="boot">Starting Postgres…</div>;
 
   return (
     <SpikeDbProvider db={db}>
       <RouterProvider router={router} />
     </SpikeDbProvider>
-  )
+  );
 }
 
 /**
@@ -88,4 +88,4 @@ function Boot() {
  * on PGlite's React bindings, and it is a development-only behaviour, so it
  * would not have shown up in a production build.
  */
-createRoot(document.getElementById('root')!).render(<Boot />)
+createRoot(document.getElementById("root")!).render(<Boot />);

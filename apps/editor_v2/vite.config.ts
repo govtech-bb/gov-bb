@@ -1,5 +1,5 @@
-import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
 
 /**
  * ONE dev server, ONE origin, two route trees.
@@ -14,10 +14,10 @@ export default defineConfig({
   root: import.meta.dirname,
   plugins: [react()],
   server: { port: 3010 },
-  worker: { format: 'es' },
+  worker: { format: "es" },
   optimizeDeps: {
     // PGlite ships WASM + a worker entry; pre-bundling breaks the worker's
     // relative asset resolution.
-    exclude: ['@electric-sql/pglite'],
+    exclude: ["@electric-sql/pglite"],
   },
-})
+});

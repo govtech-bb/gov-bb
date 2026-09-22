@@ -1,15 +1,15 @@
-import { useDocumentList } from '@govtech-bb/spike-db/react'
-import { Link } from '@tanstack/react-router'
+import { useDocumentList } from "@govtech-bb/spike-db/react";
+import { Link } from "@tanstack/react-router";
 
 export function DocumentList() {
-  const documents = useDocumentList()
+  const documents = useDocumentList();
 
   return (
     <div className="ed-page">
       <h1>Pages</h1>
       <p className="ed-lede">
-        Three pages chosen because they are awkward in different ways, plus
-        the calculator stub the severance start link needs.
+        Three pages chosen because they are awkward in different ways, plus the
+        calculator stub the severance start link needs.
       </p>
 
       {documents === undefined ? (
@@ -43,5 +43,5 @@ export function DocumentList() {
         </table>
       )}
     </div>
-  )
+  );
 }

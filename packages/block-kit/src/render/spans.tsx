@@ -1,14 +1,14 @@
-import type { ReactNode } from 'react'
-import type { Ref, Span } from '../types'
+import type { ReactNode } from "react";
+import type { Ref, Span } from "../types";
 
 export interface RenderContext {
   /** Collection records, keyed by collection key. */
-  data: Record<string, Array<Record<string, unknown>>>
-  refs: Record<string, Ref>
+  data: Record<string, Array<Record<string, unknown>>>;
+  refs: Record<string, Ref>;
   /** True while the collections this page reads are still arriving. */
-  loading?: boolean
+  loading?: boolean;
   /** Turns a start_link target into an href. */
-  resolveHref?: (kind: 'form' | 'page' | 'external', target: string) => string
+  resolveHref?: (kind: "form" | "page" | "external", target: string) => string;
 }
 
 /**
@@ -17,33 +17,33 @@ export interface RenderContext {
  * the renderer does not have to change when references arrive.
  */
 function resolveSpanValue(span: Span, ctx: RenderContext): string {
-  if (!span.ref) return ''
-  const ref = ctx.refs[span.ref]
-  if (!ref || ref.kind !== 'record') return ''
+  if (!span.ref) return "";
+  const ref = ctx.refs[span.ref];
+  if (!ref || ref.kind !== "record") return "";
   const record = (ctx.data[ref.collection] ?? []).find(
     (row) => row.slug === ref.record || row.key === ref.record,
-  )
-  const value = span.field ? record?.[span.field] : undefined
-  return value == null ? '' : String(value)
+  );
+  const value = span.field ? record?.[span.field] : undefined;
+  return value == null ? "" : String(value);
 }
 
 function markUp(text: string, span: Span, key: number): ReactNode {
-  let node: ReactNode = text
+  let node: ReactNode = text;
   // Applied outermost-last so <strong><em> nests predictably.
   for (const mark of span.marks ?? []) {
-    if (mark === 'strong') node = <strong>{node}</strong>
-    else if (mark === 'em') node = <em>{node}</em>
-    else if (mark === 'code') node = <code>{node}</code>
+    if (mark === "strong") node = <strong>{node}</strong>;
+    else if (mark === "em") node = <em>{node}</em>;
+    else if (mark === "code") node = <code>{node}</code>;
   }
-  return <span key={key}>{node}</span>
+  return <span key={key}>{node}</span>;
 }
 
 export function Spans({
   content,
   ctx,
 }: {
-  content: Span[]
-  ctx: RenderContext
+  content: Span[];
+  ctx: RenderContext;
 }) {
   return (
     <>
@@ -51,19 +51,19 @@ export function Spans({
         markUp(span.text ?? resolveSpanValue(span, ctx), span, index),
       )}
     </>
-  )
+  );
 }
 
 /** The plain-text projection of a run of spans — used for anchors and alt text. */
 export function spansToText(content: Span[]): string {
-  return content.map((span) => span.text ?? '').join('')
+  return content.map((span) => span.text ?? "").join("");
 }
 
 /** A URL fragment derived from heading text, generated once at creation. */
 export function anchorFromText(text: string): string {
   return text
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80)
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
 }

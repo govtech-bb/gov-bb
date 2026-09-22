@@ -7,7 +7,7 @@
  * partition and the test would prove nothing.
  */
 
-import { expect, test } from '@playwright/test'
+import { expect, test } from "@playwright/test";
 import {
   CALENDAR_URL,
   DOC,
@@ -17,80 +17,80 @@ import {
   openDocument,
   resultItems,
   saveAndExpectSuccess,
-} from './support'
+} from "./support";
 
-test.describe('editor in one tab, site in another', () => {
-  test('prose edited in the editor appears on the site without a reload', async ({
+test.describe("editor in one tab, site in another", () => {
+  test("prose edited in the editor appears on the site without a reload", async ({
     context,
   }) => {
-    const site = await context.newPage()
-    await gotoSite(site, CALENDAR_URL)
-    await expect(site.getByText('Bank holidays in Barbados')).toBeVisible()
+    const site = await context.newPage();
+    await gotoSite(site, CALENDAR_URL);
+    await expect(site.getByText("Bank holidays in Barbados")).toBeVisible();
 
-    const editor = await context.newPage()
-    await openDocument(editor, DOC.calendar)
+    const editor = await context.newPage();
+    await openDocument(editor, DOC.calendar);
     await editor
-      .getByTestId('block-b_bh01')
-      .getByRole('textbox')
-      .fill('Public holidays in Barbados, updated live.')
-    await saveAndExpectSuccess(editor)
+      .getByTestId("block-b_bh01")
+      .getByRole("textbox")
+      .fill("Public holidays in Barbados, updated live.");
+    await saveAndExpectSuccess(editor);
 
     // No site.reload() anywhere in this test. The live query has to do it.
     await expect(
-      site.getByText('Public holidays in Barbados, updated live.'),
-    ).toBeVisible()
-  })
+      site.getByText("Public holidays in Barbados, updated live."),
+    ).toBeVisible();
+  });
 
-  test('a facet added in the editor appears in the live site sidebar', async ({
+  test("a facet added in the editor appears in the live site sidebar", async ({
     context,
   }) => {
-    const site = await context.newPage()
-    await gotoSite(site, PHARMACY_URL)
+    const site = await context.newPage();
+    await gotoSite(site, PHARMACY_URL);
     await expect(
-      filterSidebar(site).getByRole('group', { name: 'Pharmacy type' }),
-    ).toBeVisible()
+      filterSidebar(site).getByRole("group", { name: "Pharmacy type" }),
+    ).toBeVisible();
 
-    const editor = await context.newPage()
-    await openDocument(editor, DOC.pharmacies)
-    await editor.getByTestId('remove-facet-type').click()
-    await saveAndExpectSuccess(editor)
+    const editor = await context.newPage();
+    await openDocument(editor, DOC.pharmacies);
+    await editor.getByTestId("remove-facet-type").click();
+    await saveAndExpectSuccess(editor);
 
     await expect(
-      filterSidebar(site).getByRole('group', { name: 'Pharmacy type' }),
-    ).toHaveCount(0)
-  })
+      filterSidebar(site).getByRole("group", { name: "Pharmacy type" }),
+    ).toHaveCount(0);
+  });
 
-  test('changing results per page repaginates the live site', async ({
+  test("changing results per page repaginates the live site", async ({
     context,
   }) => {
-    const site = await context.newPage()
-    await gotoSite(site, PHARMACY_URL)
-    await expect(resultItems(site)).toHaveCount(20)
+    const site = await context.newPage();
+    await gotoSite(site, PHARMACY_URL);
+    await expect(resultItems(site)).toHaveCount(20);
 
-    const editor = await context.newPage()
-    await openDocument(editor, DOC.pharmacies)
-    await editor.getByTestId('results-per-page').fill('5')
-    await saveAndExpectSuccess(editor)
+    const editor = await context.newPage();
+    await openDocument(editor, DOC.pharmacies);
+    await editor.getByTestId("results-per-page").fill("5");
+    await saveAndExpectSuccess(editor);
 
-    await expect(resultItems(site)).toHaveCount(5)
-  })
+    await expect(resultItems(site)).toHaveCount(5);
+  });
 
-  test('two editor tabs on different documents do not disturb each other', async ({
+  test("two editor tabs on different documents do not disturb each other", async ({
     context,
   }) => {
-    const a = await context.newPage()
-    const b = await context.newPage()
-    await openDocument(a, DOC.severance)
-    await openDocument(b, DOC.calendar)
+    const a = await context.newPage();
+    const b = await context.newPage();
+    await openDocument(a, DOC.severance);
+    await openDocument(b, DOC.calendar);
 
-    await a.getByTestId('block-b_sv04').getByRole('textbox').fill('Minutes.')
-    await saveAndExpectSuccess(a)
+    await a.getByTestId("block-b_sv04").getByRole("textbox").fill("Minutes.");
+    await saveAndExpectSuccess(a);
 
-    await expect(b.getByTestId('conflict-notice')).toHaveCount(0)
+    await expect(b.getByTestId("conflict-notice")).toHaveCount(0);
     await b
-      .getByTestId('block-b_bh01')
-      .getByRole('textbox')
-      .fill('Holidays for the current year.')
-    await saveAndExpectSuccess(b)
-  })
-})
+      .getByTestId("block-b_bh01")
+      .getByRole("textbox")
+      .fill("Holidays for the current year.");
+    await saveAndExpectSuccess(b);
+  });
+});

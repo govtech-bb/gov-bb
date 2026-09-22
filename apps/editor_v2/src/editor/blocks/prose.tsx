@@ -1,4 +1,4 @@
-import { anchorFromText, spansToText } from '@govtech-bb/block-kit'
+import { anchorFromText, spansToText } from "@govtech-bb/block-kit";
 import type {
   HeadingBlock,
   ImagePlaceholderBlock,
@@ -6,21 +6,17 @@ import type {
   NoticeBlock,
   ParagraphBlock,
   StartLinkBlock,
-} from '@govtech-bb/block-kit'
-import {
-  CheckField,
-  SelectField,
-  TextField,
-} from '../fields'
-import { newId } from '../new-block'
-import { SpanEditor } from '../span-editor'
+} from "@govtech-bb/block-kit";
+import { CheckField, SelectField, TextField } from "../fields";
+import { newId } from "../new-block";
+import { SpanEditor } from "../span-editor";
 
 export function ParagraphEditor({
   block,
   onChange,
 }: {
-  block: ParagraphBlock
-  onChange: (block: ParagraphBlock) => void
+  block: ParagraphBlock;
+  onChange: (block: ParagraphBlock) => void;
 }) {
   return (
     <SpanEditor
@@ -28,15 +24,15 @@ export function ParagraphEditor({
       value={block.content}
       onChange={(content) => onChange({ ...block, content })}
     />
-  )
+  );
 }
 
 export function HeadingEditor({
   block,
   onChange,
 }: {
-  block: HeadingBlock
-  onChange: (block: HeadingBlock) => void
+  block: HeadingBlock;
+  onChange: (block: HeadingBlock) => void;
 }) {
   return (
     <div className="ed-stack">
@@ -57,10 +53,10 @@ export function HeadingEditor({
       <div className="ed-row">
         <SelectField
           label="Level"
-          value={String(block.level) as '2' | '3'}
+          value={String(block.level) as "2" | "3"}
           options={[
-            { value: '2', label: 'Heading 2' },
-            { value: '3', label: 'Heading 3' },
+            { value: "2", label: "Heading 2" },
+            { value: "3", label: "Heading 3" },
           ]}
           onChange={(level) =>
             onChange({ ...block, level: Number(level) as 2 | 3 })
@@ -86,15 +82,15 @@ export function HeadingEditor({
         </button>
       </div>
     </div>
-  )
+  );
 }
 
 export function ListEditor({
   block,
   onChange,
 }: {
-  block: ListBlock
-  onChange: (block: ListBlock) => void
+  block: ListBlock;
+  onChange: (block: ListBlock) => void;
 }) {
   return (
     <div className="ed-stack">
@@ -139,22 +135,25 @@ export function ListEditor({
         onClick={() =>
           onChange({
             ...block,
-            items: [...block.items, { id: newId('li'), content: [{ text: '' }] }],
+            items: [
+              ...block.items,
+              { id: newId("li"), content: [{ text: "" }] },
+            ],
           })
         }
       >
         Add item
       </button>
     </div>
-  )
+  );
 }
 
 export function NoticeEditor({
   block,
   onChange,
 }: {
-  block: NoticeBlock
-  onChange: (block: NoticeBlock) => void
+  block: NoticeBlock;
+  onChange: (block: NoticeBlock) => void;
 }) {
   return (
     <div className="ed-stack">
@@ -162,8 +161,8 @@ export function NoticeEditor({
         label="Variant"
         value={block.variant}
         options={[
-          { value: 'info', label: 'Information' },
-          { value: 'warning', label: 'Warning' },
+          { value: "info", label: "Information" },
+          { value: "warning", label: "Warning" },
         ]}
         onChange={(variant) => onChange({ ...block, variant })}
       />
@@ -173,15 +172,15 @@ export function NoticeEditor({
         onChange={(content) => onChange({ ...block, content })}
       />
     </div>
-  )
+  );
 }
 
 export function StartLinkEditor({
   block,
   onChange,
 }: {
-  block: StartLinkBlock
-  onChange: (block: StartLinkBlock) => void
+  block: StartLinkBlock;
+  onChange: (block: StartLinkBlock) => void;
 }) {
   return (
     <div className="ed-stack">
@@ -194,38 +193,38 @@ export function StartLinkEditor({
         label="Target kind"
         value={block.target_kind}
         options={[
-          { value: 'page', label: 'A page on this site' },
-          { value: 'form', label: 'A form (by form id)' },
-          { value: 'external', label: 'An external URL' },
+          { value: "page", label: "A page on this site" },
+          { value: "form", label: "A form (by form id)" },
+          { value: "external", label: "An external URL" },
         ]}
         onChange={(target_kind) => onChange({ ...block, target_kind })}
       />
       <TextField
         label="Target"
         hint={
-          block.target_kind === 'page'
-            ? 'Must be a url that exists in content_pages (rule 8).'
+          block.target_kind === "page"
+            ? "Must be a url that exists in content_pages (rule 8)."
             : undefined
         }
         value={block.target}
         onChange={(target) => onChange({ ...block, target })}
       />
     </div>
-  )
+  );
 }
 
 export function ImagePlaceholderEditor({
   block,
   onChange,
 }: {
-  block: ImagePlaceholderBlock
-  onChange: (block: ImagePlaceholderBlock) => void
+  block: ImagePlaceholderBlock;
+  onChange: (block: ImagePlaceholderBlock) => void;
 }) {
   return (
     <div className="ed-stack">
       <p className="ed-note">
-        No upload in this spike. This block exists so the palette contains
-        one block with no content model at all.
+        No upload in this spike. This block exists so the palette contains one
+        block with no content model at all.
       </p>
       <TextField
         label="Alt text"
@@ -238,5 +237,5 @@ export function ImagePlaceholderEditor({
         onChange={(caption) => onChange({ ...block, caption })}
       />
     </div>
-  )
+  );
 }

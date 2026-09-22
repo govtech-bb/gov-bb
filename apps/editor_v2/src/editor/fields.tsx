@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ReactNode } from "react";
 
 /**
  * The form primitives every config block editor is built from. Deliberately
@@ -11,9 +11,9 @@ export function Field({
   hint,
   children,
 }: {
-  label: string
-  hint?: string
-  children: ReactNode
+  label: string;
+  hint?: string;
+  children: ReactNode;
 }) {
   return (
     <label className="ed-field">
@@ -21,7 +21,7 @@ export function Field({
       {hint ? <span className="ed-field-hint">{hint}</span> : null}
       {children}
     </label>
-  )
+  );
 }
 
 export function TextField({
@@ -31,11 +31,11 @@ export function TextField({
   hint,
   placeholder,
 }: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  hint?: string
-  placeholder?: string
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  hint?: string;
+  placeholder?: string;
 }) {
   return (
     <Field label={label} hint={hint}>
@@ -46,7 +46,7 @@ export function TextField({
         onChange={(event) => onChange(event.target.value)}
       />
     </Field>
-  )
+  );
 }
 
 export function TextAreaField({
@@ -55,10 +55,10 @@ export function TextAreaField({
   onChange,
   hint,
 }: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  hint?: string
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  hint?: string;
 }) {
   return (
     <Field label={label} hint={hint}>
@@ -69,7 +69,7 @@ export function TextAreaField({
         onChange={(event) => onChange(event.target.value)}
       />
     </Field>
-  )
+  );
 }
 
 export function NumberField({
@@ -80,12 +80,12 @@ export function NumberField({
   min,
   max,
 }: {
-  label: string
-  value: number
-  onChange: (value: number) => void
-  hint?: string
-  min?: number
-  max?: number
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  hint?: string;
+  min?: number;
+  max?: number;
 }) {
   return (
     <Field label={label} hint={hint}>
@@ -98,7 +98,7 @@ export function NumberField({
         onChange={(event) => onChange(Number(event.target.value))}
       />
     </Field>
-  )
+  );
 }
 
 export function SelectField<T extends string>({
@@ -108,11 +108,11 @@ export function SelectField<T extends string>({
   onChange,
   hint,
 }: {
-  label: string
-  value: T
-  options: ReadonlyArray<{ value: T; label: string }>
-  onChange: (value: T) => void
-  hint?: string
+  label: string;
+  value: T;
+  options: ReadonlyArray<{ value: T; label: string }>;
+  onChange: (value: T) => void;
+  hint?: string;
 }) {
   return (
     <Field label={label} hint={hint}>
@@ -128,7 +128,7 @@ export function SelectField<T extends string>({
         ))}
       </select>
     </Field>
-  )
+  );
 }
 
 export function CheckField({
@@ -137,10 +137,10 @@ export function CheckField({
   onChange,
   hint,
 }: {
-  label: string
-  checked: boolean
-  onChange: (value: boolean) => void
-  hint?: string
+  label: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  hint?: string;
 }) {
   return (
     <label className="ed-check">
@@ -154,7 +154,7 @@ export function CheckField({
         {hint ? <span className="ed-field-hint">{hint}</span> : null}
       </span>
     </label>
-  )
+  );
 }
 
 /** A comma-separated list of field keys, the shape config blocks keep wanting. */
@@ -164,27 +164,27 @@ export function KeyListField({
   onChange,
   hint,
 }: {
-  label: string
-  value: string[]
-  onChange: (value: string[]) => void
-  hint?: string
+  label: string;
+  value: string[];
+  onChange: (value: string[]) => void;
+  hint?: string;
 }) {
   return (
     <Field label={label} hint={hint}>
       <input
         className="ed-input"
-        value={value.join(', ')}
+        value={value.join(", ")}
         onChange={(event) =>
           onChange(
             event.target.value
-              .split(',')
+              .split(",")
               .map((entry) => entry.trim())
               .filter(Boolean),
           )
         }
       />
     </Field>
-  )
+  );
 }
 
 /** Add / remove / reorder for facets, columns and sort options. */
@@ -196,22 +196,22 @@ export function Repeatable<T>({
   renderItem,
   itemLabel,
 }: {
-  legend: string
-  items: T[]
-  onChange: (items: T[]) => void
-  create: () => T
-  renderItem: (item: T, update: (next: T) => void, index: number) => ReactNode
-  itemLabel: (item: T, index: number) => string
+  legend: string;
+  items: T[];
+  onChange: (items: T[]) => void;
+  create: () => T;
+  renderItem: (item: T, update: (next: T) => void, index: number) => ReactNode;
+  itemLabel: (item: T, index: number) => string;
 }) {
   const replace = (index: number, next: T) =>
-    onChange(items.map((item, i) => (i === index ? next : item)))
+    onChange(items.map((item, i) => (i === index ? next : item)));
   const move = (index: number, delta: number) => {
-    const target = index + delta
-    if (target < 0 || target >= items.length) return
-    const next = [...items]
-    ;[next[index], next[target]] = [next[target], next[index]]
-    onChange(next)
-  }
+    const target = index + delta;
+    if (target < 0 || target >= items.length) return;
+    const next = [...items];
+    [next[index], next[target]] = [next[target], next[index]];
+    onChange(next);
+  };
 
   return (
     <fieldset className="ed-repeatable">
@@ -225,9 +225,32 @@ export function Repeatable<T>({
               <div className="ed-repeatable-head">
                 <strong>{itemLabel(item, index)}</strong>
                 <span className="ed-repeatable-actions">
-                  <button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label="Move up">↑</button>
-                  <button type="button" onClick={() => move(index, 1)} disabled={index === items.length - 1} aria-label="Move down">↓</button>
-                  <button type="button" className="ed-danger" onClick={() => onChange(items.filter((_, i) => i !== index))} aria-label="Remove">Remove</button>
+                  <button
+                    type="button"
+                    onClick={() => move(index, -1)}
+                    disabled={index === 0}
+                    aria-label="Move up"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => move(index, 1)}
+                    disabled={index === items.length - 1}
+                    aria-label="Move down"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    className="ed-danger"
+                    onClick={() =>
+                      onChange(items.filter((_, i) => i !== index))
+                    }
+                    aria-label="Remove"
+                  >
+                    Remove
+                  </button>
                 </span>
               </div>
               {renderItem(item, (next) => replace(index, next), index)}
@@ -235,9 +258,13 @@ export function Repeatable<T>({
           ))}
         </ol>
       )}
-      <button type="button" className="ed-add" onClick={() => onChange([...items, create()])}>
-        Add {legend.toLowerCase().replace(/s$/, '')}
+      <button
+        type="button"
+        className="ed-add"
+        onClick={() => onChange([...items, create()])}
+      >
+        Add {legend.toLowerCase().replace(/s$/, "")}
       </button>
     </fieldset>
-  )
+  );
 }

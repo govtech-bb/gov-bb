@@ -6,57 +6,55 @@ import {
   type BlockType,
   type PageDocument,
   type ValidationError,
-} from '@govtech-bb/block-kit'
-import {
-  ConflictError,
-  ValidationFailedError,
-} from '@govtech-bb/spike-db'
+} from "@govtech-bb/block-kit";
+import { ConflictError, ValidationFailedError } from "@govtech-bb/spike-db";
 import {
   useCollections,
   useDocument,
   useRenderData,
   useStore,
-} from '@govtech-bb/spike-db/react'
-import { Link, useParams } from '@tanstack/react-router'
-import { useEffect, useMemo, useState } from 'react'
-import { BlockEditor } from './blocks'
-import { BLOCK_LABELS, createBlock, INSERTABLE } from './new-block'
+} from "@govtech-bb/spike-db/react";
+import { Link, useParams } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { BlockEditor } from "./blocks";
+import { BLOCK_LABELS, createBlock, INSERTABLE } from "./new-block";
 
 export function EditorPage() {
-  const { id } = useParams({ from: '/editor/$id' })
-  const store = useStore()
-  const loaded = useDocument(id)
-  const collections = useCollections()
+  const { id } = useParams({ from: "/editor/$id" });
+  const store = useStore();
+  const loaded = useDocument(id);
+  const collections = useCollections();
 
   /** The draft. `loadedAt` is the updated_at every save is conditioned on. */
-  const [draft, setDraft] = useState<PageDocument | null>(null)
-  const [loadedAt, setLoadedAt] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [conflict, setConflict] = useState(false)
-  const [savedAt, setSavedAt] = useState<string | null>(null)
-  const [errors, setErrors] = useState<ValidationError[]>([])
+  const [draft, setDraft] = useState<PageDocument | null>(null);
+  const [loadedAt, setLoadedAt] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [conflict, setConflict] = useState(false);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [errors, setErrors] = useState<ValidationError[]>([]);
 
   // Adopt the loaded document once; after that the draft is ours. A live
   // update from another tab surfaces as a conflict on save rather than
   // silently overwriting what is being typed.
   useEffect(() => {
     if (loaded && draft === null) {
-      setDraft(loaded)
-      setLoadedAt(loaded.updated_at)
+      setDraft(loaded);
+      setLoadedAt(loaded.updated_at);
     }
-  }, [loaded, draft])
+  }, [loaded, draft]);
 
   const dirty = useMemo(
     () =>
       draft !== null &&
       loaded !== null &&
       loaded !== undefined &&
-      JSON.stringify(draft) !== JSON.stringify({ ...loaded, updated_at: draft.updated_at }),
+      JSON.stringify(draft) !==
+        JSON.stringify({ ...loaded, updated_at: draft.updated_at }),
     [draft, loaded],
-  )
+  );
 
   const liveErrors = useMemo(() => {
-    if (!draft || !collections) return []
+    if (!draft || !collections) return [];
     return validateDocument(draft, {
       collections,
       pageUrls: [draft.url],
@@ -64,14 +62,14 @@ export function EditorPage() {
       // Rule 8 needs every page url, which this component does not hold;
       // the store re-validates with the full set on save.
       (error) => error.rule !== 8,
-    )
-  }, [draft, collections])
+    );
+  }, [draft, collections]);
 
-  const shown = errors.length > 0 ? errors : liveErrors
-  const grouped = useMemo(() => errorsByBlock(shown), [shown])
+  const shown = errors.length > 0 ? errors : liveErrors;
+  const grouped = useMemo(() => errorsByBlock(shown), [shown]);
 
   if (loaded === undefined || collections === undefined) {
-    return <p className="ed-page">Loading…</p>
+    return <p className="ed-page">Loading…</p>;
   }
   if (loaded === null) {
     return (
@@ -79,24 +77,26 @@ export function EditorPage() {
         <h1>No such page</h1>
         <Link to="/editor">Back to the list</Link>
       </div>
-    )
+    );
   }
-  if (!draft) return <p className="ed-page">Loading…</p>
+  if (!draft) return <p className="ed-page">Loading…</p>;
 
   const update = (next: PageDocument) => {
-    setDraft(next)
-    setErrors([])
-    setConflict(false)
-  }
+    setDraft(next);
+    setErrors([]);
+    setConflict(false);
+  };
 
   const updateBlock = (index: number, block: Block) =>
     update({
       ...draft,
       body: {
         ...draft.body,
-        blocks: draft.body.blocks.map((entry, i) => (i === index ? block : entry)),
+        blocks: draft.body.blocks.map((entry, i) =>
+          i === index ? block : entry,
+        ),
       },
-    })
+    });
 
   const insert = (type: BlockType, at: number) =>
     update({
@@ -109,15 +109,15 @@ export function EditorPage() {
           ...draft.body.blocks.slice(at),
         ],
       },
-    })
+    });
 
   const move = (index: number, delta: number) => {
-    const target = index + delta
-    if (target < 0 || target >= draft.body.blocks.length) return
-    const blocks = [...draft.body.blocks]
-    ;[blocks[index], blocks[target]] = [blocks[target], blocks[index]]
-    update({ ...draft, body: { ...draft.body, blocks } })
-  }
+    const target = index + delta;
+    if (target < 0 || target >= draft.body.blocks.length) return;
+    const blocks = [...draft.body.blocks];
+    [blocks[index], blocks[target]] = [blocks[target], blocks[index]];
+    update({ ...draft, body: { ...draft.body, blocks } });
+  };
 
   const remove = (index: number) =>
     update({
@@ -126,46 +126,48 @@ export function EditorPage() {
         ...draft.body,
         blocks: draft.body.blocks.filter((_, i) => i !== index),
       },
-    })
+    });
 
   const save = async () => {
-    setSaving(true)
-    setErrors([])
-    setConflict(false)
+    setSaving(true);
+    setErrors([]);
+    setConflict(false);
     try {
-      const saved = await store.save(draft, loadedAt)
-      setDraft(saved)
-      setLoadedAt(saved.updated_at)
-      setSavedAt(new Date().toLocaleTimeString())
+      const saved = await store.save(draft, loadedAt);
+      setDraft(saved);
+      setLoadedAt(saved.updated_at);
+      setSavedAt(new Date().toLocaleTimeString());
     } catch (error) {
-      if (error instanceof ValidationFailedError) setErrors(error.errors)
-      else if (error instanceof ConflictError) setConflict(true)
-      else throw error
+      if (error instanceof ValidationFailedError) setErrors(error.errors);
+      else if (error instanceof ConflictError) setConflict(true);
+      else throw error;
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const reload = () => {
-    setDraft(null)
-    setLoadedAt(null)
-    setConflict(false)
-    setErrors([])
-  }
+    setDraft(null);
+    setLoadedAt(null);
+    setConflict(false);
+    setErrors([]);
+  };
 
   return (
     <div className="ed-editor">
       <div className="ed-pane ed-pane-edit">
         <header className="ed-toolbar">
-          <Link to="/editor" className="ed-back">← Pages</Link>
+          <Link to="/editor" className="ed-back">
+            ← Pages
+          </Link>
           <span className="ed-status">
             {conflict
-              ? 'Conflict'
+              ? "Conflict"
               : dirty
-                ? 'Unsaved changes'
+                ? "Unsaved changes"
                 : savedAt
                   ? `Saved at ${savedAt}`
-                  : 'No changes'}
+                  : "No changes"}
           </span>
           <button
             type="button"
@@ -173,9 +175,14 @@ export function EditorPage() {
             onClick={save}
             disabled={saving || shown.length > 0}
           >
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? "Saving…" : "Save"}
           </button>
-          <a className="ed-secondary" href={draft.url} target="_blank" rel="noreferrer">
+          <a
+            className="ed-secondary"
+            href={draft.url}
+            target="_blank"
+            rel="noreferrer"
+          >
             View on the site
           </a>
         </header>
@@ -196,15 +203,15 @@ export function EditorPage() {
         {shown.length > 0 ? (
           <div className="ed-alert ed-alert-errors">
             <strong>
-              {shown.length} problem{shown.length === 1 ? '' : 's'} must be
+              {shown.length} problem{shown.length === 1 ? "" : "s"} must be
               fixed before this can be saved
             </strong>
             <ul>
               {shown.map((error, index) => (
                 <li key={index}>
-                  <a href={`#block-${error.blockId ?? 'document'}`}>
+                  <a href={`#block-${error.blockId ?? "document"}`}>
                     Rule {error.rule}
-                  </a>{' '}
+                  </a>{" "}
                   — {error.message}
                 </li>
               ))}
@@ -237,7 +244,7 @@ export function EditorPage() {
             <textarea
               className="ed-input ed-textarea"
               rows={2}
-              value={draft.description ?? ''}
+              value={draft.description ?? ""}
               onChange={(e) =>
                 update({ ...draft, description: e.target.value || null })
               }
@@ -248,29 +255,55 @@ export function EditorPage() {
         <InsertMenu at={0} onInsert={insert} />
 
         {draft.body.blocks.map((block, index) => {
-          const blockErrors = grouped.get(block.id) ?? []
+          const blockErrors = grouped.get(block.id) ?? [];
           return (
             <div key={block.id}>
               <section
                 id={`block-${block.id}`}
                 className={
-                  blockErrors.length > 0 ? 'ed-block ed-block-invalid' : 'ed-block'
+                  blockErrors.length > 0
+                    ? "ed-block ed-block-invalid"
+                    : "ed-block"
                 }
               >
                 <header className="ed-block-head">
-                  <span className="ed-block-type">{BLOCK_LABELS[block.type]}</span>
+                  <span className="ed-block-type">
+                    {BLOCK_LABELS[block.type]}
+                  </span>
                   <code className="ed-block-id">{block.id}</code>
                   <span className="ed-block-actions">
-                    <button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label="Move up">↑</button>
-                    <button type="button" onClick={() => move(index, 1)} disabled={index === draft.body.blocks.length - 1} aria-label="Move down">↓</button>
-                    <button type="button" className="ed-danger" onClick={() => remove(index)}>Delete</button>
+                    <button
+                      type="button"
+                      onClick={() => move(index, -1)}
+                      disabled={index === 0}
+                      aria-label="Move up"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => move(index, 1)}
+                      disabled={index === draft.body.blocks.length - 1}
+                      aria-label="Move down"
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      className="ed-danger"
+                      onClick={() => remove(index)}
+                    >
+                      Delete
+                    </button>
                   </span>
                 </header>
 
                 {blockErrors.length > 0 ? (
                   <ul className="ed-block-errors">
                     {blockErrors.map((error, i) => (
-                      <li key={i}>Rule {error.rule} — {error.message}</li>
+                      <li key={i}>
+                        Rule {error.rule} — {error.message}
+                      </li>
                     ))}
                   </ul>
                 ) : null}
@@ -284,13 +317,13 @@ export function EditorPage() {
               </section>
               <InsertMenu at={index + 1} onInsert={insert} />
             </div>
-          )
+          );
         })}
       </div>
 
       <Preview doc={draft} />
     </div>
-  )
+  );
 }
 
 /**
@@ -301,10 +334,10 @@ function InsertMenu({
   at,
   onInsert,
 }: {
-  at: number
-  onInsert: (type: BlockType, at: number) => void
+  at: number;
+  onInsert: (type: BlockType, at: number) => void;
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
   return (
     <div className="ed-insert">
       {open ? (
@@ -315,36 +348,44 @@ function InsertMenu({
               type="button"
               role="menuitem"
               onClick={() => {
-                onInsert(type, at)
-                setOpen(false)
+                onInsert(type, at);
+                setOpen(false);
               }}
             >
               {BLOCK_LABELS[type]}
             </button>
           ))}
-          <button type="button" className="ed-insert-cancel" onClick={() => setOpen(false)}>
+          <button
+            type="button"
+            className="ed-insert-cancel"
+            onClick={() => setOpen(false)}
+          >
             Cancel
           </button>
         </div>
       ) : (
-        <button type="button" className="ed-insert-open" onClick={() => setOpen(true)}>
+        <button
+          type="button"
+          className="ed-insert-open"
+          onClick={() => setOpen(true)}
+        >
           + Insert block
         </button>
       )}
     </div>
-  )
+  );
 }
 
 /** The preview pane, so the editor is fully testable before the site exists. */
 function Preview({ doc }: { doc: PageDocument }) {
-  const { data, loading } = useRenderData(doc)
-  const wide = doc.body.blocks.some((block) => block.type === 'finder')
+  const { data, loading } = useRenderData(doc);
+  const wide = doc.body.blocks.some((block) => block.type === "finder");
   return (
     <div className="ed-pane ed-pane-preview">
       <header className="ed-preview-head">Preview</header>
-      <div className={wide ? 'bk-document bk-wide' : 'bk-document'}>
+      <div className={wide ? "bk-document bk-wide" : "bk-document"}>
         <RenderDocument doc={doc} data={data} loading={loading} />
       </div>
     </div>
-  )
+  );
 }

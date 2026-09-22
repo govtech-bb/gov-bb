@@ -5,45 +5,45 @@
  * server-side.
  */
 
-import type { PGliteInterface } from '@electric-sql/pglite'
+import type { PGliteInterface } from "@electric-sql/pglite";
 import {
   validateDocument,
   type CollectionDefinition,
   type PageDocument,
   type SchemaName,
   type ValidationError,
-} from '@govtech-bb/block-kit'
+} from "@govtech-bb/block-kit";
 
 export interface DocumentSummary {
-  id: string
-  url: string
-  title: string
-  schema_name: SchemaName
-  updated_at: string
+  id: string;
+  url: string;
+  title: string;
+  schema_name: SchemaName;
+  updated_at: string;
 }
 
 export interface DocumentStore {
-  list(): Promise<DocumentSummary[]>
-  get(id: string): Promise<PageDocument | null>
-  save(doc: PageDocument, ifUpdatedAt: string | null): Promise<PageDocument>
-  delete(id: string): Promise<void>
+  list(): Promise<DocumentSummary[]>;
+  get(id: string): Promise<PageDocument | null>;
+  save(doc: PageDocument, ifUpdatedAt: string | null): Promise<PageDocument>;
+  delete(id: string): Promise<void>;
 }
 
 /** Thrown when `save` matched no row: someone else changed it first. */
 export class ConflictError extends Error {
   constructor(readonly documentId: string) {
     super(
-      'This page was changed somewhere else since you opened it. Reload to see the current version.',
-    )
-    this.name = 'ConflictError'
+      "This page was changed somewhere else since you opened it. Reload to see the current version.",
+    );
+    this.name = "ConflictError";
   }
 }
 
 /** Thrown when a document fails any of the nine rules. */
 export class ValidationFailedError extends Error {
   constructor(readonly errors: ValidationError[]) {
-    super(`${errors.length} validation error(s)`)
-    this.name = 'ValidationFailedError'
+    super(`${errors.length} validation error(s)`);
+    this.name = "ValidationFailedError";
   }
 }
 
@@ -51,7 +51,7 @@ const SELECT_DOC = `
   select 1 as version, id::text as id, url, slug, schema_name, document_type,
          title, description, is_draft, body, updated_at::text as updated_at
     from content_pages
-`
+`;
 
 export class PgliteStore implements DocumentStore {
   constructor(private readonly db: PGliteInterface) {}
@@ -62,31 +62,31 @@ export class PgliteStore implements DocumentStore {
               updated_at::text as updated_at
          from content_pages
         order by url`,
-    )
-    return result.rows
+    );
+    return result.rows;
   }
 
   async get(id: string): Promise<PageDocument | null> {
     const result = await this.db.query<PageDocument>(
       `${SELECT_DOC} where id = $1::uuid`,
       [id],
-    )
-    return result.rows[0] ?? null
+    );
+    return result.rows[0] ?? null;
   }
 
   async getByUrl(url: string): Promise<PageDocument | null> {
     const result = await this.db.query<PageDocument>(
       `${SELECT_DOC} where url = $1`,
       [url],
-    )
-    return result.rows[0] ?? null
+    );
+    return result.rows[0] ?? null;
   }
 
   async listCollections(): Promise<CollectionDefinition[]> {
     const result = await this.db.query<CollectionDefinition>(
       `select key, title, record_key, schema from data_collections order by key`,
-    )
-    return result.rows
+    );
+    return result.rows;
   }
 
   async records(
@@ -97,25 +97,25 @@ export class PgliteStore implements DocumentStore {
         where collection_key = $1 and status = 'published'
         order by record_key`,
       [collectionKey],
-    )
-    return result.rows.map((row) => row.data)
+    );
+    return result.rows.map((row) => row.data);
   }
 
   /** The context the nine rules need, read fresh on every save. */
   private async validationContext() {
     const [collections, urls] = await Promise.all([
       this.listCollections(),
-      this.db.query<{ url: string }>('select url from content_pages'),
-    ])
-    return { collections, pageUrls: urls.rows.map((row) => row.url) }
+      this.db.query<{ url: string }>("select url from content_pages"),
+    ]);
+    return { collections, pageUrls: urls.rows.map((row) => row.url) };
   }
 
   async save(
     doc: PageDocument,
     ifUpdatedAt: string | null,
   ): Promise<PageDocument> {
-    const errors = validateDocument(doc, await this.validationContext())
-    if (errors.length > 0) throw new ValidationFailedError(errors)
+    const errors = validateDocument(doc, await this.validationContext());
+    if (errors.length > 0) throw new ValidationFailedError(errors);
 
     // Zero rows affected means someone else changed the row. One user in
     // one browser will rarely hit it, but the call sites, the error path
@@ -143,17 +143,17 @@ export class PgliteStore implements DocumentStore {
         doc.is_draft,
         JSON.stringify(doc.body),
       ],
-    )
+    );
 
-    if (result.rows.length === 0) throw new ConflictError(doc.id)
-    const saved = result.rows[0]
+    if (result.rows.length === 0) throw new ConflictError(doc.id);
+    const saved = result.rows[0];
 
-    await this.appendChangeEvent(saved)
-    return saved
+    await this.appendChangeEvent(saved);
+    return saved;
   }
 
   async delete(id: string): Promise<void> {
-    await this.db.query('delete from content_pages where id = $1::uuid', [id])
+    await this.db.query("delete from content_pages where id = $1::uuid", [id]);
   }
 
   /**
@@ -166,12 +166,12 @@ export class PgliteStore implements DocumentStore {
       `select coalesce(max(version_no), 0) + 1 as version_no
          from change_events where entity_kind = 'content_page' and entity_id = $1`,
       [doc.id],
-    )
+    );
     await this.db.query(
       `insert into change_events
          (entity_kind, entity_id, version_no, action, snapshot)
        values ('content_page', $1, $2, 'updated', $3::jsonb)`,
       [doc.id, next.rows[0].version_no, JSON.stringify(doc)],
-    )
+    );
   }
 }
