@@ -40,12 +40,14 @@
  *    gating step does not exist here, so the journey is always
  *    application-type → personal-details → contact-details →
  *    workplace-details → documents → check-your-answers → declaration →
- *    submission-confirmation. One test covers the whole form.
+ *    submission-confirmation. Two walks cover the whole form, one per
+ *    `application-type` branch.
  *  - `application-type` is the route question added by #2717: a required
  *    2-option radio ("new" / "renewal"). Choosing "renewal" reveals the
  *    inline `embalmer-licence-number` field (`fieldConditionalOn`), which is
- *    required on that branch only. This walk takes the renewal branch so the
- *    reveal and the field are both exercised.
+ *    required on that branch only. Both branches are walked here: the
+ *    renewal test exercises the reveal and the field, and the new-licence
+ *    test asserts the field stays hidden.
  *  - `workplace-details` does carry ELEMENT-level reveals, on the individual
  *    fields (`overrides.behaviours`, not the step's):
  *    `funeral-establishment-name`, `-address-line-1`, `-address-line-2` and
@@ -88,14 +90,25 @@
  *    `national-id-number` field.
  *  - `documents` no longer carries a medical certificate — it now covers the
  *    statutory eligibility evidence (#2475): `passport-photo` is a required
- *    single-file upload; `embalmer-qualification` (`components/generic-file`)
- *    is required unless the `use-reference-letter` disclosure
- *    (`components/show-hide`) is opened, which flips it `optionalIf` and
- *    reveals `embalmer-evidence` (`fieldConditionalOn`) — the alternative
- *    statutory route for applicants who were embalming before the 1984
- *    regulations. This test opens the disclosure and uploads both files, so
- *    the reveal itself is asserted (hidden → toggle → visible), not just the
- *    happy path.
+ *    single-file upload; `embalmer-qualification`
+ *    (`components/upload-document`), `use-reference-letter`
+ *    (`components/show-hide`) and `embalmer-evidence`
+ *    (`components/upload-document`) are all gated `fieldConditionalOn
+ *    application-type = new` (#2790, mirroring #2739 on the director form),
+ *    so on the renewal walk none of them renders and the step advances on
+ *    `upload-id` and `passport-photo` alone — a renewing embalmer already
+ *    proved the qualification. On the new-licence walk the existing
+ *    either/or stays: `embalmer-qualification` is required unless the
+ *    `use-reference-letter` disclosure is opened, which flips it
+ *    `optionalIf` and reveals `embalmer-evidence` — the alternative statutory
+ *    route for applicants who were embalming before the 1984 regulations.
+ *    That walk opens the disclosure and uploads both files, so the reveal
+ *    itself is asserted (hidden → toggle → visible), not just the happy
+ *    path. The new-licence walk always opens the disclosure now, so the
+ *    "disclosure left closed, qualification only" submit route is no longer
+ *    walked live; it is covered statically by
+ *    apps/api/src/forms/form-definitions/apply-for-funeral-embalmer-licence.spec.ts,
+ *    which pins the qualification's `optionalIf` and `required` rule.
  *  - All four uploads are `components/upload-document` declaring
  *    `fileTypes` + `itemMaxSize`, so each picker carries a real `accept` and
  *    only the listed formats reach presign. The two evidence uploads were
@@ -189,7 +202,7 @@ function nationalIdDigits(): string {
   return `${yy}${mm}${dd}${faker.string.numeric(4)}`;
 }
 
-/** Build a complete, valid set of answers for the single journey. */
+/** Build a complete, valid set of answers for either walk. */
 export function buildData() {
   if (process.env.FAKER_SEED) faker.seed(Number(process.env.FAKER_SEED));
 
@@ -203,7 +216,7 @@ export function buildData() {
     email: "testing@govtech.bb",
     phone: bbMobileNumber(),
 
-    // Only asked on the renewal branch, which is the one this walk takes (#2717).
+    // Only asked, and only asserted, on the renewal walk (#2717).
     licenceNumber: `FEM-${faker.string.numeric(6)}`,
 
     // Timestamped so the resulting submission is easy to find in the target env.
@@ -239,21 +252,27 @@ async function fillMaskedNationalId(
 
 /**
  * The route question (#2717) — the form's first step. Choosing "renewal"
- * reveals `embalmer-licence-number` inline, so this walk takes the renewal
- * branch and asserts the reveal (hidden → select → visible) rather than just
- * the happy path.
+ * reveals `embalmer-licence-number` inline, so the renewal walk asserts the
+ * reveal (hidden → select → visible) rather than just the happy path; the
+ * new-licence walk asserts the field stays hidden, the negative side of the
+ * same reveal.
  */
 export async function fillApplicationType(
   page: Page,
   data: ReturnType<typeof buildData>,
+  applicationType: "new" | "renewal",
 ): Promise<void> {
   const step = expectStep(page, "application-type");
   await expect(page.locator("h1")).toContainText("about your application");
   const licenceNumber = page.locator(`[id="${step}_embalmer-licence-number"]`);
   await expect(licenceNumber).toBeHidden();
-  await selectRadio(page, step, "application-type", "renewal");
-  await expect(licenceNumber).toBeVisible({ timeout: STEP_TIMEOUT });
-  await licenceNumber.fill(data.licenceNumber);
+  await selectRadio(page, step, "application-type", applicationType);
+  if (applicationType === "renewal") {
+    await expect(licenceNumber).toBeVisible({ timeout: STEP_TIMEOUT });
+    await licenceNumber.fill(data.licenceNumber);
+  } else {
+    await expect(licenceNumber).toBeHidden();
+  }
   await advance(page, step);
 }
 
@@ -349,15 +368,20 @@ export async function fillWorkplaceDetails(
 }
 
 /**
- * Step 3 — documents and eligibility evidence. `embalmer-qualification` is
- * uploaded up front (it's required unless the reference-letter disclosure is
- * opened). Opening `use-reference-letter` reveals `embalmer-evidence` — this
- * is the reveal #2475 was raised about, so it's asserted hidden → toggle →
- * visible, then uploaded too.
+ * Step 3 — documents and eligibility evidence. `embalmer-qualification`,
+ * `use-reference-letter` and `embalmer-evidence` are gated
+ * `fieldConditionalOn application-type = new` (#2790, mirroring #2739 on the
+ * director form): on a renewal none of the three renders and the step
+ * advances on the two uploads alone; on a new licence application the
+ * existing either/or stays — `embalmer-qualification` is uploaded up front
+ * (it's required unless the reference-letter disclosure is opened), and
+ * opening `use-reference-letter` reveals `embalmer-evidence` — this is the
+ * reveal #2475 was raised about, so it's asserted hidden → toggle → visible,
+ * then uploaded too.
  */
 export async function fillDocuments(
   page: Page,
-  useReferenceLetter = true,
+  applicationType: "new" | "renewal",
 ): Promise<void> {
   const step = expectStep(page, "documents");
   await expect(page.locator("h1")).toContainText("Add your documents");
@@ -371,16 +395,29 @@ export async function fillDocuments(
     mimeType: TEST_PNG.mimeType,
     buffer: TEST_PNG.buffer,
   });
-  await uploadOne(page, step, "embalmer-qualification", {
-    name: "embalmer-qualification.png",
-    mimeType: TEST_PNG.mimeType,
-    buffer: TEST_PNG.buffer,
-  });
 
-  const embalmerEvidence = page.locator(`[id="${step}_embalmer-evidence"]`);
-  await expect(embalmerEvidence).toBeHidden();
+  if (applicationType === "renewal") {
+    // The gate added for #2790 keeps first-licence statutory evidence off
+    // renewals; a renewing embalmer already proved the qualification.
+    await expect(
+      page.locator(`input[type=file][id="${step}_embalmer-qualification"]`),
+    ).toBeHidden();
+    await expect(
+      page.locator("details.govbb-show-hide summary", {
+        hasText: "Use reference letter instead",
+      }),
+    ).toBeHidden();
+    await expect(page.locator(`[id="${step}_embalmer-evidence"]`)).toBeHidden();
+  } else {
+    await uploadOne(page, step, "embalmer-qualification", {
+      name: "embalmer-qualification.png",
+      mimeType: TEST_PNG.mimeType,
+      buffer: TEST_PNG.buffer,
+    });
 
-  if (useReferenceLetter) {
+    const embalmerEvidence = page.locator(`[id="${step}_embalmer-evidence"]`);
+    await expect(embalmerEvidence).toBeHidden();
+
     // `components/show-hide` renders as a native <details>/<summary>; clicking
     // the summary commits `true` through TanStack-Form, which is what the
     // conditional on `embalmer-evidence` reads.
@@ -395,11 +432,6 @@ export async function fillDocuments(
       mimeType: TEST_PNG.mimeType,
       buffer: TEST_PNG.buffer,
     });
-  } else {
-    // The default statutory route: the disclosure is left closed, so
-    // `embalmer-qualification` keeps its `required` rule (its `optionalIf`
-    // does NOT fire) and the alternative evidence upload is never asked for.
-    await expect(embalmerEvidence).toBeHidden();
   }
 
   await advance(page, step);
@@ -426,7 +458,7 @@ async function confirmAndSubmit(page: Page): Promise<void> {
 }
 
 test.describe("Funeral Embalmer Licence Application — Live Smoke", () => {
-  test("submits a complete application, revealing the reference-letter evidence upload", async ({
+  test("submits a renewal, with the first-licence statutory evidence gated off", async ({
     page,
   }) => {
     const data = buildData();
@@ -434,11 +466,11 @@ test.describe("Funeral Embalmer Licence Application — Live Smoke", () => {
       console.log("[smoke-data]", JSON.stringify(data, null, 2));
 
     await openForm(page);
-    await fillApplicationType(page, data);
+    await fillApplicationType(page, data, "renewal");
     await fillPersonalDetails(page, data);
     await fillContactDetails(page, data);
     await fillWorkplaceDetails(page, data);
-    await fillDocuments(page);
+    await fillDocuments(page, "renewal");
 
     // ─── Check your answers ─────────────────────────────────────────────────
     const step = expectStep(page, "check-your-answers");
@@ -455,7 +487,7 @@ test.describe("Funeral Embalmer Licence Application — Live Smoke", () => {
     if (process.env.SMOKE_HOLD) await page.pause();
   });
 
-  test("submits on the qualification route, leaving the reference-letter disclosure closed", async ({
+  test("submits a new licence application, revealing the reference-letter evidence upload", async ({
     page,
   }) => {
     const data = buildData();
@@ -463,18 +495,20 @@ test.describe("Funeral Embalmer Licence Application — Live Smoke", () => {
       console.log("[smoke-data]", JSON.stringify(data, null, 2));
 
     await openForm(page);
+    await fillApplicationType(page, data, "new");
     await fillPersonalDetails(page, data);
     await fillContactDetails(page, data);
     // "At multiple funeral establishments" reveals no establishment block.
     await fillWorkplaceDetails(page, data, "multiple-establishments");
-    // Disclosure left closed — the default route most applicants take, and the
-    // branch where `embalmer-qualification`'s `optionalIf` must NOT fire.
-    await fillDocuments(page, false);
+    await fillDocuments(page, "new");
 
     const step = expectStep(page, "check-your-answers");
     await expect(page.locator("h1")).toContainText("Check your answers");
     // No single establishment was named, so its answer cannot be on the review.
     await expect(page.getByText(data.establishmentName)).toHaveCount(0);
+    // The licence-number row is absent because the question is only asked
+    // on a renewal.
+    await expect(page.getByText("Your current licence number")).toHaveCount(0);
     if (process.env.SMOKE_HOLD_CYA) await page.pause();
     await advance(page, step);
 
