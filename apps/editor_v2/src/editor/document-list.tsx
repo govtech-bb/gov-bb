@@ -8,8 +8,8 @@ export function DocumentList() {
     <div className="ed-page">
       <h1>Pages</h1>
       <p className="ed-lede">
-        Three pages chosen because they are awkward in different ways, plus the
-        calculator stub the severance start link needs.
+        Four pages chosen because they are awkward in different ways, plus the
+        two stubs their start links need in order to satisfy rule 8.
       </p>
 
       {documents === undefined ? (

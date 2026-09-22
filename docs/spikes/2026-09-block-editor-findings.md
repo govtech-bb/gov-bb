@@ -14,7 +14,7 @@
 **Yes for the document model. Qualified yes for the editor. No for the idea
 that a finder's behaviour is data.**
 
-All three pages round-trip through one `{version, blocks, refs}` document,
+All four pages round-trip through one `{version, blocks, refs}` document,
 render through one renderer, and are edited in one editor. The severance
 page and the bank holiday calendar are comfortable. The pharmacy finder
 works — a content designer can add a facet, reorder it, relabel it, change
@@ -191,6 +191,37 @@ so the seed cannot save. The spike seeds the calculator page as a stub.
 
 This is not pedantry — it is the rule working. Rule 8 is the one that will
 catch real broken start buttons, and it caught one on day one.
+
+### A markdown page smuggles presentation; a block page cannot
+
+The Crop Over permits page was added as a fourth case, and it paid for
+itself immediately. Its markdown source draws a callout like this:
+
+```html
+<div class="border-blue-40 border-l-4 bg-blue-10 p-s">
+  <p><strong>Indicative guidance only.</strong> …</p>
+</div>
+```
+
+Tailwind class names, in a file a content designer owns. Nothing validates
+them, nothing stops the next author inventing a different blue, and a change
+to the design system silently strands every page that hard-coded a token
+name. It is the same failure as an "insert HTML" button, arrived at by a
+different route: the palette was closed, but markdown left a hole under it.
+
+As a block it is `{ type: "notice", variant: "info" }` and the renderer
+decides what a callout looks like. The author picks _what kind of thing this
+is_; the design system picks how it appears.
+
+**This is a stronger argument for the block model than any of the three
+original pages made**, and it generalises: an audit of the other 113 pages
+for raw HTML in markdown would size the problem quickly, and every instance
+found is either a block type that needs to exist or a page that is
+freelancing.
+
+One corollary worth carrying: the notice is also the first seeded block that
+is neither a paragraph nor a heading and still carries marks. Bold inside a
+non-paragraph block round-trips, which had been assumed rather than tested.
 
 ### Substitution is per-holiday, not one policy per calendar
 

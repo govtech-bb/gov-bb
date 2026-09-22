@@ -1,5 +1,5 @@
 /**
- * The three seeded page documents, plus one stub.
+ * The four seeded page documents, plus two stubs.
  *
  * The stub exists because the brief's own seed data fails its own rule 8:
  * the severance start page carries `target_kind: "page"` pointing at
@@ -292,9 +292,152 @@ const pharmacyFinder: SeedDocument = {
   },
 };
 
+/* ------------------------------------- the callout-and-checklist case */
+
+/**
+ * The Crop Over permits entry page.
+ *
+ * Ported from `apps/landing/src/content/crop-over-permits/index.md`, and it
+ * earns its place for one reason: that markdown file contains a hand-written
+ * `<div class="border-blue-40 border-l-4 bg-blue-10 p-s">` to draw a callout.
+ * Presentation smuggled into content, with Tailwind class names baked into a
+ * page an author is supposed to own — exactly the thing a closed block
+ * palette exists to stop. Here it is a `notice` block with a variant, and the
+ * renderer decides what a warning looks like.
+ *
+ * It is also the first seeded page whose notice carries marks, so the bold
+ * run inside a non-paragraph block is exercised rather than assumed.
+ */
+const cropOverPermits: SeedDocument = {
+  url: "/business-trade/crop-over-permits",
+  slug: "crop-over-permits",
+  schema_name: "transaction",
+  document_type: "service_start",
+  title: "Find the permits you need for a Crop Over event",
+  description:
+    "Find out which permits you need to run a Crop Over event, which agencies to contact, and in what order.",
+  is_draft: false,
+  body: {
+    version: 1,
+    blocks: [
+      {
+        id: "b_co01",
+        type: "paragraph",
+        content: [
+          {
+            text: "Find out which permits you need, which agencies to contact, and in what order.",
+          },
+        ],
+      },
+      {
+        id: "b_co02",
+        type: "heading",
+        level: 2,
+        anchor: "how-long-does-it-take",
+        content: [{ text: "How long does it take?" }],
+      },
+      {
+        id: "b_co03",
+        type: "paragraph",
+        content: [
+          {
+            text: "About 5 minutes. Your checklist is based on the type of event you are organising.",
+          },
+        ],
+      },
+      {
+        id: "b_co04",
+        type: "heading",
+        level: 2,
+        anchor: "what-you-will-need",
+        content: [{ text: "What you will need" }],
+      },
+      {
+        id: "b_co05",
+        type: "list",
+        ordered: false,
+        items: [
+          {
+            id: "b_co05a",
+            content: [{ text: "The type of event you are putting on." }],
+          },
+          {
+            id: "b_co05b",
+            content: [
+              {
+                text: "Your venue — private, beach, public road, or on the water.",
+              },
+            ],
+          },
+          {
+            id: "b_co05c",
+            content: [{ text: "How many people you expect." }],
+          },
+          {
+            id: "b_co05d",
+            content: [
+              {
+                text: "Whether you plan to serve alcohol, play music, use a stage, or bring overseas performers.",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "b_co06",
+        type: "notice",
+        variant: "info",
+        content: [
+          { text: "Indicative guidance only.", marks: ["strong"] },
+          {
+            text: " Always confirm requirements directly with each agency before applying.",
+          },
+        ],
+      },
+      {
+        id: "b_co07",
+        type: "start_link",
+        label: "Start now",
+        target_kind: "page",
+        target: "/business-trade/crop-over-permits/form",
+      },
+    ],
+    refs: {},
+  },
+};
+
+/** The stub the Crop Over start link needs in order to satisfy rule 8. */
+const cropOverPermitsForm: SeedDocument = {
+  url: "/business-trade/crop-over-permits/form",
+  slug: "form",
+  schema_name: "transaction",
+  document_type: "service_form",
+  title: "Build your Crop Over permit checklist",
+  description: null,
+  is_draft: false,
+  body: {
+    version: 1,
+    blocks: [
+      {
+        id: "b_cf01",
+        type: "notice",
+        variant: "info",
+        content: [
+          {
+            text: "The permit checklist itself is out of scope for this spike. This page exists so the start link on the previous page resolves.",
+          },
+        ],
+      },
+    ],
+    refs: {},
+  },
+};
+
 export const DOCUMENTS: SeedDocument[] = [
   pharmacyFinder,
   bankHolidays,
   severanceStart,
   severanceForm,
+  cropOverPermits,
+  cropOverPermitsForm,
 ];

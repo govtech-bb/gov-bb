@@ -51,30 +51,13 @@ const noticeSpec = createReactBlockSpec(
     propSchema: { variant: { default: "info", values: ["info", "warning"] } },
   },
   {
-    render: ({ block, editor, contentRef }) => {
+    render: ({ block, contentRef }) => {
       const variant = String(block.props.variant) as NoticeBlock["variant"];
       return (
         <aside
           className={`bk-notice bk-notice-${variant}`}
           data-block-type="notice"
         >
-          <div className="bn-notice-controls" contentEditable={false}>
-            <select
-              aria-label="Notice variant"
-              data-testid={`notice-variant-${block.id}`}
-              value={variant}
-              onChange={(event) =>
-                editor.updateBlock(block, {
-                  props: {
-                    variant: event.target.value as NoticeBlock["variant"],
-                  },
-                })
-              }
-            >
-              <option value="info">Information</option>
-              <option value="warning">Warning</option>
-            </select>
-          </div>
           <div className="bk-notice-body" ref={contentRef} />
         </aside>
       );

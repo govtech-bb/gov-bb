@@ -10,6 +10,7 @@
 import { expect, test } from "@playwright/test";
 import {
   CALENDAR_URL,
+  CROP_OVER_URL,
   PHARMACY_URL,
   SEVERANCE_URL,
   calendarTable,
@@ -151,11 +152,64 @@ test.describe("the pharmacy finder — zero prose", () => {
   });
 });
 
+test.describe("the Crop Over permits page — prose with a callout", () => {
+  test("renders the callout as a notice, not as styled prose", async ({
+    page,
+  }) => {
+    // The markdown this page came from drew its callout with a hand-written
+    // <div class="border-blue-40 border-l-4 bg-blue-10 p-s">. Tailwind class
+    // names in content an author owns is the thing a closed palette exists
+    // to stop, so it is a notice block now and the renderer decides what a
+    // callout looks like.
+    await gotoSite(page, CROP_OVER_URL);
+
+    const notice = page.getByText("Indicative guidance only", {
+      exact: false,
+    });
+    await expect(notice).toBeVisible();
+    // No presentational class names survived the port.
+    await expect(page.locator('[class*="border-blue-40"]')).toHaveCount(0);
+    await expect(page.locator('[class*="bg-blue-10"]')).toHaveCount(0);
+  });
+
+  test("keeps the bold run inside the notice", async ({ page }) => {
+    // The only seeded notice whose content carries marks — a bold run inside
+    // a block that is not a paragraph.
+    await gotoSite(page, CROP_OVER_URL);
+    await expect(
+      page.getByText("Indicative guidance only.", { exact: true }),
+    ).toHaveRole("strong");
+  });
+
+  test("renders its list with the em dash intact", async ({ page }) => {
+    await gotoSite(page, CROP_OVER_URL);
+    await expect(page.getByText("Your venue", { exact: false })).toContainText(
+      "—",
+    );
+  });
+
+  test("the start button goes to the permit checklist", async ({ page }) => {
+    await gotoSite(page, CROP_OVER_URL);
+    const start = page.getByRole("link", { name: "Start now" });
+    await expect(start).toHaveAttribute(
+      "href",
+      "/business-trade/crop-over-permits/form",
+    );
+    await start.click();
+    await expect(page).toHaveURL(/\/business-trade\/crop-over-permits\/form$/);
+  });
+});
+
 test.describe("the site index", () => {
   test("links to all three pages, and each one loads", async ({ page }) => {
     await gotoSite(page, "/");
 
-    for (const url of [SEVERANCE_URL, CALENDAR_URL, PHARMACY_URL]) {
+    for (const url of [
+      SEVERANCE_URL,
+      CALENDAR_URL,
+      PHARMACY_URL,
+      CROP_OVER_URL,
+    ]) {
       await expect(page.locator(`a[href="${url}"]`)).toBeVisible();
     }
 
@@ -166,7 +220,12 @@ test.describe("the site index", () => {
   });
 
   test("every page has exactly one h1", async ({ page }) => {
-    for (const url of [SEVERANCE_URL, CALENDAR_URL, PHARMACY_URL]) {
+    for (const url of [
+      SEVERANCE_URL,
+      CALENDAR_URL,
+      PHARMACY_URL,
+      CROP_OVER_URL,
+    ]) {
       await gotoSite(page, url);
       await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
     }

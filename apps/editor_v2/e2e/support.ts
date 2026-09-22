@@ -32,13 +32,22 @@ export const SEVERANCE_URL =
 export const CALENDAR_URL = "/bank-holiday-calendar";
 export const PHARMACY_URL =
   "/health-and-emergency-services/find-an-open-pharmacy/find";
+export const CROP_OVER_URL = "/business-trade/crop-over-permits";
 
 /** Titles as seeded, used to pick a document out of the editor's list. */
 export const DOC = {
   severance: "Find out how much severance payment you are owed",
   calendar: "Check bank holiday dates",
   pharmacies: "Search for pharmacies",
+  cropOver: "Find the permits you need for a Crop Over event",
 } as const;
+
+/**
+ * Four content pages plus two stubs. The stubs exist because rule 8 makes an
+ * internal `start_link` resolve, and both the severance and Crop Over start
+ * pages point at a form — so a seed without them cannot save.
+ */
+export const SEEDED_DOCUMENT_COUNT = 6;
 
 /**
  * PGlite compiles WASM and runs the migration and seed on first paint.

@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { createMemoryDb } from "./client";
 import { migrate } from "./migrate";
 import { seed } from "./seed";
+import { DOCUMENTS } from "./seed-data/documents";
 
 let db: PGliteInterface;
 
@@ -20,7 +21,7 @@ const count = async (table: string) => {
 describe("migrate and seed", () => {
   it("loads the collections, the records and the documents", async () => {
     expect(await count("data_collections")).toBe(3);
-    expect(await count("content_pages")).toBe(4);
+    expect(await count("content_pages")).toBe(DOCUMENTS.length);
 
     const pharmacies = await db.query<{ n: string }>(
       `select count(*)::text as n from collection_records

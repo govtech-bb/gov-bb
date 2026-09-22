@@ -3,6 +3,7 @@ import type { Block } from "@govtech-bb/block-kit";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createMemoryDb } from "./client";
 import { ConflictError, PgliteStore, ValidationFailedError } from "./store";
+import { DOCUMENTS } from "./seed-data/documents";
 
 let db: PGliteInterface;
 let store: PgliteStore;
@@ -23,13 +24,12 @@ const severance = async () => {
 describe("list and get", () => {
   it("lists every seeded page, ordered by url", async () => {
     const summaries = await store.list();
-    expect(summaries).toHaveLength(4);
-    expect(summaries.map((s) => s.url)).toEqual([
-      "/bank-holiday-calendar",
-      "/health-and-emergency-services/find-an-open-pharmacy/find",
-      "/money-financial-support/calculate-severance-pay/form",
-      "/money-financial-support/calculate-severance-pay/start",
-    ]);
+    expect(summaries).toHaveLength(DOCUMENTS.length);
+    // Derived from the seed rather than listed, so adding a page is a
+    // one-line change here instead of a puzzling failure.
+    expect(summaries.map((s) => s.url)).toEqual(
+      DOCUMENTS.map((d) => d.url).sort(),
+    );
   });
 
   it("returns null for an id that does not exist", async () => {
@@ -185,6 +185,6 @@ describe("delete", () => {
     const doc = await severance();
     await store.delete(doc.id);
     expect(await store.get(doc.id)).toBeNull();
-    expect(await store.list()).toHaveLength(3);
+    expect(await store.list()).toHaveLength(DOCUMENTS.length - 1);
   });
 });

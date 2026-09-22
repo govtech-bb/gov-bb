@@ -4,7 +4,18 @@
  * enough that the three pages read as the real thing side by side.
  */
 
-.bk-document {
+/*
+ * The tokens are declared separately from the page layout so a host that
+ * renders individual blocks outside a document — the editor, which renders
+ * them inside its own editing surface — can opt in with `bk-scope` and get
+ * the palette without inheriting the document's width and typography.
+ *
+ * Without this a `.bk-notice` rendered in the editor resolves
+ * `var(--bk-blue)` to nothing, which makes the whole `border-left`
+ * declaration invalid and the callout renders as plain text.
+ */
+.bk-document,
+.bk-scope {
   --bk-ink: #0b0c0c;
   --bk-muted: #505a5f;
   --bk-line: #b1b4b6;
@@ -12,7 +23,9 @@
   --bk-green: #00703c;
   --bk-green-dark: #005a30;
   --bk-yellow: #ffdd00;
+}
 
+.bk-document {
   max-width: 44rem;
   color: var(--bk-ink);
   font-family:

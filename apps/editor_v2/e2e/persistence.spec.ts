@@ -13,6 +13,7 @@ import {
   DOC,
   gotoEditor,
   block,
+  SEEDED_DOCUMENT_COUNT,
   gotoSite,
   openDocument,
   resultCount,
@@ -23,22 +24,22 @@ import {
 } from "./support";
 
 test.describe("first run and every run after it", () => {
-  test("the seed produces exactly three documents, and a reload does not duplicate them", async ({
+  test("the seed produces its documents once, and a reload does not duplicate them", async ({
     page,
   }) => {
     await gotoEditor(page);
     const links = page.getByTestId("doc-list").getByRole("link");
-    await expect(links).toHaveCount(3);
+    await expect(links).toHaveCount(SEEDED_DOCUMENT_COUNT);
 
     await page.reload();
     await waitForReady(page);
-    await expect(links).toHaveCount(3);
+    await expect(links).toHaveCount(SEEDED_DOCUMENT_COUNT);
 
     // A third load, for the avoidance of doubt — an idempotency bug that
     // needs two reloads to show up is still an idempotency bug.
     await page.reload();
     await waitForReady(page);
-    await expect(links).toHaveCount(3);
+    await expect(links).toHaveCount(SEEDED_DOCUMENT_COUNT);
   });
 
   test("the pharmacy collection seeds 163 records once", async ({ page }) => {
@@ -79,7 +80,9 @@ test.describe("first run and every run after it", () => {
     await page.getByTestId("reset-data").click();
     await waitForReady(page);
 
-    await expect(page.getByTestId("doc-list").getByRole("link")).toHaveCount(3);
+    await expect(page.getByTestId("doc-list").getByRole("link")).toHaveCount(
+      SEEDED_DOCUMENT_COUNT,
+    );
     await gotoSite(page, CALENDAR_URL);
     await expect(page.getByText("Kadooment Day").first()).toBeVisible();
   });

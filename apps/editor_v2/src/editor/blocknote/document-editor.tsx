@@ -138,7 +138,7 @@ export function DocumentEditor({
 
   return (
     <div
-      className="bn-surface"
+      className="bn-surface bk-scope"
       data-testid="editor-surface"
       onPointerOver={(event) => {
         const node = (event.target as HTMLElement).closest?.("[data-id]");
