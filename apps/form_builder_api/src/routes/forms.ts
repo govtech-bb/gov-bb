@@ -3,7 +3,6 @@ import type { EntityManager } from "typeorm";
 import { z } from "zod";
 import { FormDefinitionEntity, FormConfigEntity } from "@govtech-bb/database";
 import {
-  serviceContractRecipeSchema,
   draftRecipeSchema,
   processorSchema,
   type ServiceContractRecipe,
@@ -321,11 +320,11 @@ async function fetchPublishedForms(): Promise<FetchPublishedResult> {
     // to [] so the uniqueness check falls back to drafts-only rather than
     // throwing into a 500 and blocking every save.
     return { ok: true, data: Array.isArray(body?.data) ? body.data : [] };
-  } catch (err: any) {
+  } catch (err) {
     return {
       ok: false,
       kind: "upstream",
-      error: `Upstream apps/api request failed: ${err.message}`,
+      error: `Upstream apps/api request failed: ${err instanceof Error ? err.message : String(err)}`,
     };
   } finally {
     clearTimeout(timer);
@@ -375,15 +374,21 @@ export async function listPublishedHandler(
 }
 formsRouter.get("/published", listPublishedHandler);
 
+/** Columns selected by the latest-version-per-form query below. */
+type LatestFormRow = Pick<BuilderFormSummary, "id" | "version"> & {
+  form_id: string;
+  title: string | null;
+};
+
 // GET /builder/forms — list all forms (latest version per formId)
 formsRouter.get("/", async (_req, res) => {
   const ds = await getDataSource();
-  const rows = await ds.query(
+  const rows: LatestFormRow[] = await ds.query(
     latestVersionPerFormSql(
       "id, form_id, schema->>'title' AS title, version, schema",
     ),
   );
-  const forms: BuilderFormSummary[] = rows.map((r: any) => ({
+  const forms: BuilderFormSummary[] = rows.map((r) => ({
     id: r.id,
     formId: r.form_id,
     title: r.title ?? r.form_id,
@@ -569,7 +574,7 @@ export async function createFormHandler(
       }
     });
     res.status(201).json({ ok: true });
-  } catch (err: any) {
+  } catch (err) {
     // The findOne duplicate check above is non-atomic: in a genuine concurrent
     // create, two requests can both pass findOne and both reach the
     // transactional save, where the second trips the DB unique constraint on
@@ -579,7 +584,10 @@ export async function createFormHandler(
     // findOne duplicate path returns, so the caller's friendly "already exists"
     // message fires instead of a generic 500.
     const recipe = req.body?.recipe as ServiceContractRecipe | undefined;
-    const pgCode = err?.code ?? err?.driverError?.code;
+    const dbErr = err as
+      | { code?: string; driverError?: { code?: string } }
+      | undefined;
+    const pgCode = dbErr?.code ?? dbErr?.driverError?.code;
     if (pgCode === "23505" && recipe?.formId) {
       res.status(409).json({
         error: `Recipe ${recipe.formId} already exists`,

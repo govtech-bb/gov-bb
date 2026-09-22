@@ -81,6 +81,8 @@ export default defineConfig([
     rules: { "@typescript-eslint/no-explicit-any": "off" },
   },
   { files: ["**/*.json"], plugins: { json }, language: "json/json", extends: ["json/recommended"] },
+  // tsconfig files carry comments and trailing commas; lint them as JSONC.
+  { files: ["**/tsconfig*.json"], plugins: { json }, language: "json/jsonc", extends: ["json/recommended"] },
   {
     files: ["**/*.css"],
     plugins: { css },
