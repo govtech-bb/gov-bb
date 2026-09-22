@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
+import { findPage, isVisible } from '@/content/registry'
 import { collectSitemapEntries } from '@/lib/sitemap'
 import { deriveVisibilityOverlay } from '@/lib/service-status'
 import type { ServiceStatusEntry } from '@/lib/service-status'
@@ -7,11 +8,7 @@ import type { Route as DetailRoute } from './$slug'
 import { PHARMACIES } from './-data/pharmacies'
 
 const service = 'health-and-emergency-services/find-an-open-pharmacy'
-const enabled: ServiceStatusEntry[] = [
-  [service, 'enabled'],
-  ['health-and-emergency-services/free-or-subsidised-medication', 'enabled'],
-  ['health-and-emergency-services/prescription-colours', 'enabled'],
-]
+const enabled: ServiceStatusEntry[] = [[service, 'enabled']]
 
 let finder: typeof FinderRoute
 let detail: typeof DetailRoute
@@ -25,6 +22,18 @@ function call(hook: unknown, args: unknown) {
 }
 
 describe('pharmacy publication', () => {
+  it.each([
+    'health-and-emergency-services/free-or-subsidised-medication',
+    'health-and-emergency-services/prescription-colours',
+  ])('publishes supporting page %s without status overrides', (url) => {
+    const page = findPage(url)!
+    expect(page).toBeDefined()
+    expect(isVisible(page, 'public')).toBe(true)
+    expect(collectSitemapEntries().map((entry) => entry.path)).toContain(
+      `/${url}`,
+    )
+  })
+
   it('uses effective public visibility for gates, canonical tags and structured data', () => {
     for (const route of [finder, detail]) {
       const context = call(route.options.beforeLoad, {

@@ -4,7 +4,7 @@ description: >-
   Check who can get free or cheaper medication through the Barbados Drug
   Service, what to bring to the pharmacy, and what it costs.
 stage: alpha
-visibility: preview
+visibility: public
 featured: false
 publish_date: '2026-08-18'
 category: health-and-emergency-services
