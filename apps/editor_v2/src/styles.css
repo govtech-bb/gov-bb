@@ -518,9 +518,13 @@ button,
  * ---------------------------------------------------------------------- */
 
 .ed-doc {
-  max-width: 54rem;
-  margin: 0 auto;
-  padding: 1.5rem 1rem 6rem;
+  /*
+   * No width cap anywhere. A finder, a calendar and a table are wide
+   * things, and capping the document made every one of them wrap mid-word
+   * while most of the window sat empty.
+   */
+  margin: 0;
+  padding: 1.5rem 2rem 6rem;
 }
 
 .ed-envelope {
@@ -550,6 +554,16 @@ button,
 
 /* A configuration block: its real output, with controls on hover. */
 .bn-config {
+  /*
+   * BlockNote lays a block's content out with flex, so a config block
+   * shrinks to its content's min-width unless told otherwise — which left
+   * the calendar 296px wide inside a 1380px row, wrapping every heading
+   * mid-word. `min-width: 0` matters as much as the basis: without it a
+   * wide table refuses to shrink below its content and overflows instead.
+   */
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
   position: relative;
   margin: 0.75rem 0;
   padding: 0.25rem;

@@ -152,7 +152,8 @@ export function DocumentEditor({
     ? (blocks.find((block) => block.id === dataBlockId) ?? null)
     : null;
   const dataCollection =
-    collections.find((entry) => entry.key === collectionOf(dataBlock)) ?? null;
+    collections.find((entry) => entry.key === collectionOf(dataBlock, refs)) ??
+    null;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -210,6 +211,7 @@ export function DocumentEditor({
       {hoveredBlock ? (
         <BlockControls
           block={hoveredBlock}
+          refs={refs}
           element={hovered?.element ?? null}
           onEditData={() => setDataBlockId(hoveredBlock.id)}
           onSettings={() => setEditingId(hoveredBlock.id)}

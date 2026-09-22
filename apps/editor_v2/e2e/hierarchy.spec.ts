@@ -273,3 +273,51 @@ test.describe("viewing the schema", () => {
     await expect(page.getByTestId("modal")).toHaveCount(0);
   });
 });
+
+test.describe("a data table reaches its collection too", () => {
+  test("the pencil opens the records its ref points at", async ({ page }) => {
+    // The bug this guards: a finder and a calendar name their collection
+    // directly, but a data_table names a ref and the ref names the
+    // collection. Missing that indirection left the block with no way to
+    // reach its records at all — the pencil opened the column settings and
+    // there was no cog.
+    await openDocument(page, DOC.hairSalon);
+    const modal = await openBlockData(page, "b_hs28");
+
+    await expect(modal).toHaveAttribute(
+      "aria-label",
+      "Environmental Health offices",
+    );
+    await expect(modal.getByTestId("record-table")).toBeVisible();
+  });
+
+  test("the cog opens the column headings", async ({ page }) => {
+    await openDocument(page, DOC.hairSalon);
+    await hoverBlock(page, "b_hs28");
+    await page.getByTestId("block-settings-b_hs28").click();
+
+    await expect(page.getByTestId("block-popover")).toHaveAttribute(
+      "aria-label",
+      "Edit Data table block",
+    );
+  });
+
+  test("the controls are icons, and every one is named", async ({ page }) => {
+    await openDocument(page, DOC.hairSalon);
+    await hoverBlock(page, "b_hs28");
+
+    const strip = page.getByTestId("block-controls-b_hs28");
+    // Icon-only: nothing readable as text, so the accessible name is the
+    // only thing identifying each button and all three must carry one.
+    expect((await strip.innerText()).trim()).toBe("");
+
+    const labels = await strip
+      .locator("button")
+      .evaluateAll((buttons) =>
+        buttons.map((button) => button.getAttribute("aria-label")),
+      );
+    expect(labels).toHaveLength(3);
+    for (const label of labels) expect(label).toBeTruthy();
+    expect(labels).toContain("Block settings");
+  });
+});

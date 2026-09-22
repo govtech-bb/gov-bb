@@ -5,41 +5,59 @@
  * They used to live inside the drag handle's menu, which meant two clicks
  * and a guess to reach Edit — the handle gives no hint that it holds
  * anything. Putting them in the margin makes them visible the moment they
- * are relevant, which is the whole reason Notion's controls appear on hover
- * rather than living in a panel.
+ * are relevant.
  *
  * The strip is positioned rather than rendered inside each block, because
  * `paragraph`, `heading` and the list items are BlockNote's own components
  * and there is nowhere inside them to put anything.
  *
  * A data-backed block gets three controls, and the order says which one an
- * author reaches for most: **Edit** opens the collection's records — the
- * polyclinic phone numbers, the holiday rules — and the **cog** opens the
- * block's own configuration, the facets and the column headings. Editing the
- * data is the common task; changing how it is filtered is not.
+ * author reaches for most: the **pencil** opens the collection's records —
+ * the polyclinic phone numbers, the holiday rules — and the **cog** opens
+ * the block's own configuration, the facets and the column headings.
+ * Editing the data is the common task; changing how it is presented is not.
  */
 
-import type { Block } from "@govtech-bb/block-kit";
+import type { Block, Ref } from "@govtech-bb/block-kit";
 import { useLayoutEffect, useState } from "react";
 import { blockHasSettings } from "./block-settings";
 
-/** Blocks whose content is a collection rather than words. */
-export function collectionOf(block: Block | null): string | null {
+/**
+ * The collection a block's content comes from, or null for a block whose
+ * content is words.
+ *
+ * A finder and a calendar name their collection directly. A `data_table`
+ * does not — it names a ref, and the ref names the collection — which is
+ * why it needs the document's refs to answer this at all. Missing that
+ * indirection is what left a data_table with no way to reach its records.
+ */
+export function collectionOf(
+  block: Block | null,
+  refs: Record<string, Ref> = {},
+): string | null {
   if (!block) return null;
   if (block.type === "finder" || block.type === "calendar") {
     return block.collection;
+  }
+  if (block.type === "data_table") {
+    const ref = refs[block.source];
+    if (ref && (ref.kind === "query" || ref.kind === "record")) {
+      return ref.collection;
+    }
   }
   return null;
 }
 
 export function BlockControls({
   block,
+  refs,
   element,
   onEditData,
   onSettings,
   onDelete,
 }: {
   block: Block;
+  refs: Record<string, Ref>;
   /** The hovered block's node, which the strip aligns to. */
   element: HTMLElement | null;
   onEditData: () => void;
@@ -56,7 +74,7 @@ export function BlockControls({
 
   if (!box) return null;
 
-  const collection = collectionOf(block);
+  const collection = collectionOf(block, refs);
   const hasSettings = blockHasSettings(block);
 
   return (
@@ -67,67 +85,124 @@ export function BlockControls({
       contentEditable={false}
     >
       {collection ? (
-        <button
-          type="button"
-          className="bn-control"
-          data-testid={`block-edit-data-${block.id}`}
-          title={`Edit the ${collection} records`}
+        <IconButton
+          testId={`block-edit-data-${block.id}`}
+          label={`Edit the ${collection} records`}
           onClick={onEditData}
         >
-          Edit
-        </button>
+          <PencilIcon />
+        </IconButton>
       ) : hasSettings ? (
-        <button
-          type="button"
-          className="bn-control"
-          data-testid={`block-edit-${block.id}`}
-          title="Edit this block"
+        <IconButton
+          testId={`block-edit-${block.id}`}
+          label="Edit this block"
           onClick={onSettings}
         >
-          Edit
-        </button>
+          <PencilIcon />
+        </IconButton>
       ) : null}
 
       {collection && hasSettings ? (
-        <button
-          type="button"
-          className="bn-control bn-control-icon"
-          data-testid={`block-settings-${block.id}`}
-          aria-label="Block settings"
-          title="Filtering options and column headings"
+        <IconButton
+          testId={`block-settings-${block.id}`}
+          label="Block settings"
           onClick={onSettings}
         >
           <CogIcon />
-        </button>
+        </IconButton>
       ) : null}
 
-      <button
-        type="button"
-        className="bn-control bn-control-danger"
-        data-testid={`block-delete-${block.id}`}
-        title="Delete this block"
+      <IconButton
+        testId={`block-delete-${block.id}`}
+        label="Delete this block"
+        danger
         onClick={onDelete}
       >
-        Delete
-      </button>
+        <TrashIcon />
+      </IconButton>
     </div>
+  );
+}
+
+/**
+ * An icon-only control.
+ *
+ * `aria-label` and `title` carry the same words: the label is what a screen
+ * reader announces and the title is what everyone else gets on hover. An
+ * icon button without both is a button nobody can identify.
+ */
+function IconButton({
+  testId,
+  label,
+  danger,
+  onClick,
+  children,
+}: {
+  testId: string;
+  label: string;
+  danger?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      className={`bn-control${danger ? " bn-control-danger" : ""}`}
+      data-testid={testId}
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * The icons are decorative: every button carries its own aria-label, so the
+ * SVG must not be announced separately. `role="presentation"` alongside
+ * `aria-hidden` says so to both assistive tech and the linter, which would
+ * otherwise ask for a <title> that would be read out twice.
+ */
+const iconProps = {
+  width: 15,
+  height: 15,
+  viewBox: "0 0 24 24",
+  role: "presentation",
+  "aria-hidden": true,
+  focusable: false,
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 2,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+};
+
+function PencilIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
   );
 }
 
 function CogIcon() {
   return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      focusable="false"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
+    <svg {...iconProps}>
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.2.62.77 1.03 1.42 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M3 6h18" />
+      <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+      <path d="M19 6v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6" />
+      <path d="M10 11v6M14 11v6" />
     </svg>
   );
 }

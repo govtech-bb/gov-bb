@@ -35,12 +35,14 @@ export function ConfigBlockShell({ block }: ConfigBlockShellProps) {
       data-block-type={block.type}
     >
       {/*
-        The real output, exactly as the site renders it. `bk-document` is
-        not decoration: the renderer declares its CSS custom properties on
-        that class, so without it every colour falls back to nothing and
-        the GOV.BB start button renders invisible.
+        The real output, exactly as the site renders it.
+        NOT `bk-document`: that class carries the site's 44rem reading
+        measure as well as the palette, which squeezed a finder or a
+        calendar into a third of the editor and wrapped every table heading
+        mid-word. The palette arrives from `bk-scope` on the editing
+        surface instead, which is exactly why the tokens were split out.
       */}
-      <div className="bn-config-output bk-document" contentEditable={false}>
+      <div className="bn-config-output" contentEditable={false}>
         <RenderBlock block={block} ctx={ctx} />
       </div>
 
