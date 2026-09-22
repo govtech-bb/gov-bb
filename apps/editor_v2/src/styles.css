@@ -820,3 +820,121 @@ button,
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* Modals. */
+.ed-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: rgb(11 12 12 / 45%);
+}
+
+.ed-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(44rem, 100%);
+  max-height: 100%;
+  border-radius: 6px;
+  background: var(--bg);
+  box-shadow: 0 16px 48px rgb(11 12 12 / 30%);
+}
+
+.ed-modal-wide {
+  width: min(72rem, 100%);
+}
+
+.ed-modal-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.ed-modal-title {
+  flex: 1;
+  margin: 0;
+  font-size: 1.0625rem;
+}
+
+.ed-modal-description {
+  margin: 0;
+  padding: 0.625rem 1rem 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.ed-modal-body {
+  overflow: auto;
+  padding: 1rem;
+}
+
+.ed-table-scroll {
+  overflow-x: auto;
+}
+
+.ed-record-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+/* Per-block controls, in the right margin of the hovered block. */
+.bn-controls {
+  position: fixed;
+  z-index: 40;
+  display: flex;
+  gap: 0.25rem;
+}
+
+.bn-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgb(11 12 12 / 10%);
+}
+
+.bn-control:hover {
+  background: var(--bg-soft);
+}
+
+.bn-control-icon {
+  padding: 0.125rem 0.375rem;
+}
+
+.bn-control-danger:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+/*
+ * A wide collection — pharmacies has ten fields — needs room per column and
+ * a ceiling on the read-only cells, or one weekly-hours object makes a row
+ * six lines tall and the editable fields shrink to nothing.
+ */
+.ed-table td .ed-input {
+  min-width: 9rem;
+}
+
+.ed-table td .ed-json-cell {
+  display: inline-block;
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}

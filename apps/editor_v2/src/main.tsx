@@ -71,6 +71,12 @@ function Boot() {
 
   return (
     <SpikeDbProvider db={db}>
+      {/*
+        The signal the behavioural suite waits on. PGlite compiles WASM and
+        runs the migration and seed before this point, so without it every
+        test races the boot and fails as a puzzling selector timeout.
+      */}
+      <span data-testid="db-ready" hidden />
       <RouterProvider router={router} />
     </SpikeDbProvider>
   );

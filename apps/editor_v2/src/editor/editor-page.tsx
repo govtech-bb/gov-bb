@@ -26,6 +26,7 @@ import {
 import { DocumentEditor } from "./blocknote/document-editor";
 import { EditorBlockProvider } from "./blocknote/context";
 import { clearDraft, readDraft, writeDraft } from "./drafts";
+import { CopyButton, Modal } from "./modal";
 import { CATEGORY_SLUGS, PageProperties } from "./page-properties";
 import { servicesInUse } from "./page-url";
 
@@ -97,6 +98,11 @@ export function EditorPage() {
   );
 
   const renderData = useRenderData(draft);
+
+  const bodyJson = useMemo(
+    () => (draft ? JSON.stringify(draft.body, null, 2) : ""),
+    [draft],
+  );
 
   /**
    * The save itself. Kept in a ref so the debounce timer always calls the
@@ -237,10 +243,9 @@ export function EditorPage() {
             type="button"
             className="ed-secondary"
             data-testid="doc-json-toggle"
-            aria-expanded={showJson}
-            onClick={() => setShowJson((value) => !value)}
+            onClick={() => setShowJson(true)}
           >
-            Document JSON
+            View schema
           </button>
           <a
             className="ed-secondary"
@@ -322,9 +327,17 @@ export function EditorPage() {
         ) : null}
 
         {showJson ? (
-          <pre className="ed-json" data-testid="doc-json">
-            {JSON.stringify(draft.body, null, 2)}
-          </pre>
+          <Modal
+            wide
+            title="Page schema"
+            description="The stored document body — the record every renderer reads. Read-only: the palette is the way to change it."
+            onClose={() => setShowJson(false)}
+            actions={<CopyButton value={bodyJson} label="Copy JSON" />}
+          >
+            <pre className="ed-json" data-testid="doc-json">
+              {bodyJson}
+            </pre>
+          </Modal>
         ) : null}
 
         {/*

@@ -21,7 +21,10 @@ import {
   toBlockNote,
   type BnBlock,
 } from "./adapter";
+import { BlockControls, collectionOf } from "./block-controls";
 import { BlockPopover } from "./block-popover";
+import { Modal } from "../modal";
+import { RecordTable } from "../record-table";
 import { BlockSideMenu } from "./block-menu";
 import { useEditorBlockContext } from "./context";
 import { editorSchema } from "./schema";
@@ -61,6 +64,15 @@ export function DocumentEditor({
    * which block the menu belongs to.
    */
   const hoveredId = useRef<string | null>(null);
+
+  /** The hovered block, as state, so the control strip can follow it. */
+  const [hovered, setHovered] = useState<{
+    id: string;
+    element: HTMLElement;
+  } | null>(null);
+
+  /** The block whose collection records are open in a modal. */
+  const [dataBlockId, setDataBlockId] = useState<string | null>(null);
 
   const initialContent = useMemo(
     () => toBlockNote(blocks, memo.current, refs),
@@ -132,6 +144,16 @@ export function DocumentEditor({
     ? (blocks.find((block) => block.id === editingId) ?? null)
     : null;
 
+  const hoveredBlock = hovered
+    ? (blocks.find((block) => block.id === hovered.id) ?? null)
+    : null;
+
+  const dataBlock = dataBlockId
+    ? (blocks.find((block) => block.id === dataBlockId) ?? null)
+    : null;
+  const dataCollection =
+    collections.find((entry) => entry.key === collectionOf(dataBlock)) ?? null;
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const mod = event.metaKey || event.ctrlKey;
@@ -154,9 +176,15 @@ export function DocumentEditor({
       className="bn-surface bk-scope"
       data-testid="editor-surface"
       onPointerOver={(event) => {
-        const node = (event.target as HTMLElement).closest?.("[data-id]");
+        const node = (event.target as HTMLElement).closest?.(
+          "[data-id]",
+        ) as HTMLElement | null;
         const id = node?.getAttribute("data-id");
-        if (id) hoveredId.current = id;
+        if (!id || !node) return;
+        hoveredId.current = id;
+        setHovered((current) =>
+          current?.id === id ? current : { id, element: node },
+        );
       }}
     >
       <BlockNoteView
@@ -178,6 +206,31 @@ export function DocumentEditor({
         />
         <BlockSideMenu onEdit={() => setEditingId(hoveredId.current)} />
       </BlockNoteView>
+
+      {hoveredBlock ? (
+        <BlockControls
+          block={hoveredBlock}
+          element={hovered?.element ?? null}
+          onEditData={() => setDataBlockId(hoveredBlock.id)}
+          onSettings={() => setEditingId(hoveredBlock.id)}
+          onDelete={() => {
+            editor.removeBlocks([hoveredBlock.id]);
+            setHovered(null);
+            serialize();
+          }}
+        />
+      ) : null}
+
+      {dataCollection ? (
+        <Modal
+          wide
+          title={dataCollection.title}
+          description="Editing these records changes every page that reads them. Filtering options and column headings are behind the cog."
+          onClose={() => setDataBlockId(null)}
+        >
+          <RecordTable collection={dataCollection} />
+        </Modal>
+      ) : null}
 
       {editing ? (
         <BlockPopover

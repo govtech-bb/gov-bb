@@ -73,15 +73,27 @@ export async function openBlockSettings(
   page: Page,
   blockId: string,
 ): Promise<Locator> {
-  // Hover near the block's top-left: a finder is over a thousand pixels
-  // tall, and hovering its centre scrolls it out from under the pointer.
-  const box = await block(page, blockId).boundingBox();
-  await page.mouse.move((box?.x ?? 0) + 10, (box?.y ?? 0) + 10);
-  await page.getByRole("button", { name: "Open block menu" }).click();
-  await page.getByTestId("block-menu-edit").click();
+  await hoverBlock(page, blockId);
+  // A data-backed block puts its records behind "Edit" and its own
+  // configuration behind the cog; every other block has only "Edit".
+  const cog = page.getByTestId(`block-settings-${blockId}`);
+  const edit = page.getByTestId(`block-edit-${blockId}`);
+  await ((await cog.count()) > 0 ? cog : edit).click();
   const popover = page.getByTestId("block-popover");
   await expect(popover).toBeVisible();
   return popover;
+}
+
+/** Open a data-backed block's collection records. */
+export async function openBlockData(
+  page: Page,
+  blockId: string,
+): Promise<Locator> {
+  await hoverBlock(page, blockId);
+  await page.getByTestId(`block-edit-data-${blockId}`).click();
+  const modal = page.getByTestId("modal");
+  await expect(modal).toBeVisible();
+  return modal;
 }
 
 /**
@@ -146,11 +158,15 @@ export async function blockIds(page: Page): Promise<string[]> {
   );
 }
 
-/** The serialized body, exposed read-only so round-trip is observable. */
+/**
+ * The serialized body, read out of the "View schema" modal so the round
+ * trip is observable. Read-only — the palette is the only way to change it.
+ */
 export async function bodyJson(page: Page): Promise<string> {
   await page.getByTestId("doc-json-toggle").click();
   const text = await page.getByTestId("doc-json").innerText();
-  await page.getByTestId("doc-json-toggle").click();
+  await page.getByTestId("modal-close").click();
+  await expect(page.getByTestId("modal")).toHaveCount(0);
   return text;
 }
 
@@ -213,10 +229,21 @@ export async function moveBlockUp(page: Page, blockId: string): Promise<void> {
   await page.keyboard.press("ControlOrMeta+Shift+ArrowUp");
 }
 
+/**
+ * Hover a block so its control strip appears in the right margin.
+ *
+ * Aimed near the top-left of the block: a finder is over a thousand pixels
+ * tall, and hovering its centre scrolls it out from under the pointer.
+ */
+export async function hoverBlock(page: Page, blockId: string): Promise<void> {
+  const box = await block(page, blockId).boundingBox();
+  await page.mouse.move((box?.x ?? 0) + 40, (box?.y ?? 0) + 8);
+  await expect(page.getByTestId(`block-controls-${blockId}`)).toBeVisible();
+}
+
 export async function deleteBlock(page: Page, blockId: string): Promise<void> {
-  await block(page, blockId).hover();
-  await page.getByTestId(`block-handle-${blockId}`).click();
-  await page.getByTestId("block-menu-delete").click();
+  await hoverBlock(page, blockId);
+  await page.getByTestId(`block-delete-${blockId}`).click();
 }
 
 /* --------------------------------------------------------------- saving */
