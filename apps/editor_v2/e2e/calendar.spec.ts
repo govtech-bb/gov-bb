@@ -10,7 +10,6 @@ import { expect, test } from "@playwright/test";
 import {
   CALENDAR_URL,
   DOC,
-  calendarTable,
   goToYear,
   gotoSite,
   holidayRow,
@@ -164,7 +163,7 @@ test.describe("formulas are code", () => {
 
     await gotoSite(page, CALENDAR_URL);
     await goToYear(page, 2023);
-    await expect(calendarTable(page).getByText("lieu of")).toHaveCount(0);
+    await expect(page.locator(".bk-observed")).toHaveCount(0);
   });
 
   test("the year range on the block bounds what a citizen can ask for", async ({

@@ -13,7 +13,6 @@ import {
   CROP_OVER_URL,
   PHARMACY_URL,
   SEVERANCE_URL,
-  calendarTable,
   goToYear,
   gotoSite,
   resultItems,
@@ -86,37 +85,66 @@ test.describe("the severance start page — all prose", () => {
   });
 });
 
-test.describe("the bank holiday calendar — intro prose plus data", () => {
-  test("renders the intro and a table of holidays", async ({ page }) => {
+test.describe("the bank holiday calendar — prose plus data", () => {
+  test("answers the question people arrive with, before the list", async ({
+    page,
+  }) => {
     await gotoSite(page, CALENDAR_URL);
 
     await expect(
-      page.getByRole("heading", { name: "Check bank holiday dates", level: 1 }),
-    ).toBeVisible();
-    await expect(
-      page.getByText("Where a holiday falls on a weekend", { exact: false }),
+      page.getByRole("heading", { name: "Bank holidays", level: 1 }),
     ).toBeVisible();
 
-    const table = calendarTable(page);
-    await expect(table).toBeVisible();
-    // The three configured columns, as column headers.
-    for (const column of ["Date", "Holiday", "Notes"]) {
-      await expect(
-        table.getByRole("columnheader", { name: column }),
-      ).toBeVisible();
-    }
-    // Twelve statutory holidays, plus any substitutes for the year.
-    await expect(table.getByRole("row")).not.toHaveCount(0);
+    // The hero, which the list alone makes people work out for themselves.
+    const hero = page.getByRole("region", { name: "Next bank holiday" });
+    await expect(hero).toBeVisible();
+    await expect(hero).toContainText(/Today|Tomorrow|days away/);
   });
 
-  test("a substitute day is marked as such, not passed off as the holiday", async ({
+  test("separates upcoming from past and counts both", async ({ page }) => {
+    await gotoSite(page, CALENDAR_URL);
+    await expect(page.getByText(/Upcoming bank holidays \d{4}/)).toBeVisible();
+    await expect(page.getByText(/\d+ remaining/)).toBeVisible();
+  });
+
+  test("gives every holiday a date tile and a day", async ({ page }) => {
+    await gotoSite(page, CALENDAR_URL);
+    const rows = page.locator(".bk-row");
+    await expect(rows.first()).toBeVisible();
+    await expect(rows.first().locator(".bk-tile-month")).not.toBeEmpty();
+    await expect(rows.first().locator(".bk-row-day")).not.toBeEmpty();
+  });
+
+  test("keeps the full date announceable though the tile is decorative", async ({
+    page,
+  }) => {
+    // The live page marks the tile aria-hidden and loses the date entirely
+    // for anyone using a screen reader.
+    await gotoSite(page, CALENDAR_URL);
+    await expect(page.locator(".bk-row .bk-sr-only").first()).toContainText(
+      /\d{4}/,
+    );
+  });
+
+  test("shows a substitution against the holiday it stands in for", async ({
     page,
   }) => {
     await gotoSite(page, CALENDAR_URL);
     await goToYear(page, 2023);
+    const observed = page.locator(".bk-observed");
+    await expect(observed.first()).toBeVisible();
+    // And never as a row of its own.
     await expect(
-      calendarTable(page).getByRole("row").filter({ hasText: "in lieu of" }),
-    ).not.toHaveCount(0);
+      page.locator(".bk-row-name", { hasText: "in lieu of" }),
+    ).toHaveCount(0);
+  });
+
+  test("explains the substitution rules on the page", async ({ page }) => {
+    await gotoSite(page, CALENDAR_URL);
+    await expect(
+      page.getByText("When a bank holiday falls on a weekend"),
+    ).toBeVisible();
+    await expect(page.getByText("Read the full rules")).toBeVisible();
   });
 });
 
@@ -216,7 +244,7 @@ test.describe("the site index", () => {
 
     await page.locator(`a[href="${CALENDAR_URL}"]`).click();
     await expect(
-      page.getByRole("heading", { name: "Check bank holiday dates", level: 1 }),
+      page.getByRole("heading", { name: "Bank holidays", level: 1 }),
     ).toBeVisible();
   });
 

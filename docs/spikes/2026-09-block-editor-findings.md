@@ -282,6 +282,27 @@ the editor.** Any system where a URL is content needs the allowlist beside
 the format rather than in whichever component happens to render it, and it
 needs it before the first link ships, not after.
 
+### A page's own chrome is not expressible as blocks
+
+Matching the live bank holiday page pixel for pixel turned up a limit that
+none of the earlier pages reached. The page carries three pieces of text
+that are _about_ the page rather than content in it: "Last updated on 5 May
+2026" under the title, the "About this list" section heading set smaller and
+in blue above a rule, and the source citation beneath it.
+
+Every one of those renders as an ordinary paragraph or heading, because the
+block model has no way for an author to say "this paragraph is metadata" or
+"this heading closes the page". The options are all bad in different ways: a
+mark like `strong` is presentational and would be abused for everything; a
+`last_updated` envelope column solves one case and none of the others; a
+`variant` on paragraph re-opens exactly the styling-as-content hole that the
+Crop Over page's hand-written `<div class="bg-blue-10">` demonstrated.
+
+The honest read is that a closed block palette buys safety by refusing
+long-tail presentation, and a real migration will find a handful of pages
+that need a block type nobody has thought of yet. Budget for adding block
+types during the migration, not only before it.
+
 ### `refs` and `data_table` had never been exercised at all
 
 Every document seeded before the hairdressing page had `refs: {}`, and the

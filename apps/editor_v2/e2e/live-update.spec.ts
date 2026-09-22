@@ -26,7 +26,7 @@ test.describe("editor in one tab, site in another", () => {
   }) => {
     const site = await context.newPage();
     await gotoSite(site, CALENDAR_URL);
-    await expect(site.getByText("Bank holidays in Barbados")).toBeVisible();
+    await expect(site.getByText("Last updated on")).toBeVisible();
 
     const editor = await context.newPage();
     await openDocument(editor, DOC.calendar);

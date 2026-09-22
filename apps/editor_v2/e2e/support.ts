@@ -38,7 +38,7 @@ export const HAIR_SALON_URL = "/business-trade/apply-for-hair-salon-licence";
 /** Titles as seeded, used to pick a document out of the editor's list. */
 export const DOC = {
   severance: "Find out how much severance payment you are owed",
-  calendar: "Check bank holiday dates",
+  calendar: "Bank holidays",
   pharmacies: "Search for pharmacies",
   cropOver: "Find the permits you need for a Crop Over event",
   hairSalon: "Apply for a hairdressing and beautician business licence",
@@ -307,19 +307,14 @@ export const pagination = (page: Page): Locator =>
   page.getByRole("navigation", { name: "Pagination" });
 
 /**
- * The calendar splits into "still to come" and "already been", so there are
- * two tables and each names its own section. Most assertions want whichever
- * one holds the holiday they are looking for, so this spans both.
+ * The calendar is a list of cards, not a table — a date tile down the left,
+ * the holiday beside it, the day on the right. Matched to the live page.
  */
-export const calendarTable = (page: Page): Locator =>
-  page.getByRole("table", { name: /^Bank holidays/ });
+export const calendarRows = (page: Page): Locator => page.locator(".bk-row");
 
 /** The row for a named holiday in a given year's section of the calendar. */
 export function holidayRow(page: Page, name: string): Locator {
-  return page
-    .getByRole("table", { name: /^Bank holidays/ })
-    .getByRole("row")
-    .filter({ hasText: name });
+  return page.locator(".bk-row").filter({ hasText: name });
 }
 
 /** Move the calendar's year. It is Previous/Next, not a dropdown. */

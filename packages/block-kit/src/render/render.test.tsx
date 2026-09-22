@@ -280,10 +280,10 @@ describe("the calendar island", () => {
     >,
   };
 
-  it("renders a column per configured column", () => {
+  it("labels the columns the block configures", () => {
     const html = render([calendar], data);
-    expect(html).toContain(">Date</th>");
-    expect(html).toContain(">Holiday</th>");
+    expect(html).toContain("<span>Date</span>");
+    expect(html).toContain("<span>Holiday</span>");
   });
 
   it("renders every holiday for the current year", () => {
@@ -294,8 +294,6 @@ describe("the calendar island", () => {
   });
 
   it("moves the year by Previous and Next, not a dropdown", () => {
-    // The live page does this, and it is the better affordance: the common
-    // move is one click and the bounds of the range are visible.
     const html = render([calendar], data);
     expect(html).toContain("Previous year");
     expect(html).toContain("Next year");
@@ -306,30 +304,52 @@ describe("the calendar island", () => {
     // "When is the next one" is the question almost everyone arrives with.
     const html = render([calendar], data);
     expect(html).toContain("Next bank holiday");
-    expect(html).toMatch(/Today|Tomorrow|\d+ days away/);
+    expect(html).toMatch(/<strong>(\d+|Today|Tomorrow)<\/strong>/);
+  });
+
+  it("puts a date tile on every row", () => {
+    // The tile is what makes a list of dates scannable down its left edge.
+    const html = render([calendar], data);
+    expect(html).toContain('class="bk-tile-month">NOV<');
+    expect(html).toContain('class="bk-tile-day">30<');
+  });
+
+  it("keeps the full date available even though the tile is decorative", () => {
+    // The live page marks the tile aria-hidden and loses the date entirely
+    // for a screen reader. This puts it back without changing the visuals.
+    const html = render([calendar], data);
+    expect(html).toContain(
+      '<span class="bk-sr-only">Monday, 30 November 2026</span>',
+    );
+  });
+
+  it("highlights the next holiday in the list, not only in the hero", () => {
+    const html = render([calendar], data);
+    expect(html).toContain("bk-row bk-row-next");
   });
 
   it("shows a substitution against the holiday it stands in for", () => {
     // Listed on its own, "Public Holiday in lieu of Christmas Day" tells
     // you nothing about why it exists.
-    const withSubstitute = renderCalendar(
+    const html = renderCalendar(
       calendar as CalendarBlock,
       data,
       new Date("2022-12-01"),
     );
-    expect(withSubstitute).toContain("Substitute day:");
-    // And never as a row of its own.
-    expect(withSubstitute).not.toContain("<td>Public Holiday in lieu of");
+    expect(html).toContain("Observed:");
+    expect(html).not.toContain('bk-row-name">Public Holiday in lieu of');
   });
 
-  it("separates what is still to come from what has been", () => {
+  it("separates upcoming from past, and counts both", () => {
     const html = renderCalendar(
       calendar as CalendarBlock,
       data,
       new Date("2026-07-01"),
     );
-    expect(html).toContain("Still to come");
-    expect(html).toContain("Already been");
+    expect(html).toContain("Upcoming bank holidays 2026");
+    expect(html).toContain("Past bank holidays 2026");
+    expect(html).toMatch(/\d+ remaining/);
+    expect(html).toMatch(/\d+ so far/);
   });
 
   it("hides what has been when the block says not to show it", () => {
@@ -338,8 +358,14 @@ describe("the calendar island", () => {
       data,
       new Date("2026-07-01"),
     );
-    expect(html).toContain("Still to come");
-    expect(html).not.toContain("Already been");
+    expect(html).toContain("Upcoming bank holidays 2026");
+    expect(html).not.toContain("Past bank holidays 2026");
+  });
+
+  it("explains the substitution rules", () => {
+    const html = render([calendar], data);
+    expect(html).toContain("When a bank holiday falls on a weekend");
+    expect(html).toContain("Read the full rules");
   });
 
   it("renders the day of the week when a column asks for one", () => {
@@ -352,10 +378,16 @@ describe("the calendar island", () => {
       ],
       data,
     );
-    expect(html).toContain(">Day</th>");
+    expect(html).toContain("<span>Day</span>");
     expect(html).toMatch(
-      /Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday/,
+      /bk-row-day">(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/,
     );
+  });
+
+  it("drops the day column when the block does not ask for one", () => {
+    const html = render([calendar], data);
+    expect(html).toContain("bk-rows-no-day");
+    expect(html).not.toContain('class="bk-row-day"');
   });
 });
 

@@ -307,135 +307,375 @@
   color: var(--bk-ink);
 }
 
-/* ------------------------------------------------------ bank holidays */
-
-.bk-calendar-head {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 1rem;
-}
-
-.bk-year-switcher {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.bk-year-button {
-  padding: 0.375rem 0.75rem;
-  border: 1px solid var(--bk-line);
-  border-radius: 6px;
-  background: #fff;
-  color: var(--bk-blue);
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.bk-year-button:hover:not(:disabled) {
-  border-color: var(--bk-blue);
-  background: #eef4fa;
-}
-
-.bk-year-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.bk-year-current {
-  min-width: 3.5rem;
-  text-align: center;
-  font-size: 1.125rem;
-}
-
-/* The question almost everyone arrives with, answered before the table. */
-.bk-next-holiday {
-  margin-bottom: 2rem;
-  padding: 1.75rem 2rem 2rem;
-  border-radius: 8px;
-  background: var(--bk-blue);
-  color: #fff;
-}
-
-.bk-next-tag {
-  display: inline-block;
-  margin-bottom: 1.25rem;
-  padding: 0.375rem 0.875rem;
-  border-radius: 6px;
-  background: var(--bk-yellow);
-  color: var(--bk-blue);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.bk-next-name {
-  margin: 0 0 0.5rem;
-  font-size: 2rem;
-  line-height: 1.15;
-}
-
-.bk-next-date {
-  margin: 0 0 1.25rem;
-  color: #ffeb8a;
-  font-weight: 700;
-}
-
-.bk-next-countdown {
-  margin: 0;
-  color: rgb(255 255 255 / 80%);
-  font-size: 0.9375rem;
-}
-
-.bk-holidays {
-  margin-top: 2rem;
-}
-
-.bk-holidays-heading {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin: 0 0 0.75rem;
-  color: var(--bk-blue);
-  font-size: 1.0625rem;
-}
-
-.bk-chip {
-  padding: 0.125rem 0.625rem;
-  border-radius: 6px;
-  background: #e8eaec;
-  color: var(--bk-muted);
-  font-size: 0.8125rem;
-  font-weight: 500;
-}
-
-/* Past holidays are context, not the answer. */
-.bk-holidays-past {
-  opacity: 0.65;
-}
-
-.bk-substitute-note {
-  display: block;
-  margin-top: 0.125rem;
-  color: var(--bk-muted);
-  font-size: 0.8125rem;
-}
-
-/*
- * The caption repeats the section heading directly above it. It stays in
- * the markup — two tables need distinguishable accessible names, and a
- * screen-reader user navigating by table gets nothing from the visual
- * heading — but it does not need to be read twice by eye.
+/* ---------------------------------------------------- bank holidays
+ *
+ * Matched to the live page. The colours are the GOV.BB tokens by value,
+ * because block-kit does not depend on Tailwind or the design system's
+ * stylesheet: blue-40 #00267f, blue-10 #e5e9f2, yellow-40 #ffc726,
+ * yellow-10 #fff9e9, yellow-80 #e8a833, grey-20 #e0e4e9, grey-70 #595959.
  */
-.bk-holidays caption {
+
+.bk-cal {
+  --cal-blue: #00267f;
+  --cal-blue-10: #e5e9f2;
+  --cal-yellow: #ffc726;
+  --cal-yellow-10: #fff9e9;
+  --cal-yellow-80: #e8a833;
+  --cal-grey-20: #e0e4e9;
+  --cal-grey-70: #595959;
+
+  max-width: 56rem;
+}
+
+.bk-sr-only {
   position: absolute;
   width: 1px;
   height: 1px;
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* ---- year switcher ---- */
+
+.bk-cal-switch {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1.5rem;
+}
+
+.bk-cal-switch-end {
+  margin: 2.5rem 0 0;
+}
+
+.bk-years {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.bk-year {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--cal-grey-20);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--cal-blue);
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.bk-year:hover:not(:disabled) {
+  border-color: var(--cal-blue);
+  background: var(--cal-blue-10);
+}
+
+.bk-year:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bk-year-text {
+  display: block;
+  text-align: left;
+  line-height: 1;
+}
+
+.bk-year-text-end {
+  text-align: right;
+}
+
+.bk-year-label {
+  display: block;
+  color: var(--cal-grey-70);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bk-year-value {
+  display: block;
+  margin-top: 0.1875rem;
+  color: var(--cal-blue);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+/* ---- hero ---- */
+
+.bk-hero {
+  margin-bottom: 2rem;
+  padding: 1.75rem 2rem 2rem;
+  border-radius: 8px;
+  background: var(--cal-blue);
+  color: #fff;
+}
+
+.bk-hero-quiet {
+  background: var(--cal-blue-10);
+  color: var(--cal-blue);
+}
+
+.bk-hero-tag {
+  display: inline-block;
+  margin-bottom: 1.5rem;
+  padding: 0.375rem 0.875rem;
+  border-radius: 8px;
+  background: var(--cal-yellow);
+  color: var(--cal-blue);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.bk-hero-name {
+  margin: 0 0 0.625rem;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.bk-hero-date {
+  margin: 0 0 1.5rem;
+  color: var(--cal-yellow-80);
+  font-weight: 700;
+}
+
+.bk-hero-quiet .bk-hero-date {
+  color: var(--cal-blue);
+}
+
+.bk-hero-count {
+  margin: 0;
+  color: rgb(255 255 255 / 70%);
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.bk-hero-count strong {
+  color: var(--cal-yellow-80);
+  font-weight: 700;
+}
+
+.bk-hero-quiet .bk-hero-count {
+  color: var(--cal-grey-70);
+}
+
+/* ---- sections ---- */
+
+.bk-section {
+  margin-top: 2.5rem;
+}
+
+.bk-section:first-of-type {
+  margin-top: 0;
+}
+
+.bk-section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.bk-section-title {
+  margin: 0;
+  color: var(--cal-blue);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.bk-chip {
+  padding: 0.25rem 0.75rem;
+  border-radius: 8px;
+  background: var(--cal-grey-20);
+  color: var(--cal-grey-70);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+/* ---- rows ---- */
+
+.bk-rows {
+  border-top: 1px solid var(--cal-grey-20);
+}
+
+.bk-rows-head,
+.bk-row {
+  display: grid;
+  grid-template-columns: 72px 1fr 130px;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.bk-rows-no-day .bk-rows-head,
+.bk-rows-no-day .bk-row {
+  grid-template-columns: 72px 1fr;
+}
+
+.bk-rows-head {
+  padding: 0.5rem 1rem 0.625rem;
+  border-bottom: 2px solid var(--cal-grey-20);
+  color: var(--cal-grey-70);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bk-rows-head > span:last-child {
+  text-align: right;
+}
+
+.bk-rows-no-day .bk-rows-head > span:last-child {
+  text-align: left;
+}
+
+.bk-row-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bk-row {
+  padding: 1rem;
+  border-bottom: 1px solid var(--cal-grey-20);
+}
+
+/* The answer to the common question, kept visible once the hero scrolls. */
+.bk-row-next {
+  margin: -1px 0 0.5rem;
+  border: 1px solid var(--cal-yellow);
+  border-radius: 8px;
+  background: var(--cal-yellow-10);
+}
+
+.bk-tile {
+  border-radius: 8px;
+  background: var(--cal-yellow);
+  color: var(--cal-blue);
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+
+.bk-row-muted .bk-tile {
+  background: var(--cal-grey-20);
+  color: var(--cal-grey-70);
+}
+
+.bk-tile-month {
+  display: block;
+  padding: 0.5rem 0.25rem 0.25rem;
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bk-tile-day {
+  display: block;
+  padding: 0 0.25rem 0.625rem;
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+}
+
+.bk-row-name {
+  display: block;
+  color: var(--cal-blue);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.bk-row-muted .bk-row-name {
+  color: var(--cal-grey-70);
+}
+
+.bk-row-note {
+  display: block;
+  margin-top: 0.125rem;
+  color: var(--cal-grey-70);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.bk-observed {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.375rem;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--cal-yellow);
+  border-radius: 8px;
+  background: var(--cal-yellow-10);
+  color: var(--cal-blue);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.bk-row-day {
+  color: var(--cal-grey-70);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-align: right;
+}
+
+/* ---- substitution notice ---- */
+
+.bk-notice {
+  margin-top: 2.5rem;
+  padding: 1rem 1.25rem;
+  border-left: 4px solid var(--cal-blue);
+  border-radius: 8px;
+  background: var(--cal-blue-10);
+  color: var(--cal-grey-70);
+  font-size: 0.9375rem;
+}
+
+.bk-notice-title {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--cal-blue);
+  font-size: 0.875rem;
+}
+
+.bk-notice-details {
+  margin-top: 0.375rem;
+}
+
+.bk-notice-details > summary {
+  color: var(--cal-blue);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bk-notice-details p {
+  margin: 0.625rem 0 0;
+  font-size: 0.875rem;
+}
+
+@media (width <= 40rem) {
+  .bk-rows-head {
+    display: none;
+  }
+
+  .bk-row {
+    grid-template-columns: 64px 1fr;
+    gap: 0.875rem;
+    padding: 1rem 0.5rem;
+  }
+
+  .bk-row-day {
+    grid-column: 2;
+    text-align: left;
+  }
 }

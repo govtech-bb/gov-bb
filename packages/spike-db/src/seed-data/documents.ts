@@ -154,7 +154,7 @@ const bankHolidays: SeedDocument = {
   slug: "bank-holiday-calendar",
   schema_name: "calendar",
   document_type: "bank_holidays",
-  title: "Check bank holiday dates",
+  title: "Bank holidays",
   description: null,
   is_draft: false,
   body: {
@@ -163,11 +163,7 @@ const bankHolidays: SeedDocument = {
       {
         id: "b_bh01",
         type: "paragraph",
-        content: [
-          {
-            text: "Bank holidays in Barbados for the current year. Where a holiday falls on a weekend, the following working day is taken in lieu.",
-          },
-        ],
+        content: [{ text: "Last updated on 5 May 2026" }],
       },
       {
         id: "b_bh02",
@@ -186,8 +182,48 @@ const bankHolidays: SeedDocument = {
           { field: "note", label: "Notes" },
         ],
       },
+      {
+        id: "b_bh03",
+        type: "heading",
+        level: 2,
+        anchor: "about-this-list",
+        content: [{ text: "About this list" }],
+      },
+      {
+        id: "b_bh04",
+        type: "paragraph",
+        content: [
+          {
+            text: "Bank holidays in Barbados are set out in the Public Holidays Act, Cap. 352. The Government may also declare additional one-off public holidays from time to time.",
+          },
+        ],
+      },
+      {
+        id: "b_bh05",
+        type: "paragraph",
+        content: [
+          { text: "This page is updated when new dates are gazetted." },
+        ],
+      },
+      {
+        id: "b_bh06",
+        type: "paragraph",
+        content: [
+          { text: "Source:", marks: ["strong"] },
+          {
+            text: " Public Holidays Act, Cap. 352 — Government of Barbados Ministry of Labour. ",
+          },
+          { text: "View official list at labour.gov.bb", ref: "r_labour" },
+          { text: "." },
+        ],
+      },
     ],
-    refs: {},
+    refs: {
+      r_labour: {
+        kind: "external",
+        href: "https://labour.gov.bb/library/library-publications/holidays/",
+      },
+    },
   },
 };
 
