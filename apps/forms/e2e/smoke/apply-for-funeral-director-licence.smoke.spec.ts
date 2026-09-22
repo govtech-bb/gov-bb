@@ -364,15 +364,16 @@ export async function fillDocuments(page: Page): Promise<void> {
     mimeType: TEST_PNG.mimeType,
     buffer: TEST_PNG.buffer,
   });
-  // `experience-route` and `letter-evidencing` are gated on a new licence,
-  // so this has to be answered first or neither renders.
-  await selectRadio(page, step, "application-type", "new");
-  await selectRadio(page, step, "experience-route", "supervised-two-years");
-  await uploadOne(page, step, "letter-evidencing", {
-    name: "letter-of-evidence.png",
-    mimeType: TEST_PNG.mimeType,
-    buffer: TEST_PNG.buffer,
-  });
+  // This walk answered `application-type` as "renewal" on the first step, so
+  // the two statutory questions (#2475) are gated off here — a renewing
+  // director has already met the 1984 experience tests. Assert the gate holds
+  // rather than filling them; the step advances on the two uploads alone.
+  await expect(
+    page.locator(`fieldset[id="${step}_experience-route"]`),
+  ).toBeHidden();
+  await expect(
+    page.locator(`input[type=file][id="${step}_letter-evidencing"]`),
+  ).toBeHidden();
   await advance(page, step);
 }
 

@@ -23,23 +23,27 @@ real without the branch that belonged with it.
 
 ## What this does
 
-Adds `application-type` to the `documents` step, immediately before the two
-statutory questions:
-
-> Is this a new licence or a renewal?
-> — A new licence (`new`)
-> — A renewal of my existing licence (`renewal`)
-
-and gates both `experience-route` and `letter-evidencing` on it:
+Gates both `experience-route` and `letter-evidencing` on the `application-type`
+question:
 
 ```json
 {
   "type": "fieldConditionalOn",
   "targetFieldId": "application-type",
+  "targetStepId": "application-type",
   "operator": "equal",
   "value": "new"
 }
 ```
+
+`targetStepId` is required here and was not needed before. The client defaults
+an absent one to the field's own step (`checkConditionalOn` in apps/forms), so
+now that the question lives on an earlier step, omitting it would resolve the
+gate against `documents`, find no `application-type`, and hide both statutory
+questions from everyone — including the new applicants they exist for. The API
+evaluator falls back to a flat whole-form lookup, so the two sides would
+disagree silently. `cross-step-conditionals.spec.ts` catches exactly this, and
+did.
 
 `fieldConditionalOn` toggles visibility rather than relaxing `required`
 (`optionalIf` would leave both fields on screen for a renewal, asking a
@@ -47,13 +51,24 @@ question that does not apply). On `renewal` neither renders and the step
 advances on the two uploads alone; on `new` both are required exactly as
 #2726 left them.
 
-## Why the question sits in `documents`
+## Where the branch question came from
 
-It is not a document, but neither is `experience-route`, which #2726 already
-put there — and keeping the branch next to the two fields it controls means
-the whole conditional reads in one place. Where it *should* live is part of
-the Environmental Health content pass in #2725, which will restructure this
-step anyway.
+This originally carried its own copy of the question, added to the `documents`
+step. #2717 landed first and added the same concept properly — a dedicated
+`application-type` first step ("Tell us about your application") whose radio
+also reveals the renewal licence number, matching the shape
+`apply-for-hotel-licence` and `apply-for-offensive-waste-licence` already use.
+
+The two changes did not conflict textually: they inserted into different parts
+of the same file, so git merged them cleanly into a form that asked the same
+question twice, in two different wordings, with both radios bound to the same
+`application-type` answer key. Nothing in CI catches that — the duplicate
+`fieldId` check in `recipe-invariants.spec.ts` builds its `seenFieldIds` set
+**inside** the per-step loop, so it only sees collisions within a single step.
+
+So this now adds no question of its own. It reuses #2717's field, whose option
+values are already `new` / `renewal`, which is exactly what these two gates
+read.
 
 ## Pinned against a republish
 
@@ -66,8 +81,12 @@ and cannot see hydrated behaviour, so this adds
 on the per-recipe pattern already used by `apply-for-restaurant-licence`: it
 hydrates the real recipe against `BUILTIN_REGISTRY` and asserts the field
 order, that `application-type` is an unconditional required radio with exactly
-`new`/`renewal`, that both statutory fields are required *and* carry the gate,
-and that the "1984" qualifier survives in the option label.
+`new`/`renewal` and sits before `documents`, that both statutory fields are
+required *and* carry the gate, and that the "1984" qualifier survives in the
+option label.
+
+It also asserts the branch question appears **exactly once in the whole form**,
+which is the one thing the step-scoped invariant check cannot see.
 
 That last one matters because `resolveOptionDisplay`
 (`apps/api/src/forms/field-display.ts:37`) sends an option's **label**, not its
@@ -88,7 +107,9 @@ the PR.
 
 - The start page still lists the letter under "You may need to provide … if …
   prior to … 1984" and contradicts itself on route (b). #2725.
-- No renewal licence number is collected. #2717 — worth doing together with
-  this, since `application-type` is now the field it would hang off.
+- The smoke walk takes the renewal branch only, so it asserts the two
+  statutory fields are hidden rather than filling them. The `new` path is
+  covered statically by the hydration spec; walking it too would double the
+  real submissions per smoke run.
 - The option wording for both routes is Environmental Health's call; #2725
   asks for that pass.

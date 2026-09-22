@@ -401,29 +401,6 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "application-type",
-            "label": "Is this a new licence or a renewal?",
-            "validations": {
-              "required": {
-                "error": "Select whether this is a new licence or a renewal",
-                "value": true
-              }
-            },
-            "options": [
-              {
-                "label": "A new licence",
-                "value": "new"
-              },
-              {
-                "label": "A renewal of my existing licence",
-                "value": "renewal"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
             "fieldId": "experience-route",
             "label": "Which of these describes your funeral directing experience?",
             "validations": {
@@ -436,6 +413,7 @@
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "application-type",
+                "targetStepId": "application-type",
                 "operator": "equal",
                 "value": "new"
               }
@@ -480,6 +458,7 @@
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "application-type",
+                "targetStepId": "application-type",
                 "operator": "equal",
                 "value": "new"
               }
