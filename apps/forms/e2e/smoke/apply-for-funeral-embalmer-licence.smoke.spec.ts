@@ -310,6 +310,9 @@ export async function fillContactDetails(
 export async function fillWorkplaceDetails(
   page: Page,
   data: ReturnType<typeof buildData>,
+  location:
+    | "one-funeral-establishment"
+    | "multiple-establishments" = "one-funeral-establishment",
 ): Promise<void> {
   const step = expectStep(page, "workplace-details");
   await expect(page.locator("h1")).toContainText("where you plan to work");
@@ -319,29 +322,29 @@ export async function fillWorkplaceDetails(
   );
   await expect(establishmentName).toBeHidden();
 
-  await tickCheckbox(
-    page,
-    step,
-    "workplace-locations",
-    "one-funeral-establishment",
-  );
-  await expect(establishmentName).toBeVisible({ timeout: STEP_TIMEOUT });
+  await tickCheckbox(page, step, "workplace-locations", location);
 
-  await establishmentName.fill(data.establishmentName);
-  await fillField(
-    page,
-    step,
-    "funeral-establishment-address-line-1",
-    data.establishmentAddressLine1,
-  );
-  // funeral-establishment-address-line-2 is left empty on purpose — the recipe sets
-  // required: false, same as personal-details.address-line-2.
-  await selectDropdown(
-    page,
-    step,
-    "funeral-establishment-parish",
-    data.establishmentParish,
-  );
+  if (location === "one-funeral-establishment") {
+    await expect(establishmentName).toBeVisible({ timeout: STEP_TIMEOUT });
+    await establishmentName.fill(data.establishmentName);
+    await fillField(
+      page,
+      step,
+      "funeral-establishment-address-line-1",
+      data.establishmentAddressLine1,
+    );
+    await selectDropdown(
+      page,
+      step,
+      "funeral-establishment-parish",
+      data.establishmentParish,
+    );
+  } else {
+    // "At multiple funeral establishments" names no single establishment, so
+    // the whole block must stay out — the negative side of this gate.
+    await expect(establishmentName).toBeHidden();
+  }
+
   await advance(page, step);
 }
 
@@ -352,7 +355,10 @@ export async function fillWorkplaceDetails(
  * is the reveal #2475 was raised about, so it's asserted hidden → toggle →
  * visible, then uploaded too.
  */
-export async function fillDocuments(page: Page): Promise<void> {
+export async function fillDocuments(
+  page: Page,
+  useReferenceLetter = true,
+): Promise<void> {
   const step = expectStep(page, "documents");
   await expect(page.locator("h1")).toContainText("Add your documents");
   await uploadOne(page, step, "upload-id", {
@@ -373,20 +379,28 @@ export async function fillDocuments(page: Page): Promise<void> {
 
   const embalmerEvidence = page.locator(`[id="${step}_embalmer-evidence"]`);
   await expect(embalmerEvidence).toBeHidden();
-  // `components/show-hide` renders as a native <details>/<summary>; clicking
-  // the summary commits `true` through TanStack-Form, which is what the
-  // conditional on `embalmer-evidence` reads.
-  await page
-    .locator("details.govbb-show-hide summary", {
-      hasText: "Use reference letter instead",
-    })
-    .click();
-  await expect(embalmerEvidence).toBeVisible({ timeout: STEP_TIMEOUT });
-  await uploadOne(page, step, "embalmer-evidence", {
-    name: "embalmer-evidence.png",
-    mimeType: TEST_PNG.mimeType,
-    buffer: TEST_PNG.buffer,
-  });
+
+  if (useReferenceLetter) {
+    // `components/show-hide` renders as a native <details>/<summary>; clicking
+    // the summary commits `true` through TanStack-Form, which is what the
+    // conditional on `embalmer-evidence` reads.
+    await page
+      .locator("details.govbb-show-hide summary", {
+        hasText: "Use reference letter instead",
+      })
+      .click();
+    await expect(embalmerEvidence).toBeVisible({ timeout: STEP_TIMEOUT });
+    await uploadOne(page, step, "embalmer-evidence", {
+      name: "embalmer-evidence.png",
+      mimeType: TEST_PNG.mimeType,
+      buffer: TEST_PNG.buffer,
+    });
+  } else {
+    // The default statutory route: the disclosure is left closed, so
+    // `embalmer-qualification` keeps its `required` rule (its `optionalIf`
+    // does NOT fire) and the alternative evidence upload is never asked for.
+    await expect(embalmerEvidence).toBeHidden();
+  }
 
   await advance(page, step);
 }
@@ -433,6 +447,34 @@ test.describe("Funeral Embalmer Licence Application — Live Smoke", () => {
     await expect(page.getByText(data.licenceNumber).first()).toBeVisible();
     // SMOKE_HOLD_CYA=1 pauses a headed run here so the review screen can be
     // inspected before anything is submitted (matches the sibling specs).
+    if (process.env.SMOKE_HOLD_CYA) await page.pause();
+    await advance(page, step);
+
+    await confirmAndSubmit(page);
+
+    if (process.env.SMOKE_HOLD) await page.pause();
+  });
+
+  test("submits on the qualification route, leaving the reference-letter disclosure closed", async ({
+    page,
+  }) => {
+    const data = buildData();
+    if (process.env.SMOKE_LOG_DATA)
+      console.log("[smoke-data]", JSON.stringify(data, null, 2));
+
+    await openForm(page);
+    await fillPersonalDetails(page, data);
+    await fillContactDetails(page, data);
+    // "At multiple funeral establishments" reveals no establishment block.
+    await fillWorkplaceDetails(page, data, "multiple-establishments");
+    // Disclosure left closed — the default route most applicants take, and the
+    // branch where `embalmer-qualification`'s `optionalIf` must NOT fire.
+    await fillDocuments(page, false);
+
+    const step = expectStep(page, "check-your-answers");
+    await expect(page.locator("h1")).toContainText("Check your answers");
+    // No single establishment was named, so its answer cannot be on the review.
+    await expect(page.getByText(data.establishmentName)).toHaveCount(0);
     if (process.env.SMOKE_HOLD_CYA) await page.pause();
     await advance(page, step);
 

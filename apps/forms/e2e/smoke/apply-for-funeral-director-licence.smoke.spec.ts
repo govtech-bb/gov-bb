@@ -307,6 +307,12 @@ export async function fillContactDetails(
 export async function fillWorkplaceDetails(
   page: Page,
   data: ReturnType<typeof buildData>,
+  locations: readonly (
+    | "at-funeral-establishment"
+    | "from-home"
+    | "different-places"
+    | "somewhere-else"
+  )[] = ["at-funeral-establishment", "somewhere-else"],
 ): Promise<void> {
   const step = expectStep(page, "workplace-details");
   await expect(page.locator("h1")).toContainText("where you plan to work");
@@ -318,35 +324,41 @@ export async function fillWorkplaceDetails(
   await expect(establishmentName).toBeHidden();
   await expect(somewhereElse).toBeHidden();
 
-  await tickCheckbox(
-    page,
-    step,
-    "workplace-locations",
-    "at-funeral-establishment",
-  );
-  await expect(establishmentName).toBeVisible({ timeout: STEP_TIMEOUT });
-  // "at-funeral-establishment" reveals the establishment block but not the other free-text field.
-  await expect(somewhereElse).toBeHidden();
+  for (const location of locations) {
+    await tickCheckbox(page, step, "workplace-locations", location);
+  }
 
-  await tickCheckbox(page, step, "workplace-locations", "somewhere-else");
-  await expect(somewhereElse).toBeVisible({ timeout: STEP_TIMEOUT });
+  // Only "at-funeral-establishment" reveals the establishment block, and only
+  // "somewhere-else" reveals the free-text field — each gate is asserted both
+  // ways, so a conditional that starts matching the wrong option fails here.
+  if (locations.includes("at-funeral-establishment")) {
+    await expect(establishmentName).toBeVisible({ timeout: STEP_TIMEOUT });
+    await establishmentName.fill(data.establishmentName);
+    await fillField(
+      page,
+      step,
+      "funeral-establishment-address-line-1",
+      data.establishmentAddressLine1,
+    );
+    // funeral-establishment-address-line-2 is left empty on purpose — the recipe sets
+    // required: false, and this step advancing is the proof.
+    await selectDropdown(
+      page,
+      step,
+      "funeral-establishment-parish",
+      data.establishmentParish,
+    );
+  } else {
+    await expect(establishmentName).toBeHidden();
+  }
 
-  await establishmentName.fill(data.establishmentName);
-  await fillField(
-    page,
-    step,
-    "funeral-establishment-address-line-1",
-    data.establishmentAddressLine1,
-  );
-  // funeral-establishment-address-line-2 is left empty on purpose — the recipe sets
-  // required: false, and this step advancing is the proof.
-  await selectDropdown(
-    page,
-    step,
-    "funeral-establishment-parish",
-    data.establishmentParish,
-  );
-  await somewhereElse.fill(data.somewhereElse);
+  if (locations.includes("somewhere-else")) {
+    await expect(somewhereElse).toBeVisible({ timeout: STEP_TIMEOUT });
+    await somewhereElse.fill(data.somewhereElse);
+  } else {
+    await expect(somewhereElse).toBeHidden();
+  }
+
   await advance(page, step);
 }
 
@@ -419,6 +431,35 @@ test.describe("Funeral Directors Licence Application — Live Smoke", () => {
     await expect(page.getByText(data.licenceNumber).first()).toBeVisible();
     // SMOKE_HOLD_CYA=1 pauses a headed run here so the review screen can be
     // inspected before anything is submitted (matches the sibling specs).
+    if (process.env.SMOKE_HOLD_CYA) await page.pause();
+    await advance(page, step);
+
+    await confirmAndSubmit(page);
+
+    if (process.env.SMOKE_HOLD) await page.pause();
+  });
+
+  test("submits working from home and at different places, so neither workplace block is asked for", async ({
+    page,
+  }) => {
+    const data = buildData();
+    if (process.env.SMOKE_LOG_DATA)
+      console.log("[smoke-data]", JSON.stringify(data, null, 2));
+
+    await openForm(page);
+    await fillPersonalDetails(page, data);
+    await fillContactDetails(page, data);
+    // Neither of these two options reveals anything — the negative side of both
+    // gates on this step, which the sibling test (which ticks both revealing
+    // options) cannot cover.
+    await fillWorkplaceDetails(page, data, ["from-home", "different-places"]);
+    await fillDocuments(page);
+
+    const step = expectStep(page, "check-your-answers");
+    await expect(page.locator("h1")).toContainText("Check your answers");
+    // Neither block was asked for, so neither answer can be on the review.
+    await expect(page.getByText(data.establishmentName)).toHaveCount(0);
+    await expect(page.getByText(data.somewhereElse)).toHaveCount(0);
     if (process.env.SMOKE_HOLD_CYA) await page.pause();
     await advance(page, step);
 
