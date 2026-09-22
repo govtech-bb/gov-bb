@@ -215,7 +215,7 @@ deleting a filter should not silently delete a column — but it means the
 editor has two places to change and a content designer has to know that.
 Worth watching in the usability session.
 
-### Two PGlite integration wrinkles
+### Three PGlite integration wrinkles
 
 - **React `<StrictMode>` breaks live queries.** Its double-invoked effects
   race PGlite's live-query teardown against the immediate resubscribe, and
@@ -225,6 +225,22 @@ Worth watching in the usability session.
   island will render its empty state — "No pharmacies match your filters" —
   before its records arrive. Every data-backed block needs an explicit
   loading state.
+- **A live query whose params are rebuilt every render deadlocks the worker,
+  silently.** `useRenderData` derived its collection keys with
+  `useMemo(..., [doc])`. On the site `doc` is stable and this is invisible.
+  In the editor the draft is a new object on every keystroke, so the hook
+  handed `useLiveQuery` a fresh params array many times a second, and each
+  one tore down and re-created the subscription. The churn deadlocked
+  PGlite's single worker connection: the next `save()` never settled, threw
+  nothing, and logged nothing — the editor simply sat on "Saving…" forever.
+  Memoising on the _contents_ of the key set rather than the document's
+  identity fixes it.
+
+  This is the most transferable operational finding in the spike. The bug is
+  not in PGlite; the same shape would deadlock any single-connection driver,
+  and an API-backed `ApiStore` would instead melt under a request per
+  keystroke. **Anything derived from a mutable document and handed to a
+  subscription must be memoised on its value, not on the document.**
 
 ### Smaller notes
 

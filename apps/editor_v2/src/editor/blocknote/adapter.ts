@@ -12,8 +12,8 @@
  *    list container — each item is its own top-level `bulletListItem` /
  *    `numberedListItem`. So one block expands to N, and N collapse back to
  *    one. The container's own id has nowhere to live in BlockNote's model,
- *    so `ListRegistry` remembers it. Losing it would renumber `b_sv07` on
- *    every save.
+ *    so `DocumentMemo` remembers it — as it does a heading's `anchor`, for
+ *    the same reason. Losing either renumbers content on every save.
  *
  * 2. **Config block payloads.** BlockNote props are flat primitives; a
  *    finder's configuration is a nested object. It travels as a JSON string
@@ -147,15 +147,25 @@ interface ListMemo {
 }
 
 /**
- * Remembers which `ListBlock` each list item came out of, because BlockNote
- * has nowhere to put the container's id.
+ * Everything the canonical document carries that BlockNote's model has
+ * nowhere to put.
+ *
+ * Two things qualify. A `ListBlock`'s own id, because BlockNote has no list
+ * container — lose it and `b_sv07` is renumbered on every save. And a
+ * heading's `anchor`, because the built-in `heading` block has a fixed prop
+ * schema with no room for one.
+ *
+ * Both could be avoided by replacing BlockNote's blocks with custom ones,
+ * at the cost of the native list and `## ` behaviour that is most of why we
+ * chose an off-the-shelf editor. A side table is the cheaper trade.
  *
  * Splitting a list in the editor gives one group the original id and mints a
- * fresh one for the other — which is the correct outcome, since two lists
- * cannot both be the block that was there before.
+ * fresh one for the other — the correct outcome, since two lists cannot both
+ * be the block that was there before.
  */
-export class ListRegistry {
+export class DocumentMemo {
   private byItem = new Map<string, ListMemo>();
+  private anchors = new Map<string, string>();
 
   remember(itemId: string, memo: ListMemo): void {
     this.byItem.set(itemId, memo);
@@ -169,8 +179,17 @@ export class ListRegistry {
     return undefined;
   }
 
+  rememberAnchor(blockId: string, anchor: string): void {
+    this.anchors.set(blockId, anchor);
+  }
+
+  anchorFor(blockId: string): string | undefined {
+    return this.anchors.get(blockId);
+  }
+
   clear(): void {
     this.byItem.clear();
+    this.anchors.clear();
   }
 }
 
@@ -195,7 +214,7 @@ export function isConfigType(type: string): boolean {
 
 export function toBlockNote(
   blocks: Block[],
-  registry: ListRegistry,
+  registry: DocumentMemo,
 ): BnBlock[] {
   registry.clear();
   const out: BnBlock[] = [];
@@ -211,10 +230,13 @@ export function toBlockNote(
         break;
 
       case "heading":
+        // `anchor` is a URL fragment someone has linked to. BlockNote's
+        // heading has no prop for it, so it lives in the memo.
+        registry.rememberAnchor(block.id, block.anchor);
         out.push({
           id: block.id,
           type: "heading",
-          props: { level: block.level, anchor: block.anchor },
+          props: { level: block.level },
           content: spansToInline(block.content),
         });
         break;
@@ -266,7 +288,7 @@ function stripId(block: Block): Record<string, unknown> {
 
 export function fromBlockNote(
   bnBlocks: BnBlock[],
-  registry: ListRegistry,
+  registry: DocumentMemo,
   mintId: () => string,
 ): Block[] {
   const out: Block[] = [];
@@ -314,7 +336,10 @@ export function fromBlockNote(
           id: bn.id,
           type: "heading",
           level: (bn.props?.level as 2 | 3) ?? 2,
-          anchor: String(bn.props?.anchor ?? ""),
+          // Remembered from load, so retyping the heading text never
+          // silently changes the fragment. A brand-new heading has none,
+          // and `deriveAnchors` mints one from its text.
+          anchor: registry.anchorFor(bn.id) ?? "",
           content: inlineToSpans(bn.content),
         });
         break;

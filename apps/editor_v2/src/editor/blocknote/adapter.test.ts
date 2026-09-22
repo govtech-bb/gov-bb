@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Block } from "@govtech-bb/block-kit";
 import {
-  ListRegistry,
+  DocumentMemo,
   fromBlockNote,
   inlineToSpans,
   spansToInline,
@@ -74,7 +74,7 @@ const SEVERANCE: Block[] = [
 ];
 
 const roundTrip = (blocks: Block[]): Block[] => {
-  const registry = new ListRegistry();
+  const registry = new DocumentMemo();
   let minted = 0;
   return fromBlockNote(
     toBlockNote(blocks, registry),
@@ -117,6 +117,13 @@ describe("the round trip", () => {
         expect.anything(),
       ],
     });
+  });
+
+  it("keeps a heading's anchor, which BlockNote's heading cannot hold", () => {
+    const heading = roundTrip(SEVERANCE).find((b) => b.type === "heading");
+    expect(heading && "anchor" in heading && heading.anchor).toBe(
+      "how-long-does-it-take",
+    );
   });
 
   it("reassigns no ids", () => {
@@ -177,7 +184,7 @@ describe("the closed palette", () => {
   it("drops a block type BlockNote can produce but the palette does not offer", () => {
     // A pasted table or code block has no home in the document. Dropping it
     // on the way in is the palette holding from the other side.
-    const registry = new ListRegistry();
+    const registry = new DocumentMemo();
     const result = fromBlockNote(
       [
         {
@@ -230,14 +237,14 @@ describe("the closed palette", () => {
 
 describe("lists", () => {
   it("splits a list into one BlockNote block per item", () => {
-    const registry = new ListRegistry();
+    const registry = new DocumentMemo();
     const bn = toBlockNote(SEVERANCE, registry);
     const items = bn.filter((b) => b.type === "bulletListItem");
     expect(items.map((b) => b.id)).toEqual(["b_sv07a", "b_sv07b", "b_sv07c"]);
   });
 
   it("mints a container id for a list that was never in the document", () => {
-    const registry = new ListRegistry();
+    const registry = new DocumentMemo();
     const result = fromBlockNote(
       [
         {
@@ -260,7 +267,7 @@ describe("lists", () => {
   });
 
   it("separates a bulleted run from a numbered one", () => {
-    const registry = new ListRegistry();
+    const registry = new DocumentMemo();
     let n = 0;
     const result = fromBlockNote(
       [
