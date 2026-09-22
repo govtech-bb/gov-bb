@@ -12,10 +12,12 @@ import {
   CALENDAR_URL,
   DOC,
   gotoEditor,
+  block,
   gotoSite,
   openDocument,
   resultCount,
   PHARMACY_URL,
+  replaceText,
   saveAndExpectSuccess,
   waitForReady,
 } from "./support";
@@ -55,17 +57,12 @@ test.describe("first run and every run after it", () => {
     page,
   }) => {
     await openDocument(page, DOC.severance);
-    await page
-      .getByTestId("block-b_sv04")
-      .getByRole("textbox")
-      .fill("About 7 minutes.");
+    await replaceText(page, "b_sv04", "About 7 minutes.");
     await saveAndExpectSuccess(page);
 
     await page.reload();
     await waitForReady(page);
-    await expect(
-      page.getByTestId("block-b_sv04").getByRole("textbox"),
-    ).toHaveValue("About 7 minutes.");
+    await expect(block(page, "b_sv04")).toHaveText("About 7 minutes.");
   });
 
   test("resetting drops, migrates and reseeds back to the shipped state", async ({

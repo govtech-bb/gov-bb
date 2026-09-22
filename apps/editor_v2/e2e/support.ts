@@ -6,6 +6,12 @@
  * change shape to make a test pass, that is a finding about the design, not
  * a detail to paper over.
  *
+ * The editing surface is BlockNote (ADR 0074), so the helpers here drive a
+ * single contenteditable the way a person does — click, select, type, press
+ * "/" — rather than filling one form control per block. That is a deliberate
+ * cost: these tests are slower and fussier than `fill()` on a textbox would
+ * be, and in exchange they exercise the interaction people actually have.
+ *
  * Selector policy, deliberately split:
  *
  *   - The SITE is queried by accessible role and name only. Those pages are
@@ -13,9 +19,10 @@
  *     the block renderer emits an accessible tree. A test that can only be
  *     written with a test id is telling you the markup is wrong.
  *
- *   - The EDITOR is queried by test id. It is an internal tool whose DOM is
- *     going to churn hard across the spike, and pinning it to accessible
- *     names would make every copy change a test failure for no safety gain.
+ *   - The EDITOR is queried by test id, except for blocks themselves, which
+ *     are addressed by the `data-id` BlockNote puts on every block node. The
+ *     adapter seeds those from our own block ids, so `[data-id="b_sv04"]`
+ *     resolving at all is the same assertion as "ids survive the round trip".
  */
 
 import { expect, type Locator, type Page } from "@playwright/test";
@@ -52,7 +59,7 @@ export async function gotoEditor(page: Page): Promise<void> {
 export async function openDocument(page: Page, title: string): Promise<void> {
   await gotoEditor(page);
   await page.getByTestId("doc-list").getByRole("link", { name: title }).click();
-  await expect(page.getByTestId("block-list")).toBeVisible();
+  await expect(editorSurface(page)).toBeVisible();
 }
 
 export async function gotoSite(page: Page, url: string): Promise<void> {
@@ -62,10 +69,29 @@ export async function gotoSite(page: Page, url: string): Promise<void> {
 
 /* ------------------------------------------------------------- the editor */
 
+/** The BlockNote contenteditable holding the whole document. */
+export const editorSurface = (page: Page): Locator =>
+  page.getByTestId("editor-surface");
+
+/**
+ * One block, addressed by the `data-id` BlockNote renders on its node. The
+ * adapter seeds these from our block ids, so this selector is stable across
+ * edits by construction — and stops resolving the moment something renumbers.
+ */
+export const block = (page: Page, id: string): Locator =>
+  page.locator(`[data-id="${id}"]`);
+
 export const blockByType = (page: Page, type: string): Locator =>
-  page.getByTestId(`block-type-${type}`).first();
+  page.locator(`[data-block-type="${type}"]`).first();
 
 export const preview = (page: Page): Locator => page.getByTestId("preview");
+
+/** Ids of the blocks currently in the document, in document order. */
+export async function blockIds(page: Page): Promise<string[]> {
+  return JSON.parse(await bodyJson(page)).blocks.map(
+    (b: { id: string }) => b.id,
+  );
+}
 
 /** The serialized body, exposed read-only so round-trip is observable. */
 export async function bodyJson(page: Page): Promise<string> {
@@ -75,28 +101,103 @@ export async function bodyJson(page: Page): Promise<string> {
   return text;
 }
 
-export async function save(page: Page): Promise<void> {
-  await page.getByTestId("save").click();
+/* -------------------------------------------------------------- editing */
+
+/**
+ * Replace a prose block's text the way a person would: select the paragraph,
+ * then type over it.
+ *
+ * There is no per-block form control to `fill()` — the whole document is one
+ * contenteditable — so a triple click to select the paragraph is both the
+ * realistic gesture and the only reliable one.
+ */
+export async function replaceText(
+  page: Page,
+  blockId: string,
+  text: string,
+): Promise<void> {
+  await block(page, blockId).click({ clickCount: 3 });
+  await page.keyboard.type(text);
 }
 
-/** Save and assert it was accepted — no error summary, state back to clean. */
+export const blockText = (page: Page, blockId: string): Promise<string> =>
+  block(page, blockId).innerText();
+
+/**
+ * Insert a block through the slash menu — Notion's affordance, and the one
+ * §3.6 of the brief is really describing when it says the insert menu *is*
+ * the content model made visible.
+ */
+export async function insertBlockAfter(
+  page: Page,
+  afterBlockId: string,
+  type: string,
+): Promise<void> {
+  await block(page, afterBlockId).click();
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await openSlashMenu(page);
+  await page.getByTestId(`slash-item-${type}`).click();
+}
+
+export async function openSlashMenu(page: Page): Promise<Locator> {
+  await page.keyboard.type("/");
+  const menu = page.getByTestId("slash-menu");
+  await expect(menu).toBeVisible();
+  return menu;
+}
+
+/**
+ * Reorder by keyboard.
+ *
+ * Dragging is the mouse affordance and it is covered once, in
+ * prose-round-trip. This is the one that has to work for keyboard and
+ * screen-reader users, so it is what the rest of the suite pins — a
+ * drag-only reorder would fail the Barbados Service Standards.
+ */
+export async function moveBlockUp(page: Page, blockId: string): Promise<void> {
+  await block(page, blockId).click();
+  await page.keyboard.press("ControlOrMeta+Shift+ArrowUp");
+}
+
+export async function deleteBlock(page: Page, blockId: string): Promise<void> {
+  await block(page, blockId).hover();
+  await page.getByTestId(`block-handle-${blockId}`).click();
+  await page.getByTestId("block-menu-delete").click();
+}
+
+/* --------------------------------------------------------------- saving */
+
+/**
+ * The editor autosaves on a debounce. Ctrl/Cmd+S forces that flush to happen
+ * now, which is what makes these tests deterministic without any of them
+ * having to sleep for the debounce window.
+ *
+ * The `autosave` block in prose-round-trip.spec.ts covers the debounce firing
+ * on its own; everywhere else uses the explicit flush, because a test about
+ * facet configuration should not also be a test about timing.
+ */
+export async function flushSave(page: Page): Promise<void> {
+  await page.keyboard.press("ControlOrMeta+s");
+}
+
+export const saveStatus = (page: Page): Locator =>
+  page.getByTestId("save-status");
+
 export async function saveAndExpectSuccess(page: Page): Promise<void> {
-  await save(page);
-  await expect(page.getByTestId("save-status")).toHaveText(/saved/i);
+  await flushSave(page);
+  await expect(saveStatus(page)).toHaveText(/^saved$/i);
   await expect(page.getByTestId("error-summary")).toHaveCount(0);
 }
 
 /** Save and assert it was rejected, returning the error summary locator. */
 export async function saveAndExpectRejection(page: Page): Promise<Locator> {
-  await save(page);
+  await flushSave(page);
   const summary = page.getByTestId("error-summary");
   await expect(summary).toBeVisible();
+  // A rejected save must leave the document dirty, never quietly "Saved".
+  await expect(saveStatus(page)).toHaveText(/unsaved/i);
   return summary;
-}
-
-export async function insertBlock(page: Page, type: string): Promise<void> {
-  await page.getByTestId("insert-block").click();
-  await page.getByTestId(`insert-${type}`).click();
 }
 
 /* --------------------------------------------------------------- the site */

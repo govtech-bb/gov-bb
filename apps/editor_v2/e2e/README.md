@@ -10,6 +10,9 @@ say why — that is a finding about the design. Quietly rewriting a spec to
 match whatever the code happens to render turns the suite into a description
 of the implementation, which is worth nothing.
 
+The editing surface is **BlockNote** and saving is **debounced autosave with
+a Ctrl/Cmd+S flush** — see [ADR 0074](../../../docs/decisions/0074-the-block-editor-spike-edits-on-blocknote-over-a-canonical-json-body.md).
+
 ## Running it
 
 ```bash
@@ -31,7 +34,7 @@ through the editor changes the preview's filter sidebar with no code
 change"_, _"editing in one tab updates the site in another, with no rebuild
 and no reload"_.
 
-The three things carrying the spike's risk have no honest unit-test surface:
+The things carrying the spike's risk have no honest unit-test surface:
 
 - **PGlite** is a real Postgres compiled to WASM. Mocking it would test the
   mock. Running it in Node would skip IndexedDB, which is where the
@@ -40,6 +43,10 @@ The three things carrying the spike's risk have no honest unit-test surface:
   `live-update.spec.ts` opens two pages in one browser context for exactly
   this reason — a second _context_ is a different storage partition and the
   test would prove nothing.
+- **BlockNote is a contenteditable**, not a set of form fields. Whether a
+  paste, a triple-click retype or a drag preserves a block id is a question
+  about ProseMirror's actual behaviour in a real browser. A jsdom test would
+  answer confidently and wrongly.
 - **"One block document model holds prose, configuration and
   collection-backed data"** is a claim about what an author can do, end to
   end. A unit test on the reducer cannot fail in the way that matters.
@@ -58,9 +65,23 @@ citizen-facing, so every selector doubles as an assertion that the block
 renderer emits a navigable accessible tree. A site behaviour that can only
 be tested with a test id is telling you the markup is wrong — fix the markup.
 
-**The editor is queried by test id.** It is an internal tool whose DOM will
-churn hard across the spike, and pinning it to accessible names would make
-every copy change a test failure for no safety gain.
+**The editor is queried by test id**, with one exception: blocks themselves
+are addressed by the `data-id` BlockNote puts on every block node, which the
+adapter seeds from our own block ids. So `[data-id="b_sv04"]` resolving at
+all is the same assertion as _"ids survive the round trip"_, and it stops
+resolving the moment something renumbers.
+
+## Accessibility is part of the contract, not a later pass
+
+A Notion-like editor is where keyboard and screen-reader users usually get
+abandoned: reorder becomes drag-only and the slash menu becomes a div that
+only responds to a mouse. This is a government service under the Barbados
+Service Standards, so the suite pins the accessible path as the primary one:
+
+- **Reorder is tested by keyboard** (`ControlOrMeta+Shift+Arrow`). Dragging
+  the handle is covered once, as the secondary affordance.
+- **The slash menu must be a real `listbox`** with an `aria-label`, roving
+  selection via `ArrowDown`, and `Enter` to choose. There is a test for each.
 
 ## The contract
 
@@ -72,23 +93,31 @@ every copy change a test failure for no safety gain.
 
 ### Editor shell
 
-| Handle                                           | Meaning                                                                                                             |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| `doc-list`                                       | Container of document links. Each document is a `link` whose accessible name is its title.                          |
-| `block-list`                                     | Container of the blocks being edited. Visible once a document is open.                                              |
-| `block-<blockId>`                                | One block, keyed by its stable id (`block-b_sv04`). Receives focus when an error summary link is followed.          |
-| `block-type-<type>`                              | One block, keyed by type (`block-type-finder`). For asserting a type is present without knowing its id.             |
-| `document-title`                                 | Editable envelope title.                                                                                            |
-| `preview`                                        | The live preview pane, rendered by `block-kit`'s renderer — the same one the site uses.                             |
-| `doc-json-toggle` / `doc-json`                   | Read-only serialized body. Makes round-trip observable. Not an escape hatch: read-only, and not in the insert menu. |
-| `save`                                           | Save button.                                                                                                        |
-| `save-status`                                    | Text matching `/saved/i` when clean, `/unsaved/i` when dirty.                                                       |
-| `error-summary`                                  | Present only when a save was rejected. Contains a `link` per error that moves focus to the failing block.           |
-| `block-error-<blockId>`                          | The error shown against a specific failing block.                                                                   |
-| `conflict-notice`                                | Shown when `save` was refused because `updated_at` was stale.                                                       |
-| `reset-data`                                     | Drop, migrate, reseed.                                                                                              |
-| `insert-block` → `insert-menu` → `insert-<type>` | The closed palette. Exactly nine `menuitem`s.                                                                       |
-| `move-up` / `move-down` / `delete-block`         | Per-block controls, scoped inside `block-<blockId>`.                                                                |
+| Handle                         | Meaning                                                                                                                                  |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `doc-list`                     | Container of document links. Each document is a `link` whose accessible name is its title.                                               |
+| `editor-surface`               | The BlockNote contenteditable holding the whole document.                                                                                |
+| `[data-id="<blockId>"]`        | One block. Not a test id — BlockNote's own attribute, seeded from our block id. Receives focus from an error link.                       |
+| `[data-block-type="<type>"]`   | One block addressed by type, for asserting a type is present without knowing its id.                                                     |
+| `document-title`               | Editable envelope title.                                                                                                                 |
+| `preview`                      | Live preview, rendered by `block-kit`'s renderer — the same one the site uses. Earns its place for config blocks, which are not WYSIWYG. |
+| `doc-json-toggle` / `doc-json` | Read-only serialized body. Makes round-trip observable. Not an escape hatch: read-only, and not in the slash menu.                       |
+| `save-status`                  | `Saved` when clean, `Unsaved changes` when dirty, `Saving…` in flight.                                                                   |
+| `error-summary`                | Present only when a save was rejected. A rejected save must leave the status dirty.                                                      |
+| `error-link-<blockId>`         | Summary entry that moves focus to its block.                                                                                             |
+| `block-error-<blockId>`        | Inline error against a config block.                                                                                                     |
+| `conflict-notice`              | Shown when a save was refused because `updated_at` was stale.                                                                            |
+| `reset-data`                   | Drop, migrate, reseed.                                                                                                                   |
+| `slash-menu`                   | The closed palette. `role="listbox"`, `aria-label` matching /insert/i, exactly nine `option`s, keyboard navigable.                       |
+| `slash-item-<type>`            | One palette entry.                                                                                                                       |
+| `block-handle-<blockId>`       | Drag handle, revealed on hover. Opens the block menu.                                                                                    |
+| `block-menu-delete`            | Delete, from the block handle menu.                                                                                                      |
+
+There is **no Save button**. Editing autosaves on a debounce; `Ctrl/Cmd+S`
+forces the flush immediately, and must `preventDefault` so the browser's own
+Save dialog never opens. Every spec but `prose-round-trip.spec.ts`'s autosave
+block uses the explicit flush, so that a test about facet configuration is
+not also a test about timing.
 
 ### Finder configuration
 
@@ -102,6 +131,11 @@ every copy change a test failure for no safety gain.
 | `facet-name-<key>`                                                                                             | Rename an existing facet.                           |
 | `remove-facet-<key>`                                                                                           | Remove a facet.                                     |
 
+`facet-computed-from-new` accepts a comma-separated list, because
+`subsidisedOnly` and `slip` in the production finder are predicates over
+`type` **and** `pppStatus`. The brief's single-field `computed_from` cannot
+express the real page.
+
 ### Calendar configuration
 
 | Handle                                                                                                                              | Meaning                                    |
@@ -114,9 +148,9 @@ every copy change a test failure for no safety gain.
 Holiday rules are editable even though §11 lists "editing collection
 records" as out of scope — §3.7 is explicit that _"bank holiday rules are
 editable rows"_, and §10 requires adding one to show up in the calendar. The
-two statements conflict; the resolution taken here is that **`bank-holiday-rules`
-records are editable and pharmacy records are not**, which is what makes the
-data/code seam testable at all.
+two statements conflict; the resolution taken here is that
+**`bank-holiday-rules` records are editable and pharmacy records are not**,
+which is what makes the data/code seam testable at all.
 
 ### Site
 
@@ -144,13 +178,18 @@ and belong in `packages/spike-db` integration tests against real SQL:
 - _"`EXPLAIN` shows whether the GIN index is used"_ — a SQL-level
   observation, and the answer gets recorded either way.
 
-Two criteria are worth flagging as **not fully satisfiable as written**:
+One criterion is **not satisfiable as written**:
 
 - _"visually equivalent to production"_ is asserted structurally here
   (headings, roles, semantics, the start button, computed dates), not
   pixel-wise. A screenshot comparison would need the production pages as a
   baseline, which the spike has no access to.
-- _"nested lists ... survive a round trip"_ cannot be tested, because the
-  `ListBlock` in §6 has no nesting — `items` is `Array<{ id, content }>`
-  with no children. None of the three seeded pages needs a nested list. This
-  is a genuine gap between §10 and §6 and should go in the findings.
+
+And one is now satisfiable only because of the BlockNote decision:
+
+- _"nested lists ... survive a round trip"_ could not be expressed at all
+  under §6's `ListBlock`, whose `items` is `Array<{ id, content }>` with no
+  children. BlockNote blocks nest natively, so the block model should gain
+  `children` and this becomes testable. None of the three seeded pages needs
+  a nested list, so it is not pinned yet — but the gap between §10 and §6 is
+  real and belongs in the findings.
