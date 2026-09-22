@@ -247,6 +247,41 @@ linked anywhere — and the gap survived a full renderer, a full adapter and a
 round-trip test suite. When picking fixtures for the real migration, pick
 them for the _features_ they exercise, not only for the shapes they are.
 
+### Author-controlled hrefs are stored XSS unless something refuses them
+
+Adding inline links introduced a `javascript:` hole, and reviewing it found
+two more that had been there all along: the start button's `target` when
+`target_kind` is `external`, and the finder's `result_template.detail_url`.
+
+React does not sanitise `href`. It warns about `javascript:` and renders it
+anyway, so any author who can save a body could have put a working script
+link on a citizen-facing page. In the spike that author is the one person
+using it locally, which is why this is easy to wave away — but `block-kit`
+is precisely the part specified to outlive the spike, and in production the
+authors are MDA content designers and the readers are the public.
+
+Three layers now refuse it, because one is not enough:
+
+- **The schema**, so an unsafe href cannot reach the database at all and no
+  later consumer — an export, an older client, a second renderer — has to
+  remember to check.
+- **The adapter**, so pasting a `javascript:` link into the editor keeps the
+  words and drops the link rather than storing something the renderer would
+  only refuse later.
+- **The renderer**, which emits an anchor with no `href` rather than a live
+  one. Inert and visibly broken beats working and hostile.
+
+Allowed: root-relative paths, fragments, and `http`, `https`, `mailto`,
+`tel`. Refused: everything else, protocol-relative `//host` (a path to the
+eye, another origin in fact), and a scheme hidden behind control characters
+— `java\tscript:` runs, because HTML parsers strip the tab, which is what a
+naive `startsWith("javascript:")` check misses.
+
+**The transferable point is that this is a property of the format, not of
+the editor.** Any system where a URL is content needs the allowlist beside
+the format rather than in whichever component happens to render it, and it
+needs it before the first link ships, not after.
+
 ### `refs` and `data_table` had never been exercised at all
 
 Every document seeded before the hairdressing page had `refs: {}`, and the

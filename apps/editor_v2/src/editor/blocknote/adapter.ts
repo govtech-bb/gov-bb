@@ -27,6 +27,7 @@
  *    edited serializes back to exactly what was loaded.
  */
 
+import { safeHref } from "@govtech-bb/block-kit";
 import type { Block, ListBlock, Mark, Ref, Span } from "@govtech-bb/block-kit";
 
 /* ----------------------------------------------------------- BlockNote-ish
@@ -131,7 +132,16 @@ export function inlineToSpans(
   if (!content) return [];
   const spans: Span[] = [];
 
-  const keyForHref = (href: string): string => {
+  /**
+   * The ref for a link's href, minting one when the document does not
+   * already name it. Returns null for an href the document is not allowed
+   * to hold — pasting a `javascript:` link into the editor then keeps the
+   * words and drops the link, rather than storing something the renderer
+   * would have to refuse later.
+   */
+  const keyForHref = (raw: string): string | null => {
+    const href = safeHref(raw);
+    if (!href) return null;
     for (const [key, ref] of Object.entries(refs)) {
       if (hrefOf(ref) === href) return key;
     }
@@ -150,11 +160,10 @@ export function inlineToSpans(
         for (const [style, mark] of STYLE_TO_MARK) {
           if (run.styles?.[style]) marks.push(mark);
         }
-        spans.push(
-          marks.length > 0
-            ? { text: run.text, marks, ref: key }
-            : { text: run.text, ref: key },
-        );
+        const span: Span = { text: run.text };
+        if (marks.length > 0) span.marks = marks;
+        if (key) span.ref = key;
+        spans.push(span);
       }
       continue;
     }

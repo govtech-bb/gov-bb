@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { safeHref } from "../href";
 import type { Ref, Span } from "../types";
 
 export interface RenderContext {
@@ -38,11 +39,13 @@ function resolveSpanHref(span: Span, ctx: RenderContext): string | null {
   if (!span.ref || span.text === undefined) return null;
   const ref = ctx.refs[span.ref];
   if (!ref) return null;
+  // Through safeHref last, so a host's resolveHref cannot widen what a
+  // document is allowed to emit either.
   if (ref.kind === "external") {
-    return ctx.resolveHref?.("external", ref.href) ?? ref.href;
+    return safeHref(ctx.resolveHref?.("external", ref.href) ?? ref.href);
   }
   if (ref.kind === "page") {
-    return ctx.resolveHref?.("page", ref.url) ?? ref.url;
+    return safeHref(ctx.resolveHref?.("page", ref.url) ?? ref.url);
   }
   return null;
 }

@@ -8,6 +8,7 @@ import {
 } from "../facets";
 import type { Facet, FinderBlock } from "../types";
 import type { RenderContext } from "./spans";
+import { hrefAttr } from "../href";
 
 /** Options for a facet, either listed inline or drawn from a collection. */
 function optionsFor(
@@ -223,9 +224,11 @@ export function FinderIsland({
               <li key={String(row.slug ?? index)} className="bk-result">
                 <a
                   className="bk-result-title"
-                  href={block.result_template.detail_url.replace(
-                    /\{(\w+)\}/g,
-                    (_, field: string) => String(row[field] ?? ""),
+                  {...hrefAttr(
+                    block.result_template.detail_url.replace(
+                      /\{(\w+)\}/g,
+                      (_, field: string) => String(row[field] ?? ""),
+                    ),
                   )}
                 >
                   {String(row[block.result_template.title] ?? "")}

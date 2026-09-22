@@ -418,3 +418,66 @@ describe("inline links", () => {
     });
   });
 });
+
+describe("an unsafe link cannot get into the document", () => {
+  const pasted = (href: string) => ({
+    id: "b_p",
+    type: "paragraph",
+    content: [
+      {
+        type: "link" as const,
+        href,
+        content: [{ type: "text" as const, text: "click me", styles: {} }],
+      },
+    ],
+  });
+
+  it("keeps the words and drops the link for a javascript: href", () => {
+    // React renders `javascript:` hrefs, so a pasted one would be live on a
+    // citizen-facing page. The words survive; the link does not.
+    const { blocks, refs } = fromBlockNote(
+      [pasted("javascript:alert(1)")],
+      new DocumentMemo(),
+      () => "b_x",
+    );
+    const span = "content" in blocks[0] ? blocks[0].content[0] : undefined;
+    expect(span).toEqual({ text: "click me" });
+    expect(refs).toEqual({});
+  });
+
+  it("drops a scheme hidden behind a tab", () => {
+    const { refs } = fromBlockNote(
+      [pasted("java\tscript:alert(1)")],
+      new DocumentMemo(),
+      () => "b_x",
+    );
+    expect(refs).toEqual({});
+  });
+
+  it("drops data: and protocol-relative hrefs", () => {
+    for (const href of ["data:text/html,<script>", "//evil.example"]) {
+      const { refs } = fromBlockNote(
+        [pasted(href)],
+        new DocumentMemo(),
+        () => "b_x",
+      );
+      expect(refs).toEqual({});
+    }
+  });
+
+  it("still accepts the links a government page actually needs", () => {
+    for (const href of [
+      "https://oag.gov.bb/regs.pdf",
+      "/business-trade/crop-over-permits",
+      "mailto:EHD.BTPC@health.gov.bb",
+      "tel:+12465363700",
+    ]) {
+      const { refs } = fromBlockNote(
+        [pasted(href)],
+        new DocumentMemo(),
+        () => "b_x",
+      );
+      expect(Object.keys(refs)).toHaveLength(1);
+    }
+  });
+});

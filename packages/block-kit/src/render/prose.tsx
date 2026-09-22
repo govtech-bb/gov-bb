@@ -7,6 +7,7 @@ import type {
   StartLinkBlock,
 } from "../types";
 import { Spans, type RenderContext } from "./spans";
+import { safeHref } from "../href";
 
 export function Paragraph({
   block,
@@ -73,11 +74,19 @@ export function StartLink({
   block: StartLinkBlock;
   ctx: RenderContext;
 }) {
-  const href =
-    ctx.resolveHref?.(block.target_kind, block.target) ?? block.target;
+  // An unsafe target renders the button with no href at all rather than a
+  // working `javascript:` link. It is inert and obviously broken, which is
+  // the right failure for something a citizen is invited to click.
+  const href = safeHref(
+    ctx.resolveHref?.(block.target_kind, block.target) ?? block.target,
+  );
   return (
     <p className="bk-start">
-      <a className="bk-start-button" href={href} data-kind={block.target_kind}>
+      <a
+        className="bk-start-button"
+        {...(href ? { href } : {})}
+        data-kind={block.target_kind}
+      >
         {block.label}
         <svg
           className="bk-start-arrow"

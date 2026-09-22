@@ -5,6 +5,7 @@
  */
 
 import { z } from "zod";
+import { isSafeHref } from "./href";
 import { BLOCK_TYPES, SCHEMA_NAMES } from "./types";
 
 const markSchema = z.enum(["strong", "em", "code"]);
@@ -37,8 +38,23 @@ export const refSchema = z.discriminatedUnion("kind", [
       .optional(),
     limit: z.number().int().positive().optional(),
   }),
-  z.object({ kind: z.literal("page"), url: z.string().startsWith("/") }),
-  z.object({ kind: z.literal("external"), href: z.string().min(1) }),
+  // Refused here as well as at render time. A `javascript:` href that never
+  // reaches the database cannot be rendered by an older client, an export,
+  // or anything else downstream that forgets to check.
+  z.object({
+    kind: z.literal("page"),
+    url: z
+      .string()
+      .startsWith("/")
+      .refine(isSafeHref, { message: "unsafe url" }),
+  }),
+  z.object({
+    kind: z.literal("external"),
+    href: z
+      .string()
+      .min(1)
+      .refine(isSafeHref, { message: "unsafe href scheme" }),
+  }),
 ]);
 
 const blockId = z.string().min(1);
@@ -71,13 +87,20 @@ const noticeSchema = z.object({
   content: contentSchema,
 });
 
-const startLinkSchema = z.object({
-  id: blockId,
-  type: z.literal("start_link"),
-  label: z.string().min(1),
-  target_kind: z.enum(["form", "page", "external"]),
-  target: z.string().min(1),
-});
+const startLinkSchema = z
+  .object({
+    id: blockId,
+    type: z.literal("start_link"),
+    label: z.string().min(1),
+    target_kind: z.enum(["form", "page", "external"]),
+    // A form target is an id the host resolves, not a url, so only the two
+    // kinds that become an href directly are scheme-checked.
+    target: z.string().min(1),
+  })
+  .refine((block) => block.target_kind === "form" || isSafeHref(block.target), {
+    message: "start_link target is not a safe url",
+    path: ["target"],
+  });
 
 export const facetSchema = z.object({
   key: z.string().min(1),
