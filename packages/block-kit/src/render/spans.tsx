@@ -5,6 +5,8 @@ export interface RenderContext {
   /** Collection records, keyed by collection key. */
   data: Record<string, Array<Record<string, unknown>>>
   refs: Record<string, Ref>
+  /** True while the collections this page reads are still arriving. */
+  loading?: boolean
   /** Turns a start_link target into an href. */
   resolveHref?: (kind: 'form' | 'page' | 'external', target: string) => string
 }

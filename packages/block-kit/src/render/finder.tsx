@@ -44,6 +44,14 @@ function compare(a: RecordRow, b: RecordRow, key: string): number {
   return String(left ?? '').localeCompare(String(right ?? ''))
 }
 
+/** English plural of the configured noun. "pharmacy" must not become "pharmacys". */
+function plural(noun: string, count: number): string {
+  if (count === 1) return noun
+  if (/[^aeiou]y$/i.test(noun)) return `${noun.slice(0, -1)}ies`
+  if (/(s|x|z|ch|sh)$/i.test(noun)) return `${noun}es`
+  return `${noun}s`
+}
+
 /**
  * A metadata cell. A computed facet key (`openNow`) has no stored field, so
  * it resolves through the same predicate registry the sidebar filters with.
@@ -176,8 +184,7 @@ export function FinderIsland({
       <div className="bk-finder-results">
         <div className="bk-finder-toolbar">
           <p className="bk-result-count" aria-live="polite">
-            {results.length} {block.document_noun}
-            {results.length === 1 ? '' : 's'}
+            {results.length} {plural(block.document_noun, results.length)}
           </p>
           {block.sort.length > 0 ? (
             <label className="bk-sort">
@@ -197,7 +204,9 @@ export function FinderIsland({
         </div>
 
         {visible.length === 0 ? (
-          <p className="bk-empty">{block.empty_message}</p>
+          <p className="bk-empty">
+            {ctx.loading ? 'Loading…' : block.empty_message}
+          </p>
         ) : (
           <ul className="bk-result-list">
             {visible.map((row, index) => (

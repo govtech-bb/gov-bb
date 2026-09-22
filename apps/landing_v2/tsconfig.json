@@ -5,10 +5,9 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
-    "lib": ["ES2022", "DOM"],
-    "types": ["vitest/globals", "node"],
-    "resolveJsonModule": true
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": []
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.json"],
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["node_modules", "dist"]
 }

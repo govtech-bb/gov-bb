@@ -1,0 +1,17 @@
+{
+  "name": "landing-v2",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/landing_v2/src",
+  "projectType": "library",
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": { "command": "tsc --noEmit", "cwd": "apps/landing_v2" }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": { "lintFilePatterns": ["apps/landing_v2/**/*.{ts,tsx}"] }
+    }
+  },
+  "tags": ["spike"]
+}

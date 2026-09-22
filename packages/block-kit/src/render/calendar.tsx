@@ -89,7 +89,9 @@ export function CalendarIsland({
         </tbody>
       </table>
       {rows.length === 0 ? (
-        <p className="bk-empty">No holidays left in {year}.</p>
+        <p className="bk-empty">
+          {ctx.loading ? 'Loading…' : `No holidays left in ${year}.`}
+        </p>
       ) : null}
     </div>
   )

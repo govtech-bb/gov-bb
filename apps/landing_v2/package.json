@@ -1,0 +1,26 @@
+{
+  "name": "@govtech-bb/landing-v2",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@electric-sql/pglite-react": "^0.4.8",
+    "@govtech-bb/block-kit": "workspace:*",
+    "@govtech-bb/react": "1.0.0-alpha.29",
+    "@govtech-bb/spike-db": "workspace:*",
+    "@tanstack/react-router": "catalog:",
+    "react": "catalog:"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:",
+    "typescript": "catalog:"
+  }
+}

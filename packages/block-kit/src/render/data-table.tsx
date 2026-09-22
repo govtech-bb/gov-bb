@@ -23,7 +23,11 @@ export function DataTable({
     ref && ref.kind === 'query' && ref.limit ? rows.slice(0, ref.limit) : rows
 
   if (limited.length === 0) {
-    return <p className="bk-empty">{block.empty_message}</p>
+    return (
+      <p className="bk-empty">
+        {ctx.loading ? 'Loading…' : block.empty_message}
+      </p>
+    )
   }
 
   return (

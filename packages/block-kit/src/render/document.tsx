@@ -48,13 +48,15 @@ export function RenderBlock({
 export function RenderDocument({
   doc,
   data,
+  loading,
   resolveHref,
 }: {
   doc: PageDocument
   data: RenderContext['data']
+  loading?: boolean
   resolveHref?: RenderContext['resolveHref']
 }) {
-  const ctx: RenderContext = { data, refs: doc.body.refs, resolveHref }
+  const ctx: RenderContext = { data, refs: doc.body.refs, loading, resolveHref }
   return (
     <article className="bk-document">
       <h1 className="bk-title">{doc.title}</h1>
