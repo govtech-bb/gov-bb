@@ -42,7 +42,11 @@ answered it.
 | `PUT                            | DELETE /collections/:key/records/:recordKey` | record writes |
 
 Writes are unauthenticated — that is #2701, and nothing here should be
-reachable from anywhere but a laptop until it lands.
+reachable from anywhere but a laptop until it lands. Because of that, the CORS
+origin allow-list is load-bearing rather than hygiene: it is what stops any
+page a developer has open from preflighting a `DELETE` at their instance.
+`CORS_ORIGINS` is a comma-separated list, defaulting to the dev server's
+origins.
 
 ## Tests
 

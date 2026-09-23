@@ -43,9 +43,31 @@ export function buildApp({ db, logger = false }: AppOptions): FastifyInstance {
    * POST, so every PUT and DELETE failed its preflight and reached the app as
    * a bare "TypeError: Failed to fetch" in the browser — no status, no body,
    * nothing in the server log, because the request never arrived.
+   *
+   * The origin allow-list is not optional either, and for a sharper reason.
+   * Writes are unauthenticated until #2701 lands, so reflecting any origin
+   * would mean any page a developer happens to visit could preflight a
+   * DELETE at their running instance and empty the estate — no phishing, no
+   * credentials, just a fetch from a tab they left open. Widening `methods`
+   * to include PUT and DELETE is what turned that from theoretical into
+   * reachable, so the two changes belong together.
+   *
+   * `CORS_ORIGINS` is a comma-separated list; the default covers the dev
+   * server this is normally driven from.
    */
+  const allowedOrigins = (
+    process.env.CORS_ORIGINS ?? "http://localhost:3010,http://localhost:3011"
+  )
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
   app.register(cors, {
-    origin: true,
+    // A request with no Origin header is not a browser cross-origin request —
+    // curl, a health check, the tests — so it is allowed through rather than
+    // rejected. The rule is about which *sites* may drive this API.
+    origin: (origin, callback) =>
+      callback(null, !origin || allowedOrigins.includes(origin)),
     methods: ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", IF_UPDATED_AT],
     exposedHeaders: [IF_UPDATED_AT],

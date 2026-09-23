@@ -296,3 +296,49 @@ describe("timestamp precision", () => {
     expect(current.title).toBe("Second edit");
   });
 });
+
+describe("CORS", () => {
+  /**
+   * Writes are unauthenticated until #2701, so the origin allow-list is the
+   * only thing standing between a developer's running instance and any page
+   * they happen to have open. These assert the boundary rather than assuming
+   * the defaults are safe — the defaults are what made it reachable.
+   */
+  it("lets the dev server preflight a write", async () => {
+    const response = await app.inject({
+      method: "OPTIONS",
+      url: "/pages/x",
+      headers: {
+        origin: "http://localhost:3010",
+        "access-control-request-method": "PUT",
+      },
+    });
+
+    expect(response.headers["access-control-allow-origin"]).toBe(
+      "http://localhost:3010",
+    );
+    expect(String(response.headers["access-control-allow-methods"])).toContain(
+      "DELETE",
+    );
+  });
+
+  it("refuses to hand an unknown site permission to write", async () => {
+    const response = await app.inject({
+      method: "OPTIONS",
+      url: "/pages/x",
+      headers: {
+        origin: "https://evil.example",
+        "access-control-request-method": "DELETE",
+      },
+    });
+
+    expect(response.headers["access-control-allow-origin"]).toBeUndefined();
+  });
+
+  it("still serves a request with no Origin at all", async () => {
+    // curl, a health check, the tests themselves.
+    const created = await seedPage();
+    const response = await app.inject({ url: `/pages/${created.id}` });
+    expect(response.statusCode).toBe(200);
+  });
+});
