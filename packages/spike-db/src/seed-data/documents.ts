@@ -224,6 +224,218 @@ const bankHolidays: SeedDocument = {
 
 /* ------------------------------- the pure configuration case */
 
+/* ------------------------------- the entry page in front of a finder */
+
+/**
+ * The page a citizen actually arrives on, taken from the live estate at
+ * /health-and-emergency-services/find-an-open-pharmacy.
+ *
+ * It is here because the spike had the finder and nothing in front of it,
+ * which is not how the service works: the finder answers "which pharmacy",
+ * and everything a person needs to know before walking into one — what ID to
+ * take, who may collect for them, what the prescription colours mean — lives
+ * on this page. Splitting them also gives the `start_link` block a real job
+ * on a real page rather than only on the severance start page.
+ *
+ * Two of its links point at pages the spike does not seed
+ * (free-or-subsidised-medication, prescription-colours). They are `page`
+ * refs, which rule 8 does not check — only a start_link's target is
+ * required to resolve — so they save. That asymmetry is worth knowing: the
+ * estate can accumulate broken inline links while start buttons stay sound.
+ */
+const pharmacyEntry: SeedDocument = {
+  url: "/health-and-emergency-services/find-an-open-pharmacy",
+  slug: "find-an-open-pharmacy",
+  schema_name: "guide",
+  document_type: "service_start",
+  title:
+    "Find a pharmacy and check what Barbados Drug Service benefits it offers",
+  description:
+    "Find a pharmacy that's open now anywhere in Barbados. You can also find pharmacies offering free or subsidised medication through the Barbados Drug Service, and check who qualifies.",
+  is_draft: false,
+  body: {
+    version: 1,
+    blocks: [
+      {
+        id: "b_pe01",
+        type: "paragraph",
+        content: [
+          {
+            text: "If you are eligible, you can get prescription medication free at a government polyclinic pharmacy or pay a small dispensing fee at a private pharmacy that participates in the government subsidy programme. This service is provided through the Special Benefit Service (SBS). The Barbados Drug Service (BDS) pays the pharmacy on your behalf.",
+          },
+        ],
+      },
+      {
+        id: "b_pe02",
+        type: "start_link",
+        label: "Find an open pharmacy",
+        target_kind: "page",
+        target: "/health-and-emergency-services/find-an-open-pharmacy/find",
+      },
+      {
+        id: "b_pe03",
+        type: "heading",
+        level: 2,
+        anchor: "what-to-take",
+        content: [{ text: "What to take to the pharmacy" }],
+      },
+      {
+        id: "b_pe04",
+        type: "list",
+        ordered: false,
+        items: [
+          {
+            id: "i_pe04a",
+            content: [{ text: "your prescription" }],
+          },
+          {
+            id: "i_pe04b",
+            content: [
+              {
+                text: "original accepted ID for the person the medication is for: a Barbados National Identification (ID) card, passport or child health book. A child health book is only accepted for children up to 6 weeks old. After 6 weeks, an ID card is required.",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "b_pe05",
+        type: "paragraph",
+        content: [{ text: "Photocopies are not accepted." }],
+      },
+      {
+        id: "b_pe06",
+        type: "heading",
+        level: 2,
+        anchor: "collecting-for-someone-else",
+        content: [{ text: "Collecting for someone else" }],
+      },
+      {
+        id: "b_pe07",
+        type: "paragraph",
+        content: [
+          {
+            text: "Medication must be collected in person. This service is not available online. Someone else can collect for you. They will need to bring your prescription, your ID, and their own ID.",
+          },
+        ],
+      },
+      {
+        id: "b_pe08",
+        type: "heading",
+        level: 2,
+        anchor: "free-or-subsidised-medication",
+        content: [{ text: "Get free or subsidised medication" }],
+      },
+      {
+        id: "b_pe09",
+        type: "paragraph",
+        content: [
+          {
+            text: "Some pharmacies can lower or remove the cost of your prescription medication through the Barbados Drug Service if you qualify. Medication is free at government (polyclinic) pharmacies and costs less at private pharmacies that work with the Drug Service. Not all private pharmacies take part. At those pharmacies, you pay full price.",
+          },
+        ],
+      },
+      {
+        id: "b_pe10",
+        type: "paragraph",
+        content: [
+          {
+            text: "Check who qualifies and what to bring",
+            ref: "r_subsidised",
+          },
+        ],
+      },
+      {
+        id: "b_pe11",
+        type: "heading",
+        level: 2,
+        anchor: "prescription-colours",
+        content: [{ text: "Prescription colours" }],
+      },
+      {
+        id: "b_pe12",
+        type: "paragraph",
+        content: [
+          {
+            text: "Prescriptions in Barbados come in different colours. The colour of your prescription can affect which pharmacy can fill it.",
+          },
+        ],
+      },
+      {
+        id: "b_pe13",
+        type: "paragraph",
+        content: [
+          {
+            text: "Check what the prescription colours mean",
+            ref: "r_colours",
+          },
+        ],
+      },
+      {
+        id: "b_pe14",
+        type: "heading",
+        level: 2,
+        anchor: "get-help",
+        content: [{ text: "Get help" }],
+      },
+      {
+        id: "b_pe15",
+        type: "paragraph",
+        content: [
+          {
+            text: "If a pharmacy will not accept your Drug Service prescription, or you have a problem getting your medication, contact the Drug Service.",
+          },
+        ],
+      },
+      {
+        id: "b_pe16",
+        type: "paragraph",
+        content: [
+          { text: "Telephone: " },
+          { text: "(246) 535-4300", ref: "r_phone" },
+        ],
+      },
+      {
+        id: "b_pe17",
+        type: "paragraph",
+        content: [
+          { text: "Email: " },
+          { text: "management@drugservice.gov.bb", ref: "r_email" },
+        ],
+      },
+      {
+        id: "b_pe18",
+        type: "paragraph",
+        content: [
+          { text: "Website: " },
+          { text: "drugservice.gov.bb", ref: "r_website" },
+        ],
+      },
+      {
+        id: "b_pe19",
+        type: "paragraph",
+        content: [{ text: "Address: 6th Floor, Warrens Tower II" }],
+      },
+    ],
+    refs: {
+      r_subsidised: {
+        kind: "page",
+        url: "/health-and-emergency-services/free-or-subsidised-medication",
+      },
+      r_colours: {
+        kind: "page",
+        url: "/health-and-emergency-services/prescription-colours",
+      },
+      r_phone: { kind: "external", href: "tel:+12465354300" },
+      r_email: {
+        kind: "external",
+        href: "mailto:management@drugservice.gov.bb",
+      },
+      r_website: { kind: "external", href: "https://drugservice.gov.bb" },
+    },
+  },
+};
+
 const pharmacyFinder: SeedDocument = {
   url: "/health-and-emergency-services/find-an-open-pharmacy/find",
   slug: "find",
@@ -963,6 +1175,7 @@ const hairSalonLicence: SeedDocument = {
 };
 
 export const DOCUMENTS: SeedDocument[] = [
+  pharmacyEntry,
   pharmacyFinder,
   bankHolidays,
   severanceStart,

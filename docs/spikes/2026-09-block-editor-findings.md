@@ -336,6 +336,26 @@ here, but it is the strongest practical argument in the spike for the database
 living behind an API: an HTTP read is milliseconds, and the page stops paying
 for a database engine it only reads from.
 
+### Rule 8 checks start links, but nothing checks an inline link
+
+Adding the pharmacy entry page from the live estate made this visible. The
+page carries two inline links to pages the spike does not seed —
+free-or-subsidised-medication and prescription-colours. They are `page` refs,
+and they save without complaint, because rule 8 only requires a **start_link**
+to resolve.
+
+That asymmetry is defensible as far as it goes: a start button that leads
+nowhere is a dead end in a transaction, and an inline link is a lesser
+failure. But it means an estate can accumulate broken inline links
+indefinitely while every start button stays sound, and nothing in the editor
+would say so. The check already exists and already has the page list it needs
+— `ctx.pageUrls` — so extending it to `page` refs is a small change with one
+real consequence: pages would have to be migrated in dependency order, or
+seeded with the links temporarily broken, because the target has to exist
+before the link to it can save.
+
+Worth deciding deliberately rather than by omission.
+
 ### `refs` and `data_table` had never been exercised at all
 
 Every document seeded before the hairdressing page had `refs: {}`, and the
