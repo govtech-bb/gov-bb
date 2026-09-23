@@ -47,10 +47,15 @@
  *    to populate the hidden coordinates the catchment router reads. We
  *    faker-pick from a pool of known-geocodable locations, select the first
  *    suggestion, then assert `hotel-address-coordinates` filled.
- *  - `hotel-address-line-2` is hinted "Optional." but the recipe does NOT set
- *    `validations.required.value: false`, so it inherits components/address's
- *    required + minLength 5 and blocks the step. We fill it explicitly after
- *    the geocode rather than trust whatever line 2 the suggestion carried.
+ *  - `hotel-address-line-2` is optional since #2791 set
+ *    `validations.required.value: false`. `minLength: 5` is still inherited
+ *    from components/address — `validations` merge per rule key, so the
+ *    override replaced only `required` — but the runner skips every rule on an
+ *    empty optional field, so a blank line 2 has to advance the step. Test 1
+ *    proves that; test 2 fills it, the side where minLength still runs. The
+ *    geocoder writes this field (`geocodeTargets.line2FieldId`), so the blank
+ *    walk CLEARS it after the pick rather than assume the suggestion carried
+ *    nothing.
  *  - `floor-details` is a repeatable step (min 1, max 10) with no sharedFields,
  *    so the base step IS floor 1 and carries the injected `addAnother` radio;
  *    floor 2 lands on `floor-details~1`. The renewal test adds a second floor.
@@ -258,19 +263,30 @@ export async function fillYourDetails(
   await advance(page, step);
 }
 
-/** Step 4 — the hotel itself, identical on both branches. */
+/**
+ * Step 4 — the hotel itself, identical on both branches apart from line 2.
+ * `addressLine2: "blank"` is the walk that proves #2791's `required: false`
+ * holds; `"filled"` is the one where the inherited `minLength: 5` still runs.
+ */
 export async function fillHotelDetails(
   page: Page,
   data: ReturnType<typeof buildData>,
+  addressLine2: "blank" | "filled",
 ): Promise<void> {
   const step = expectStep(page, "hotel-details");
   await expect(page.locator("h1")).toContainText("Tell us about the hotel");
   await fillField(page, step, "hotel-name", data.hotelName);
   await fillGeocodedHotelAddress(page, step, data.hotelAddress);
-  // Line 2 inherits components/address's required + minLength 5 (the recipe
-  // hints "Optional." but never sets required:false), so fill it rather than
-  // rely on whatever the picked suggestion wrote.
-  await fillField(page, step, "hotel-address-line-2", data.hotelAddressLine2);
+
+  // The geocoder writes line 2 from the picked suggestion, so the blank walk
+  // has to clear what it wrote — leaving the field alone would test whatever
+  // the faker-picked address happened to carry, not an empty value. This step
+  // advancing is the proof that the optional rule holds.
+  const hotelAddressLine2 = page.locator(`[id="${step}_hotel-address-line-2"]`);
+  await hotelAddressLine2.fill(
+    addressLine2 === "blank" ? "" : data.hotelAddressLine2,
+  );
+  if (addressLine2 === "blank") await expect(hotelAddressLine2).toHaveValue("");
   // The geocoder fills parish from the picked suggestion; assert rather than
   // overwrite, since that value is the catchment router's fallback.
   await expect(
@@ -405,7 +421,8 @@ test.describe("Hotel Licence Application — Live Smoke", () => {
     await advance(page, step);
 
     await fillYourDetails(page, data, "owner");
-    await fillHotelDetails(page, data);
+    // Address line 2 left blank — optional since #2791.
+    await fillHotelDetails(page, data, "blank");
 
     // ─── Floors (repeatable, min 1) — one floor on this branch ───────────────
     step = expectStep(page, "floor-details");
@@ -482,7 +499,7 @@ test.describe("Hotel Licence Application — Live Smoke", () => {
     await advance(page, step);
 
     await fillYourDetails(page, data, "another-role");
-    await fillHotelDetails(page, data);
+    await fillHotelDetails(page, data, "filled");
 
     // ─── Floors — "yes" to addAnother materialises a second instance ─────────
     const firstFloorStep = expectStep(page, "floor-details");

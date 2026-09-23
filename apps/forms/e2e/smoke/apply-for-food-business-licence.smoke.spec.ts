@@ -188,12 +188,10 @@ export function buildData() {
     startedOn,
     expectedStart,
     businessLocationAddress: faker.helpers.arrayElement(GEOCODABLE_ADDRESSES),
-    businessLocationTown: faker.location.city(),
 
     otherPrepBusinessName: `Smoke Test Prep Kitchen ${faker.string.alpha(4)}`,
     otherPrepAddressLine1: faker.location.streetAddress(),
     otherPrepAddressLine2: faker.location.street(),
-    otherPrepTown: faker.location.city(),
     otherPrepParish: faker.helpers.arrayElement(NON_ST_MICHAEL_PARISHES),
 
     maleStaffCount: String(faker.number.int({ min: 0, max: 10 })),
@@ -410,12 +408,6 @@ export async function fillAboutTheFoodBusiness(
   );
   // `business-location-address-line-2` is optional and is one of the geocoder's
   // write targets — leave whatever the picked suggestion wrote.
-  await fillField(
-    page,
-    step,
-    "business-location-town",
-    data.businessLocationTown,
-  );
   // The geocoder fills parish from the picked suggestion; assert rather than
   // overwrite, since that value is the catchment router's fallback.
   await expect(
@@ -475,7 +467,6 @@ export async function fillOtherPreparationLocation(
     "other-prep-address-line-2",
     data.otherPrepAddressLine2,
   );
-  await fillField(page, step, "other-prep-town", data.otherPrepTown);
   await selectDropdown(page, step, "other-prep-parish", data.otherPrepParish);
   await selectRadio(page, step, "addAnother", "no");
   await advance(page, step);

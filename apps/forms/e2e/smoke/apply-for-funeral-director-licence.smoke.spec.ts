@@ -41,12 +41,14 @@
  *    gating step does not exist here, so the journey is always
  *    application-type → personal-details → contact-details →
  *    workplace-details → documents → check-your-answers → declaration →
- *    submission-confirmation. One test covers the whole form.
+ *    submission-confirmation. Two tests walk it, one per `application-type`
+ *    branch.
  *  - `application-type` is the route question added by #2717: a required
  *    2-option radio ("new" / "renewal"). Choosing "renewal" reveals the
  *    inline `funeral-director-licence-number` field (`fieldConditionalOn`),
- *    which is required on that branch only. This walk takes the renewal
- *    branch so the reveal and the field are both exercised.
+ *    which is required on that branch only. Test 1 takes the renewal branch,
+ *    so the reveal and the field are both exercised; test 2 takes "new" and
+ *    asserts the field stays hidden — the negative side of the same reveal.
  *  - Email and phone live on their own `contact-details` step ("How can we
  *    contact you?"), split out of `personal-details` by #2583 — the same shape
  *    apply-for-funeral-embalmer-licence and apply-for-hairdresser-licence
@@ -95,8 +97,9 @@
  *  - Both of those are gated on `application-type` being `new`: the 1984
  *    experience tests are what qualify someone for a first licence, and a
  *    renewal has already met them. Answer `application-type` first — on
- *    `renewal` neither field renders, and the step advances with the two
- *    uploads alone.
+ *    `renewal` neither field renders and the step advances on the two uploads
+ *    alone (test 1); on `new` both are answered and the letter uploaded
+ *    (test 2).
  *  - The confirmation step's `nextSteps` copy (fixed off "hairdresser licence"
  *    in this PR) has no `{polyclinic}` placeholder, so there is no
  *    resolved-catchment name on screen to assert. Catchment routing still
@@ -121,6 +124,12 @@ import {
 import { TEST_PNG } from "../helpers/test-data";
 
 export const FORM_ID = "apply-for-funeral-director-licence";
+
+/**
+ * `experience-route` option values (#2475). Neither reveals anything, so one
+ * per run is enough — faker-picked the same way the parish is.
+ */
+const EXPERIENCE_ROUTES = ["supervised-two-years", "office-three-years"];
 
 /** Parish <select> option values (slugs) from components/parish. */
 const PARISH_VALUES = [
@@ -196,8 +205,10 @@ export function buildData() {
     email: "testing@govtech.bb",
     phone: bbMobileNumber(),
 
-    // Only asked on the renewal branch, which is the one this walk takes (#2717).
+    // Only asked on the renewal branch (#2717), which test 1 takes.
     licenceNumber: `FDL-${faker.string.numeric(6)}`,
+    // Only asked on the new-licence branch (#2475), which test 2 takes.
+    experienceRoute: faker.helpers.arrayElement(EXPERIENCE_ROUTES),
 
     // Timestamped so the resulting submission is easy to find in the target env.
     establishmentName: `Smoke Test Funeral Establishment ${new Date().toISOString()}`,
@@ -233,13 +244,15 @@ async function fillMaskedNationalId(
 
 /**
  * The route question (#2717) — the form's first step. Choosing "renewal"
- * reveals `funeral-director-licence-number` inline, so this walk takes the
- * renewal branch and asserts the reveal (hidden → select → visible) rather
- * than just the happy path.
+ * reveals `funeral-director-licence-number` inline, so the renewal walk
+ * asserts the reveal (hidden → select → visible) rather than just the happy
+ * path; the new-licence walk asserts the field stays hidden, the negative
+ * side of the same reveal.
  */
 export async function fillApplicationType(
   page: Page,
   data: ReturnType<typeof buildData>,
+  applicationType: "new" | "renewal",
 ): Promise<void> {
   const step = expectStep(page, "application-type");
   await expect(page.locator("h1")).toContainText("about your application");
@@ -247,9 +260,13 @@ export async function fillApplicationType(
     `[id="${step}_funeral-director-licence-number"]`,
   );
   await expect(licenceNumber).toBeHidden();
-  await selectRadio(page, step, "application-type", "renewal");
-  await expect(licenceNumber).toBeVisible({ timeout: STEP_TIMEOUT });
-  await licenceNumber.fill(data.licenceNumber);
+  await selectRadio(page, step, "application-type", applicationType);
+  if (applicationType === "renewal") {
+    await expect(licenceNumber).toBeVisible({ timeout: STEP_TIMEOUT });
+    await licenceNumber.fill(data.licenceNumber);
+  } else {
+    await expect(licenceNumber).toBeHidden();
+  }
   await advance(page, step);
 }
 
@@ -362,8 +379,12 @@ export async function fillWorkplaceDetails(
   await advance(page, step);
 }
 
-/** Step 3 — the three required documents and the eligibility route. */
-export async function fillDocuments(page: Page): Promise<void> {
+/** Step 3 — the required documents and, on a new licence, the eligibility route. */
+export async function fillDocuments(
+  page: Page,
+  data: ReturnType<typeof buildData>,
+  applicationType: "new" | "renewal",
+): Promise<void> {
   const step = expectStep(page, "documents");
   await expect(page.locator("h1")).toContainText("Add your documents");
   await uploadOne(page, step, "passport-photo", {
@@ -376,16 +397,32 @@ export async function fillDocuments(page: Page): Promise<void> {
     mimeType: TEST_PNG.mimeType,
     buffer: TEST_PNG.buffer,
   });
-  // This walk answered `application-type` as "renewal" on the first step, so
-  // the two statutory questions (#2475) are gated off here — a renewing
-  // director has already met the 1984 experience tests. Assert the gate holds
-  // rather than filling them; the step advances on the two uploads alone.
-  await expect(
-    page.locator(`fieldset[id="${step}_experience-route"]`),
-  ).toBeHidden();
-  await expect(
-    page.locator(`input[type=file][id="${step}_letter-evidencing"]`),
-  ).toBeHidden();
+
+  if (applicationType === "renewal") {
+    // The gate added for #2735 keeps the two statutory questions (#2475) off
+    // renewals — a renewing director has already met the 1984 experience
+    // tests. Assert the gate holds rather than filling them; the step
+    // advances on the two uploads alone.
+    await expect(
+      page.locator(`fieldset[id="${step}_experience-route"]`),
+    ).toBeHidden();
+    await expect(
+      page.locator(`input[type=file][id="${step}_letter-evidencing"]`),
+    ).toBeHidden();
+  } else {
+    // The positive side of the same gate: on a first licence both are asked
+    // and both are required. `selectRadio` checks a visible radio and
+    // `uploadOne` waits for the confirmed "Remove …" button, so the pair
+    // proves the fields rendered — a conditional that stopped matching "new"
+    // fails here.
+    await selectRadio(page, step, "experience-route", data.experienceRoute);
+    await uploadOne(page, step, "letter-evidencing", {
+      name: "letter-of-evidence.png",
+      mimeType: TEST_PNG.mimeType,
+      buffer: TEST_PNG.buffer,
+    });
+  }
+
   await advance(page, step);
 }
 
@@ -409,7 +446,7 @@ async function confirmAndSubmit(page: Page): Promise<void> {
 }
 
 test.describe("Funeral Directors Licence Application — Live Smoke", () => {
-  test("submits a complete application working at an establishment and somewhere else", async ({
+  test("submits a renewal, working at an establishment and somewhere else", async ({
     page,
   }) => {
     const data = buildData();
@@ -417,11 +454,11 @@ test.describe("Funeral Directors Licence Application — Live Smoke", () => {
       console.log("[smoke-data]", JSON.stringify(data, null, 2));
 
     await openForm(page);
-    await fillApplicationType(page, data);
+    await fillApplicationType(page, data, "renewal");
     await fillPersonalDetails(page, data);
     await fillContactDetails(page, data);
     await fillWorkplaceDetails(page, data);
-    await fillDocuments(page);
+    await fillDocuments(page, data, "renewal");
 
     // ─── Check your answers ─────────────────────────────────────────────────
     const step = expectStep(page, "check-your-answers");
@@ -439,7 +476,7 @@ test.describe("Funeral Directors Licence Application — Live Smoke", () => {
     if (process.env.SMOKE_HOLD) await page.pause();
   });
 
-  test("submits working from home and at different places, so neither workplace block is asked for", async ({
+  test("submits a new licence from home and at different places, so neither workplace block is asked for", async ({
     page,
   }) => {
     const data = buildData();
@@ -447,19 +484,22 @@ test.describe("Funeral Directors Licence Application — Live Smoke", () => {
       console.log("[smoke-data]", JSON.stringify(data, null, 2));
 
     await openForm(page);
+    await fillApplicationType(page, data, "new");
     await fillPersonalDetails(page, data);
     await fillContactDetails(page, data);
     // Neither of these two options reveals anything — the negative side of both
     // gates on this step, which the sibling test (which ticks both revealing
     // options) cannot cover.
     await fillWorkplaceDetails(page, data, ["from-home", "different-places"]);
-    await fillDocuments(page);
+    await fillDocuments(page, data, "new");
 
     const step = expectStep(page, "check-your-answers");
     await expect(page.locator("h1")).toContainText("Check your answers");
     // Neither block was asked for, so neither answer can be on the review.
     await expect(page.getByText(data.establishmentName)).toHaveCount(0);
     await expect(page.getByText(data.somewhereElse)).toHaveCount(0);
+    // The licence number is only asked on a renewal, so it was never entered.
+    await expect(page.getByText(data.licenceNumber)).toHaveCount(0);
     if (process.env.SMOKE_HOLD_CYA) await page.pause();
     await advance(page, step);
 
