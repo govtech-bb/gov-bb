@@ -50,6 +50,7 @@ export function BlockSettings({
             }
           />
           <TextField
+            testId={`anchor-${block.id}`}
             label="Anchor"
             hint="The URL fragment people link to. Changing it breaks existing links."
             value={block.anchor}

@@ -201,6 +201,7 @@ export function StartLinkEditor({
         onChange={(target_kind) => onChange({ ...block, target_kind })}
       />
       <TextField
+        testId="start-link-target"
         label="Target"
         hint={
           block.target_kind === "page"

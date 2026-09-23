@@ -230,6 +230,7 @@ export function FinderEditor({
           onChange={(document_noun) => onChange({ ...block, document_noun })}
         />
         <NumberField
+          testId="results-per-page"
           label="Results per page"
           value={block.results_per_page}
           min={1}
@@ -241,6 +242,7 @@ export function FinderEditor({
       </div>
 
       <TextAreaField
+        testId="empty-message"
         label="Empty state message"
         value={block.empty_message}
         onChange={(empty_message) => onChange({ ...block, empty_message })}
@@ -343,6 +345,7 @@ export function FinderEditor({
           }
         />
         <KeyListField
+          testId="result-metadata"
           label="Metadata shown"
           hint="Fields of the collection, or the key of a facet on this block (rule 7)."
           value={block.result_template.metadata}
@@ -388,6 +391,7 @@ export function CalendarEditor({
           onChange={(collection) => onChange({ ...block, collection })}
         />
         <NumberField
+          testId="year-range-min"
           label="From year"
           value={block.year_range.min}
           onChange={(min) =>
@@ -395,6 +399,7 @@ export function CalendarEditor({
           }
         />
         <NumberField
+          testId="year-range-max"
           label="To year"
           value={block.year_range.max}
           onChange={(max) =>
@@ -404,6 +409,7 @@ export function CalendarEditor({
       </div>
 
       <SelectField
+        testId="substitution-rule"
         label="Substitution policy"
         hint="The per-holiday trigger is data on each rule row; this selects which policy reads it."
         value={block.substitution_rule}

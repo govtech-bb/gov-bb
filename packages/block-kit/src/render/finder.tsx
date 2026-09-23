@@ -204,6 +204,7 @@ export function FinderIsland({
           */}
           <p
             className="bk-result-count"
+            data-testid="result-count"
             role="status"
             aria-live="polite"
             data-total={results.length}
@@ -250,11 +251,29 @@ export function FinderIsland({
                 >
                   {String(row[block.result_template.title] ?? "")}
                 </a>
+                {/*
+                  One element per metadata value rather than one joined
+                  string: a chip that cannot be addressed on its own cannot
+                  be asserted on either, and the separator is presentation
+                  that does not belong inside the value.
+                */}
                 <p className="bk-result-meta">
                   {block.result_template.metadata
-                    .map((field) => metadataValue(row, field, now))
-                    .filter((value): value is string => Boolean(value))
-                    .join(" · ")}
+                    .map((field) => ({
+                      field,
+                      value: metadataValue(row, field, now),
+                    }))
+                    .filter((entry) => Boolean(entry.value))
+                    .map((entry, position) => (
+                      <span key={entry.field}>
+                        {position > 0 ? (
+                          <span aria-hidden="true"> · </span>
+                        ) : null}
+                        <span data-testid={`metadata-${entry.field}`}>
+                          {entry.value}
+                        </span>
+                      </span>
+                    ))}
                 </p>
               </li>
             ))}
