@@ -213,6 +213,36 @@ export interface DataTableBlock {
   empty_message: string;
 }
 
+/**
+ * Contact details for one organisation, read from a collection.
+ *
+ * The tenth block type, and the first added after the palette was declared
+ * closed. It exists because "Get help" sections were being written by hand on
+ * every page that needed one: the Drug Service's phone number appeared as
+ * prose on the pharmacy page, the NIS department's on the severance page, and
+ * changing either meant finding every page that repeated it.
+ *
+ * The title and the description are the author's, because they are about
+ * *this* page — when to get in touch, and what about. The details are not:
+ * they belong to the ministry and are the same wherever they appear, so they
+ * come from the collection and cannot drift page to page.
+ */
+export interface ContactBlock {
+  id: string;
+  type: "contact";
+  title: string;
+  description: Span[];
+  /** A key into `body.refs`, which must hold a `record` ref. */
+  source: string;
+  /** Which details to show, and what to call them on this page. */
+  fields: ContactField[];
+}
+
+export interface ContactField {
+  field: string;
+  label: string;
+}
+
 export interface ImagePlaceholderBlock {
   id: string;
   type: "image_placeholder";
@@ -229,11 +259,21 @@ export type Block =
   | FinderBlock
   | CalendarBlock
   | DataTableBlock
+  | ContactBlock
   | ImagePlaceholderBlock;
 
 export type BlockType = Block["type"];
 
-/** The closed palette. A block type not on this list cannot be inserted. */
+/**
+ * The palette. A block type not on this list cannot be inserted.
+ *
+ * It was nine, and the brief called it closed. `contact` is the tenth, added
+ * because repeating a ministry's phone number as prose on every page that
+ * needs it is exactly the duplication a block model is for. The findings
+ * predicted this would happen during migration rather than before it; what
+ * matters is that adding one is a deliberate act with a validation rule
+ * attached, not that the number never changes.
+ */
 export const BLOCK_TYPES: ReadonlyArray<BlockType> = [
   "paragraph",
   "heading",
@@ -243,6 +283,7 @@ export const BLOCK_TYPES: ReadonlyArray<BlockType> = [
   "finder",
   "calendar",
   "data_table",
+  "contact",
   "image_placeholder",
 ];
 

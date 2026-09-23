@@ -176,6 +176,17 @@ const dataTableSchema = z.object({
   empty_message: z.string().min(1),
 });
 
+const contactSchema = z.object({
+  id: blockId,
+  type: z.literal("contact"),
+  title: z.string().min(1),
+  description: z.array(spanSchema),
+  source: z.string().min(1),
+  fields: z.array(
+    z.object({ field: z.string().min(1), label: z.string().min(1) }),
+  ),
+});
+
 const imagePlaceholderSchema = z.object({
   id: blockId,
   type: z.literal("image_placeholder"),
@@ -192,6 +203,7 @@ export const blockSchema = z.discriminatedUnion("type", [
   finderSchema,
   calendarSchema,
   dataTableSchema,
+  contactSchema,
   imagePlaceholderSchema,
 ]);
 

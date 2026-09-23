@@ -79,11 +79,43 @@ export const EH_OFFICES: CollectionDefinition = {
   },
 };
 
+/**
+ * The organisations a citizen is told to contact.
+ *
+ * Every "Get help" section on the estate names one of these and repeats its
+ * phone number, email and address as prose. Repeated facts drift: the Drug
+ * Service's number appears on the pharmacy pages, the NIS department's on the
+ * severance pages, and until now changing one meant finding every page that
+ * had written it out.
+ *
+ * `key` is the record key, as for the other collections. The field names are
+ * deliberately conventional — `phone`, `email`, `website` — because the
+ * renderer turns those into tel:, mailto: and https: links by name rather
+ * than making an author declare what kind of thing each one is.
+ */
+export const MINISTRIES: CollectionDefinition = {
+  key: "ministries",
+  title: "Ministries and agencies",
+  record_key: "key",
+  schema: {
+    fields: [
+      { key: "key", label: "Key", type: "slug" },
+      { key: "name", label: "Name", type: "text" },
+      { key: "phone", label: "Telephone", type: "text" },
+      { key: "email", label: "Email", type: "email" },
+      { key: "website", label: "Website", type: "text" },
+      { key: "address", label: "Address", type: "text" },
+      { key: "hours", label: "Opening hours", type: "text" },
+    ],
+  },
+};
+
 export const COLLECTIONS: CollectionDefinition[] = [
   PHARMACIES,
   PARISHES,
   BANK_HOLIDAY_RULE_COLLECTION,
   EH_OFFICES,
+  MINISTRIES,
 ];
 
 /**
@@ -171,9 +203,33 @@ export const EH_OFFICE_RECORDS: SeedRecord[] = [
   return { record_key: key, data: { key, ...office } };
 });
 
+/**
+ * Taken from the pages that currently write these out by hand: the Drug
+ * Service from find-an-open-pharmacy, the NIS department from
+ * calculate-severance-pay.
+ */
+export const MINISTRY_RECORDS: SeedRecord[] = [
+  {
+    key: "barbados-drug-service",
+    name: "Barbados Drug Service",
+    phone: "(246) 535-4300",
+    email: "management@drugservice.gov.bb",
+    website: "drugservice.gov.bb",
+    address: "6th Floor, Warrens Tower II",
+  },
+  {
+    key: "nis-severance-payment-department",
+    name: "NIS Severance Payment Department",
+    phone: "+1 246-431-7400",
+    address: "Frank Walcott Building, Culloden Road, St. Michael",
+    hours: "Extensions 1502 to 1509",
+  },
+].map((ministry) => ({ record_key: ministry.key, data: ministry }));
+
 export const RECORDS_BY_COLLECTION: Record<string, SeedRecord[]> = {
   pharmacies: PHARMACY_RECORDS,
   parishes: PARISH_RECORDS,
   "environmental-health-offices": EH_OFFICE_RECORDS,
   "bank-holiday-rules": HOLIDAY_RULE_RECORDS,
+  ministries: MINISTRY_RECORDS,
 };

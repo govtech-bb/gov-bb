@@ -273,6 +273,7 @@ const CONFIG_TYPES = new Set([
   "finder",
   "calendar",
   "data_table",
+  "contact",
   "start_link",
   "image_placeholder",
 ]);

@@ -17,11 +17,12 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   finder: "Finder",
   calendar: "Calendar",
   data_table: "Data table",
+  contact: "Contact details",
   image_placeholder: "Image",
 };
 
 /**
- * The closed palette, made visible. There is no "insert HTML", no raw-JSON
+ * The palette, made visible. There is no "insert HTML", no raw-JSON
  * escape hatch and no code block: if an author wants something not on this
  * list, the answer is a new block type shipped by a developer.
  */
@@ -54,6 +55,18 @@ export function createBlock(type: BlockType): Block {
         source: "",
         columns: [],
         empty_message: "Nothing to show.",
+      };
+    case "contact":
+      return {
+        id,
+        type,
+        title: "Get help",
+        description: [{ text: "" }],
+        source: "",
+        fields: [
+          { field: "phone", label: "Telephone" },
+          { field: "email", label: "Email" },
+        ],
       };
     case "calendar":
       return {

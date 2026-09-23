@@ -151,55 +151,31 @@ const severanceEntry: SeedDocument = {
       },
       {
         id: "b_se10",
-        type: "heading",
-        level: 2,
-        anchor: "need-help-or-advice",
-        content: [{ text: "Need help or advice?" }],
-      },
-      {
-        id: "b_se11",
-        type: "paragraph",
-        content: [
+        type: "contact",
+        title: "Need help or advice?",
+        description: [
           { text: "Contact the " },
           { text: "NIS Severance Payment Department", marks: ["strong"] },
           {
             text: ". They can give you free advice and help you claim if your employer does not pay.",
           },
         ],
-      },
-      {
-        id: "b_se12",
-        type: "paragraph",
-        content: [{ text: "NIS Severance Payment Department" }],
-      },
-      {
-        id: "b_se13",
-        type: "paragraph",
-        content: [{ text: "Frank Walcott Building" }],
-      },
-      {
-        id: "b_se14",
-        type: "paragraph",
-        content: [{ text: "Culloden Road" }],
-      },
-      {
-        id: "b_se15",
-        type: "paragraph",
-        content: [{ text: "St. Michael" }],
-      },
-      {
-        id: "b_se16",
-        type: "paragraph",
-        content: [
-          { text: "Phone: " },
-          { text: "+1 246-431-7400", ref: "r_nis_phone" },
-          { text: ", extensions 1502 to 1509" },
+        source: "r_nis",
+        fields: [
+          { field: "name", label: "Department" },
+          { field: "address", label: "Address" },
+          { field: "phone", label: "Telephone" },
+          { field: "hours", label: "Extensions" },
         ],
       },
     ],
     refs: {
       r_act: { kind: "external", href: "https://www.nis.gov.bb/severance/" },
-      r_nis_phone: { kind: "external", href: "tel:+12464317400" },
+      r_nis: {
+        kind: "record",
+        collection: "ministries",
+        record: "nis-severance-payment-department",
+      },
     },
   },
 };
@@ -554,48 +530,20 @@ const pharmacyEntry: SeedDocument = {
       },
       {
         id: "b_pe14",
-        type: "heading",
-        level: 2,
-        anchor: "get-help",
-        content: [{ text: "Get help" }],
-      },
-      {
-        id: "b_pe15",
-        type: "paragraph",
-        content: [
+        type: "contact",
+        title: "Get help",
+        description: [
           {
             text: "If a pharmacy will not accept your Drug Service prescription, or you have a problem getting your medication, contact the Drug Service.",
           },
         ],
-      },
-      {
-        id: "b_pe16",
-        type: "paragraph",
-        content: [
-          { text: "Telephone: " },
-          { text: "(246) 535-4300", ref: "r_phone" },
+        source: "r_drug_service",
+        fields: [
+          { field: "phone", label: "Telephone" },
+          { field: "email", label: "Email" },
+          { field: "website", label: "Website" },
+          { field: "address", label: "Address" },
         ],
-      },
-      {
-        id: "b_pe17",
-        type: "paragraph",
-        content: [
-          { text: "Email: " },
-          { text: "management@drugservice.gov.bb", ref: "r_email" },
-        ],
-      },
-      {
-        id: "b_pe18",
-        type: "paragraph",
-        content: [
-          { text: "Website: " },
-          { text: "drugservice.gov.bb", ref: "r_website" },
-        ],
-      },
-      {
-        id: "b_pe19",
-        type: "paragraph",
-        content: [{ text: "Address: 6th Floor, Warrens Tower II" }],
       },
     ],
     refs: {
@@ -607,12 +555,11 @@ const pharmacyEntry: SeedDocument = {
         kind: "page",
         url: "/health-and-emergency-services/prescription-colours",
       },
-      r_phone: { kind: "external", href: "tel:+12465354300" },
-      r_email: {
-        kind: "external",
-        href: "mailto:management@drugservice.gov.bb",
+      r_drug_service: {
+        kind: "record",
+        collection: "ministries",
+        record: "barbados-drug-service",
       },
-      r_website: { kind: "external", href: "https://drugservice.gov.bb" },
     },
   },
 };

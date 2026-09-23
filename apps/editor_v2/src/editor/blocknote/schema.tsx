@@ -76,6 +76,7 @@ export const editorSchema = BlockNoteSchema.create({
     finder: configSpec("finder")(),
     calendar: configSpec("calendar")(),
     data_table: configSpec("data_table")(),
+    contact: configSpec("contact")(),
     image_placeholder: configSpec("image_placeholder")(),
   },
 });

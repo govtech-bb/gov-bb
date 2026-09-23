@@ -1,5 +1,10 @@
 import type { Block, CollectionDefinition } from "@govtech-bb/block-kit";
-import { CalendarEditor, DataTableEditor, FinderEditor } from "./config";
+import {
+  CalendarEditor,
+  ContactEditor,
+  DataTableEditor,
+  FinderEditor,
+} from "./config";
 import {
   HeadingEditor,
   ImagePlaceholderEditor,
@@ -53,6 +58,15 @@ export function BlockEditor({
     case "data_table":
       return (
         <DataTableEditor
+          block={block}
+          onChange={onChange}
+          collections={collections}
+          refKeys={refKeys}
+        />
+      );
+    case "contact":
+      return (
+        <ContactEditor
           block={block}
           onChange={onChange}
           collections={collections}

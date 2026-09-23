@@ -1,6 +1,7 @@
 import type {
   CalendarBlock,
   CollectionDefinition,
+  ContactBlock,
   DataTableBlock,
   Facet,
   FacetValue,
@@ -514,6 +515,74 @@ export function DataTableEditor({
       />
       <p className="ed-field-hint">
         Collections available: {collections.map((c) => c.key).join(", ")}
+      </p>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------- contact */
+
+/**
+ * The contact block's settings.
+ *
+ * The author owns the title and which details to show; they do not own the
+ * details themselves, which is why there is no field here for a phone number.
+ * Changing one means editing the ministry record — the pencil, not the cog —
+ * and that change reaches every page showing it.
+ */
+export function ContactEditor({
+  block,
+  onChange,
+  collections,
+  refKeys,
+}: ConfigProps<ContactBlock> & { refKeys: string[] }) {
+  const ministries = collections.find((c) => c.key === "ministries");
+  const fields = ministries?.schema.fields ?? [];
+
+  return (
+    <div className="ed-stack">
+      <TextField
+        testId="contact-title"
+        label="Heading"
+        value={block.title}
+        onChange={(title) => onChange({ ...block, title })}
+      />
+      <SelectField
+        testId="contact-source"
+        label="Organisation"
+        hint="A key in body.refs holding a record ref (rule 4). The record decides the details shown."
+        value={block.source}
+        options={[
+          { value: "", label: "— choose a ref —" },
+          ...refKeys.map((key) => ({ value: key, label: key })),
+        ]}
+        onChange={(source) => onChange({ ...block, source })}
+      />
+      <Repeatable<ContactBlock["fields"][number]>
+        legend="Details shown"
+        items={block.fields}
+        onChange={(next) => onChange({ ...block, fields: next })}
+        create={() => ({ field: "", label: "" })}
+        itemLabel={(row) => row.label || row.field || "New detail"}
+        renderItem={(row, update) => (
+          <div className="ed-row">
+            <FieldSelect
+              label="Field"
+              value={row.field}
+              fields={fields}
+              onChange={(field) => update({ ...row, field })}
+            />
+            <TextField
+              label="Label"
+              value={row.label}
+              onChange={(label) => update({ ...row, label })}
+            />
+          </div>
+        )}
+      />
+      <p className="ed-field-hint">
+        The description is edited in the page, not here — it is prose, and it
+        belongs where the rest of the prose is.
       </p>
     </div>
   );

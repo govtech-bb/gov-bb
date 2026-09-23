@@ -336,6 +336,61 @@ here, but it is the strongest practical argument in the spike for the database
 living behind an API: an HTTP read is milliseconds, and the page stops paying
 for a database engine it only reads from.
 
+### Adding the tenth block type cost eleven files
+
+The brief specified a closed palette of nine and this document predicted a
+migration would find a tenth. It did, almost immediately: every service page
+ends with a "Get help" section naming a ministry and repeating its phone
+number, email and address as prose. The Drug Service's number was written out
+on the pharmacy page, the NIS department's on the severance page, and changing
+either meant finding every page that had typed it.
+
+`contact` is that tenth type. Worth recording what it actually took, because
+"just add a block type" is said easily:
+
+|                                          |                                                        |
+| ---------------------------------------- | ------------------------------------------------------ |
+| `types.ts`                               | the interface, the union, `BLOCK_TYPES`                |
+| `schema.ts`                              | a Zod member and its place in the discriminated union  |
+| `validate.ts`                            | a rule, plus adding it to `spansOf` and `blockRefKeys` |
+| `render/contact.tsx`                     | the renderer                                           |
+| `render/document.tsx`, `render/index.ts` | dispatch and export                                    |
+| `render/styles.css`                      | its styles                                             |
+| `new-block.ts`                           | a label and a sensible empty value                     |
+| `blocknote/schema.tsx`, `adapter.ts`     | the editor's node spec, the config-type set            |
+| `blocknote/slash-menu.tsx`               | its description                                        |
+| `blocknote/block-controls.tsx`           | reaching its records through the ref                   |
+| `blocks/config.tsx`, `blocks/index.tsx`  | its settings form                                      |
+
+Two of those are easy to miss and fail quietly. Leaving it out of `spansOf`
+means links inside its prose escape rule 4 and the href allowlist — a stored
+XSS hole opened by omission rather than by a mistake. Leaving it out of
+`blockRefKeys` means its `source` is never checked to resolve.
+
+The honest read is that a closed palette is not expensive to extend, but it is
+not free either, and the cost is concentrated in exactly the places where
+forgetting is silent. A checklist in the repo would be worth more than the
+comment saying the palette is closed.
+
+### The author owns the words; the collection owns the facts
+
+The contact block splits one section in two, and the split turned out to be
+the useful part of the design. The heading and description are the author's,
+because they differ per page — "Get help" and "Need help or advice?" say
+different things about the same department. The details are not: a phone
+number is the same fact wherever it appears, so it lives in `ministries` and
+the page refers to it.
+
+That makes the demonstration concrete. Changing the Drug Service's number in
+the collection changes it on every page showing it, without any page being
+edited — and because the details come from a record, the editor's pencil on a
+contact block opens the ministry rather than the block's own configuration,
+which is the thing an author actually wants when a number is wrong.
+
+The same split is what the four-paragraph postal address needed and could not
+express. It is now a `dt`/`dd` pair like everything else in the block, which
+is also better markup than the paragraphs it replaced.
+
 ### A page can belong to two categories; a url can hold one
 
 The severance entry page's frontmatter lists `categories: [money-financial-support,

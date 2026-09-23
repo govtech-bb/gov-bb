@@ -688,3 +688,57 @@
   padding-bottom: 1.25rem;
   border-bottom: 2px solid #b1b4b6;
 }
+
+/*
+ * The contact block.
+ *
+ * A description list, so the label and its value are marked up as what they
+ * are. The rule above it separates it from the prose without needing a
+ * heading level to do that job — this is the end of the page, not another
+ * section of the argument.
+ */
+.bk-contact {
+  margin: 2rem 0 1.25rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid var(--bk-line);
+}
+.bk-contact-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem;
+}
+.bk-contact-lede {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+}
+.bk-contact-details {
+  margin: 0;
+  display: grid;
+  gap: 0.5rem 1rem;
+}
+/*
+ * The label column sizes to its longest label rather than to a guess, so
+ * "Telephone" and "Address" line up without a hardcoded width that a longer
+ * label would break out of.
+ */
+.bk-contact-row {
+  display: grid;
+  grid-template-columns: minmax(6rem, max-content) 1fr;
+  gap: 0 1rem;
+}
+.bk-contact-row dt {
+  font-weight: 700;
+}
+.bk-contact-row dd {
+  margin: 0;
+}
+
+@media (max-width: 30rem) {
+  .bk-contact-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .bk-contact-row dd {
+    margin-bottom: 0.25rem;
+  }
+}

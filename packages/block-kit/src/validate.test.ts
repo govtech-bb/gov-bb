@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Block, CollectionDefinition, PageDocument } from "./types";
+import type { Block, CollectionDefinition, PageDocument, Ref } from "./types";
 import { validateDocument, type ValidationContext } from "./validate";
 
 const pharmacies: CollectionDefinition = {
@@ -316,5 +316,111 @@ describe("rule 9 — heading anchors are unique", () => {
       },
     ]);
     expect(rulesFailed(validateDocument(bad, ctx))).toEqual([9]);
+  });
+});
+
+describe("the contact block", () => {
+  const ministries = {
+    key: "ministries",
+    title: "Ministries and agencies",
+    record_key: "key",
+    schema: {
+      fields: [
+        { key: "key", label: "Key", type: "slug" as const },
+        { key: "phone", label: "Telephone", type: "text" as const },
+      ],
+    },
+  };
+
+  const docWith = (block: Block, refs: Record<string, Ref>) =>
+    ({
+      version: 1,
+      id: "d1",
+      url: "/x",
+      slug: "x",
+      schema_name: "guide",
+      document_type: "page",
+      title: "X",
+      description: null,
+      is_draft: false,
+      body: { version: 1, blocks: [block], refs },
+    }) as PageDocument;
+
+  const contact = (overrides: Record<string, unknown> = {}) =>
+    ({
+      id: "b1",
+      type: "contact",
+      title: "Get help",
+      description: [{ text: "Call them." }],
+      source: "r_m",
+      fields: [{ field: "phone", label: "Telephone" }],
+      ...overrides,
+    }) as Block;
+
+  const recordRef: Ref = {
+    kind: "record",
+    collection: "ministries",
+    record: "drug-service",
+  };
+
+  it("accepts a record ref and fields the collection has", () => {
+    const errors = validateDocument(docWith(contact(), { r_m: recordRef }), {
+      collections: [ministries],
+      pageUrls: ["/x"],
+    });
+    expect(errors).toEqual([]);
+  });
+
+  it("refuses a field the collection does not have", () => {
+    const errors = validateDocument(
+      docWith(contact({ fields: [{ field: "fax", label: "Fax" }] }), {
+        r_m: recordRef,
+      }),
+      { collections: [ministries], pageUrls: ["/x"] },
+    );
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({ blockId: "b1", rule: 7 });
+    expect(errors[0].message).toContain("fax");
+  });
+
+  it("refuses a query ref, because a contact shows one organisation", () => {
+    const errors = validateDocument(
+      docWith(contact(), {
+        r_m: { kind: "query", collection: "ministries" },
+      }),
+      { collections: [ministries], pageUrls: ["/x"] },
+    );
+    expect(errors).toHaveLength(1);
+    expect(errors[0].message).toContain("must be a record ref");
+  });
+
+  it("refuses a ref naming a collection that does not exist", () => {
+    const errors = validateDocument(
+      docWith(contact(), {
+        r_m: { kind: "record", collection: "nope", record: "x" },
+      }),
+      { collections: [ministries], pageUrls: ["/x"] },
+    );
+    expect(errors[0]).toMatchObject({ rule: 5 });
+  });
+
+  it("catches an undefined source ref under rule 4", () => {
+    const errors = validateDocument(docWith(contact(), {}), {
+      collections: [ministries],
+      pageUrls: ["/x"],
+    });
+    expect(errors[0]).toMatchObject({ rule: 4 });
+  });
+
+  it("applies the href allowlist to links in the description", () => {
+    // The description is prose, so a link inside it must not escape rule 1.
+    const errors = validateDocument(
+      docWith(contact({ description: [{ text: "Here", ref: "r_bad" }] }), {
+        r_m: recordRef,
+        r_bad: { kind: "external", href: "javascript:x" },
+      }),
+      { collections: [ministries], pageUrls: ["/x"] },
+    );
+    expect(errors.some((e) => e.message.includes("unsafe href"))).toBe(true);
   });
 });

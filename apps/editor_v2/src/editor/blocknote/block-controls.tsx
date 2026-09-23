@@ -26,10 +26,13 @@ import { blockHasSettings } from "./block-settings";
  * The collection a block's content comes from, or null for a block whose
  * content is words.
  *
- * A finder and a calendar name their collection directly. A `data_table`
- * does not — it names a ref, and the ref names the collection — which is
- * why it needs the document's refs to answer this at all. Missing that
- * indirection is what left a data_table with no way to reach its records.
+ * A finder and a calendar name their collection directly. A `data_table` and
+ * a `contact` do not — they name a ref, and the ref names the collection —
+ * which is why they need the document's refs to answer this at all. Missing
+ * that indirection is what left a data_table with no way to reach its
+ * records. For a contact block it matters more than anywhere else: the
+ * pencil is how an author reaches the ministry whose phone number is wrong,
+ * which is the entire reason the block exists.
  */
 export function collectionOf(
   block: Block | null,
@@ -39,7 +42,7 @@ export function collectionOf(
   if (block.type === "finder" || block.type === "calendar") {
     return block.collection;
   }
-  if (block.type === "data_table") {
+  if (block.type === "data_table" || block.type === "contact") {
     const ref = refs[block.source];
     if (ref && (ref.kind === "query" || ref.kind === "record")) {
       return ref.collection;

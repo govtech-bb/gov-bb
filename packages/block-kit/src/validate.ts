@@ -46,6 +46,11 @@ function spansOf(block: Block): Span[] {
       return block.content;
     case "list":
       return block.items.flatMap((item) => item.content);
+    // A contact block's description is author-written prose, so its spans
+    // have to be reachable — otherwise a link inside it escapes rule 4 and
+    // the href allowlist that rule 1 applies.
+    case "contact":
+      return block.description;
     default:
       return [];
   }
@@ -53,7 +58,9 @@ function spansOf(block: Block): Span[] {
 
 /** Ref keys a block itself uses, outside its spans. */
 function blockRefKeys(block: Block): string[] {
-  return block.type === "data_table" ? [block.source] : [];
+  return block.type === "data_table" || block.type === "contact"
+    ? [block.source]
+    : [];
 }
 
 export function validateDocument(
@@ -264,6 +271,44 @@ export function validateDocument(
           blockId: block.id,
           rule: 7,
           message: `data_table source "${block.source}" must be a record or query ref, not "${ref.kind}"`,
+        });
+      }
+    }
+
+    /*
+     * Rule 7 again, for the contact block. Its source must be a `record` ref
+     * specifically, not a `query`: a contact block shows one organisation, and
+     * a query returning three rows has no sensible rendering here. That is a
+     * tighter constraint than data_table's, which is why it is checked
+     * separately rather than folded in with it.
+     */
+    if (block.type === "contact") {
+      const ref = refs[block.source];
+      if (ref && ref.kind === "record") {
+        const collection = byKey.get(ref.collection);
+        if (!collection) {
+          errors.push({
+            blockId: block.id,
+            rule: 5,
+            message: `ref "${block.source}" names collection "${ref.collection}", which is not in data_collections`,
+          });
+        } else {
+          const fields = fieldKeys(collection);
+          for (const field of block.fields) {
+            if (!fields.has(field.field)) {
+              errors.push({
+                blockId: block.id,
+                rule: 7,
+                message: `field "${field.field}" is not a field of "${collection.key}"`,
+              });
+            }
+          }
+        }
+      } else if (ref) {
+        errors.push({
+          blockId: block.id,
+          rule: 7,
+          message: `contact source "${block.source}" must be a record ref, not "${ref.kind}"`,
         });
       }
     }

@@ -29,6 +29,7 @@ const HINTS: Record<BlockType, string> = {
   finder: "A searchable, filterable list over a collection",
   calendar: "Dates computed from editable rules",
   data_table: "A table over a collection query",
+  contact: "Contact details for a ministry, from the collection",
   image_placeholder: "A grey box standing in for an image",
 };
 

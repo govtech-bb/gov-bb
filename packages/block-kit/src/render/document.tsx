@@ -1,5 +1,6 @@
 import type { Block, PageDocument } from "../types";
 import { CalendarIsland } from "./calendar";
+import { Contact } from "./contact";
 import { DataTable } from "./data-table";
 import { FinderIsland } from "./finder";
 import {
@@ -39,6 +40,8 @@ export function RenderBlock({
       return <ImagePlaceholder block={block} />;
     case "data_table":
       return <DataTable block={block} ctx={ctx} />;
+    case "contact":
+      return <Contact block={block} ctx={ctx} />;
     case "finder":
       return <FinderIsland block={block} ctx={ctx} />;
     case "calendar":

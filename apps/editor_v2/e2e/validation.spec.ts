@@ -168,8 +168,28 @@ test.describe("a document that breaks a rule cannot be saved", () => {
   });
 });
 
-test.describe("the closed palette", () => {
-  test("the slash menu offers exactly the nine block types", async ({
+test.describe("the palette", () => {
+  /*
+   * Ten, not nine. The brief called the palette closed and it was, until a
+   * `contact` block was needed for the "Get help" sections that every service
+   * page repeats by hand. Closed means "a developer ships a new type with a
+   * validation rule attached", not "the number never changes" — this count is
+   * asserted so that adding one stays a deliberate act.
+   */
+  const PALETTE = [
+    "paragraph",
+    "heading",
+    "list",
+    "notice",
+    "start_link",
+    "finder",
+    "calendar",
+    "data_table",
+    "contact",
+    "image_placeholder",
+  ];
+
+  test("the slash menu offers exactly the block types in the palette", async ({
     page,
   }) => {
     await openDocument(page, DOC.severance);
@@ -178,7 +198,7 @@ test.describe("the closed palette", () => {
     await page.keyboard.press("Enter");
 
     const menu = await openSlashMenu(page);
-    await expect(menu.getByRole("option")).toHaveCount(9);
+    await expect(menu.getByRole("option")).toHaveCount(PALETTE.length);
 
     // No escape hatch: the menu is the content model made visible.
     for (const forbidden of [
@@ -229,30 +249,18 @@ test.describe("the closed palette", () => {
     await expect(options.first()).toContainText(/heading/i);
   });
 
-  test("every one of the nine inserts and saves", async ({ page }) => {
-    // data_table and image_placeholder are not used by any of the three
-    // pages. They are in the palette precisely so the config-block pattern
-    // is shown to generalise rather than being three bespoke forms.
-    const types = [
-      "paragraph",
-      "heading",
-      "list",
-      "notice",
-      "start_link",
-      "finder",
-      "calendar",
-      "data_table",
-      "image_placeholder",
-    ];
-
+  test("every one of them inserts and saves", async ({ page }) => {
+    // image_placeholder is used by no seeded page. It is in the palette
+    // precisely so the config-block pattern is shown to generalise rather
+    // than being a few bespoke forms.
     await openDocument(page, DOC.severance);
-    for (const type of types) {
+    for (const type of PALETTE) {
       await insertBlockAfter(page, "b_sv01", type);
       await expect(blockByType(page, type)).toBeVisible();
     }
   });
 
-  test("a block type outside the nine is refused even when forced into the body", async ({
+  test("a block type outside the palette is refused even when forced into the body", async ({
     page,
   }) => {
     // The slash menu is the honest defence; this is the one behind it. A
