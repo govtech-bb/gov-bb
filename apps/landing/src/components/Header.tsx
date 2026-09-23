@@ -38,6 +38,12 @@ export default function Header() {
             <GovLink href="/services" linkComponent={RouterLink}>
               Services
             </GovLink>
+            <GovLink
+              href="/government/organisations"
+              linkComponent={RouterLink}
+            >
+              Departments
+            </GovLink>
             {/*
               A plain anchor, deliberately: the tracker is a separate app on its
               own origin, so RouterLink would hand an external URL to TanStack's
