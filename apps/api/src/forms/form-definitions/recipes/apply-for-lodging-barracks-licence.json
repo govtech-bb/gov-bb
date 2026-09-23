@@ -803,14 +803,14 @@
       "type": "email",
       "config": {
         "recipientField": "your-details.applicant-email",
-        "subject": "Your application to register a guest property has been received"
+        "subject": "Your lodging house or barracks licence application has been received"
       }
     },
     {
       "type": "email",
       "config": {
         "recipientField": "catchment.mdaEmail",
-        "subject": "A new application to register a guest property has been received"
+        "subject": "A new lodging house or barracks licence application has been received"
       }
     },
     {

@@ -326,14 +326,14 @@
       "type": "email",
       "config": {
         "recipientField": "personal-and-contact-details.applicant-email",
-        "subject": "Application received: licence to move human or rotting waste"
+        "subject": "Your offensive matter licence application has been received"
       }
     },
     {
       "type": "email",
       "config": {
         "recipientField": "catchment.mdaEmail",
-        "subject": "A new application for licence to carry offensive matter application has been received"
+        "subject": "A new offensive matter licence application has been received"
       }
     },
     {
