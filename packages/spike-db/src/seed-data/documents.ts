@@ -161,11 +161,6 @@ const bankHolidays: SeedDocument = {
     version: 1,
     blocks: [
       {
-        id: "b_bh01",
-        type: "paragraph",
-        content: [{ text: "Last updated on 5 May 2026" }],
-      },
-      {
         id: "b_bh02",
         type: "calendar",
         collection: "bank-holiday-rules",

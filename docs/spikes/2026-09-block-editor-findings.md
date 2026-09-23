@@ -303,6 +303,21 @@ long-tail presentation, and a real migration will find a handful of pages
 that need a block type nobody has thought of yet. Budget for adding block
 types during the migration, not only before it.
 
+Two of the three turned out not to be the author's business at all. "Last
+updated on 5 May 2026" was a paragraph an author had typed and would have to
+remember to retype; it is now rendered from `updated_at` for every page, so
+it cannot drift from the truth — at the cost that it moves on any save,
+including one that changed nothing a reader sees. Breadcrumbs are derived
+the same way, from the url's category and service against the canonical
+taxonomy, rather than stored on the document: the address already encodes
+the hierarchy, and a breadcrumb field would be a second copy of the same
+fact, free to disagree with the first.
+
+That narrows the finding rather than removing it. Page chrome that restates
+something the system already knows belongs to the renderer. What is left —
+the "About this list" heading, the source citation — is chrome the system
+does _not_ know, and that is where a block type is genuinely missing.
+
 ### `refs` and `data_table` had never been exercised at all
 
 Every document seeded before the hairdressing page had `refs: {}`, and the

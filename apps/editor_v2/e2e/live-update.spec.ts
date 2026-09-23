@@ -32,7 +32,7 @@ test.describe("editor in one tab, site in another", () => {
     await openDocument(editor, DOC.calendar);
     await replaceText(
       editor,
-      "b_bh01",
+      "b_bh04",
       "Public holidays in Barbados, updated live.",
     );
     await saveAndExpectSuccess(editor);
@@ -89,7 +89,7 @@ test.describe("editor in one tab, site in another", () => {
     await saveAndExpectSuccess(a);
 
     await expect(b.getByTestId("conflict-notice")).toHaveCount(0);
-    await replaceText(b, "b_bh01", "Holidays for the current year.");
+    await replaceText(b, "b_bh04", "Holidays for the current year.");
     await saveAndExpectSuccess(b);
   });
 });

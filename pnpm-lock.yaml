@@ -251,7 +251,7 @@ importers:
         version: 1.170.16(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@tanstack/react-start':
         specifier: 'catalog:'
-        version: 1.168.26(crossws@0.4.6(srvx@0.11.22))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+        version: 1.168.26(crossws@0.4.6(srvx@0.11.17))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
       '@tanstack/router-plugin':
         specifier: 'catalog:'
         version: 1.168.18(@tanstack/react-router@1.170.16(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -645,6 +645,9 @@ importers:
       '@govtech-bb/content':
         specifier: workspace:*
         version: link:../../packages/content
+      '@govtech-bb/frontend':
+        specifier: 1.0.0-alpha.29
+        version: 1.0.0-alpha.29
       '@govtech-bb/landing-v2':
         specifier: workspace:*
         version: link:../landing_v2
@@ -723,7 +726,7 @@ importers:
         version: 1.170.16(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@tanstack/react-start':
         specifier: 'catalog:'
-        version: 1.168.26(crossws@0.4.6(srvx@0.11.17))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+        version: 1.168.26(crossws@0.4.6(srvx@0.11.22))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
       nitro:
         specifier: 3.0.260429-beta
         version: 3.0.260429-beta(@electric-sql/pglite@0.5.8)(chokidar@5.0.0)(dotenv@17.4.2)(drizzle-orm@0.45.2(@electric-sql/pglite@0.5.8)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(pg@8.23.0))(jiti@2.7.0)(lru-cache@11.5.1)(rollup@4.62.2)(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -1314,6 +1317,9 @@ importers:
       '@govtech-bb/block-kit':
         specifier: workspace:*
         version: link:../../packages/block-kit
+      '@govtech-bb/content':
+        specifier: workspace:*
+        version: link:../../packages/content
       '@govtech-bb/react':
         specifier: 1.0.0-alpha.29
         version: 1.0.0-alpha.29(react@19.2.7)
@@ -1384,13 +1390,13 @@ importers:
 
   packages/block-kit:
     dependencies:
+      '@govtech-bb/react':
+        specifier: 1.0.0-alpha.29
+        version: 1.0.0-alpha.29(react@19.2.7)
       zod:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@govtech-bb/react':
-        specifier: 1.0.0-alpha.29
-        version: 1.0.0-alpha.29(react@19.2.7)
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.17
@@ -15924,7 +15930,7 @@ snapshots:
       magicast: 0.5.4
       obug: 2.1.4
       tinyrainbow: 3.1.1
-      vitest: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.13.6)(@vitest/coverage-istanbul@4.1.11)(jsdom@28.1.0(@noble/hashes@1.8.0)(supports-color@7.2.0))(vite@8.0.16(@types/node@24.13.6)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      vitest: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.13.2)(@vitest/coverage-istanbul@4.1.11)(jsdom@28.1.0(@noble/hashes@1.8.0)(supports-color@7.2.0))(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
     transitivePeerDependencies:
       - supports-color
 
@@ -21272,7 +21278,7 @@ snapshots:
     optionalDependencies:
       vite: 8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
 
-  vitest@4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.13.2)(@vitest/coverage-istanbul@4.1.11)(jsdom@28.1.0(@noble/hashes@1.8.0))(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)):
+  vitest@4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.13.2)(@vitest/coverage-istanbul@4.1.11)(jsdom@28.1.0(@noble/hashes@1.8.0)(supports-color@7.2.0))(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)):
     dependencies:
       '@vitest/expect': 4.1.11
       '@vitest/mocker': 4.1.11(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -21302,10 +21308,10 @@ snapshots:
     transitivePeerDependencies:
       - msw
 
-  vitest@4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.13.6)(@vitest/coverage-istanbul@4.1.11)(jsdom@28.1.0(@noble/hashes@1.8.0)(supports-color@7.2.0))(vite@8.0.16(@types/node@24.13.6)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)):
+  vitest@4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.13.2)(@vitest/coverage-istanbul@4.1.11)(jsdom@28.1.0(@noble/hashes@1.8.0))(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)):
     dependencies:
       '@vitest/expect': 4.1.11
-      '@vitest/mocker': 4.1.11(vite@8.0.16(@types/node@24.13.6)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      '@vitest/mocker': 4.1.11(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
       '@vitest/pretty-format': 4.1.11
       '@vitest/runner': 4.1.11
       '@vitest/snapshot': 4.1.11
@@ -21322,11 +21328,11 @@ snapshots:
       tinyexec: 1.3.1
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.1
-      vite: 8.0.16(@types/node@24.13.6)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
+      vite: 8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
-      '@types/node': 24.13.6
+      '@types/node': 24.13.2
       '@vitest/coverage-istanbul': 4.1.11(vitest@4.1.11)
       jsdom: 28.1.0(@noble/hashes@1.8.0)(supports-color@7.2.0)
     transitivePeerDependencies:

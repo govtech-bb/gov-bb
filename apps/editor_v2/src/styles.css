@@ -125,6 +125,23 @@ body {
   color: var(--muted);
 }
 
+/*
+ * Breadcrumbs sit outside the reading measure, above the page, as they do on
+ * the live site — the trail is navigation, not part of the prose.
+ */
+.site-crumbs {
+  margin-bottom: 1.5rem;
+}
+
+/*
+ * `RenderDocument` renders the `.bk-document` article itself, so the page's
+ * wrapper cannot carry `.bk-wide` — it would widen a box that is not the one
+ * holding the measure. A finder page lifts the cap on the article instead.
+ */
+.site-wide .bk-document {
+  max-width: none;
+}
+
 /* ------------------------------------------------------------- editor */
 
 .ed-page {
@@ -392,10 +409,6 @@ button,
 .ed-input-narrow {
   max-width: 8rem;
 }
-.ed-textarea {
-  resize: vertical;
-}
-
 .ed-check {
   display: flex;
   gap: 0.5rem;

@@ -163,3 +163,4 @@ cicd-policy*.json
 
 # Playwright live-run output (smoke / a11y)
 apps/forms/test-results/
+apps/editor_v2/test-results/

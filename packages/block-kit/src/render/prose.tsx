@@ -6,6 +6,7 @@ import type {
   ParagraphBlock,
   StartLinkBlock,
 } from "../types";
+import { Heading as DsHeading, List as DsList, Text } from "@govtech-bb/react";
 import { Spans, type RenderContext } from "./spans";
 import { safeHref } from "../href";
 
@@ -16,10 +17,12 @@ export function Paragraph({
   block: ParagraphBlock;
   ctx: RenderContext;
 }) {
+  // The design system's Text, not a bare <p>: the site is meant to look
+  // like the rest of alpha.gov.bb, and hand-rolled type is how it stops.
   return (
-    <p className="bk-paragraph">
+    <Text as="p" className="bk-paragraph">
       <Spans content={block.content} ctx={ctx} />
-    </p>
+    </Text>
   );
 }
 
@@ -32,24 +35,30 @@ export function Heading({
 }) {
   // The anchor is a URL fragment, so it is rendered from the stored value
   // and never re-derived from the text at render time.
-  const Tag = block.level === 2 ? "h2" : "h3";
   return (
-    <Tag id={block.anchor} className={`bk-heading bk-h${block.level}`}>
+    <DsHeading
+      as={block.level === 2 ? "h2" : "h3"}
+      id={block.anchor}
+      className="bk-heading"
+    >
       <Spans content={block.content} ctx={ctx} />
-    </Tag>
+    </DsHeading>
   );
 }
 
 export function List({ block, ctx }: { block: ListBlock; ctx: RenderContext }) {
-  const Tag = block.ordered ? "ol" : "ul";
+  // `variant` both picks the marker and the element — "number" renders an
+  // <ol>, everything else a <ul> — so there is no `as` to pass. The
+  // hand-rolled list had no markers at all, which is the most visible way
+  // the site stopped looking like the estate it belongs to.
   return (
-    <Tag className={`bk-list ${block.ordered ? "bk-list-ordered" : ""}`}>
+    <DsList variant={block.ordered ? "number" : "bullet"} className="bk-list">
       {block.items.map((item) => (
         <li key={item.id}>
           <Spans content={item.content} ctx={ctx} />
         </li>
       ))}
-    </Tag>
+    </DsList>
   );
 }
 

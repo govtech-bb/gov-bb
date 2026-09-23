@@ -17,7 +17,8 @@
     "@govtech-bb/react": "1.0.0-alpha.29",
     "@govtech-bb/spike-db": "workspace:*",
     "@tanstack/react-router": "catalog:",
-    "react": "catalog:"
+    "react": "catalog:",
+    "@govtech-bb/content": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "catalog:",

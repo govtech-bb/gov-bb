@@ -64,13 +64,6 @@
   margin: 2rem 0 1rem;
   scroll-margin-top: 1rem;
 }
-.bk-h2 {
-  font-size: 1.5rem;
-}
-.bk-h3 {
-  font-size: 1.25rem;
-}
-
 .bk-list {
   margin: 0 0 1.25rem;
   padding-left: 1.25rem;
@@ -678,4 +671,20 @@
     grid-column: 2;
     text-align: left;
   }
+}
+
+/*
+ * The last-updated line and its rule, as the live content pages have them:
+ * small, grey, and separated from the body by a heavier line than the one
+ * between sections.
+ */
+.bk-updated {
+  margin: 0 0 1.25rem;
+  color: var(--bk-muted);
+  font-size: 0.9375rem;
+}
+
+.bk-document > .bk-updated {
+  padding-bottom: 1.25rem;
+  border-bottom: 2px solid #b1b4b6;
 }

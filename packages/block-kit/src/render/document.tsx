@@ -11,6 +11,7 @@ import {
   StartLink,
 } from "./prose";
 import type { RenderContext } from "./spans";
+import { Heading as DsHeading, Text } from "@govtech-bb/react";
 
 /**
  * One renderer, used by the editor's preview pane and by the site. If these
@@ -64,13 +65,60 @@ export function RenderDocument({
   };
   return (
     <article className="bk-document">
-      <h1 className="bk-title">{doc.title}</h1>
+      <DsHeading as="h1" className="bk-title">
+        {doc.title}
+      </DsHeading>
       {doc.description ? (
-        <p className="bk-description">{doc.description}</p>
+        <Text as="p" className="bk-description">
+          {doc.description}
+        </Text>
       ) : null}
+      {/*
+        Every content page on the live site says when it was last changed.
+        It comes from `updated_at` rather than a field an author maintains,
+        so it cannot drift from the truth — the cost being that it moves
+        on any save, including one that changed nothing a reader sees.
+      */}
+      <p className="bk-updated">
+        Last updated on {formatUpdated(doc.updated_at)}
+      </p>
       {doc.body.blocks.map((block) => (
         <RenderBlock key={block.id} block={block} ctx={ctx} />
       ))}
     </article>
   );
+}
+
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+/** "September 2nd, 2026" — the format the live content pages use. */
+export function formatUpdated(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const day = date.getDate();
+  const rest = day % 100;
+  const suffix =
+    rest >= 11 && rest <= 13
+      ? "th"
+      : day % 10 === 1
+        ? "st"
+        : day % 10 === 2
+          ? "nd"
+          : day % 10 === 3
+            ? "rd"
+            : "th";
+  return `${MONTHS[date.getMonth()]} ${day}${suffix}, ${date.getFullYear()}`;
 }
