@@ -138,8 +138,13 @@ export const editorSurface = (page: Page): Locator =>
  * adapter seeds these from our block ids, so this selector is stable across
  * edits by construction — and stops resolving the moment something renumbers.
  */
+/**
+ * BlockNote puts `data-id` on both the block's outer node and its container,
+ * so every block matches twice. The outer one is the whole block including
+ * its margin, which is what hovering and measuring want.
+ */
 export const block = (page: Page, id: string): Locator =>
-  page.locator(`[data-id="${id}"]`);
+  page.locator(`[data-id="${id}"]`).first();
 
 export const blockByType = (page: Page, type: string): Locator =>
   page.locator(`[data-block-type="${type}"]`).first();

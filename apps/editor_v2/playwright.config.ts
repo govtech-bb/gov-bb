@@ -36,7 +36,10 @@ export default defineConfig({
    * costs; see the boot-cost finding in the spike notes.
    */
   timeout: 150_000,
-  expect: { timeout: 20_000 },
+  // Above the measured boot, not below it. A 20s expect could never wait out
+  // a 21s boot no matter how long the test itself was allowed to run, which
+  // is why raising only the test timeout changed nothing.
+  expect: { timeout: 45_000 },
   use: {
     baseURL: BASE_URL,
     trace: "on-first-retry",
