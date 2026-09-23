@@ -50,14 +50,14 @@ The rest of this plan assumes the block document wins.
 
 ## What already exists, and what `api_v2` must not re-invent
 
-| Already built | Where | What `api_v2` does with it |
-| --- | --- | --- |
-| Document format and nine block types | `packages/block-kit/src/types.ts` | Imports it. The wire format is this type. |
-| Nine validation rules | `packages/block-kit/src/validate.ts` | **Runs it server-side on every write.** |
-| Safe-href handling | `packages/block-kit/src/href.ts` | Runs it on ingest as well as on render. |
-| Schema SQL | `packages/spike-db/src/migrations.ts` | Becomes the Drizzle schema, column for column. |
-| The query surface | `packages/spike-db/src/store.ts` | Becomes the endpoint surface, method for method. |
-| Renderer | `packages/block-kit/src/render/` | Unchanged — `landing_v2` keeps using it. |
+| Already built                        | Where                                 | What `api_v2` does with it                       |
+| ------------------------------------ | ------------------------------------- | ------------------------------------------------ |
+| Document format and nine block types | `packages/block-kit/src/types.ts`     | Imports it. The wire format is this type.        |
+| Nine validation rules                | `packages/block-kit/src/validate.ts`  | **Runs it server-side on every write.**          |
+| Safe-href handling                   | `packages/block-kit/src/href.ts`      | Runs it on ingest as well as on render.          |
+| Schema SQL                           | `packages/spike-db/src/migrations.ts` | Becomes the Drizzle schema, column for column.   |
+| The query surface                    | `packages/spike-db/src/store.ts`      | Becomes the endpoint surface, method for method. |
+| Renderer                             | `packages/block-kit/src/render/`      | Unchanged — `landing_v2` keeps using it.         |
 
 `block-kit` is already a browser-safe package with no Node imports, so the API
 can depend on it. Per CLAUDE.md, that means `block-kit` needs an `@nx/js:tsc`
@@ -197,8 +197,49 @@ Steps 2–6 are independent of the client work and can land first.
   from it. Until something needs to edit a category, a table is a second copy
   of a fact that already has one home.
 - Any change to `apps/api`, `apps/landing` or the forms platform.
-- Collection *definition* editing. The spike edits records but not the schema
+- Collection _definition_ editing. The spike edits records but not the schema
   of a collection — a gap the findings already record.
+
+## What building it actually found
+
+Written after the fact, because four of these were only findable by running
+the thing against a real Postgres and a real browser.
+
+**Optimistic concurrency was broken in a way no test caught.** Postgres stores
+`timestamptz` to microseconds; `Date.prototype.toISOString()` emits
+milliseconds. So `updated_at` went out as `.914Z`, came back as `.914Z`, and
+never equalled the stored `.914123` — every save looked like a conflict. The
+column is `timestamptz(3)` now, storing what the wire format can represent.
+PGlite rounds to milliseconds, so the whole test suite passed and only a real
+Postgres showed it. That is the sharpest argument in this document for not
+treating the browser database as a stand-in for the server one.
+
+**CORS defaults allow GET, HEAD and POST.** Every `PUT` and `DELETE` failed
+its preflight and reached the browser as a bare `TypeError: Failed to fetch` —
+no status, no body, nothing in the server log, because the request never
+arrived. Worth knowing that this is what a missing `methods` list looks like
+from the client.
+
+**`pgcrypto` was never needed.** `gen_random_uuid()` has been in core since
+Postgres 13. The extension was inherited from the spike's migration and is
+unavailable in some PGlite builds, which is the only reason it surfaced.
+
+**A fetch wrapper that spreads `init` after `headers` silently drops
+Content-Type**, Fastify then declines to parse the body, and the request
+arrives with `body` undefined — which presents as rule 1 rejecting a
+perfectly good document for having no body. The failure is three layers from
+the cause.
+
+**The live-update behaviour survived.** SSE off `change_events` works: an
+author saves in the editor tab and the site tab updates with no reload, which
+is what `e2e/live-update.spec.ts` asserts. Record writes append an event too,
+so editing a holiday rule reaches the calendar the same way prose does.
+
+**Boot went from ~21s to ~3s.** Measured on the same machine, same pages: the
+editor and the site both spent about 21 seconds per navigation compiling
+PGlite's WASM, opening IndexedDB and replaying the schema check. Against the
+API it is roughly three. That was the predicted benefit and it is the largest
+single change in how the spike feels to use.
 
 ## The one thing this plan cannot tell you
 

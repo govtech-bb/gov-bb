@@ -12,11 +12,10 @@
  */
 
 import { CATEGORY_TAXONOMY } from "@govtech-bb/content/categories";
-import { reset } from "@govtech-bb/spike-db";
 import {
   useCollections,
-  useDb,
   useDocumentList,
+  useReset,
 } from "@govtech-bb/spike-db/react";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -40,7 +39,7 @@ interface ServiceGroup {
 export function ServiceList() {
   const documents = useDocumentList();
   const collections = useCollections();
-  const db = useDb();
+  const reset = useReset();
   const [resetting, setResetting] = useState(false);
 
   const groups = useMemo((): ServiceGroup[] => {
@@ -71,24 +70,31 @@ export function ServiceList() {
         a service to see its pages.
       </p>
 
-      <p>
-        <Button
-          type="button"
-          variant="secondary"
-          data-testid="reset-data"
-          disabled={resetting}
-          onClick={async () => {
-            setResetting(true);
-            try {
-              await reset(db);
-            } finally {
-              setResetting(false);
-            }
-          }}
-        >
-          {resetting ? "Resetting…" : "Reset to the seeded content"}
-        </Button>
-      </p>
+      {/*
+        Only where the backend will do it. Against the API this is absent
+        rather than broken: wiping a shared estate is not something an
+        unauthenticated button should offer.
+      */}
+      {reset ? (
+        <p>
+          <Button
+            type="button"
+            variant="secondary"
+            data-testid="reset-data"
+            disabled={resetting}
+            onClick={async () => {
+              setResetting(true);
+              try {
+                await reset();
+              } finally {
+                setResetting(false);
+              }
+            }}
+          >
+            {resetting ? "Resetting…" : "Reset to the seeded content"}
+          </Button>
+        </p>
+      ) : null}
 
       {documents === undefined ? (
         <p>Loading…</p>

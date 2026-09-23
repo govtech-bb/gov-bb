@@ -7,7 +7,9 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./react": "./src/react.tsx"
+    "./react": "./src/react.tsx",
+    "./react-api": "./src/http-react.tsx",
+    "./seed-data": "./src/seed-data/index.ts"
   },
   "scripts": {
     "test": "vitest run",

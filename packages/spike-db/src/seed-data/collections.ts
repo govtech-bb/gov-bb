@@ -9,7 +9,7 @@
 import {
   BANK_HOLIDAY_RULES,
   type CollectionDefinition,
-} from "@govtech-bb/block-kit";
+} from "@govtech-bb/block-kit/document";
 import pharmacies from "./pharmacies.json";
 
 export const PHARMACIES: CollectionDefinition = {

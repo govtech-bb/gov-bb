@@ -12,7 +12,7 @@ import {
   type PageDocument,
   type SchemaName,
   type ValidationError,
-} from "@govtech-bb/block-kit";
+} from "@govtech-bb/block-kit/document";
 
 export interface DocumentSummary {
   id: string;

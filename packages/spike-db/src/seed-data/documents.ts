@@ -10,7 +10,7 @@
  * Recorded in the findings.
  */
 
-import type { Block, Ref, SchemaName } from "@govtech-bb/block-kit";
+import type { Block, Ref, SchemaName } from "@govtech-bb/block-kit/document";
 
 export interface SeedDocument {
   url: string;
