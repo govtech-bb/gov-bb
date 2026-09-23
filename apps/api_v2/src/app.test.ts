@@ -322,6 +322,22 @@ describe("CORS", () => {
     );
   });
 
+  it("allows the server-rendered site, whose links are client-side fetches", async () => {
+    // The site's first request is made by its own server and never meets
+    // CORS. Every link clicked inside it is a browser fetch that does, so
+    // leaving this origin out breaks navigation while the landing page looks
+    // fine — which is how it actually broke.
+    const response = await app.inject({
+      method: "GET",
+      url: "/pages",
+      headers: { origin: "http://localhost:3030" },
+    });
+
+    expect(response.headers["access-control-allow-origin"]).toBe(
+      "http://localhost:3030",
+    );
+  });
+
   it("refuses to hand an unknown site permission to write", async () => {
     const response = await app.inject({
       method: "OPTIONS",

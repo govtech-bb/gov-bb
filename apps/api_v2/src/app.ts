@@ -53,11 +53,22 @@ export function buildApp({ db, logger = false }: AppOptions): FastifyInstance {
    * to include PUT and DELETE is what turned that from theoretical into
    * reachable, so the two changes belong together.
    *
-   * `CORS_ORIGINS` is a comma-separated list; the default covers the dev
-   * server this is normally driven from.
+   * `CORS_ORIGINS` is a comma-separated list. The default covers both dev
+   * servers, and it has to: the site is server-rendered, so its first request
+   * comes from the server and never meets CORS at all, while a link clicked
+   * inside it is a client-side fetch that does. Leaving the site's origin out
+   * therefore breaks navigation while the page it started on looks perfectly
+   * fine — which is exactly how it broke.
    */
   const allowedOrigins = (
-    process.env.CORS_ORIGINS ?? "http://localhost:3010,http://localhost:3011"
+    process.env.CORS_ORIGINS ??
+    [
+      "http://localhost:3030", // landing_v2, the server-rendered site
+      "http://localhost:3093", // landing_v2 under Playwright
+      "http://localhost:3010", // editor_v2
+      "http://localhost:3011",
+      "http://localhost:3092", // editor_v2 under Playwright
+    ].join(",")
   )
     .split(",")
     .map((origin) => origin.trim())
