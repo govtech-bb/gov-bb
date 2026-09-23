@@ -164,3 +164,7 @@ cicd-policy*.json
 # Playwright live-run output (smoke / a11y)
 apps/forms/test-results/
 apps/editor_v2/test-results/
+apps/landing_v2/.nitro/
+apps/landing_v2/.output/
+apps/landing_v2/.tanstack/
+apps/landing_v2/.amplify-hosting/

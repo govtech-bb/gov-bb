@@ -1,6 +1,5 @@
 import { getDb, type SpikeDb } from "@govtech-bb/spike-db";
 import { ApiProvider, SpikeDbProvider } from "@govtech-bb/spike-db/react";
-import { siteRoutes } from "@govtech-bb/landing-v2";
 import {
   createRootRoute,
   createRouter,
@@ -24,14 +23,19 @@ const rootRoute = createRootRoute({
   ),
 });
 
-// Two trees, one router: /editor/* is the editor, everything else is the
-// site. Order matters — the site's splat route would otherwise swallow
-// /editor as a content url.
+/*
+ * The editor only.
+ *
+ * The site used to be mounted here as a second route tree, on one origin,
+ * because PGlite's IndexedDB is scoped per origin and neither app could see
+ * the other's data otherwise. With `api_v2` serving both over HTTP that
+ * constraint is gone, and the two want opposite things: a citizen's page
+ * should arrive as finished HTML from a server, and an authoring surface
+ * with a rich text editor and local drafts gains nothing from being rendered
+ * on one. The site is `apps/landing_v2` now, server-rendered.
+ */
 const router = createRouter({
-  routeTree: rootRoute.addChildren([
-    ...editorRoutes(rootRoute),
-    ...siteRoutes(rootRoute),
-  ]),
+  routeTree: rootRoute.addChildren([...editorRoutes(rootRoute)]),
   defaultPreload: false,
 });
 

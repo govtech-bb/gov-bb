@@ -318,6 +318,38 @@ something the system already knows belongs to the renderer. What is left —
 the "About this list" heading, the source citation — is chrome the system
 does _not_ know, and that is where a block type is genuinely missing.
 
+### The loading state was an architecture, not a bug
+
+The site kept showing "Loading…" and each fix moved the problem rather than
+removing it. A client cache made it appear less often; persisting that cache
+to `sessionStorage` made a reload paint from the last known data. Both helped,
+and neither could remove the state, because a client-rendered page mounts
+before it has anything to show. `undefined` is a real state in that design and
+something has to be rendered for it.
+
+Server-rendering deletes the state instead of handling it. The route loader
+fetches the document and every collection its blocks read, then
+`RenderDocument` is called with `{doc, data}` as props. There is no moment at
+which a component exists without its data, so there is nothing to render for
+it — `loading` is not passed at all any more.
+
+What that bought, measured:
+
+- The page arrives complete. With JavaScript disabled entirely, the pharmacy
+  finder still renders 20 results and announces "121 pharmacies"; the calendar
+  still shows its computed holidays; breadcrumbs and contact details are all
+  there. The interactive parts hydrate afterwards and still work — the year
+  switcher moves 2026 → 2027, the finder's search box filters 121 → 1.
+- The one-origin constraint is gone with it. The site and editor shared an
+  origin only because PGlite's IndexedDB is scoped per origin; served by an
+  API, they can be what they each want to be — the site server-rendered, the
+  editor a client-side app, since an authoring surface with a rich text editor
+  and local drafts gains nothing from SSR.
+
+The general lesson is worth keeping: a loading state is usually a question
+about where rendering happens, not about caching. Three rounds of caching work
+made it rarer; moving the render to the server made it impossible.
+
 ### PGlite costs about 20 seconds on every page load, not just the first
 
 Measured against the dev server: the editor comes up in ~21s and a site page

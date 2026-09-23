@@ -18,6 +18,11 @@ import { defineConfig, devices } from "@playwright/test";
  */
 const PORT = 3092;
 const BASE_URL = `http://localhost:${PORT}`;
+const SITE_PORT = 3093;
+const SITE_URL = `http://localhost:${SITE_PORT}`;
+
+// `support.ts` reads this to reach the site.
+process.env.SITE_URL ??= SITE_URL;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -48,12 +53,28 @@ export default defineConfig({
     navigationTimeout: 30_000,
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: {
-    command: `pnpm exec vite dev --port ${PORT}`,
-    url: BASE_URL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-    stdout: "ignore",
-    stderr: "pipe",
-  },
+  /*
+   * Two servers now: the editor, and the server-rendered site it links to.
+   * They were one while the database was PGlite in the browser, because
+   * IndexedDB is scoped per origin. The site runs against whatever `api_v2`
+   * `VITE_API_URL` names, so a run needs that up too.
+   */
+  webServer: [
+    {
+      command: `pnpm exec vite dev --port ${PORT}`,
+      url: BASE_URL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+      stdout: "ignore",
+      stderr: "pipe",
+    },
+    {
+      command: `pnpm --filter @govtech-bb/landing-v2 exec vite dev --port ${SITE_PORT}`,
+      url: SITE_URL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+      stdout: "ignore",
+      stderr: "pipe",
+    },
+  ],
 });

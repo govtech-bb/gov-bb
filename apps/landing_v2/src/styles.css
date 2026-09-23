@@ -1,0 +1,93 @@
+/*
+ * The GOV.BB design system, then the renderer's styles, then the little the
+ * site itself owns.
+ *
+ * `@govtech-bb/frontend/tailwind` carries the theme and `/css` the component
+ * styles `@govtech-bb/react` renders against. Without both, a <Breadcrumbs>
+ * renders as an unstyled list and quietly stops looking like government.
+ */
+@import "tailwindcss";
+@import "@govtech-bb/frontend/tailwind";
+@import "@govtech-bb/frontend/css" layer(components);
+@import "@govtech-bb/block-kit/styles.css";
+
+body {
+  margin: 0;
+  color: #0b0c0c;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Arial,
+    sans-serif;
+}
+
+/* The spike banner, so it is never mistaken for the real site. */
+.site-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  background: #0b0c0c;
+  color: #fff;
+  font-size: 0.875rem;
+}
+.site-mark {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.site-tag {
+  background: #fff;
+  color: #0b0c0c;
+  padding: 0.125rem 0.5rem;
+  font-weight: 700;
+}
+.site-note {
+  margin-left: auto;
+  opacity: 0.7;
+}
+
+.site-main {
+  padding: 2rem 1.5rem 4rem;
+}
+
+/* Breadcrumbs sit above the page, outside the reading measure. */
+.site-crumbs {
+  margin-bottom: 1.5rem;
+}
+
+/*
+ * `RenderDocument` renders the `.bk-document` article itself, so the page
+ * wrapper cannot carry `.bk-wide` — it would widen a box that is not the one
+ * holding the measure. A finder page lifts the cap on the article instead.
+ */
+.site-wide .bk-document {
+  max-width: none;
+}
+
+.site-index-page {
+  max-width: 44rem;
+}
+.site-lede {
+  color: #505a5f;
+  font-size: 1.0625rem;
+}
+.site-index {
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+}
+.site-index li {
+  padding: 1rem 0;
+  border-bottom: 1px solid #e0e4e9;
+}
+.site-index-link {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1d70b8;
+}
+.site-index-meta {
+  margin: 0.25rem 0 0;
+  color: #505a5f;
+  font-size: 0.9375rem;
+}

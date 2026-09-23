@@ -133,9 +133,23 @@ export async function openDocument(page: Page, url: string): Promise<void> {
   await expect(editorSurface(page)).toBeVisible();
 }
 
+/**
+ * Where the server-rendered site lives.
+ *
+ * It used to be this same origin — one Vite server, two route trees, because
+ * PGlite's IndexedDB is per-origin. The site is its own app now, so these are
+ * absolute urls.
+ */
+export const SITE_ORIGIN = process.env.SITE_URL ?? "http://localhost:3030";
+
 export async function gotoSite(page: Page, url: string): Promise<void> {
-  await page.goto(url);
-  await waitForReady(page);
+  await page.goto(`${SITE_ORIGIN}${url}`);
+  /*
+   * No `waitForReady` here any more. That waited for `db-ready`, the marker
+   * saying PGlite had finished starting — a signal the site no longer has,
+   * because it does not start a database. Its content is rendered by the
+   * server before the response is sent, so there is nothing to wait for.
+   */
 }
 
 /* ------------------------------------------------------------- the editor */

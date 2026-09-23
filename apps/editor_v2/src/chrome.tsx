@@ -1,22 +1,23 @@
-import { Link, useLocation } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
+/** Where the server-rendered site is served from. */
+const SITE_URL =
+  (import.meta.env.VITE_SITE_URL as string) ?? "http://localhost:3030";
+
 /**
- * The banner is doing real work: with the editor and the site on one origin
- * it is otherwise easy to forget which tree you are looking at.
+ * The banner, and the way across to the site.
+ *
+ * The site is a separate origin now, so this is a plain anchor rather than a
+ * router link — there is no route here to navigate to.
  */
 export function Chrome({ children }: { children: ReactNode }) {
-  const { pathname } = useLocation();
-  const inEditor = pathname.startsWith("/editor");
-
   return (
-    <div className={inEditor ? "app app-editor" : "app app-site"}>
+    <div className="app app-editor">
       <header className="app-bar">
         <span className="app-mark">GOV.BB</span>
-        <span className="app-tag">{inEditor ? "Editor" : "Site"}</span>
+        <span className="app-tag">Editor</span>
         <nav className="app-nav">
-          <Link to="/">Site</Link>
-          <Link to="/editor">Editor</Link>
+          <a href={SITE_URL}>View the site</a>
         </nav>
         <span className="app-note">Spike · local Postgres · not for merge</span>
       </header>
