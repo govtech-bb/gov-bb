@@ -66,6 +66,25 @@ pnpm exec vitest run recipe-invariants --coverage.enabled=false
 
 Fix failures before presenting the work as done.
 
+## Step 4 — Create or update the form's smoke test
+
+**REQUIRED when editing a form:** every edited form must leave with a smoke spec that matches its new state. Smoke specs live at `apps/forms/e2e/smoke/<formId>.smoke.spec.ts` and walk the real form step by step with the shared helpers in `apps/forms/e2e/helpers/smoke.ts` (`openSmokeForm`, `expectStep`, `fillField`, `fillDate`, `selectRadio`, `selectDropdown`, `tickCheckbox`, `advance`, `submitAndConfirm`, …).
+
+- **No spec yet:** create one. Copy the structure of an existing spec for a form of similar shape (e.g. `term-leave-application.smoke.spec.ts`) and cover every step through to the confirmation screen.
+- **Spec exists:** update it to the new state of the form. Add, remove or rename the steps, fields, options, conditional branches and test data your edit changed, and update the spec's header comment that describes the form.
+
+Take field ids from the recipe's **effective** fieldIds, not just `overrides.fieldId`. A field can also get its id from a registry component default (`components/first-name` → `first-name`) or from block expansion (`blocks/personal-information`).
+
+This step is not optional because nothing else catches a stale spec. Smoke specs are not type-checked or linted, a recipe-only PR does not make `forms` nx-affected, and CI only smokes `public` forms after deploy. So a spec that fills a field you removed fails later against sandbox, far from the edit that broke it.
+
+Verify the spec parses and is discovered (this does not submit anything):
+
+```bash
+cd apps/forms && SMOKE_BASE_URL=http://localhost:3000 pnpm exec playwright test --config playwright.smoke.config.ts --list <formId>
+```
+
+Running a smoke spec for real submits a live application, so never run it against a deployed environment without the designer's go-ahead.
+
 ## Common mistakes
 
 | Mistake                                                                    | Fix                                                                                                   |
@@ -76,3 +95,4 @@ Fix failures before presenting the work as done.
 | Repurposing a semantic component (e.g. `date-of-birth` for an expiry date) | Use the generic primitive with fieldId + label override (CATEGORY 0)                                  |
 | `fieldConditionalOn`/`optionalIf` value set to a display label             | Values are always lowercased + kebab-cased option values (`"christ-church"`, never `"Christ Church"`) |
 | Rediscovering conventions from loader source code                          | Everything you need is in the system prompt + this skill                                              |
+| Editing a recipe but leaving its smoke spec as it was, or missing          | Create or update `apps/forms/e2e/smoke/<formId>.smoke.spec.ts` to match the new form (Step 4)         |
