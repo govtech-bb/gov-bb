@@ -23,6 +23,187 @@ export interface SeedDocument {
   body: { version: 1; blocks: Block[]; refs: Record<string, Ref> };
 }
 
+/* ------------------------------ the entry page in front of a transaction */
+
+/**
+ * Taken from the live estate's index.md. The start page already seeded here
+ * is its start.md, and the two are genuinely different documents: this one
+ * says whether the tool applies to you at all, and the start page says what
+ * to have ready before you begin.
+ *
+ * Three things about it do not fit the spike's model, all recorded in the
+ * findings:
+ *
+ * - it carries TWO categories (money-financial-support and work-employment)
+ *   and the url can hold one, so the second is simply lost;
+ * - its title is identical to the start page's, because that is what the
+ *   live estate has — which is why the test helper selects documents by url
+ *   rather than by title;
+ * - the NIS address needs hard line breaks, and the block palette has no way
+ *   to say "new line but not new paragraph", so it renders as four
+ *   paragraphs with paragraph spacing between them.
+ */
+const severanceEntry: SeedDocument = {
+  url: "/money-financial-support/calculate-severance-pay",
+  slug: "calculate-severance-pay",
+  schema_name: "guide",
+  document_type: "service_start",
+  title: "Find out how much severance payment you are owed",
+  description:
+    "Estimate the severance payment you may be owed under the Severance Payments Act (Cap. 355A) if you were made redundant, your workplace was damaged by a disaster, you were laid off, or your employer died.",
+  is_draft: false,
+  body: {
+    version: 1,
+    blocks: [
+      {
+        id: "b_se01",
+        type: "paragraph",
+        content: [
+          {
+            text: "If you were sent home from your job, your employer may owe you severance payment. This tool gives you an estimate based on the ",
+          },
+          { text: "Severance Payments Act (Cap. 355A)", ref: "r_act" },
+          { text: " — it is not legal advice." },
+        ],
+      },
+      {
+        id: "b_se02",
+        type: "paragraph",
+        content: [{ text: "You can use this tool if:" }],
+      },
+      {
+        id: "b_se03",
+        type: "list",
+        ordered: false,
+        items: [
+          {
+            id: "i_se03a",
+            content: [
+              { text: "you worked for the same employer for at least " },
+              { text: "2 years", marks: ["strong"] },
+            ],
+          },
+          {
+            id: "i_se03b",
+            content: [
+              {
+                text: "you were between 16 and 67 years old on your last day at work",
+              },
+            ],
+          },
+          {
+            id: "i_se03c",
+            content: [
+              {
+                text: "you were sent home because your job was cut, your workplace was damaged by a disaster, you had no work for a long time, or your employer died",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "b_se04",
+        type: "heading",
+        level: 2,
+        anchor: "how-to-get-your-estimate",
+        content: [{ text: "How to get your estimate" }],
+      },
+      {
+        id: "b_se05",
+        type: "heading",
+        level: 3,
+        anchor: "use-the-online-calculator",
+        content: [{ text: "Use the online calculator" }],
+      },
+      {
+        id: "b_se06",
+        type: "paragraph",
+        content: [
+          {
+            text: "You will answer a short set of questions about why you were sent home, when you worked for the employer, and your usual gross pay. We then estimate how much you may be owed.",
+          },
+        ],
+      },
+      {
+        id: "b_se07",
+        type: "start_link",
+        label: "Start your estimate now",
+        target_kind: "page",
+        target: "/money-financial-support/calculate-severance-pay/start",
+      },
+      {
+        id: "b_se08",
+        type: "heading",
+        level: 2,
+        anchor: "do-not-wait-too-long",
+        content: [{ text: "Do not wait too long" }],
+      },
+      {
+        id: "b_se09",
+        type: "paragraph",
+        content: [
+          { text: "You must make your claim within " },
+          { text: "12 months", marks: ["strong"] },
+          {
+            text: " of your last day at work. If you wait longer, you may lose your right to severance payment.",
+          },
+        ],
+      },
+      {
+        id: "b_se10",
+        type: "heading",
+        level: 2,
+        anchor: "need-help-or-advice",
+        content: [{ text: "Need help or advice?" }],
+      },
+      {
+        id: "b_se11",
+        type: "paragraph",
+        content: [
+          { text: "Contact the " },
+          { text: "NIS Severance Payment Department", marks: ["strong"] },
+          {
+            text: ". They can give you free advice and help you claim if your employer does not pay.",
+          },
+        ],
+      },
+      {
+        id: "b_se12",
+        type: "paragraph",
+        content: [{ text: "NIS Severance Payment Department" }],
+      },
+      {
+        id: "b_se13",
+        type: "paragraph",
+        content: [{ text: "Frank Walcott Building" }],
+      },
+      {
+        id: "b_se14",
+        type: "paragraph",
+        content: [{ text: "Culloden Road" }],
+      },
+      {
+        id: "b_se15",
+        type: "paragraph",
+        content: [{ text: "St. Michael" }],
+      },
+      {
+        id: "b_se16",
+        type: "paragraph",
+        content: [
+          { text: "Phone: " },
+          { text: "+1 246-431-7400", ref: "r_nis_phone" },
+          { text: ", extensions 1502 to 1509" },
+        ],
+      },
+    ],
+    refs: {
+      r_act: { kind: "external", href: "https://www.nis.gov.bb/severance/" },
+      r_nis_phone: { kind: "external", href: "tel:+12464317400" },
+    },
+  },
+};
+
 /* ----------------------------------------------- the prose case */
 
 const severanceStart: SeedDocument = {
@@ -1177,6 +1358,7 @@ const hairSalonLicence: SeedDocument = {
 export const DOCUMENTS: SeedDocument[] = [
   pharmacyEntry,
   pharmacyFinder,
+  severanceEntry,
   bankHolidays,
   severanceStart,
   severanceForm,

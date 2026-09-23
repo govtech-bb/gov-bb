@@ -36,12 +36,23 @@ export const CROP_OVER_URL = "/business-trade/crop-over-permits";
 export const HAIR_SALON_URL = "/business-trade/apply-for-hair-salon-licence";
 
 /** Titles as seeded, used to pick a document out of the editor's list. */
+/**
+ * Documents are named by url, not by title.
+ *
+ * Titles are not unique and were never promised to be: the live estate has
+ * the severance entry page and its start page under the same title, because
+ * that is what a citizen searching for it should find either way. `url` has a
+ * unique constraint on the column, so it is the only identifier here that
+ * cannot quietly start matching two rows.
+ */
 export const DOC = {
-  severance: "Find out how much severance payment you are owed",
-  calendar: "Bank holidays",
-  pharmacies: "Search for pharmacies",
-  cropOver: "Find the permits you need for a Crop Over event",
-  hairSalon: "Apply for a hairdressing and beautician business licence",
+  severance: SEVERANCE_URL,
+  severanceEntry: "/money-financial-support/calculate-severance-pay",
+  calendar: CALENDAR_URL,
+  pharmacies: PHARMACY_URL,
+  pharmacyEntry: "/health-and-emergency-services/find-an-open-pharmacy",
+  cropOver: CROP_OVER_URL,
+  hairSalon: HAIR_SALON_URL,
 } as const;
 
 /**
@@ -105,19 +116,19 @@ export async function openBlockData(
  * what most of these tests are about. `hierarchy.spec.ts` walks the browse
  * path deliberately; everything else goes straight to the document.
  */
-export async function openDocument(page: Page, title: string): Promise<void> {
+export async function openDocument(page: Page, url: string): Promise<void> {
   await gotoEditor(page);
   const id = await page.evaluate(async (wanted) => {
     const store = (
       window as unknown as {
         __spikeStore: {
-          list: () => Promise<Array<{ id: string; title: string }>>;
+          list: () => Promise<Array<{ id: string; url: string }>>;
         };
       }
     ).__spikeStore;
-    return (await store.list()).find((doc) => doc.title === wanted)?.id ?? null;
-  }, title);
-  if (!id) throw new Error(`No seeded document titled "${title}"`);
+    return (await store.list()).find((doc) => doc.url === wanted)?.id ?? null;
+  }, url);
+  if (!id) throw new Error(`No seeded document at "${url}"`);
   await page.goto(`/editor/${id}`);
   await expect(editorSurface(page)).toBeVisible();
 }

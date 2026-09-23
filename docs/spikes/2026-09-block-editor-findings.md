@@ -336,6 +336,41 @@ here, but it is the strongest practical argument in the spike for the database
 living behind an API: an HTTP read is milliseconds, and the page stops paying
 for a database engine it only reads from.
 
+### A page can belong to two categories; a url can hold one
+
+The severance entry page's frontmatter lists `categories: [money-financial-support,
+work-employment]`. Both are true — being made redundant is a money problem and
+an employment problem, and a citizen might reasonably look under either.
+
+The spike derives the address from one category, and the breadcrumbs from the
+address. So the second category is not stored anywhere: it is dropped at seed
+time and nothing downstream can tell it existed. The page lives under money
+and is invisible under work.
+
+This is the cost of deriving structure from the url rather than storing it.
+The url-as-hierarchy choice is still the right one — it is why breadcrumbs
+cannot disagree with the address — but it cannot express a page filed in two
+places at once. A real migration needs either a categories join table with the
+url naming only the _primary_ one, or an accepted rule that every page has
+exactly one home. The existing estate has already answered that question the
+other way, so this needs deciding before content moves.
+
+### The block palette has no line break
+
+The NIS address on the severance entry page is four lines — department,
+building, road, parish — written in markdown with trailing-space hard breaks.
+The palette has paragraph but nothing for "new line, same block", so it
+renders as four paragraphs with paragraph spacing between them. It reads as a
+loose list rather than an address.
+
+Every option is unattractive in the familiar way: a `line_break` mark is
+presentation smuggled into content, an `address` block type is one narrow
+type that will be followed by requests for others, and allowing newlines
+inside a span's text makes whitespace significant in a field nothing else
+treats that way. Postal addresses, opening hours and anything else written as
+a short stack of lines all hit it. Worth solving once, deliberately, rather
+than per page.
+
 ### Rule 8 checks start links, but nothing checks an inline link
 
 Adding the pharmacy entry page from the live estate made this visible. The
