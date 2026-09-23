@@ -318,6 +318,24 @@ something the system already knows belongs to the renderer. What is left —
 the "About this list" heading, the source citation — is chrome the system
 does _not_ know, and that is where a block type is genuinely missing.
 
+### PGlite costs about 20 seconds on every page load, not just the first
+
+Measured against the dev server: the editor comes up in ~21s and a site page
+in ~21s, and navigating to a second page costs the same again. It does not
+warm up. Every navigation is a fresh page load, and a fresh page load starts
+the worker, opens IndexedDB and replays the schema check from scratch.
+
+This is invisible in normal use — one editor tab, open all day — and brutal
+for anything that navigates repeatedly. It is why the "every page has exactly
+one h1" test, which visits four pages in sequence, could never fit the default
+30-second budget, and why the whole behavioural suite takes about 48 minutes
+for 99 tests.
+
+It is a property of running Postgres in the browser rather than a bug to fix
+here, but it is the strongest practical argument in the spike for the database
+living behind an API: an HTTP read is milliseconds, and the page stops paying
+for a database engine it only reads from.
+
 ### `refs` and `data_table` had never been exercised at all
 
 Every document seeded before the hairdressing page had `refs: {}`, and the

@@ -109,7 +109,12 @@ export function CalendarIsland({
   );
 
   return (
-    <div className="bk-cal">
+    // The year is on the container because the live page never prints it on
+    // its own — it appears inside "Upcoming bank holidays 2026" and on the
+    // two buttons, which are the years you would move TO. Anything needing
+    // to know which year is shown reads it here rather than parsing a
+    // heading.
+    <div className="bk-cal" data-year={year}>
       <div className="bk-cal-switch">{switcher}</div>
 
       {isThisYear && next ? (

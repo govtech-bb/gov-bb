@@ -194,7 +194,21 @@ export function FinderIsland({
 
       <div className="bk-finder-results">
         <div className="bk-finder-toolbar">
-          <p className="bk-result-count" aria-live="polite">
+          {/*
+            `role="status"` as well as `aria-live`: the live region announces
+            the new count when a filter changes, and the role is what makes
+            the count addressable as the page's status rather than as "the
+            paragraph above the list". The two data attributes carry the
+            filtered and unfiltered totals, so a reader — or a test — can
+            tell "3 of 163" from "3 of 3".
+          */}
+          <p
+            className="bk-result-count"
+            role="status"
+            aria-live="polite"
+            data-total={results.length}
+            data-collection-size={rows.length}
+          >
             {results.length} {plural(block.document_noun, results.length)}
           </p>
           {block.sort.length > 0 ? (
@@ -219,7 +233,10 @@ export function FinderIsland({
             {ctx.loading ? "Loading…" : block.empty_message}
           </p>
         ) : (
-          <ul className="bk-result-list">
+          // Named, so a screen reader reaching the list knows what it is
+          // reading — and so the results are addressable as a region rather
+          // than as "the second list on the page".
+          <ul className="bk-result-list" aria-label="Results">
             {visible.map((row, index) => (
               <li key={String(row.slug ?? index)} className="bk-result">
                 <a

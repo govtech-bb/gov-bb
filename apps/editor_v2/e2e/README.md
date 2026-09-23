@@ -206,8 +206,11 @@ Accessible names only:
 - `list` named **Results**, with one `listitem` per result.
 - `navigation` named **Pagination**.
 - `searchbox`, and `combobox` named **Sort by** and **Year**.
-- `table` named **Bank holidays**, with `columnheader`s from the block's
-  configured columns.
+- The bank holiday calendar is **not** a `table`. It was one until it was
+  matched to the live page, which is a grid of date cards; it now carries
+  `.bk-cal` with a `data-year` attribute for the displayed year, and each
+  holiday is a `listitem`. The block's configured columns still decide what
+  appears, but not the shape it appears in.
 - `status` — the live result count. Also carries `data-total` and
   `data-collection-size` for exact assertions.
 - `metadata-<field>` is the one test id on the site, because a metadata chip

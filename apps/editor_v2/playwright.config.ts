@@ -26,8 +26,16 @@ export default defineConfig({
   retries: 0,
   workers: 1,
   reporter: [["list"]],
-  // Booting PGlite and seeding 163 pharmacy records takes a moment on the
-  // first paint of every test; give assertions room.
+  /*
+   * PGlite costs about 21 seconds to come up, measured, and it does not warm
+   * up between navigations — every page load starts the worker, opens
+   * IndexedDB and replays the schema check again. A test that opens the
+   * editor and then a document pays it twice, which is why the default
+   * 30-second budget failed most of this suite while the behaviour under
+   * test was fine. The budget has to match what the storage layer actually
+   * costs; see the boot-cost finding in the spike notes.
+   */
+  timeout: 150_000,
   expect: { timeout: 20_000 },
   use: {
     baseURL: BASE_URL,

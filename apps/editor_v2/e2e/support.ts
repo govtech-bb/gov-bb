@@ -319,12 +319,14 @@ export function holidayRow(page: Page, name: string): Locator {
 
 /** Move the calendar's year. It is Previous/Next, not a dropdown. */
 export async function goToYear(page: Page, year: number): Promise<void> {
-  const current = page.locator(".bk-year-current");
+  const calendar = page.locator(".bk-cal");
   for (let guard = 0; guard < 40; guard++) {
-    const shown = Number((await current.innerText()).trim());
+    const shown = Number(await calendar.getAttribute("data-year"));
     if (shown === year) return;
     const label = shown < year ? /Next year/ : /Previous year/;
-    await page.getByRole("button", { name: label }).click();
+    // The switcher is rendered twice — above the list and below it, as the
+    // live page has it — so either one will do.
+    await page.getByRole("button", { name: label }).first().click();
   }
   throw new Error(`Could not reach ${year}`);
 }
