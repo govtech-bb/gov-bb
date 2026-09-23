@@ -135,6 +135,12 @@ export function collectionSignature(
       }
     }
     if (block.type === "calendar") found.add(block.collection);
+    // A contact block names its collection directly, like a finder and a
+    // calendar. Before it did, it was reached through a `record` ref and
+    // picked up by the loop below — so moving it off refs would have quietly
+    // stopped its data loading and left every contact block claiming its
+    // record was missing.
+    if (block.type === "contact") found.add(block.collection);
   }
   for (const ref of Object.values(doc.body.refs)) {
     if (ref.kind === "record" || ref.kind === "query") found.add(ref.collection);

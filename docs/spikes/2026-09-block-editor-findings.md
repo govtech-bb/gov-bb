@@ -391,6 +391,23 @@ The same split is what the four-paragraph postal address needed and could not
 express. It is now a `dt`/`dd` pair like everything else in the block, which
 is also better markup than the paragraphs it replaced.
 
+One correction, because the first attempt got the control wrong. The contact
+block was initially given the same treatment as a finder — pencil opens the
+collection's records, cog opens the block's settings — on the reasoning that
+a wrong phone number is what an author comes to fix. That conflated "reads
+from a collection" with "lists a collection". A finder, a calendar and a
+data_table put many records on a page, so editing those records is the
+obvious thing to want from them. A contact block shows one record, chosen in
+its own settings, and the thing an author wants from it is the heading, the
+description and which organisation it names.
+
+The same mistake had been made in the block's shape: it pointed at its record
+through a `body.refs` key, which meant the settings form asked an author to
+choose between `r_drug_service` and `r_nis`. It now names its collection and
+record directly, as a finder and a calendar do, and the form offers
+organisations by name. Generality the person using it cannot read is not
+generality worth having.
+
 ### A page can belong to two categories; a url can hold one
 
 The severance entry page's frontmatter lists `categories: [money-financial-support,

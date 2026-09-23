@@ -352,19 +352,14 @@ describe("the contact block", () => {
       type: "contact",
       title: "Get help",
       description: [{ text: "Call them." }],
-      source: "r_m",
+      collection: "ministries",
+      record: "drug-service",
       fields: [{ field: "phone", label: "Telephone" }],
       ...overrides,
     }) as Block;
 
-  const recordRef: Ref = {
-    kind: "record",
-    collection: "ministries",
-    record: "drug-service",
-  };
-
-  it("accepts a record ref and fields the collection has", () => {
-    const errors = validateDocument(docWith(contact(), { r_m: recordRef }), {
+  it("accepts a collection that exists and fields it has", () => {
+    const errors = validateDocument(docWith(contact(), {}), {
       collections: [ministries],
       pageUrls: ["/x"],
     });
@@ -373,9 +368,7 @@ describe("the contact block", () => {
 
   it("refuses a field the collection does not have", () => {
     const errors = validateDocument(
-      docWith(contact({ fields: [{ field: "fax", label: "Fax" }] }), {
-        r_m: recordRef,
-      }),
+      docWith(contact({ fields: [{ field: "fax", label: "Fax" }] }), {}),
       { collections: [ministries], pageUrls: ["/x"] },
     );
     expect(errors).toHaveLength(1);
@@ -383,40 +376,18 @@ describe("the contact block", () => {
     expect(errors[0].message).toContain("fax");
   });
 
-  it("refuses a query ref, because a contact shows one organisation", () => {
+  it("refuses a collection that does not exist", () => {
     const errors = validateDocument(
-      docWith(contact(), {
-        r_m: { kind: "query", collection: "ministries" },
-      }),
-      { collections: [ministries], pageUrls: ["/x"] },
-    );
-    expect(errors).toHaveLength(1);
-    expect(errors[0].message).toContain("must be a record ref");
-  });
-
-  it("refuses a ref naming a collection that does not exist", () => {
-    const errors = validateDocument(
-      docWith(contact(), {
-        r_m: { kind: "record", collection: "nope", record: "x" },
-      }),
+      docWith(contact({ collection: "nope" }), {}),
       { collections: [ministries], pageUrls: ["/x"] },
     );
     expect(errors[0]).toMatchObject({ rule: 5 });
-  });
-
-  it("catches an undefined source ref under rule 4", () => {
-    const errors = validateDocument(docWith(contact(), {}), {
-      collections: [ministries],
-      pageUrls: ["/x"],
-    });
-    expect(errors[0]).toMatchObject({ rule: 4 });
   });
 
   it("applies the href allowlist to links in the description", () => {
     // The description is prose, so a link inside it must not escape rule 1.
     const errors = validateDocument(
       docWith(contact({ description: [{ text: "Here", ref: "r_bad" }] }), {
-        r_m: recordRef,
         r_bad: { kind: "external", href: "javascript:x" },
       }),
       { collections: [ministries], pageUrls: ["/x"] },

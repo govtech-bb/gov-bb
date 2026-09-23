@@ -13,6 +13,7 @@
 import type { Block, CollectionDefinition } from "@govtech-bb/block-kit";
 import {
   CalendarEditor,
+  ContactEditor,
   DataTableEditor,
   FinderEditor,
 } from "../blocks/config";
@@ -103,6 +104,15 @@ export function BlockSettings({
           onChange={onChange}
           collections={collections}
           refKeys={refKeys}
+        />
+      );
+
+    case "contact":
+      return (
+        <ContactEditor
+          block={block}
+          onChange={onChange}
+          collections={collections}
         />
       );
 

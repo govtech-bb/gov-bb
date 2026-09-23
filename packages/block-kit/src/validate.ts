@@ -58,9 +58,7 @@ function spansOf(block: Block): Span[] {
 
 /** Ref keys a block itself uses, outside its spans. */
 function blockRefKeys(block: Block): string[] {
-  return block.type === "data_table" || block.type === "contact"
-    ? [block.source]
-    : [];
+  return block.type === "data_table" ? [block.source] : [];
 }
 
 export function validateDocument(
@@ -275,41 +273,27 @@ export function validateDocument(
       }
     }
 
-    /*
-     * Rule 7 again, for the contact block. Its source must be a `record` ref
-     * specifically, not a `query`: a contact block shows one organisation, and
-     * a query returning three rows has no sensible rendering here. That is a
-     * tighter constraint than data_table's, which is why it is checked
-     * separately rather than folded in with it.
-     */
+    // Rules 5 and 7 for the contact block: the collection exists, and every
+    // detail it shows is a field of it.
     if (block.type === "contact") {
-      const ref = refs[block.source];
-      if (ref && ref.kind === "record") {
-        const collection = byKey.get(ref.collection);
-        if (!collection) {
-          errors.push({
-            blockId: block.id,
-            rule: 5,
-            message: `ref "${block.source}" names collection "${ref.collection}", which is not in data_collections`,
-          });
-        } else {
-          const fields = fieldKeys(collection);
-          for (const field of block.fields) {
-            if (!fields.has(field.field)) {
-              errors.push({
-                blockId: block.id,
-                rule: 7,
-                message: `field "${field.field}" is not a field of "${collection.key}"`,
-              });
-            }
-          }
-        }
-      } else if (ref) {
+      const collection = byKey.get(block.collection);
+      if (!collection) {
         errors.push({
           blockId: block.id,
-          rule: 7,
-          message: `contact source "${block.source}" must be a record ref, not "${ref.kind}"`,
+          rule: 5,
+          message: `collection "${block.collection}" is not in data_collections`,
         });
+      } else {
+        const fields = fieldKeys(collection);
+        for (const field of block.fields) {
+          if (!fields.has(field.field)) {
+            errors.push({
+              blockId: block.id,
+              rule: 7,
+              message: `field "${field.field}" is not a field of "${collection.key}"`,
+            });
+          }
+        }
       }
     }
 

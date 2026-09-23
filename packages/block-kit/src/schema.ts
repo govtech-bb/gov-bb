@@ -181,7 +181,8 @@ const contactSchema = z.object({
   type: z.literal("contact"),
   title: z.string().min(1),
   description: z.array(spanSchema),
-  source: z.string().min(1),
+  collection: z.string().min(1),
+  record: z.string().min(1),
   fields: z.array(
     z.object({ field: z.string().min(1), label: z.string().min(1) }),
   ),

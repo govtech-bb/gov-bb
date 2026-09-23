@@ -44,12 +44,9 @@ export function Contact({
   block: ContactBlock;
   ctx: RenderContext;
 }) {
-  const ref = ctx.refs[block.source];
-  if (!ref || ref.kind !== "record") return null;
-
-  const rows = ctx.data[ref.collection] ?? [];
+  const rows = ctx.data[block.collection] ?? [];
   const record = rows.find(
-    (row) => String(row.key ?? row.slug ?? "") === ref.record,
+    (row) => String(row.key ?? row.slug ?? "") === block.record,
   );
 
   return (
@@ -72,7 +69,7 @@ export function Contact({
          * broken to whoever is looking at it.
          */
         <p className="bk-empty">
-          No contact record “{ref.record}” in {ref.collection}.
+          No contact record “{block.record}” in {block.collection}.
         </p>
       ) : (
         <dl className="bk-contact-details">

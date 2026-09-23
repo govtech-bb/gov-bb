@@ -9,6 +9,8 @@ import type {
   SortOption,
 } from "@govtech-bb/block-kit";
 import { COMPUTED_FACETS } from "@govtech-bb/block-kit";
+import { useCollectionRows } from "@govtech-bb/spike-db/react";
+import { SpanEditor } from "../span-editor";
 import {
   CheckField,
   KeyListField,
@@ -523,21 +525,46 @@ export function DataTableEditor({
 /* ------------------------------------------------------------- contact */
 
 /**
- * The contact block's settings.
+ * The contact block's settings: the heading, the description, and which
+ * organisation to show.
  *
- * The author owns the title and which details to show; they do not own the
- * details themselves, which is why there is no field here for a phone number.
- * Changing one means editing the ministry record — the pencil, not the cog —
- * and that change reaches every page showing it.
+ * The organisation is a dropdown of records read live from the collection,
+ * not a ref key — an author choosing between `r_drug_service` and `r_nis` is
+ * being asked to know something about the document format. They should be
+ * choosing between "Barbados Drug Service" and "NIS Severance Payment
+ * Department".
+ *
+ * The details themselves are not editable here on purpose. A phone number
+ * belongs to the ministry and is the same on every page that shows it, so it
+ * is edited once in the collection. This form decides which of those details
+ * this page displays and what to call them.
  */
 export function ContactEditor({
   block,
   onChange,
   collections,
-  refKeys,
-}: ConfigProps<ContactBlock> & { refKeys: string[] }) {
-  const ministries = collections.find((c) => c.key === "ministries");
-  const fields = ministries?.schema.fields ?? [];
+}: ConfigProps<ContactBlock>) {
+  const definition = collections.find((c) => c.key === block.collection);
+  const fields = definition?.schema.fields ?? [];
+  const rows = useCollectionRows(block.collection || null);
+
+  /** Records read by their collection's own key field, whatever it is. */
+  const keyOf = definition?.record_key ?? "key";
+  const options = [
+    { value: "", label: "— choose an organisation —" },
+    ...(rows ?? []).map((row) => ({
+      value: row.record_key,
+      label: String(row.data.name ?? row.data[keyOf] ?? row.record_key),
+    })),
+  ];
+  // A record that has since been deleted must stay visible, or opening the
+  // settings would silently reassign the block to whatever is first.
+  if (block.record && !options.some((o) => o.value === block.record)) {
+    options.push({
+      value: block.record,
+      label: `${block.record} — no longer in ${block.collection}`,
+    });
+  }
 
   return (
     <div className="ed-stack">
@@ -547,17 +574,43 @@ export function ContactEditor({
         value={block.title}
         onChange={(title) => onChange({ ...block, title })}
       />
+
+      {/*
+        Not wrapped in `Field`: that renders a `Label` with `htmlFor`, and
+        the span editor is a contentEditable rather than a form control, so
+        the label would point at nothing. Its own `aria-label` is the
+        accessible name, and this heading is the visible one.
+      */}
+      <div className="ed-field">
+        <span className="ed-field-label">Description</span>
+        <SpanEditor
+          value={block.description}
+          ariaLabel="Contact description"
+          onChange={(description) => onChange({ ...block, description })}
+        />
+      </div>
+
       <SelectField
-        testId="contact-source"
-        label="Organisation"
-        hint="A key in body.refs holding a record ref (rule 4). The record decides the details shown."
-        value={block.source}
-        options={[
-          { value: "", label: "— choose a ref —" },
-          ...refKeys.map((key) => ({ value: key, label: key })),
-        ]}
-        onChange={(source) => onChange({ ...block, source })}
+        testId="contact-collection"
+        label="Collection"
+        hint="Where the organisation's details are kept (rule 5)."
+        value={block.collection}
+        options={collectionOptions(collections)}
+        onChange={(collection) =>
+          // Changing collection invalidates the record and the fields, so
+          // they are cleared rather than left pointing at the old one.
+          onChange({ ...block, collection, record: "", fields: [] })
+        }
       />
+
+      <SelectField
+        testId="contact-record"
+        label="Organisation"
+        value={block.record}
+        options={options}
+        onChange={(record) => onChange({ ...block, record })}
+      />
+
       <Repeatable<ContactBlock["fields"][number]>
         legend="Details shown"
         items={block.fields}
@@ -580,9 +633,10 @@ export function ContactEditor({
           </div>
         )}
       />
+
       <p className="ed-field-hint">
-        The description is edited in the page, not here — it is prose, and it
-        belongs where the rest of the prose is.
+        The details themselves — the phone number, the address — are edited in
+        the collection, so a change reaches every page showing them.
       </p>
     </div>
   );

@@ -232,8 +232,19 @@ export interface ContactBlock {
   type: "contact";
   title: string;
   description: Span[];
-  /** A key into `body.refs`, which must hold a `record` ref. */
-  source: string;
+  /**
+   * The collection and the record within it, named directly rather than
+   * through `body.refs`.
+   *
+   * A ref would be the more general mechanism, and it is what `data_table`
+   * uses — but it makes the author pick a key like `r_drug_service` from a
+   * list of keys, which says nothing about which organisation that is. A
+   * finder and a calendar name their collection outright for the same
+   * reason. Generality that the person using it cannot read is not worth
+   * having.
+   */
+  collection: string;
+  record: string;
   /** Which details to show, and what to call them on this page. */
   fields: ContactField[];
 }

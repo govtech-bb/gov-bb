@@ -160,7 +160,8 @@ const severanceEntry: SeedDocument = {
             text: ". They can give you free advice and help you claim if your employer does not pay.",
           },
         ],
-        source: "r_nis",
+        collection: "ministries",
+        record: "nis-severance-payment-department",
         fields: [
           { field: "name", label: "Department" },
           { field: "address", label: "Address" },
@@ -171,11 +172,6 @@ const severanceEntry: SeedDocument = {
     ],
     refs: {
       r_act: { kind: "external", href: "https://www.nis.gov.bb/severance/" },
-      r_nis: {
-        kind: "record",
-        collection: "ministries",
-        record: "nis-severance-payment-department",
-      },
     },
   },
 };
@@ -537,7 +533,8 @@ const pharmacyEntry: SeedDocument = {
             text: "If a pharmacy will not accept your Drug Service prescription, or you have a problem getting your medication, contact the Drug Service.",
           },
         ],
-        source: "r_drug_service",
+        collection: "ministries",
+        record: "barbados-drug-service",
         fields: [
           { field: "phone", label: "Telephone" },
           { field: "email", label: "Email" },
@@ -554,11 +551,6 @@ const pharmacyEntry: SeedDocument = {
       r_colours: {
         kind: "page",
         url: "/health-and-emergency-services/prescription-colours",
-      },
-      r_drug_service: {
-        kind: "record",
-        collection: "ministries",
-        record: "barbados-drug-service",
       },
     },
   },

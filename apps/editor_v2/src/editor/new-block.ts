@@ -62,7 +62,8 @@ export function createBlock(type: BlockType): Block {
         type,
         title: "Get help",
         description: [{ text: "" }],
-        source: "",
+        collection: "ministries",
+        record: "",
         fields: [
           { field: "phone", label: "Telephone" },
           { field: "email", label: "Email" },
