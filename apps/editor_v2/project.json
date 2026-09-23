@@ -1,0 +1,39 @@
+{
+  "name": "editor-v2",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/editor_v2/src",
+  "projectType": "application",
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": { "command": "npm run dev", "cwd": "apps/editor_v2" }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/dist"],
+      "options": { "command": "npm run build", "cwd": "apps/editor_v2" },
+      "dependsOn": ["^build"]
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": { "command": "vitest run", "cwd": "apps/editor_v2" }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": { "command": "tsc --noEmit", "cwd": "apps/editor_v2" }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": { "command": "npm test", "cwd": "apps/editor_v2" }
+    },
+    "e2e": {
+      "executor": "nx:run-commands",
+      "options": { "command": "npm run test:e2e", "cwd": "apps/editor_v2" }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": { "lintFilePatterns": ["apps/editor_v2/**/*.{ts,tsx}"] }
+    }
+  },
+  "tags": ["spike"]
+}

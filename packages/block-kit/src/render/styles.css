@@ -1,0 +1,744 @@
+/*
+ * Renderer styles. Deliberately plain: the spike is testing a document
+ * format, not a visual design. Colours track the GOV.BB palette closely
+ * enough that the three pages read as the real thing side by side.
+ */
+
+/*
+ * The tokens are declared separately from the page layout so a host that
+ * renders individual blocks outside a document — the editor, which renders
+ * them inside its own editing surface — can opt in with `bk-scope` and get
+ * the palette without inheriting the document's width and typography.
+ *
+ * Without this a `.bk-notice` rendered in the editor resolves
+ * `var(--bk-blue)` to nothing, which makes the whole `border-left`
+ * declaration invalid and the callout renders as plain text.
+ */
+.bk-document,
+.bk-scope {
+  --bk-ink: #0b0c0c;
+  --bk-muted: #505a5f;
+  --bk-line: #b1b4b6;
+  --bk-blue: #1d70b8;
+  --bk-green: #00703c;
+  --bk-green-dark: #005a30;
+  --bk-yellow: #ffdd00;
+}
+
+.bk-document {
+  max-width: 44rem;
+  color: var(--bk-ink);
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Arial,
+    sans-serif;
+  line-height: 1.5;
+}
+
+.bk-document.bk-wide {
+  max-width: none;
+}
+
+.bk-title {
+  font-size: 2.25rem;
+  line-height: 1.1;
+  font-weight: 700;
+  margin: 0 0 1rem;
+}
+
+.bk-description {
+  font-size: 1.125rem;
+  color: var(--bk-muted);
+  margin: 0 0 1.5rem;
+}
+
+.bk-paragraph {
+  margin: 0 0 1.25rem;
+  font-size: 1.125rem;
+}
+
+.bk-heading {
+  font-weight: 700;
+  margin: 2rem 0 1rem;
+  scroll-margin-top: 1rem;
+}
+.bk-list {
+  margin: 0 0 1.25rem;
+  padding-left: 1.25rem;
+  font-size: 1.125rem;
+}
+.bk-list li {
+  margin-bottom: 0.5rem;
+}
+
+.bk-notice {
+  border-left: 10px solid var(--bk-blue);
+  padding: 0.75rem 1rem;
+  margin: 0 0 1.25rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.bk-notice-warning {
+  border-left-color: var(--bk-ink);
+}
+
+.bk-start {
+  margin: 1.75rem 0;
+}
+
+.bk-start-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bk-green);
+  box-shadow: 0 2px 0 var(--bk-green-dark);
+  color: #fff;
+  font-size: 1.375rem;
+  font-weight: 700;
+  padding: 0.625rem 1.25rem;
+  text-decoration: none;
+  border-radius: 2px;
+}
+.bk-start-button:hover {
+  background: var(--bk-green-dark);
+}
+.bk-start-button:focus-visible {
+  background: var(--bk-yellow);
+  color: var(--bk-ink);
+  outline: 3px solid transparent;
+  box-shadow:
+    0 -2px var(--bk-yellow),
+    0 4px var(--bk-ink);
+}
+
+.bk-image-placeholder {
+  margin: 0 0 1.5rem;
+}
+.bk-image-box {
+  display: grid;
+  place-items: center;
+  height: 12rem;
+  background: #f3f2f1;
+  border: 1px dashed var(--bk-line);
+  color: var(--bk-muted);
+  font-size: 0.875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.bk-image-placeholder figcaption {
+  font-size: 0.9375rem;
+  color: var(--bk-muted);
+  margin-top: 0.5rem;
+}
+
+/* ------------------------------------------------------------- tables */
+
+.bk-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 1.5rem;
+  font-size: 1rem;
+}
+.bk-table th,
+.bk-table td {
+  text-align: left;
+  padding: 0.625rem 0.75rem 0.625rem 0;
+  border-bottom: 1px solid var(--bk-line);
+  vertical-align: top;
+}
+.bk-table th {
+  font-weight: 700;
+}
+.bk-substitute td {
+  color: var(--bk-muted);
+  font-style: italic;
+}
+
+.bk-calendar-year {
+  display: inline-block;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+.bk-calendar-year select,
+.bk-sort select {
+  font: inherit;
+  padding: 0.35rem 0.5rem;
+  border: 2px solid var(--bk-ink);
+  border-radius: 0;
+  background: #fff;
+}
+
+/* ------------------------------------------------------------- finder */
+
+.bk-finder {
+  display: grid;
+  grid-template-columns: minmax(0, 17rem) minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (max-width: 48rem) {
+  .bk-finder {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.bk-finder-sidebar {
+  border: 1px solid var(--bk-line);
+  padding: 1rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.bk-facet {
+  border: 0;
+  padding: 0;
+  margin: 0 0 1.25rem;
+}
+.bk-facet:last-child {
+  margin-bottom: 0;
+}
+
+.bk-facet-name {
+  display: block;
+  font-weight: 700;
+  padding: 0;
+  margin-bottom: 0.5rem;
+}
+
+.bk-facet-large {
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.bk-facet-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.bk-facet-option input {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.bk-search-input {
+  width: 100%;
+  font: inherit;
+  padding: 0.5rem;
+  border: 2px solid var(--bk-ink);
+}
+
+.bk-finder-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--bk-line);
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+}
+.bk-result-count {
+  font-weight: 700;
+  margin: 0;
+}
+
+.bk-result-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.bk-result {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--bk-line);
+}
+.bk-result-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--bk-blue);
+}
+.bk-result-meta {
+  margin: 0.25rem 0 0;
+  color: var(--bk-muted);
+}
+
+.bk-empty {
+  padding: 1.5rem 0;
+  color: var(--bk-muted);
+  font-size: 1.0625rem;
+}
+
+.bk-pagination {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 1.25rem;
+}
+.bk-pagination button {
+  font: inherit;
+  padding: 0.4rem 0.9rem;
+  border: 2px solid var(--bk-ink);
+  background: #fff;
+  cursor: pointer;
+}
+.bk-pagination button[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bk-link {
+  color: var(--bk-blue);
+  text-underline-offset: 0.1em;
+}
+
+.bk-link:hover {
+  color: var(--bk-ink);
+}
+
+/* ---------------------------------------------------- bank holidays
+ *
+ * Matched to the live page. The colours are the GOV.BB tokens by value,
+ * because block-kit does not depend on Tailwind or the design system's
+ * stylesheet: blue-40 #00267f, blue-10 #e5e9f2, yellow-40 #ffc726,
+ * yellow-10 #fff9e9, yellow-80 #e8a833, grey-20 #e0e4e9, grey-70 #595959.
+ */
+
+.bk-cal {
+  --cal-blue: #00267f;
+  --cal-blue-10: #e5e9f2;
+  --cal-yellow: #ffc726;
+  --cal-yellow-10: #fff9e9;
+  --cal-yellow-80: #e8a833;
+  --cal-grey-20: #e0e4e9;
+  --cal-grey-70: #595959;
+
+  max-width: 56rem;
+}
+
+.bk-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- year switcher ---- */
+
+.bk-cal-switch {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1.5rem;
+}
+
+.bk-cal-switch-end {
+  margin: 2.5rem 0 0;
+}
+
+.bk-years {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.bk-year {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--cal-grey-20);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--cal-blue);
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.bk-year:hover:not(:disabled) {
+  border-color: var(--cal-blue);
+  background: var(--cal-blue-10);
+}
+
+.bk-year:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bk-year-text {
+  display: block;
+  text-align: left;
+  line-height: 1;
+}
+
+.bk-year-text-end {
+  text-align: right;
+}
+
+.bk-year-label {
+  display: block;
+  color: var(--cal-grey-70);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bk-year-value {
+  display: block;
+  margin-top: 0.1875rem;
+  color: var(--cal-blue);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+/* ---- hero ---- */
+
+.bk-hero {
+  margin-bottom: 2rem;
+  padding: 1.75rem 2rem 2rem;
+  border-radius: 8px;
+  background: var(--cal-blue);
+  color: #fff;
+}
+
+.bk-hero-quiet {
+  background: var(--cal-blue-10);
+  color: var(--cal-blue);
+}
+
+.bk-hero-tag {
+  display: inline-block;
+  margin-bottom: 1.5rem;
+  padding: 0.375rem 0.875rem;
+  border-radius: 8px;
+  background: var(--cal-yellow);
+  color: var(--cal-blue);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.bk-hero-name {
+  margin: 0 0 0.625rem;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.bk-hero-date {
+  margin: 0 0 1.5rem;
+  color: var(--cal-yellow-80);
+  font-weight: 700;
+}
+
+.bk-hero-quiet .bk-hero-date {
+  color: var(--cal-blue);
+}
+
+.bk-hero-count {
+  margin: 0;
+  color: rgb(255 255 255 / 70%);
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.bk-hero-count strong {
+  color: var(--cal-yellow-80);
+  font-weight: 700;
+}
+
+.bk-hero-quiet .bk-hero-count {
+  color: var(--cal-grey-70);
+}
+
+/* ---- sections ---- */
+
+.bk-section {
+  margin-top: 2.5rem;
+}
+
+.bk-section:first-of-type {
+  margin-top: 0;
+}
+
+.bk-section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.bk-section-title {
+  margin: 0;
+  color: var(--cal-blue);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.bk-chip {
+  padding: 0.25rem 0.75rem;
+  border-radius: 8px;
+  background: var(--cal-grey-20);
+  color: var(--cal-grey-70);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+/* ---- rows ---- */
+
+.bk-rows {
+  border-top: 1px solid var(--cal-grey-20);
+}
+
+.bk-rows-head,
+.bk-row {
+  display: grid;
+  grid-template-columns: 72px 1fr 130px;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.bk-rows-no-day .bk-rows-head,
+.bk-rows-no-day .bk-row {
+  grid-template-columns: 72px 1fr;
+}
+
+.bk-rows-head {
+  padding: 0.5rem 1rem 0.625rem;
+  border-bottom: 2px solid var(--cal-grey-20);
+  color: var(--cal-grey-70);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bk-rows-head > span:last-child {
+  text-align: right;
+}
+
+.bk-rows-no-day .bk-rows-head > span:last-child {
+  text-align: left;
+}
+
+.bk-row-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bk-row {
+  padding: 1rem;
+  border-bottom: 1px solid var(--cal-grey-20);
+}
+
+/* The answer to the common question, kept visible once the hero scrolls. */
+.bk-row-next {
+  margin: -1px 0 0.5rem;
+  border: 1px solid var(--cal-yellow);
+  border-radius: 8px;
+  background: var(--cal-yellow-10);
+}
+
+.bk-tile {
+  border-radius: 8px;
+  background: var(--cal-yellow);
+  color: var(--cal-blue);
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+
+.bk-row-muted .bk-tile {
+  background: var(--cal-grey-20);
+  color: var(--cal-grey-70);
+}
+
+.bk-tile-month {
+  display: block;
+  padding: 0.5rem 0.25rem 0.25rem;
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bk-tile-day {
+  display: block;
+  padding: 0 0.25rem 0.625rem;
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+}
+
+.bk-row-name {
+  display: block;
+  color: var(--cal-blue);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.bk-row-muted .bk-row-name {
+  color: var(--cal-grey-70);
+}
+
+.bk-row-note {
+  display: block;
+  margin-top: 0.125rem;
+  color: var(--cal-grey-70);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.bk-observed {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.375rem;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--cal-yellow);
+  border-radius: 8px;
+  background: var(--cal-yellow-10);
+  color: var(--cal-blue);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.bk-row-day {
+  color: var(--cal-grey-70);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-align: right;
+}
+
+/* ---- substitution notice ---- */
+
+.bk-notice {
+  margin-top: 2.5rem;
+  padding: 1rem 1.25rem;
+  border-left: 4px solid var(--cal-blue);
+  border-radius: 8px;
+  background: var(--cal-blue-10);
+  color: var(--cal-grey-70);
+  font-size: 0.9375rem;
+}
+
+.bk-notice-title {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--cal-blue);
+  font-size: 0.875rem;
+}
+
+.bk-notice-details {
+  margin-top: 0.375rem;
+}
+
+.bk-notice-details > summary {
+  color: var(--cal-blue);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bk-notice-details p {
+  margin: 0.625rem 0 0;
+  font-size: 0.875rem;
+}
+
+@media (width <= 40rem) {
+  .bk-rows-head {
+    display: none;
+  }
+
+  .bk-row {
+    grid-template-columns: 64px 1fr;
+    gap: 0.875rem;
+    padding: 1rem 0.5rem;
+  }
+
+  .bk-row-day {
+    grid-column: 2;
+    text-align: left;
+  }
+}
+
+/*
+ * The last-updated line and its rule, as the live content pages have them:
+ * small, grey, and separated from the body by a heavier line than the one
+ * between sections.
+ */
+.bk-updated {
+  margin: 0 0 1.25rem;
+  color: var(--bk-muted);
+  font-size: 0.9375rem;
+}
+
+.bk-document > .bk-updated {
+  padding-bottom: 1.25rem;
+  border-bottom: 2px solid #b1b4b6;
+}
+
+/*
+ * The contact block.
+ *
+ * A description list, so the label and its value are marked up as what they
+ * are. The rule above it separates it from the prose without needing a
+ * heading level to do that job — this is the end of the page, not another
+ * section of the argument.
+ */
+.bk-contact {
+  margin: 2rem 0 1.25rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid var(--bk-line);
+}
+.bk-contact-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem;
+}
+.bk-contact-lede {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+}
+.bk-contact-details {
+  margin: 0;
+  display: grid;
+  gap: 0.5rem 1rem;
+}
+/*
+ * The label column sizes to its longest label rather than to a guess, so
+ * "Telephone" and "Address" line up without a hardcoded width that a longer
+ * label would break out of.
+ */
+.bk-contact-row {
+  display: grid;
+  grid-template-columns: minmax(6rem, max-content) 1fr;
+  gap: 0 1rem;
+}
+.bk-contact-row dt {
+  font-weight: 700;
+}
+.bk-contact-row dd {
+  margin: 0;
+}
+
+@media (max-width: 30rem) {
+  .bk-contact-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .bk-contact-row dd {
+    margin-bottom: 0.25rem;
+  }
+}

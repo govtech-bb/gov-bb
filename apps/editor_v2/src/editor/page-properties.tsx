@@ -1,0 +1,151 @@
+/**
+ * The page's own properties — everything true of the document rather than of
+ * a block in it.
+ *
+ * The address is composed from a category, a service and a path instead of
+ * being one free-text `url`. Category comes from the canonical taxonomy in
+ * `@govtech-bb/content`, which is the same list form_builder offers, so the
+ * editor cannot invent a category the rest of the estate has never heard of.
+ * Service is picked from the services already in use, because a service
+ * living at two spellings of its own name is exactly what a free-text url
+ * produces.
+ *
+ * `url` is still what the database stores and what the site resolves by —
+ * this only changes how an author arrives at one.
+ */
+
+// The subpath, not the barrel: `@govtech-bb/content` re-exports the markdown
+// loader, which pulls `node:fs/promises` into the browser bundle and breaks
+// the app at runtime. ADR 0056 — barrels are for external consumers only.
+import { CATEGORY_TAXONOMY } from "@govtech-bb/content/categories";
+import { useState } from "react";
+import { SelectField, TextAreaField, TextField } from "./fields";
+import { buildUrl, splitUrl, type PageAddress } from "./page-url";
+
+export const CATEGORY_SLUGS = CATEGORY_TAXONOMY.map(
+  (category) => category.slug,
+);
+
+const NEW_SERVICE = "__new-service__";
+
+export function PageProperties({
+  url,
+  description,
+  services,
+  urlsInUse,
+  onUrlChange,
+  onDescriptionChange,
+}: {
+  url: string;
+  description: string | null;
+  /** Services already in use, for the picker. */
+  services: string[];
+  /** Every other page's url, so a clash is caught before save. */
+  urlsInUse: string[];
+  onUrlChange: (next: string) => void;
+  onDescriptionChange: (next: string | null) => void;
+}) {
+  const address = splitUrl(url, CATEGORY_SLUGS);
+
+  // A service not yet in use — a page being moved somewhere new — has to
+  // stay typeable, or the editor can only ever edit what already exists.
+  //
+  // Derived rather than held in initial state: `services` arrives from a
+  // live query and is empty on the first render, so seeding state from it
+  // latches every page into "new service" and never recovers.
+  const [chosenNew, setChosenNew] = useState(false);
+  const unknownService =
+    services.length > 0 &&
+    address.service !== "" &&
+    !services.includes(address.service);
+  const addingService = chosenNew || unknownService;
+
+  const update = (patch: Partial<PageAddress>) =>
+    onUrlChange(buildUrl({ ...address, ...patch }));
+
+  const clash = urlsInUse.includes(url);
+
+  return (
+    <details className="ed-properties" data-testid="page-properties">
+      <summary className="ed-properties-summary">
+        Properties
+        <code className="ed-properties-url" data-testid="page-url">
+          {url}
+        </code>
+      </summary>
+
+      <div className="ed-properties-body">
+        <div className="ed-row">
+          <SelectField
+            label="Category"
+            hint="From the canonical taxonomy. Leave blank for an island-wide page."
+            value={address.category}
+            testId="page-category"
+            options={[
+              { value: "", label: "— No category (top level) —" },
+              ...CATEGORY_TAXONOMY.map((category) => ({
+                value: category.slug,
+                label: category.title,
+              })),
+            ]}
+            onChange={(category) => update({ category })}
+          />
+
+          {addingService ? (
+            <TextField
+              label="Service"
+              hint="A new service. Use lowercase words separated by hyphens."
+              value={address.service}
+              testId="page-service-new"
+              onChange={(service) => update({ service })}
+            />
+          ) : (
+            <SelectField
+              label="Service"
+              hint="Services already on the site."
+              value={address.service}
+              testId="page-service"
+              options={[
+                ...services.map((service) => ({
+                  value: service,
+                  label: service,
+                })),
+                { value: NEW_SERVICE, label: "+ New service…" },
+              ]}
+              onChange={(service) => {
+                if (service === NEW_SERVICE) {
+                  setChosenNew(true);
+                  return;
+                }
+                update({ service });
+              }}
+            />
+          )}
+
+          <TextField
+            label="Path"
+            hint="The part unique to this page — start, form, find. May be blank."
+            value={address.path}
+            testId="page-path"
+            onChange={(path) => update({ path })}
+          />
+        </div>
+
+        {clash ? (
+          <p className="ed-properties-clash" data-testid="url-clash">
+            Another page already lives at <code>{url}</code>. Urls are unique,
+            so this will be refused on save.
+          </p>
+        ) : null}
+
+        <TextAreaField
+          label="Description"
+          hint="Used in search results and on category pages."
+          value={description ?? ""}
+          testId="page-description"
+          onChange={(next) => onDescriptionChange(next || null)}
+        />
+      </div>
+    </details>
+  );
+}

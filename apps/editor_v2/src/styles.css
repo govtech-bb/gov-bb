@@ -1,0 +1,988 @@
+/*
+ * The GOV.BB design system first, then the editor's own chrome.
+ *
+ * `@govtech-bb/frontend/tailwind` carries the theme — the colour scale, the
+ * type scale, the spacing — and `/css` the component styles that
+ * `@govtech-bb/react` renders against. Without both, a <Button> from the
+ * design system renders as an unstyled button and quietly stops looking
+ * like government.
+ *
+ * Editor chrome below stays hand-rolled where the design system has no
+ * equivalent: there is no component for a block control strip or a slash
+ * menu, and inventing a GOV.BB-looking one would be worse than owning it.
+ */
+@import "tailwindcss";
+@import "@govtech-bb/frontend/tailwind";
+@import "@govtech-bb/frontend/css" layer(components);
+
+:root {
+  --ink: #0b0c0c;
+  --muted: #505a5f;
+  --line: #b1b4b6;
+  --line-soft: #e5e5e5;
+  --blue: #1d70b8;
+  --green: #00703c;
+  --red: #d4351c;
+  --bg: #fff;
+  --bg-soft: #f8f8f8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Arial,
+    sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+.boot {
+  padding: 4rem 2rem;
+  font-size: 1.125rem;
+  color: var(--muted);
+}
+.boot-error pre {
+  color: var(--red);
+  white-space: pre-wrap;
+}
+
+/* ------------------------------------------------------------- chrome */
+
+.app-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1.25rem;
+  background: var(--ink);
+  color: #fff;
+  font-size: 0.9375rem;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.app-mark {
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.app-tag {
+  background: #fff;
+  color: var(--ink);
+  font-weight: 700;
+  padding: 0.1rem 0.5rem;
+  border-radius: 2px;
+  font-size: 0.8125rem;
+}
+.app-nav {
+  display: flex;
+  gap: 0.75rem;
+}
+.app-bar a {
+  color: #fff;
+}
+.app-note {
+  margin-left: auto;
+  color: #b1b4b6;
+  font-size: 0.8125rem;
+}
+
+.app-main {
+  padding: 1.5rem;
+}
+.app-site .app-main {
+  max-width: 68rem;
+  margin: 0 auto;
+}
+
+/* --------------------------------------------------------------- site */
+
+.site-index {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 2rem;
+}
+.site-index li {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.site-index-link {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--blue);
+}
+.site-index-meta {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+.site-loading {
+  color: var(--muted);
+}
+
+/*
+ * Breadcrumbs sit outside the reading measure, above the page, as they do on
+ * the live site — the trail is navigation, not part of the prose.
+ */
+.site-crumbs {
+  margin-bottom: 1.5rem;
+}
+
+/*
+ * `RenderDocument` renders the `.bk-document` article itself, so the page's
+ * wrapper cannot carry `.bk-wide` — it would widen a box that is not the one
+ * holding the measure. A finder page lifts the cap on the article instead.
+ */
+.site-wide .bk-document {
+  max-width: none;
+}
+
+/* ------------------------------------------------------------- editor */
+
+.ed-page {
+  max-width: 60rem;
+}
+.ed-lede {
+  color: var(--muted);
+  font-size: 1.0625rem;
+}
+
+.ed-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.ed-table th,
+.ed-table td {
+  text-align: left;
+  padding: 0.6rem 0.75rem 0.6rem 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.ed-table code {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.ed-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+@media (max-width: 70rem) {
+  .ed-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ed-pane-preview {
+  position: sticky;
+  top: 4rem;
+  border: 1px solid var(--line);
+  background: var(--bg-soft);
+  max-height: calc(100vh - 6rem);
+  overflow: auto;
+}
+.ed-preview-head {
+  background: var(--ink);
+  color: #fff;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  position: sticky;
+  top: 0;
+}
+.ed-pane-preview .bk-document {
+  padding: 1.25rem;
+  background: #fff;
+}
+
+.ed-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 1rem;
+  position: sticky;
+  top: 2.6rem;
+  background: #fff;
+  z-index: 10;
+}
+.ed-status {
+  color: var(--muted);
+  font-size: 0.9375rem;
+  margin-left: auto;
+}
+
+button,
+.ed-secondary {
+  font: inherit;
+  cursor: pointer;
+}
+.ed-primary {
+  background: var(--green);
+  color: #fff;
+  border: 0;
+  font-weight: 700;
+  padding: 0.5rem 1rem;
+  border-radius: 2px;
+}
+.ed-primary[disabled] {
+  background: var(--muted);
+  cursor: not-allowed;
+}
+.ed-secondary {
+  background: #fff;
+  border: 2px solid var(--ink);
+  padding: 0.4rem 0.8rem;
+  border-radius: 2px;
+  text-decoration: none;
+  color: var(--ink);
+}
+.ed-danger {
+  color: var(--red);
+  background: none;
+  border: 0;
+  font-weight: 600;
+}
+.ed-small {
+  font-size: 0.875rem;
+}
+.ed-back {
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.ed-alert {
+  border-left: 6px solid var(--red);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  background: #fef7f7;
+}
+.ed-alert-conflict {
+  border-left-color: #f47738;
+  background: #fff8f3;
+}
+.ed-alert ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.9375rem;
+}
+.ed-alert p {
+  margin: 0.4rem 0;
+  font-size: 0.9375rem;
+}
+
+.ed-block {
+  border: 1px solid var(--line);
+  padding: 0.85rem;
+  background: #fff;
+}
+.ed-block-invalid {
+  border-color: var(--red);
+  border-width: 2px;
+}
+.ed-block-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+.ed-block-type {
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.ed-block-id {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.ed-block-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.35rem;
+}
+.ed-block-actions button {
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 0.15rem 0.45rem;
+}
+.ed-block-actions button[disabled] {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.ed-block-errors {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.5rem 0.5rem 1.6rem;
+  background: #fef7f7;
+  color: var(--red);
+  font-size: 0.875rem;
+}
+
+.ed-insert {
+  padding: 0.35rem 0;
+}
+.ed-insert-open {
+  background: none;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  width: 100%;
+  padding: 0.35rem;
+  font-size: 0.875rem;
+}
+.ed-insert-open:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.ed-insert-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.5rem;
+  border: 1px solid var(--line);
+  background: var(--bg-soft);
+}
+.ed-insert-menu button {
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 0.3rem 0.6rem;
+  font-size: 0.875rem;
+}
+.ed-insert-cancel {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+/* -------------------------------------------------------------- forms */
+
+.ed-stack {
+  display: grid;
+  gap: 0.7rem;
+}
+.ed-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  align-items: flex-end;
+}
+.ed-row > * {
+  /* The design system's inputs are taller and wider than the hand-rolled
+     controls these replaced, so a field needs more room before it wraps —
+     at 10rem the labels break mid-word. */
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.ed-field {
+  display: grid;
+  gap: 0.2rem;
+}
+.ed-field-label {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+.ed-field-hint {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  display: block;
+}
+
+.ed-input {
+  font: inherit;
+  padding: 0.4rem 0.5rem;
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  background: #fff;
+  width: 100%;
+}
+.ed-input-narrow {
+  max-width: 8rem;
+}
+.ed-check {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+}
+
+.ed-repeatable {
+  border: 1px solid var(--line);
+  padding: 0.75rem;
+  margin: 0;
+}
+.ed-repeatable legend {
+  font-weight: 700;
+  font-size: 0.875rem;
+  padding: 0 0.3rem;
+}
+.ed-repeatable-list {
+  list-style: none;
+  margin: 0 0 0.6rem;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+.ed-repeatable-item {
+  border: 1px solid var(--line-soft);
+  padding: 0.6rem;
+  background: var(--bg-soft);
+}
+.ed-repeatable-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.ed-repeatable-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.3rem;
+}
+.ed-repeatable-actions button {
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 0.1rem 0.4rem;
+  font-size: 0.8125rem;
+}
+.ed-add {
+  background: #fff;
+  border: 2px solid var(--ink);
+  padding: 0.3rem 0.7rem;
+  font-size: 0.875rem;
+}
+.ed-empty {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin: 0 0 0.5rem;
+}
+.ed-note {
+  background: #f0f4f8;
+  border-left: 4px solid var(--blue);
+  padding: 0.45rem 0.6rem;
+  margin: 0;
+  font-size: 0.8125rem;
+}
+.ed-note-ok {
+  background: #f2f8f4;
+  border-left-color: var(--green);
+}
+
+.ed-list-items {
+  display: grid;
+  gap: 0.6rem;
+  padding-left: 1.2rem;
+}
+
+/* ------------------------------------------------------- span editor */
+
+.ed-span-editor {
+  border: 2px solid var(--ink);
+  background: #fff;
+}
+.ed-marks {
+  display: flex;
+  gap: 0.2rem;
+  padding: 0.2rem;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--bg-soft);
+}
+.ed-marks button {
+  border: 1px solid transparent;
+  background: none;
+  padding: 0.15rem 0.5rem;
+  min-width: 2rem;
+}
+.ed-marks button:hover {
+  border-color: var(--line);
+  background: #fff;
+}
+.ed-contenteditable {
+  padding: 0.5rem;
+  min-height: 2.5rem;
+  font-size: 1rem;
+  line-height: 1.45;
+  outline-offset: -2px;
+}
+.ed-contenteditable:focus {
+  outline: 3px solid #ffdd00;
+}
+.ed-contenteditable code {
+  background: #f3f2f1;
+  padding: 0 0.2rem;
+}
+
+/* ------------------------------------------------------------------------
+ * The Notion-like surface (ADR 0074).
+ *
+ * One document, edited in place. Controls stay out of the way until the
+ * pointer is near them — but never become pointer-only, because keyboard
+ * users get the same affordances through the slash menu and shortcuts.
+ * ---------------------------------------------------------------------- */
+
+.ed-doc {
+  /*
+   * No width cap anywhere. A finder, a calendar and a table are wide
+   * things, and capping the document made every one of them wrap mid-word
+   * while most of the window sat empty.
+   */
+  margin: 0;
+  padding: 1.5rem 2rem 6rem;
+}
+
+.ed-envelope {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.ed-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.ed-json {
+  max-height: 24rem;
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  background: var(--bg-soft);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.bn-surface {
+  border-top: 1px solid var(--line-soft);
+}
+
+/* A configuration block: its real output, with controls on hover. */
+.bn-config {
+  /*
+   * BlockNote lays a block's content out with flex, so a config block
+   * shrinks to its content's min-width unless told otherwise — which left
+   * the calendar 296px wide inside a 1380px row, wrapping every heading
+   * mid-word. `min-width: 0` matters as much as the basis: without it a
+   * wide table refuses to shrink below its content and overflows instead.
+   */
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  position: relative;
+  margin: 0.75rem 0;
+  padding: 0.25rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  transition: border-color 120ms ease;
+}
+
+.bn-config:hover,
+.bn-config:focus-within {
+  border-color: var(--line-soft);
+}
+
+.bn-config-invalid {
+  border-color: var(--red);
+  background: #fef7f7;
+}
+
+.bn-config-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.bn-config:hover .bn-config-bar,
+.bn-config:focus-within .bn-config-bar {
+  opacity: 1;
+}
+
+.bn-config-toggle {
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--bg);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.bn-config-toggle:hover {
+  background: var(--bg-soft);
+}
+
+.bn-config-kind {
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bn-config-panel {
+  margin-top: 0.5rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg-soft);
+}
+
+.bn-config-errors {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+  color: var(--red);
+  font-size: 0.8125rem;
+}
+
+.bn-notice-controls {
+  float: right;
+}
+
+.bn-anchor {
+  width: 100%;
+  border: 1px dashed var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.bn-anchor-invalid {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+/* The slash menu: a real listbox, navigable without a pointer. */
+.bn-slash {
+  margin: 0;
+  padding: 0.25rem;
+  min-width: 18rem;
+  max-height: 20rem;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg);
+  box-shadow: 0 6px 18px rgb(11 12 12 / 12%);
+}
+
+.bn-slash-item {
+  display: flex;
+  flex-direction: column;
+  padding: 0.375rem 0.5rem;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.bn-slash-item-active,
+.bn-slash-item:hover {
+  background: #e8f1f8;
+}
+
+.bn-slash-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.bn-slash-hint {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+/* The block settings popover, opened from "Edit" in the block menu. */
+.bn-popover {
+  position: fixed;
+  z-index: 60;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  box-shadow: 0 10px 34px rgb(11 12 12 / 22%);
+}
+
+.bn-popover-head {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--bg);
+}
+
+.bn-popover-title {
+  margin: 0;
+  font-size: 0.9375rem;
+}
+
+.bn-popover-id {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.bn-popover-close {
+  margin-left: auto;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.bn-popover-body {
+  padding: 0.875rem;
+}
+
+.ed-alert-draft {
+  border-left: 4px solid var(--blue);
+  background: #eef4fa;
+}
+
+.ed-hint {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+/* The page title: the document's own heading, not a labelled form field. */
+.ed-doc-title {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  /* The title grows to its content, so the drag handle would only ever let
+     someone break the layout. `resize` is not in Baseline yet, but it has
+     been supported everywhere for years and degrades to a usable handle. */
+  /* eslint-disable-next-line css/use-baseline */
+  resize: none;
+  margin: 0.5rem 0 0.25rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.ed-doc-title::placeholder {
+  color: #b1b4b6;
+}
+
+.ed-doc-title:focus {
+  outline: 3px solid var(--blue);
+  outline-offset: 4px;
+}
+
+/* Page properties: collapsed by default, because the address is set once. */
+.ed-properties {
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+}
+
+.ed-properties-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.ed-properties-url {
+  color: var(--ink);
+  font-size: 0.8125rem;
+}
+
+.ed-properties-body {
+  padding: 0.25rem 0.75rem 0.875rem;
+  border-top: 1px solid var(--line-soft);
+}
+
+.ed-properties-clash {
+  margin: 0.5rem 0;
+  color: var(--red);
+  font-size: 0.875rem;
+}
+
+/* Service and collection browsing. */
+.ed-group {
+  margin: 1.75rem 0;
+}
+
+.ed-group-title {
+  margin: 0 0 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 1rem;
+}
+
+.ed-service-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ed-service-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.375rem 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.ed-count {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.ed-breadcrumb {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin: 0 0 0.5rem;
+}
+
+.ed-json-cell {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.ed-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Modals. */
+.ed-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: rgb(11 12 12 / 45%);
+}
+
+.ed-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(44rem, 100%);
+  max-height: 100%;
+  border-radius: 6px;
+  background: var(--bg);
+  box-shadow: 0 16px 48px rgb(11 12 12 / 30%);
+}
+
+.ed-modal-wide {
+  width: min(72rem, 100%);
+}
+
+.ed-modal-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.ed-modal-title {
+  flex: 1;
+  margin: 0;
+  font-size: 1.0625rem;
+}
+
+.ed-modal-description {
+  margin: 0;
+  padding: 0.625rem 1rem 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.ed-modal-body {
+  overflow: auto;
+  padding: 1rem;
+}
+
+.ed-table-scroll {
+  overflow-x: auto;
+}
+
+.ed-record-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+/* Per-block controls, in the right margin of the hovered block. */
+.bn-controls {
+  position: fixed;
+  z-index: 40;
+  display: flex;
+  gap: 0.25rem;
+}
+
+.bn-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgb(11 12 12 / 10%);
+}
+
+.bn-control:hover {
+  background: var(--bg-soft);
+}
+
+.bn-control-icon {
+  padding: 0.125rem 0.375rem;
+}
+
+.bn-control-danger:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+/*
+ * A wide collection — pharmacies has ten fields — needs room per column and
+ * a ceiling on the read-only cells, or one weekly-hours object makes a row
+ * six lines tall and the editable fields shrink to nothing.
+ */
+.ed-table td .ed-input {
+  min-width: 9rem;
+}
+
+.ed-table td .ed-json-cell {
+  display: inline-block;
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}

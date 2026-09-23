@@ -1,0 +1,21 @@
+{
+  "name": "spike-db",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/spike-db/src",
+  "projectType": "library",
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": { "command": "vitest run", "cwd": "packages/spike-db" }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": { "command": "tsc --noEmit", "cwd": "packages/spike-db" }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": { "lintFilePatterns": ["packages/spike-db/**/*.ts"] }
+    }
+  },
+  "tags": ["spike"]
+}

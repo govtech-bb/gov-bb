@@ -1,0 +1,43 @@
+{
+  "name": "@govtech-bb/editor-v2",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@blocknote/core": "^0.54.2",
+    "@blocknote/mantine": "^0.54.2",
+    "@blocknote/react": "^0.54.2",
+    "@electric-sql/pglite": "^0.5.8",
+    "@electric-sql/pglite-react": "^0.4.8",
+    "@govtech-bb/block-kit": "workspace:*",
+    "@govtech-bb/content": "workspace:*",
+    "@govtech-bb/frontend": "1.0.0-alpha.29",
+    "@govtech-bb/react": "1.0.0-alpha.29",
+    "@govtech-bb/spike-db": "workspace:*",
+    "@tailwindcss/vite": "^4.3.0",
+    "@tanstack/react-router": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "^4.3.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "^6.0.2",
+    "jsdom": "^28.1.0",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "^4.1.11"
+  }
+}

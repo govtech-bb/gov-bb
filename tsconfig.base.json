@@ -26,6 +26,10 @@
       "@govtech-bb/content/form-categories": [
         "packages/content/src/form-categories.ts"
       ],
+      "@govtech-bb/block-kit": ["packages/block-kit/src/index.ts"],
+      "@govtech-bb/spike-db": ["packages/spike-db/src/index.ts"],
+      "@govtech-bb/spike-db/react": ["packages/spike-db/src/react.tsx"],
+      "@govtech-bb/landing-v2": ["apps/landing_v2/src/index.ts"],
       "@govtech-bb/form-builder": ["packages/form-builder/src/index.ts"],
       "@govtech-bb/form-types": ["packages/form-types/src/index.ts"],
       "@govtech-bb/expressions": ["packages/expressions/src/index.ts"],

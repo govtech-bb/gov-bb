@@ -1,0 +1,38 @@
+{
+  "name": "@govtech-bb/spike-db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./react": "./src/react.tsx",
+    "./react-api": "./src/http-react.tsx",
+    "./seed-data": "./src/seed-data/index.ts",
+    "./collections": "./src/collections-needed.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "generate": "node scripts/generate-migration-module.mjs && node scripts/copy-pharmacies.mjs",
+    "dump": "tsx scripts/dump.ts",
+    "verify:restore": "bash scripts/verify-restore.sh"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@electric-sql/pglite-react": "^0.4.8",
+    "@govtech-bb/block-kit": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "catalog:"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite-tools": "^0.4.8",
+    "@types/node": "^24.0.0",
+    "@types/react": "catalog:",
+    "react": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "^4.1.11"
+  }
+}

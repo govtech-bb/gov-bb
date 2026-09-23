@@ -1,0 +1,30 @@
+{
+  "name": "@govtech-bb/api-v2",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.1.0",
+    "@govtech-bb/block-kit": "workspace:*",
+    "drizzle-orm": "^0.45.2",
+    "fastify": "^5.6.1",
+    "pg": "^8.22.0",
+    "zod": "^4.4.3",
+    "@govtech-bb/spike-db": "workspace:*"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.11",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.15.6",
+    "tsx": "^4.22.3",
+    "typescript": "catalog:",
+    "vitest": "^4.1.11"
+  }
+}
