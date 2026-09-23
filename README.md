@@ -9,7 +9,7 @@ chatbot.
 
 ## Prerequisites
 
-- Node.js >= 20
+- Node.js 24 (`.nvmrc`)
 - pnpm 11 (`corepack enable`, pinned to `pnpm@11.6.0` via `packageManager`)
 
 ## Getting started
@@ -35,8 +35,13 @@ apps/
                      issues presigned S3 upload URLs. Container on ECS.
   landing/           gov.bb services landing site (TanStack Start SSR).
                      Deployed on Amplify (compute).
-  chat/              Assistant chatbot (SSR) plus a RAG ingest task. Uses AWS
-                     Bedrock. Amplify (compute) + a Fargate ingest job.
+  analytics/         Umami-backed analytics reporting (TanStack Start SSR).
+                     Deployed on Amplify (compute).
+  feature_flagging/  Feature-flag admin (TanStack Start SSR, GitHub-OAuth gated).
+                     Deployed on Amplify (compute).
+  chat/              Assistant chatbot plus a RAG ingest task. Uses AWS Bedrock.
+                     Built and deployed by govtech-bb/govbb-chatbot, not from
+                     this repo (#2163).
 
 packages/
   form-types/        Shared TypeScript types for forms and recipes.
@@ -49,13 +54,15 @@ packages/
   git-publish/       Publishes recipes to the repo via git commits.
   ai-bedrock/        Shared model aliases and static chat stream helpers.
   analytics/         Analytics event tracking.
+  umami-analytics/   Umami API client and metrics.
   aws-secrets/       AWS Secrets Manager helpers.
   content/           Shared content / markdown loaders.
+  admin-ui/          Shared admin header for the SSR admin apps.
 ```
 
-> **Adding a new package?** It must be a buildable nx project *and* be listed in
+> **Adding a new package?** It must be a buildable nx project _and_ be listed in
 > the consuming project's `tsconfig.json` `references`, or the strict `tsc`
-> build fails with `TS6059`/`TS6307`. See `CLAUDE.md` → "Monorepo build gotcha".
+> build fails with `TS6059`/`TS6307`. See `CLAUDE.md` → "Monorepo build contract".
 
 ## Architecture
 
@@ -164,30 +171,28 @@ flowchart TB
 
 ## Scripts
 
-| Command | Description |
-|---|---|
-| `pnpm build` | Build all apps and packages (`nx run-many -t build`) |
-| `pnpm test:all` | Run the full test suite (`nx run-many -t test`) |
-| `pnpm lint` | Lint all projects |
-| `pnpm lint:deps` | Check workspace dependency consistency (sherif) |
-| `pnpm dev:forms` | Start the forms app in dev mode |
-| `pnpm dev:api` | Start the API in dev mode |
-| `pnpm dev:landing` | Start the landing app in dev mode |
-| `pnpm format` / `pnpm format:check` | Format (or check) with Prettier |
-| `pnpm validate-recipes` | Validate all recipe files |
-| `pnpm dump-recipes` | Dump recipes from the DB to files |
-| `pnpm migration:generate -- <path>` | Generate a migration from entity changes |
-| `pnpm migration:run` / `:revert` / `:show` | Apply / revert / show migrations |
+| Command                                    | Description                                                |
+| ------------------------------------------ | ---------------------------------------------------------- |
+| `pnpm build`                               | Build all apps and packages (`nx run-many -t build`)       |
+| `pnpm test:all`                            | Run the full test suite (`nx run-many -t test`)            |
+| `pnpm test:pr`                             | Everything CI runs that can run locally — the pre-PR gate  |
+| `pnpm typecheck`                           | `tsc -b` plus `landing:typecheck`, as CI's Type Check does |
+| `pnpm lint`                                | Lint all projects                                          |
+| `pnpm lint:deps`                           | Check workspace dependency consistency (sherif)            |
+| `pnpm dev:forms`                           | Start the forms app in dev mode                            |
+| `pnpm dev:api`                             | Start the API in dev mode                                  |
+| `pnpm dev:landing`                         | Start the landing app in dev mode                          |
+| `pnpm format` / `pnpm format:check`        | Format (or check) with Prettier                            |
+| `pnpm validate-recipes`                    | Validate all recipe files                                  |
+| `pnpm dump-recipes`                        | Dump recipes from the DB to files                          |
+| `pnpm migration:generate -- <path>`        | Generate a migration from entity changes                   |
+| `pnpm migration:run` / `:revert` / `:show` | Apply / revert / show migrations                           |
 
 Other apps run directly via nx, e.g. `pnpm exec nx dev chat`,
-`pnpm exec nx dev form-builder-app`, `pnpm exec nx serve form-builder-api`.
+`pnpm exec nx dev form-builder-app`, `pnpm exec nx dev form-builder-api`.
 
-> **Local build caveat:** `landing`'s prebuild fetches from a live external
-> forms API, so a fully offline build fails on it; `cms` is deprecated. When
-> verifying locally, run
-> `pnpm exec nx run-many -t build --exclude=landing,cms` and let CI build
-> everything. Scope tests to what you touched
-> (`pnpm exec nx run-many -t test -p <projects>`) to avoid local OOM.
+> **Local check:** `pnpm test:pr` runs what CI runs. Scope tests to what you
+> touched (`pnpm exec nx run-many -t test -p <projects>`) to avoid local OOM.
 
 ## Environment variables
 
@@ -200,13 +205,13 @@ cp apps/api/.env.example apps/api/.env
 
 Key variables:
 
-| Variable | App | Description |
-|---|---|---|
-| `VITE_API_URL` | forms | API base URL (Vite, build-time) |
-| `API_PORT` | api | API server port (default `3001`) |
-| `DB_HOST` / `DB_PORT` / `DB_USERNAME` / `DB_PASSWORD` / `DB_NAME` | api | PostgreSQL connection |
-| `DB_SYNCHRONIZE` | api | Auto-sync schema — **dev only, never `true` in production** |
-| `DB_SSL_CA` | api | Optional CA bundle for verifying the DB TLS cert in production |
+| Variable                                                          | App   | Description                                                    |
+| ----------------------------------------------------------------- | ----- | -------------------------------------------------------------- |
+| `VITE_API_URL`                                                    | forms | API base URL (Vite, build-time)                                |
+| `API_PORT`                                                        | api   | API server port (default `3001`)                               |
+| `DB_HOST` / `DB_PORT` / `DB_USERNAME` / `DB_PASSWORD` / `DB_NAME` | api   | PostgreSQL connection                                          |
+| `DB_SYNCHRONIZE`                                                  | api   | Auto-sync schema — **dev only, never `true` in production**    |
+| `DB_SSL_CA`                                                       | api   | Optional CA bundle for verifying the DB TLS cert in production |
 
 ## Database
 
@@ -237,9 +242,9 @@ pnpm migration:show
 - Environments: **`sandbox` → `staging` → `prod`**, each tied to its AWS
   environment.
 
-The team is moving to a **trunk-based model** with `main` as the single
-CI-gated source of truth (merges to `main` fan out to the environments;
-production is a manual, windowed deploy). See
+The team works **trunk-based**: `main` is the single CI-gated source of
+truth, merges to `main` fan out to the environments, and production is a
+manual, windowed deploy. See
 [`docs/trunk-based-development.md`](docs/trunk-based-development.md).
 
 ## Path aliases
