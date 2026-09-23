@@ -8,6 +8,7 @@
  * they are registered together at the bottom rather than scattered.
  */
 
+import { createHash } from "node:crypto";
 import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import type { PageDocument } from "@govtech-bb/block-kit/document";
@@ -69,8 +70,35 @@ export function buildApp({ db, logger = false }: AppOptions): FastifyInstance {
     origin: (origin, callback) =>
       callback(null, !origin || allowedOrigins.includes(origin)),
     methods: ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", IF_UPDATED_AT],
-    exposedHeaders: [IF_UPDATED_AT],
+    allowedHeaders: ["Content-Type", IF_UPDATED_AT, "If-None-Match"],
+    exposedHeaders: [IF_UPDATED_AT, "ETag"],
+  });
+
+  /*
+   * ETags on every read.
+   *
+   * The client caches what it has and revalidates; with an ETag that
+   * revalidation is a 304 with no body rather than the collection's 163
+   * records again. It also means a page that already has data can render it
+   * immediately and check freshness afterwards, which is what removes the
+   * "Loading…" state from a revisit.
+   */
+  app.addHook("onSend", async (request, reply, payload) => {
+    if (request.method !== "GET" || typeof payload !== "string") return payload;
+    if (reply.statusCode !== 200) return payload;
+    if (reply.getHeader("Cache-Control") === "no-store") return payload;
+
+    const etag = `"${createHash("sha1").update(payload).digest("base64url")}"`;
+    reply.header("ETag", etag);
+    // `no-cache` means "revalidate", not "do not cache" — exactly what is
+    // wanted for content that can change at any moment but usually has not.
+    reply.header("Cache-Control", "no-cache");
+
+    if (request.headers["if-none-match"] === etag) {
+      reply.code(304);
+      return "";
+    }
+    return payload;
   });
 
   /*
@@ -157,53 +185,21 @@ export function buildApp({ db, logger = false }: AppOptions): FastifyInstance {
   );
 
   /*
-   * Live updates.
+   * Live updates, as a version token rather than a held-open stream.
    *
-   * `useLiveQuery` is the one thing PGlite gave the spike that HTTP does not:
-   * an author saves in one tab and the site updates in another with no
-   * reload, which `e2e/live-update.spec.ts` asserts with a comment saying
-   * there is no `reload()` anywhere in the test.
+   * This was Server-Sent Events, and SSE was the wrong shape. Each tab held
+   * one connection open forever, and a browser allows about six per origin —
+   * so the seventh tab's requests queued behind them and never ran. The page
+   * sat on "Loading…" indefinitely while the server looked perfectly healthy,
+   * because nothing had failed; the requests had simply never been sent.
    *
-   * `change_events` already gets a row on every save, and is append-only, so
-   * "what has happened since id X" is answerable without keeping any state
-   * per connection. The server polls it rather than using LISTEN/NOTIFY: a
-   * poll needs no second connection held open per subscriber, and at one
-   * editor and a handful of tabs the difference is not worth the machinery.
-   * LISTEN/NOTIFY is the production answer and is noted as such.
+   * A token that clients poll costs one short request every few seconds and
+   * holds nothing. `change_events` is append-only, so its count and its
+   * latest timestamp are a cheap and honest version of the whole estate.
    */
-  app.get("/events", (request, reply) => {
-    reply.raw.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-      "Access-Control-Allow-Origin": "*",
-    });
-    reply.raw.write(": connected\n\n");
-
-    let lastSeen = new Date();
-    let stopped = false;
-
-    const tick = async () => {
-      if (stopped) return;
-      try {
-        const since = await store.changesSince(lastSeen);
-        if (since.length > 0) {
-          lastSeen = since[since.length - 1].occurredAt;
-          reply.raw.write(`event: change\ndata: ${JSON.stringify(since)}\n\n`);
-        } else {
-          // A comment frame keeps proxies from closing an idle stream.
-          reply.raw.write(": keep-alive\n\n");
-        }
-      } catch (error) {
-        app.log.error(error);
-      }
-    };
-
-    const timer = setInterval(tick, 500);
-    request.raw.on("close", () => {
-      stopped = true;
-      clearInterval(timer);
-    });
+  app.get("/version", async (_request, reply) => {
+    reply.header("Cache-Control", "no-store");
+    return await store.version();
   });
 
   /* ----------------------------------------------------------- writes */

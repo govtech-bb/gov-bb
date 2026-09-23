@@ -18,7 +18,7 @@ import {
   type SchemaName,
   type ValidationError,
 } from "@govtech-bb/block-kit/document";
-import { and, asc, eq, gt, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import {
   changeEvents,
@@ -260,26 +260,21 @@ export class ApiStore {
   }
 
   /**
-   * What has changed since a moment, for the SSE feed.
+   * A cheap token for "has anything changed".
    *
-   * `change_events` is append-only and already written on every save, so the
-   * feed needs no extra bookkeeping — and because it records the entity kind
-   * and id, a subscriber can refetch only what moved rather than everything.
+   * `change_events` is append-only and gets a row on every write, so its
+   * count plus its newest timestamp identify the state of the whole estate
+   * without reading any of it. Clients poll this and refetch only when it
+   * moves.
    */
-  async changesSince(
-    since: Date,
-  ): Promise<
-    Array<{ entityKind: string; entityId: string; occurredAt: Date }>
-  > {
-    return await this.db
+  async version(): Promise<{ count: number; latest: string | null }> {
+    const [row] = await this.db
       .select({
-        entityKind: changeEvents.entityKind,
-        entityId: changeEvents.entityId,
-        occurredAt: changeEvents.occurredAt,
+        count: sql<number>`count(*)::int`,
+        latest: sql<string | null>`max(${changeEvents.occurredAt})::text`,
       })
-      .from(changeEvents)
-      .where(gt(changeEvents.occurredAt, since))
-      .orderBy(asc(changeEvents.occurredAt));
+      .from(changeEvents);
+    return { count: Number(row?.count ?? 0), latest: row?.latest ?? null };
   }
 
   async saveRecord(
