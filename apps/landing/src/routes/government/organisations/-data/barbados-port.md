@@ -1,0 +1,32 @@
+---
+kind: state-body
+slug: barbados-port
+name: Barbados Port Inc.
+keywords:
+  - BPI
+  - Port
+  - Bridgetown Port
+  - Seaport
+contact:
+  - label: Address
+    type: address
+    value:
+      - Cheapside
+      - St. Michael
+  - label: Telephone
+    type: phone
+    value: (246) 434-6100
+  - label: Telephone
+    type: phone
+    value: (246) 429-5348
+  - label: Email
+    type: email
+    value: administrator@barbadosport.com
+  - label: Website
+    type: website
+    value: 'http://www.barbadosport.com/'
+onlineServices: []
+associatedDepartments: []
+originalSource: 'https://www.gov.bb/State-Bodies/barbados-port'
+---
+The Bridgetown Port is the major port of entry for approximately 90% of the goods used in the manufacturing and retail sectors in Barbados. A major part of its responsibility has been dedicated to supporting businesses in the import/export trade, a job that it carries out without any government subsidies, unlike the majority of Ports around the Caribbean.

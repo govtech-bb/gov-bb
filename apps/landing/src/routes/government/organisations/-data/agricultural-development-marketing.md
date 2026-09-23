@@ -1,0 +1,28 @@
+---
+kind: state-body
+slug: agricultural-development-marketing
+name: The Barbados Agricultural Development and Marketing Corporation (BADMC)
+keywords:
+  - BADMC
+  - Agricultural Development
+  - Marketing
+contact:
+  - label: Address
+    type: address
+    value:
+      - Fairy Valley Plantation House
+      - Christ Church
+  - label: PBX
+    type: phone
+    value: (246) 535-6830
+  - label: Fax
+    type: phone
+    value: (246) 535-6881
+  - label: Website
+    type: website
+    value: 'http://www.badmc.org/'
+onlineServices: []
+associatedDepartments: []
+originalSource: 'https://www.gov.bb/State-Bodies/agricultural-development-marketing'
+---
+The mission of BADMC is to develop agriculture through innovative technological applications, technical and marketing research, and to create opportunities for investment that engenders enterprise, food security and prosperity in the agricultural sector.
