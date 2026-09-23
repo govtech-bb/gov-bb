@@ -82,7 +82,7 @@ This step is mandatory. No other check finds a stale spec:
 - A recipe-only change makes only `api` nx-affected, never `forms`.
 - After a deploy, CI smokes four specs from a hand-written list in `deploy-sandbox.yml`. Each PR preview smokes only `jobstart-plus-programme`.
 
-Thus CI runs four of the 38 specs. A stale spec fails much later than the edit that broke it, or it never fails.
+Thus CI runs four specs; the rest never run in CI. A stale spec fails much later than the edit that broke it, or it never fails.
 
 Verify the spec in two steps.
 
