@@ -125,6 +125,11 @@ const mockFormMeta = {
   formId: "test-form",
   formTitle: "Test Form",
   steps: [{ stepId: "step1", title: "Step 1", fields: [], behaviours: [] }],
+  // The contract's steps before the repeatable split — what the printed
+  // confirmation is built from.
+  contractSteps: [
+    { stepId: "step1", title: "Step 1", fields: [], behaviours: [] },
+  ],
   validationProperties: {},
   contactDetails: undefined,
   defaultValues: {},
@@ -342,6 +347,72 @@ describe("RouteComponent", () => {
 
     expect(mockFormRendererProps.current.submissionState).toBeUndefined();
     expect(mockClearSubmissionState).toHaveBeenCalledWith("test-form");
+  });
+
+  // #2587: the printed answers put the applicant's whole submission in session
+  // storage, where it stays until the tab closes. On a shared or kiosk device
+  // the next person can press Back onto the confirmation and print it. Once
+  // the applicant follows a link off the page they are done with it, so drop
+  // it then — the page they are still looking at keeps rendering from React
+  // state, and only a payment round-trip has to come back to it.
+  describe("clearing the stored outcome on leaving the confirmation", () => {
+    const confirmationState = {
+      hasPayment: false,
+      serviceName: "test-form",
+      submissionSuccess: true,
+      referenceNumber: "REF-9",
+      date: "01/01/2026",
+    };
+
+    const clickLink = (href: string) => {
+      const link = document.createElement("a");
+      link.href = href;
+      link.textContent = "leave";
+      document.body.appendChild(link);
+      act(() => {
+        link.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+      link.remove();
+    };
+
+    beforeEach(() => {
+      vi.spyOn(Route, "useSearch").mockReturnValue({
+        step: "submission-confirmation",
+      });
+      mockGetSubmissionState.mockReturnValue(confirmationState);
+    });
+
+    it("clears it when the applicant follows a link off the page", () => {
+      render(<Route.component />);
+      mockClearSubmissionState.mockClear();
+
+      clickLink("https://landing.example.bb/");
+
+      expect(mockClearSubmissionState).toHaveBeenCalledWith("test-form");
+    });
+
+    it("keeps it for the payment link — EzPay comes back to this state", () => {
+      mockGetSubmissionState.mockReturnValue({
+        ...confirmationState,
+        hasPayment: true,
+        paymentUrl: "https://pay.example.com/checkout",
+      });
+      render(<Route.component />);
+      mockClearSubmissionState.mockClear();
+
+      clickLink("https://pay.example.com/checkout");
+
+      expect(mockClearSubmissionState).not.toHaveBeenCalled();
+    });
+
+    it("keeps it for a same-page anchor such as the skip link", () => {
+      render(<Route.component />);
+      mockClearSubmissionState.mockClear();
+
+      clickLink("#main-content");
+
+      expect(mockClearSubmissionState).not.toHaveBeenCalled();
+    });
   });
 });
 

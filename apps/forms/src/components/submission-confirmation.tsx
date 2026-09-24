@@ -1,6 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { interpolateConfirmationMarkdown } from "@govtech-bb/form-conditions";
+import { summaryValueToText } from "@govtech-bb/submission-summary";
 import { markdownUrlTransform } from "./markdown-url-transform";
 import { LANDING_URL } from "../config/landing";
 import { isSafePaymentUrl } from "../lib/security/safe-payment-url";
@@ -74,6 +75,7 @@ export default function SubmissionConfirmation({
     paymentDescription,
     polyclinic,
     polyclinicContact,
+    sections,
   } = submissionState;
 
   // Substitute the resolved polyclinic name into the recipe's `{polyclinic}`
@@ -124,6 +126,29 @@ export default function SubmissionConfirmation({
                   ))}
                 </List>
               )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* The applicant's answers, for the printed copy only (#2587). Built at
+          submit time from the same shared builder the MDA email uses, so the
+          paper copy reads exactly like the email the MDA received — the same
+          question text, the same order, the same dates, and nothing the
+          applicant was never asked. Hidden on screen: the confirmation page
+          itself is a receipt, not a review screen. */}
+      {sections && sections.length > 0 && (
+        <div className="form-page__printed-answers hidden print:block">
+          <Heading as="h2">Your answers</Heading>
+          {sections.map((section, index) => (
+            <div key={`${section.stepId}-${index}`}>
+              <Heading as="h3">{section.title}</Heading>
+              <SummaryList
+                rows={section.fields.map((field) => ({
+                  key: field.label,
+                  value: summaryValueToText(field.value),
+                }))}
+              />
             </div>
           ))}
         </div>
