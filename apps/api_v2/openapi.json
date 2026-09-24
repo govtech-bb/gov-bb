@@ -1,0 +1,942 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "api_v2",
+    "description": "The content API for the content-as-data spike (#2700). Reads are public; writes are unauthenticated until #2701 lands and must not be reachable from anywhere but a laptop until then.",
+    "version": "0.0.0"
+  },
+  "components": {
+    "schemas": {}
+  },
+  "paths": {
+    "/pages": {
+      "get": {
+        "summary": "List page summaries",
+        "tags": ["pages"],
+        "description": "Published pages, ordered by url. Drafts are excluded unless asked for, so an unauthenticated caller cannot read unpublished content by accident.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"]
+            },
+            "in": "query",
+            "name": "drafts",
+            "required": false,
+            "description": "`true` includes drafts."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "url": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "schema_name": {
+                        "type": "string",
+                        "enum": [
+                          "answer",
+                          "guide",
+                          "transaction",
+                          "finder",
+                          "calendar"
+                        ]
+                      },
+                      "document_type": {
+                        "type": "string"
+                      },
+                      "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "url",
+                      "title",
+                      "schema_name",
+                      "document_type",
+                      "updated_at"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a page",
+        "tags": ["pages"],
+        "description": "Writes are unauthenticated until #2701 lands.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "integer"
+                    },
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "url": {
+                      "type": "string",
+                      "description": "The site's routing key."
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "schema_name": {
+                      "type": "string",
+                      "enum": [
+                        "answer",
+                        "guide",
+                        "transaction",
+                        "finder",
+                        "calendar"
+                      ]
+                    },
+                    "document_type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "is_draft": {
+                      "type": "boolean"
+                    },
+                    "body": {
+                      "type": "object",
+                      "description": "The block document: `{version, blocks, refs}`. Validated against block-kit's rules on write, and passed through untouched on read.",
+                      "properties": {
+                        "version": {
+                          "type": "integer"
+                        },
+                        "blocks": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true
+                          }
+                        },
+                        "refs": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": ["version", "blocks", "refs"],
+                      "additionalProperties": true
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save."
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "id",
+                    "url",
+                    "slug",
+                    "schema_name",
+                    "document_type",
+                    "title",
+                    "is_draft",
+                    "body",
+                    "updated_at"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": ["validation_failed"]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "rule": {
+                            "type": "integer"
+                          },
+                          "blockId": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["message"],
+                        "additionalProperties": true
+                      }
+                    }
+                  },
+                  "required": ["error", "errors"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/by-url": {
+      "get": {
+        "summary": "Get a page by its url",
+        "tags": ["pages"],
+        "description": "The site's routing key. `landing_v2` resolves a request path with this; the id is the editor's key, not the site's.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "url",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "integer"
+                    },
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "url": {
+                      "type": "string",
+                      "description": "The site's routing key."
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "schema_name": {
+                      "type": "string",
+                      "enum": [
+                        "answer",
+                        "guide",
+                        "transaction",
+                        "finder",
+                        "calendar"
+                      ]
+                    },
+                    "document_type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "is_draft": {
+                      "type": "boolean"
+                    },
+                    "body": {
+                      "type": "object",
+                      "description": "The block document: `{version, blocks, refs}`. Validated against block-kit's rules on write, and passed through untouched on read.",
+                      "properties": {
+                        "version": {
+                          "type": "integer"
+                        },
+                        "blocks": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true
+                          }
+                        },
+                        "refs": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": ["version", "blocks", "refs"],
+                      "additionalProperties": true
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save."
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "id",
+                    "url",
+                    "slug",
+                    "schema_name",
+                    "document_type",
+                    "title",
+                    "is_draft",
+                    "body",
+                    "updated_at"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{id}": {
+      "get": {
+        "summary": "Get a page by id",
+        "tags": ["pages"],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "integer"
+                    },
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "url": {
+                      "type": "string",
+                      "description": "The site's routing key."
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "schema_name": {
+                      "type": "string",
+                      "enum": [
+                        "answer",
+                        "guide",
+                        "transaction",
+                        "finder",
+                        "calendar"
+                      ]
+                    },
+                    "document_type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "is_draft": {
+                      "type": "boolean"
+                    },
+                    "body": {
+                      "type": "object",
+                      "description": "The block document: `{version, blocks, refs}`. Validated against block-kit's rules on write, and passed through untouched on read.",
+                      "properties": {
+                        "version": {
+                          "type": "integer"
+                        },
+                        "blocks": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true
+                          }
+                        },
+                        "refs": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": ["version", "blocks", "refs"],
+                      "additionalProperties": true
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save."
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "id",
+                    "url",
+                    "slug",
+                    "schema_name",
+                    "document_type",
+                    "title",
+                    "is_draft",
+                    "body",
+                    "updated_at"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Save a page",
+        "tags": ["pages"],
+        "description": "Send the `updated_at` you last read in the `if-updated-at` header. If the stored row has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "if-updated-at",
+            "required": false,
+            "description": "The `updated_at` this client last read. Omit to accept whatever is stored."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "integer"
+                    },
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "url": {
+                      "type": "string",
+                      "description": "The site's routing key."
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "schema_name": {
+                      "type": "string",
+                      "enum": [
+                        "answer",
+                        "guide",
+                        "transaction",
+                        "finder",
+                        "calendar"
+                      ]
+                    },
+                    "document_type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "is_draft": {
+                      "type": "boolean"
+                    },
+                    "body": {
+                      "type": "object",
+                      "description": "The block document: `{version, blocks, refs}`. Validated against block-kit's rules on write, and passed through untouched on read.",
+                      "properties": {
+                        "version": {
+                          "type": "integer"
+                        },
+                        "blocks": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true
+                          }
+                        },
+                        "refs": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": ["version", "blocks", "refs"],
+                      "additionalProperties": true
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save."
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "id",
+                    "url",
+                    "slug",
+                    "schema_name",
+                    "document_type",
+                    "title",
+                    "is_draft",
+                    "body",
+                    "updated_at"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": ["conflict"]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "documentId": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "required": ["error", "message", "documentId"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": ["validation_failed"]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "rule": {
+                            "type": "integer"
+                          },
+                          "blockId": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["message"],
+                        "additionalProperties": true
+                      }
+                    }
+                  },
+                  "required": ["error", "errors"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a page",
+        "tags": ["pages"],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/collections": {
+      "get": {
+        "summary": "List collection definitions",
+        "tags": ["collections"],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "record_key": {
+                        "type": "string",
+                        "description": "Which field of a record identifies it."
+                      },
+                      "schema": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    },
+                    "required": ["key", "title", "record_key", "schema"],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collections/{key}/records": {
+      "get": {
+        "summary": "List a collection's records",
+        "tags": ["collections"],
+        "description": "Published records only. `?keys=true` returns each record's key alongside its data, which is what editing needs and rendering does not.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"]
+            },
+            "in": "query",
+            "name": "keys",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "key",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/version": {
+      "get": {
+        "summary": "A version token for the whole estate",
+        "tags": ["meta"],
+        "description": "`change_events` is append-only and gets a row on every write, so its count and newest timestamp identify the state of everything without reading any of it. Clients poll this and refetch only when it moves.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "count": {
+                      "type": "integer"
+                    },
+                    "latest": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": ["count", "latest"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collections/{key}/records/{recordKey}": {
+      "put": {
+        "summary": "Create or replace a record",
+        "tags": ["collections"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "data": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "previousKey": {
+                    "type": "string",
+                    "description": "Set when the record's key itself changed, so the old row goes rather than being left behind as a duplicate."
+                  }
+                },
+                "required": ["data"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "key",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "recordKey",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a record",
+        "tags": ["collections"],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "key",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "recordKey",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "pages",
+      "description": "Content pages, stored as block documents"
+    },
+    {
+      "name": "collections",
+      "description": "Structured data behind a page"
+    },
+    {
+      "name": "meta",
+      "description": "Freshness"
+    }
+  ]
+}
