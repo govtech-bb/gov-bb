@@ -1,0 +1,46 @@
+{
+  "name": "api_v2",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/api_v2/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "apps/api_v2/dist",
+        "tsConfig": "apps/api_v2/tsconfig.json",
+        "main": "apps/api_v2/src/main.ts"
+      }
+    },
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsx watch src/main.ts",
+        "cwd": "apps/api_v2"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run",
+        "cwd": "apps/api_v2"
+      }
+    },
+    "e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run --config vitest.e2e.config.ts",
+        "cwd": "apps/api_v2"
+      },
+      "dependsOn": ["build"]
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["apps/api_v2/**/*.ts"]
+      }
+    }
+  },
+  "tags": []
+}
