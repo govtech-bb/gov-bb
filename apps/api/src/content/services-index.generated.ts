@@ -126,7 +126,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-for-hotel-licence",
-    title: "Apply for a hotel licence",
+    title: "Apply to Environmental Health for a hotel licence",
     category: "business-trade",
     formId: "apply-for-hotel-licence",
     visibility: "preview",
