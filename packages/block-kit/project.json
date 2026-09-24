@@ -1,0 +1,31 @@
+{
+  "name": "block-kit",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/block-kit/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "packages/block-kit/dist",
+        "tsConfig": "packages/block-kit/tsconfig.json",
+        "main": "packages/block-kit/src/index.ts"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run",
+        "cwd": "packages/block-kit"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["packages/block-kit/**/*.ts"]
+      }
+    }
+  },
+  "tags": []
+}
