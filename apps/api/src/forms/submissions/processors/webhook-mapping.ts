@@ -84,12 +84,11 @@ function readName(values: SubmissionValues, name: string | string[]): string {
  */
 function buildFormData(
   values: SubmissionValues,
-  excludeSteps: string[],
+  excluded: ReadonlySet<string>,
   applicantPaths: string[],
   groupByStep: boolean,
   fieldByPath: Map<string, Primitive>,
 ): Record<string, unknown> {
-  const excluded = new Set(excludeSteps);
   const dropped = new Set(applicantPaths); // "stepId.fieldId"
   const result: Record<string, unknown> = {};
 
@@ -231,6 +230,10 @@ export function buildMappedCasePayload(args: {
     ? mapping.applicant.name
     : [mapping.applicant.name];
 
+  // Shared by `form_data` and `sections` so a recipe's process-only steps
+  // cannot end up in one and not the other.
+  const excludedSteps = new Set(mapping.excludeSteps ?? []);
+
   return {
     code: referenceCode,
     programme_code: programmeCodeOverride ?? mapping.programmeCode,
@@ -241,7 +244,7 @@ export function buildMappedCasePayload(args: {
     },
     form_data: buildFormData(
       values,
-      mapping.excludeSteps ?? [],
+      excludedSteps,
       [...namePaths, mapping.applicant.email, mapping.applicant.phone],
       mapping.groupByStep ?? false,
       indexFields(contract),
@@ -250,15 +253,22 @@ export function buildMappedCasePayload(args: {
     ...(higherRisk !== null &&
       higherRisk !== undefined && { higher_risk: higherRisk }),
     ...(contract && { form_id: contract.formId }),
-    // Additive: the CMS reads whichever it understands, and legacy cases — or
-    // a submission whose audit trail predates this — simply carry no sections.
+    // Additive: the CMS reads whichever it understands, and a case built
+    // without a contract or audit trail carries no sections at all.
+    //
+    // `mapping.excludeSteps` filters sections as well as `form_data`, so the
+    // process-only steps a recipe keeps out of the CMS stay out of both. It
+    // matters for `declaration`: unlike check-your-answers and
+    // submission-confirmation, which render to no rows and drop out on their
+    // own, it is a checkbox the applicant ticks, so it would otherwise arrive
+    // as a real section that `form_data` deliberately omits.
     ...(contract &&
       visibility && {
         sections: buildSubmissionSections({
           contract,
           values: values as StepScopedValues,
           visibility,
-        }),
+        }).filter((section) => !excludedSteps.has(section.stepId)),
       }),
   };
 }

@@ -442,5 +442,47 @@ describe("webhook-mapping", () => {
     it("omits sections for a submission with no audit trail", () => {
       expect(build({ visibility: undefined }).sections).toBeUndefined();
     });
+
+    // `mapping.excludeSteps` is the recipe's statement of which steps are
+    // process-only, and every mapped recipe lists `declaration` — a checkbox
+    // the applicant does tick, so it renders to a real row rather than
+    // dropping out empty the way `check-your-answers` does. It has always
+    // governed `form_data`; sections honour the same list, so adding this
+    // block cannot put a step in front of the CMS that the recipe kept out.
+    it("drops a step the mapping excludes from sections, not only form_data", () => {
+      const payload = build({
+        contract: {
+          ...SECTION_CONTRACT,
+          steps: [
+            ...SECTION_CONTRACT.steps,
+            {
+              stepId: "declaration",
+              title: "Declaration",
+              elements: [
+                {
+                  fieldId: "declaration-confirmed",
+                  label: "I confirm the information given is true",
+                  htmlType: "checkbox",
+                },
+              ],
+            },
+          ],
+        } as unknown as ServiceContract,
+        values: {
+          ...SECTION_VALUES,
+          declaration: { "declaration-confirmed": "I confirm" },
+        } as unknown as SubmissionValues,
+        visibility: {
+          ...VISIBILITY,
+          activeStepIds: [...VISIBILITY.activeStepIds, "declaration"],
+        },
+      });
+
+      expect(payload.sections?.map((s) => s.stepId)).toEqual([
+        "child-details",
+        "your-interest",
+      ]);
+      expect(payload.form_data).not.toHaveProperty("declaration");
+    });
   });
 });
