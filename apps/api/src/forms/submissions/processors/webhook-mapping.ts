@@ -183,10 +183,13 @@ export interface MappedCasePayload {
   /** Derived reviewer signal (#2065): present only for forms that carry a
    * checkbox-accordion field, so other forms' payloads are unchanged. */
   higher_risk?: boolean;
-  /** The form and published version whose contract produced `sections` — the
-   * payload never named the form before (#2587). */
+  /** The form whose contract produced `sections` — the payload never named the
+   * form before (#2587).
+   *
+   * No `form_version` companion: recipe versioning was retired by ADR 0057
+   * (#1196), so the served contract carries no version at all and the field
+   * would be permanently absent. */
   form_id?: string;
-  form_version?: string;
   /** The submission as the applicant answered it: step headings, the question
    * text each answer was given under, in contract order, with branch-skipped
    * questions absent. The same rendering as the MDA email. `form_data` is
@@ -246,10 +249,7 @@ export function buildMappedCasePayload(args: {
     submitted_at: submittedAt,
     ...(higherRisk !== null &&
       higherRisk !== undefined && { higher_risk: higherRisk }),
-    ...(contract && {
-      form_id: contract.formId,
-      form_version: contract.version,
-    }),
+    ...(contract && { form_id: contract.formId }),
     // Additive: the CMS reads whichever it understands, and legacy cases — or
     // a submission whose audit trail predates this — simply carry no sections.
     ...(contract &&
