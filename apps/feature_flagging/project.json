@@ -4,21 +4,9 @@
   "sourceRoot": "apps/feature_flagging/app",
   "projectType": "application",
   "targets": {
-    "dev": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npm run dev",
-        "cwd": "apps/feature_flagging"
-      }
-    },
     "build": {
-      "executor": "nx:run-commands",
       "outputs": ["{projectRoot}/dist", "{projectRoot}/.amplify-hosting"],
-      "options": {
-        "command": "npm run build",
-        "cwd": "apps/feature_flagging"
-      },
-      "dependsOn": ["^build"],
+      "dependsOn": [],
       "inputs": [
         "production",
         "^production",

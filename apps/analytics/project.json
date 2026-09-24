@@ -5,12 +5,7 @@
   "projectType": "application",
   "targets": {
     "build": {
-      "executor": "nx:run-commands",
       "outputs": ["{projectRoot}/dist", "{projectRoot}/.amplify-hosting"],
-      "options": {
-        "command": "pnpm run build",
-        "cwd": "apps/analytics"
-      },
       "inputs": [
         "production",
         "^production",
@@ -29,35 +24,8 @@
         {
           "env": "VITE_FORMS_API_URL"
         }
-      ]
-    },
-    "dev": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "pnpm run dev",
-        "cwd": "apps/analytics"
-      }
-    },
-    "lint": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "pnpm run lint",
-        "cwd": "apps/analytics"
-      }
-    },
-    "test": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "pnpm run test",
-        "cwd": "apps/analytics"
-      }
-    },
-    "typecheck": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "pnpm run typecheck",
-        "cwd": "apps/analytics"
-      }
+      ],
+      "dependsOn": []
     }
   },
   "tags": []

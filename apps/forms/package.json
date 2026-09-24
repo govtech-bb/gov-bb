@@ -42,7 +42,8 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
     "test:smoke": "playwright test --config playwright.smoke.config.ts",
-    "test:a11y": "playwright test --config playwright.a11y.config.ts"
+    "test:a11y": "playwright test --config playwright.a11y.config.ts",
+    "start": "vite preview"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
