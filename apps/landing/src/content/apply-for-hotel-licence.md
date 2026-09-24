@@ -1,5 +1,5 @@
 ---
-title: Apply for a hotel licence
+title: Apply to Environmental Health for a hotel licence
 description: >-
   Apply for a new hotel licence or renew an existing licence with Environmental
   Health.
@@ -10,7 +10,10 @@ visibility: preview
 form_id: apply-for-hotel-licence
 ---
 
-Use this service to apply for a new hotel licence or renew an existing licence with the Environmental Health Department.
+Use this service to:
+
+- apply for a new hotel licence
+- renew your hotel licence
 
 ## Who is this licence for
 
@@ -20,37 +23,40 @@ You need a licence if you are planning to operate a hotel in Barbados.
 
 You must:
 
-- apply for all amenities licences before this licence is granted, for example a [restaurant](/business-trade/apply-for-restaurant-licence), [swimming pool](/business-trade/apply-for-swimming-pool-licence) or [salon or spa](/business-trade/apply-for-hair-salon-licence) licence
+- apply for all other Environmental Health approvals before this licence is granted, for example a [restaurant](/business-trade/apply-for-restaurant-licence), [swimming pool](/business-trade/apply-for-swimming-pool-licence) or [salon or spa](/business-trade/apply-for-hair-salon-licence) licence, permit or registration
 
 You will need:
 
-- the operator's name, phone number and email address, if you are not the operator
+- your current hotel licence number, if you are renewing
+- the operator's name, address, telephone number and email address, if you do not operate the hotel yourself
 - the hotel's name and address
-- the maximum number of guests who can stay at the hotel at one time
-- the number of bedrooms, occupants, water closets (toilet), baths and basins on each floor, and how many rooms have their own water closet, bath or basin
-- the number of male and female staff, and the changing rooms, lockers, hand wash basins and water closets provided for them
-- new licences: a site plan of the hotel, or the application number from the Planning and Development Department (previously called Town and Country Planning)
-- licence renewals: your current hotel licence number
+- the number of bedrooms and guests on each floor
+- the number of toilets, baths or showers, and sinks on each floor, including how many rooms have their own
+- the number of male and female staff
+- how many changing rooms, lockers, sinks and toilets staff can use
+- if you are applying for a new licence, a site plan of the hotel or your Planning and Development Department application number
+
+Planning and Development used to be called Town and Country Planning.
 
 Read the [Health Services (Hotels) Regulations, 1969](https://oag.gov.bb/attachments/Health%20Services%20%28Hotels%29%20Regulations,%201969%20Cap44'P.PDF) for the full legal requirements.
 
 ## When to apply
 
-Your licence expires on 31 December each year. You need to renew it by the first business day in January each year. We suggest you submit your application by 1 December.
+Your hotel licence expires on December 31 each year. Renew it by the first business day in January.
 
 ## Complete the form
 
 There are 2 ways to apply for a hotel licence. You can:
 
-1. ### Apply for a licence online
+1. **Apply for a licence online**
 
-   Allow about 5-10 minutes to complete the form.
+   Allow about 10 to 15 minutes to complete the form.
 
    <a data-start-link>Start now</a>
 
-2. ### Get a paper application from the polyclinic
+2. **Get a paper application from the polyclinic**
 
-   You must complete it by hand and submit the application to the polyclinic associated with the district where the hotel is located. If you require further information or assistance, contact the polyclinic - information can be found at the bottom of this page.
+   Complete the form by hand and return it to the polyclinic for the area where the hotel is located. If you need more information or assistance, contact the polyclinic - details are at the bottom of this page.
 
 ## Cost
 
@@ -59,13 +65,13 @@ There is neither a cost to apply, nor to receive your licence.
 ## What happens after you apply
 
 - Your application goes to the Environmental Health Department associated with the location of the hotel.
-- They will review it and may contact you if they need more information.
-- The property will be inspected before a licence is issued.
-- If your application is approved, you will receive a confirmation email and the Environment Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.
+- They will review it and may contact you if they need more details.
+- An officer must inspect the hotel before a licence can be issued.
+- If your application is approved, Environmental Health will tell you whether your licence will be mailed or where to collect it.
 
 Submitting an application does not mean that a hotel licence has been granted.
 
-## Need assistance
+## Contact
 
 If you need help, contact the Environmental Health Service office for your area.
 
