@@ -1,8 +1,8 @@
 ---
-title: Apply for a barracks or lodging licence with Environmental Health
+title: Apply for a lodging house or barracks licence
 description: >-
-  Apply online to register a property as a lodging house or barracks with
-  Environmental Health.
+  Apply online for a new lodging house or barracks licence, or renew an existing
+  licence, with Environmental Health.
 category: business-trade
 stage: alpha
 publish_date: '2026-08-25'
@@ -14,45 +14,48 @@ Use this service to apply for a new lodging house or barracks licence or renew a
 
 ## Who is this licence for
 
-You need a licence if you are planning to operate [a lodging house or barracks](https://oag.gov.bb/attachments/Health%20Services%20(Lodging%20Houses%20and%20Barracks)%20Regulations,%201970%20Cap44'R.PDF) in Barbados.
+You need a licence to operate:
+
+- a **lodging house**, a place where people pay to stay for a short time and may share a sleeping room with other people
+- **barracks**, a property with separate rooms where people share facilities such as bathrooms or toilets
+
+This service is not for hotels, guest houses or inns.
 
 ## Before you start
 
-You must: 
+You must:
 
 - apply for all amenities licences before this licence is granted, for example a [restaurant](/business-trade/apply-for-restaurant-licence), [swimming pool](/business-trade/apply-for-swimming-pool-licence) or [salon or spa](/business-trade/apply-for-hair-salon-licence) licence
 
 You will need:
 
--   the owner/operator's name, phone number and email address, if you are not the operator
--   your name, phone number and email address
--   the property’s name and address
--   the maximum number of guests who can stay at the lodging or barracks at one time
--   the number of rooms and the dimensions of each room (LxWxH)
--   the number of male and female sleeping accommodations, and the number of bed or bunk beds in each
--   number of showers, water closets (toilet facilities), and urinals in each accommodation
--   if there is a kitchen, the number of taps and sinks
--   New licences: a site plan of the lodging/barracks or the application number from the Planning and Developmental Department (formally Town and Country Planning)
--   Licence renewals: your current lodging house or barracks licence number from the Ministry of Health and Wellness
+- your current licence number, if you are renewing
+- the number and size of the rooms
+- the number of people who can stay at the property
+- the number of beds and bunk beds
+- the number of toilets, urinals and showers
+- the type of lighting used at the property
+- if you are applying for a new licence, a site plan of the property or your Planning and Development Department application number
+
+Planning and Development used to be called Town and Country Planning.
 
 Read the [Health Services (Lodging Houses and Barracks) Regulations, 1970](https://oag.gov.bb/attachments/Health%20Services%20(Lodging%20Houses%20and%20Barracks)%20Regulations,%201970%20Cap44'R.PDF) for the full legal requirements.
 
-
 ## When to apply
 
-Your licence expires on 31 December each year. You need to renew it by the first business day in January each year. It is suggested that you submit your application by December 1st.
+Your licence expires on 31 December each year. Renew it by the first business day in January. We suggest you submit your application by 1 December.
 
 ## Complete the form
 
 There are 2 ways to apply for a lodging house or barracks licence. You can:
 
-1. ### Apply for a licence online
+1. **Apply for a licence online**
 
-   Allow about 5-10 minutes to complete the form.
+   Allow about 10 to 15 minutes to complete the form.
 
    <a data-start-link>Start now</a>
 
-2. ### Get a paper application from the polyclinic
+2. **Get a paper application from the polyclinic**
 
    You must complete it by hand and submit the application to the polyclinic associated with the district where the barracks or lodging house is located. If you require further information or assistance, contact the polyclinic - information can be found at the bottom of this page.
 
@@ -62,13 +65,12 @@ There is neither a cost to apply, nor to receive your licence.
 
 ## What happens after you apply
 
-- Your application goes to the Environmental Health Department associated with the location of the building. 
-- They will review it and may contact you if they need more information. 
+- Your application goes to the Environmental Health Department associated with the location of the building.
+- They will review it and may contact you if they need more information.
 - The property will be inspected before a licence is issued.
 - If your application is approved, you will receive a confirmation email and the Environment Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.
 
 Submitting an application does not mean that a lodging house or barracks licence has been granted.
-
 
 ## Contact
 

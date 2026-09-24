@@ -1,8 +1,64 @@
 {
   "formId": "apply-for-lodging-barracks-licence",
-  "title": "Apply for a lodging house or barracks licence",
+  "title": "Apply for a lodging house or barracks licence with Environmental Health",
   "description": "Register a lodging house or barracks with Environmental Health",
   "steps": [
+    {
+      "stepId": "application-type",
+      "title": "Are you applying for a new licence or renewing one?",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "application-type",
+            "label": "Are you applying for a new licence or renewing one?",
+            "validations": {
+              "required": {
+                "error": "Select whether you are applying for a new licence or renewing one.",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "New licence",
+                "value": "new-licence"
+              },
+              {
+                "label": "Renew a licence",
+                "value": "renew-licence"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "licence-number",
+            "label": "Lodging house or barracks licence number",
+            "hint": "You can find this on your current licence.",
+            "validations": {
+              "required": {
+                "error": "Lodging house or barracks licence number is required",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "targetStepId": "application-type",
+                "operator": "equal",
+                "value": "renew-licence"
+              }
+            ],
+            "ui": {
+              "width": "short"
+            }
+          }
+        }
+      ]
+    },
     {
       "stepId": "your-details",
       "title": "Your details",
@@ -20,7 +76,7 @@
           "overrides": {
             "fieldId": "applicant-middle-name",
             "label": "Middle name",
-            "hint": "Leave this blank if you do not have a middle name.",
+            "hint": "Enter all middle names in order.",
             "validations": {
               "required": {
                 "value": false
@@ -104,29 +160,7 @@
           }
         },
         {
-          "ref": "components/name",
-          "overrides": {
-            "fieldId": "owner-full-name",
-            "label": "Full name of property owner",
-            "validations": {
-              "required": {
-                "error": "Enter the property owner's full name.",
-                "value": true
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "is-property-owner",
-                "targetStepId": "property-owner-details",
-                "operator": "equal",
-                "value": "no"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-radio",
+          "ref": "components/generic-select",
           "overrides": {
             "fieldId": "applicant-role-owner",
             "label": "What is your role at the property?",
@@ -179,6 +213,219 @@
                 "targetStepId": "property-owner-details",
                 "operator": "equal",
                 "value": "other-role"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "owner-type",
+            "label": "Who owns the property?",
+            "validations": {
+              "required": {
+                "error": "Select whether the property is owned by a person or a business or organisation.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-property-owner",
+                "targetStepId": "property-owner-details",
+                "operator": "equal",
+                "value": "no"
+              }
+            ],
+            "options": [
+              {
+                "label": "A person",
+                "value": "person"
+              },
+              {
+                "label": "A business or organisation",
+                "value": "business"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "owner-first-name",
+            "label": "Property owner's first name",
+            "validations": {
+              "required": {
+                "error": "Property owner's first name is required",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-property-owner",
+                "targetStepId": "property-owner-details",
+                "operator": "equal",
+                "value": "no"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "owner-type",
+                "targetStepId": "property-owner-details",
+                "operator": "equal",
+                "value": "person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "fieldId": "owner-middle-name",
+            "label": "Property owner's middle name",
+            "hint": "Enter all middle names in order.",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-property-owner",
+                "targetStepId": "property-owner-details",
+                "operator": "equal",
+                "value": "no"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "owner-type",
+                "targetStepId": "property-owner-details",
+                "operator": "equal",
+                "value": "person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "owner-last-name",
+            "label": "Property owner's last name",
+            "validations": {
+              "required": {
+                "error": "Property owner's last name is required",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-property-owner",
+                "targetStepId": "property-owner-details",
+                "operator": "equal",
+                "value": "no"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "owner-type",
+                "targetStepId": "property-owner-details",
+                "operator": "equal",
+                "value": "person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "owner-business-name",
+            "label": "Business or organisation name",
+            "validations": {
+              "required": {
+                "error": "Business or organisation name is required",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-property-owner",
+                "targetStepId": "property-owner-details",
+                "operator": "equal",
+                "value": "no"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "owner-type",
+                "targetStepId": "property-owner-details",
+                "operator": "equal",
+                "value": "business"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "owner-address-line-1",
+            "label": "Property owner's address line 1",
+            "validations": {
+              "required": {
+                "error": "Property owner's address is required",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-property-owner",
+                "targetStepId": "property-owner-details",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "owner-address-line-2",
+            "label": "Property owner's address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-property-owner",
+                "targetStepId": "property-owner-details",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "owner-parish",
+            "label": "Property owner's parish",
+            "validations": {
+              "required": {
+                "error": "Property owner's parish is required",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "is-property-owner",
+                "targetStepId": "property-owner-details",
+                "operator": "equal",
+                "value": "no"
               }
             ]
           }
@@ -270,7 +517,7 @@
           "ref": "components/generic-number",
           "overrides": {
             "fieldId": "property-number-of-occupants",
-            "label": "How many person can stay on the property at one time?",
+            "label": "How many people can stay at the property at one time?",
             "validations": {
               "required": {
                 "error": "Enter the maximum number of occupants.",
@@ -373,7 +620,7 @@
           "ref": "components/generic-number",
           "overrides": {
             "fieldId": "property-number-of-beds-1",
-            "label": "How many beds are at this unit?",
+            "label": "How many beds are not part of a bunk bed setup?",
             "validations": {
               "required": {
                 "error": "Enter the number of beds.",
@@ -383,7 +630,8 @@
                 "error": "Enter a number of 0 or greater.",
                 "value": 0
               }
-            }
+            },
+            "hint": "Enter 0 if there are none."
           }
         },
         {
@@ -400,7 +648,34 @@
                 "error": "Enter a number of 0 or greater.",
                 "value": 0
               }
-            }
+            },
+            "hint": "A bunk bed has 2 or more beds, one above another. Enter 0 if there are none."
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "property-number-of-bunk-bed-spaces-1",
+            "label": "How many beds are in the bunk beds altogether?",
+            "hint": "Count each place where one person can sleep.",
+            "validations": {
+              "required": {
+                "error": "Enter the number of beds in the bunk beds.",
+                "value": true
+              },
+              "min": {
+                "error": "Enter a number of 0 or greater.",
+                "value": 1
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "property-number-of-bunk-beds-1",
+                "operator": "gte",
+                "value": 1
+              }
+            ]
           }
         },
         {
@@ -440,7 +715,8 @@
                 "error": "Enter a number of 0 or greater.",
                 "value": 0
               }
-            }
+            },
+            "hint": "Enter 0 if there are none."
           }
         },
         {
@@ -457,7 +733,8 @@
                 "error": "Enter a number of 0 or greater.",
                 "value": 0
               }
-            }
+            },
+            "hint": "Enter 0 if there are none."
           }
         },
         {
@@ -474,7 +751,8 @@
                 "error": "Enter a number of 0 or greater.",
                 "value": 0
               }
-            }
+            },
+            "hint": "A urinal is a toilet without a seat, used for passing water while standing. Enter 0 if there are none."
           }
         },
         {
@@ -512,57 +790,49 @@
           }
         },
         {
-          "ref": "components/generic-checkbox",
+          "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "water-supply-source-1",
-            "label": "What is the water supply source?",
+            "fieldId": "water-supply-bwa-1",
+            "label": "Is this unit connected to the Barbados Water Authority water supply?",
             "validations": {
               "required": {
-                "error": "Choose the water supply source.",
+                "error": "Select whether the unit is connected to the Barbados Water Authority water supply.",
                 "value": true
+              },
+              "pattern": {
+                "error": "The unit must be connected to the Barbados Water Authority water supply before it can be licensed.",
+                "value": "^yes$"
               }
             },
             "options": [
               {
-                "label": "Mains water from Barbados Water Authority",
-                "value": "mains-water"
+                "label": "Yes",
+                "value": "yes"
               },
               {
-                "label": "Rainwater collection",
-                "value": "rainwater-collection"
-              },
-              {
-                "label": "Well",
-                "value": "well"
-              },
-              {
-                "label": "Other source",
-                "value": "other-water-source"
+                "label": "No",
+                "value": "no"
               }
             ]
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/content",
           "overrides": {
-            "fieldId": "water-supply-source-other-1",
-            "label": "Specify the other water supply source",
-            "validations": {
-              "required": {
-                "error": "Enter the water supply source.",
-                "value": true
-              }
-            },
+            "fieldId": "water-supply-bwa-notice",
+            "content": "The property must be connected to the Barbados Water Authority water supply before it can be licensed. Contact the Barbados Water Authority to arrange a connection.",
+            "variant": "warning",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "water-supply-source-1",
-                "operator": "in",
-                "value": [
-                  "other-water-source"
-                ]
+                "targetFieldId": "water-supply-bwa-1",
+                "operator": "equal",
+                "value": "no"
               }
-            ]
+            ],
+            "ui": {
+              "indent": true
+            }
           }
         },
         {
@@ -627,7 +897,7 @@
       "behaviours": [],
       "elements": [
         {
-          "ref": "components/generic-radio",
+          "ref": "components/generic-select",
           "overrides": {
             "fieldId": "kitchen-licensed",
             "label": "Is the kitchen licensed?",
@@ -664,7 +934,8 @@
           "ref": "components/generic-checkbox",
           "overrides": {
             "fieldId": "other-amenities",
-            "label": "Select all other amenities that apply",
+            "label": "What other services does the property have?",
+            "hint": "Select all that apply. Leave blank if none apply.",
             "validations": {
               "required": {
                 "value": false
@@ -672,36 +943,40 @@
             },
             "options": [
               {
-                "label": "Bar",
-                "value": "bar-licensed"
+                "label": "Swimming pool",
+                "value": "swimming-pool"
+              },
+              {
+                "label": "Food business",
+                "value": "food-business"
               },
               {
                 "label": "Restaurant",
-                "value": "restaurant-food-service"
+                "value": "restaurant"
               },
               {
-                "label": "Canteen or shop",
-                "value": "recreation-sports"
+                "label": "Hair salon",
+                "value": "hair-salon"
               },
               {
-                "label": "Salon or barber",
-                "value": "salon-barber"
+                "label": "Spa",
+                "value": "spa"
               },
               {
-                "label": "Other amenities",
-                "value": "other-amenities-text"
+                "label": "Nail salon",
+                "value": "nail-salon"
               }
             ]
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "other-amenities-description",
-            "label": "Describe the other amenities",
+            "fieldId": "swimming-pool-licence-applied",
+            "label": "Have you applied for a swimming pool licence?",
             "validations": {
               "required": {
-                "error": "Enter a description of the other amenities.",
+                "error": "Select whether you have applied for the swimming pool licence.",
                 "value": true
               }
             },
@@ -709,12 +984,331 @@
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "other-amenities",
+                "targetStepId": "amenities-other",
                 "operator": "in",
                 "value": [
-                  "other-amenities-text"
+                  "swimming-pool"
                 ]
               }
-            ]
+            ],
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "ui": {
+              "indent": true
+            }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "swimming-pool-licence-applied-notice",
+            "content": "You can continue now. You must apply for the swimming pool licence before this licence can be granted.",
+            "variant": "inset",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "swimming-pool-licence-applied",
+                "targetStepId": "amenities-other",
+                "operator": "equal",
+                "value": "no"
+              }
+            ],
+            "ui": {
+              "indent": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "food-business-licence-applied",
+            "label": "Have you applied for a food business licence?",
+            "validations": {
+              "required": {
+                "error": "Select whether you have applied for the food business licence.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "other-amenities",
+                "targetStepId": "amenities-other",
+                "operator": "in",
+                "value": [
+                  "food-business"
+                ]
+              }
+            ],
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "ui": {
+              "indent": true
+            }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "food-business-licence-applied-notice",
+            "content": "You can continue now. You must apply for the food business licence before this licence can be granted.",
+            "variant": "inset",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "food-business-licence-applied",
+                "targetStepId": "amenities-other",
+                "operator": "equal",
+                "value": "no"
+              }
+            ],
+            "ui": {
+              "indent": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "restaurant-licence-applied",
+            "label": "Have you applied for a restaurant licence?",
+            "validations": {
+              "required": {
+                "error": "Select whether you have applied for the restaurant licence.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "other-amenities",
+                "targetStepId": "amenities-other",
+                "operator": "in",
+                "value": [
+                  "restaurant"
+                ]
+              }
+            ],
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "ui": {
+              "indent": true
+            }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "restaurant-licence-applied-notice",
+            "content": "You can continue now. You must apply for the restaurant licence before this licence can be granted.",
+            "variant": "inset",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "restaurant-licence-applied",
+                "targetStepId": "amenities-other",
+                "operator": "equal",
+                "value": "no"
+              }
+            ],
+            "ui": {
+              "indent": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "hair-salon-registration-applied",
+            "label": "Have you applied to register the hair salon?",
+            "validations": {
+              "required": {
+                "error": "Select whether you have applied to register the hair salon.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "other-amenities",
+                "targetStepId": "amenities-other",
+                "operator": "in",
+                "value": [
+                  "hair-salon"
+                ]
+              }
+            ],
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "ui": {
+              "indent": true
+            }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "hair-salon-registration-applied-notice",
+            "content": "You can continue now. You must apply to register the hair salon before this licence can be granted.",
+            "variant": "inset",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "hair-salon-registration-applied",
+                "targetStepId": "amenities-other",
+                "operator": "equal",
+                "value": "no"
+              }
+            ],
+            "ui": {
+              "indent": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "spa-registration-applied",
+            "label": "Have you applied to register the spa?",
+            "validations": {
+              "required": {
+                "error": "Select whether you have applied to register the spa.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "other-amenities",
+                "targetStepId": "amenities-other",
+                "operator": "in",
+                "value": [
+                  "spa"
+                ]
+              }
+            ],
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "ui": {
+              "indent": true
+            }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "spa-registration-applied-notice",
+            "content": "You can continue now. You must apply to register the spa before this licence can be granted.",
+            "variant": "inset",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "spa-registration-applied",
+                "targetStepId": "amenities-other",
+                "operator": "equal",
+                "value": "no"
+              }
+            ],
+            "ui": {
+              "indent": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "nail-salon-registration-applied",
+            "label": "Have you applied to register the nail salon?",
+            "validations": {
+              "required": {
+                "error": "Select whether you have applied to register the nail salon.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "other-amenities",
+                "targetStepId": "amenities-other",
+                "operator": "in",
+                "value": [
+                  "nail-salon"
+                ]
+              }
+            ],
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "ui": {
+              "indent": true
+            }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "nail-salon-registration-applied-notice",
+            "content": "You can continue now. You must apply to register the nail salon before this licence can be granted.",
+            "variant": "inset",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "nail-salon-registration-applied",
+                "targetStepId": "amenities-other",
+                "operator": "equal",
+                "value": "no"
+              }
+            ],
+            "ui": {
+              "indent": true
+            }
           }
         }
       ]
@@ -724,6 +1318,102 @@
       "title": "Supporting documents and licences",
       "behaviours": [],
       "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "planning-application-number",
+            "label": "Planning and Development application number",
+            "hint": "Planning and Development used to be called Town and Country Planning.",
+            "validations": {
+              "required": {
+                "error": "Planning and Development application number is required",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "targetStepId": "application-type",
+                "operator": "equal",
+                "value": "new-licence"
+              },
+              {
+                "type": "optionalIf",
+                "targetFieldId": "site-plan-toggle",
+                "targetStepId": "supporting-documents",
+                "operator": "equal",
+                "value": true
+              }
+            ],
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "fieldId": "site-plan-toggle",
+            "label": "Upload a site plan instead",
+            "hint": "Use this if you do not have a Planning and Development application number.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "targetStepId": "application-type",
+                "operator": "equal",
+                "value": "new-licence"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "site-plan",
+            "label": "Site plan of the property",
+            "hint": "Accepted formats: PDF, JPG, PNG. Maximum 5 MB per file.",
+            "validations": {
+              "required": {
+                "error": "Upload a site plan of the property.",
+                "value": true
+              },
+              "fileTypes": {
+                "error": "Upload only PDF, JPG or PNG files.",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
+                ]
+              },
+              "itemMaxSize": {
+                "error": "Each file must be 5 MB or less.",
+                "value": 5242880
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "targetStepId": "application-type",
+                "operator": "equal",
+                "value": "new-licence"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "site-plan-toggle",
+                "targetStepId": "supporting-documents",
+                "operator": "equal",
+                "value": true
+              }
+            ]
+          }
+        },
         {
           "ref": "components/upload-document",
           "overrides": {
@@ -739,14 +1429,19 @@
                 "value": [
                   "application/pdf",
                   "image/jpeg",
-                  "image/png"
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
                 ]
               },
               "itemMaxSize": {
                 "error": "Each file must be 5 MB or less.",
                 "value": 5242880
               }
-            }
+            },
+            "multiple": true
           }
         }
       ]
@@ -789,12 +1484,6 @@
       "title": "Application submitted",
       "behaviours": [],
       "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n* The Environmental Health Department at **{polyclinic}** will review your request.  \n* They will review it and may contact you if they need more information.   \n* The property will be inspected before a licence is issued.  \n* If your application is approved, you will receive a confirmation email and the Environment Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\nSubmitting an application does not mean that a lodging or barracks licence has been granted.\n\n## Contact\n\nIf you need help, contact your Environmental Health Service office.\n\n{polyclinicContact}",
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "Your application has been sent to Environmental Health.\n\nEnvironmental Health will review your application. They may contact you if they need more information.\n\nSubmitting the application does not mean the property has been registered."
-        }
-      ],
       "elements": []
     }
   ],
@@ -842,7 +1531,7 @@
     }
   ],
   "createdAt": "2026-08-24T23:54:14.187Z",
-  "updatedAt": "2026-09-11T12:21:22.880Z",
+  "updatedAt": "2026-09-24T00:00:00.000Z",
   "meta": {
     "visibility": "preview"
   },

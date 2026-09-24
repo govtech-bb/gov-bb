@@ -133,7 +133,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-for-lodging-barracks-licence",
-    title: "Apply for a barracks or lodging licence with Environmental Health",
+    title: "Apply for a lodging house or barracks licence",
     category: "business-trade",
     formId: "apply-for-lodging-barracks-licence",
     visibility: "preview",
