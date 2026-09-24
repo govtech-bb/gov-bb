@@ -28,7 +28,7 @@ export function buildOrganizationLd() {
     '@id': ORG_ID,
     name: ORG_NAME,
     url: SITE_URL,
-    logo: `${SITE_URL}/images/coat-of-arms.png`,
+    logo: `${SITE_URL}/images/govbb-crest.svg`,
   }
 }
 

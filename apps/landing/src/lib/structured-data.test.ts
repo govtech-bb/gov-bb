@@ -27,7 +27,7 @@ describe('buildOrganizationLd', () => {
     expect(ld['@type']).toBe('Organization')
     expect(ld.name).toBe('Government of Barbados')
     expect(ld.url).toBe(SITE_URL)
-    expect(ld.logo).toBe(`${SITE_URL}/images/coat-of-arms.png`)
+    expect(ld.logo).toBe(`${SITE_URL}/images/govbb-crest.svg`)
     expect(ld.logo.startsWith('http')).toBe(true)
   })
 })
