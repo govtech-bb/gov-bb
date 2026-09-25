@@ -68,14 +68,16 @@ RUN apk upgrade --no-cache
 # npm and corepack are dead weight AWS Inspector still scans (npm's vendored
 # tar/pacote/undici/ip-address/brace-expansion copies were all flagged);
 # nothing in this image runs either — the entrypoint is plain node.
-# /usr/local/include/node: node's bundled OpenSSL C headers are what Inspector
-# fingerprints for the "node-bundled OpenSSL" CRITICALs. They exist to compile
-# native addons; nothing in this image compiles at runtime. The statically-
-# linked OpenSSL inside the node binary remains and is tracked estate-wide in
-# gov-bb-security#41 until node ships a fixed OpenSSL.
+#
+# /usr/local/include/node is deliberately NO LONGER removed. It used to be, to
+# quieten the node-bundled OpenSSL CRITICALs while no upstream release carried
+# a fix — the old comment said so, "until node ships a fixed OpenSSL". That
+# release exists now and the base above is on it, so the condition is met.
+# Keeping the deletion would only blind the scanner to the next such CVE:
+# OpenSSL is statically linked into the node binary, so the headers are what
+# Inspector fingerprints, not where the flaw lives (govbb-chatbot#119).
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
-           /usr/local/lib/node_modules/corepack /usr/local/bin/corepack \
-           /usr/local/include/node
+           /usr/local/lib/node_modules/corepack /usr/local/bin/corepack
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
 
 WORKDIR /app
