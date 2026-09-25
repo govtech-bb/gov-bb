@@ -66,6 +66,46 @@ pnpm exec vitest run recipe-invariants --coverage.enabled=false
 
 Fix failures before presenting the work as done.
 
+## Step 4 — Create or update the form's smoke test
+
+**REQUIRED when you change what a form submits:** if your edit adds, removes or renames a step, a field, an option or a conditional, the form must leave with a smoke spec that agrees with the new recipe. Smoke specs live at `apps/forms/e2e/smoke/<formId>.smoke.spec.ts` and walk the real form step by step with the shared helpers in `apps/forms/e2e/helpers/smoke.ts` (`openSmokeForm`, `expectStep`, `fillField`, `fillDate`, `selectRadio`, `selectDropdown`, `tickCheckbox`, `advance`, `submitAndConfirm`, …).
+
+- **A spec exists:** update it. Add, remove or rename the steps, fields, options, conditional branches and test data your edit changed, and update the spec's header comment that describes the form. Update it also for a copy-only edit, if the spec asserts the text that you changed.
+- **No spec, and you changed the shape of the form:** create one. Copy the structure of a spec for a form of a similar shape (for example `term-leave-application.smoke.spec.ts`). Cover each step to the confirmation screen.
+- **No spec, and you changed only copy:** a new spec is not necessary. Tell the designer that the form has no spec.
+
+Take field ids from the recipe's **effective** fieldIds, not just `overrides.fieldId`. A field can also get its id from a registry component default (`components/first-name` → `first-name`) or from block expansion (`blocks/personal-information`).
+
+This step is mandatory. No other check finds a stale spec:
+
+- Smoke specs have no type check and no lint.
+- A recipe-only change makes only `api` nx-affected, never `forms`.
+- After a deploy, CI smokes four specs from a hand-written list in `deploy-sandbox.yml`. Each PR preview smokes only `jobstart-plus-programme`.
+
+Thus CI runs four specs; the rest never run in CI. A stale spec fails much later than the edit that broke it, or it never fails.
+
+Verify the spec in two steps.
+
+**Parse check.** This command finds the spec. It opens no browser and submits nothing:
+
+```bash
+cd apps/forms && SMOKE_BASE_URL=http://localhost:3000 pnpm exec playwright test --config playwright.smoke.config.ts --list <formId>
+```
+
+`--list` does not start the dev server, so the URL is necessary but unused. A spec that fills a field you removed passes this check. Thus the parse check is not sufficient.
+
+**Local walk.** Start the API on the host (`pnpm dev:api`). Then walk the real form (Playwright starts the forms app for you):
+
+```bash
+cd apps/forms && SMOKE_BASE_URL=http://localhost:3000 pnpm exec playwright test --config playwright.smoke.config.ts <formId>
+```
+
+This is the only check that shows that the spec agrees with the recipe. Do this before you present the work as done. The walk submits to your local API, so its processors run unless you also set `SMOKE_SUBMISSION_TOKEN` to the value in `apps/api/.env`.
+
+**Deployed environments.** A smoke run against a deployed environment submits a real application. `SMOKE_SUBMISSION_TOKEN` makes the API drop all processors, so the run sends no email and no webhook (ADR 0052). Do not run a smoke against a deployed environment without the approval of the designer.
+
+The Form Builder writes `Publish form:` PRs without this skill, so those PRs can make a spec stale.
+
 ## Common mistakes
 
 | Mistake                                                                    | Fix                                                                                                   |
@@ -76,3 +116,4 @@ Fix failures before presenting the work as done.
 | Repurposing a semantic component (e.g. `date-of-birth` for an expiry date) | Use the generic primitive with fieldId + label override (CATEGORY 0)                                  |
 | `fieldConditionalOn`/`optionalIf` value set to a display label             | Values are always lowercased + kebab-cased option values (`"christ-church"`, never `"Christ Church"`) |
 | Rediscovering conventions from loader source code                          | Everything you need is in the system prompt + this skill                                              |
+| You change a recipe and leave its smoke spec stale or absent               | Create or update `apps/forms/e2e/smoke/<formId>.smoke.spec.ts` to agree with the new form (Step 4)    |
