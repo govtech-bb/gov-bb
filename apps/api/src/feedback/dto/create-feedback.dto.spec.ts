@@ -33,4 +33,35 @@ describe("CreateFeedbackDto", () => {
     const messages = await validateDto({ referrer: "/feedback" });
     expect(messages).toContain("At least one feedback field is required");
   });
+
+  it("accepts a valid optional email", async () => {
+    expect(
+      await validateDto({
+        visitReason: "Renewing my passport",
+        email: "visitor@example.com",
+      }),
+    ).toEqual([]);
+  });
+
+  it("accepts a submission with no email (stays anonymous)", async () => {
+    expect(await validateDto({ visitReason: "Renewing my passport" })).toEqual(
+      [],
+    );
+  });
+
+  it("rejects a malformed email", async () => {
+    const messages = await validateDto({
+      visitReason: "Renewing my passport",
+      email: "not-an-email",
+    });
+    expect(messages.some((m) => /email/i.test(m))).toBe(true);
+  });
+
+  it("rejects an over-long email", async () => {
+    const messages = await validateDto({
+      visitReason: "Renewing my passport",
+      email: `${"a".repeat(250)}@example.com`,
+    });
+    expect(messages.some((m) => /email/i.test(m))).toBe(true);
+  });
 });
