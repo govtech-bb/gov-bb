@@ -359,6 +359,21 @@ describe("Cache-Control", () => {
       first.headers["cache-control"],
     );
   });
+
+  // A route must only advertise a policy for the response it actually sent —
+  // a 500 must not carry PUBLIC_READ just because the handler set it before
+  // the store call that then failed.
+  it("sends no Cache-Control on a genuine store failure", async () => {
+    const brokenApp = await buildApp({ db: {} as Database });
+    await brokenApp.ready();
+
+    const response = await brokenApp.inject({ url: "/pages" });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers["cache-control"]).toBeUndefined();
+
+    await brokenApp.close();
+  });
 });
 
 describe("timestamp precision", () => {

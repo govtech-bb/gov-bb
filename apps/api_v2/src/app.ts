@@ -209,8 +209,9 @@ export async function buildApp({
     { schema: SCHEMAS.listPages },
     async (request, reply) => {
       const drafts = request.query.drafts === "true";
+      const pages = await store.list(drafts);
       reply.header("Cache-Control", drafts ? EDITOR_READ : PUBLIC_READ);
-      return await store.list(drafts);
+      return pages;
     },
   );
 
@@ -258,8 +259,9 @@ export async function buildApp({
     "/collections",
     { schema: SCHEMAS.listCollections },
     async (_request, reply) => {
+      const collections = await store.listCollections();
       reply.header("Cache-Control", EDITOR_READ);
-      return await store.listCollections();
+      return collections;
     },
   );
 
@@ -268,10 +270,11 @@ export async function buildApp({
     { schema: SCHEMAS.listRecords },
     async (request, reply) => {
       const keys = request.query.keys === "true";
-      reply.header("Cache-Control", keys ? EDITOR_READ : PUBLIC_READ);
-      return keys
+      const records = keys
         ? await store.recordRows(request.params.key)
         : await store.records(request.params.key);
+      reply.header("Cache-Control", keys ? EDITOR_READ : PUBLIC_READ);
+      return records;
     },
   );
 
