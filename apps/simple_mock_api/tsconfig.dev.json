@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@govtech-bb/landing-v2-contract": [
+        "../../packages/landing-v2-contract/src/index.ts"
+      ]
+    }
+  },
+  "include": ["src/**/*.ts", "../../packages/*/src/**/*.ts"]
+}
