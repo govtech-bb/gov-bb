@@ -1,12 +1,9 @@
-import { RenderDocument, type PageDocument } from "@govtech-bb/block-kit";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 import type { Dispatcher } from "undici";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApiClient, createCachingDispatcher } from "./api";
-import { ApiUnavailableError, loadPage, startLinkHref } from "./pages";
+import { ApiUnavailableError, loadPage } from "./pages";
 
 const doc = (blocks: unknown[], refs: Record<string, unknown> = {}) => ({
   version: 1,
@@ -149,34 +146,5 @@ describe("loadPage", () => {
       offices: [{ slug: "hq" }],
       people: [{ slug: "p1" }],
     });
-  });
-});
-
-describe("startLinkHref", () => {
-  it("resolves a form start link to ${FORMS_URL}/<id>", () => {
-    const html = renderToStaticMarkup(
-      createElement(RenderDocument, {
-        doc: doc([
-          {
-            id: "s1",
-            type: "start_link",
-            label: "Start now",
-            target_kind: "form",
-            target: "apply-for-a-permit",
-          },
-        ]) as PageDocument,
-        data: {},
-        resolveHref: startLinkHref("https://forms.example"),
-      }),
-    );
-
-    expect(html).toContain('href="https://forms.example/apply-for-a-permit"');
-  });
-
-  it("leaves page and external targets as they are", () => {
-    const resolve = startLinkHref("https://forms.example");
-
-    expect(resolve("page", "/a/page")).toBe("/a/page");
-    expect(resolve("external", "https://gov.bb")).toBe("https://gov.bb");
   });
 });

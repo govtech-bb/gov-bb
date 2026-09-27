@@ -3,7 +3,8 @@ import { CATEGORY_TAXONOMY } from "@govtech-bb/content/categories";
 import { Breadcrumbs } from "@govtech-bb/react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { forwardRef, type ComponentPropsWithoutRef } from "react";
-import { getPage, startLinkHref } from "../server/pages";
+import { getPage } from "../server/pages";
+import { startLinkHref } from "../start-link";
 
 /**
  * Every content page, resolved by url.

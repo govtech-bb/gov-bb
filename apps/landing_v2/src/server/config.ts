@@ -30,7 +30,7 @@ function resolveUrl(
   notSet: string,
 ): string {
   const url = configUrl || envUrl || (isDev ? devDefault : undefined);
-  // Assumption (#2702): 8 — a built server without the variable fails here,
+  // Assumption (#2702): 8 and 9 — a built server without the variable fails here,
   // at its first request, not at build time: CI's build step and the local
   // nx gates build every project with no environment set, so a build-time
   // failure would break them. apps/landing's forms-api-url.ts fails the same

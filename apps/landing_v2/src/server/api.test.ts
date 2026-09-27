@@ -175,4 +175,27 @@ describe("apiGet", () => {
       status: 502,
     });
   });
+
+  it("returns unreachable with the undici timeout code when api_v2 hangs", async () => {
+    // Accepts the connection but never sends a response.
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    api = await startApi(() => ({ status: 200, hold: held }));
+    const timingOut = createCachingDispatcher({
+      headersTimeout: 200,
+      bodyTimeout: 200,
+    });
+    const client = createApiClient(api.baseUrl, timingOut);
+
+    const result = await client.apiGet("/pages");
+
+    expect(result.kind).toBe("unreachable");
+    const cause = (result as { cause: unknown }).cause as {
+      cause?: { code?: string };
+    };
+    expect(cause.cause?.code).toBe("UND_ERR_HEADERS_TIMEOUT");
+
+    release();
+    await timingOut.destroy();
+  });
 });

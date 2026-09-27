@@ -30,7 +30,8 @@ Both are server-only and baked into Nitro `runtimeConfig` at build time,
 because the Amplify SSR Lambda never sees the Console's variables at runtime.
 A build without either still succeeds, so CI can build with no environment,
 but the built server then fails at its first request with an error naming the
-missing variable. `vite dev` falls back to the local ports. See
+missing variable. `vite dev` falls back to the local ports. `.env` is read by
+`vite dev` only; export the variables in the shell for `vite build`. See
 `.env.example`.
 
 | Variable     | What it is                            | `vite dev` default      |

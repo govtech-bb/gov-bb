@@ -33,9 +33,7 @@ function RootDocument({ children }: { children: ReactNode }) {
         <header className="site-bar">
           <span className="site-mark">GOV.BB</span>
           <span className="site-tag">Site</span>
-          <span className="site-note">
-            Spike · server-rendered · not for merge
-          </span>
+          <span className="site-note">Spike · server-rendered</span>
         </header>
         <main className="site-main">{children}</main>
         <Scripts />
