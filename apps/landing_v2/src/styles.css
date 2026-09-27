@@ -1,0 +1,7 @@
+@import 'tailwindcss';
+/* Register the design system's tokens as Tailwind theme values, so utilities
+   resolve to the same custom properties the components use. */
+@import '@govtech-bb/frontend/tailwind';
+/* Keep design-system components below application utilities in the cascade. */
+@import '@govtech-bb/frontend/css' layer(components);
+@plugin "@tailwindcss/typography";

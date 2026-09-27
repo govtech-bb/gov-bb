@@ -1,0 +1,42 @@
+{
+  "name": "@govtech-bb/landing-v2",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev --port 3050 --strictPort",
+    "build": "vite build",
+    "start": "PORT=3050 node .output/server/index.mjs",
+    "test": "vitest run --passWithNoTests",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write . && eslint --fix",
+    "check": "prettier --check ."
+  },
+  "dependencies": {
+    "@govtech-bb/analytics": "workspace:*",
+    "@govtech-bb/frontend": "1.0.0-alpha.29",
+    "@govtech-bb/react": "1.0.0-alpha.29",
+    "@tailwindcss/vite": "^4.3.0",
+    "@tanstack/react-router": "catalog:",
+    "@tanstack/react-start": "catalog:",
+    "@tanstack/router-plugin": "catalog:",
+    "nitro": "3.0.260429-beta",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "^4.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.19",
+    "@tanstack/eslint-config": "^0.4.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "^6.0.2",
+    "eslint": "^10.2.0",
+    "prettier": "^3.8.1",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "^4.1.11"
+  }
+}

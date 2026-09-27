@@ -1,0 +1,66 @@
+{
+  "name": "landing-v2",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/landing_v2/src",
+  "projectType": "application",
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*", "sharedGlobals"]
+  },
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/.output"],
+      "options": {
+        "command": "pnpm run build",
+        "cwd": "apps/landing_v2"
+      },
+      "dependsOn": ["^build"],
+      "inputs": [
+        "production",
+        "^production",
+        {
+          "env": "CONTENT_API_URL"
+        },
+        {
+          "env": "VITE_FORMS_URL"
+        },
+        {
+          "env": "VITE_SITE_URL"
+        },
+        {
+          "env": "VITE_UMAMI_WEBSITE_ID"
+        }
+      ]
+    },
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm run dev",
+        "cwd": "apps/landing_v2"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm run lint",
+        "cwd": "apps/landing_v2"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm run test",
+        "cwd": "apps/landing_v2"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm run typecheck",
+        "cwd": "apps/landing_v2"
+      },
+      "dependsOn": ["^build"]
+    }
+  },
+  "tags": []
+}
