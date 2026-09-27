@@ -40,16 +40,16 @@ export interface PageSummary {
   updated_at: string;
 }
 
-/** api_v2 could not be reached at all: a refused connection, a DNS failure. */
-export class ApiUnreachableError extends Error {
-  constructor(cause: unknown) {
-    // The error code, not the message: the message carries api_v2's host,
-    // and this is rendered on the page.
-    const code = (cause as { cause?: { code?: unknown } }).cause?.code;
-    super(`api_v2 could not be reached${code ? ` (${String(code)})` : ""}.`, {
-      cause,
-    });
-    this.name = "ApiUnreachableError";
+/**
+ * api_v2 could not serve a read: it could not be reached at all (a refused
+ * connection, a DNS failure), or it answered an error status with nothing
+ * cached to serve instead — the database down behind a running api_v2 is a
+ * 500. The server functions answer either with a 503.
+ */
+export class ApiUnavailableError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "ApiUnavailableError";
   }
 }
 
@@ -58,12 +58,21 @@ function bodyOf(result: ApiResult, what: string): unknown {
   switch (result.kind) {
     case "ok":
       return result.body;
-    case "unreachable":
-      throw new ApiUnreachableError(result.cause);
+    case "unreachable": {
+      // The error code, not the message: the message carries api_v2's host,
+      // and this is rendered on the page.
+      const code = (result.cause as { cause?: { code?: unknown } }).cause?.code;
+      throw new ApiUnavailableError(
+        `api_v2 could not be reached${code ? ` (${String(code)})` : ""}.`,
+        { cause: result.cause },
+      );
+    }
     case "not_found":
       throw new Error(`api_v2 has no ${what}.`);
     case "server_error":
-      throw new Error(`api_v2 answered ${result.status} for ${what}.`);
+      throw new ApiUnavailableError(
+        `api_v2 answered ${result.status} for ${what}.`,
+      );
   }
 }
 
@@ -130,14 +139,14 @@ export function startLinkHref(
     kind === "form" ? `${formsBaseUrl}/${target}` : target;
 }
 
-/** Runs a load, answering 503 when api_v2 could not be reached. */
-async function withUnreachableStatus<T>(load: () => Promise<T>): Promise<T> {
+/** Runs a load, answering 503 when api_v2 could not serve it. */
+async function withUnavailableStatus<T>(load: () => Promise<T>): Promise<T> {
   try {
     return await load();
   } catch (error) {
-    // Assumption (#2702): 14 — an unreachable api_v2 is a 503, not the 500
-    // any other failure is.
-    if (error instanceof ApiUnreachableError) setResponseStatus(503);
+    // Assumption (#2702): 14 — an unreachable or failing api_v2 is a 503, not
+    // the 500 a malformed document is.
+    if (error instanceof ApiUnavailableError) setResponseStatus(503);
     throw error;
   }
 }
@@ -151,12 +160,12 @@ export const getPage = createServerFn({
 })
   .validator((url: string) => url)
   .handler(async ({ data: url }) => {
-    const page = await withUnreachableStatus(() =>
+    const page = await withUnavailableStatus(() =>
       loadPage(url, createApiClient(apiV2Url())),
     );
     return page && { ...page, formsUrl: formsUrl() };
   });
 
 export const listPages = createServerFn({ method: "GET" }).handler(() =>
-  withUnreachableStatus(() => loadIndex(createApiClient(apiV2Url()))),
+  withUnavailableStatus(() => loadIndex(createApiClient(apiV2Url()))),
 );

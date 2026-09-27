@@ -19,9 +19,10 @@ strangles `apps/landing` in place.
   minutes stale-while-revalidate, a day stale-if-error. The cache is in
   memory, one per process.
 - Every document is validated against `pageDocumentSchema` before it renders.
-  A malformed document is an error naming its slug and the failing field; an
-  unreachable `api_v2` is a 503 naming `api_v2`. Both messages are shown on the
-  page in full.
+  A malformed document is an error naming its slug and the failing field. An
+  unreachable `api_v2`, or one answering 5xx with nothing cached to serve (the
+  database down), is a 503 naming `api_v2` and the error code or status. Both
+  messages are shown on the page in full.
 
 ## Environment
 

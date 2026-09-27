@@ -18,9 +18,13 @@ import { Agent, fetch, interceptors, type Dispatcher } from "undici";
  * `shared` mode undici reads it as proxy-revalidate and turns both stale
  * directives off.
  *
- * Assumption (#2702): 6 — stale-if-error covers api_v2 answering 500–504,
- * not api_v2 being down. A refused connection is an error, not a response,
- * so it is the `unreachable` result whether or not anything is cached.
+ * Assumption (#2702): 6 — stale-if-error covers api_v2 answering 500–504
+ * while a stale copy is being revalidated, not api_v2 being down. A refused
+ * connection is an error, not a response, so it is the `unreachable` result
+ * whether or not anything is cached. When nothing cached can be served, a
+ * 5xx (`server_error`) and a refused connection (`unreachable`) both reach
+ * the page as a 503 naming api_v2, with the status or the error code kept
+ * in the message (pages.ts).
  * Assumption (#2702): 7 — the cache is in memory, one per process.
  */
 

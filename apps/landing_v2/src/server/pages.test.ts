@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { Dispatcher } from "undici";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApiClient, createCachingDispatcher } from "./api";
-import { ApiUnreachableError, loadPage, startLinkHref } from "./pages";
+import { ApiUnavailableError, loadPage, startLinkHref } from "./pages";
 
 const doc = (blocks: unknown[], refs: Record<string, unknown> = {}) => ({
   version: 1,
@@ -86,8 +86,26 @@ describe("loadPage", () => {
     const client = createApiClient(api.baseUrl, dispatcher);
 
     const failure = loadPage("/test", client);
-    await expect(failure).rejects.toBeInstanceOf(ApiUnreachableError);
+    await expect(failure).rejects.toBeInstanceOf(ApiUnavailableError);
     await expect(failure).rejects.toThrow(/api_v2/);
+  });
+
+  // The database down behind a running api_v2: it answers 500, and with
+  // nothing cached there is no stale copy to serve instead.
+  it("throws an error naming api_v2 and the status when it answers 5xx", async () => {
+    const api = await startApi((path) =>
+      path === byUrl("/test")
+        ? { status: 500, body: { error: "internal_error" } }
+        : undefined,
+    );
+    close = api.close;
+    const client = createApiClient(api.baseUrl, dispatcher);
+
+    const failure = loadPage("/test", client);
+    // The class the server functions answer 503 for, as for a refused
+    // connection.
+    await expect(failure).rejects.toBeInstanceOf(ApiUnavailableError);
+    await expect(failure).rejects.toThrow(/api_v2 answered 500/);
   });
 
   it("fetches the records of every collection the page reads, in parallel", async () => {

@@ -9,7 +9,7 @@ import { serverFnStatus } from "../server/status";
 import appCss from "../styles.css?url";
 
 export const Route = createRootRoute({
-  // Every page request, so an unreachable api_v2 is a 503 on first load too.
+  // Every page request, so an unavailable api_v2 is a 503 on first load too.
   server: { middleware: [serverFnStatus] },
   head: () => ({
     meta: [
