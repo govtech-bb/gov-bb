@@ -97,6 +97,41 @@ describe("GET /pages/by-url", () => {
     const response = await app.inject({ url: "/pages/by-url" });
     expect(response.statusCode).toBe(400);
   });
+
+  // #2802: a draft was reachable by anyone who knew or guessed its url.
+  it("hides a draft behind a 404, exactly like a missing url", async () => {
+    const draft = await seedPage({ url: "/draft-only", is_draft: true });
+    const response = await app.inject({
+      url: `/pages/by-url?url=${encodeURIComponent(draft.url)}`,
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({
+      error: "not_found",
+      message: `No page at ${draft.url}`,
+    });
+  });
+
+  it("reveals a draft with ?drafts=true, marked no-cache", async () => {
+    const draft = await seedPage({ url: "/draft-only", is_draft: true });
+    const response = await app.inject({
+      url: `/pages/by-url?url=${encodeURIComponent(draft.url)}&drafts=true`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().id).toBe(draft.id);
+    expect(response.headers["cache-control"]).toBe("no-cache");
+  });
+
+  it("still resolves a published page, unaffected by the drafts param", async () => {
+    const created = await seedPage();
+    const response = await app.inject({
+      url: `/pages/by-url?url=${encodeURIComponent(created.url)}`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().id).toBe(created.id);
+  });
 });
 
 describe("PUT /pages/:id", () => {
@@ -263,6 +298,69 @@ describe("collections", () => {
   });
 });
 
+describe("Cache-Control", () => {
+  beforeEach(async () => {
+    await db.execute(
+      (await import("drizzle-orm")).sql`
+        insert into data_collections (key, title, record_key, schema)
+        values ('pharmacies', 'Pharmacies', 'slug',
+                '{"fields":[{"key":"name","label":"Name","type":"text"}]}'::jsonb)
+      `,
+    );
+  });
+
+  const PUBLIC_READ =
+    "public, max-age=60, stale-while-revalidate=300, stale-if-error=86400";
+
+  it("sends PUBLIC_READ from /pages, /pages/by-url and /collections/:key/records", async () => {
+    const created = await seedPage();
+
+    const pages = await app.inject({ url: "/pages" });
+    const byUrl = await app.inject({
+      url: `/pages/by-url?url=${encodeURIComponent(created.url)}`,
+    });
+    const records = await app.inject({
+      url: "/collections/pharmacies/records",
+    });
+
+    expect(pages.headers["cache-control"]).toBe(PUBLIC_READ);
+    expect(byUrl.headers["cache-control"]).toBe(PUBLIC_READ);
+    expect(records.headers["cache-control"]).toBe(PUBLIC_READ);
+  });
+
+  it("sends no-cache from /pages/:id, ?drafts=true, ?keys=true and /collections", async () => {
+    const created = await seedPage();
+
+    const byId = await app.inject({ url: `/pages/${created.id}` });
+    const draftsList = await app.inject({ url: "/pages?drafts=true" });
+    const keys = await app.inject({
+      url: "/collections/pharmacies/records?keys=true",
+    });
+    const collections = await app.inject({ url: "/collections" });
+
+    expect(byId.headers["cache-control"]).toBe("no-cache");
+    expect(draftsList.headers["cache-control"]).toBe("no-cache");
+    expect(keys.headers["cache-control"]).toBe("no-cache");
+    expect(collections.headers["cache-control"]).toBe("no-cache");
+  });
+
+  it("answers a matching If-None-Match with 304, carrying the same Cache-Control", async () => {
+    const created = await seedPage();
+    const first = await app.inject({ url: `/pages/${created.id}` });
+    const etag = first.headers.etag as string;
+
+    const second = await app.inject({
+      url: `/pages/${created.id}`,
+      headers: { "if-none-match": etag },
+    });
+
+    expect(second.statusCode).toBe(304);
+    expect(second.headers["cache-control"]).toBe(
+      first.headers["cache-control"],
+    );
+  });
+});
+
 describe("timestamp precision", () => {
   /**
    * `updated_at` has to survive the round trip through JSON exactly, or
@@ -322,20 +420,17 @@ describe("CORS", () => {
     );
   });
 
-  it("allows the server-rendered site, whose links are client-side fetches", async () => {
-    // The site's first request is made by its own server and never meets
-    // CORS. Every link clicked inside it is a browser fetch that does, so
-    // leaving this origin out breaks navigation while the landing page looks
-    // fine — which is how it actually broke.
+  it("refuses landing_v2's origin, now that every fetch is server-side", async () => {
+    // Assumption (#2702): landing_v2 fetches api_v2 from its own server, not
+    // the browser, so its origin never meets CORS and came out of the
+    // default allow-list.
     const response = await app.inject({
       method: "GET",
       url: "/pages",
       headers: { origin: "http://localhost:3030" },
     });
 
-    expect(response.headers["access-control-allow-origin"]).toBe(
-      "http://localhost:3030",
-    );
+    expect(response.headers["access-control-allow-origin"]).toBeUndefined();
   });
 
   it("refuses to hand an unknown site permission to write", async () => {

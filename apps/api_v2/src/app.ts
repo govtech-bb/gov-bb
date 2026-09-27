@@ -33,6 +33,22 @@ import {
  */
 export const IF_UPDATED_AT = "if-updated-at";
 
+/**
+ * The two Cache-Control policies a read route sends.
+ *
+ * `PUBLIC_READ` is what a shared cache (undici in `landing_v2`, later a CDN)
+ * may hold and serve to anyone. `EDITOR_READ` is `no-cache` — revalidate on
+ * every request — for anything only the editor should see: an id lookup, a
+ * draft, or a record's key.
+ */
+// Assumption (#2702): `max-age=60, stale-while-revalidate=300,
+// stale-if-error=86400`, not the issue's `max-age=0, s-maxage=60, …`. Nothing
+// browser-side ever reads this response, so `max-age=0` protects no reader;
+// `stale-if-error`'s one day is our own choice, since the issue gives none.
+export const PUBLIC_READ =
+  "public, max-age=60, stale-while-revalidate=300, stale-if-error=86400";
+export const EDITOR_READ = "no-cache";
+
 export interface AppOptions {
   db: Database;
   logger?: boolean;
@@ -59,18 +75,17 @@ export async function buildApp({
    * to include PUT and DELETE is what turned that from theoretical into
    * reachable, so the two changes belong together.
    *
-   * `CORS_ORIGINS` is a comma-separated list. The default covers both dev
-   * servers, and it has to: the site is server-rendered, so its first request
-   * comes from the server and never meets CORS at all, while a link clicked
-   * inside it is a client-side fetch that does. Leaving the site's origin out
-   * therefore breaks navigation while the page it started on looks perfectly
-   * fine — which is exactly how it broke.
+   * `CORS_ORIGINS` is a comma-separated list. The default covers only
+   * `editor_v2`'s dev servers, because that is the only browser app that
+   * calls `api_v2` directly — `landing_v2` is server-rendered, so every
+   * fetch it makes happens on its own server and never meets CORS at all.
    */
+  // Assumption (#2702): landing_v2 never makes a cross-origin call once
+  // every fetch is server-side, so :3030 and :3093 came out of the default;
+  // writes are still unauthenticated (#2701).
   const allowedOrigins = (
     process.env.CORS_ORIGINS ??
     [
-      "http://localhost:3030", // landing_v2, the server-rendered site
-      "http://localhost:3093", // landing_v2 under Playwright
       "http://localhost:3010", // editor_v2
       "http://localhost:3011",
       "http://localhost:3092", // editor_v2 under Playwright
@@ -128,9 +143,11 @@ export async function buildApp({
 
     const etag = `"${createHash("sha1").update(payload).digest("base64url")}"`;
     reply.header("ETag", etag);
-    // `no-cache` means "revalidate", not "do not cache" — exactly what is
-    // wanted for content that can change at any moment but usually has not.
-    reply.header("Cache-Control", "no-cache");
+    // A route that already set PUBLIC_READ or EDITOR_READ keeps it; this is
+    // only the fallback for a route that didn't set a policy of its own.
+    if (!reply.hasHeader("Cache-Control")) {
+      reply.header("Cache-Control", "no-cache");
+    }
 
     if (request.headers["if-none-match"] === etag) {
       reply.code(304);
@@ -183,10 +200,18 @@ export async function buildApp({
 
   /* ------------------------------------------------------------ reads */
 
+  // Assumption (#2702): which of PUBLIC_READ/EDITOR_READ each route below
+  // sends is the plan's own split — publicly-cacheable pages and records vs.
+  // anything only the editor reads (an id lookup, a draft, a record's key).
+
   app.get<{ Querystring: { drafts?: string } }>(
     "/pages",
     { schema: SCHEMAS.listPages },
-    async (request) => await store.list(request.query.drafts === "true"),
+    async (request, reply) => {
+      const drafts = request.query.drafts === "true";
+      reply.header("Cache-Control", drafts ? EDITOR_READ : PUBLIC_READ);
+      return await store.list(drafts);
+    },
   );
 
   /*
@@ -194,19 +219,21 @@ export async function buildApp({
    * routes on `content_pages.url`, so this is the endpoint `landing_v2`
    * actually uses — the id is the editor's key, not the site's.
    */
-  app.get<{ Querystring: { url?: string } }>(
+  app.get<{ Querystring: { url?: string; drafts?: string } }>(
     "/pages/by-url",
     { schema: SCHEMAS.getPageByUrl },
     async (request, reply) => {
       // `url` is required by the route schema, so a missing one is a 400 from
       // Fastify before this runs.
       const url = request.query.url as string;
-      const doc = await store.getByUrl(url);
+      const drafts = request.query.drafts === "true";
+      const doc = await store.getByUrl(url, drafts);
       if (!doc) {
         return reply
           .status(404)
           .send({ error: "not_found", message: `No page at ${url}` });
       }
+      reply.header("Cache-Control", drafts ? EDITOR_READ : PUBLIC_READ);
       return doc;
     },
   );
@@ -222,6 +249,7 @@ export async function buildApp({
           message: `No page with id ${request.params.id}`,
         });
       }
+      reply.header("Cache-Control", EDITOR_READ);
       return doc;
     },
   );
@@ -229,16 +257,22 @@ export async function buildApp({
   app.get(
     "/collections",
     { schema: SCHEMAS.listCollections },
-    async () => await store.listCollections(),
+    async (_request, reply) => {
+      reply.header("Cache-Control", EDITOR_READ);
+      return await store.listCollections();
+    },
   );
 
   app.get<{ Params: { key: string }; Querystring: { keys?: string } }>(
     "/collections/:key/records",
     { schema: SCHEMAS.listRecords },
-    async (request) =>
-      request.query.keys === "true"
+    async (request, reply) => {
+      const keys = request.query.keys === "true";
+      reply.header("Cache-Control", keys ? EDITOR_READ : PUBLIC_READ);
+      return keys
         ? await store.recordRows(request.params.key)
-        : await store.records(request.params.key),
+        : await store.records(request.params.key);
+    },
   );
 
   /*

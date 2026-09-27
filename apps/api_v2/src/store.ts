@@ -122,11 +122,17 @@ export class ApiStore {
     return rows[0] ? toDocument(rows[0]) : null;
   }
 
-  async getByUrl(url: string): Promise<PageDocument | null> {
-    const rows = await this.db
-      .select()
-      .from(contentPages)
-      .where(eq(contentPages.url, url));
+  // Assumption (#2702): the draft-leak fix (#2802) follows the issue's own
+  // suggestion — filter is_draft out unless asked for, the same shape as
+  // list().
+  async getByUrl(
+    url: string,
+    includeDrafts = false,
+  ): Promise<PageDocument | null> {
+    const where = includeDrafts
+      ? eq(contentPages.url, url)
+      : and(eq(contentPages.url, url), eq(contentPages.isDraft, false));
+    const rows = await this.db.select().from(contentPages).where(where);
     return rows[0] ? toDocument(rows[0]) : null;
   }
 

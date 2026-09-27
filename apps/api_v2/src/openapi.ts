@@ -198,7 +198,14 @@ export const SCHEMAS = {
     tags: ["pages"],
     querystring: {
       type: "object",
-      properties: { url: { type: "string" } },
+      properties: {
+        url: { type: "string" },
+        drafts: {
+          type: "string",
+          enum: ["true", "false"],
+          description: "`true` includes drafts.",
+        },
+      },
       required: ["url"],
       additionalProperties: false,
     },
