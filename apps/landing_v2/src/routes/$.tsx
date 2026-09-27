@@ -3,7 +3,7 @@ import { CATEGORY_TAXONOMY } from "@govtech-bb/content/categories";
 import { Breadcrumbs } from "@govtech-bb/react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { forwardRef, type ComponentPropsWithoutRef } from "react";
-import { loadPage } from "../site-data";
+import { getPage, startLinkHref } from "../server/pages";
 
 /**
  * Every content page, resolved by url.
@@ -12,18 +12,32 @@ import { loadPage } from "../site-data";
  * `content_pages.url` — adding a page in the editor makes it reachable
  * without touching this file.
  *
- * The loader runs on the server, so the document and every collection its
- * blocks read are in hand before the first byte of HTML. `RenderDocument`
- * takes them as props; it has no hooks, no fetching and no state in which it
- * has been mounted with nothing to show.
+ * The loader calls only `getPage`, a server function: in-process during SSR,
+ * and through landing_v2's own server on a client-side navigation, so the
+ * browser never calls api_v2. The document and every collection its blocks
+ * read are in hand before the first byte of HTML. `RenderDocument` takes them
+ * as props; it has no hooks, no fetching and no state in which it has been
+ * mounted with nothing to show.
  */
 export const Route = createFileRoute("/$")({
   loader: async ({ params }) => {
     const url = `/${params._splat ?? ""}`.replace(/\/+$/, "") || "/";
-    const { doc, data } = await loadPage(url);
-    if (!doc) throw notFound();
-    return { doc, data };
+    const page = await getPage({ data: url });
+    if (!page) throw notFound();
+    return page;
   },
+  // Assumption (#2702): 12 — the page's title and meta description, nothing
+  // else: no canonical, Open Graph or JSON-LD.
+  head: ({ loaderData }) => ({
+    meta: loaderData
+      ? [
+          { title: loaderData.doc.title },
+          ...(loaderData.doc.description
+            ? [{ name: "description", content: loaderData.doc.description }]
+            : []),
+        ]
+      : [],
+  }),
   component: SitePage,
   notFoundComponent: NotFound,
 });
@@ -50,6 +64,9 @@ const titleCase = (slug: string) => {
  * The address already encodes the hierarchy, so a breadcrumb field would be a
  * second copy of the same fact, free to disagree with the first. Ancestors
  * only: the current page is not a crumb.
+ *
+ * Assumption (#2702): 13 — from the url and `CATEGORY_TAXONOMY`, as #2789 did
+ * it; api_v2 has no categories table.
  */
 function crumbsFor(url: string) {
   const segments = url.split("/").filter(Boolean);
@@ -72,7 +89,7 @@ function crumbsFor(url: string) {
 }
 
 function SitePage() {
-  const { doc, data } = Route.useLoaderData();
+  const { doc, data, formsUrl } = Route.useLoaderData();
 
   // A finder page is one wide block; prose pages keep the reading measure.
   const wide = doc.body.blocks.some((block) => block.type === "finder");
@@ -91,7 +108,11 @@ function SitePage() {
         "the records are not here yet", which was only ever true because the
         page rendered before its data arrived. Server-side it cannot happen.
       */}
-      <RenderDocument doc={doc} data={data} />
+      <RenderDocument
+        doc={doc}
+        data={data}
+        resolveHref={startLinkHref(formsUrl)}
+      />
     </div>
   );
 }
@@ -101,7 +122,7 @@ function NotFound() {
     <div className="bk-document">
       <h1 className="bk-title">Page not found</h1>
       <p className="bk-paragraph">
-        Nothing in <code>content_pages</code> has that url.
+        No published page in <code>content_pages</code> has that url.
       </p>
       <p className="bk-paragraph">
         <Link to="/">Back to the index</Link>

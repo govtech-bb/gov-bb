@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { listPages } from "../site-data";
+import { listPages } from "../server/pages";
 
 export const Route = createFileRoute("/")({
   // Resolved before the component renders, on the server for the first
-  // request. There is no state in which this list is unknown.
+  // request and through landing_v2's own server after that — never from the
+  // browser to api_v2. There is no state in which this list is unknown.
   loader: async () => ({ pages: await listPages() }),
   component: SiteIndex,
 });
