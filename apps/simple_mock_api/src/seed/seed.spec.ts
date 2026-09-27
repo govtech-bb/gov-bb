@@ -8,6 +8,9 @@ import { seed } from "./index.js";
 
 const SEED_DIR = fileURLToPath(new URL("../../seed", import.meta.url));
 const FIXTURES_DIR = fileURLToPath(new URL("./__fixtures__", import.meta.url));
+const DUPLICATE_URL_DIR = fileURLToPath(
+  new URL("./__fixtures__/duplicate-url", import.meta.url),
+);
 
 type TreeNode = { position?: unknown; children?: TreeNode[] };
 
@@ -119,6 +122,35 @@ describe("seed", () => {
       c: number;
     };
     expect(pageCount.c).toBe(4);
+    expect(formCount.c).toBe(2);
+  });
+
+  it("rolls back a bad seed that fails inside the transaction (duplicate URL), leaving previous good rows in place", async () => {
+    const db = openDb(":memory:");
+    await seed(db, SEED_DIR);
+
+    // Both fixture pages are individually valid frontmatter (unlike the
+    // pre-transaction fixtures above), so buildPages/compilePage succeed and
+    // the failure only happens once the second insert trips the `url`
+    // UNIQUE constraint inside the transaction — proving the ROLLBACK, not
+    // just an early validation throw.
+    await expect(seed(db, DUPLICATE_URL_DIR)).rejects.toThrow(
+      /family-birth-relationships\/dup/,
+    );
+
+    const pages = db.prepare("SELECT url FROM pages ORDER BY url").all() as {
+      url: string;
+    }[];
+    expect(pages.map((p) => p.url)).toEqual([
+      "family-birth-relationships/get-birth-certificate",
+      "family-birth-relationships/get-birth-certificate/start",
+      "family-birth-relationships/get-death-certificate",
+      "family-birth-relationships/get-death-certificate/start",
+    ]);
+
+    const formCount = db.prepare("SELECT COUNT(*) AS c FROM forms").get() as {
+      c: number;
+    };
     expect(formCount.c).toBe(2);
   });
 });
