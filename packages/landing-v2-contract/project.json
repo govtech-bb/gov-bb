@@ -1,0 +1,18 @@
+{
+  "name": "landing-v2-contract",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/landing-v2-contract/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "packages/landing-v2-contract/dist",
+        "tsConfig": "packages/landing-v2-contract/tsconfig.json",
+        "main": "packages/landing-v2-contract/src/index.ts"
+      }
+    }
+  },
+  "tags": []
+}
