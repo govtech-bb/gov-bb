@@ -66,7 +66,7 @@ describe("hrefs it must refuse", () => {
 
 describe("the layers behind the renderer", () => {
   it("the body schema refuses an unsafe external ref", async () => {
-    const { bodySchema } = await import("./schema");
+    const { bodySchema } = await import("./schema.js");
     const body = {
       version: 1,
       blocks: [],
@@ -83,7 +83,7 @@ describe("the layers behind the renderer", () => {
   });
 
   it("the body schema refuses a start_link to an unsafe target", async () => {
-    const { bodySchema } = await import("./schema");
+    const { bodySchema } = await import("./schema.js");
     const withTarget = (target: string, kind = "external") => ({
       version: 1,
       blocks: [
