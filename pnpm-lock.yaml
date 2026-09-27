@@ -1229,16 +1229,52 @@ importers:
 
   apps/simple_mock_api:
     dependencies:
+      '@govtech-bb/content':
+        specifier: workspace:*
+        version: link:../../packages/content
       '@govtech-bb/landing-v2-contract':
         specifier: workspace:*
         version: link:../../packages/landing-v2-contract
       express:
         specifier: ^5.1.0
         version: 5.2.1
+      gray-matter:
+        specifier: ^4.0.3
+        version: 4.0.3
+      rehype-autolink-headings:
+        specifier: ^7.1.0
+        version: 7.1.0
+      rehype-raw:
+        specifier: ^7.0.0
+        version: 7.0.0
+      rehype-sanitize:
+        specifier: ^6.0.0
+        version: 6.0.0
+      rehype-slug:
+        specifier: ^6.0.0
+        version: 6.0.0
+      remark-directive:
+        specifier: 4.0.0
+        version: 4.0.0
+      remark-gfm:
+        specifier: ^4.0.1
+        version: 4.0.1
+      remark-parse:
+        specifier: ^11.0.0
+        version: 11.0.0
+      remark-rehype:
+        specifier: ^11.1.1
+        version: 11.1.2
+      unified:
+        specifier: ^11.0.5
+        version: 11.0.5
     devDependencies:
       '@types/express':
         specifier: ^5.0.0
         version: 5.0.6
+      '@types/hast':
+        specifier: ^3.0.4
+        version: 3.0.5
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.6

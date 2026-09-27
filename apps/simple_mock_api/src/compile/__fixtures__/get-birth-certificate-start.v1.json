@@ -1,0 +1,245 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "You cannot use the online service if you would like the certificate to be sent overseas. Instead, contact the Registration Department."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "h2",
+      "properties": {
+        "id": "how-long-does-it-take"
+      },
+      "children": [
+        {
+          "type": "text",
+          "value": "How long does it take?"
+        },
+        {
+          "type": "element",
+          "tagName": "a",
+          "properties": {
+            "ariaHidden": true,
+            "className": ["anchor-heading"],
+            "tabIndex": -1,
+            "href": "#how-long-does-it-take"
+          },
+          "children": [
+            {
+              "type": "text",
+              "value": "#"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "It shouldn’t take longer than 20 minutes."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "h2",
+      "properties": {
+        "id": "what-you-will-need"
+      },
+      "children": [
+        {
+          "type": "text",
+          "value": "What you will need"
+        },
+        {
+          "type": "element",
+          "tagName": "a",
+          "properties": {
+            "ariaHidden": true,
+            "className": ["anchor-heading"],
+            "tabIndex": -1,
+            "href": "#what-you-will-need"
+          },
+          "children": [
+            {
+              "type": "text",
+              "value": "#"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "You will need a debit or credit card, and you will need to have (or create) an EZPay+ account."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "Each certified copy costs $5 BBD. People aged 60 and over pay $1 BBD per certificate."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "The form asks for:"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "ul",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "\n"
+        },
+        {
+          "type": "element",
+          "tagName": "li",
+          "properties": {},
+          "children": [
+            {
+              "type": "text",
+              "value": "the applicant’s name, address and National ID number"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": "\n"
+        },
+        {
+          "type": "element",
+          "tagName": "li",
+          "properties": {},
+          "children": [
+            {
+              "type": "text",
+              "value": "the full name, date of birth, place of birth and place of baptism of the person named on the certificate"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": "\n"
+        },
+        {
+          "type": "element",
+          "tagName": "li",
+          "properties": {},
+          "children": [
+            {
+              "type": "text",
+              "value": "the full name(s) of the parent(s) of the person named on the certificate"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": "\n"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "element",
+          "tagName": "a",
+          "properties": {
+            "dataStartLink": "",
+            "dataFormId": "get-birth-certificate"
+          },
+          "children": [
+            {
+              "type": "text",
+              "value": "Start"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "data": {
+    "quirksMode": false
+  }
+}

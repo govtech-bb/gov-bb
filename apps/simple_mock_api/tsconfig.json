@@ -15,11 +15,17 @@
     "types": ["node"],
     "paths": {
       "@govtech-bb/landing-v2-contract": [
-        "../../packages/landing-v2-contract/src/index.ts"
+        "../../packages/landing-v2-contract/dist/src/index.d.ts"
+      ],
+      "@govtech-bb/content/markdown-authoring": [
+        "../../packages/content/dist/src/markdown-authoring.d.ts"
       ]
     }
   },
-  "references": [{ "path": "../../packages/landing-v2-contract" }],
+  "references": [
+    { "path": "../../packages/landing-v2-contract" },
+    { "path": "../../packages/content" }
+  ],
   "include": ["src/**/*.ts"],
   "exclude": ["dist", "**/*.spec.ts", "scripts"]
 }
