@@ -19,6 +19,9 @@
       ],
       "@govtech-bb/content/markdown-authoring": [
         "../../packages/content/dist/src/markdown-authoring.d.ts"
+      ],
+      "@govtech-bb/content/categories": [
+        "../../packages/content/dist/src/categories.d.ts"
       ]
     }
   },
