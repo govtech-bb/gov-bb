@@ -27,8 +27,10 @@ strangles `apps/landing` in place.
 
 Both are server-only and baked into Nitro `runtimeConfig` at build time,
 because the Amplify SSR Lambda never sees the Console's variables at runtime.
-A production build without either fails; `vite dev` falls back to the local
-ports. See `.env.example`.
+A build without either still succeeds, so CI can build with no environment,
+but the built server then fails at its first request with an error naming the
+missing variable. `vite dev` falls back to the local ports. See
+`.env.example`.
 
 | Variable     | What it is                            | `vite dev` default      |
 | ------------ | ------------------------------------- | ----------------------- |

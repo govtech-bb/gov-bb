@@ -11,8 +11,8 @@
 // client chunk would surface here and fail the build instead of shipping.
 //
 // Runs as part of `pnpm build`, so it guards Amplify's production build too —
-// where both are set in the build container. A production build without them
-// already fails in vite.config.ts; the skip below is the copied original's.
+// where both are set in the build container. When neither is set (CI, the
+// local nx gates) there is nothing to leak, so skip.
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
