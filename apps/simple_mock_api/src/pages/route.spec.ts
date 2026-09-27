@@ -189,7 +189,8 @@ describe("GET /pages", () => {
     },
   );
 
-  // Mutates the shared database, so it runs last and restores the row.
+  // The cases below mutate the shared database, so they run last and each
+  // restores its row before the next one runs.
   it("gates a service's pages and bare slug on the service page's visibility", async () => {
     expect((await getPage(`${BIRTH}/start`)).status).toBe(200);
     expect((await getPage("get-birth-certificate")).status).toBe(301);
@@ -207,6 +208,51 @@ describe("GET /pages", () => {
     } finally {
       db.prepare(
         "UPDATE pages SET visibility = 'public' WHERE slug = 'get-birth-certificate'",
+      ).run();
+    }
+  });
+
+  it("treats a form with no forms row as not public", async () => {
+    expect(startLinks((await getPage(BIRTH)).body.hast)).toHaveLength(1);
+    expect((await getPage(`${BIRTH}/start`)).status).toBe(200);
+
+    db.prepare(
+      "DELETE FROM forms WHERE form_id = 'get-birth-certificate'",
+    ).run();
+    try {
+      const res = await getPage(BIRTH);
+      expect(res.status).toBe(200);
+      const { hast } = res.body as PageResponse;
+      expect(startLinks(hast)).toEqual([]);
+      expect(listItemCount(hast)).toBe(1);
+
+      expect((await getPage(`${BIRTH}/start`)).status).toBe(404);
+    } finally {
+      db.prepare(
+        "INSERT INTO forms (form_id, visibility) VALUES ('get-birth-certificate', 'public')",
+      ).run();
+    }
+  });
+
+  it("hides the online method when only the /start page is not public", async () => {
+    expect(startLinks((await getPage(BIRTH)).body.hast)).toHaveLength(1);
+    expect((await getPage(`${BIRTH}/start`)).status).toBe(200);
+
+    db.prepare(
+      "UPDATE pages SET visibility = 'preview' WHERE slug = 'get-birth-certificate/start'",
+    ).run();
+    try {
+      const res = await getPage(BIRTH);
+      expect(res.status).toBe(200);
+      const { hast } = res.body as PageResponse;
+      expect(startLinks(hast)).toEqual([]);
+      expect(listItemCount(hast)).toBe(1);
+
+      expect((await getPage(`${BIRTH}/start`)).status).toBe(404);
+      expect((await getPage("get-birth-certificate")).status).toBe(301);
+    } finally {
+      db.prepare(
+        "UPDATE pages SET visibility = 'public' WHERE slug = 'get-birth-certificate/start'",
       ).run();
     }
   });

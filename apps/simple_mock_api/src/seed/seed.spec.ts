@@ -113,7 +113,7 @@ describe("seed", () => {
     const db = openDb(":memory:");
     await seed(db, SEED_DIR);
 
-    await expect(seed(db, FIXTURES_DIR)).rejects.toThrow();
+    await expect(seed(db, FIXTURES_DIR)).rejects.toThrow(/bad-visibility/);
 
     const pageCount = db.prepare("SELECT COUNT(*) AS c FROM pages").get() as {
       c: number;
