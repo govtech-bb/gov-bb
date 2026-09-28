@@ -1,8 +1,8 @@
 import { fileURLToPath } from "node:url";
-import { openDb } from "./db.js";
+import { DEFAULT_DB_PATH, openDb } from "./db.js";
 import { seed } from "./seed/index.js";
 
-const DB_PATH = process.env.DB_PATH ?? "data/content.db";
+const DB_PATH = process.env.DB_PATH ?? DEFAULT_DB_PATH;
 const SEED_DIR = fileURLToPath(new URL("../seed", import.meta.url));
 
 const db = openDb(DB_PATH);

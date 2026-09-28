@@ -1,8 +1,8 @@
 import { createApp } from "./app.js";
-import { openDb } from "./db.js";
+import { DEFAULT_DB_PATH, openDb } from "./db.js";
 
 const PORT = Number(process.env.PORT ?? 3040);
-const DB_PATH = process.env.DB_PATH ?? "data/content.db";
+const DB_PATH = process.env.DB_PATH ?? DEFAULT_DB_PATH;
 
 const db = openDb(DB_PATH);
 const app = createApp(db);

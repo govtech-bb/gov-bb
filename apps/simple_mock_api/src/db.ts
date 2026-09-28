@@ -1,6 +1,13 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { fileURLToPath } from "node:url";
+
+/** `apps/simple_mock_api/data/content.db`, whatever the working directory, so
+ *  `seed` and `dev` always open the same file. */
+export const DEFAULT_DB_PATH = fileURLToPath(
+  new URL("../data/content.db", import.meta.url),
+);
 
 export function openDb(path: string): DatabaseSync {
   if (path !== ":memory:") {
