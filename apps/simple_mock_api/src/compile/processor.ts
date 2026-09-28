@@ -42,6 +42,11 @@ export async function processMarkdown(
     });
 
   const tree = processor.parse(markdown);
-  const hast = await processor.run(tree);
+  // rehype-sanitize's snapshot is typed against @types/hast 3.0.5 on this
+  // base (it is shared with @tanstack/ai-react), while this app, the contract
+  // and landing's renderer use the workspace's 3.0.4. The two Root types
+  // differ only in property-value narrowing, so widen at this one boundary
+  // rather than re-typing a shared snapshot.
+  const hast = (await processor.run(tree)) as Root;
   return { hast };
 }
