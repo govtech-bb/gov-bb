@@ -45,12 +45,13 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
  * Fetch one page and map the API's answer. A 404 is a result, not a failure —
  * throwing on it would turn an unknown URL into a 503 during an outage and keep
  * serving a cached page after it is unpublished. Anything else (another status,
- * a network error, invalid JSON, no base URL) throws: that is what the cache
- * treats as "API down".
+ * a network error, invalid JSON, a malformed body, no base URL) throws: that is
+ * what the cache treats as "API down".
  */
 export async function fetchPage(url: string): Promise<PageResult> {
   // No VITE_ prefix, read per call: Vite never inlines it into the client.
-  const base = process.env.CONTENT_API_URL
+  // Trailing slashes trimmed, as v1's `resolveFormsApiBase` does.
+  const base = process.env.CONTENT_API_URL?.replace(/\/+$/, '')
   if (!base) throw new Error('CONTENT_API_URL is not set')
 
   const response = await fetchWithTimeout(
@@ -58,12 +59,24 @@ export async function fetchPage(url: string): Promise<PageResult> {
     FETCH_TIMEOUT_MS,
   )
   if (response.status === 200) {
-    return { kind: 'page', page: (await response.json()) as PageResponse }
+    const page = (await response.json()) as Partial<PageResponse> | null
+    if (!page?.frontmatter || !page.hast) {
+      throw new Error('HTTP 200 body is not a PageResponse')
+    }
+    return { kind: 'page', page: page as PageResponse }
   }
   if (response.status === 301) {
-    const body = (await response.json()) as RedirectBody
-    return { kind: 'redirect', to: body.redirect }
+    const body = (await response.json()) as Partial<RedirectBody> | null
+    const to = body?.redirect
+    // A missing `redirect` would resolve to the current location: a cached
+    // self-loop.
+    if (typeof to !== 'string' || !to.startsWith('/')) {
+      throw new Error('HTTP 301 body has no site-path `redirect`')
+    }
+    return { kind: 'redirect', to }
   }
+  // Release an unread body so undici frees the connection now, not at GC.
+  await response.body?.cancel()
   if (response.status === 404) return { kind: 'not-found' }
   throw new Error(`HTTP ${response.status} ${response.statusText}`)
 }

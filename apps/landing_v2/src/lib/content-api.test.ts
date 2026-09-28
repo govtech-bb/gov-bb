@@ -52,6 +52,26 @@ describe('fetchPage', () => {
     expect(init.signal).toBeInstanceOf(AbortSignal)
   })
 
+  it('trims a trailing slash off the base URL', async () => {
+    vi.stubEnv('CONTENT_API_URL', `${BASE}/`)
+    fetchMock.mockResolvedValue(jsonResponse(page, 200))
+
+    await fetchPage('a/b')
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      `${BASE}/pages?url=${encodeURIComponent('a/b')}`,
+    )
+  })
+
+  it.each([
+    ['without frontmatter and hast', { url: 'a/b' }],
+    ['that is null', null],
+  ])('throws on a 200 body %s', async (_, body) => {
+    fetchMock.mockResolvedValue(jsonResponse(body, 200))
+
+    await expect(fetchPage('a/b')).rejects.toThrow()
+  })
+
   it("maps a 301 to a redirect to the body's `redirect`", async () => {
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ redirect: '/a/get-thing' }), {
@@ -69,22 +89,33 @@ describe('fetchPage', () => {
     })
   })
 
-  it('maps a 404 to not-found without throwing, whatever the body', async () => {
-    fetchMock.mockResolvedValue(
-      new Response('<html>not json</html>', { status: 404 }),
-    )
+  it.each([
+    ['without `redirect`', {}],
+    ['whose `redirect` is not a site path', { redirect: 'a/get-thing' }],
+  ])('throws on a 301 body %s', async (_, body) => {
+    fetchMock.mockResolvedValue(jsonResponse(body, 301))
+
+    await expect(fetchPage('get-thing')).rejects.toThrow()
+  })
+
+  it('maps a 404 to not-found without throwing, whatever the body, and releases the body', async () => {
+    const response = new Response('<html>not json</html>', { status: 404 })
+    fetchMock.mockResolvedValue(response)
 
     await expect(fetchPage('no-such-page')).resolves.toEqual({
       kind: 'not-found',
     })
+    expect(response.bodyUsed).toBe(true)
   })
 
   it.each([400, 500, 503])(
-    'throws on any other status (%i)',
+    'throws on any other status (%i) and releases the body',
     async (status) => {
-      fetchMock.mockResolvedValue(jsonResponse({ error: 'boom' }, status))
+      const response = jsonResponse({ error: 'boom' }, status)
+      fetchMock.mockResolvedValue(response)
 
       await expect(fetchPage('a/b')).rejects.toThrow(String(status))
+      expect(response.bodyUsed).toBe(true)
     },
   )
 
