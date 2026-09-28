@@ -50,9 +50,9 @@ export const Route = createRootRoute({
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { title: 'Government Services | Government of Barbados' },
       { name: 'theme-color', content: '#000000' },
-      // Open Graph / Twitter defaults. Per-page routes override the title,
-      // description and url (via `pageHead`); these site-wide values aren't
-      // worth repeating per page.
+      // Open Graph / Twitter defaults. `$.tsx`'s `head()` overrides the title,
+      // description and url per page (via `seoTags`); these site-wide values
+      // aren't worth repeating per page.
       { property: 'og:site_name', content: 'Government of Barbados' },
       { property: 'og:locale', content: 'en_BB' },
       { property: 'og:type', content: 'website' },
@@ -125,7 +125,11 @@ function RootLayout() {
       <div className="print:hidden">
         <Header />
       </div>
-      <Breadcrumbs breadcrumbs={breadcrumbs ?? []} />
+      {breadcrumbs && breadcrumbs.length > 0 ? (
+        <div className="govbb-width-container pt-4 print:hidden lg:pt-6">
+          <Breadcrumbs breadcrumbs={breadcrumbs} />
+        </div>
+      ) : null}
       <main id="main-content" tabIndex={-1}>
         <Outlet />
       </main>
