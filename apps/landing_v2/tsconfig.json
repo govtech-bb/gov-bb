@@ -12,7 +12,10 @@
     "jsx": "react-jsx",
     "module": "ESNext",
     "paths": {
-      "@govtech-bb/analytics": ["../../packages/analytics/src/index.ts"]
+      "@govtech-bb/analytics": ["../../packages/analytics/src/index.ts"],
+      "@govtech-bb/landing-v2-contract": [
+        "../../packages/landing-v2-contract/src/index.ts"
+      ]
     },
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],
@@ -21,6 +24,7 @@
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
     "noEmit": true,
 
     /* Linting */

@@ -1235,6 +1235,9 @@ importers:
       '@govtech-bb/frontend':
         specifier: 1.0.0-alpha.29
         version: 1.0.0-alpha.29
+      '@govtech-bb/landing-v2-contract':
+        specifier: workspace:*
+        version: link:../../packages/landing-v2-contract
       '@govtech-bb/react':
         specifier: 1.0.0-alpha.29
         version: 1.0.0-alpha.29(react@19.2.7)
@@ -1250,6 +1253,12 @@ importers:
       '@tanstack/router-plugin':
         specifier: 'catalog:'
         version: 1.168.18(@tanstack/react-router@1.170.16(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(vite@8.0.16(@types/node@24.13.6)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      date-fns:
+        specifier: ^4.2.1
+        version: 4.4.0
+      hast-util-to-jsx-runtime:
+        specifier: ^2.3.6
+        version: 2.3.6
       nitro:
         specifier: 3.0.260429-beta
         version: 3.0.260429-beta(chokidar@5.0.0)(dotenv@17.4.2)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(pg@8.23.0))(jiti@2.7.0)(lru-cache@11.5.1)(rollup@4.62.2)(vite@8.0.16(@types/node@24.13.6)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -1269,6 +1278,9 @@ importers:
       '@tanstack/eslint-config':
         specifier: ^0.4.0
         version: 0.4.0(@typescript-eslint/utils@8.61.1(eslint@10.5.0(jiti@2.7.0))(typescript@5.9.3))(eslint@10.5.0(jiti@2.7.0))(supports-color@7.2.0)(typescript@5.9.3)
+      '@types/hast':
+        specifier: ^3.0.4
+        version: 3.0.4
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.6

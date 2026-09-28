@@ -1,5 +1,6 @@
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
+import { trackPageview } from './lib/analytics'
 
 export function getRouter() {
   const router = createTanStackRouter({
@@ -12,6 +13,8 @@ export function getRouter() {
     // safe; a genuine revisit past it refetches.
     defaultPreloadStaleTime: 30_000,
   })
+
+  router.subscribe('onResolved', trackPageview)
 
   return router
 }
