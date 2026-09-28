@@ -1,0 +1,734 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "This service can be used to get a copy of a birth certificate for anyone whose birth was registered in Barbados."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "Most copies of birth certificates are requested at the same time a birth is registered as part of the "
+        },
+        {
+          "type": "element",
+          "tagName": "a",
+          "properties": {
+            "href": "/family-birth-relationships/register-a-birth"
+          },
+          "children": [
+            {
+              "type": "text",
+              "value": "Register a birth service"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": ". A copy is essential for access to certain public services and welfare support."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "However, copies for Barbadian citizens can be requested at any point. They are needed as official identification so you can apply for a passport or driving licence, and as proof of identity in financial or legal-related matters such as opening a bank account or getting married."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "You can request a copy on someone else’s behalf but you must disclose:"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "ul",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "\n"
+        },
+        {
+          "type": "element",
+          "tagName": "li",
+          "properties": {},
+          "children": [
+            {
+              "type": "text",
+              "value": "your relationship to them"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": "\n"
+        },
+        {
+          "type": "element",
+          "tagName": "li",
+          "properties": {},
+          "children": [
+            {
+              "type": "text",
+              "value": "why you need the certificate"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": "\n"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "h2",
+      "properties": {
+        "id": "how-to-get-a-copy-of-a-birth-certificate"
+      },
+      "children": [
+        {
+          "type": "text",
+          "value": "How to get a copy of a birth certificate"
+        },
+        {
+          "type": "element",
+          "tagName": "a",
+          "properties": {
+            "ariaHidden": true,
+            "className": ["anchor-heading"],
+            "tabIndex": -1,
+            "href": "#how-to-get-a-copy-of-a-birth-certificate"
+          },
+          "children": [
+            {
+              "type": "text",
+              "value": "#"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "h3",
+      "properties": {
+        "id": "complete-the-form"
+      },
+      "children": [
+        {
+          "type": "text",
+          "value": "Complete the form"
+        },
+        {
+          "type": "element",
+          "tagName": "a",
+          "properties": {
+            "ariaHidden": true,
+            "className": ["anchor-heading"],
+            "tabIndex": -1,
+            "href": "#complete-the-form"
+          },
+          "children": [
+            {
+              "type": "text",
+              "value": "#"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "There are 2 ways to get a copy of a birth certificate. You can:"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "ol",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "\n"
+        },
+        {
+          "type": "element",
+          "tagName": "li",
+          "properties": {},
+          "children": [
+            {
+              "type": "text",
+              "value": "\n"
+            },
+            {
+              "type": "element",
+              "tagName": "h4",
+              "properties": {
+                "id": "request-a-copy-online"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "value": "Request a copy online"
+                },
+                {
+                  "type": "element",
+                  "tagName": "a",
+                  "properties": {
+                    "ariaHidden": true,
+                    "className": ["anchor-heading"],
+                    "tabIndex": -1,
+                    "href": "#request-a-copy-online"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "#"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "value": "\n"
+            },
+            {
+              "type": "element",
+              "tagName": "p",
+              "properties": {},
+              "children": [
+                {
+                  "type": "text",
+                  "value": "You must pay online so you will need a debit or credit card, and you will need to have (or create) an EZPay+ account."
+                },
+                {
+                  "type": "element",
+                  "tagName": "br",
+                  "properties": {},
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "value": "\nEvery question is compulsory so if you are unsure about the basic information asked for, you should complete the paper form instead."
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "value": "\n"
+            },
+            {
+              "type": "element",
+              "tagName": "p",
+              "properties": {},
+              "children": [
+                {
+                  "type": "element",
+                  "tagName": "a",
+                  "properties": {
+                    "dataStartLink": "",
+                    "href": "/family-birth-relationships/get-birth-certificate/start"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "Complete the online form"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "value": "\n"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": "\n"
+        },
+        {
+          "type": "element",
+          "tagName": "li",
+          "properties": {},
+          "children": [
+            {
+              "type": "text",
+              "value": "\n"
+            },
+            {
+              "type": "element",
+              "tagName": "h4",
+              "properties": {
+                "id": "get-a-paper-application-for-birth-certificate-form-from-the-registration-department"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "value": "Get a paper Application for birth certificate form from the Registration Department"
+                },
+                {
+                  "type": "element",
+                  "tagName": "a",
+                  "properties": {
+                    "ariaHidden": true,
+                    "className": ["anchor-heading"],
+                    "tabIndex": -1,
+                    "href": "#get-a-paper-application-for-birth-certificate-form-from-the-registration-department"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "#"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "value": "\n"
+            },
+            {
+              "type": "element",
+              "tagName": "p",
+              "properties": {},
+              "children": [
+                {
+                  "type": "text",
+                  "value": "You must complete it by hand and return it to the department. You can pay with cash or by card when you collect it."
+                },
+                {
+                  "type": "element",
+                  "tagName": "br",
+                  "properties": {},
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "value": "\nIf you are unsure about the basic details asked for (for example, if there is estrangement in the family), you should complete the paper form."
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "value": "\n"
+            },
+            {
+              "type": "element",
+              "tagName": "p",
+              "properties": {},
+              "children": [
+                {
+                  "type": "text",
+                  "value": "Registration Department"
+                },
+                {
+                  "type": "element",
+                  "tagName": "br",
+                  "properties": {},
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "value": "\nSupreme Court Complex"
+                },
+                {
+                  "type": "element",
+                  "tagName": "br",
+                  "properties": {},
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "value": "\nWhitepark Road"
+                },
+                {
+                  "type": "element",
+                  "tagName": "br",
+                  "properties": {},
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "value": "\nSt. Michael"
+                },
+                {
+                  "type": "element",
+                  "tagName": "br",
+                  "properties": {},
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "value": "\n(246) 535-9700"
+                },
+                {
+                  "type": "element",
+                  "tagName": "br",
+                  "properties": {},
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "value": "\nOpen Monday to Friday: 8:30am to 3:15pm"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "value": "\n"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": "\n"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "h2",
+      "properties": {
+        "id": "cost-of-certificates"
+      },
+      "children": [
+        {
+          "type": "text",
+          "value": "Cost of certificates"
+        },
+        {
+          "type": "element",
+          "tagName": "a",
+          "properties": {
+            "ariaHidden": true,
+            "className": ["anchor-heading"],
+            "tabIndex": -1,
+            "href": "#cost-of-certificates"
+          },
+          "children": [
+            {
+              "type": "text",
+              "value": "#"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "Each certified copy costs $5 BBD. People aged 60 and over pay $1 BBD per certificate."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "h2",
+      "properties": {
+        "id": "after-your-request-is-processed"
+      },
+      "children": [
+        {
+          "type": "text",
+          "value": "After your request is processed"
+        },
+        {
+          "type": "element",
+          "tagName": "a",
+          "properties": {
+            "ariaHidden": true,
+            "className": ["anchor-heading"],
+            "tabIndex": -1,
+            "href": "#after-your-request-is-processed"
+          },
+          "children": [
+            {
+              "type": "text",
+              "value": "#"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "A certificate is usually ready to collect in 5 to 7 business days."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "A certificate can sometimes be issued on the same day, in the case of a medical or travel emergency. You will need to show proof of the emergency."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "If you complete the paper form, you will be given a receipt when you return it to the Applications Desk at the Registration Department. You will need to show your receipt when you collect your copy or copies and you will be able to pay in cash or by card."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "h2",
+      "properties": {
+        "id": "if-basic-information-is-unknown"
+      },
+      "children": [
+        {
+          "type": "text",
+          "value": "If basic information is unknown"
+        },
+        {
+          "type": "element",
+          "tagName": "a",
+          "properties": {
+            "ariaHidden": true,
+            "className": ["anchor-heading"],
+            "tabIndex": -1,
+            "href": "#if-basic-information-is-unknown"
+          },
+          "children": [
+            {
+              "type": "text",
+              "value": "#"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "There are circumstances when you may not be able to provide all the information asked for in the form. For example, if there is estrangement in the family, or if the birth was registered in Barbados a significant time ago. In these cases you must complete a paper form and provide as much information as you can – the more details you can give, the better the chance of finding the records you are looking for."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "h2",
+      "properties": {
+        "id": "get-a-copy-of-a-birth-certificate-if-you-live-overseas"
+      },
+      "children": [
+        {
+          "type": "text",
+          "value": "Get a copy of a birth certificate if you live overseas"
+        },
+        {
+          "type": "element",
+          "tagName": "a",
+          "properties": {
+            "ariaHidden": true,
+            "className": ["anchor-heading"],
+            "tabIndex": -1,
+            "href": "#get-a-copy-of-a-birth-certificate-if-you-live-overseas"
+          },
+          "children": [
+            {
+              "type": "text",
+              "value": "#"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "Contact the Registration Department."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "element",
+          "tagName": "a",
+          "properties": {
+            "href": "mailto:registrarsupremecourt@barbados.gov.bb"
+          },
+          "children": [
+            {
+              "type": "text",
+              "value": "registrarsupremecourt@barbados.gov.bb"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "(246) 535-9700"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "value": "\n"
+    },
+    {
+      "type": "element",
+      "tagName": "p",
+      "properties": {},
+      "children": [
+        {
+          "type": "text",
+          "value": "+1 (246) 535-9751 (if you are calling from overseas)"
+        }
+      ]
+    }
+  ],
+  "data": {
+    "quirksMode": false
+  }
+}
