@@ -23,7 +23,7 @@
     "lint": {
       "executor": "@nx/eslint:lint",
       "options": {
-        "lintFilePatterns": ["packages/block-kit/**/*.ts"]
+        "lintFilePatterns": ["packages/block-kit/**/*.{ts,tsx}"]
       }
     }
   },

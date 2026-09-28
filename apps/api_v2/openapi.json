@@ -242,6 +242,16 @@
             "in": "query",
             "name": "url",
             "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"]
+            },
+            "in": "query",
+            "name": "drafts",
+            "required": false,
+            "description": "`true` includes drafts."
           }
         ],
         "responses": {
