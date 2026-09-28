@@ -1,6 +1,6 @@
 {
   "formId": "apply-for-offensive-waste-licence",
-  "title": "Apply for a offensive trade licence with Environmental Health",
+  "title": "Apply for an offensive waste licence with Environmental Health",
   "description": "Apply for or renew a licence to carry out work that may produce fumes or strong smells.",
   "steps": [
     {
@@ -482,14 +482,14 @@
       "type": "email",
       "config": {
         "recipientField": "your-details.email",
-        "subject": "Application received: Environmental Health licence for work that may cause fumes or strong smells"
+        "subject": "Your offensive waste licence application has been received"
       }
     },
     {
       "type": "email",
       "config": {
         "recipientField": "catchment.mdaEmail",
-        "subject": "A new application for Licence to carry offensive waste has been received"
+        "subject": "A new offensive waste licence application has been received"
       }
     },
     {
