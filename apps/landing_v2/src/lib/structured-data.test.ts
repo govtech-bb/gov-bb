@@ -3,8 +3,23 @@ import {
   buildOrganizationLd,
   buildGovernmentServiceLd,
   buildBreadcrumbLd,
+  jsonLd,
 } from './structured-data'
 import { SITE_URL } from './site-url'
+
+describe('jsonLd', () => {
+  it('cannot close its <script> and still parses back to the value', () => {
+    const title = 'Birth </script><script>alert(1)</script> certificate'
+    const ld = buildGovernmentServiceLd({ title, url: 'a/b' })
+
+    const out = jsonLd(ld)
+
+    expect(out).not.toContain('</script>')
+    expect(out).not.toContain('<')
+    expect(JSON.parse(out)).toEqual(ld)
+    expect(JSON.parse(out).name).toBe(title)
+  })
+})
 
 describe('buildOrganizationLd', () => {
   it('describes the Government of Barbados with absolute url and logo', () => {

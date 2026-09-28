@@ -66,6 +66,8 @@ describe('fetchPage', () => {
   it.each([
     ['without frontmatter and hast', { url: 'a/b' }],
     ['that is null', null],
+    ['without url', { ...page, url: undefined }],
+    ['whose breadcrumbs are not an array', { ...page, breadcrumbs: 'x' }],
   ])('throws on a 200 body %s', async (_, body) => {
     fetchMock.mockResolvedValue(jsonResponse(body, 200))
 
@@ -89,26 +91,42 @@ describe('fetchPage', () => {
     })
   })
 
+  it('accepts a 301 to a site path', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ redirect: '/family-birth-relationships/x' }, 301),
+    )
+
+    await expect(fetchPage('x')).resolves.toEqual({
+      kind: 'redirect',
+      to: '/family-birth-relationships/x',
+    })
+  })
+
   it.each([
     ['without `redirect`', {}],
     ['whose `redirect` is not a site path', { redirect: 'a/get-thing' }],
+    ['whose `redirect` is protocol-relative', { redirect: '//evil.example/x' }],
+    ['whose `redirect` starts with a backslash', { redirect: '/\\evil' }],
   ])('throws on a 301 body %s', async (_, body) => {
     fetchMock.mockResolvedValue(jsonResponse(body, 301))
 
     await expect(fetchPage('get-thing')).rejects.toThrow()
   })
 
-  it('maps a 404 to not-found without throwing, whatever the body, and releases the body', async () => {
-    const response = new Response('<html>not json</html>', { status: 404 })
-    fetchMock.mockResolvedValue(response)
+  it.each([404, 400])(
+    'maps a %i to not-found without throwing, whatever the body, and releases the body',
+    async (status) => {
+      const response = new Response('<html>not json</html>', { status })
+      fetchMock.mockResolvedValue(response)
 
-    await expect(fetchPage('no-such-page')).resolves.toEqual({
-      kind: 'not-found',
-    })
-    expect(response.bodyUsed).toBe(true)
-  })
+      await expect(fetchPage('no-such-page')).resolves.toEqual({
+        kind: 'not-found',
+      })
+      expect(response.bodyUsed).toBe(true)
+    },
+  )
 
-  it.each([400, 500, 503])(
+  it.each([401, 403, 429, 500, 503])(
     'throws on any other status (%i) and releases the body',
     async (status) => {
       const response = jsonResponse({ error: 'boom' }, status)

@@ -1,14 +1,19 @@
 import { describe, expect, it } from 'vitest'
+import type { Frontmatter } from '@govtech-bb/landing-v2-contract'
 import { pageViewEvent } from './-page-view-event'
 
-const baseFrontmatter = { title: 'X', categories: ['work-employment'] }
+const baseFrontmatter: Frontmatter = {
+  title: 'X',
+  categories: ['work-employment'],
+  visibility: 'public',
+}
 
 describe('pageViewEvent', () => {
   it('returns page-start-view for a /start sub-page', () => {
     const e = pageViewEvent({
       url: 'work-employment/x/start',
       frontmatter: { ...baseFrontmatter, form_id: 'x' },
-    } as never)
+    })
     expect(e).toEqual({
       name: 'page-start-view',
       data: { form: 'x', category: 'work-employment' },
@@ -19,7 +24,7 @@ describe('pageViewEvent', () => {
     const e = pageViewEvent({
       url: 'work-employment/x',
       frontmatter: { ...baseFrontmatter, form_id: 'x' },
-    } as never)
+    })
     expect(e).toEqual({
       name: 'page-service-view',
       data: { form: 'x', category: 'work-employment' },
@@ -31,15 +36,15 @@ describe('pageViewEvent', () => {
       pageViewEvent({
         url: 'work-employment/x',
         frontmatter: baseFrontmatter,
-      } as never),
+      }),
     ).toBeNull()
   })
 
   it('falls back to "uncategorised" when the page has no category', () => {
     const e = pageViewEvent({
       url: 'x',
-      frontmatter: { title: 'X', categories: [], form_id: 'x' },
-    } as never)
+      frontmatter: { ...baseFrontmatter, categories: [], form_id: 'x' },
+    })
     expect(e).toEqual({
       name: 'page-service-view',
       data: { form: 'x', category: 'uncategorised' },

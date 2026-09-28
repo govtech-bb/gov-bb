@@ -1,8 +1,7 @@
 /**
  * Generic per-instance cache + TTL + cold-start-retry + last-known-good
- * fallback mechanics, shared by `available-forms.ts` (a form-id list) and
- * `service-status.ts` (a status map) so the two don't each duplicate the same
- * freshness/retry/fallback loop.
+ * fallback mechanics, used by `content-api.ts` for its per-URL page cache
+ * (copied from v1, where `available-forms.ts` and `service-status.ts` share it).
  *
  * The caller owns fetching/validating its own value and reading/writing its own
  * cache slot (via `getCached`/`setCached`); this module owns only the

@@ -11,6 +11,7 @@ import { seoTags } from '../lib/page-head'
 import {
   buildBreadcrumbLd,
   buildGovernmentServiceLd,
+  jsonLd,
 } from '../lib/structured-data'
 import { pageViewEvent } from './-page-view-event'
 
@@ -46,7 +47,7 @@ export const Route = createFileRoute('/$')({
       scripts: [
         {
           type: 'application/ld+json',
-          children: JSON.stringify(
+          children: jsonLd(
             buildGovernmentServiceLd({
               title,
               description: frontmatter.description,
@@ -56,7 +57,7 @@ export const Route = createFileRoute('/$')({
         },
         {
           type: 'application/ld+json',
-          children: JSON.stringify(buildBreadcrumbLd(breadcrumbs)),
+          children: jsonLd(buildBreadcrumbLd(breadcrumbs)),
         },
       ],
     }

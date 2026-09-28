@@ -1,6 +1,7 @@
 import { forwardRef } from 'react'
 import type { ComponentPropsWithoutRef } from 'react'
 import { Breadcrumbs as GovBreadcrumbs } from '@govtech-bb/react'
+import type { PageResponse } from '@govtech-bb/landing-v2-contract'
 import { Link } from '@tanstack/react-router'
 
 type BreadcrumbLinkProps = ComponentPropsWithoutRef<'a'> & { href: string }
@@ -29,7 +30,7 @@ BreadcrumbLink.displayName = 'BreadcrumbLink'
 export function Breadcrumbs({
   breadcrumbs,
 }: {
-  breadcrumbs: { name: string; url: string }[]
+  breadcrumbs: PageResponse['breadcrumbs']
 }) {
   if (breadcrumbs.length === 0) return null
 

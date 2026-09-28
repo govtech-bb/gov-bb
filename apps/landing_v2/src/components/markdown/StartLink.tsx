@@ -11,8 +11,8 @@ type StartLinkProps = {
   children: ReactNode
 } & Record<string, unknown>
 
-// An authored href wins over formId; an unavailable formId suppresses the
-// button. See docs/decisions/0005.
+// An authored href wins over formId; with neither (a missing formId and no
+// href) there is no button. See docs/decisions/0005.
 export function StartLink({ href, formId, children, ...rest }: StartLinkProps) {
   const { pathname } = useLocation()
 

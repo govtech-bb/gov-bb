@@ -29,8 +29,6 @@ function extractCellText(children: ReactNode): string | null {
   return null
 }
 
-// Every key of the contract's CONTENT_ELEMENTS must have a renderer here — a
-// missing one is a compile error, not a runtime gap.
 const contractComponents = {
   a: ({ node: _node, href, children, ...rest }) => (
     <MarkdownLink href={href} {...rest}>
@@ -120,8 +118,9 @@ const contractComponents = {
 } satisfies Partial<Components>
 
 export const markdownComponents: Partial<Components> = {
-  // The spread's `satisfies` checks every key of the contract's
-  // CONTENT_ELEMENTS is present above — a missing one fails to compile.
+  // Every key of the contract's CONTENT_ELEMENTS must have a renderer in
+  // `contractComponents`: this spread's `satisfies` makes a missing one a
+  // compile error, not a runtime gap.
   ...(contractComponents satisfies Record<
     keyof typeof CONTENT_ELEMENTS,
     unknown

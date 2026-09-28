@@ -1,3 +1,4 @@
+import type { PageResponse } from '@govtech-bb/landing-v2-contract'
 import { SITE_URL } from './site-url'
 
 /**
@@ -13,6 +14,15 @@ import { SITE_URL } from './site-url'
 
 const ORG_NAME = 'Government of Barbados'
 const ORG_ID = `${SITE_URL}/#organization`
+
+/**
+ * Serialise a JSON-LD object for a `<script>` body. The router injects script
+ * children as raw HTML, so `<` is escaped (`<`, still valid JSON) — a
+ * `</script>` in a title or crumb name cannot close the tag.
+ */
+export function jsonLd(value: unknown): string {
+  return JSON.stringify(value).replace(/</g, '\\u003c')
+}
 
 export function buildOrganizationLd() {
   return {
@@ -45,9 +55,7 @@ export function buildGovernmentServiceLd({
   }
 }
 
-export function buildBreadcrumbLd(
-  breadcrumbs: { name: string; url: string }[],
-) {
+export function buildBreadcrumbLd(breadcrumbs: PageResponse['breadcrumbs']) {
   const items = [
     { name: 'Home', url: SITE_URL },
     ...breadcrumbs.map((crumb) => ({
