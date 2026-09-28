@@ -129,6 +129,10 @@ export class WebhookProcessor implements ISubmissionProcessor {
             higherRisk,
             programmeCodeOverride: payload.resolvedCatchment?.programmeCode,
             contract: contract ?? undefined,
+            // Already in hand — the labelled sections (#2587) cost no extra
+            // I/O, and the audit trail is what keeps a branch-skipped question
+            // out of the case rather than blank in it.
+            visibility: payload.meta,
           }),
         )
       : JSON.stringify({

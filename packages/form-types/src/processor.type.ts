@@ -137,7 +137,8 @@ const webhookMappingSchema = z.object({
     email: z.string().min(1),
     phone: z.string().min(1),
   }),
-  // Steps dropped from form_data (process steps that aren't application content).
+  // Steps dropped from the case payload — both form_data and the labelled
+  // sections (process steps that aren't application content).
   excludeSteps: z.array(z.string()).default([]),
   // When true, form_data keeps fields nested under their step id instead of
   // hoisting them all to the top level.
