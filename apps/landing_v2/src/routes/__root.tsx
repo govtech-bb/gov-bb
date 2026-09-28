@@ -7,6 +7,7 @@ import {
 import { Footer, FooterLink, SkipLink } from '@govtech-bb/react'
 import Header from '../components/Header'
 import { ErrorPage } from '../components/ErrorPage'
+import { ServerErrorPage } from '../components/ServerErrorPage'
 import { SITE_URL } from '../lib/site-url'
 import { buildOrganizationLd } from '../lib/structured-data'
 
@@ -78,26 +79,6 @@ function NotFoundPage() {
       suggestions={[
         'Check the web address for typos',
         'Return to the homepage',
-      ]}
-      primary={{ label: 'Return to homepage', href: '/' }}
-    />
-  )
-}
-
-function ServerErrorPage() {
-  return (
-    <ErrorPage
-      title="Something went wrong on our end"
-      intro={
-        <>
-          We're experiencing a technical problem. This isn't your fault. Our
-          team has been notified and is working to fix it.
-        </>
-      }
-      suggestions={[
-        'Refresh the page and try again',
-        'Return to the homepage',
-        'Try again in a few minutes',
       ]}
       primary={{ label: 'Return to homepage', href: '/' }}
     />
