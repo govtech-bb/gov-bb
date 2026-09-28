@@ -141,7 +141,10 @@ export default function SubmissionConfirmation({
         <div className="form-page__printed-answers hidden print:block">
           <Heading as="h2">Your answers</Heading>
           {sections.map((section, index) => (
-            <div key={`${section.stepId}-${index}`}>
+            <div
+              key={`${section.stepId}-${index}`}
+              className="form-page__printed-answers-section"
+            >
               <Heading as="h3">{section.title}</Heading>
               <SummaryList
                 rows={section.fields.map((field) => ({

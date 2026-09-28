@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { ClientFormStep, FormMeta } from "@forms/types";
+import type {
+  ClientFormStep,
+  FormMeta,
+  RepeatableStepSettings,
+} from "@forms/types";
+
 import { buildPrintedAnswers } from "./printed-answers";
 
 const steps = [
@@ -43,6 +48,7 @@ describe("buildPrintedAnswers", () => {
         },
         "your-work": { where: "establishment" },
       },
+      repeatSettings: {},
     });
 
     expect(sections).toEqual([
@@ -82,6 +88,7 @@ describe("buildPrintedAnswers", () => {
         },
         "your-work": { where: "establishment" },
       },
+      repeatSettings: {},
     });
 
     expect(sections[0].fields.map((f) => f.fieldId)).toEqual(["first-name"]);
@@ -92,9 +99,42 @@ describe("buildPrintedAnswers", () => {
       formMeta: { contractSteps: steps } as FormMeta,
       visibleFieldIdsByStep: { "about-you": ["first-name"] },
       values: { "about-you": { "first-name": "Addie" } },
+      repeatSettings: {},
     });
 
     expect(sections.map((s) => s.stepId)).toEqual(["about-you"]);
+  });
+});
+
+describe("buildPrintedAnswers — file answers", () => {
+  const documentSteps = [
+    {
+      stepId: "documents",
+      title: "Upload your documents",
+      fields: [{ fieldId: "id-scan", label: "ID scan", htmlType: "file" }],
+    },
+  ] as unknown as ClientFormStep[];
+
+  it("names an uploaded file rather than keeping its storage key", () => {
+    const sections = buildPrintedAnswers({
+      formMeta: { contractSteps: documentSteps } as FormMeta,
+      visibleFieldIdsByStep: { documents: ["id-scan"] },
+      values: {
+        documents: {
+          "id-scan": [
+            {
+              key: "uploads/abc123/passport.pdf",
+              name: "passport.pdf",
+              size: 1024,
+              type: "application/pdf",
+            },
+          ],
+        },
+      },
+      repeatSettings: {},
+    });
+
+    expect(sections[0].fields[0].value).toBe("passport.pdf");
   });
 });
 
@@ -140,12 +180,25 @@ const repeatableVisibleFieldIds = {
   "child-details~2": ["child-first-name", "child-dob"],
 };
 
+// `orderedStepIds` mirrors what `setupRepeatSteps` records: the base step is
+// the shared-values page (not an instance), so instance 1 is `~1`.
+const repeatableRepeatSettings: RepeatableStepSettings = {
+  "child-details": {
+    minRepeats: 1,
+    maxRepeats: 5,
+    stepData: {},
+    orderedStepIds: ["child-details", "child-details~1", "child-details~2"],
+    sharedData: { "child-school": "", "child-principal-name": "" },
+  },
+};
+
 describe("buildPrintedAnswers — repeatable steps", () => {
   it("prints each instance's own answers, not only the shared ones", () => {
     const sections = buildPrintedAnswers({
       formMeta: { contractSteps: repeatableSteps } as FormMeta,
       visibleFieldIdsByStep: repeatableVisibleFieldIds,
       values: repeatableValues,
+      repeatSettings: repeatableRepeatSettings,
     });
 
     expect(sections.map((s) => s.title)).toEqual([
@@ -174,8 +227,83 @@ describe("buildPrintedAnswers — repeatable steps", () => {
         "child-details~2": ["child-first-name"],
       },
       values: repeatableValues,
+      repeatSettings: repeatableRepeatSettings,
     });
 
     expect(sections[0].fields.map((f) => f.fieldId)).not.toContain("child-dob");
+  });
+
+  // The values object still carries every instance's date of birth — only the
+  // per-instance VISIBLE set differs. Without pruning each instance to its own
+  // visible ids first, the union `foldRepeatInstances` builds from every
+  // instance (instance 1 showed `child-dob`) would let it print for instance 2
+  // as well, even though instance 2's own branch hid it.
+  it("keeps a question hidden on one instance off THAT instance's printed answers, even though another instance showed it", () => {
+    const sections = buildPrintedAnswers({
+      formMeta: { contractSteps: repeatableSteps } as FormMeta,
+      visibleFieldIdsByStep: {
+        ...repeatableVisibleFieldIds,
+        "child-details~2": ["child-first-name"], // instance 2 hid child-dob
+      },
+      values: repeatableValues,
+      repeatSettings: repeatableRepeatSettings,
+    });
+
+    expect(sections[0].fields.map((f) => f.fieldId)).toContain("child-dob");
+    expect(sections[1].fields.map((f) => f.fieldId)).not.toContain("child-dob");
+  });
+});
+
+// An ordinary (non-shared) repeatable has no separate shared-values page — the
+// base step IS instance 1, and `~1`, `~2`, … are the later instances.
+const ordinaryRepeatableSteps = [
+  {
+    stepId: "kids",
+    title: "Tell us about the child",
+    fields: [
+      {
+        fieldId: "has-allergy",
+        label: "Does the child have an allergy?",
+        htmlType: "text",
+      },
+      { fieldId: "allergy", label: "Which allergy", htmlType: "text" },
+    ],
+  },
+] as unknown as ClientFormStep[];
+
+const ordinaryRepeatableValues = {
+  kids: [
+    { "has-allergy": "yes", allergy: "Peanuts" },
+    // Started typing an answer, then switched to "no" — the branch hides
+    // `allergy` for this instance, but the value it briefly held is still in
+    // the submitted values (formatDataForSubmission prunes hidden fields from
+    // the flat values, never from a repeat instance's own stepData).
+    { "has-allergy": "no", allergy: "Shellfish" },
+  ],
+};
+
+const ordinaryRepeatSettings: RepeatableStepSettings = {
+  kids: {
+    minRepeats: 1,
+    maxRepeats: 5,
+    stepData: {},
+    orderedStepIds: ["kids", "kids~1"],
+  },
+};
+
+describe("buildPrintedAnswers — ordinary (non-shared) repeatable steps", () => {
+  it("keeps a question hidden on one instance off that instance's printed answers", () => {
+    const sections = buildPrintedAnswers({
+      formMeta: { contractSteps: ordinaryRepeatableSteps } as FormMeta,
+      visibleFieldIdsByStep: {
+        kids: ["has-allergy", "allergy"],
+        "kids~1": ["has-allergy"],
+      },
+      values: ordinaryRepeatableValues,
+      repeatSettings: ordinaryRepeatSettings,
+    });
+
+    expect(sections[0].fields.map((f) => f.fieldId)).toContain("allergy");
+    expect(sections[1].fields.map((f) => f.fieldId)).not.toContain("allergy");
   });
 });

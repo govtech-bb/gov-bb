@@ -108,6 +108,7 @@ import {
   getFormData,
   getSubmissionState,
   clearSubmissionState,
+  storeSubmissionState,
 } from "../../../lib/session-storage";
 import { trackEvent } from "../../../lib/analytics";
 
@@ -118,6 +119,7 @@ const mockGetVisibleFields = getVisibleFields as Mock;
 const mockGetFormData = getFormData as Mock;
 const mockGetSubmissionState = getSubmissionState as Mock;
 const mockClearSubmissionState = clearSubmissionState as Mock;
+const mockStoreSubmissionState = storeSubmissionState as Mock;
 const mockRestoreRepeatableStepsFromStorage =
   restoreRepeatableStepsFromStorage as Mock;
 
@@ -353,24 +355,30 @@ describe("RouteComponent", () => {
   // storage, where it stays until the tab closes. On a shared or kiosk device
   // the next person can press Back onto the confirmation and print it. Once
   // the applicant follows a link off the page they are done with it, so drop
-  // it then — the page they are still looking at keeps rendering from React
-  // state, and only a payment round-trip has to come back to it.
-  describe("clearing the stored outcome on leaving the confirmation", () => {
+  // the answers then. Only `sections` — a pending payment's reference and
+  // paymentUrl must survive so the EzPay return can still find them.
+  describe("dropping the stored answers on leaving the confirmation", () => {
     const confirmationState = {
       hasPayment: false,
       serviceName: "test-form",
       submissionSuccess: true,
       referenceNumber: "REF-9",
       date: "01/01/2026",
+      sections: [{ stepId: "step1", title: "Step 1", fields: [] }],
     };
 
-    const clickLink = (href: string) => {
+    const clickLink = (
+      href: string,
+      eventInit: Partial<MouseEventInit> = {},
+    ) => {
       const link = document.createElement("a");
       link.href = href;
       link.textContent = "leave";
       document.body.appendChild(link);
       act(() => {
-        link.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        link.dispatchEvent(
+          new MouseEvent("click", { bubbles: true, button: 0, ...eventInit }),
+        );
       });
       link.remove();
     };
@@ -382,13 +390,16 @@ describe("RouteComponent", () => {
       mockGetSubmissionState.mockReturnValue(confirmationState);
     });
 
-    it("clears it when the applicant follows a link off the page", () => {
+    it("drops the answers, keeping the rest of the receipt, when the applicant follows a link off the page", () => {
       render(<Route.component />);
-      mockClearSubmissionState.mockClear();
+      mockStoreSubmissionState.mockClear();
 
       clickLink("https://landing.example.bb/");
 
-      expect(mockClearSubmissionState).toHaveBeenCalledWith("test-form");
+      expect(mockStoreSubmissionState).toHaveBeenCalledWith("test-form", {
+        ...confirmationState,
+        sections: undefined,
+      });
     });
 
     it("keeps it for the payment link — EzPay comes back to this state", () => {
@@ -398,20 +409,56 @@ describe("RouteComponent", () => {
         paymentUrl: "https://pay.example.com/checkout",
       });
       render(<Route.component />);
-      mockClearSubmissionState.mockClear();
+      mockStoreSubmissionState.mockClear();
 
       clickLink("https://pay.example.com/checkout");
 
-      expect(mockClearSubmissionState).not.toHaveBeenCalled();
+      expect(mockStoreSubmissionState).not.toHaveBeenCalled();
+    });
+
+    // `LinkButton` renders the payment href verbatim; the anchor's own `.href`
+    // getter normalises it (a bare origin gains a trailing slash). Comparing
+    // against the raw attribute means a mismatch there can't clear the
+    // answers out from under a payment click.
+    it("keeps it for the payment link even when the browser would normalise its href", () => {
+      mockGetSubmissionState.mockReturnValue({
+        ...confirmationState,
+        hasPayment: true,
+        paymentUrl: "https://pay.example.com",
+      });
+      render(<Route.component />);
+      mockStoreSubmissionState.mockClear();
+
+      clickLink("https://pay.example.com");
+
+      expect(mockStoreSubmissionState).not.toHaveBeenCalled();
     });
 
     it("keeps it for a same-page anchor such as the skip link", () => {
       render(<Route.component />);
-      mockClearSubmissionState.mockClear();
+      mockStoreSubmissionState.mockClear();
 
       clickLink("#main-content");
 
-      expect(mockClearSubmissionState).not.toHaveBeenCalled();
+      expect(mockStoreSubmissionState).not.toHaveBeenCalled();
+    });
+
+    it("keeps it for a Ctrl-click, which opens the link in a new tab and leaves this one in place", () => {
+      render(<Route.component />);
+      mockStoreSubmissionState.mockClear();
+
+      clickLink("https://landing.example.bb/", { ctrlKey: true });
+
+      expect(mockStoreSubmissionState).not.toHaveBeenCalled();
+    });
+
+    it("keeps it for a right-click", () => {
+      render(<Route.component />);
+      mockStoreSubmissionState.mockClear();
+
+      clickLink("https://landing.example.bb/", { button: 2 });
+
+      expect(mockStoreSubmissionState).not.toHaveBeenCalled();
     });
   });
 });

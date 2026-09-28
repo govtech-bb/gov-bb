@@ -333,6 +333,7 @@
   .form-page__reference,
   .govbb-payment,
   .form-page__next-steps,
+  .form-page__printed-answers,
   .form-page__markdown-content,
   .form-page__contact {
     margin-top: var(--govbb-space-m) !important;
@@ -350,7 +351,8 @@
   .form-page__contact,
   .govbb-payment__row,
   .form-page__next-steps > div,
-  .form-page__next-steps li {
+  .form-page__next-steps li,
+  .form-page__printed-answers-section {
     break-inside: avoid;
   }
 }

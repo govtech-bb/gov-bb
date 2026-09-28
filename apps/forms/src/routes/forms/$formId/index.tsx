@@ -209,19 +209,36 @@ function FormView() {
   // copy survives a refresh (#2587) — but it would otherwise sit in the tab
   // until it is closed. On a shared or kiosk device the next person can press
   // Back onto this step and print someone else's submission. Following a link
-  // off the confirmation says the applicant is finished with it, so drop it
-  // then: the page in front of them keeps rendering from React state, and only
-  // the EzPay round-trip has to come back to what was stored. A same-page
-  // anchor (the skip link) is not an exit.
+  // off the confirmation says the applicant is finished with it, so drop the
+  // answers from storage then — the receipt itself (reference, paymentUrl,
+  // amount) is kept, so a pending payment's return from EzPay is unaffected,
+  // and the page in front of them keeps rendering from React state. A
+  // same-page anchor (the skip link) is not an exit. Best-effort only: a
+  // browser serving Back from its bfcache never reloads the page, so this
+  // never fires, and an applicant who walks away without clicking anything
+  // doesn't trigger it either.
   React.useEffect(() => {
     if (step !== "submission-confirmation" || !submissionState) return;
 
     const handleExit = (event: MouseEvent) => {
+      // Only a plain, unmodified left click actually leaves the page — a
+      // Ctrl/Cmd-click opens a new tab and leaves this one in place, and a
+      // handler upstream may already have taken this click (e.g. the Continue
+      // to payment button's own onClick).
+      if (event.defaultPrevented || event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+        return;
       const anchor = (event.target as Element | null)?.closest?.("a");
       const href = anchor?.getAttribute("href");
       if (!href || href.startsWith("#")) return;
-      if (submissionState.paymentUrl === anchor?.href) return;
-      clearSubmissionState(formMeta.formId);
+      // Compare the raw attribute, not the browser-normalised `anchor.href`
+      // (lower-cased host, default port dropped, trailing slash added to a
+      // bare origin) — `paymentUrl` is stored and rendered verbatim.
+      if (href === submissionState.paymentUrl) return;
+      storeSubmissionState(formMeta.formId, {
+        ...submissionState,
+        sections: undefined,
+      });
     };
 
     document.addEventListener("click", handleExit);
@@ -385,6 +402,7 @@ function FormView() {
         formMeta,
         visibleFieldIdsByStep,
         values: formattedData,
+        repeatSettings: repeatableStepSettingsRef.current,
       });
 
       const { subState, event } = resolveSubmissionOutcome(
