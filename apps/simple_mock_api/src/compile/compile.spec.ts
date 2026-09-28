@@ -145,3 +145,47 @@ describe("compilePage start-link bake", () => {
     expect(link.properties.dataFormId).toBeUndefined();
   });
 });
+
+describe("directive-produced elements survive the sanitizer", () => {
+  /** The one element named `tagName` in `tree`; fails unless there is exactly one. */
+  function only(tree: Root, tagName: string): Element {
+    const found = elements(tree, tagName);
+    expect(found).toHaveLength(1);
+    return found[0];
+  }
+
+  it(":::notice becomes a <notice>", async () => {
+    const tree = await compilePage(":::notice\nHeads up.\n:::");
+    const notice = only(tree, "notice");
+    expect(notice.tagName).toBe("notice");
+    expect(notice.properties).toEqual({});
+  });
+
+  it(":::actions and ::action become <buttons> of <link-button>s", async () => {
+    const tree = await compilePage(
+      [
+        ":::actions",
+        '::action[Apply now]{href="/apply"}',
+        '::action[Read more]{href="/more" variant="secondary"}',
+        ":::",
+      ].join("\n"),
+    );
+    const buttons = only(tree, "buttons");
+    expect(buttons.tagName).toBe("buttons");
+    expect(buttons.properties).toEqual({});
+    const links = elements(buttons as unknown as Root, "link-button");
+    expect(links.map((link) => link.properties)).toEqual([
+      { href: "/apply" },
+      { href: "/more", variant: "secondary" },
+    ]);
+  });
+
+  it(":::details becomes a <show-hide> with its summary", async () => {
+    const tree = await compilePage(
+      ':::details{summary="What counts as ID"}\nA passport.\n:::',
+    );
+    const showHide = only(tree, "show-hide");
+    expect(showHide.tagName).toBe("show-hide");
+    expect(showHide.properties).toEqual({ summary: "What counts as ID" });
+  });
+});
