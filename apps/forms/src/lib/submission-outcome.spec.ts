@@ -94,11 +94,11 @@ describe("resolveSubmissionOutcome", () => {
     const outcome = resolveSubmissionOutcome(
       response("submitted", {
         resolvedPolyclinicContact:
-          "St. Philip Polyclinic - [(246) 536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)",
+          "St. Philip Polyclinic - [(246) 536-4240](tel:+12465364240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)",
       }),
     );
     expect(outcome.subState?.polyclinicContact).toBe(
-      "St. Philip Polyclinic - [(246) 536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)",
+      "St. Philip Polyclinic - [(246) 536-4240](tel:+12465364240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)",
     );
   });
 

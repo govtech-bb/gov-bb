@@ -1,9 +1,9 @@
 /**
  * apply-for-offensive-waste-licence.smoke.spec.ts
  *
- * Live, on-demand smoke test for the offensive trade licence service
- * (formId `apply-for-offensive-waste-licence`, titled "Apply for a offensive
- * trade licence with Environmental Health").
+ * Live, on-demand smoke test for the offensive waste licence service
+ * (formId `apply-for-offensive-waste-licence`, titled "Apply for an offensive
+ * waste licence with Environmental Health").
  *
  * Drives the REAL form, fills every step with valid @faker-js/faker data,
  * SUBMITS FOR REAL, and asserts the confirmation screen is reached with a

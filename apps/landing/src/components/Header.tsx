@@ -8,7 +8,6 @@ import {
   OfficialBanner,
   StatusBanner,
 } from '@govtech-bb/react'
-import govBbLogoUrl from '@govtech-bb/frontend/assets/images/govbb-logo.svg?url'
 import { CHAT_URL } from '../lib/chat-url'
 import { TRACKER_URL } from '../lib/tracker-url'
 
@@ -24,14 +23,14 @@ export default function Header() {
   return (
     <>
       <OfficialBanner
-        imageSrc="/images/coat-of-arms.png"
+        imageSrc="/images/govbb-crest.svg"
         imageAlt=""
         showLearnMore={false}
       />
       <GovHeader
         homeHref="/"
         logoAlt="Go to the alpha.gov.bb homepage"
-        logoSrc={govBbLogoUrl}
+        logoSrc="/images/govbb-logo.svg"
         linkComponent={RouterLink}
         nav={
           <>
