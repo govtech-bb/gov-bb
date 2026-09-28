@@ -24,8 +24,20 @@ export type PageResponse = {
   breadcrumbs: { name: string; url: string }[];
 };
 
-/** Elements the compiler may emit beyond plain prose, with the hast property
- *  names each may carry. Sanitizer allowlist (API) and component map (landing). */
+/** 301 body for a bare slug; `redirect` is the site path WITH a leading slash
+ *  (same value as the `Location` header). Fetch with `redirect: 'manual'`. */
+export type RedirectBody = { redirect: string };
+
+/** 400 / 404 body. */
+export type ErrorBody = { error: string };
+
+/** Custom elements and attributes the API allows IN ADDITION to
+ *  `rehype-sanitize`'s default schema: the API extends the sanitizer with
+ *  exactly this list, and landing's component map renders exactly these tags.
+ *  Plugins that run after sanitizing add more on standard elements — headings
+ *  carry an `id`, and their anchor `a` carries `ariaHidden: true`,
+ *  `className: ['anchor-heading']` and `tabIndex: -1` — so a renderer must
+ *  forward those too, not only the properties listed here. */
 export const CONTENT_ELEMENTS = {
   a: ["href", "dataStartLink", "dataFormId"],
   table: [],
