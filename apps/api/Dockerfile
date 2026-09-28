@@ -27,6 +27,7 @@ COPY --chown=app:app packages/form-conditions/package.json packages/form-conditi
 COPY --chown=app:app packages/form-types/package.json packages/form-types/
 COPY --chown=app:app packages/form-validation/package.json packages/form-validation/
 COPY --chown=app:app packages/registry/package.json packages/registry/
+COPY --chown=app:app packages/submission-summary/package.json packages/submission-summary/
 # content is never imported by the api, but the ROOT package.json pins it
 # (workspace:*), and the root project is part of the prod-deps install below.
 COPY --chown=app:app packages/content/package.json packages/content/
