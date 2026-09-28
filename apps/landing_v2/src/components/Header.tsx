@@ -13,13 +13,7 @@ import govBbLogoUrl from '@govtech-bb/frontend/assets/images/govbb-logo.svg?url'
 // client-side navigation, and forward the ref so focus management keeps working.
 type RouterLinkProps = ComponentPropsWithoutRef<'a'> & { href: string }
 const RouterLink = forwardRef<HTMLAnchorElement, RouterLinkProps>(
-  ({ href, ...props }, ref) => (
-    // @ts-expect-error — with zero leaf routes (Session 1 has only the root),
-    // TanStack Router's `ParseRoute<routeTree>` union is empty, so `Link`'s
-    // generic `to` resolution falls back to a `never` search schema and
-    // treats `search` as required here. Remove once a real route exists.
-    <Link ref={ref} to={href} {...props} />
-  ),
+  ({ href, ...props }, ref) => <Link ref={ref} to={href} {...props} />,
 )
 RouterLink.displayName = 'RouterLink'
 
