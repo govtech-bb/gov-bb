@@ -972,6 +972,9 @@ importers:
       '@govtech-bb/react':
         specifier: 1.0.0-alpha.29
         version: 1.0.0-alpha.29(react@19.2.7)
+      '@govtech-bb/submission-summary':
+        specifier: workspace:*
+        version: link:../../packages/submission-summary
       '@maskito/core':
         specifier: ^5.2.2
         version: 5.3.1

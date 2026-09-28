@@ -253,6 +253,48 @@ describe("buildForm", () => {
   });
 
   // ---------------------------------------------------------------------------
+  // contractSteps
+  // ---------------------------------------------------------------------------
+
+  describe("contractSteps", () => {
+    // The printed confirmation renders from these, so they have to survive the
+    // repeatable split intact: a sharedFields step leaves `steps` holding a
+    // shared-only page plus a per-instance clone, and building the paper copy
+    // from either alone loses half the applicant's answers (#2587).
+    it("keeps a sharedFields step whole, while steps is split", () => {
+      const contract = makeContract({
+        steps: [
+          makeStep(
+            "child-details",
+            [
+              makeField("child-name", "child-details"),
+              makeField("child-school", "child-details"),
+            ],
+            [
+              { type: "repeatable", min: 1, max: 3 } as RepeatableBehaviour,
+              { type: "sharedFields", fieldIds: ["child-school"] },
+            ],
+          ),
+          makeStep("submission-confirmation", []),
+        ],
+      });
+
+      const result = buildForm(contract);
+
+      expect(
+        result.contractSteps
+          .find((s) => s.stepId === "child-details")
+          ?.fields.map((f) => f.fieldId),
+      ).toEqual(["child-name", "child-school"]);
+      expect(
+        result.steps
+          .find((s) => s.stepId === "child-details")
+          ?.fields.map((f) => f.fieldId),
+      ).toEqual(["child-school"]);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
   // stepConditionalTargets
   // ---------------------------------------------------------------------------
 

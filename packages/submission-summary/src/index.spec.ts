@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { FormStep } from "@govtech-bb/form-types";
-import { buildSubmissionSections, type SubmissionVisibility } from "./index";
+import {
+  buildSubmissionSections,
+  summaryValueToText,
+  type SubmissionVisibility,
+} from "./index";
 
 /* ── fixtures ─────────────────────────────────────────────────────────────── */
 
@@ -371,5 +375,29 @@ describe("buildSubmissionSections", () => {
     });
 
     expect(sections.map((s) => s.title)).toEqual(["Personal Information"]);
+  });
+});
+
+// The email and the printed confirmation both show a file as its name; only
+// the CMS renders the nodes themselves. One implementation, so the two text
+// surfaces cannot drift.
+describe("summaryValueToText", () => {
+  it("passes an already-formatted answer through", () => {
+    expect(summaryValueToText("5 June 2026")).toBe("5 June 2026");
+  });
+
+  it("names uploaded files, comma separated", () => {
+    expect(
+      summaryValueToText([
+        { key: "uploads/a", name: "cert.pdf" },
+        { key: "uploads/b", name: "photo.jpeg" },
+      ]),
+    ).toBe("cert.pdf, photo.jpeg");
+  });
+
+  it("falls back to the key's basename for a file with no name", () => {
+    expect(summaryValueToText([{ key: "uploads/2026/scan-1.pdf" }])).toBe(
+      "scan-1.pdf",
+    );
   });
 });

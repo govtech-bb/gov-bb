@@ -1,4 +1,5 @@
 import { ContactDetails } from "@govtech-bb/form-types";
+import type { SummarySection } from "@govtech-bb/submission-summary";
 import { AnyFormApi } from "@tanstack/react-form";
 import { ClientFormStep, ClientPrimitive } from "./field-mapper.type";
 import { FormMeta } from "./renderer.type";
@@ -125,6 +126,16 @@ export interface SubmissionState {
    * `{landingUrl}`, which the page interpolates at render.
    */
   resolvedMarkdown?: string;
+  /**
+   * The applicant's answers as labelled sections, for the printed copy (#2587).
+   * Captured at submit time for the same reason as `resolvedMarkdown` above —
+   * `clearFormState` drops the draft on success, so there is nothing left to
+   * render from by the time the confirmation step is on screen.
+   *
+   * Only the rendered rows are kept, never the raw value tree: branch-skipped
+   * questions are already out, and files are already named.
+   */
+  sections?: SummarySection[];
   referenceNumber: string;
   // Optional: payment ("gated") submissions are not finalised yet, so the
   // server returns `submittedAt: null` — there is no submission date to show
