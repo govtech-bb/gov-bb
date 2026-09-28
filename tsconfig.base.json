@@ -26,6 +26,8 @@
       "@govtech-bb/content/form-categories": [
         "packages/content/src/form-categories.ts"
       ],
+      "@govtech-bb/block-kit": ["packages/block-kit/src/index.ts"],
+      "@govtech-bb/block-kit/document": ["packages/block-kit/src/document.ts"],
       "@govtech-bb/form-builder": ["packages/form-builder/src/index.ts"],
       "@govtech-bb/form-types": ["packages/form-types/src/index.ts"],
       "@govtech-bb/expressions": ["packages/expressions/src/index.ts"],

@@ -1,0 +1,37 @@
+{
+  "name": "@govtech-bb/block-kit",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    },
+    "./document": {
+      "types": "./dist/src/document.d.ts",
+      "default": "./dist/src/document.js"
+    },
+    "./styles.css": "./src/render/styles.css"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@govtech-bb/react": "1.0.0-alpha.29",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "react": "catalog:"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "^4.1.11"
+  }
+}
