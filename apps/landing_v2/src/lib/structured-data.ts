@@ -24,3 +24,45 @@ export function buildOrganizationLd() {
     logo: `${SITE_URL}/images/coat-of-arms.png`,
   }
 }
+
+export function buildGovernmentServiceLd({
+  title,
+  description,
+  url,
+}: {
+  title: string
+  description?: string
+  url: string
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'GovernmentService',
+    name: title,
+    ...(description ? { description } : {}),
+    provider: { '@id': ORG_ID },
+    areaServed: { '@type': 'Country', name: 'Barbados' },
+    url: `${SITE_URL}/${url}`,
+  }
+}
+
+export function buildBreadcrumbLd(
+  breadcrumbs: { name: string; url: string }[],
+) {
+  const items = [
+    { name: 'Home', url: SITE_URL },
+    ...breadcrumbs.map((crumb) => ({
+      name: crumb.name,
+      url: `${SITE_URL}/${crumb.url}`,
+    })),
+  ]
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((it, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: it.name,
+      item: it.url,
+    })),
+  }
+}

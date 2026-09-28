@@ -3,24 +3,45 @@ import {
   Outlet,
   Scripts,
   createRootRoute,
+  useMatch,
 } from '@tanstack/react-router'
 import { Footer, FooterLink, SkipLink } from '@govtech-bb/react'
+import { Breadcrumbs } from '../components/Breadcrumbs'
 import Header from '../components/Header'
 import { ErrorPage } from '../components/ErrorPage'
 import { ServerErrorPage } from '../components/ServerErrorPage'
+import { trackEvent } from '../lib/analytics'
 import { SITE_URL } from '../lib/site-url'
 import { buildOrganizationLd } from '../lib/structured-data'
 
 import appCss from '../styles.css?url'
 
 const FOOTER_LINKS = [
-  { label: 'Home', href: '/' },
-  { label: 'Terms & Conditions', href: '/terms-conditions' },
+  { label: 'Home', href: '/', onClick: () => trackEvent('footer-home') },
+  {
+    label: 'Terms & Conditions',
+    href: '/terms-conditions',
+    onClick: () => trackEvent('footer-terms'),
+  },
   {
     label: 'Careers',
     href: 'https://job-boards.greenhouse.io/govtechbarbados',
+    onClick: () => trackEvent('footer-careers'),
   },
 ]
+
+// Umami analytics. The website id is a `VITE_`-prefixed var, so Vite inlines it
+// at build time from the build-container env (`import.meta.env`) — no runtime
+// env needed, which is what makes it work on Amplify (the SSR compute never
+// sees Console env vars). The id is public — it ships in the rendered <script>
+// tag — so it must NOT be read via a server-only runtime config. When the id is
+// unset the script is omitted entirely, so no events are sent.
+const UMAMI_WEBSITE_ID = import.meta.env.VITE_UMAMI_WEBSITE_ID as
+  | string
+  | undefined
+const UMAMI_SRC =
+  (import.meta.env.VITE_UMAMI_SRC as string | undefined) ??
+  'https://cloud.umami.is/script.js'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -49,6 +70,16 @@ export const Route = createRootRoute({
         type: 'application/ld+json',
         children: JSON.stringify(buildOrganizationLd()),
       },
+      ...(UMAMI_WEBSITE_ID
+        ? [
+            {
+              src: UMAMI_SRC,
+              defer: true,
+              'data-website-id': UMAMI_WEBSITE_ID,
+              'data-auto-track': 'false',
+            },
+          ]
+        : []),
     ],
   }),
   notFoundComponent: NotFoundPage,
@@ -86,12 +117,15 @@ function NotFoundPage() {
 }
 
 function RootLayout() {
+  const breadcrumbs = useMatch({ from: '/$', shouldThrow: false })?.loaderData
+    ?.breadcrumbs
   return (
     <>
       <SkipLink href="#main-content" />
       <div className="print:hidden">
         <Header />
       </div>
+      <Breadcrumbs breadcrumbs={breadcrumbs ?? []} />
       <main id="main-content" tabIndex={-1}>
         <Outlet />
       </main>

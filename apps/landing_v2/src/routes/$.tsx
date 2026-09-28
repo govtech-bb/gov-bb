@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router'
 import {
   CONTENT_API_UNREACHABLE,
@@ -5,6 +6,13 @@ import {
 } from '../components/ContentRouteError'
 import { MarkdownContent } from '../components/markdown'
 import { getPage } from '../lib/content-api'
+import { trackEvent } from '../lib/analytics'
+import { seoTags } from '../lib/page-head'
+import {
+  buildBreadcrumbLd,
+  buildGovernmentServiceLd,
+} from '../lib/structured-data'
+import { pageViewEvent } from './-page-view-event'
 
 export const Route = createFileRoute('/$')({
   loader: async ({ params }) => {
@@ -21,15 +29,48 @@ export const Route = createFileRoute('/$')({
         throw new Error(CONTENT_API_UNREACHABLE)
     }
   },
-  head: ({ loaderData }) => ({
-    meta: [{ title: loaderData?.frontmatter.title }],
-  }),
+  head: ({ loaderData }) => {
+    if (!loaderData) return {}
+    const { frontmatter, url, breadcrumbs } = loaderData
+    const title = frontmatter.title
+    const seo = seoTags(title, frontmatter.description ?? '', `/${url}`)
+    return {
+      meta: [
+        { title },
+        ...(frontmatter.description
+          ? [{ name: 'description', content: frontmatter.description }]
+          : []),
+        ...seo.meta,
+      ],
+      links: seo.links,
+      scripts: [
+        {
+          type: 'application/ld+json',
+          children: JSON.stringify(
+            buildGovernmentServiceLd({
+              title,
+              description: frontmatter.description,
+              url,
+            }),
+          ),
+        },
+        {
+          type: 'application/ld+json',
+          children: JSON.stringify(buildBreadcrumbLd(breadcrumbs)),
+        },
+      ],
+    }
+  },
   errorComponent: ContentRouteError,
   component: RouteComponent,
 })
 
 function RouteComponent() {
   const page = Route.useLoaderData()
+  useEffect(() => {
+    const event = pageViewEvent(page)
+    if (event) trackEvent(event.name, event.data)
+  }, [page])
   return (
     <div className="govbb-width-container govbb-main-wrapper">
       <MarkdownContent frontmatter={page.frontmatter} hast={page.hast} />
