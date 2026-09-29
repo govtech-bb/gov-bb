@@ -70,6 +70,40 @@ describe("rule 1 — the body validates against the Zod schema", () => {
   });
 });
 
+describe("rule 1 — a list item's start_link", () => {
+  const listWith = (start_link: unknown) =>
+    doc([
+      {
+        id: "list-1",
+        type: "list",
+        ordered: true,
+        items: [{ id: "i1", content: [{ text: "Apply online" }], start_link }],
+      } as unknown as Block,
+    ]);
+
+  it("accepts a form target", () => {
+    const ok = listWith({
+      label: "Start now",
+      target_kind: "form",
+      target: "apply-for-hair-salon-licence",
+    });
+    expect(validateDocument(ok, ctx)).toEqual([]);
+  });
+
+  it("rejects an unsafe external target and names the list block", () => {
+    const errors = validateDocument(
+      listWith({
+        label: "Start now",
+        target_kind: "external",
+        target: "javascript:alert(1)",
+      }),
+      ctx,
+    );
+    expect(rulesFailed(errors)).toEqual([1]);
+    expect(errors[0].blockId).toBe("list-1");
+  });
+});
+
 describe("rule 2 — url starts with a slash", () => {
   it("rejects a relative url", () => {
     const bad = { ...doc([]), url: "no-slash" };
@@ -293,6 +327,40 @@ describe("rule 8 — an internal start_link points at a real page", () => {
         target: "some-form-id",
       },
     ]);
+    expect(validateDocument(ok, ctx)).toEqual([]);
+  });
+});
+
+describe("rule 8 — a list item's start_link", () => {
+  const listWith = (target: string) =>
+    doc([
+      {
+        id: "list-1",
+        type: "list",
+        ordered: true,
+        items: [
+          {
+            id: "i1",
+            content: [{ text: "Apply online" }],
+            start_link: { label: "Start", target_kind: "page", target },
+          },
+        ],
+      },
+    ]);
+
+  it("rejects a page target that is not a known url", () => {
+    const errors = validateDocument(listWith("/nope"), ctx);
+    expect(rulesFailed(errors)).toEqual([8]);
+    expect(errors[0].blockId).toBe("list-1");
+    expect(errors[0].message).toBe(
+      'start_link targets "/nope", which is not a url in content_pages',
+    );
+  });
+
+  it("accepts one that is", () => {
+    const ok = listWith(
+      "/money-financial-support/calculate-severance-pay/form",
+    );
     expect(validateDocument(ok, ctx)).toEqual([]);
   });
 });
