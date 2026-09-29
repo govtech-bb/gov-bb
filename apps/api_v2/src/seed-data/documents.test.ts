@@ -9,6 +9,7 @@
  */
 
 import {
+  type PageDocument,
   pageDocumentSchema,
   validateDocument,
 } from "@govtech-bb/block-kit/document";
@@ -31,7 +32,7 @@ describe("seeded documents", () => {
       });
 
       expect(
-        validateDocument(doc as never, {
+        validateDocument(doc as PageDocument, {
           collections: COLLECTIONS,
           pageUrls: DOCUMENTS.map((d) => d.url),
         }),
@@ -44,7 +45,7 @@ describe("seeded documents", () => {
       DOCUMENTS.find((d) => d.url === HAIR_SALON_URL)?.body.blocks ?? [];
 
     it("puts a Start button on the first way to apply", () => {
-      const list = blocks().find((b) => b.type === "list" && b.ordered);
+      const list = blocks().find((b) => b.id === "b_hs17");
 
       expect(list?.type === "list" && list.items[0]?.start_link).toEqual({
         label: "Start now",
@@ -55,7 +56,7 @@ describe("seeded documents", () => {
 
     it("says there are 2 ways to apply before the list", () => {
       const all = blocks();
-      const listAt = all.findIndex((b) => b.type === "list" && b.ordered);
+      const listAt = all.findIndex((b) => b.id === "b_hs17");
       const before = all[listAt - 1];
 
       expect(
