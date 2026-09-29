@@ -25,16 +25,21 @@ import { Agent, fetch, interceptors, type Dispatcher } from "undici";
  * whether or not anything is cached. When nothing cached can be served, a
  * 5xx (`server_error`) and a refused connection (`unreachable`) both reach
  * the page as a 503 naming api_v2, with the status or the error code kept
- * in the message (pages.ts).
+ * in the message (pages.ts). A 200 whose body cannot be read — not JSON,
+ * empty, cut off mid-stream, or stalled past the body timeout — is a
+ * `server_error` too, and so also a 503 naming api_v2.
  * Assumption (#2702): 7 — the cache is in memory, one per process.
  *
  * The dispatcher also bounds how long it waits on api_v2: a hung upstream
  * (accepts the connection, never answers) would otherwise sit until
  * Amplify's 28s compute timeout fires and the citizen gets a 504 with no
- * body. A timeout is a connection error, not a response, so stale-if-error
- * cannot cover it — like a refused connection, it lands in the
- * `unreachable` branch above, which turns it into a fast 503 naming the
- * undici error code (`UND_ERR_HEADERS_TIMEOUT` / `UND_ERR_BODY_TIMEOUT`).
+ * body. Neither timeout is an error status, so stale-if-error cannot cover
+ * either. The headers timeout fires before any response, so it is a
+ * connection error — like a refused connection, it lands in the
+ * `unreachable` branch above, which turns it into a fast 503 naming
+ * `UND_ERR_HEADERS_TIMEOUT`. The body timeout fires after a 2xx's headers,
+ * so it is a body that cannot be read: a `server_error`, and so also a fast
+ * 503, naming `UND_ERR_BODY_TIMEOUT`.
  */
 
 export type ApiResult =
@@ -42,8 +47,9 @@ export type ApiResult =
   | { kind: "not_found" }
   // Any other non-2xx. A 4xx other than 404 would mean landing_v2 sent a
   // request api_v2 cannot answer, which is as much a failure to serve the
-  // page as a 5xx.
-  | { kind: "server_error"; status: number }
+  // page as a 5xx. A 2xx whose body could not be read lands here too, with
+  // the read or parse error as `cause`.
+  | { kind: "server_error"; status: number; cause?: unknown }
   | { kind: "unreachable"; cause: unknown };
 
 export interface ApiClient {
@@ -94,7 +100,13 @@ export function createApiClient(
       } catch (cause) {
         return { kind: "unreachable", cause };
       }
-      if (response.ok) return { kind: "ok", body: await response.json() };
+      if (response.ok) {
+        try {
+          return { kind: "ok", body: await response.json() };
+        } catch (cause) {
+          return { kind: "server_error", status: response.status, cause };
+        }
+      }
       // Drain the body so the connection goes back to the pool.
       await response.body?.cancel();
       if (response.status === 404) return { kind: "not_found" };

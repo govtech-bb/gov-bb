@@ -41,9 +41,10 @@ export interface PageSummary {
 
 /**
  * api_v2 could not serve a read: it could not be reached at all (a refused
- * connection, a DNS failure), or it answered an error status with nothing
+ * connection, a DNS failure), it answered an error status with nothing
  * cached to serve instead — the database down behind a running api_v2 is a
- * 500. The server functions answer either with a 503.
+ * 500 — or it answered with a body that could not be read. The server
+ * functions answer any of these with a 503.
  */
 export class ApiUnavailableError extends Error {
   constructor(message: string, options?: ErrorOptions) {
@@ -69,6 +70,17 @@ function bodyOf(result: ApiResult, what: string): unknown {
     case "not_found":
       throw new Error(`api_v2 has no ${what}.`);
     case "server_error":
+      // The undici error code of a read that failed (a body timeout, a
+      // cut-off socket), but not the cause's own message: this is rendered
+      // on the page, and a JSON parse error quotes part of the body.
+      if ("cause" in result) {
+        const code = (result.cause as { cause?: { code?: unknown } }).cause
+          ?.code;
+        throw new ApiUnavailableError(
+          `api_v2 answered ${result.status} for ${what} with a body that could not be read${code ? ` (${String(code)})` : ""}.`,
+          { cause: result.cause },
+        );
+      }
       throw new ApiUnavailableError(
         `api_v2 answered ${result.status} for ${what}.`,
       );

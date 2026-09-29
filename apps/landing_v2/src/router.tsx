@@ -20,9 +20,10 @@ export function getRouter() {
  * A loader failure, message in full.
  *
  * Assumption (#2702): 14 — this is a spike, not a public site, so the page
- * says exactly what went wrong: api_v2 unreachable or answering 5xx with
- * nothing cached (served as a 503), or a document that failed validation,
- * named by its slug and the field path.
+ * says exactly what went wrong: api_v2 unreachable, answering 5xx with
+ * nothing cached, or answering 200 with a body that could not be read
+ * (served as a 503), or a document that failed validation, named by its
+ * slug and the field path.
  */
 function LoadError({ error }: ErrorComponentProps) {
   return (

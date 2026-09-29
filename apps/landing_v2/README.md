@@ -20,9 +20,10 @@ strangles `apps/landing` in place.
   memory, one per process.
 - Every document is validated against `pageDocumentSchema` before it renders.
   A malformed document is an error naming its slug and the failing field. An
-  unreachable `api_v2`, or one answering 5xx with nothing cached to serve (the
-  database down), is a 503 naming `api_v2` and the error code or status. Both
-  messages are shown on the page in full.
+  unreachable `api_v2`, one answering 5xx with nothing cached to serve (the
+  database down), or a 200 whose body could not be read, is a 503 naming
+  `api_v2` and the error code or status. Both messages are shown on the page
+  in full.
 
 ## Environment
 
@@ -34,10 +35,10 @@ missing variable. `vite dev` falls back to the local ports. `.env` is read by
 `vite dev` only; export the variables in the shell for `vite build`. See
 `.env.example`.
 
-| Variable     | What it is                            | `vite dev` default      |
-| ------------ | ------------------------------------- | ----------------------- |
-| `API_V2_URL` | `api_v2`'s base URL                   | `http://localhost:3020` |
-| `FORMS_URL`  | The forms app, for Start buttons      | `http://localhost:3000` |
+| Variable     | What it is                       | `vite dev` default      |
+| ------------ | -------------------------------- | ----------------------- |
+| `API_V2_URL` | `api_v2`'s base URL              | `http://localhost:3020` |
+| `FORMS_URL`  | The forms app, for Start buttons | `http://localhost:3000` |
 
 ## Running it
 

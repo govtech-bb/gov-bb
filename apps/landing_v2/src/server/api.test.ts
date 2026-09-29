@@ -13,6 +13,18 @@ type Respond = (req: IncomingMessage) => {
   body?: unknown;
   cacheControl?: string;
   hold?: Promise<void>;
+  /** Sent verbatim instead of `body`, for a body that is not JSON. */
+  raw?: string;
+  /**
+   * A `content-length` longer than the body: once the body is written the
+   * socket is destroyed, so the response is cut off mid-stream.
+   */
+  contentLength?: number;
+  /**
+   * With `contentLength`, the socket is left open once the body is written
+   * instead, so the response stalls mid-stream until the client gives up.
+   */
+  stall?: boolean;
 };
 
 /**
@@ -25,13 +37,25 @@ async function startApi(initial: Respond) {
   const state = { respond: initial };
   const server: Server = createServer(async (req, res) => {
     requests.push(req);
-    const { status, body, cacheControl, hold } = state.respond(req);
+    const { status, body, cacheControl, hold, raw, contentLength, stall } =
+      state.respond(req);
     await hold;
     res.sendDate = false;
     res.statusCode = status;
     if (cacheControl) res.setHeader("cache-control", cacheControl);
     res.setHeader("content-type", "application/json");
-    res.end(JSON.stringify(body ?? { error: status }));
+    const text = raw ?? JSON.stringify(body ?? { error: status });
+    if (contentLength !== undefined) {
+      res.setHeader("content-length", contentLength);
+      // Destroyed in the write callback, so the headers and the partial body
+      // go out first. A stalled response is never ended; `close` destroys
+      // its socket after the test.
+      res.write(text, () => {
+        if (!stall) res.socket?.destroy();
+      });
+      return;
+    }
+    res.end(text);
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { port } = server.address() as AddressInfo;
@@ -176,6 +200,31 @@ describe("apiGet", () => {
     });
   });
 
+  it("returns server_error with the parse error when a 200 is not JSON", async () => {
+    api = await startApi(() => ({ status: 200, raw: "<html>" }));
+    const client = createApiClient(api.baseUrl, dispatcher);
+
+    const result = await client.apiGet("/pages");
+
+    expect(result).toMatchObject({ kind: "server_error", status: 200 });
+    expect((result as { cause: unknown }).cause).toBeInstanceOf(SyntaxError);
+  });
+
+  it("returns server_error when a 200's body is cut off", async () => {
+    api = await startApi(() => ({
+      status: 200,
+      raw: '{"v":',
+      contentLength: 100,
+    }));
+    const client = createApiClient(api.baseUrl, dispatcher);
+
+    const result = await client.apiGet("/pages");
+
+    // undici's "terminated": the socket closed before the body was complete.
+    expect(result).toMatchObject({ kind: "server_error", status: 200 });
+    expect((result as { cause: unknown }).cause).toBeInstanceOf(TypeError);
+  });
+
   it("returns unreachable with the undici timeout code when api_v2 hangs", async () => {
     // Accepts the connection but never sends a response.
     let release!: () => void;
@@ -196,6 +245,33 @@ describe("apiGet", () => {
     expect(cause.cause?.code).toBe("UND_ERR_HEADERS_TIMEOUT");
 
     release();
+    await timingOut.destroy();
+  });
+
+  it("returns server_error with the undici code when a 200's body stalls", async () => {
+    // Sends the headers and part of the body, then nothing more.
+    api = await startApi(() => ({
+      status: 200,
+      raw: '{"v":',
+      contentLength: 100,
+      stall: true,
+    }));
+    const timingOut = createCachingDispatcher({
+      headersTimeout: 200,
+      bodyTimeout: 200,
+    });
+    const client = createApiClient(api.baseUrl, timingOut);
+
+    const result = await client.apiGet("/pages");
+
+    // The headers came in time, so fetch resolved and it is the body that
+    // could not be read: not `unreachable`.
+    expect(result).toMatchObject({ kind: "server_error", status: 200 });
+    const cause = (result as { cause: unknown }).cause as {
+      cause?: { code?: string };
+    };
+    expect(cause.cause?.code).toBe("UND_ERR_BODY_TIMEOUT");
+
     await timingOut.destroy();
   });
 });
