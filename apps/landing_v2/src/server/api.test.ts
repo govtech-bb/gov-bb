@@ -11,6 +11,9 @@ const PUBLIC_READ =
 /** The policy api_v2 sends on the public by-url 404 (#2835). */
 const NOT_FOUND_READ = "public, max-age=10";
 
+/** MemoryCacheStore's default maxCount: the most entries the cache holds. */
+const UNDICI_MAX_COUNT = 1024;
+
 type Respond = (req: IncomingMessage) => {
   status: number;
   body?: unknown;
@@ -205,6 +208,8 @@ describe("apiGet", () => {
     expect(api.requests).toHaveLength(2);
   });
 
+  // The only guard on `apiGet` reading the body: the test above passes even
+  // with `cancel()`, because its body lands in the same packet as the headers.
   it("caches the 404 even when its body arrives after the headers", async () => {
     api = await startApi(() => ({
       status: 404,
@@ -220,6 +225,25 @@ describe("apiGet", () => {
     expect(first).toEqual({ kind: "not_found" });
     expect(second).toEqual({ kind: "not_found" });
     expect(api.requests).toHaveLength(1);
+  });
+
+  // #2835: undici 7 never evicted a url holding one entry, so every unknown
+  // url a visitor asked for stayed in memory for the life of the process.
+  it("evicts a cached 404 once the cache passes its entry cap", async () => {
+    api = await startApi(() => ({ status: 404, cacheControl: NOT_FOUND_READ }));
+    const client = createApiClient(api.baseUrl, dispatcher);
+
+    await client.apiGet("/pages/by-url?url=/first");
+    for (let i = 0; i < UNDICI_MAX_COUNT + 1; i++) {
+      await client.apiGet(`/pages/by-url?url=/other-${i}`);
+    }
+    // No clock advance: were it still cached, this would be a fresh hit.
+    await client.apiGet("/pages/by-url?url=/first");
+
+    const firstRequests = api.requests.filter(
+      (req) => req.url === "/pages/by-url?url=/first",
+    );
+    expect(firstRequests).toHaveLength(2);
   });
 
   it("returns unreachable with the undici timeout code when api_v2 hangs", async () => {

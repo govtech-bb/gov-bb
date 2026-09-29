@@ -19,6 +19,10 @@ import { Agent, fetch, interceptors, type Dispatcher } from "undici";
  * stale copy instead. There is no `s-maxage` on purpose: in `shared` mode
  * undici reads it as proxy-revalidate and turns both stale directives off.
  *
+ * The by-url 404 for an unknown url carries `public, max-age=10` and nothing
+ * else (#2835): it is held for ten seconds, never served stale, and stored
+ * only once its body has been read (see `apiGet`).
+ *
  * Assumption (#2702): 6 — stale-if-error covers api_v2 answering 500–504
  * while a stale copy is being revalidated, not api_v2 being down. A refused
  * connection is an error, not a response, so it is the `unreachable` result
@@ -26,7 +30,12 @@ import { Agent, fetch, interceptors, type Dispatcher } from "undici";
  * 5xx (`server_error`) and a refused connection (`unreachable`) both reach
  * the page as a 503 naming api_v2, with the status or the error code kept
  * in the message (pages.ts).
- * Assumption (#2702): 7 — the cache is in memory, one per process.
+ * Assumption (#2702): 7 — the cache is in memory, one per process, capped at
+ * undici's defaults (1,024 entries, 100 MB). Passing the cap halves every
+ * url's entries, rounding up, so it empties nearly the whole cache, real
+ * pages included: a scan of unknown urls costs refetches, not memory. undici
+ * 7 rounded down and never evicted a url holding one entry, so every unknown
+ * url stayed for the life of the process (#2835).
  *
  * The dispatcher also bounds how long it waits on api_v2: a hung upstream
  * (accepts the connection, never answers) would otherwise sit until
@@ -95,9 +104,10 @@ export function createApiClient(
         return { kind: "unreachable", cause };
       }
       if (response.ok) return { kind: "ok", body: await response.json() };
-      // Read, not cancel: undici's cache commits an entry only when the
-      // response ends, so a cancelled 404 is never stored (#2835). A body that
-      // fails to arrive changes nothing; the status already decided the answer.
+      // Read the body rather than cancel it. undici's cache commits an entry
+      // only when the response ends, so cancelling raced the body and could
+      // drop the by-url 404 (#2835). The read is bounded by `bodyTimeout`, and
+      // a body that never arrives is ignored: the status already decided.
       await response.arrayBuffer().catch(() => undefined);
       if (response.status === 404) return { kind: "not_found" };
       return { kind: "server_error", status: response.status };
