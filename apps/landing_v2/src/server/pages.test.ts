@@ -19,7 +19,18 @@ const doc = (blocks: unknown[], refs: Record<string, unknown> = {}) => ({
   updated_at: "2026-09-22T00:00:00.000Z",
 });
 
-type Route = { status: number; body?: unknown; hold?: Promise<void> };
+type Route = {
+  status: number;
+  body?: unknown;
+  hold?: Promise<void>;
+  /** Sent verbatim instead of `body`, for a body that is not JSON. */
+  raw?: string;
+  /**
+   * A `content-length` longer than the body: once the body is written the
+   * socket is destroyed, so the response is cut off mid-stream.
+   */
+  contentLength?: number;
+};
 
 /** A throwaway api_v2 answering from a table of path → response. */
 async function startApi(routes: (path: string) => Route | undefined) {
@@ -28,7 +39,16 @@ async function startApi(routes: (path: string) => Route | undefined) {
     await route.hold;
     res.statusCode = route.status;
     res.setHeader("content-type", "application/json");
-    res.end(JSON.stringify(route.body ?? { error: route.status }));
+    const text =
+      route.raw ?? JSON.stringify(route.body ?? { error: route.status });
+    if (route.contentLength !== undefined) {
+      res.setHeader("content-length", route.contentLength);
+      // Destroyed in the write callback, so the headers and the partial body
+      // go out first.
+      res.write(text, () => res.socket?.destroy());
+      return;
+    }
+    res.end(text);
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { port } = server.address() as AddressInfo;
@@ -103,6 +123,37 @@ describe("loadPage", () => {
     // connection.
     await expect(failure).rejects.toBeInstanceOf(ApiUnavailableError);
     await expect(failure).rejects.toThrow(/api_v2 answered 500/);
+  });
+
+  it("throws an error naming api_v2 when a 200's body is not JSON", async () => {
+    const api = await startApi((path) =>
+      path === byUrl("/test") ? { status: 200, raw: "<html>" } : undefined,
+    );
+    close = api.close;
+    const client = createApiClient(api.baseUrl, dispatcher);
+
+    const failure = loadPage("/test", client);
+    await expect(failure).rejects.toBeInstanceOf(ApiUnavailableError);
+    // A parse error has no undici code, so none is shown.
+    await expect(failure).rejects.toThrow(
+      /api_v2 answered 200 .* could not be read\./,
+    );
+  });
+
+  it("throws an error naming api_v2 and the undici code when a 200's body is cut off", async () => {
+    const api = await startApi((path) =>
+      path === byUrl("/test")
+        ? { status: 200, raw: '{"v":', contentLength: 100 }
+        : undefined,
+    );
+    close = api.close;
+    const client = createApiClient(api.baseUrl, dispatcher);
+
+    const failure = loadPage("/test", client);
+    await expect(failure).rejects.toBeInstanceOf(ApiUnavailableError);
+    await expect(failure).rejects.toThrow(
+      /api_v2 answered 200 .* could not be read \(UND_ERR_SOCKET\)\./,
+    );
   });
 
   it("fetches the records of every collection the page reads, in parallel", async () => {
