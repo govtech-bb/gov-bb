@@ -19,7 +19,7 @@ const doc = (blocks: unknown[], refs: Record<string, unknown> = {}) => ({
 });
 
 describe("startLinkHref", () => {
-  it("resolves a form start link to ${FORMS_URL}/<id>", () => {
+  it("resolves a form start link to ${FORMS_URL}/forms/<id>", () => {
     const html = renderToStaticMarkup(
       createElement(RenderDocument, {
         doc: doc([
@@ -36,7 +36,40 @@ describe("startLinkHref", () => {
       }),
     );
 
-    expect(html).toContain('href="https://forms.example/apply-for-a-permit"');
+    expect(html).toContain(
+      'href="https://forms.example/forms/apply-for-a-permit"',
+    );
+  });
+
+  it("resolves a list item form start link inside its <li>", () => {
+    const html = renderToStaticMarkup(
+      createElement(RenderDocument, {
+        doc: doc([
+          {
+            id: "l1",
+            type: "list",
+            ordered: false,
+            items: [
+              {
+                id: "i1",
+                content: [{ text: "Apply online" }],
+                start_link: {
+                  label: "Start now",
+                  target_kind: "form",
+                  target: "apply-for-a-permit",
+                },
+              },
+            ],
+          },
+        ]) as PageDocument,
+        data: {},
+        resolveHref: startLinkHref("https://forms.example"),
+      }),
+    );
+
+    expect(html).toMatch(
+      /<li[^>]*>.*<a[^>]*href="https:\/\/forms\.example\/forms\/apply-for-a-permit"[^>]*>.*<\/li>/,
+    );
   });
 
   it("leaves page and external targets as they are", () => {

@@ -7,10 +7,12 @@ import type { RenderContext } from "@govtech-bb/block-kit";
  * Not server-only: the page component calls it, during SSR and again on
  * hydration, with the forms URL `getPage` returned.
  */
-// Assumption (#2702): 9 — `${FORMS_URL}/${target}`, exactly that shape.
+// `apps/forms` serves a form at `/forms/$formId/` (its `routes/forms/$formId/`
+// route) and v1's `StartLink` emits the same path, so a form target is
+// `${FORMS_URL}/forms/<id>` and FORMS_URL keeps meaning the app origin (#2840).
 export function startLinkHref(
   formsBaseUrl: string,
 ): NonNullable<RenderContext["resolveHref"]> {
   return (kind, target) =>
-    kind === "form" ? `${formsBaseUrl}/${target}` : target;
+    kind === "form" ? `${formsBaseUrl}/forms/${target}` : target;
 }
