@@ -95,8 +95,10 @@ export function createApiClient(
         return { kind: "unreachable", cause };
       }
       if (response.ok) return { kind: "ok", body: await response.json() };
-      // Drain the body so the connection goes back to the pool.
-      await response.body?.cancel();
+      // Read, not cancel: undici's cache commits an entry only when the
+      // response ends, so a cancelled 404 is never stored (#2835). A body that
+      // fails to arrive changes nothing; the status already decided the answer.
+      await response.arrayBuffer().catch(() => undefined);
       if (response.status === 404) return { kind: "not_found" };
       return { kind: "server_error", status: response.status };
     },
