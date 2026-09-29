@@ -34,7 +34,7 @@ import {
 export const IF_UPDATED_AT = "if-updated-at";
 
 /**
- * The two Cache-Control policies a read route sends.
+ * The two Cache-Control policies a successful read sends.
  *
  * `PUBLIC_READ` is what a shared cache (undici in `landing_v2`, later a CDN)
  * may hold and serve to anyone. `EDITOR_READ` is `no-cache` — revalidate on
@@ -48,6 +48,19 @@ export const IF_UPDATED_AT = "if-updated-at";
 export const PUBLIC_READ =
   "public, max-age=60, stale-while-revalidate=300, stale-if-error=86400";
 export const EDITOR_READ = "no-cache";
+
+/**
+ * The by-url 404's policy when drafts are not asked for (#2835).
+ *
+ * Ten seconds turns an unknown url from one Postgres query per hit into one
+ * per ten seconds per `landing_v2` instance, at the price of a brand-new url
+ * taking up to ten seconds to appear; edits to existing pages are 200s under
+ * `PUBLIC_READ` and are unaffected. No `stale-while-revalidate` or
+ * `stale-if-error`: a cached "no page here" must never be served stale
+ * through an `api_v2` outage. Every other error response — the drafts 404,
+ * the `/pages/:id` 404, the error handler's, every 500 — stays header-less.
+ */
+export const NOT_FOUND_READ = "public, max-age=10";
 
 export interface AppOptions {
   db: Database;
@@ -230,6 +243,7 @@ export async function buildApp({
       const drafts = request.query.drafts === "true";
       const doc = await store.getByUrl(url, drafts);
       if (!doc) {
+        if (!drafts) reply.header("Cache-Control", NOT_FOUND_READ);
         return reply
           .status(404)
           .send({ error: "not_found", message: `No page at ${url}` });
