@@ -9,4 +9,5 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   plugins: [tanstackStart(), viteReact()],
+  test: { include: ["src/**/*.test.{ts,tsx}"] },
 });

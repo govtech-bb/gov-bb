@@ -17,7 +17,12 @@ export default defineConfig({
   plugins: [
     tailwindcss(),
     nitro({
-      preset: "aws_amplify",
+      // `node-server` for the e2e harness only (`nx run landing_v2:e2e`,
+      // e2e/support.ts). The `aws_amplify` runtime always listens on :3000
+      // and ignores PORT, and :3000 is the forms dev server; `node-server`
+      // reads PORT. Set here rather than through NITRO_PRESET, because the
+      // preset passed to `nitro()` beats the env var.
+      preset: process.env.LANDING_V2_NITRO_PRESET ?? "aws_amplify",
       awsAmplify: {
         // @ts-expect-error - Lambda supports nodejs24.x; Nitro types lag.
         runtime: "nodejs24.x",

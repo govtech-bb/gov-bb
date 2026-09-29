@@ -22,6 +22,15 @@
         }
       ]
     },
+    "build-e2e": {
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/.output"],
+      "options": {
+        "command": "pnpm run build-e2e",
+        "cwd": "apps/landing_v2"
+      },
+      "dependsOn": ["^build"]
+    },
     "dev": {
       "executor": "nx:run-commands",
       "options": {
@@ -35,6 +44,14 @@
         "command": "pnpm run test",
         "cwd": "apps/landing_v2"
       }
+    },
+    "e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm run e2e",
+        "cwd": "apps/landing_v2"
+      },
+      "dependsOn": ["build-e2e"]
     },
     "typecheck": {
       "executor": "nx:run-commands",

@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "vite dev --port 3030",
     "build": "vite build && node scripts/check-no-secret-leak.mjs",
+    "build-e2e": "LANDING_V2_NITRO_PRESET=node-server vite build",
     "preview": "nitro preview",
     "start": "node .amplify-hosting/compute/default/server.js",
     "test": "vitest run",
+    "e2e": "vitest run --config vitest.e2e.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

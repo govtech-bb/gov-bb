@@ -45,6 +45,7 @@ missing variable. `vite dev` falls back to the local ports. `.env` is read by
 pnpm exec nx run landing_v2:dev        # vite dev on :3030
 API_V2_URL=… FORMS_URL=… pnpm exec nx run landing_v2:build
 pnpm exec nx run landing_v2:test       # vitest, against a throwaway server
+pnpm exec nx run landing_v2:e2e        # the built server's status codes
 pnpm exec nx run landing_v2:typecheck
 pnpm exec nx run landing_v2:lint
 ```
@@ -53,3 +54,11 @@ pnpm exec nx run landing_v2:lint
 `scripts/check-no-secret-leak.mjs`, which fails the build if either value
 appears in a client asset. The built server is
 `.amplify-hosting/compute/default/server.js`, and it listens on port 3000.
+
+`e2e` builds a second copy of the server with Nitro's `node-server` preset,
+into `.output/` rather than the Amplify output, because the Amplify server
+can only listen on port 3000. It runs that server against a throwaway
+`api_v2`, with no Postgres, and checks the status a citizen gets: 503 on a
+page and on the server-function RPC when `api_v2` answers 5xx or can't be
+reached, and still 200, 500 and 404 for a healthy page, a malformed document
+and an unknown url.
