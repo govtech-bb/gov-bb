@@ -78,12 +78,12 @@ describe("archiveDrafts", () => {
         fetch: fetchMock as unknown as typeof fetch,
         log: (msg) => log.push(msg),
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual([]);
 
     expect(log.some((m) => /404/.test(m))).toBe(true);
   });
 
-  it("does NOT throw on a non-204/404 response, but logs a warning (best-effort)", async () => {
+  it("does NOT throw on a non-204/404 response, but logs a warning and reports the failure", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(new Response("oops", { status: 500 }));
@@ -96,9 +96,48 @@ describe("archiveDrafts", () => {
         fetch: fetchMock as unknown as typeof fetch,
         log: (msg) => log.push(msg),
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual([{ formId: "passport-renewal", reason: "HTTP 500" }]);
 
     expect(log.some((m) => /WARN/i.test(m) && /500/.test(m))).toBe(true);
+  });
+
+  it.each([401, 403])(
+    "reports a rejected token (%i) as a failure, not a success",
+    async (status) => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(new Response(null, { status }));
+
+      await expect(
+        archiveDrafts([{ formId: "passport-renewal" }], {
+          apiUrl: "https://api.example.com",
+          token: "wrong",
+          fetch: fetchMock as unknown as typeof fetch,
+          log: () => {},
+        }),
+      ).resolves.toEqual([
+        { formId: "passport-renewal", reason: `HTTP ${status}` },
+      ]);
+    },
+  );
+
+  it("reports a request that never reached the API, and still tries the rest", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("getaddrinfo ENOTFOUND"))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    await expect(
+      archiveDrafts([{ formId: "first" }, { formId: "second" }], {
+        apiUrl: "https://wrong-host.example.com",
+        token: "secret",
+        fetch: fetchMock as unknown as typeof fetch,
+        log: () => {},
+      }),
+    ).resolves.toEqual([
+      { formId: "first", reason: "request failed: getaddrinfo ENOTFOUND" },
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("calls fetch zero times when there are no entries", async () => {
