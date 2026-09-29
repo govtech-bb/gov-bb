@@ -37,7 +37,7 @@ missing variable. `vite dev` falls back to the local ports. `.env` is read by
 | Variable     | What it is                            | `vite dev` default      |
 | ------------ | ------------------------------------- | ----------------------- |
 | `API_V2_URL` | `api_v2`'s base URL                   | `http://localhost:3020` |
-| `FORMS_URL`  | The forms app origin; a Start button links to `/forms/<id>` on it | `http://localhost:3000` |
+| `FORMS_URL`  | The forms app origin (`/forms/<id>`)  | `http://localhost:3000` |
 
 ## Running it
 
