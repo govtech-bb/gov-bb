@@ -56,15 +56,16 @@ export async function createScratchDatabase(): Promise<string> {
 }
 
 /**
- * Kills every connection to a database, as a restart, failover or idle reap
- * would, and says how many it killed so a test can wait for that many
+ * Kills every client connection to a database, as a restart, failover or idle
+ * reap would, and says how many it killed so a test can wait for that many
  * reactions.
  */
 export async function terminateBackends(database: string): Promise<number> {
   const client = admin();
   await client.connect();
   const result = await client.query(
-    `select pg_terminate_backend(pid) from pg_stat_activity where datname = $1`,
+    `select pg_terminate_backend(pid) from pg_stat_activity
+     where datname = $1 and backend_type = 'client backend'`,
     [database],
   );
   await client.end();

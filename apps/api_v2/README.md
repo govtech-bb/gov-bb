@@ -101,8 +101,9 @@ process against a scratch database it creates and drops, and drives it over a
 socket. It proves the things PGlite cannot: that the DDL runs on a real
 server, that `timestamptz(3)` survives the node-postgres driver, and that an
 unreachable database is a non-zero exit rather than a server answering with
-empty arrays. Without `DB_HOST` the database-backed half skips itself rather
-than failing.
+empty arrays, and that a connection Postgres drops after boot is logged and
+survived (500 while the database is gone, 200 once it is back). Without
+`DB_HOST` the database-backed half skips itself rather than failing.
 
 What neither suite proves is behaviour against RDS over TLS. That is a
 deploy-time acceptance criterion on #2700 and needs #2707.

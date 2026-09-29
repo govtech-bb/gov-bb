@@ -52,9 +52,12 @@ describe.skipIf(!HAS_DATABASE)(
       expect(terminated).toBeGreaterThan(0);
       // The client's error arrives asynchronously, and the pool may hold more
       // than one idle client.
-      await vi.waitFor(() => expect(drops()).toBe(before + terminated), {
-        timeout: 5_000,
-      });
+      await vi.waitFor(
+        () => expect(drops(), server.stderr).toBe(before + terminated),
+        {
+          timeout: 5_000,
+        },
+      );
     };
 
     it("logs the drop and keeps serving", async () => {
