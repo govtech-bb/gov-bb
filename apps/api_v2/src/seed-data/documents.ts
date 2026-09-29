@@ -813,9 +813,10 @@ const cropOverPermitsForm: SeedDocument = {
  * and the page holds a query over it: change a polyclinic's phone number
  * once and every page that lists it is correct.
  *
- * The online application form is out of scope for the spike, so "How to
- * apply" keeps both routes as content but carries no start_link — which is
- * also why this page needs no stub to satisfy rule 8.
+ * "How to apply" is the v1 "2 ways to apply" pattern (#2840): an intro
+ * paragraph, then a numbered list whose first item carries the Start button
+ * as an item-level `start_link` to the online form. A form target is not a
+ * page url, so rule 8 does not check it and the page needs no stub.
  */
 const hairSalonLicence: SeedDocument = {
   url: "/business-trade/apply-for-hair-salon-licence",
@@ -1095,12 +1096,26 @@ const hairSalonLicence: SeedDocument = {
         ],
       },
       {
+        id: "b_hs16a",
+        type: "paragraph",
+        content: [
+          {
+            text: "There are 2 ways to apply for a hairdressing salon licence. You can:",
+          },
+        ],
+      },
+      {
         id: "b_hs17",
         type: "list",
         ordered: true,
         items: [
           {
             id: "b_hs17a",
+            start_link: {
+              label: "Start now",
+              target_kind: "form",
+              target: "apply-for-hair-salon-licence",
+            },
             content: [
               {
                 text: "Apply for a licence online.",
