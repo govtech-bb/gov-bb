@@ -27,7 +27,7 @@ function sslConfig() {
 }
 
 export function createPool(): Pool {
-  return new Pool({
+  const pool = new Pool({
     host: process.env.DB_HOST ?? "localhost",
     port: Number(process.env.DB_PORT ?? "5432"),
     user: process.env.DB_USERNAME ?? "postgres",
@@ -35,6 +35,13 @@ export function createPool(): Pool {
     database: process.env.DB_NAME ?? "gov_bb_v2",
     ssl: sslConfig(),
   });
+  // An idle client Postgres drops (restart, failover, idle reap) surfaces
+  // here. Unhandled, it exits the process; the pool has already discarded
+  // the client and reconnects on the next query, so logging is enough.
+  pool.on("error", (error) => {
+    console.error("api_v2: idle database connection dropped", error.message);
+  });
+  return pool;
 }
 
 /**
