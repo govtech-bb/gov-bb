@@ -88,12 +88,16 @@ export async function startServer({
         `Run: pnpm exec nx run landing_v2:build-e2e`,
     );
   }
+  const host = "127.0.0.1";
   const port = await freePort();
   const child: ChildProcess = spawn(process.execPath, [entrypoint], {
     cwd: root,
     env: {
       ...process.env,
-      PORT: String(port),
+      // Nitro reads `NITRO_PORT ?? PORT`, so a NITRO_PORT in the shell would
+      // beat a PORT set here. Loopback only, where `url` points.
+      NITRO_PORT: String(port),
+      NITRO_HOST: host,
       // Nitro's runtime overrides of the `apiV2Url` and `formsUrl` baked in
       // at build time. FORMS_URL is set because a built server without it
       // fails every request with a 500, which would mask every case here.
@@ -104,12 +108,17 @@ export async function startServer({
   });
 
   const server: LandingServer = {
-    url: `http://127.0.0.1:${port}`,
+    url: `http://${host}:${port}`,
     output: "",
     stop: async () => {
       if (child.exitCode !== null || child.signalCode !== null) return;
+      const exited = new Promise((resolve) => child.once("exit", resolve));
       child.kill("SIGTERM");
-      await new Promise((resolve) => child.once("exit", resolve));
+      // A child that ignores SIGTERM would otherwise outlive the suite, or
+      // hold `afterAll` until its hook times out.
+      const kill = setTimeout(() => child.kill("SIGKILL"), 5_000);
+      await exited;
+      clearTimeout(kill);
     },
   };
   child.stdout?.on("data", (chunk) => (server.output += String(chunk)));
@@ -135,11 +144,15 @@ async function waitForListening(server: LandingServer, child: ChildProcess) {
       );
     }
     try {
-      const response = await fetch(server.url);
+      // A server that accepts the connection and never answers would
+      // otherwise hold this fetch past the deadline.
+      const response = await fetch(server.url, {
+        signal: AbortSignal.timeout(2_000),
+      });
       await response.body?.cancel();
       return;
     } catch {
-      // Not listening yet.
+      // Not listening yet, or not answering yet.
     }
     await new Promise((resolve) => setTimeout(resolve, 200));
   }

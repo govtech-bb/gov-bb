@@ -59,6 +59,6 @@ appears in a client asset. The built server is
 into `.output/` rather than the Amplify output, because the Amplify server
 can only listen on port 3000. It runs that server against a throwaway
 `api_v2`, with no Postgres, and checks the status a citizen gets: 503 on a
-page and on the server-function RPC when `api_v2` answers 5xx or can't be
-reached, and still 200, 500 and 404 for a healthy page, a malformed document
-and an unknown url.
+page when `api_v2` answers 5xx or can't be reached, and on the
+server-function RPC when it answers 5xx, while a healthy page stays 200, a
+malformed document 500 and an unknown url 404.

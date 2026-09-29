@@ -11,8 +11,9 @@ import { defineConfig } from "vitest/config";
  * It proves what the unit suite cannot. That one runs the loaders as plain
  * functions and sees what they throw; this one sees the status a citizen
  * gets, which Start, the router and the root route's middleware decide
- * between them only in a running server — a 503 when api_v2 is failing or
- * down, on the page and on the RPC, and nothing widened beyond that.
+ * between them only in a running server — a 503 on a page when api_v2
+ * answers 5xx or can't be reached, and on the RPC when it answers 5xx, with
+ * nothing widened beyond that.
  */
 export default defineConfig({
   test: {

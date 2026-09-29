@@ -19,6 +19,9 @@
         },
         {
           "env": "FORMS_URL"
+        },
+        {
+          "env": "LANDING_V2_NITRO_PRESET"
         }
       ]
     },

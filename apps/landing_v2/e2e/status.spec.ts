@@ -1,6 +1,7 @@
 /**
  * "A citizen gets a 503, not a 500, when api_v2 answers 5xx or cannot be
- * reached and nothing is cached" — #2833, on the page and on the RPC.
+ * reached and nothing is cached" — #2833: on a page when api_v2 answers 5xx
+ * or can't be reached, and on the RPC when it answers 5xx.
  *
  * The 503 on a server-rendered page exists only because of the root route's
  * middleware (src/server/status.ts): Start answers SSR with the router's
@@ -87,21 +88,31 @@ async function get(target: LandingServer, path: string, init?: RequestInit) {
   return { status: response.status, body: await response.text() };
 }
 
-/** What a failed status assertion shows: the server's own account. */
-const said = (target: LandingServer) => `server output:\n${target.output}`;
+/**
+ * What a failed status assertion shows: some of the body, then the server's
+ * output. The production server logs nothing for a loader error, so on a
+ * page the body is the only place the error shows. It is shown from the
+ * page's `<main>`, where the error renders, because the several hundred
+ * characters of `<head>` before it say nothing; a body with no `<main>`,
+ * the RPC's, is shown from its start.
+ */
+const said = (target: LandingServer, { body }: { body: string }) => {
+  const from = Math.max(0, body.indexOf("<main"));
+  return `body:\n${body.slice(from, from + 400)}\n\nserver output:\n${target.output}`;
+};
 
 describe("the status a citizen gets", () => {
   it("is 200 for a page api_v2 serves", async () => {
     const page = await get(server, "/healthy");
 
-    expect(page.status, said(server)).toBe(200);
+    expect(page.status, said(server, page)).toBe(200);
     expect(page.body).toContain("A healthy page");
   });
 
   it("is 503 on a server-rendered page when api_v2 answers 500", async () => {
     const page = await get(server, "/broken");
 
-    expect(page.status, said(server)).toBe(503);
+    expect(page.status, said(server, page)).toBe(503);
     expect(page.body).toContain("api_v2 answered 500");
   });
 
@@ -114,20 +125,25 @@ describe("the status a citizen gets", () => {
       headers: { "Sec-Fetch-Site": "same-origin", "x-tsr-serverFn": "true" },
     });
 
-    expect(rpc.status, said(server)).toBe(503);
+    expect(rpc.status, said(server, rpc)).toBe(503);
+    // The serialised error listPages threw, so this 503 is api_v2's.
+    expect(rpc.body).toContain("api_v2 answered 500 for page list");
   });
 
   it("is still 500 for a malformed document", async () => {
     const page = await get(server, "/malformed");
 
-    expect(page.status, said(server)).toBe(500);
+    expect(page.status, said(server, page)).toBe(500);
     expect(page.body).toContain("a-malformed-page");
   });
 
   it("is still 404 for a url api_v2 has no page at", async () => {
     const page = await get(server, "/nowhere");
 
-    expect(page.status, said(server)).toBe(404);
+    expect(page.status, said(server, page)).toBe(404);
+    // The splat route's not-found, so `getPage` found nothing, rather than
+    // no route matching at all.
+    expect(page.body).toContain("No published page");
   });
 
   it("is 503 when api_v2 cannot be reached", async () => {
@@ -137,7 +153,7 @@ describe("the status a citizen gets", () => {
     try {
       const page = await get(unreachable, "/anything");
 
-      expect(page.status, said(unreachable)).toBe(503);
+      expect(page.status, said(unreachable, page)).toBe(503);
       expect(page.body).toContain("could not be reached");
     } finally {
       await unreachable.stop();
