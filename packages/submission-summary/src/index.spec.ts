@@ -376,6 +376,46 @@ describe("buildSubmissionSections", () => {
 
     expect(sections.map((s) => s.title)).toEqual(["Personal Information"]);
   });
+
+  // #2841: a field hidden in one copy must not vanish from a copy that showed it.
+  it("keeps an answer that one copy showed and another copy hid", () => {
+    const sections = build(
+      [personalStep],
+      {
+        personal: [
+          { firstName: "Addie" },
+          { firstName: "Ada", gender: "female" },
+        ],
+      },
+      visibility({
+        activeFieldIds: { personal: [["firstName"], ["firstName", "gender"]] },
+        hiddenFieldIds: { personal: [["gender"], []] },
+      }),
+    );
+
+    expect(sections.map((s) => s.fields.map((f) => f.fieldId))).toEqual([
+      ["firstName"],
+      ["firstName", "gender"],
+    ]);
+  });
+
+  it("drops a field from only the copy that hid it", () => {
+    const sections = build(
+      [personalStep],
+      {
+        personal: [
+          { firstName: "Addie", gender: "female" },
+          { firstName: "Ada", gender: "female" },
+        ],
+      },
+      visibility({ hiddenFieldIds: { personal: [[], ["gender"]] } }),
+    );
+
+    expect(sections.map((s) => s.fields.map((f) => f.fieldId))).toEqual([
+      ["firstName", "gender"],
+      ["firstName"],
+    ]);
+  });
 });
 
 // The email and the printed confirmation both show a file as its name; only
