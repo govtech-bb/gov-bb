@@ -387,6 +387,46 @@ describe("SubmissionPipelineService", () => {
         "personal-info": { "first-name": "Marcus" },
       });
     });
+
+    // jobstart-plus-programme: `disability-support` shows when
+    // `disability-eligibility` is not "yes". When that field is hidden (applicant
+    // under 25) the forms app strips its stale "yes" from the payload but still
+    // hid the step from it, so the API must not demand the step's answers.
+    it("accepts an omitted step whose condition rests on an answer the payload leaves out", async () => {
+      definitionsService.findByFormId.mockResolvedValue(
+        mockContract({
+          steps: [
+            {
+              stepId: "applicant-details",
+              elements: [
+                primitiveText("applicant-dob", true),
+                primitiveText("disability-eligibility"),
+              ],
+              behaviours: [],
+            },
+            {
+              stepId: "disability-support",
+              elements: [primitiveText("has-disability", true)],
+              behaviours: [
+                {
+                  type: "stepConditionalOn",
+                  targetStepId: "applicant-details",
+                  targetFieldId: "disability-eligibility",
+                  operator: "notEqual",
+                  value: "yes",
+                },
+              ],
+            },
+          ],
+        } as unknown as Partial<ServiceContract>),
+      );
+      const dto = {
+        ...baseDto(),
+        values: { "applicant-details": { "applicant-dob": "2006-06-15" } },
+      };
+
+      await expect(service.run(dto)).resolves.toBeDefined();
+    });
   });
 
   describe("buildAuditTrail", () => {

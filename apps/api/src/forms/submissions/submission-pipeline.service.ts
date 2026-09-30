@@ -46,18 +46,39 @@ function relaxRequired(primitive: Primitive): Primitive {
 // never being validated — otherwise `values: {}` passes every form
 // (case-management#213). Only for validation: an omitted step is still not
 // stored. Omitted repeatable steps are left to the min check below.
+//
+// A step whose visibility rests on an answer the payload leaves out is skipped
+// too. The forms app decides visibility from its own state, which keeps a
+// hidden field's stale answer that the payload strips, so the API cannot tell
+// whether the applicant was shown the step (jobstart-plus-programme's
+// `disability-support` is `notEqual "yes"` on a field that hides under 25).
 function withOmittedSteps(
   contract: ServiceContract,
   instances: StepInstance[],
   hiddenStepIds: Set<string>,
+  values: SubmissionValues,
 ): StepInstance[] {
   const submittedStepIds = new Set(instances.map((i) => i.stepId));
+  const isAnswered = (stepId: string, fieldId: string) => {
+    const stepValues = values[stepId];
+    return (
+      typeof stepValues === "object" &&
+      stepValues !== null &&
+      !Array.isArray(stepValues) &&
+      (stepValues as Record<string, unknown>)[fieldId] !== undefined
+    );
+  };
   const omitted = contract.steps
     .filter(
       (step) =>
         !submittedStepIds.has(step.stepId) &&
         !hiddenStepIds.has(step.stepId) &&
-        !step.behaviours?.some((b) => b.type === "repeatable"),
+        !step.behaviours?.some(
+          (b) =>
+            b.type === "repeatable" ||
+            (b.type === "stepConditionalOn" &&
+              !isAnswered(b.targetStepId, b.targetFieldId)),
+        ),
     )
     .map((step) => ({
       stepId: step.stepId,
@@ -95,6 +116,7 @@ export class SubmissionPipelineService {
       contract,
       expanded.instances,
       cond.hiddenStepIds,
+      dto.values,
     );
 
     const { perInstanceErrors, stepLevelErrors } = this.validate(
