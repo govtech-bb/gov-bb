@@ -8,8 +8,8 @@
  * estate that genuinely has no content.
  */
 
-import { describe, expect, it } from "vitest";
-import { connect } from "./db";
+import { describe, expect, it, vi } from "vitest";
+import { connect, createPool } from "./db";
 
 describe("connect", () => {
   it("refuses to start when Postgres is unreachable, and says where it looked", async () => {
@@ -27,5 +27,37 @@ describe("connect", () => {
     await expect(connect(pool)).rejects.toThrow(
       /Cannot reach Postgres at 127\.0\.0\.1:1 as nobody — refusing to start/,
     );
+  });
+});
+
+/*
+ * #2831: Postgres drops idle pooled connections routinely — an RDS restart, a
+ * failover, an idle reap. pg-pool re-emits that on the pool, and an `error`
+ * event nobody listens for takes the process down. `new Pool()` is lazy, so
+ * this needs no database.
+ */
+describe("createPool", () => {
+  it("logs a dropped idle connection, with its code, instead of throwing", async () => {
+    const logger = { warn: vi.fn() };
+    const pool = createPool(logger);
+    // What pg-pool emits for a `pg_terminate_backend`, `err.client` included.
+    const error = Object.assign(
+      new Error("terminating connection due to administrator command"),
+      { code: "57P01", client: {} },
+    );
+
+    try {
+      expect(() => pool.emit("error", error)).not.toThrow();
+      // Exactly these fields: the client object must not reach the log.
+      expect(logger.warn).toHaveBeenCalledWith(
+        {
+          code: "57P01",
+          reason: "terminating connection due to administrator command",
+        },
+        "idle database connection dropped",
+      );
+    } finally {
+      await pool.end();
+    }
   });
 });

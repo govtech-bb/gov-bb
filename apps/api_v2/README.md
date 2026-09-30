@@ -25,6 +25,17 @@ spelling of `packages/database/src/data-source-env.ts`, not a bespoke config.
 | `PORT`                                             | `3020`                                 |
 | `CORS_ORIGINS`                                     | the dev servers                        |
 
+## Operations
+
+Request logs and the pool's own logs are JSON lines on stdout, through one pino
+logger. `idle database connection dropped` (level `warn`) means Postgres closed
+a connection the pool was holding: a restart, a failover, an idle reap. The
+process keeps serving and reconnects on the next query. `code` says why it
+went: `57P01` for an admin termination or restart, `ECONNRESET` for the
+network. One is routine; a steady run is a database in trouble, and otherwise
+shows only as scattered 500s. The message is the marker the on-call alarm
+matches (#2862), so do not reword it.
+
 ## Endpoints
 
 Reads are public. Writes are unauthenticated until #2701 lands, and nothing
@@ -101,8 +112,9 @@ process against a scratch database it creates and drops, and drives it over a
 socket. It proves the things PGlite cannot: that the DDL runs on a real
 server, that `timestamptz(3)` survives the node-postgres driver, and that an
 unreachable database is a non-zero exit rather than a server answering with
-empty arrays. Without `DB_HOST` the database-backed half skips itself rather
-than failing.
+empty arrays, and that a connection Postgres drops after boot is logged and
+survived (500 while the database is gone, 200 once it is back). Without
+`DB_HOST` the database-backed half skips itself rather than failing.
 
 What neither suite proves is behaviour against RDS over TLS. That is a
 deploy-time acceptance criterion on #2700 and needs #2707.

@@ -4,6 +4,7 @@
  * arrays.
  */
 
+import pino from "pino";
 import { buildApp } from "./app";
 import { connect, createPool } from "./db";
 import { migrate } from "./migrate";
@@ -12,7 +13,11 @@ import { seed } from "./seed";
 const PORT = Number(process.env.PORT ?? "3020");
 
 async function main() {
-  const pool = createPool();
+  // One logger for the pool and the app, so a dropped connection lands in the
+  // same structured stream as the request logs. The pool exists before the
+  // app does, which is why it is made here rather than by Fastify.
+  const logger = pino();
+  const pool = createPool(logger);
   const db = await connect(pool);
 
   // node-postgres runs a multi-statement string through the simple query
@@ -31,7 +36,7 @@ async function main() {
     }
   }
 
-  const app = await buildApp({ db, logger: true });
+  const app = await buildApp({ db, logger });
   await app.listen({ port: PORT, host: "0.0.0.0" });
   console.log(`api_v2 listening on ${PORT}`);
 }

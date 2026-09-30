@@ -10,7 +10,11 @@
  */
 
 import { createHash } from "node:crypto";
-import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
+import Fastify, {
+  type FastifyBaseLogger,
+  type FastifyError,
+  type FastifyInstance,
+} from "fastify";
 import cors from "@fastify/cors";
 import swagger from "@fastify/swagger";
 import type { PageDocument } from "@govtech-bb/block-kit/document";
@@ -51,14 +55,15 @@ export const EDITOR_READ = "no-cache";
 
 export interface AppOptions {
   db: Database;
-  logger?: boolean;
+  /** `main.ts`'s logger, shared with the pool. Unset, the app logs nothing. */
+  logger?: FastifyBaseLogger;
 }
 
 export async function buildApp({
   db,
-  logger = false,
+  logger,
 }: AppOptions): Promise<FastifyInstance> {
-  const app = Fastify({ logger });
+  const app = Fastify({ loggerInstance: logger });
   const store = new ApiStore(db);
 
   /*

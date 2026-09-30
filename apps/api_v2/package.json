@@ -17,7 +17,8 @@
     "@govtech-bb/block-kit": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.6.1",
-    "pg": "^8.21.0"
+    "pg": "^8.21.0",
+    "pino": "^10.3.1"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.3.11",
