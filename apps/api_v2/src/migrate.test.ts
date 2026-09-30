@@ -39,12 +39,12 @@ describe("migrate", () => {
     const { client, db } = freshDb();
     const ran = await migrate(db, (script) => client.exec(script));
 
-    expect(ran).toEqual(["001_init"]);
+    expect(ran).toEqual(["001_init", "002_markdown_pages"]);
     expect(await tableNames(db)).toEqual([
+      "categories",
       "change_events",
-      "collection_records",
       "content_pages",
-      "data_collections",
+      "forms",
       "schema_migrations",
     ]);
     await client.close();
@@ -68,29 +68,35 @@ describe("migrate", () => {
     await db.execute(sql`delete from schema_migrations`);
 
     await expect(migrate(db, (script) => client.exec(script))).resolves.toEqual(
-      ["001_init"],
+      ["001_init", "002_markdown_pages"],
     );
     await client.close();
   });
 
-  it("matches the spike's schema, which is what has actually been run", async () => {
-    // The browser spike and the API must not drift: same tables, same
-    // columns. Compared as text rather than by hand so a new column in one
-    // place fails here rather than in a migration six months later.
-    const apiSql = readMigration("001_init");
-    for (const table of [
-      "content_pages",
-      "data_collections",
-      "collection_records",
-      "change_events",
-    ]) {
-      expect(apiSql).toContain(`create table if not exists ${table}`);
-    }
-    // The body shape check is the constraint that stops a markdown string
-    // being written where a block document belongs.
-    expect(apiSql).toContain(
-      "check (body ? 'blocks' and body ? 'refs' and body ? 'version')",
+  it("moves a database already holding block documents onto markdown", async () => {
+    // A laptop that booted the block-document api_v2 has 001 applied and
+    // seeded pages whose NOT NULL body the new columns cannot fill. 002
+    // clears them rather than failing, and the seed refills the estate.
+    const { client, db } = freshDb();
+    await client.exec(readMigration("001_init"));
+    await client.exec(
+      `insert into content_pages (url, slug, schema_name, document_type, title, body)
+       values ('/x', 'x', 'answer', 'answer', 'X',
+               '{"version":1,"blocks":[],"refs":{}}'::jsonb)`,
     );
+    await client.exec(
+      `create table schema_migrations (name text primary key, applied_at timestamptz not null default now());
+       insert into schema_migrations (name) values ('001_init');`,
+    );
+
+    await expect(migrate(db, (script) => client.exec(script))).resolves.toEqual(
+      ["002_markdown_pages"],
+    );
+    const pages = await client.query(
+      "select count(*)::int as n from content_pages",
+    );
+    expect(pages.rows).toEqual([{ n: 0 }]);
+    await client.close();
   });
 
   it("keeps change_events append-only", async () => {

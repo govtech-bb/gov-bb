@@ -1,33 +1,36 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { listPages } from "../server/pages";
 
+/**
+ * The spike's front door. api_v2 serves pages by url and has no list, so
+ * this links a few seeded pages rather than listing the estate.
+ */
 export const Route = createFileRoute("/")({
-  // Resolved before the component renders, on the server for the first
-  // request and through landing_v2's own server after that — never from the
-  // browser to api_v2. There is no state in which this list is unknown.
-  loader: async () => ({ pages: await listPages() }),
   component: SiteIndex,
 });
 
-function SiteIndex() {
-  const { pages } = Route.useLoaderData();
+const EXAMPLES = [
+  "/money-financial-support/calculate-severance-pay",
+  "/work-employment/apply-to-be-a-project-protege-mentor",
+  "/family-birth-relationships/get-birth-certificate",
+  // A bare slug, which api_v2 redirects to its canonical url.
+  "/calculate-severance-pay",
+];
 
+function SiteIndex() {
   return (
     <div className="site-index-page">
       <h1>Pages</h1>
       <p className="site-lede">
-        Every page here is stored as a block document and rendered from the
-        database. Nothing on this list is a file.
+        Every page here is markdown stored in the database, compiled to hast and
+        rendered by api_v2's response. Any path is resolved against{" "}
+        <code>content_pages.url</code>.
       </p>
       <ul className="site-index">
-        {pages.map((page) => (
-          <li key={page.id}>
-            <Link to={page.url} className="site-index-link">
-              {page.title}
+        {EXAMPLES.map((url) => (
+          <li key={url}>
+            <Link to={url} className="site-index-link">
+              {url}
             </Link>
-            <p className="site-index-meta">
-              {page.url} · {page.schema_name} · {page.document_type}
-            </p>
           </li>
         ))}
       </ul>

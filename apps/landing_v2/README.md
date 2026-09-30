@@ -1,16 +1,19 @@
 # landing_v2 — spike site
 
-Server-renders content pages from `api_v2` (#2702), with the
-`@govtech-bb/block-kit` renderer and the GOV.BB design system. A citizen gets
-finished HTML: no spinner, and the browser never calls `api_v2`.
+Server-renders content pages from `api_v2` (#2702) — the hast `api_v2`
+compiled from each page's markdown — with the GOV.BB design system. A citizen
+gets finished HTML: no spinner, and the browser never calls `api_v2`.
 
 This is a spike, not the beginning of a new front end. The real migration
 strangles `apps/landing` in place.
 
 ## How a page is served
 
-- `/` lists the published pages; every other path is resolved against
-  `content_pages.url` by the `$` route.
+- `/` links a few seeded pages (`api_v2` has no list); every other path is
+  resolved against `content_pages.url` by the `$` route, through
+  `GET /pages?url=`. `api_v2` decides visibility: a hidden page is a 404, a
+  bare slug is a 301 the route passes on, and a Start link that leads nowhere
+  public is already gone from the hast.
 - Route loaders call only server functions (`src/server/pages.ts`). On the
   first request they run during SSR; on a client-side navigation the browser
   calls landing_v2's own server, which calls `api_v2`.
@@ -18,8 +21,9 @@ strangles `apps/landing` in place.
   so `api_v2`'s `Cache-Control` sets the time-to-live: a minute fresh, five
   minutes stale-while-revalidate, a day stale-if-error. The cache is in
   memory, one per process.
-- Every document is validated against `pageDocumentSchema` before it renders.
-  A malformed document is an error naming its slug and the failing field. An
+- Every response is checked for `url`, `frontmatter.title`, `hast` and
+  `breadcrumbs` before it renders. A malformed one is an error naming its url
+  and the failing field. An
   unreachable `api_v2`, or one answering 5xx with nothing cached to serve (the
   database down), is a 503 naming `api_v2` and the error code or status. Both
   messages are shown on the page in full.

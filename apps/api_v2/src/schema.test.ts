@@ -13,12 +13,7 @@
 import { getTableColumns } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import {
-  changeEvents,
-  collectionRecords,
-  contentPages,
-  dataCollections,
-} from "./schema";
+import { categories, changeEvents, contentPages, forms } from "./schema";
 import { createTestDb } from "./test-db";
 import type { Database } from "./store";
 
@@ -41,9 +36,9 @@ const rowsOf = async (db: Database) => {
 };
 
 const TABLES = {
+  categories,
+  forms,
   content_pages: contentPages,
-  data_collections: dataCollections,
-  collection_records: collectionRecords,
   change_events: changeEvents,
 };
 
@@ -98,28 +93,55 @@ describe("the Drizzle schema and the migration", () => {
     await close();
   });
 
-  it("keeps the page body as jsonb, not a markdown string", async () => {
+  it("stores the markdown as text and its compiled hast as jsonb", async () => {
     const { db, close } = await createTestDb();
-    const body = (await rowsOf(db)).find(
-      (row) => row.table_name === "content_pages" && row.column_name === "body",
+    const columns = (await rowsOf(db)).filter(
+      (row) => row.table_name === "content_pages",
     );
+    const typeOf = (name: string) =>
+      columns.find((row) => row.column_name === name)?.data_type;
 
-    expect(body?.data_type).toBe("jsonb");
+    expect(typeOf("body_markdown")).toBe("text");
+    expect(typeOf("hast")).toBe("jsonb");
+    expect(typeOf("frontmatter")).toBe("jsonb");
 
     await close();
   });
 
-  it("refuses a body that is not a block document", async () => {
-    // The `content_pages_body_shape` check is what stops a markdown string,
-    // or a half-migrated row, being written where `{version, blocks, refs}`
-    // belongs.
+  it("refuses a page filed under a form the database has never heard of", async () => {
+    // content_pages.form_id is an FK, so an unknown form id is a write that
+    // fails rather than a Start button that silently never appears.
     const { db, close } = await createTestDb();
 
     const refused = await db
       .execute(
-        sql`insert into content_pages (url, slug, schema_name, document_type, title, body)
-            values ('/x', 'x', 'answer', 'answer', 'X', '"# A markdown page"'::jsonb)`,
+        sql`insert into content_pages (url, slug, title, form_id, body_markdown, hast)
+            values ('/x', 'x', 'X', 'no-such-form', '', '{"type":"root","children":[]}'::jsonb)`,
       )
+      .then(
+        () => null,
+        (error: Error) => error,
+      );
+
+    expect(refused).toBeInstanceOf(Error);
+
+    await close();
+  });
+
+  it("will not delete a category while a page is filed under it", async () => {
+    const { db, close } = await createTestDb();
+    await db.execute(
+      sql`insert into categories (id, slug, title)
+          values ('33333333-3333-4333-8333-333333333333', 'c', 'C')`,
+    );
+    await db.execute(
+      sql`insert into content_pages (url, slug, title, category_id, body_markdown, hast)
+          values ('/c/x', 'x', 'X', '33333333-3333-4333-8333-333333333333', '',
+                  '{"type":"root","children":[]}'::jsonb)`,
+    );
+
+    const refused = await db
+      .execute(sql`delete from categories where slug = 'c'`)
       .then(
         () => null,
         (error: Error) => error,

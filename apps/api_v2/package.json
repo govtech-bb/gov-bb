@@ -9,20 +9,29 @@
     "test": "vitest run",
     "e2e": "vitest run --config vitest.e2e.config.ts",
     "openapi": "tsx scripts/write-openapi.ts",
-    "typecheck": "tsc -b --noEmit false --emitDeclarationOnly false"
+    "typecheck": "tsc -b --noEmit false --emitDeclarationOnly false",
+    "seed-data": "tsx scripts/build-seed-data.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",
     "@fastify/swagger": "^9.5.1",
-    "@govtech-bb/block-kit": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.6.1",
-    "pg": "^8.21.0"
+    "pg": "^8.21.0",
+    "rehype-raw": "^7.0.0",
+    "rehype-sanitize": "^6.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.1",
+    "unified": "^11.0.5"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.3.11",
+    "@govtech-bb/content": "workspace:*",
+    "@types/hast": "^3.0.4",
     "@types/node": "^24.0.0",
     "@types/pg": "^8.20.0",
+    "gray-matter": "^4.0.3",
     "tsx": "^4.22.3",
     "typescript": "catalog:",
     "vitest": "^4.1.11"

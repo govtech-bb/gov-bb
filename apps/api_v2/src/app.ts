@@ -13,7 +13,6 @@ import { createHash } from "node:crypto";
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import swagger from "@fastify/swagger";
-import type { PageDocument } from "@govtech-bb/block-kit/document";
 import { OPENAPI_DOCUMENT, SCHEMAS } from "./openapi";
 import {
   ApiStore,
@@ -21,6 +20,7 @@ import {
   NotFoundError,
   ValidationFailedError,
   type Database,
+  type PageInput,
 } from "./store";
 
 /**
@@ -38,8 +38,7 @@ export const IF_UPDATED_AT = "if-updated-at";
  *
  * `PUBLIC_READ` is what a shared cache (undici in `landing_v2`, later a CDN)
  * may hold and serve to anyone. `EDITOR_READ` is `no-cache` — revalidate on
- * every request — for anything only the editor should see: an id lookup, a
- * draft, or a record's key.
+ * every request — for anything only the editor should see: an id lookup.
  */
 // Assumption (#2702): `max-age=60, stale-while-revalidate=300,
 // stale-if-error=86400`, not the issue's `max-age=0, s-maxage=60, …`. Nothing
@@ -131,8 +130,8 @@ export async function buildApp({
    * ETags on every read.
    *
    * The client caches what it has and revalidates; with an ETag that
-   * revalidation is a 304 with no body rather than the collection's 163
-   * records again. It also means a page that already has data can render it
+   * revalidation is a 304 with no body rather than the page's whole hast
+   * again. It also means a page that already has data can render it
    * immediately and check freshness afterwards, which is what removes the
    * "Loading…" state from a revisit.
    */
@@ -159,14 +158,14 @@ export async function buildApp({
   /*
    * One error handler rather than try/catch per route. A 409 and a 422 are
    * both "your write did not land", but they need different words: one says
-   * reload, the other names the blocks that are wrong, and the editor's error
-   * summary links each one to its block. Flattening `errors` to a string is
+   * reload, the other names the fields that are wrong, and the editor's error
+   * summary links each one to its field. Flattening `errors` to a string is
    * what would break that.
    */
   app.setErrorHandler((error: FastifyError, _request, reply) => {
     /*
      * Fastify's own request validation, which the route schemas turn on: a
-     * missing `url`, a `drafts` that is not "true" or "false". It arrives
+     * missing or empty `url`, a page with no title. It arrives
      * here as an ordinary error, so without this it would be reported as a
      * 500 — the server blaming itself for a request it correctly refused.
      */
@@ -200,42 +199,34 @@ export async function buildApp({
 
   /* ------------------------------------------------------------ reads */
 
-  // Assumption (#2702): which of PUBLIC_READ/EDITOR_READ each route below
-  // sends is the plan's own split — publicly-cacheable pages and records vs.
-  // anything only the editor reads (an id lookup, a draft, a record's key).
-
-  app.get<{ Querystring: { drafts?: string } }>(
-    "/pages",
-    { schema: SCHEMAS.listPages },
-    async (request, reply) => {
-      const drafts = request.query.drafts === "true";
-      const pages = await store.list(drafts);
-      reply.header("Cache-Control", drafts ? EDITOR_READ : PUBLIC_READ);
-      return pages;
-    },
-  );
-
   /*
-   * Before `/pages/:id`, or Fastify would read "by-url" as an id. The site
-   * routes on `content_pages.url`, so this is the endpoint `landing_v2`
-   * actually uses — the id is the editor's key, not the site's.
+   * The site's read, by `content_pages.url`. Everything that decides whether
+   * a citizen may see the page — its visibility, its ancestors', its form's
+   * — is decided here, so the site renders whatever comes back and a 404 is
+   * the only thing a hidden page ever looks like from outside. A redirect is
+   * as public as the page it points at, so it is cached like one.
    */
-  app.get<{ Querystring: { url?: string; drafts?: string } }>(
-    "/pages/by-url",
+  app.get<{ Querystring: { url: string } }>(
+    "/pages",
     { schema: SCHEMAS.getPageByUrl },
     async (request, reply) => {
-      // `url` is required by the route schema, so a missing one is a 400 from
-      // Fastify before this runs.
-      const url = request.query.url as string;
-      const drafts = request.query.drafts === "true";
-      const doc = await store.getByUrl(url, drafts);
-      if (!doc) {
+      // `url` is required and non-empty by the route schema, so a missing
+      // one is a 400 from Fastify before this runs.
+      const { url } = request.query;
+      const resolved = await store.resolve(url);
+      if (resolved.kind === "not_found") {
         return reply
           .status(404)
           .send({ error: "not_found", message: `No page at ${url}` });
       }
-      reply.header("Cache-Control", drafts ? EDITOR_READ : PUBLIC_READ);
-      return doc;
+      reply.header("Cache-Control", PUBLIC_READ);
+      if (resolved.kind === "redirect") {
+        return reply
+          .status(301)
+          .header("Location", resolved.url)
+          .send({ redirect: resolved.url });
+      }
+      return resolved.page;
     },
   );
 
@@ -252,29 +243,6 @@ export async function buildApp({
       }
       reply.header("Cache-Control", EDITOR_READ);
       return doc;
-    },
-  );
-
-  app.get(
-    "/collections",
-    { schema: SCHEMAS.listCollections },
-    async (_request, reply) => {
-      const collections = await store.listCollections();
-      reply.header("Cache-Control", EDITOR_READ);
-      return collections;
-    },
-  );
-
-  app.get<{ Params: { key: string }; Querystring: { keys?: string } }>(
-    "/collections/:key/records",
-    { schema: SCHEMAS.listRecords },
-    async (request, reply) => {
-      const keys = request.query.keys === "true";
-      const records = keys
-        ? await store.recordRows(request.params.key)
-        : await store.records(request.params.key);
-      reply.header("Cache-Control", keys ? EDITOR_READ : PUBLIC_READ);
-      return records;
     },
   );
 
@@ -298,19 +266,22 @@ export async function buildApp({
 
   /* ----------------------------------------------------------- writes */
 
-  app.put<{ Params: { id: string }; Body: PageDocument }>(
+  app.put<{ Params: { id: string }; Body: PageInput }>(
     "/pages/:id",
     { schema: SCHEMAS.savePage },
     async (request, reply) => {
-      const doc = { ...request.body, id: request.params.id };
       const header = request.headers[IF_UPDATED_AT];
       const ifUpdatedAt = Array.isArray(header) ? header[0] : (header ?? null);
-      const saved = await store.save(doc, ifUpdatedAt || null);
+      const saved = await store.save(
+        request.params.id,
+        request.body,
+        ifUpdatedAt || null,
+      );
       return reply.status(200).send(saved);
     },
   );
 
-  app.post<{ Body: Omit<PageDocument, "updated_at"> }>(
+  app.post<{ Body: PageInput }>(
     "/pages",
     { schema: SCHEMAS.createPage },
     async (request, reply) =>
@@ -322,32 +293,6 @@ export async function buildApp({
     { schema: SCHEMAS.deletePage },
     async (request, reply) => {
       await store.delete(request.params.id);
-      return reply.status(204).send();
-    },
-  );
-
-  app.put<{
-    Params: { key: string; recordKey: string };
-    Body: { data: Record<string, unknown>; previousKey?: string };
-  }>(
-    "/collections/:key/records/:recordKey",
-    { schema: SCHEMAS.saveRecord },
-    async (request, reply) => {
-      await store.saveRecord(
-        request.params.key,
-        request.params.recordKey,
-        request.body.data,
-        request.body.previousKey,
-      );
-      return reply.status(204).send();
-    },
-  );
-
-  app.delete<{ Params: { key: string; recordKey: string } }>(
-    "/collections/:key/records/:recordKey",
-    { schema: SCHEMAS.deleteRecord },
-    async (request, reply) => {
-      await store.deleteRecord(request.params.key, request.params.recordKey);
       return reply.status(204).send();
     },
   );

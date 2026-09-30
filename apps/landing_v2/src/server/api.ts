@@ -39,6 +39,9 @@ import { Agent, fetch, interceptors, type Dispatcher } from "undici";
 
 export type ApiResult =
   | { kind: "ok"; body: unknown }
+  // api_v2's `Location` is a site path (a bare slug's canonical url), not an
+  // api_v2 path, so it is handed back rather than followed.
+  | { kind: "redirect"; location: string }
   | { kind: "not_found" }
   // Any other non-2xx. A 4xx other than 404 would mean landing_v2 sent a
   // request api_v2 cannot answer, which is as much a failure to serve the
@@ -90,13 +93,20 @@ export function createApiClient(
       try {
         // undici's own `fetch`, not the global one: only it accepts this
         // dispatcher, and with it the cache.
-        response = await fetch(`${baseUrl}${path}`, { dispatcher });
+        response = await fetch(`${baseUrl}${path}`, {
+          dispatcher,
+          redirect: "manual",
+        });
       } catch (cause) {
         return { kind: "unreachable", cause };
       }
       if (response.ok) return { kind: "ok", body: await response.json() };
       // Drain the body so the connection goes back to the pool.
       await response.body?.cancel();
+      const location = response.headers.get("location");
+      if (response.status === 301 && location) {
+        return { kind: "redirect", location };
+      }
       if (response.status === 404) return { kind: "not_found" };
       return { kind: "server_error", status: response.status };
     },
