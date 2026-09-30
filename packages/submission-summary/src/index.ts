@@ -94,6 +94,7 @@ export function buildSubmissionSections({
               visibility,
               values,
               needsIndex ? `${stepTitle} (${i + 1})` : stepTitle,
+              i,
             ),
           )
           .filter((s) => s.fields.length > 0);
@@ -116,14 +117,15 @@ function buildSection(
   visibility: SubmissionVisibility,
   allValues: StepScopedValues,
   title: string,
+  instanceIndex?: number,
 ): SummarySection {
   const rawActive: unknown = visibility.activeFieldIds[step.stepId];
   const activeFieldIds: string[] | undefined =
-    rawActive === undefined ? undefined : flattenIds(rawActive);
+    rawActive === undefined ? undefined : idsFor(rawActive, instanceIndex);
 
   const rawHidden: unknown = visibility.hiddenFieldIds[step.stepId];
   const hiddenFieldIds: string[] =
-    rawHidden === undefined ? [] : flattenIds(rawHidden);
+    rawHidden === undefined ? [] : (idsFor(rawHidden, instanceIndex) ?? []);
 
   const fields = step.elements
     .filter((el) => !SKIP_TYPES.has(el.htmlType))
@@ -152,15 +154,22 @@ function buildSection(
 }
 
 /**
- * Normalise an audit-trail entry to a flat list of field ids. V2 trails store
- * per-instance arrays as `string[][]` for repeatable steps; a plain `string[]`
- * (V1) passes through. Flattening to a union means `.includes()` works whatever
- * the schema version.
+ * Resolve an audit-trail entry to the field ids for one section. V2 trails
+ * store per-instance arrays as `string[][]` for repeatable steps; a plain
+ * `string[]` (V1) passes through. A nested entry is read for the section's own
+ * copy — copies evaluate their conditions against their own answers, so a
+ * union would drop a field one copy showed because another copy hid it
+ * (#2841). Without an instance index it falls back to the union. `undefined`
+ * when the trail has no entry for that copy.
  */
-function flattenIds(value: unknown): string[] {
-  return Array.isArray(value) && value.length > 0 && Array.isArray(value[0])
-    ? [...new Set((value as string[][]).flat())]
-    : (value as string[]);
+function idsFor(value: unknown, instanceIndex?: number): string[] | undefined {
+  if (!(Array.isArray(value) && value.length > 0 && Array.isArray(value[0]))) {
+    return value as string[];
+  }
+  const perInstance = value as string[][];
+  return instanceIndex === undefined
+    ? [...new Set(perInstance.flat())]
+    : perInstance[instanceIndex];
 }
 
 /** `""` means "no answer" — the caller drops the row, and a section left with
