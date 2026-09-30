@@ -302,6 +302,91 @@ describe("SubmissionPipelineService", () => {
 
       await expect(service.run(dto)).resolves.toBeDefined();
     });
+
+    // case-management#213: an omitted step used to be skipped, so `values: {}`
+    // passed validation on every form and created a case with no data.
+    it("rejects an empty payload, naming the required fields", async () => {
+      const dto = { ...baseDto(), values: {} };
+
+      await expect(service.run(dto)).rejects.toMatchObject({
+        response: {
+          errors: {
+            "personal-info": {
+              "first-name": expect.any(Array),
+              surname: expect.any(Array),
+            },
+          },
+        },
+      });
+    });
+
+    it("rejects a visible step left out of an otherwise complete payload", async () => {
+      definitionsService.findByFormId.mockResolvedValue(
+        mockContract({
+          steps: [
+            {
+              stepId: "personal-info",
+              elements: [primitiveText("first-name", true)],
+              behaviours: [],
+            },
+            {
+              stepId: "contact",
+              elements: [primitiveText("email", true)],
+              behaviours: [],
+            },
+          ],
+        } as unknown as Partial<ServiceContract>),
+      );
+      const dto = {
+        ...baseDto(),
+        values: { "personal-info": { "first-name": "Marcus" } },
+      };
+
+      await expect(service.run(dto)).rejects.toMatchObject({
+        response: { errors: { contact: { email: expect.any(Array) } } },
+      });
+    });
+
+    it("accepts an omitted step that is hidden or has no required fields, without storing it", async () => {
+      definitionsService.findByFormId.mockResolvedValue(
+        mockContract({
+          steps: [
+            {
+              stepId: "personal-info",
+              elements: [primitiveText("first-name", true)],
+              behaviours: [],
+            },
+            {
+              stepId: "extras",
+              elements: [primitiveText("nickname")],
+              behaviours: [],
+            },
+            {
+              stepId: "spouse",
+              elements: [primitiveText("spouse-name", true)],
+              behaviours: [
+                {
+                  type: "stepConditionalOn",
+                  targetStepId: "personal-info",
+                  targetFieldId: "first-name",
+                  operator: "equal",
+                  value: "married",
+                },
+              ],
+            },
+          ],
+        } as unknown as Partial<ServiceContract>),
+      );
+      const dto = {
+        ...baseDto(),
+        values: { "personal-info": { "first-name": "Marcus" } },
+      };
+
+      const { normalizedValues } = await service.run(dto);
+      expect(normalizedValues).toEqual({
+        "personal-info": { "first-name": "Marcus" },
+      });
+    });
   });
 
   describe("buildAuditTrail", () => {

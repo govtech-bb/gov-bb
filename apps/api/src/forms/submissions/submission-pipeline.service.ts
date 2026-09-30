@@ -41,6 +41,33 @@ function relaxRequired(primitive: Primitive): Primitive {
   return { ...primitive, validations: rest };
 }
 
+// The submitted instances plus an empty one for every visible non-repeatable
+// step the payload leaves out, so that step's required fields fail instead of
+// never being validated — otherwise `values: {}` passes every form
+// (case-management#213). Only for validation: an omitted step is still not
+// stored. Omitted repeatable steps are left to the min check below.
+function withOmittedSteps(
+  contract: ServiceContract,
+  instances: StepInstance[],
+  hiddenStepIds: Set<string>,
+): StepInstance[] {
+  const submittedStepIds = new Set(instances.map((i) => i.stepId));
+  const omitted = contract.steps
+    .filter(
+      (step) =>
+        !submittedStepIds.has(step.stepId) &&
+        !hiddenStepIds.has(step.stepId) &&
+        !step.behaviours?.some((b) => b.type === "repeatable"),
+    )
+    .map((step) => ({
+      stepId: step.stepId,
+      index: 0,
+      isRepeatable: false,
+      values: {},
+    }));
+  return [...instances, ...omitted];
+}
+
 @Injectable()
 export class SubmissionPipelineService {
   constructor(
@@ -64,15 +91,21 @@ export class SubmissionPipelineService {
 
     const cond = evaluateFormConditions(contract, dto.values);
 
-    const { perInstanceErrors, stepLevelErrors } = this.validate(
+    const instancesToValidate = withOmittedSteps(
       contract,
       expanded.instances,
+      cond.hiddenStepIds,
+    );
+
+    const { perInstanceErrors, stepLevelErrors } = this.validate(
+      contract,
+      instancesToValidate,
       cond,
       dto.values,
     );
 
     const bundle = foldErrors({
-      instances: expanded.instances,
+      instances: instancesToValidate,
       perInstanceErrors,
       stepLevelErrors,
     });
@@ -187,9 +220,9 @@ export class SubmissionPipelineService {
     const stepLevelErrors: StepLevelErrors = new Map();
 
     // Min is only enforced when the step is visible AND present in the
-    // payload. An omitted step is treated as not-yet-reached (matches
-    // non-repeatable behaviour); `[]` is "reached with zero entries" and
-    // triggers min. Max is enforced in expand.
+    // payload. An omitted repeatable step is treated as not-yet-reached (the
+    // chat submits without its repeatable steps); `[]` is "reached with zero
+    // entries" and triggers min. Max is enforced in expand.
     const submittedStepIds = new Set(instances.map((i) => i.stepId));
     for (const step of contract.steps) {
       if (cond.hiddenStepIds.has(step.stepId)) continue;
