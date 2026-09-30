@@ -68,13 +68,17 @@ describe.skipIf(!HAS_DATABASE)(
 
     it("answers 500 while the database is closed, then recovers", async () => {
       await allowConnections(database, false);
-      await dropConnections();
+      // Reopened even when an assertion fails, or every test after this one
+      // would fail on a closed database instead of on what it checks.
+      try {
+        await dropConnections();
 
-      const response = await fetch(`${server.url}/pages`);
-      expect(response.status).toBe(500);
-      expect(await response.json()).toEqual({ error: "internal_error" });
-
-      await allowConnections(database, true);
+        const response = await fetch(`${server.url}/pages`);
+        expect(response.status).toBe(500);
+        expect(await response.json()).toEqual({ error: "internal_error" });
+      } finally {
+        await allowConnections(database, true);
+      }
       expect(await status()).toBe(200);
     });
   },

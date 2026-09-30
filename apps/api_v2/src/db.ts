@@ -7,6 +7,7 @@
 import { readFileSync } from "node:fs";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import type { Logger } from "pino";
 import * as schema from "./schema";
 
 /**
@@ -26,7 +27,7 @@ function sslConfig() {
   };
 }
 
-export function createPool(): Pool {
+export function createPool(logger: Pick<Logger, "warn">): Pool {
   const pool = new Pool({
     host: process.env.DB_HOST ?? "localhost",
     port: Number(process.env.DB_PORT ?? "5432"),
@@ -38,8 +39,17 @@ export function createPool(): Pool {
   // An idle client Postgres drops (restart, failover, idle reap) surfaces
   // here. Unhandled, it exits the process; the pool has already discarded
   // the client and reconnects on the next query, so logging is enough.
+  // The message is a documented alarm marker (README, "Operations"): keep it
+  // stable. The code says why (57P01 a restart, ECONNRESET the network). Never
+  // log the error itself — on this path it carries the client object.
   pool.on("error", (error) => {
-    console.error("api_v2: idle database connection dropped", error.message);
+    logger.warn(
+      {
+        code: (error as Error & { code?: string }).code,
+        reason: error.message,
+      },
+      "idle database connection dropped",
+    );
   });
   return pool;
 }

@@ -37,23 +37,26 @@ describe("connect", () => {
  * this needs no database.
  */
 describe("createPool", () => {
-  it("logs a dropped idle connection instead of throwing", async () => {
-    const log = vi.spyOn(console, "error").mockImplementation(() => {});
-    const pool = createPool();
+  it("logs a dropped idle connection, with its code, instead of throwing", async () => {
+    const logger = { warn: vi.fn() };
+    const pool = createPool(logger);
+    // What pg-pool emits for a `pg_terminate_backend`, `err.client` included.
+    const error = Object.assign(
+      new Error("terminating connection due to administrator command"),
+      { code: "57P01", client: {} },
+    );
 
     try {
-      expect(() =>
-        pool.emit(
-          "error",
-          new Error("terminating connection due to administrator command"),
-        ),
-      ).not.toThrow();
-      expect(log).toHaveBeenCalledWith(
-        expect.stringContaining("idle database connection dropped"),
-        "terminating connection due to administrator command",
+      expect(() => pool.emit("error", error)).not.toThrow();
+      // Exactly these fields: the client object must not reach the log.
+      expect(logger.warn).toHaveBeenCalledWith(
+        {
+          code: "57P01",
+          reason: "terminating connection due to administrator command",
+        },
+        "idle database connection dropped",
       );
     } finally {
-      log.mockRestore();
       await pool.end();
     }
   });

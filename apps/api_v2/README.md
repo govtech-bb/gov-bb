@@ -25,6 +25,17 @@ spelling of `packages/database/src/data-source-env.ts`, not a bespoke config.
 | `PORT`                                             | `3020`                                 |
 | `CORS_ORIGINS`                                     | the dev servers                        |
 
+## Operations
+
+Request logs and the pool's own logs are JSON lines on stdout, through one pino
+logger. `idle database connection dropped` (level `warn`) means Postgres closed
+a connection the pool was holding: a restart, a failover, an idle reap. The
+process keeps serving and reconnects on the next query. `code` says why it
+went: `57P01` for an admin termination or restart, `ECONNRESET` for the
+network. One is routine; a steady run is a database in trouble, and otherwise
+shows only as scattered 500s. The message is the marker the on-call alarm
+matches (#2862), so do not reword it.
+
 ## Endpoints
 
 Reads are public. Writes are unauthenticated until #2701 lands, and nothing

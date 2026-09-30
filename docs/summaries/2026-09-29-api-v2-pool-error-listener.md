@@ -16,6 +16,10 @@ listens for is fatal in Node. A dead process is a refused connection, and landin
 - `92e0bd66`: `pool.on("error", …)` in `createPool()`, plus a unit case in `src/db.test.ts`.
 - `579fa190`: final-review hardening of the e2e (count only client backends, show the server
   output on failure) and one README line.
+- sajclarke's review: the listener logs through one pino logger that `main.ts` shares with
+  Fastify, adds the error `code`, and the README gains an "Operations" note naming the message as
+  the alarm marker. The alarm itself is #2862, because no infrastructure-as-code for api_v2 lives
+  in this repo. The closed-database test reopens the database in a `finally`.
 
 ## Why we did it that way
 
@@ -27,8 +31,15 @@ listens for is fatal in Node. A dead process is a refused connection, and landin
   client) and exiting so the orchestrator restarts us (exiting is the bug). v1 never crashed on
   this event only because TypeORM registers the listener internally. Neither `apps/api` nor
   `packages/database` does it in repo code, so there was nothing to match.
-- **`console.error` with `error.message` only.** The pool exists before the Fastify app, so there
-  is no `app.log` yet, and `main.ts` already logs this way. On the idle path pg-pool sets
+- **One pino logger, made in `main.ts`.** The pool exists before the Fastify app, so it cannot
+  use `app.log`. `main.ts` makes the logger, hands it to `createPool`, and passes it to Fastify as
+  `loggerInstance`, so drops land in the same JSON stream as the request logs. Fastify wraps the
+  instance in a child that keeps its own request/response serializers, so request lines are
+  unchanged. `pino` is declared in api_v2's `package.json`, because pnpm's isolated linker will
+  not resolve it through Fastify. `main.ts`'s boot lines (applied, seeded, listening, the fatal
+  exit) still use `console`: the review did not ask for them.
+- **`code` and `error.message`, never the error.** `code` says why the connection went (`57P01` a
+  restart or admin termination, `ECONNRESET` the network). On the idle path pg-pool sets
   `err.client`, so logging the whole error would dump the client object.
 - **A new `pool.spec.ts`, not `boot.spec.ts`** as the issue suggested. `boot.spec.ts` deliberately
   runs with no database.
@@ -60,7 +71,5 @@ listens for is fatal in Node. A dead process is a refused connection, and landin
 - #2845: the pool still has node-postgres's defaults (no connection timeout, no keepalive). A
   database that goes *quiet*, rather than closing the socket, may hang api_v2 instead of producing
   a 5xx. That case is outside what this fix reaches.
-- If sajclarke would rather the pool logged through Fastify's logger, `createPool` can take a
-  logger later.
 - `feat/v2-api-init` still carries #2838 on top of a pre-squash #2807. It will not get this fix
   unless it is rebased onto `v2-rewrite`.
