@@ -1,17 +1,20 @@
 /**
- * One test per endpoint, happy path and 404, per #2700's acceptance criteria
- * — plus the three behaviours the editor already depends on and would break
- * silently without: optimistic concurrency, per-block validation errors, and
- * hrefs refused on ingest.
+ * GET /pages?url= row by row against the table it is specified by — 400,
+ * 301, the two 404s, and the 200 with its Start link removed when it leads
+ * nowhere public — plus the editor's writes and the behaviours it depends
+ * on: optimistic concurrency, a 422 per field, and published_at.
  *
  * `app.inject` rather than a live socket: Fastify dispatches the real router,
  * the real handlers and the real error handler, against a real database.
  */
 
+import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { buildApp, IF_UPDATED_AT } from "./app";
-import { aDocument, createTestDb } from "./test-db";
+import type { Element, Root } from "hast";
+import { buildApp, IF_UPDATED_AT, PUBLIC_READ } from "./app";
+import { categories, forms, type Visibility } from "./schema";
+import { aPage, createTestDb } from "./test-db";
 import { ApiStore, type Database } from "./store";
 
 let app: FastifyInstance;
@@ -32,37 +35,262 @@ afterEach(async () => {
 });
 
 const seedPage = async (overrides: Record<string, unknown> = {}) =>
-  await store.create(aDocument(overrides));
+  await store.create(aPage(overrides));
 
-describe("GET /pages", () => {
-  it("returns the seeded pages", async () => {
-    await seedPage();
-    const response = await app.inject({ method: "GET", url: "/pages" });
+const seedForm = async (formId: string, visibility: Visibility) =>
+  await db.insert(forms).values({ formId, visibility });
 
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toHaveLength(1);
-    expect(response.json()[0].title).toBe(
-      "Find out how much severance payment you are owed",
-    );
+const seedCategory = async () =>
+  (
+    await db
+      .insert(categories)
+      .values({
+        slug: "money-financial-support",
+        title: "Money and financial support",
+      })
+      .returning()
+  )[0];
+
+const read = (url: string) =>
+  app.inject({ url: `/pages?url=${encodeURIComponent(url)}` });
+
+/** Every start link left in a tree. */
+const startLinks = (tree: Root): Element[] => {
+  const found: Element[] = [];
+  const walk = (nodes: Root["children"]) => {
+    for (const node of nodes) {
+      if (node.type !== "element") continue;
+      if (node.tagName === "a" && node.properties.dataStartLink !== undefined) {
+        found.push(node);
+      }
+      walk(node.children as Root["children"]);
+    }
+  };
+  walk(tree.children);
+  return found;
+};
+
+const ENTRY = "/money-financial-support/calculate-severance-pay";
+const START = `${ENTRY}/start`;
+
+const ENTRY_MARKDOWN = [
+  "There are 2 ways to apply. You can:",
+  "",
+  `- apply online: <a data-start-link href="${START}">Start now</a>`,
+  "- apply by post",
+].join("\n");
+
+describe("GET /pages?url=", () => {
+  it("400s when url is missing", async () => {
+    const response = await app.inject({ url: "/pages" });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "bad_request" });
   });
 
-  it("omits drafts unless asked", async () => {
-    await seedPage({ is_draft: true });
+  it("400s when url is empty", async () => {
+    const response = await app.inject({ url: "/pages?url=" });
+    expect(response.statusCode).toBe(400);
+  });
 
-    expect((await app.inject({ url: "/pages" })).json()).toHaveLength(0);
+  it("serves the page as url, frontmatter, hast and breadcrumbs", async () => {
+    const category = await seedCategory();
+    await seedPage({
+      category_id: category.id,
+      description: "Estimate what you are owed.",
+      frontmatter: { stage: "alpha", keywords: ["redundancy pay"] },
+      body_markdown: "## How long does it take?\n\nAbout 3 minutes.",
+    });
+
+    const response = await read(ENTRY);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      url: ENTRY,
+      frontmatter: {
+        title: "Find out how much severance payment you are owed",
+        description: "Estimate what you are owed.",
+        stage: "alpha",
+        keywords: ["redundancy pay"],
+      },
+      hast: {
+        type: "root",
+        children: [
+          {
+            type: "element",
+            tagName: "h2",
+            properties: { id: "how-long-does-it-take" },
+            children: [{ type: "text", value: "How long does it take?" }],
+          },
+          { type: "text", value: "\n" },
+          {
+            type: "element",
+            tagName: "p",
+            properties: {},
+            children: [{ type: "text", value: "About 3 minutes." }],
+          },
+        ],
+      },
+      breadcrumbs: [
+        {
+          name: "Money and financial support",
+          url: "/money-financial-support",
+        },
+        {
+          name: "Find out how much severance payment you are owed",
+          url: ENTRY,
+        },
+      ],
+    });
+  });
+
+  it("names each crumb from the page filed at that level", async () => {
+    await seedCategory();
+    await seedPage();
+    await seedPage({ url: START, title: "Before you start" });
+
+    const response = await read(START);
+
+    expect(response.json().breadcrumbs).toEqual([
+      { name: "Money and financial support", url: "/money-financial-support" },
+      { name: "Find out how much severance payment you are owed", url: ENTRY },
+      { name: "Before you start", url: START },
+    ]);
+  });
+
+  it("sanitises the markdown's raw HTML on the way in", async () => {
+    await seedPage({
+      body_markdown: '<script>alert(1)</script>\n\n<p onclick="x()">Hi</p>',
+    });
+
+    const hast = JSON.stringify((await read(ENTRY)).json().hast);
+
+    expect(hast).not.toContain("script");
+    expect(hast).not.toContain("onclick");
+    expect(hast).toContain("Hi");
+  });
+
+  it("301s a bare slug to the one public page it names", async () => {
+    await seedPage();
+
+    const response = await read("/calculate-severance-pay");
+
+    expect(response.statusCode).toBe(301);
+    expect(response.headers.location).toBe(ENTRY);
+    expect(response.json()).toEqual({ redirect: ENTRY });
+  });
+
+  it("404s a bare slug whose page is not public, rather than revealing it", async () => {
+    await seedPage({ visibility: "preview" });
+    expect((await read("/calculate-severance-pay")).statusCode).toBe(404);
+  });
+
+  it("404s a bare slug more than one page shares", async () => {
+    await seedPage({ url: "/a/start" });
+    await seedPage({ url: "/b/start" });
+    expect((await read("/start")).statusCode).toBe(404);
+  });
+
+  it("404s a url nothing is filed under, with JSON and no stack trace", async () => {
+    const response = await read("/nope/nothing");
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({
+      error: "not_found",
+      message: "No page at /nope/nothing",
+    });
+  });
+
+  it.each(["preview", "draft"])("404s a %s page", async (visibility) => {
+    await seedPage({ visibility });
+    expect((await read(ENTRY)).statusCode).toBe(404);
+  });
+
+  it("404s a public page under a page that is not", async () => {
+    // Effective visibility: hiding a service hides its sub-pages.
+    await seedPage({ visibility: "draft" });
+    await seedPage({ url: START });
+    expect((await read(START)).statusCode).toBe(404);
+  });
+
+  it.each(["preview", "draft"])(
+    "404s a /start page whose form is %s",
+    async (visibility) => {
+      await seedForm("severance", visibility as Visibility);
+      await seedPage({ url: START, form_id: "severance" });
+      expect((await read(START)).statusCode).toBe(404);
+    },
+  );
+
+  it("serves a /start page whose form is public, its button stamped with the form", async () => {
+    await seedForm("severance", "public");
+    await seedPage({
+      url: START,
+      form_id: "severance",
+      body_markdown: "<a data-start-link>Start now</a>",
+    });
+
+    const response = await read(START);
+
+    expect(response.statusCode).toBe(200);
+    expect(startLinks(response.json().hast)[0]?.properties).toMatchObject({
+      dataFormId: "severance",
+    });
+  });
+
+  it("keeps the Start link when the /start page and its form are public", async () => {
+    await seedForm("severance", "public");
+    await seedPage({ form_id: "severance", body_markdown: ENTRY_MARKDOWN });
+    await seedPage({ url: START, form_id: "severance" });
+
+    const hast = (await read(ENTRY)).json().hast;
+
+    expect(startLinks(hast)).toHaveLength(1);
+    expect(JSON.stringify(hast)).toContain("There are 2 ways to apply.");
+  });
+
+  it("removes the Start link, and counts the ways down, when the /start page is hidden", async () => {
+    await seedForm("severance", "public");
+    await seedPage({ form_id: "severance", body_markdown: ENTRY_MARKDOWN });
+    await seedPage({ url: START, form_id: "severance", visibility: "preview" });
+
+    const hast = (await read(ENTRY)).json().hast;
+
+    expect(startLinks(hast)).toHaveLength(0);
+    expect(JSON.stringify(hast)).toContain("There is 1 way to apply.");
+    expect(JSON.stringify(hast)).toContain("apply by post");
+  });
+
+  it("removes the Start link when the form is hidden", async () => {
+    await seedForm("severance", "preview");
+    await seedPage({ form_id: "severance", body_markdown: ENTRY_MARKDOWN });
+    await seedPage({ url: START, form_id: "severance" });
+
+    expect(startLinks((await read(ENTRY)).json().hast)).toHaveLength(0);
+  });
+
+  it("sends PUBLIC_READ, on a redirect as on a page", async () => {
+    await seedPage();
+
+    expect((await read(ENTRY)).headers["cache-control"]).toBe(PUBLIC_READ);
     expect(
-      (await app.inject({ url: "/pages?drafts=true" })).json(),
-    ).toHaveLength(1);
+      (await read("/calculate-severance-pay")).headers["cache-control"],
+    ).toBe(PUBLIC_READ);
   });
 });
 
 describe("GET /pages/:id", () => {
-  it("returns the page", async () => {
-    const created = await seedPage();
+  it("returns the page with its markdown, whatever its visibility", async () => {
+    const created = await seedPage({ visibility: "draft" });
     const response = await app.inject({ url: `/pages/${created.id}` });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json().body.blocks[0].id).toBe("b_one");
+    expect(response.json()).toMatchObject({
+      slug: "calculate-severance-pay",
+      visibility: "draft",
+      body_markdown: "You should complete the calculator in one go.",
+      published_at: null,
+    });
+    expect(response.headers["cache-control"]).toBe("no-cache");
   });
 
   it("404s with a JSON body, not a stack trace", async () => {
@@ -76,61 +304,68 @@ describe("GET /pages/:id", () => {
   });
 });
 
-describe("GET /pages/by-url", () => {
-  it("resolves the site's routing key", async () => {
-    const created = await seedPage();
+describe("POST /pages", () => {
+  it("creates the page and compiles its markdown", async () => {
     const response = await app.inject({
-      url: `/pages/by-url?url=${encodeURIComponent(created.url)}`,
+      method: "POST",
+      url: "/pages",
+      payload: aPage({ body_markdown: "Hello **there**" }),
     });
 
-    expect(response.statusCode).toBe(200);
-    expect(response.json().id).toBe(created.id);
+    expect(response.statusCode).toBe(201);
+    expect(response.json().published_at).not.toBeNull();
+    expect(JSON.stringify((await read(ENTRY)).json().hast)).toContain("strong");
   });
 
-  it("404s for a url nothing is filed under", async () => {
-    const response = await app.inject({ url: "/pages/by-url?url=/nope" });
-    expect(response.statusCode).toBe(404);
+  it("422s an unknown form id, naming the field", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/pages",
+      payload: aPage({ form_id: "no-such-form" }),
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toMatchObject({
+      error: "validation_failed",
+      errors: [{ field: "form_id" }],
+    });
   });
 
-  // "by-url" must not be read as an id by the router.
-  it("is not shadowed by the :id route", async () => {
-    const response = await app.inject({ url: "/pages/by-url" });
+  it("422s a url another page already has", async () => {
+    await seedPage();
+    const response = await app.inject({
+      method: "POST",
+      url: "/pages",
+      payload: aPage(),
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json().errors).toEqual([
+      { field: "url", message: "Another page already has this url." },
+    ]);
+  });
+
+  it("422s an id another page already has, naming the id", async () => {
+    const existing = await seedPage();
+    const response = await app.inject({
+      method: "POST",
+      url: "/pages",
+      payload: aPage({ id: existing.id, url: "/somewhere-else" }),
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json().errors).toEqual([
+      { field: "id", message: "Another page already has this id." },
+    ]);
+  });
+
+  it("400s a page with no title", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/pages",
+      payload: aPage({ title: undefined }),
+    });
     expect(response.statusCode).toBe(400);
-  });
-
-  // #2802: a draft was reachable by anyone who knew or guessed its url.
-  it("hides a draft behind a 404, exactly like a missing url", async () => {
-    const draft = await seedPage({ url: "/draft-only", is_draft: true });
-    const response = await app.inject({
-      url: `/pages/by-url?url=${encodeURIComponent(draft.url)}`,
-    });
-
-    expect(response.statusCode).toBe(404);
-    expect(response.json()).toEqual({
-      error: "not_found",
-      message: `No page at ${draft.url}`,
-    });
-  });
-
-  it("reveals a draft with ?drafts=true, marked no-cache", async () => {
-    const draft = await seedPage({ url: "/draft-only", is_draft: true });
-    const response = await app.inject({
-      url: `/pages/by-url?url=${encodeURIComponent(draft.url)}&drafts=true`,
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json().id).toBe(draft.id);
-    expect(response.headers["cache-control"]).toBe("no-cache");
-  });
-
-  it("still resolves a published page, unaffected by the drafts param", async () => {
-    const created = await seedPage();
-    const response = await app.inject({
-      url: `/pages/by-url?url=${encodeURIComponent(created.url)}`,
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json().id).toBe(created.id);
   });
 });
 
@@ -169,60 +404,44 @@ describe("PUT /pages/:id", () => {
     expect((await store.get(created.id))?.title).toBe("First writer wins");
   });
 
-  it("422s with the errors per block, not a flattened message", async () => {
-    const created = await seedPage();
+  it("404s a page that is not there", async () => {
     const response = await app.inject({
       method: "PUT",
-      url: `/pages/${created.id}`,
-      payload: {
-        ...created,
-        body: {
-          ...created.body,
-          blocks: [
-            {
-              id: "b_bad",
-              type: "finder",
-              collection: "does-not-exist",
-              document_noun: "pharmacy",
-              results_per_page: 20,
-              empty_message: "None",
-              search: { enabled: false, label: "", fields: [] },
-              facets: [],
-              sort: [],
-              result_template: {
-                title: "name",
-                metadata: [],
-                detail_url: "/x",
-              },
-            },
-          ],
-        },
-      },
+      url: "/pages/22222222-2222-4222-8222-222222222222",
+      payload: aPage(),
     });
-
-    expect(response.statusCode).toBe(422);
-    const { errors } = response.json();
-    expect(errors.length).toBeGreaterThan(0);
-    expect(errors[0]).toHaveProperty("blockId");
+    expect(response.statusCode).toBe(404);
   });
 
-  it("refuses an unsafe href on ingest, not only on render", async () => {
-    const created = await seedPage();
-    const response = await app.inject({
-      method: "PUT",
-      url: `/pages/${created.id}`,
-      payload: {
-        ...created,
-        body: {
-          ...created.body,
-          refs: {
-            r_evil: { kind: "external", href: "javascript:alert(1)" },
-          },
-        },
-      },
-    });
+  it("stamps published_at the first time a page goes public, and never moves it", async () => {
+    const draft = await seedPage({ visibility: "draft" });
+    const put = async (current: typeof draft, visibility: Visibility) =>
+      (
+        await app.inject({
+          method: "PUT",
+          url: `/pages/${draft.id}`,
+          payload: { ...current, visibility },
+        })
+      ).json();
 
-    expect(response.statusCode).toBe(422);
+    const published = await put(draft, "public");
+    const hidden = await put(published, "preview");
+    const again = await put(hidden, "public");
+
+    expect(published.published_at).not.toBeNull();
+    expect(hidden.published_at).toBe(published.published_at);
+    expect(again.published_at).toBe(published.published_at);
+
+    const actions = (await db.execute(
+      sql`select action from change_events order by version_no`,
+    )) as { rows?: Array<{ action: string }> } | Array<{ action: string }>;
+    const rows = Array.isArray(actions) ? actions : (actions.rows ?? []);
+    expect(rows.map((row) => row.action)).toEqual([
+      "created",
+      "published",
+      "updated",
+      "updated",
+    ]);
   });
 });
 
@@ -239,125 +458,19 @@ describe("DELETE /pages/:id", () => {
   });
 });
 
-describe("collections", () => {
-  beforeEach(async () => {
-    await db.execute(
-      (await import("drizzle-orm")).sql`
-        insert into data_collections (key, title, record_key, schema)
-        values ('pharmacies', 'Pharmacies', 'slug',
-                '{"fields":[{"key":"name","label":"Name","type":"text"}]}'::jsonb)
-      `,
-    );
-  });
-
-  it("lists the collections", async () => {
-    const response = await app.inject({ url: "/collections" });
-    expect(response.statusCode).toBe(200);
-    expect(response.json()[0]).toMatchObject({
-      key: "pharmacies",
-      record_key: "slug",
-    });
-  });
-
-  it("round-trips a record", async () => {
-    const write = await app.inject({
-      method: "PUT",
-      url: "/collections/pharmacies/records/collins",
-      payload: { data: { name: "Collins Pharmacy" } },
-    });
-    expect(write.statusCode).toBe(204);
-
-    const read = await app.inject({ url: "/collections/pharmacies/records" });
-    expect(read.json()).toEqual([{ name: "Collins Pharmacy" }]);
-  });
-
-  it("returns an empty list for a collection with no records", async () => {
-    const response = await app.inject({
-      url: "/collections/pharmacies/records",
-    });
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual([]);
-  });
-
-  it("deletes a record", async () => {
-    await app.inject({
-      method: "PUT",
-      url: "/collections/pharmacies/records/collins",
-      payload: { data: { name: "Collins Pharmacy" } },
-    });
-
-    const response = await app.inject({
-      method: "DELETE",
-      url: "/collections/pharmacies/records/collins",
-    });
-
-    expect(response.statusCode).toBe(204);
-    expect(
-      (await app.inject({ url: "/collections/pharmacies/records" })).json(),
-    ).toEqual([]);
-  });
-});
-
 describe("Cache-Control", () => {
-  beforeEach(async () => {
-    await db.execute(
-      (await import("drizzle-orm")).sql`
-        insert into data_collections (key, title, record_key, schema)
-        values ('pharmacies', 'Pharmacies', 'slug',
-                '{"fields":[{"key":"name","label":"Name","type":"text"}]}'::jsonb)
-      `,
-    );
-  });
-
-  const PUBLIC_READ =
-    "public, max-age=60, stale-while-revalidate=300, stale-if-error=86400";
-
-  it("sends PUBLIC_READ from /pages, /pages/by-url and /collections/:key/records", async () => {
-    const created = await seedPage();
-
-    const pages = await app.inject({ url: "/pages" });
-    const byUrl = await app.inject({
-      url: `/pages/by-url?url=${encodeURIComponent(created.url)}`,
-    });
-    const records = await app.inject({
-      url: "/collections/pharmacies/records",
-    });
-
-    expect(pages.headers["cache-control"]).toBe(PUBLIC_READ);
-    expect(byUrl.headers["cache-control"]).toBe(PUBLIC_READ);
-    expect(records.headers["cache-control"]).toBe(PUBLIC_READ);
-  });
-
-  it("sends no-cache from /pages/:id, ?drafts=true, ?keys=true and /collections", async () => {
-    const created = await seedPage();
-
-    const byId = await app.inject({ url: `/pages/${created.id}` });
-    const draftsList = await app.inject({ url: "/pages?drafts=true" });
-    const keys = await app.inject({
-      url: "/collections/pharmacies/records?keys=true",
-    });
-    const collections = await app.inject({ url: "/collections" });
-
-    expect(byId.headers["cache-control"]).toBe("no-cache");
-    expect(draftsList.headers["cache-control"]).toBe("no-cache");
-    expect(keys.headers["cache-control"]).toBe("no-cache");
-    expect(collections.headers["cache-control"]).toBe("no-cache");
-  });
-
   it("answers a matching If-None-Match with 304, carrying the same Cache-Control", async () => {
-    const created = await seedPage();
-    const first = await app.inject({ url: `/pages/${created.id}` });
+    await seedPage();
+    const first = await read(ENTRY);
     const etag = first.headers.etag as string;
 
     const second = await app.inject({
-      url: `/pages/${created.id}`,
+      url: `/pages?url=${encodeURIComponent(ENTRY)}`,
       headers: { "if-none-match": etag },
     });
 
     expect(second.statusCode).toBe(304);
-    expect(second.headers["cache-control"]).toBe(
-      first.headers["cache-control"],
-    );
+    expect(second.headers["cache-control"]).toBe(PUBLIC_READ);
   });
 
   // A route must only advertise a policy for the response it actually sent —
@@ -367,7 +480,7 @@ describe("Cache-Control", () => {
     const brokenApp = await buildApp({ db: {} as Database });
     await brokenApp.ready();
 
-    const response = await brokenApp.inject({ url: "/pages" });
+    const response = await brokenApp.inject({ url: "/pages?url=/x" });
 
     expect(response.statusCode).toBe(500);
     expect(response.headers["cache-control"]).toBeUndefined();
@@ -441,7 +554,7 @@ describe("CORS", () => {
     // default allow-list.
     const response = await app.inject({
       method: "GET",
-      url: "/pages",
+      url: "/pages?url=/x",
       headers: { origin: "http://localhost:3030" },
     });
 

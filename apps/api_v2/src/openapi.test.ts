@@ -16,7 +16,7 @@ import type { FastifyInstance } from "fastify";
 import { describe, expect, it } from "vitest";
 import { buildApp } from "./app";
 import { buildOpenApiDocument } from "./openapi-document";
-import { createTestDb } from "./test-db";
+import { aPage, createTestDb } from "./test-db";
 
 const committed = JSON.parse(
   readFileSync(
@@ -75,23 +75,35 @@ describe("response schemas", () => {
   /**
    * Fastify serialises through the response schema, so a property the schema
    * does not know about is dropped from the wire. That is a feature for
-   * hygiene and a trap for a block document, whose whole shape is open — this
-   * asserts that a document survives the round trip intact rather than
-   * arriving stripped of the blocks that make it a page.
+   * hygiene and a trap for a hast tree, whose shape is open — this asserts
+   * that the tree survives the round trip intact rather than arriving
+   * stripped of the nodes that make it a page.
    */
-  it("does not strip a block document on the way out", async () => {
+  it("does not strip a hast tree on the way out", async () => {
     const { db, close } = await createTestDb();
     const app = await buildApp({ db });
-    const { aDocument } = await import("./test-db");
-
-    const created = await app.inject({
+    await app.inject({
       method: "POST",
       url: "/pages",
-      payload: aDocument(),
+      payload: aPage({ body_markdown: "A [link](https://example.com)." }),
     });
 
-    expect(created.statusCode).toBe(201);
-    expect(created.json().body).toEqual(aDocument().body);
+    const response = await app.inject({
+      url: `/pages?url=${encodeURIComponent(aPage().url)}`,
+    });
+
+    expect(response.json().hast.children[0]).toMatchObject({
+      tagName: "p",
+      children: [
+        { type: "text", value: "A " },
+        {
+          tagName: "a",
+          properties: { href: "https://example.com" },
+          children: [{ type: "text", value: "link" }],
+        },
+        { type: "text", value: "." },
+      ],
+    });
 
     await app.close();
     await close();
@@ -100,12 +112,11 @@ describe("response schemas", () => {
   it("keeps a null description null rather than dropping it", async () => {
     const { db, close } = await createTestDb();
     const app = await buildApp({ db });
-    const { aDocument } = await import("./test-db");
 
     const created = await app.inject({
       method: "POST",
       url: "/pages",
-      payload: aDocument({ description: null }),
+      payload: aPage({ description: null }),
     });
 
     expect(created.json()).toHaveProperty("description", null);

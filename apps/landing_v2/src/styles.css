@@ -9,7 +9,6 @@
 @import "tailwindcss";
 @import "@govtech-bb/frontend/tailwind";
 @import "@govtech-bb/frontend/css" layer(components);
-@import "@govtech-bb/block-kit/styles.css";
 
 body {
   margin: 0;
@@ -56,15 +55,6 @@ body {
   margin-bottom: 1.5rem;
 }
 
-/*
- * `RenderDocument` renders the `.bk-document` article itself, so the page
- * wrapper cannot carry `.bk-wide` — it would widen a box that is not the one
- * holding the measure. A finder page lifts the cap on the article instead.
- */
-.site-wide .bk-document {
-  max-width: none;
-}
-
 .site-index-page {
   max-width: 44rem;
 }
@@ -85,9 +75,4 @@ body {
   font-size: 1.25rem;
   font-weight: 700;
   color: #1d70b8;
-}
-.site-index-meta {
-  margin: 0.25rem 0 0;
-  color: #505a5f;
-  font-size: 0.9375rem;
 }

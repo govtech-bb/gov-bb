@@ -136,7 +136,7 @@ async function waitForHealthy(server: Server, child: ChildProcess) {
       );
     }
     try {
-      const response = await fetch(`${server.url}/pages`);
+      const response = await fetch(`${server.url}/version`);
       if (response.ok) return;
     } catch {
       // Not listening yet.

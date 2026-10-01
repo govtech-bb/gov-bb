@@ -20,40 +20,101 @@
 
 import type { FastifySchema } from "fastify";
 
-/** A block document's body. Deliberately open — `block-kit` owns its shape. */
-const body = {
+const visibility = {
+  type: "string",
+  enum: ["public", "preview", "draft"],
+} as const;
+
+/** The frontmatter fields that did not become columns. */
+const frontmatterProperties = {
+  lede: { type: "string" },
+  subcategory: { type: "string" },
+  stage: { type: "string" },
+  featured: { type: "boolean" },
+  section: { type: "string" },
+  service_type: { type: "string" },
+  keywords: { type: "array", items: { type: "string" } },
+  source_url: { type: "string" },
+} as const;
+
+const frontmatter = {
+  type: "object",
+  properties: frontmatterProperties,
+  additionalProperties: false,
+} as const;
+
+/** A hast root. Deliberately open: the tree's shape is hast's, not ours. */
+const hast = {
   type: "object",
   description:
-    "The block document: `{version, blocks, refs}`. Validated against " +
-    "block-kit's rules on write, and passed through untouched on read.",
+    "The page body as a sanitised hast tree, compiled from `body_markdown` " +
+    "on write.",
   properties: {
-    version: { type: "integer" },
-    blocks: {
+    type: { type: "string", enum: ["root"] },
+    children: {
       type: "array",
       items: { type: "object", additionalProperties: true },
     },
-    refs: { type: "object", additionalProperties: true },
   },
-  required: ["version", "blocks", "refs"],
+  required: ["type", "children"],
   additionalProperties: true,
+} as const;
+
+const pageResponse = {
+  type: "object",
+  properties: {
+    url: { type: "string" },
+    frontmatter: {
+      type: "object",
+      description:
+        "The stored frontmatter, with the page's title and description " +
+        "(columns of their own) put back.",
+      properties: {
+        title: { type: "string" },
+        description: { type: "string" },
+        ...frontmatterProperties,
+      },
+      required: ["title"],
+      additionalProperties: false,
+    },
+    hast,
+    breadcrumbs: {
+      type: "array",
+      description:
+        "The full trail, current page included, Home not. A level of the " +
+        "url with no category or page of its own has no crumb.",
+      items: {
+        type: "object",
+        properties: { name: { type: "string" }, url: { type: "string" } },
+        required: ["name", "url"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["url", "frontmatter", "hast", "breadcrumbs"],
+  additionalProperties: false,
 } as const;
 
 const pageDocument = {
   type: "object",
   properties: {
-    version: { type: "integer" },
     id: { type: "string", format: "uuid" },
     url: { type: "string", description: "The site's routing key." },
-    slug: { type: "string" },
-    schema_name: {
-      type: "string",
-      enum: ["answer", "guide", "transaction", "finder", "calendar"],
-    },
-    document_type: { type: "string" },
+    slug: { type: "string", description: "The url's last segment." },
+    category_id: { type: "string", format: "uuid", nullable: true },
     title: { type: "string" },
     description: { type: "string", nullable: true },
-    is_draft: { type: "boolean" },
-    body,
+    visibility,
+    form_id: { type: "string", nullable: true },
+    body_markdown: { type: "string" },
+    frontmatter,
+    published_at: {
+      type: "string",
+      format: "date-time",
+      nullable: true,
+      description: "When the page first went public; null until it has.",
+    },
+    created_at: { type: "string", format: "date-time" },
     updated_at: {
       type: "string",
       format: "date-time",
@@ -63,56 +124,38 @@ const pageDocument = {
     },
   },
   required: [
-    "version",
     "id",
     "url",
     "slug",
-    "schema_name",
-    "document_type",
+    "category_id",
     "title",
-    "is_draft",
-    "body",
+    "description",
+    "visibility",
+    "form_id",
+    "body_markdown",
+    "frontmatter",
+    "published_at",
+    "created_at",
     "updated_at",
   ],
   additionalProperties: false,
 } as const;
 
-const documentSummary = {
+/** What a write sends. The slug comes from the url; the hast is compiled. */
+const pageInput = {
   type: "object",
   properties: {
     id: { type: "string", format: "uuid" },
-    url: { type: "string" },
-    title: { type: "string" },
-    schema_name: {
-      type: "string",
-      enum: ["answer", "guide", "transaction", "finder", "calendar"],
-    },
-    document_type: { type: "string" },
-    updated_at: { type: "string", format: "date-time" },
+    url: { type: "string", pattern: "^/[^?#]*[^/?#]$" },
+    category_id: { type: "string", format: "uuid", nullable: true },
+    title: { type: "string", minLength: 1 },
+    description: { type: "string", nullable: true },
+    visibility,
+    form_id: { type: "string", nullable: true },
+    body_markdown: { type: "string" },
+    frontmatter,
   },
-  required: [
-    "id",
-    "url",
-    "title",
-    "schema_name",
-    "document_type",
-    "updated_at",
-  ],
-  additionalProperties: false,
-} as const;
-
-const collectionDefinition = {
-  type: "object",
-  properties: {
-    key: { type: "string" },
-    title: { type: "string" },
-    record_key: {
-      type: "string",
-      description: "Which field of a record identifies it.",
-    },
-    schema: { type: "object", additionalProperties: true },
-  },
-  required: ["key", "title", "record_key", "schema"],
+  required: ["url", "title", "body_markdown"],
   additionalProperties: false,
 } as const;
 
@@ -126,12 +169,6 @@ const error = {
   additionalProperties: true,
 } as const;
 
-/**
- * 422 carries the errors per block, not a flattened message: each one names
- * the block it came from so an editor can link its error summary to the block
- * that caused it. Documenting the shape is what stops that being flattened by
- * a well-meaning refactor.
- */
 const validationFailed = {
   type: "object",
   properties: {
@@ -142,12 +179,11 @@ const validationFailed = {
       items: {
         type: "object",
         properties: {
-          rule: { type: "integer" },
-          blockId: { type: "string", nullable: true },
+          field: { type: "string" },
           message: { type: "string" },
         },
-        required: ["message"],
-        additionalProperties: true,
+        required: ["field", "message"],
+        additionalProperties: false,
       },
     },
   },
@@ -166,60 +202,47 @@ const conflict = {
   additionalProperties: true,
 } as const;
 
-export const SCHEMAS = {
-  listPages: {
-    summary: "List page summaries",
-    description:
-      "Published pages, ordered by url. Drafts are excluded unless asked " +
-      "for, so an unauthenticated caller cannot read unpublished content by " +
-      "accident.",
-    tags: ["pages"],
-    querystring: {
-      type: "object",
-      properties: {
-        drafts: {
-          type: "string",
-          enum: ["true", "false"],
-          description: "`true` includes drafts.",
-        },
-      },
-      additionalProperties: false,
-    },
-    response: {
-      200: { type: "array", items: documentSummary },
-    },
-  },
+const idParams = {
+  type: "object",
+  properties: { id: { type: "string" } },
+  required: ["id"],
+} as const;
 
+export const SCHEMAS = {
   getPageByUrl: {
-    summary: "Get a page by its url",
+    summary: "Get a public page by its url",
     description:
-      "The site's routing key. `landing_v2` resolves a request path with " +
-      "this; the id is the editor's key, not the site's.",
+      "The site's read. A page is served only when it and every page above " +
+      "it in the url are public; a `/start` page also needs its form to be " +
+      "public. The Start link is removed from the hast when the page's " +
+      "`/start` sub-page or form is not public. A bare `/<slug>` with no " +
+      "page of its own redirects (301) to the one public page with that " +
+      "slug.",
     tags: ["pages"],
     querystring: {
       type: "object",
-      properties: {
-        url: { type: "string" },
-        drafts: {
-          type: "string",
-          enum: ["true", "false"],
-          description: "`true` includes drafts.",
-        },
-      },
+      properties: { url: { type: "string", minLength: 1 } },
       required: ["url"],
       additionalProperties: false,
     },
-    response: { 200: pageDocument, 400: error, 404: error },
+    response: {
+      200: pageResponse,
+      301: {
+        type: "object",
+        properties: { redirect: { type: "string" } },
+        required: ["redirect"],
+        additionalProperties: false,
+      },
+      400: error,
+      404: error,
+    },
   },
 
   getPage: {
     summary: "Get a page by id",
+    description: "The editor's read: any visibility, markdown included.",
     tags: ["pages"],
-    params: {
-      type: "object",
-      properties: { id: { type: "string" } },
-      required: ["id"],
-    },
+    params: idParams,
     response: { 200: pageDocument, 404: error },
   },
 
@@ -227,7 +250,7 @@ export const SCHEMAS = {
     summary: "Create a page",
     description: "Writes are unauthenticated until #2701 lands.",
     tags: ["pages"],
-    body: { type: "object", additionalProperties: true },
+    body: pageInput,
     response: { 201: pageDocument, 422: validationFailed },
   },
 
@@ -238,11 +261,7 @@ export const SCHEMAS = {
       "If the stored row has moved on since, the save is refused with a 409 " +
       "rather than silently discarding whoever wrote first.",
     tags: ["pages"],
-    params: {
-      type: "object",
-      properties: { id: { type: "string" } },
-      required: ["id"],
-    },
+    params: idParams,
     headers: {
       type: "object",
       properties: {
@@ -254,7 +273,7 @@ export const SCHEMAS = {
         },
       },
     },
-    body: { type: "object", additionalProperties: true },
+    body: pageInput,
     response: {
       200: pageDocument,
       404: error,
@@ -266,78 +285,7 @@ export const SCHEMAS = {
   deletePage: {
     summary: "Delete a page",
     tags: ["pages"],
-    params: {
-      type: "object",
-      properties: { id: { type: "string" } },
-      required: ["id"],
-    },
-    response: { 204: { type: "null" } },
-  },
-
-  listCollections: {
-    summary: "List collection definitions",
-    tags: ["collections"],
-    response: { 200: { type: "array", items: collectionDefinition } },
-  },
-
-  listRecords: {
-    summary: "List a collection's records",
-    description:
-      "Published records only. `?keys=true` returns each record's key " +
-      "alongside its data, which is what editing needs and rendering does " +
-      "not.",
-    tags: ["collections"],
-    params: {
-      type: "object",
-      properties: { key: { type: "string" } },
-      required: ["key"],
-    },
-    querystring: {
-      type: "object",
-      properties: { keys: { type: "string", enum: ["true", "false"] } },
-      additionalProperties: false,
-    },
-    response: {
-      200: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    },
-  },
-
-  saveRecord: {
-    summary: "Create or replace a record",
-    tags: ["collections"],
-    params: {
-      type: "object",
-      properties: { key: { type: "string" }, recordKey: { type: "string" } },
-      required: ["key", "recordKey"],
-    },
-    body: {
-      type: "object",
-      properties: {
-        data: { type: "object", additionalProperties: true },
-        previousKey: {
-          type: "string",
-          description:
-            "Set when the record's key itself changed, so the old row goes " +
-            "rather than being left behind as a duplicate.",
-        },
-      },
-      required: ["data"],
-      additionalProperties: false,
-    },
-    response: { 204: { type: "null" } },
-  },
-
-  deleteRecord: {
-    summary: "Delete a record",
-    tags: ["collections"],
-    params: {
-      type: "object",
-      properties: { key: { type: "string" }, recordKey: { type: "string" } },
-      required: ["key", "recordKey"],
-    },
+    params: idParams,
     response: { 204: { type: "null" } },
   },
 
@@ -373,8 +321,7 @@ export const OPENAPI_DOCUMENT = {
     version: "0.0.0",
   },
   tags: [
-    { name: "pages", description: "Content pages, stored as block documents" },
-    { name: "collections", description: "Structured data behind a page" },
+    { name: "pages", description: "Content pages, stored as markdown" },
     { name: "meta", description: "Freshness" },
   ],
 };
