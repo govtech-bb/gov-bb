@@ -149,8 +149,9 @@ function asValidationError(error: unknown): unknown {
     ]);
   }
   if (cause?.code === "23505") {
+    const field = constraint === "content_pages_pkey" ? "id" : "url";
     return new ValidationFailedError([
-      { field: "url", message: "Another page already has this url." },
+      { field, message: `Another page already has this ${field}.` },
     ]);
   }
   return error;
@@ -253,6 +254,10 @@ export class ApiStore {
    * neither (a subcategory has no page of its own) is left out rather than
    * linked to a 404. Every page here is public, or the page being served
    * would not be.
+   *
+   * The category crumb links `/<category>`, which v1 landing serves as the
+   * category's index page. landing_v2 has no category page yet, so until it
+   * does that crumb 404s there; it is kept for the site this API serves.
    */
   private async breadcrumbs(
     prefixes: string[],

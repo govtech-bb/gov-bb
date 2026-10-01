@@ -13,6 +13,7 @@
 import type { Element, ElementContent, Root, RootContent } from "hast";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
+import rehypeSlug from "rehype-slug";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
@@ -24,7 +25,7 @@ import { unified } from "unified";
  */
 const SCHEMA = {
   ...defaultSchema,
-  // Heading ids are authored for in-page links; prefixing them breaks those.
+  // Heading ids are linked to across pages; prefixing them breaks those.
   clobberPrefix: "",
   tagNames: [
     ...(defaultSchema.tagNames ?? []),
@@ -33,6 +34,7 @@ const SCHEMA = {
     "contacts",
     "highlight",
     "highlights",
+    "link-button",
     "muted",
     "notice",
   ],
@@ -43,6 +45,7 @@ const SCHEMA = {
     details: [...(defaultSchema.attributes?.details ?? []), "className"],
     div: [...(defaultSchema.attributes?.div ?? []), "className"],
     highlight: ["title"],
+    "link-button": ["href", "variant"],
     muted: ["caption"],
     summary: ["className"],
   },
@@ -57,7 +60,11 @@ const processor = unified()
   .use(remarkGfm)
   .use(remarkRehype, { allowDangerousHtml: true })
   .use(rehypeRaw)
-  .use(rehypeSanitize, SCHEMA);
+  .use(rehypeSanitize, SCHEMA)
+  // After the sanitiser, so the ids are v1's (landing ran rehype-slug too):
+  // the estate's `#fragment` links between pages were written against them.
+  // A heading with an authored id keeps it.
+  .use(rehypeSlug);
 
 const isStartLink = (node: Element) =>
   node.tagName === "a" && node.properties.dataStartLink !== undefined;

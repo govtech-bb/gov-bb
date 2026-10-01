@@ -1,8 +1,6 @@
 import { defineConfig } from "vitest/config";
-import { alias } from "./vitest.shared";
 
 export default defineConfig({
-  resolve: { alias },
   test: {
     include: ["src/**/*.test.ts"],
     // PGlite compiles WASM on first use; the suite creates one database per

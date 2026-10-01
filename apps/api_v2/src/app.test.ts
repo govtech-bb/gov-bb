@@ -118,7 +118,7 @@ describe("GET /pages?url=", () => {
           {
             type: "element",
             tagName: "h2",
-            properties: {},
+            properties: { id: "how-long-does-it-take" },
             children: [{ type: "text", value: "How long does it take?" }],
           },
           { type: "text", value: "\n" },
@@ -345,6 +345,20 @@ describe("POST /pages", () => {
     ]);
   });
 
+  it("422s an id another page already has, naming the id", async () => {
+    const existing = await seedPage();
+    const response = await app.inject({
+      method: "POST",
+      url: "/pages",
+      payload: aPage({ id: existing.id, url: "/somewhere-else" }),
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json().errors).toEqual([
+      { field: "id", message: "Another page already has this id." },
+    ]);
+  });
+
   it("400s a page with no title", async () => {
     const response = await app.inject({
       method: "POST",
@@ -418,11 +432,11 @@ describe("PUT /pages/:id", () => {
     expect(hidden.published_at).toBe(published.published_at);
     expect(again.published_at).toBe(published.published_at);
 
-    const actions = await db.execute(
+    const actions = (await db.execute(
       sql`select action from change_events order by version_no`,
-    );
-    const rows = Array.isArray(actions) ? actions : actions.rows;
-    expect(rows.map((row: { action: string }) => row.action)).toEqual([
+    )) as { rows?: Array<{ action: string }> } | Array<{ action: string }>;
+    const rows = Array.isArray(actions) ? actions : (actions.rows ?? []);
+    expect(rows.map((row) => row.action)).toEqual([
       "created",
       "published",
       "updated",

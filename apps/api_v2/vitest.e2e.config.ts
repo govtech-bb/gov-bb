@@ -1,5 +1,4 @@
 import { defineConfig } from "vitest/config";
-import { alias } from "./vitest.shared";
 
 /**
  * The end-to-end suite: the built server, on a socket, against a real
@@ -21,7 +20,6 @@ import { alias } from "./vitest.shared";
  * of failing on infrastructure.
  */
 export default defineConfig({
-  resolve: { alias },
   test: {
     include: ["e2e/**/*.spec.ts"],
     testTimeout: 60_000,

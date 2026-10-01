@@ -26,6 +26,7 @@ describe("compileMarkdown", () => {
     const tree = await html(
       '<highlight title="Water">Store water</highlight>\n\n' +
         '<contact label="Police" number="211" tel="tel:211"></contact>\n\n' +
+        '<link-button href="/checklist.pdf" variant="secondary">Save checklist</link-button>\n\n' +
         '<details class="govbb-show-hide"><summary class="govbb-show-hide__summary">More</summary></details>',
     );
 
@@ -33,11 +34,26 @@ describe("compileMarkdown", () => {
     expect(tree).toContain('"title":"Water"');
     expect(tree).toContain('"tagName":"contact"');
     expect(tree).toContain('"number":"211"');
+    expect(tree).toContain('"tagName":"link-button"');
+    expect(tree).toContain('"href":"/checklist.pdf"');
+    expect(tree).toContain('"variant":"secondary"');
     expect(tree).toContain('"className":["govbb-show-hide"]');
   });
 
-  it("keeps heading ids as authored, without a clobber prefix", async () => {
-    expect(await html('<h2 id="fees">Fees</h2>')).toContain('"id":"fees"');
+  it("blanks a javascript: href on a link-button", async () => {
+    expect(
+      await html('<link-button href="javascript:alert(1)">x</link-button>'),
+    ).not.toContain("javascript");
+  });
+
+  it("gives headings v1's slug ids, without a clobber prefix", async () => {
+    expect(await html("## Make a payment")).toContain('"id":"make-a-payment"');
+  });
+
+  it("keeps an authored heading id", async () => {
+    expect(await html('<h2 id="fees">Fees and costs</h2>')).toContain(
+      '"id":"fees"',
+    );
   });
 
   it("stamps a href-less start link with the form, and leaves an authored href alone", async () => {
