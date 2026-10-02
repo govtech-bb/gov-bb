@@ -175,7 +175,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-for-swimming-pool-licence",
-    title: "Apply for a swimming pool licence",
+    title: "Apply to Environmental Health for a swimming pool licence",
     category: "business-trade",
     formId: "apply-for-swimming-pool-licence",
     visibility: "preview",
