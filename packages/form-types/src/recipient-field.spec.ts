@@ -33,3 +33,14 @@ describe("classifyRecipientField", () => {
     expect(classifyRecipientField("config.team@govtech.bb")).toBe("literal");
   });
 });
+
+describe("classifyRecipientField — catchment", () => {
+  it("classifies the catchment token", () => {
+    expect(classifyRecipientField("catchment.mdaEmail")).toBe("catchment");
+  });
+  it("still classifies config, literal, submitted", () => {
+    expect(classifyRecipientField("config.mdaEmail")).toBe("config");
+    expect(classifyRecipientField("a@b.com")).toBe("literal");
+    expect(classifyRecipientField("step.field")).toBe("submitted");
+  });
+});

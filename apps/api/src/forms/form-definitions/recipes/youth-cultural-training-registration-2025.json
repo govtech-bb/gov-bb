@@ -390,7 +390,13 @@
                 "operator": "equal",
                 "targetFieldId": "has-experience"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select your level of experience",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -409,7 +415,13 @@
                 "operator": "equal",
                 "targetFieldId": "has-experience"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter how much experience you have",
+                "value": true
+              }
+            }
           }
         },
         {

@@ -15,8 +15,14 @@ export const SERVICE_STATUS_VALUES: readonly ServiceStatus[] = [
   "disabled",
 ];
 
-/** Absence of a service_status row defaults to `enabled` (fail-open). */
-export const DEFAULT_STATUS: ServiceStatus = "enabled";
+/**
+ * Absence of a service_status row defaults to `disabled` (fail-closed), matching
+ * the api's `/services` contract: an unseeded service maps to `preview` there
+ * (apps/api/src/content/content.service.ts) and so is hidden from the public.
+ * The admin console must report the same hidden state rather than showing an
+ * unseeded service as live. See #2003.
+ */
+export const DEFAULT_STATUS: ServiceStatus = "disabled";
 
 export const STATUS_LABELS: Record<ServiceStatus, string> = {
   enabled: "Enabled",

@@ -1,4 +1,5 @@
 import type { TextPrimitive } from "@govtech-bb/form-types";
+import { TAMIS_FORMAT } from "../barbados-id-patterns";
 
 export const TamisNumber: TextPrimitive = {
   fieldId: "tamis-number",
@@ -6,8 +7,8 @@ export const TamisNumber: TextPrimitive = {
   htmlType: "text",
   validations: {
     pattern: {
-      value: "^\\d*$",
-      error: "TAMIS number must contain only digits",
+      value: TAMIS_FORMAT.pattern,
+      error: TAMIS_FORMAT.error,
     },
     minLength: {
       value: 10,

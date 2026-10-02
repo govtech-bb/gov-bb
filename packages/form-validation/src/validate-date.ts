@@ -23,6 +23,14 @@ export type DatePart = (typeof DATE_PARTS)[number];
 export interface DateValidationError {
   readonly message: string;
   readonly parts: readonly DatePart[];
+  /**
+   * Stable reason code for analytics: `required` when nothing was entered,
+   * `incomplete_date` for a partial date, `invalid_date` for an impossible
+   * date, or the failing rule type (`before`/`after`/…) for a configured rule.
+   * Optional so existing display consumers (which only read message/parts) are
+   * unaffected.
+   */
+  readonly code?: string;
 }
 
 /**
@@ -143,8 +151,10 @@ const joinParts = (parts: readonly DatePart[]): string => parts.join(" and ");
  *
  * 1. Missing or incomplete information — "Enter [label]" when nothing is
  *    entered (required only), "[label] must include a [day/month/year]" when
- *    partially entered, "Year must include 4 numbers".
- * 2. Information that cannot be correct — "[label] must be a real date",
+ *    partially entered, "Year must include 4 numbers" when the year box does
+ *    not hold exactly four digits.
+ * 2. Information that cannot be correct — "Year must be 1900 or later" for a
+ *    four-digit but implausible year, otherwise "[label] must be a real date",
  *    highlighting the impossible part (or the whole input when more than one
  *    part is wrong).
  * 3. Information that fails validation for another reason — the configured
@@ -170,6 +180,7 @@ export function validateDateField(
   const requiredError = (): DateValidationError => ({
     message: requiredConfig?.error ?? `Enter ${asPhrase(label)}`,
     parts: DATE_PARTS,
+    code: "required",
   });
 
   // ── Priority 1: missing or incomplete ──────────────────────────────────
@@ -181,7 +192,11 @@ export function validateDateField(
   // information — skip the incompleteness checks and parse directly.
   if (!isPartsObject(value)) {
     if (parseDate(value) === null) {
-      return { message: `${label} must be a real date`, parts: DATE_PARTS };
+      return {
+        message: `${label} must be a real date`,
+        parts: DATE_PARTS,
+        code: "invalid_date",
+      };
     }
     return runConfiguredRules(field, value, allValues, stepValues);
   }
@@ -199,17 +214,34 @@ export function validateDateField(
     return {
       message: `${label} must include a ${joinParts(missing)}`,
       parts: missing,
+      code: "incomplete_date",
     };
   }
 
-  // A sensible 4-digit year: 1900–9999. Anything below reads as a too-short or
-  // implausible year ("90", "925", "1899"); proper lower-bound messaging is
-  // what the configurable minYear rule is for.
-  if (year < 1900 || year > 9999) {
-    return { message: "Year must include 4 numbers", parts: ["year"] };
+  // The year box must hold exactly four digits. Tested on the raw part rather
+  // than the parsed number so "0090" counts as four numbers (it is implausible,
+  // not incomplete — the bound below catches it) and "12345" does not.
+  if (!/^\d{4}$/.test(String(value.year))) {
+    return {
+      message: "Year must include 4 numbers",
+      parts: ["year"],
+      code: "incomplete_date",
+    };
   }
 
   // ── Priority 2: information that cannot be correct ─────────────────────
+  // A four-digit year can still be implausible ("0090", "1800"). This floor
+  // stays here rather than deferring to the configurable minYear rule: only one
+  // recipe sets minYear, so dropping it would let year 0005 through everywhere
+  // else. Wording matches minYearRunner's default (rules/date.ts).
+  if (year < 1900) {
+    return {
+      message: "Year must be 1900 or later",
+      parts: ["year"],
+      code: "invalid_date",
+    };
+  }
+
   const badParts: DatePart[] = [];
   if (!Number.isInteger(month) || month < 1 || month > 12) {
     badParts.push("month");
@@ -226,6 +258,7 @@ export function validateDateField(
       message: `${label} must be a real date`,
       // Whole input when more than one part is wrong (per the guidance).
       parts: badParts.length > 1 ? DATE_PARTS : badParts,
+      code: "invalid_date",
     };
   }
 
@@ -265,7 +298,7 @@ function runConfiguredRules(
           };
 
     const msg = runRule(runner, value, patched, allValues, stepValues);
-    if (msg !== null) return { message: msg, parts: DATE_PARTS };
+    if (msg !== null) return { message: msg, parts: DATE_PARTS, code: type };
   }
 
   return null;

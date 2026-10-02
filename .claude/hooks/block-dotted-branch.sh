@@ -1,14 +1,20 @@
 #!/usr/bin/env bash
 #
-# PreToolUse(Bash) hook: refuse to create a git branch whose name contains a
-# '.'.  AWS Amplify's default-domain TLS cert is a single-label wildcard
-# (*.<appId>.amplifyapp.com), so a dotted branch produces a multi-label
-# PR-preview subdomain whose HTTPS fails with ERR_CERT_COMMON_NAME_INVALID —
-# breaking both the preview and the forms live smoke gate. See the matching
-# server-side guard in .github/workflows/pr-preview.yml.
+# PreToolUse(Bash) hook: refuse to create a git branch whose name would break
+# its Amplify PR preview. Two rules, one blast radius:
 #
-# Reads the PreToolUse hook payload on stdin and, when the command creates a
-# dotted branch, emits a deny decision. Anything else exits 0 (allow). Biased
+#   - No '.': Amplify's default-domain TLS cert is a single-label wildcard
+#     (*.<appId>.amplifyapp.com), so a dotted branch produces a multi-label
+#     PR-preview subdomain whose HTTPS fails with ERR_CERT_COMMON_NAME_INVALID.
+#   - At most 63 characters once '/' becomes '-': that is the preview host's
+#     single DNS label, and a longer one never resolves (ERR_NAME_NOT_RESOLVED)
+#     — the A11y scan and forms smoke gate then fail on infrastructure rather
+#     than on the change and read as "flaky, merge anyway" (#2488).
+#
+# See the matching server-side guard in .github/workflows/pr-preview.yml.
+#
+# Reads the PreToolUse hook payload on stdin and, when the command creates an
+# offending branch, emits a deny decision. Anything else exits 0 (allow). Biased
 # toward NOT false-positiving: only the well-known branch-creating forms are
 # inspected, and the git config flag `git -c key=val` is skipped so its dotted
 # value is never mistaken for a branch name.
@@ -19,8 +25,8 @@ cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // empty')
 [ -z "$cmd" ] && exit 0
 
 deny() {
-  local name="$1" form="$2"
-  jq -n --arg reason "Refusing to create branch '$name' ($form): the name contains a '.', which breaks the Amplify PR-preview HTTPS cert (single-label wildcard *.amplifyapp.com → ERR_CERT_COMMON_NAME_INVALID) and the forms live smoke gate. Use '-' instead, e.g. '${name//./-}'." '{
+  local name="$1" form="$2" reason="$3"
+  jq -n --arg reason "Refusing to create branch '$name' ($form): $reason" '{
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
       permissionDecision: "deny",
@@ -30,7 +36,17 @@ deny() {
   exit 0
 }
 
-has_dot() { case "$1" in *.*) return 0 ;; *) return 1 ;; esac; }
+# Apply both rules to a candidate branch name; denies (and exits) on the first hit.
+check() {
+  local name="$1" form="$2"
+  local label="${name//\//-}"
+  case "$name" in
+    *.*) deny "$name" "$form" "the name contains a '.', which breaks the Amplify PR-preview HTTPS cert (single-label wildcard *.amplifyapp.com → ERR_CERT_COMMON_NAME_INVALID) and the forms live smoke gate. Use '-' instead, e.g. '${name//./-}'." ;;
+  esac
+  if [ "${#label}" -gt 63 ]; then
+    deny "$name" "$form" "its Amplify preview label '$label' is ${#label} characters and a DNS label is capped at 63, so the preview host would never resolve (ERR_NAME_NOT_RESOLVED) and the A11y + forms smoke gates would run against a dead URL (#2488). Shorten the name so that, with '/' replaced by '-', it is 63 characters or fewer."
+  fi
+}
 
 # Evaluate each &&/||/;/| segment independently so a leading `cd … &&` or a
 # global `git -c …` in one segment can't bleed into another.
@@ -67,14 +83,14 @@ while IFS= read -r seg; do
     checkout)
       for k in "${!args[@]}"; do
         case "${args[$k]}" in
-          -b|-B) nm="${args[$((k + 1))]:-}"; [ -n "$nm" ] && has_dot "$nm" && deny "$nm" "git checkout $sub" ;;
+          -b|-B) nm="${args[$((k + 1))]:-}"; [ -n "$nm" ] && check "$nm" "git checkout $sub" ;;
         esac
       done
       ;;
     switch)
       for k in "${!args[@]}"; do
         case "${args[$k]}" in
-          -c|-C|--create|--force-create) nm="${args[$((k + 1))]:-}"; [ -n "$nm" ] && has_dot "$nm" && deny "$nm" "git switch --create" ;;
+          -c|-C|--create|--force-create) nm="${args[$((k + 1))]:-}"; [ -n "$nm" ] && check "$nm" "git switch --create" ;;
         esac
       done
       ;;
@@ -91,9 +107,9 @@ while IFS= read -r seg; do
         esac
       done
       case "$mode" in
-        create) [ "${#nonopt[@]}" -ge 1 ] && has_dot "${nonopt[0]}" && deny "${nonopt[0]}" "git branch" ;;
+        create) [ "${#nonopt[@]}" -ge 1 ] && check "${nonopt[0]}" "git branch" ;;
         # rename/copy: the NEW name is the last positional arg.
-        move|copy) [ "${#nonopt[@]}" -ge 1 ] && has_dot "${nonopt[-1]}" && deny "${nonopt[-1]}" "git branch --${mode}" ;;
+        move|copy) [ "${#nonopt[@]}" -ge 1 ] && check "${nonopt[-1]}" "git branch --${mode}" ;;
       esac
       ;;
     push)
@@ -108,13 +124,13 @@ while IFS= read -r seg; do
       # Explicit refspec `src:dst` — the destination ref is what Amplify names.
       for a in "${args[@]}"; do
         case "$a" in
-          *:*) dst="${a##*:}"; dst="${dst#refs/heads/}"; has_dot "$dst" && deny "$dst" "git push refspec" ;;
+          *:*) dst="${a##*:}"; dst="${dst#refs/heads/}"; check "$dst" "git push refspec" ;;
         esac
       done
       # `git push -u <remote> <branch>` — the trailing positional is the branch.
       if [ "$setupstream" -eq 1 ] && [ "${#pushargs[@]}" -ge 2 ]; then
         nm="${pushargs[-1]}"
-        case "$nm" in *:*) : ;; *) has_dot "$nm" && deny "$nm" "git push --set-upstream" ;; esac
+        case "$nm" in *:*) : ;; *) check "$nm" "git push --set-upstream" ;; esac
       fi
       ;;
   esac

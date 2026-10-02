@@ -27,7 +27,12 @@ const mockCheckConditionalOn = checkConditionalOn as MockedFunction<
 // ---------------------------------------------------------------------------
 // Mutable field-api state — reassign mockState between tests
 // ---------------------------------------------------------------------------
-let mockState: { value: unknown; meta: { isValid: boolean; errors: any[] } } = {
+interface MockFieldState {
+  value: unknown;
+  meta: { isValid: boolean; errors: any[] };
+}
+
+let mockState: MockFieldState = {
   value: undefined,
   meta: { isValid: true, errors: [] },
 };
@@ -108,6 +113,27 @@ describe("FieldRenderer", () => {
     expect(container.querySelector("input")).toBeTruthy();
   });
 
+  it("time with step → passes the native step to the input", () => {
+    const { container } = renderField(primitive("time", { step: 1800 }));
+    const input = container.querySelector('input[type="time"]');
+    expect(input?.getAttribute("step")).toBe("1800");
+  });
+
+  it("ui.hidden → renders a hidden input (no visible control)", () => {
+    mockState = {
+      value: "13.1,-59.6",
+      meta: { isValid: true, errors: [] },
+    };
+    const { container } = renderField(
+      primitive("text", { ui: { hidden: true } }),
+    );
+    const input = container.querySelector("input");
+    expect(input?.getAttribute("type")).toBe("hidden");
+    expect(input?.getAttribute("value")).toBe("13.1,-59.6");
+    // No visible label rendered for a hidden field.
+    expect(container.querySelector("label")).toBeNull();
+  });
+
   it("textarea → renders a textarea element", () => {
     const { container } = renderField(primitive("textarea"));
     expect(container.querySelector("textarea")).toBeTruthy();
@@ -118,6 +144,13 @@ describe("FieldRenderer", () => {
       primitive("select", { options: [{ value: "a", label: "A" }] }),
     );
     expect(container.querySelector("select")).toBeTruthy();
+  });
+
+  it("select selection emits one option value", async () => {
+    const user = userEvent.setup();
+    renderField(primitive("select", { options: [{ value: "a", label: "A" }] }));
+    await user.selectOptions(screen.getByRole("combobox"), "a");
+    expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith("a");
   });
 
   it("radio → renders radio inputs", () => {
@@ -133,7 +166,25 @@ describe("FieldRenderer", () => {
     expect(inputs.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("checkbox → renders checkbox inputs", () => {
+  it("radio selection emits one option value", async () => {
+    const user = userEvent.setup();
+    renderField(
+      primitive("radio", {
+        options: [
+          { value: "yes", label: "Yes" },
+          { value: "no", label: "No" },
+        ],
+      }),
+    );
+    expect(screen.getByRole("radio", { name: "Yes" })).toHaveAttribute(
+      "value",
+      "yes",
+    );
+    await user.click(screen.getByRole("radio", { name: "Yes" }));
+    expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith("yes");
+  });
+
+  it("checkbox → renders checkbox inputs with their option values", () => {
     const { container } = renderField(
       primitive("checkbox", {
         options: [
@@ -144,6 +195,169 @@ describe("FieldRenderer", () => {
     );
     const inputs = container.querySelectorAll("input");
     expect(inputs.length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByRole("checkbox", { name: "A" })).toHaveAttribute(
+      "value",
+      "a",
+    );
+    expect(screen.getByRole("checkbox", { name: "B" })).toHaveAttribute(
+      "value",
+      "b",
+    );
+  });
+
+  it("time → renders a native time input", () => {
+    const { container } = renderField(primitive("time"));
+    expect(container.querySelector('input[type="time"]')).toBeTruthy();
+  });
+
+  it("ui.indent → wraps the field in the inset rail", () => {
+    const { container } = renderField(
+      primitive("text", { ui: { indent: true } }),
+    );
+    const rail = container.querySelector(".govbb-field--indented");
+    expect(rail).toBeTruthy();
+    // The rail wraps the real control rather than replacing it.
+    expect(rail?.querySelector("input")).toBeTruthy();
+  });
+
+  it("ui.indent absent → no inset rail", () => {
+    const { container } = renderField(primitive("text"));
+    expect(container.querySelector(".govbb-field--indented")).toBeNull();
+  });
+
+  const accordionGroups = [
+    {
+      label: "Meat and poultry",
+      higherRisk: true,
+      options: [
+        { value: "chicken", label: "Chicken" },
+        { value: "beef", label: "Beef" },
+      ],
+    },
+    {
+      label: "Snacks and sweets",
+      options: [
+        { value: "popcorn", label: "Popcorn" },
+        { value: "cotton-candy", label: "Cotton candy" },
+      ],
+    },
+    // A single-option group is NOT an expander — see the two tests below.
+    {
+      label: "Other food",
+      options: [{ value: "other", label: "Other food" }],
+    },
+  ];
+
+  it("checkbox-accordion → one category checkbox per group, collapsed by default, with a higher-risk badge", () => {
+    const { container } = renderField(
+      primitive("checkbox-accordion", { groups: accordionGroups }),
+    );
+    // One checkbox per group; the multi-option ones are collapsed, so none of
+    // their items render yet.
+    expect(container.querySelectorAll('input[type="checkbox"]')).toHaveLength(
+      3,
+    );
+    expect(screen.queryByLabelText("Chicken")).toBeNull();
+    // Higher-risk badge only on the flagged category.
+    const badges = container.querySelectorAll(".govbb-tag");
+    expect(badges).toHaveLength(1);
+    expect(badges[0]).toHaveTextContent(/higher-risk/i);
+  });
+
+  it("checkbox-accordion → a single-option group is one plain checkbox that selects the value directly", async () => {
+    const user = userEvent.setup();
+    renderField(primitive("checkbox-accordion", { groups: accordionGroups }));
+    // It carries the GROUP's label, and ticking it selects the option value
+    // rather than expanding a category — so a lone "Other food" escape hatch
+    // costs one tick, not two.
+    await user.click(screen.getByLabelText("Other food"));
+    expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["other"]);
+  });
+
+  it("checkbox-accordion → a single-option group reflects and clears an existing selection", async () => {
+    const user = userEvent.setup();
+    mockState = { value: ["other"], meta: { isValid: true, errors: [] } };
+    renderField(primitive("checkbox-accordion", { groups: accordionGroups }));
+    expect(screen.getByLabelText("Other food")).toBeChecked();
+    await user.click(screen.getByLabelText("Other food"));
+    expect(mockFieldApi.handleChange).toHaveBeenCalledWith([]);
+  });
+
+  it("checkbox-accordion → ticking a category expands it to reveal its items", async () => {
+    const user = userEvent.setup();
+    renderField(primitive("checkbox-accordion", { groups: accordionGroups }));
+    expect(screen.queryByLabelText("Popcorn")).toBeNull();
+    await user.click(screen.getByLabelText("Snacks and sweets"));
+    expect(mockFieldApi.handleChange).not.toHaveBeenCalled();
+    const category = screen.getByLabelText("Snacks and sweets");
+    expect(category).toHaveAttribute("aria-expanded", "true");
+    expect(
+      document.getElementById(category.getAttribute("aria-controls")!),
+    ).toContainElement(screen.getByLabelText("Popcorn"));
+    expect(screen.getByLabelText("Popcorn")).toBeInTheDocument();
+    await user.click(screen.getByLabelText("Popcorn"));
+    expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith([
+      "popcorn",
+    ]);
+  });
+
+  it("checkbox-accordion → a category with an existing selection opens expanded and accumulates", async () => {
+    const user = userEvent.setup();
+    mockState = { value: ["beef"], meta: { isValid: true, errors: [] } };
+    renderField(primitive("checkbox-accordion", { groups: accordionGroups }));
+    // Meat holds "beef", so it renders expanded and its items are visible.
+    await user.click(screen.getByLabelText("Chicken"));
+    expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["beef", "chicken"]);
+  });
+
+  it("checkbox-accordion → closing and reopening a category preserves its selection", async () => {
+    const user = userEvent.setup();
+    mockState = { value: ["beef"], meta: { isValid: true, errors: [] } };
+    renderField(primitive("checkbox-accordion", { groups: accordionGroups }));
+    const category = screen.getByLabelText(/Meat and poultry/);
+    await user.click(category);
+    expect(category).toHaveAttribute("aria-expanded", "false");
+    expect(category).not.toHaveAttribute("aria-controls");
+    expect(screen.queryByLabelText("Beef")).toBeNull();
+    await user.click(category);
+    expect(screen.getByLabelText("Beef")).toBeChecked();
+    expect(mockFieldApi.handleChange).not.toHaveBeenCalled();
+  });
+
+  it("checkbox-accordion → disabled fields prevent category and item changes", async () => {
+    const user = userEvent.setup();
+    mockState = { value: ["beef"], meta: { isValid: true, errors: [] } };
+    renderField(
+      primitive("checkbox-accordion", {
+        groups: accordionGroups,
+        disabled: true,
+      }),
+    );
+    for (const checkbox of screen.getAllByRole("checkbox")) {
+      expect(checkbox).toBeDisabled();
+      await user.click(checkbox);
+    }
+    expect(screen.getByLabelText("Beef")).toBeChecked();
+    expect(mockFieldApi.handleChange).not.toHaveBeenCalled();
+  });
+
+  it("checkbox-accordion → associates group hints and errors and marks invalid choices", () => {
+    mockState = {
+      value: [],
+      meta: { isValid: false, errors: ["Choose a food"] },
+    };
+    const field = primitive("checkbox-accordion", {
+      groups: accordionGroups,
+      hint: "Select the foods you serve",
+    });
+    const { container } = renderField(field);
+    expect(container.querySelector("fieldset")).toHaveAttribute(
+      "aria-describedby",
+      `${field.id}-hint ${field.id}-error`,
+    );
+    for (const checkbox of screen.getAllByRole("checkbox")) {
+      expect(checkbox).toHaveAttribute("aria-invalid", "true");
+    }
   });
 
   it("date → renders three text inputs with numeric inputmode (day/month/year)", () => {
@@ -196,6 +410,31 @@ describe("FieldRenderer", () => {
       expect(summary).toBeTruthy();
       expect(summary?.textContent).toContain("More details");
     });
+
+    it.each([false, true])(
+      "mounts its hint and fields only when open=%s",
+      (open) => {
+        mockState = { value: open, meta: { isValid: true, errors: [] } };
+        const { container } = renderField(
+          primitive("show-hide", { hint: "Enter your passport details" }),
+          { children: <input aria-label="Passport number" /> },
+        );
+        const details = container.querySelector("details")!;
+        if (open) {
+          expect(details).toContainElement(
+            screen.getByText("Enter your passport details"),
+          );
+          expect(details).toContainElement(
+            screen.getByRole("textbox", { name: "Passport number" }),
+          );
+        } else {
+          expect(screen.queryByText("Enter your passport details")).toBeNull();
+          expect(
+            screen.queryByRole("textbox", { name: "Passport number" }),
+          ).toBeNull();
+        }
+      },
+    );
 
     it("toggling the summary open commits true", async () => {
       const user = userEvent.setup();
@@ -337,6 +576,41 @@ describe("FieldRenderer", () => {
         screen.getByRole("button", { name: "Remove Address line" }),
       ).toBeInTheDocument();
     });
+
+    it("with addAnotherLabel set, the button renders that label verbatim with no 'Add Another' text", () => {
+      mockState = { value: ["first"], meta: { isValid: true, errors: [] } };
+      renderField(
+        primitive("text", {
+          label: "Middle name",
+          behaviours: [
+            {
+              ...fieldArrayBehaviour,
+              addAnotherLabel: "Add another middle name",
+            },
+          ],
+        }),
+      );
+      const button = screen.getByRole("button", {
+        name: "Add another middle name",
+      });
+      expect(button).toBeInTheDocument();
+      expect(button.textContent).toBe("Add another middle name");
+      expect(button.querySelector(".govbb-visually-hidden")).toBeNull();
+    });
+
+    it("without addAnotherLabel, the button still renders 'Add Another' with the field label visually hidden", () => {
+      mockState = { value: ["first"], meta: { isValid: true, errors: [] } };
+      const { container } = renderField(
+        primitive("text", {
+          label: "Address line",
+          behaviours: [fieldArrayBehaviour],
+        }),
+      );
+      expect(
+        screen.getByRole("button", { name: "Add Another Address line" }),
+      ).toBeInTheDocument();
+      expect(container.querySelector(".govbb-visually-hidden")).not.toBeNull();
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -428,6 +702,34 @@ describe("FieldRenderer", () => {
         }),
       );
       expect(await axe(container)).toHaveNoViolations();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // fieldArray legacy-config hardening (#2317 Phase 2): configs authored
+  // before the builder seeded sane defaults can carry {min: 0, max: 0},
+  // which used to render ZERO inputs — the field vanished from the form.
+  // The renderer clamps min >= 1 and max >= min so a degenerate config
+  // degrades to one plain input instead of deleting the field.
+  // -------------------------------------------------------------------------
+  describe("fieldArray legacy {min: 0, max: 0} config", () => {
+    const degenerate = { type: "fieldArray" as const, min: 0, max: 0 };
+
+    it("renders exactly one input and no 'Add Another' link", () => {
+      mockState = { value: [""], meta: { isValid: true, errors: [] } };
+      renderField(primitive("text", { behaviours: [degenerate] }));
+      expect(screen.getAllByRole("textbox")).toHaveLength(1);
+      expect(screen.queryByText(/Add Another/i)).toBeNull();
+    });
+
+    it("min: 0 with an empty array value still renders one input", () => {
+      mockState = { value: [], meta: { isValid: true, errors: [] } };
+      renderField(
+        primitive("text", {
+          behaviours: [{ type: "fieldArray" as const, min: 0, max: 3 }],
+        }),
+      );
+      expect(screen.getAllByRole("textbox")).toHaveLength(1);
     });
   });
 
@@ -533,7 +835,7 @@ describe("FieldRenderer", () => {
       mockState = { value: "5", meta: { isValid: true, errors: [] } };
       renderField(primitive("number"));
       await user.click(screen.getByRole("button", { name: "Increment" }));
-      expect(mockFieldApi.handleChange).toHaveBeenCalledWith("6");
+      expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith("6");
     });
 
     it("Decrement steps the value down by 1", async () => {
@@ -544,16 +846,32 @@ describe("FieldRenderer", () => {
       expect(mockFieldApi.handleChange).toHaveBeenCalledWith("4");
     });
 
-    // The mock handleChange never feeds the new value back into mockState, so
-    // both clicks step from the same blank base (0) — this asserts blank → ±1
-    // in each direction independently, NOT a sequential increment-then-decrement.
-    it("steps from a blank value to 1 (up) and -1 (down)", async () => {
+    it("steps from a blank value without going below zero", async () => {
       const user = userEvent.setup();
       renderField(primitive("number")); // value is undefined
       await user.click(screen.getByRole("button", { name: "Increment" }));
       expect(mockFieldApi.handleChange).toHaveBeenLastCalledWith("1");
       await user.click(screen.getByRole("button", { name: "Decrement" }));
-      expect(mockFieldApi.handleChange).toHaveBeenLastCalledWith("-1");
+      // Can't go below zero! Clamping
+      expect(mockFieldApi.handleChange).toHaveBeenLastCalledWith("0");
+    });
+
+    it("uses the configured step and emits one string value", async () => {
+      const user = userEvent.setup();
+      mockState = { value: "1.5", meta: { isValid: true, errors: [] } };
+      renderField(primitive("number", { step: 0.5 }));
+      await user.click(screen.getByRole("button", { name: "Increment" }));
+      expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith("2");
+    });
+
+    it("disables decrement at zero without changing the value", async () => {
+      const user = userEvent.setup();
+      mockState = { value: "0", meta: { isValid: true, errors: [] } };
+      renderField(primitive("number"));
+      const decrement = screen.getByRole("button", { name: "Decrement" });
+      expect(decrement).toBeDisabled();
+      await user.click(decrement);
+      expect(mockFieldApi.handleChange).not.toHaveBeenCalled();
     });
 
     it("renders the number input and steppers in the Add-another array path", () => {
@@ -684,14 +1002,6 @@ describe("FieldRenderer", () => {
       expect(inputs).toHaveLength(1);
     });
 
-    it("tags the checkbox item with the single-checkbox alignment class", () => {
-      const { container } = renderField(
-        primitive("checkbox", { options: singleOption }),
-      );
-      const item = container.querySelector(".govbb-checkbox-item");
-      expect(item).toHaveClass("form-page__single-checkbox");
-    });
-
     it("clicking unchecked checkbox calls handleChange with the option value", async () => {
       const user = userEvent.setup();
       mockState = { value: "", meta: { isValid: true, errors: [] } };
@@ -700,7 +1010,9 @@ describe("FieldRenderer", () => {
       );
       const input = container.querySelector("input") as HTMLInputElement;
       await user.click(input);
-      expect(mockFieldApi.handleChange).toHaveBeenCalledWith("agree");
+      expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith(
+        "agree",
+      );
     });
 
     it("clicking checked checkbox calls handleChange with empty string", async () => {
@@ -749,18 +1061,7 @@ describe("FieldRenderer", () => {
       );
       const inputs = container.querySelectorAll("input");
       await user.click(inputs[0]);
-      expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["a"]);
-    });
-
-    it("does not tag multi-option items with the single-checkbox alignment class", () => {
-      const { container } = renderField(
-        primitive("checkbox", { options: multiOptions }),
-      );
-      const items = container.querySelectorAll(".govbb-checkbox-item");
-      expect(items.length).toBeGreaterThan(1);
-      items.forEach((item) =>
-        expect(item).not.toHaveClass("form-page__single-checkbox"),
-      );
+      expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith(["a"]);
     });
 
     it("clicking a checked option removes it from the selection", async () => {
@@ -771,9 +1072,157 @@ describe("FieldRenderer", () => {
       );
       const inputs = container.querySelectorAll("input");
       await user.click(inputs[0]);
-      expect(mockFieldApi.handleChange).toHaveBeenCalledWith(["b"]);
+      expect(mockFieldApi.handleChange).toHaveBeenCalledExactlyOnceWith(["b"]);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Checkbox with inset fields — the reveal sits directly under the ticked
+  // option, the same conditional-reveal pattern radios use.
+  // -------------------------------------------------------------------------
+  describe("checkbox with insetFieldsByOption", () => {
+    const multiOptions = [
+      { value: "a", label: "Option A" },
+      { value: "b", label: "Option B" },
+    ];
+
+    function insetEntriesFor(value: string) {
+      const insetField = primitive("text", {
+        id: "step-1.inset-field",
+        fieldId: "inset-field",
+        name: "inset-field",
+        label: "Inset field label",
+        htmlType: "text",
+      });
+      return new Map([
+        [value, [{ field: insetField, validationProperties: noValidation }]],
+      ]);
+    }
+
+    it("shows the inset fields under a ticked option", () => {
+      mockState = { value: ["a"], meta: { isValid: true, errors: [] } };
+
+      const { container } = renderField(
+        primitive("checkbox", { options: multiOptions }),
+        { insetFieldsByOption: insetEntriesFor("a") },
+      );
+
+      const inset = container.querySelector(
+        ".govbb-checkbox-item__conditional",
+      );
+      expect(inset).toBeTruthy();
+      expect(inset?.querySelector("input")).toBeTruthy();
+      expect(
+        screen.getByRole("checkbox", { name: "Option A" }),
+      ).toHaveAttribute("aria-controls", inset?.id);
+      // The reveal must sit between the two options, not after the group —
+      // the CSS reveal rule and the reading order both depend on it.
+      expect(inset?.previousElementSibling?.querySelector("input")).toBe(
+        screen.getByRole("checkbox", { name: "Option A" }),
+      );
+      expect(inset?.nextElementSibling?.querySelector("input")).toBe(
+        screen.getByRole("checkbox", { name: "Option B" }),
+      );
+    });
+
+    it("does not show the inset fields while its option is unticked", () => {
+      mockState = { value: ["b"], meta: { isValid: true, errors: [] } };
+
+      const { container } = renderField(
+        primitive("checkbox", { options: multiOptions }),
+        { insetFieldsByOption: insetEntriesFor("a") },
+      );
+
+      expect(
+        container.querySelector(".govbb-checkbox-item__conditional"),
+      ).toBeNull();
+    });
+  });
+
+  it.each([
+    ["radio", "other", { options: [{ value: "other", label: "Other" }] }],
+    ["checkbox", "other", { options: [{ value: "other", label: "Other" }] }],
+    [
+      "checkbox",
+      ["other"],
+      {
+        options: [
+          { value: "other", label: "Other" },
+          { value: "yes", label: "Yes" },
+        ],
+      },
+    ],
+    [
+      "checkbox-accordion",
+      ["other"],
+      {
+        groups: [
+          { label: "Other", options: [{ value: "other", label: "Other" }] },
+        ],
+      },
+    ],
+    [
+      "checkbox-accordion",
+      ["other"],
+      {
+        groups: [
+          {
+            label: "Sources",
+            options: [
+              { value: "other", label: "Other" },
+              { value: "yes", label: "Yes" },
+            ],
+          },
+        ],
+      },
+    ],
+  ] as const)(
+    "%s option labels stay separate from similarly named fields (%j)",
+    async (htmlType, value, config) => {
+      mockState = { value, meta: { isValid: true, errors: [] } };
+      const choice = primitive(htmlType, {
+        id: "step-1_source",
+        ...structuredClone(config),
+      } as Partial<ClientPrimitive>);
+      const detail = primitive("text", {
+        id: "step-1_source-other",
+        label: "Specify other",
+      });
+      const { container } = render(
+        <>
+          <FieldRenderer
+            form={mockForm}
+            field={choice}
+            validationProperties={noValidation}
+          />
+          <FieldRenderer
+            form={mockForm}
+            field={detail}
+            validationProperties={noValidation}
+          />
+        </>,
+      );
+
+      expect(
+        screen.getByRole(htmlType === "radio" ? "radio" : "checkbox", {
+          name: "Other",
+          exact: true,
+        }),
+      ).toBeChecked();
+      const text = screen.getByRole("textbox", {
+        name: "Specify other (optional)",
+        exact: true,
+      });
+      await userEvent
+        .setup()
+        .click(screen.getByText("Specify other", { selector: "label" }));
+      expect(text).toHaveFocus();
+      const ids = [...container.querySelectorAll("[id]")].map(
+        (element) => element.id,
+      );
+      expect(new Set(ids).size).toBe(ids.length);
+    },
+  );
 
   // -------------------------------------------------------------------------
   // Date onChange handlers
@@ -1003,6 +1452,67 @@ describe("FieldRenderer", () => {
         container.querySelector(".govbb-radio-item__conditional"),
       ).toBeNull();
     });
+
+    it("renders a revealed radio's OWN inset fields nested inside it", () => {
+      mockState = { value: "yes", meta: { isValid: true, errors: [] } };
+
+      const deepField = primitive("text", {
+        id: "step-1.deep-field",
+        fieldId: "deep-field",
+        name: "deep-field",
+        label: "Deep field label",
+      });
+      const nestedRadio = primitive("radio", {
+        id: "step-1.nested-radio",
+        fieldId: "nested-radio",
+        name: "nested-radio",
+        label: "Nested radio label",
+        options: [
+          { value: "yes", label: "Yes" },
+          { value: "no", label: "No" },
+        ],
+      });
+
+      const insetFieldsByOption = new Map([
+        [
+          "yes",
+          [
+            {
+              field: nestedRadio,
+              validationProperties: noValidation,
+              insetFieldsByOption: new Map([
+                [
+                  "yes",
+                  [{ field: deepField, validationProperties: noValidation }],
+                ],
+              ]),
+            },
+          ],
+        ],
+      ]);
+
+      const { container } = renderField(
+        primitive("radio", {
+          options: [
+            { value: "yes", label: "Yes" },
+            { value: "no", label: "No" },
+          ],
+        }),
+        { insetFieldsByOption },
+      );
+
+      // The deep field sits inside the NESTED radio's reveal, which itself
+      // sits inside the outer radio's reveal — two levels, not one flat list.
+      const outerReveal = container.querySelector(
+        ".govbb-radio-item__conditional",
+      );
+      expect(outerReveal).toBeTruthy();
+      const innerReveal = outerReveal!.querySelector(
+        ".govbb-radio-item__conditional",
+      );
+      expect(innerReveal).toBeTruthy();
+      expect(innerReveal!.querySelector("#step-1\\.deep-field")).toBeTruthy();
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -1067,13 +1577,101 @@ describe("FieldRenderer", () => {
   });
 
   // -------------------------------------------------------------------------
+  // "(optional)" label suffix — derived from the resolved required rule, using
+  // the validator's definition of required (a bare rule counts as required).
+  // Required fields carry no mark. optionalIf fields are statically required,
+  // so they never carry it and the label never rewrites itself mid-form.
+  // -------------------------------------------------------------------------
+  describe("optional label suffix", () => {
+    it("required: {value: false} → muted (optional) inside the label", () => {
+      const { container } = renderField(
+        primitive("text", { validations: { required: { value: false } } }),
+      );
+      const suffix = container.querySelector("label .govbb-label__optional");
+      expect(suffix?.textContent).toBe("(optional)");
+    });
+
+    it("no required rule at all → optional, suffix shown", () => {
+      const { container } = renderField(primitive("text"));
+      expect(container.querySelector(".govbb-label__optional")).toBeTruthy();
+    });
+
+    it("required: {value: true} → no suffix", () => {
+      const { container } = renderField(
+        primitive("text", { validations: { required: { value: true } } }),
+      );
+      expect(container.querySelector(".govbb-label__optional")).toBeNull();
+    });
+
+    it("bare required rule (no value key) → required, no suffix", () => {
+      const { container } = renderField(
+        primitive("text", {
+          validations: { required: { error: "Needed" } },
+        }),
+      );
+      expect(container.querySelector(".govbb-label__optional")).toBeNull();
+    });
+
+    it("radio → suffix renders inside the legend", () => {
+      const { container } = renderField(
+        primitive("radio", {
+          options: [
+            { value: "yes", label: "Yes" },
+            { value: "no", label: "No" },
+          ],
+          validations: { required: { value: false } },
+        }),
+      );
+      const suffix = container.querySelector(
+        ".govbb-fieldset__legend .govbb-label__optional",
+      );
+      expect(suffix?.textContent).toBe("(optional)");
+    });
+
+    it("option labels never carry the suffix, only the field legend", () => {
+      const { container } = renderField(
+        primitive("radio", {
+          options: [
+            { value: "yes", label: "Yes" },
+            { value: "no", label: "No" },
+          ],
+          validations: { required: { value: false } },
+        }),
+      );
+      expect(container.querySelectorAll(".govbb-label__optional")).toHaveLength(
+        1,
+      );
+    });
+
+    it("ui.hideLabel → suffix stays inside the visually-hidden label", () => {
+      const { container } = renderField(
+        primitive("text", {
+          ui: { hideLabel: true },
+          validations: { required: { value: false } },
+        }),
+      );
+      const label = container.querySelector(".govbb-label");
+      expect(label).toHaveClass("govbb-visually-hidden");
+      expect(label?.querySelector(".govbb-label__optional")).toBeTruthy();
+      // Nothing visible leaks outside the hidden label.
+      expect(container.querySelectorAll(".govbb-label__optional")).toHaveLength(
+        1,
+      );
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // ui.hideLabel — visually hides the label/legend while keeping it in the DOM
   // so the accessible name (htmlFor / <legend> grouping) is preserved.
   // -------------------------------------------------------------------------
   describe("ui.hideLabel", () => {
     it("text → label is present and carries govbb-visually-hidden when set", () => {
       const { container } = renderField(
-        primitive("text", { label: "Email address", ui: { hideLabel: true } }),
+        primitive("text", {
+          label: "Email address",
+          ui: { hideLabel: true },
+          validations: { required: { value: true } },
+        }),
       );
       const label = container.querySelector(".govbb-label");
       expect(label).toBeTruthy();
@@ -1097,6 +1695,7 @@ describe("FieldRenderer", () => {
             { value: "no", label: "No" },
           ],
           ui: { hideLabel: true },
+          validations: { required: { value: true } },
         }),
       );
       const legend = container.querySelector(".govbb-fieldset__legend");

@@ -35,6 +35,50 @@ describe('MarkdownBody', () => {
     expect(html).toContain('href="tel:+12465351000"')
   })
 
+  it('renders an inline phone link as a dialable tel: link in the same tab', async () => {
+    const html = await renderBody(
+      'Telephone: [(246) 536-3800](tel:+12465363800)',
+    )
+    expect(html).toContain('href="tel:+12465363800"')
+    expect(html).not.toContain('target="_blank"')
+  })
+
+  it('renders tables with the design system components', async () => {
+    const table = await renderBody('| Office | Phone |\n| - | - |\n| a | b |')
+    expect(table).toContain('govbb-table')
+    expect(table).toContain('govbb-table__header')
+    expect(table).toContain('govbb-table__cell')
+
+    expect(table).toContain('<th class="govbb-table__header" scope="col">')
+    // Each body row's first cell is its header — the pale-blue first column
+    // in the Figma pattern, and the label a screen reader reads with each cell.
+    expect(table).toContain('<th class="govbb-table__header" scope="row">')
+  })
+
+  it('renders authored notice, action and details components', async () => {
+    const html = await renderBody(
+      ':::notice\nImportant information.\n:::\n\n:::actions\n::action[Continue]{href="/next"}\n:::\n\n:::details{summary="What you need"}\nBring identification.\n:::',
+    )
+
+    expect(html).toContain('Important information.')
+    expect(html).toContain('href="/next"')
+    expect(html).toContain('<details class="govbb-show-hide">')
+    expect(html).toContain('What you need')
+  })
+
+  it('leaves prose tags bare for govbb-prose to style', async () => {
+    const html = await renderBody('## Heading\n\ntext\n\n- one\n- two')
+
+    expect(html).toContain('govbb-prose')
+    expect(html).toContain('<li>one</li>')
+    expect(html).toContain('<p>text</p>')
+    // the heading keeps its autolink anchor; prose gives it scroll-margin
+    expect(html).toMatch(/<h2 id="heading">Heading/)
+    // the old per-element wrappers are gone: no section divs, no size classes
+    expect(html).not.toContain('space-y-s')
+    expect(html).not.toContain('govbb-text-')
+  })
+
   it('renders a Start now button when the form is available', async () => {
     const html = await renderBody('<a data-start-link>Start now</a>', {
       formId: 'birth',

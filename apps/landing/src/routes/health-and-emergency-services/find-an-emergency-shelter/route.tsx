@@ -11,6 +11,7 @@ import { META } from './-meta'
 export const Route = createFileRoute(
   '/health-and-emergency-services/find-an-emergency-shelter',
 )({
+  staticData: { breadcrumbMode: 'location' },
   beforeLoad: ({ context }) => {
     const overlay = deriveVisibilityOverlay(context.serviceStatuses)
     if (!isUrlVisible(META.url, context.level, overlay)) throw notFound()

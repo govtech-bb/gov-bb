@@ -66,7 +66,13 @@ function makeConfig(enabled = true) {
     region: "ca-central-1",
     endpoint: undefined,
     queueUrl: QUEUE_URL,
+    maxReceiveCount: 3,
   };
+}
+
+/** A SlackNotifierService stub whose notify() is asserted on / can be made to reject. */
+function makeSlack(notify: Mock = vi.fn().mockResolvedValue(undefined)) {
+  return { notify } as any;
 }
 
 function makeProcessor(
@@ -86,6 +92,7 @@ describe("SqsConsumerService", () => {
   let sendMock: Mock;
   let service: SqsConsumerService;
   let factory: Mocked<Pick<ProcessorFactory, "resolveByType">>;
+  let slackNotify: Mock;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -96,7 +103,12 @@ describe("SqsConsumerService", () => {
       resolveByType: vi.fn(),
     } as any;
 
-    service = new SqsConsumerService(makeConfig() as any, factory as any);
+    slackNotify = vi.fn().mockResolvedValue(undefined);
+    service = new SqsConsumerService(
+      makeConfig() as any,
+      factory as any,
+      makeSlack(slackNotify),
+    );
   });
 
   /* processMessage */
@@ -173,6 +185,124 @@ describe("SqsConsumerService", () => {
         ([cmd]) => cmd instanceof DeleteMessageCommand,
       );
       expect(deleteCalls).toHaveLength(1);
+    });
+
+    it("Slack-alerts on a NonRetryableError (permanent config failure), non-PII", async () => {
+      factory.resolveByType.mockReturnValue(
+        makeProcessor(
+          "webhook",
+          vi.fn().mockRejectedValue(new NonRetryableError("missing dest")),
+        ),
+      );
+      sendMock.mockResolvedValue({});
+
+      await service.processMessage(
+        QUEUE_URL,
+        sqsMessage({
+          processorType: "webhook",
+          referenceCode: "JPP-20260604-9JZRZC",
+          values: { applicant: { email: "citizen@example.com" } },
+        }),
+      );
+
+      expect(slackNotify).toHaveBeenCalledTimes(1);
+      const msg = slackNotify.mock.calls[0][0] as string;
+      expect(msg).toContain("form=form-1");
+      expect(msg).toContain("reference=JPP-20260604-9JZRZC");
+      expect(msg).toContain("processor=webhook");
+      expect(msg).toContain("not retried");
+      // config failures delete the message — the remediation must NOT tell the
+      // operator to redrive (there is nothing in the DLQ).
+      expect(msg).toContain("nothing to redrive");
+      expect(msg).not.toContain("redrive the DLQ");
+      // env (from the queue URL) + processor index disambiguate the alert
+      expect(msg).toContain("env=sandbox");
+      expect(msg).toContain("index=0");
+      // no applicant PII leaks into the alert
+      expect(msg).not.toContain("citizen@example.com");
+    });
+
+    it("Slack-alerts when a retryable failure hits the terminal attempt (about to DLQ)", async () => {
+      factory.resolveByType.mockReturnValue(
+        makeProcessor(
+          "webhook",
+          vi.fn().mockRejectedValue(new Error("CaMS 500")),
+        ),
+      );
+
+      await service.processMessage(
+        QUEUE_URL,
+        sqsMessage({ processorType: "webhook" }, "3"), // receiveCount = maxReceiveCount
+      );
+
+      expect(slackNotify).toHaveBeenCalledTimes(1);
+      expect(slackNotify.mock.calls[0][0]).toContain("routed to the DLQ");
+      // still not deleted — SQS redrive moves it to the DLQ
+      expect(
+        sendMock.mock.calls.filter(
+          ([cmd]) => cmd instanceof DeleteMessageCommand,
+        ),
+      ).toHaveLength(0);
+    });
+
+    it("does NOT alert on a non-final retryable attempt", async () => {
+      factory.resolveByType.mockReturnValue(
+        makeProcessor(
+          "webhook",
+          vi.fn().mockRejectedValue(new Error("CaMS 500")),
+        ),
+      );
+
+      await service.processMessage(
+        QUEUE_URL,
+        sqsMessage({ processorType: "webhook" }, "1"), // 1 < maxReceiveCount
+      );
+
+      expect(slackNotify).not.toHaveBeenCalled();
+    });
+
+    it("does NOT alert for a non-webhook processor at the terminal attempt (scoped to CaMS webhook)", async () => {
+      factory.resolveByType.mockReturnValue(
+        makeProcessor(
+          "email",
+          vi.fn().mockRejectedValue(new Error("SES down")),
+        ),
+      );
+
+      await service.processMessage(
+        QUEUE_URL,
+        sqsMessage({ processorType: "email" }, "3"), // terminal attempt, but email
+      );
+
+      expect(slackNotify).not.toHaveBeenCalled();
+      // unchanged: not deleted, so SQS redrive still moves it to the DLQ
+      expect(
+        sendMock.mock.calls.filter(
+          ([cmd]) => cmd instanceof DeleteMessageCommand,
+        ),
+      ).toHaveLength(0);
+    });
+
+    it("still deletes a NonRetryable message even if the alert notifier throws", async () => {
+      slackNotify.mockRejectedValue(new Error("slack exploded"));
+      factory.resolveByType.mockReturnValue(
+        makeProcessor(
+          "webhook",
+          vi.fn().mockRejectedValue(new NonRetryableError("bad config")),
+        ),
+      );
+      sendMock.mockResolvedValue({});
+
+      await service.processMessage(
+        QUEUE_URL,
+        sqsMessage({ processorType: "webhook" }),
+      );
+
+      expect(
+        sendMock.mock.calls.filter(
+          ([cmd]) => cmd instanceof DeleteMessageCommand,
+        ),
+      ).toHaveLength(1);
     });
 
     it("deletes malformed JSON messages immediately without calling the processor", async () => {
@@ -507,6 +637,26 @@ describe("SqsConsumerService", () => {
       const event = (processor.process as Mock).mock.calls[0][0];
       expect(event.referenceCode).toBe("sub-legacy-001");
     });
+
+    it("carries resolvedCatchment from the message onto the processed event", async () => {
+      const processor = makeProcessor();
+      factory.resolveByType.mockReturnValue(processor);
+      sendMock.mockResolvedValue({});
+
+      const resolvedCatchment = {
+        polyclinic: "P",
+        programmeCode: "C",
+        mdaEmail: "e@x.bb",
+      };
+
+      await service.processMessage(
+        QUEUE_URL,
+        sqsMessage({ resolvedCatchment }),
+      );
+
+      const event = (processor.process as Mock).mock.calls[0][0];
+      expect(event.resolvedCatchment).toEqual(resolvedCatchment);
+    });
   });
 
   // ── lifecycle ───────────────────────────────────────────────────────────
@@ -516,6 +666,7 @@ describe("SqsConsumerService", () => {
       const disabledService = new SqsConsumerService(
         makeConfig(false) as any,
         factory as any,
+        makeSlack(),
       );
       const pollSpy = vi.spyOn(disabledService as any, "pollQueue");
 

@@ -1,3 +1,7 @@
+import { maskSearchQuery } from "./mask-search-query";
+
+export { maskSearchQuery } from "./mask-search-query";
+
 declare global {
   interface Window {
     umami?: {
@@ -27,12 +31,37 @@ export interface TrackingData {
     category: string;
     step: string;
     errorCount: number;
-    fields: string;
-    errorTypes: string;
+    /**
+     * Per-field failure reasons, encoded as
+     * `field:code[|code];field:code…` — see buildValidationErrorPayload. Pairs
+     * each field id with the stable reason code(s) it failed on, so the
+     * dashboard can link fields to reasons and count multiple reasons per field.
+     */
+    fieldErrors: string;
   };
   "page-service-view": { form: string; category: string };
   "page-start-view": { form: string; category: string };
+  /** Citizen clicked "Continue to payment" on the confirmation page (#1955). */
+  "payment-initiated": { form: string; category: string; amount: string };
+  /**
+   * Citizen returned from EzPay to the confirmation page (#1955). `outcome` is
+   * "success" | "failed" (from the `?payment=` return param folded into state).
+   */
+  "payment-returned": { form: string; category: string; outcome: string };
+  /**
+   * Confirmation page viewed (#1955) — the true end of the journey. `outcome`
+   * distinguishes success / failed / processing / payment states; `hasPayment`
+   * segments payment vs non-payment forms.
+   */
+  "form-confirmation-view": {
+    form: string;
+    category: string;
+    outcome: string;
+    hasPayment: boolean;
+  };
   search: { query: string; results: number };
+  "search-result-click": { query: string; position: number; href: string };
+  "search-no-results": { query: string };
 }
 
 export type TrackingEventName = keyof TrackingData;
@@ -48,17 +77,24 @@ export function trackEvent(
 ): void {
   if (typeof window === "undefined") return;
   if (!window.umami) return;
+  // Redact PII from a search `query` property before it leaves for the
+  // third-party analytics host (#2079). Shallow-copy so the caller's object is
+  // untouched. Covers every search event centrally — no call site can forget.
+  const safe =
+    data && typeof data.query === "string"
+      ? { ...data, query: maskSearchQuery(data.query) }
+      : data;
   if (
-    data &&
-    "form" in data &&
-    typeof data.form === "string" &&
+    safe &&
+    "form" in safe &&
+    typeof safe.form === "string" &&
     !event.includes(":")
   ) {
-    window.umami.track(`${data.form}:${event}`, data);
-  } else if (data === undefined) {
+    window.umami.track(`${safe.form}:${event}`, safe);
+  } else if (safe === undefined) {
     window.umami.track(event);
   } else {
-    window.umami.track(event, data);
+    window.umami.track(event, safe);
   }
 }
 

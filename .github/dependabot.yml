@@ -5,7 +5,6 @@ version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
-    target-branch: sandbox
     schedule:
       interval: weekly
     # Wait before adopting brand-new releases so a compromised/yanked version
@@ -25,7 +24,6 @@ updates:
   - package-ecosystem: docker
     directories:
       - /apps/*
-    target-branch: sandbox
     schedule:
       interval: weekly
     cooldown:

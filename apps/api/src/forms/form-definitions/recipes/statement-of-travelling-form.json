@@ -74,7 +74,13 @@
           "overrides": {
             "label": "Month",
             "fieldId": "certification-month",
-            "placeholder": "MM"
+            "placeholder": "MM",
+            "validations": {
+              "required": {
+                "error": "Month is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -82,14 +88,26 @@
           "overrides": {
             "label": "Year",
             "fieldId": "certification-year",
-            "placeholder": "YYYY"
+            "placeholder": "YYYY",
+            "validations": {
+              "required": {
+                "error": "Year is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-textarea",
           "overrides": {
             "label": "I certify that during the month of [month/year] the extent of my travelling in the performance of my public duties:",
-            "fieldId": "certification-statement"
+            "fieldId": "certification-statement",
+            "validations": {
+              "required": {
+                "error": "Enter the extent of your travelling in the performance of your public duties",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -104,14 +122,26 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "DAY",
-            "fieldId": "day"
+            "fieldId": "day",
+            "validations": {
+              "required": {
+                "error": "DAY is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Distance Travelled",
-            "fieldId": "distance-travelled"
+            "fieldId": "distance-travelled",
+            "validations": {
+              "required": {
+                "error": "Distance Travelled is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -119,14 +149,26 @@
           "overrides": {
             "label": "PARTICULARS",
             "fieldId": "particulars",
-            "multiline": true
+            "multiline": true,
+            "validations": {
+              "required": {
+                "error": "PARTICULARS are required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "No. of Passengers",
-            "fieldId": "num-passengers"
+            "fieldId": "num-passengers",
+            "validations": {
+              "required": {
+                "error": "No. of Passengers is required",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -148,7 +190,13 @@
           "overrides": {
             "label": "Total Distance Travelled",
             "fieldId": "total-distance-travelled",
-            "readonly": true
+            "readonly": true,
+            "validations": {
+              "required": {
+                "error": "Total Distance Travelled is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -156,7 +204,13 @@
           "overrides": {
             "label": "First 320 KM or Less",
             "fieldId": "first320km-or-less",
-            "readonly": true
+            "readonly": true,
+            "validations": {
+              "required": {
+                "error": "First 320 KM or Less is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -164,7 +218,13 @@
           "overrides": {
             "label": "Remainder Over 320 KM",
             "fieldId": "remainder-over320km",
-            "readonly": true
+            "readonly": true,
+            "validations": {
+              "required": {
+                "error": "Remainder Over 320 KM is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -172,7 +232,13 @@
           "overrides": {
             "label": "Passenger Subtotal",
             "fieldId": "passenger-subtotal",
-            "readonly": true
+            "readonly": true,
+            "validations": {
+              "required": {
+                "error": "Passenger Subtotal is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -180,7 +246,13 @@
           "overrides": {
             "label": "Total Claimed",
             "fieldId": "total-claimed",
-            "readonly": true
+            "readonly": true,
+            "validations": {
+              "required": {
+                "error": "Total Claimed is required",
+                "value": true
+              }
+            }
           }
         }
       ],

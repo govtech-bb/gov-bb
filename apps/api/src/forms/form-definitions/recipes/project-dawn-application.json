@@ -612,7 +612,13 @@
                 "operator": "equal",
                 "targetFieldId": "bvtb-nail-technology"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Nail Technology – Level is required",
+                "value": true
+              }
+            }
           }
         },
         {

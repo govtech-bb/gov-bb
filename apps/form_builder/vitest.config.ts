@@ -19,6 +19,10 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    // Nx runs two projects together; reserve capacity for the other Vitest pool.
+    maxWorkers: 2,
+    // Editor journeys mount real dialogs, calendars, and menus on shared runners.
+    testTimeout: 10000,
     environment: "node",
     include: ["app/**/*.spec.{ts,tsx}"],
     setupFiles: ["./vitest.setup.ts"],
@@ -29,13 +33,5 @@ export default defineConfig({
     },
     // Component specs opt into jsdom per-file via a @vitest-environment
     // docblock, mirroring the old per-file @jest-environment pattern.
-    css: {
-      modules: {
-        // Echo class names instead of hashing, so components importing
-        // *.module.css render with readable class names (replaces
-        // identity-obj-proxy).
-        classNameStrategy: "non-scoped",
-      },
-    },
   },
 });

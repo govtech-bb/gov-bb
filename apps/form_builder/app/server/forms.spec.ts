@@ -1,4 +1,8 @@
 import type { Mock } from "vitest";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { buildServiceRows } from "../components/services/service-model";
 /**
  * @vitest-environment node
  */
@@ -32,6 +36,7 @@ vi.mock("./api-client", () => {
 // the precedence tests don't hit GitHub.
 vi.mock("./github-recipes", () => ({
   getPublishedRecipe: vi.fn(),
+  RECIPES_BASE: "apps/api/src/forms/form-definitions/recipes",
 }));
 
 import { getSession } from "./session-cipher.server";
@@ -57,11 +62,13 @@ const apiGet = api.get as Mock;
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.stubEnv("BUILDER_API_URL", "https://builder-api.example.test");
   process.env.SESSION_SECRET = Buffer.alloc(32).toString("base64");
   (getSession as Mock).mockReturnValue(SESSION);
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   delete process.env.SESSION_SECRET;
 });
 
@@ -409,6 +416,9 @@ describe("listForms", () => {
       isDisabled: true,
       isOrphanOverride: true,
       isPublished: false,
+      // #2411: a synthetic override row is seeded after `draftIds` is built,
+      // so it must not claim a working copy — there is no row to delete.
+      hasDraftRow: false,
     });
   });
 
@@ -481,6 +491,9 @@ describe("listForms", () => {
       version: "2.0.0",
       isPublished: true,
       isDisabled: true,
+      // #2411: the row is real, so the flag is true even though the picker
+      // suppresses the action here — Enable wins a disabled row.
+      hasDraftRow: true,
     });
   });
 
@@ -715,4 +728,202 @@ describe("getRecipe (draft-vs-published precedence)", () => {
     expect(result.meta).toBeUndefined();
     expect(result.title).toBe("Conductor (draft)");
   });
+});
+
+describe("listForms — hasDraftRow (#2411)", () => {
+  function stub(drafts: unknown[], published: unknown[]) {
+    apiGet.mockImplementation((path: string) => {
+      if (path === "/builder/forms") return Promise.resolve(drafts);
+      if (path === "/builder/forms/published")
+        return Promise.resolve(published);
+      if (path === "/builder/forms/disabled") return Promise.resolve([]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+  }
+
+  it("flags a published form that a scratch row is shadowing", async () => {
+    stub(
+      [
+        {
+          id: "uuid-1",
+          formId: "passport-renewal",
+          title: "Passport Renewal (working copy)",
+          version: "1.1.0",
+          isPublished: false,
+        },
+      ],
+      [
+        {
+          formId: "passport-renewal",
+          title: "Passport Renewal",
+          version: "1.0.0",
+        },
+      ],
+    );
+
+    const [form] = await listForms();
+
+    // Both true at once is the whole point: the row wins the merge, and
+    // isPublished is OR'd back on. Without hasDraftRow the picker cannot tell
+    // this apart from a published form with no working copy.
+    expect(form).toMatchObject({
+      formId: "passport-renewal",
+      isPublished: true,
+      hasDraftRow: true,
+    });
+  });
+
+  it("does not flag a published form with no scratch row", async () => {
+    stub(
+      [],
+      [
+        {
+          formId: "drivers-licence",
+          title: "Drivers Licence",
+          version: "1.0.0",
+        },
+      ],
+    );
+
+    const [form] = await listForms();
+
+    expect(form).toMatchObject({
+      formId: "drivers-licence",
+      isPublished: true,
+      hasDraftRow: false,
+    });
+  });
+
+  it("flags a draft-only form", async () => {
+    stub(
+      [
+        {
+          id: "uuid-2",
+          formId: "new-thing",
+          title: "New Thing",
+          version: "0.1.0",
+          isPublished: false,
+        },
+      ],
+      [],
+    );
+
+    const [form] = await listForms();
+
+    expect(form).toMatchObject({ formId: "new-thing", hasDraftRow: true });
+  });
+});
+
+it("connects local service pages to canonical recipes and opens them only in unconfigured development", async () => {
+  const root = await mkdtemp(join(tmpdir(), "service-forms-"));
+  const recipes = join(root, "apps/api/src/forms/form-definitions/recipes");
+  const recipe = {
+    formId: "get-birth-certificate",
+    title: "Get a birth certificate",
+    version: "1.0.0",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    steps: [],
+    meta: { visibility: "preview" },
+  };
+  const cwd = vi
+    .spyOn(process, "cwd")
+    .mockReturnValue(join(root, "apps/form_builder"));
+  try {
+    vi.stubEnv("DEV", true);
+    vi.stubEnv("BUILDER_API_URL", "");
+    apiGet.mockRejectedValue(new Error("BUILDER_API_URL is not set"));
+    await mkdir(join(recipes, recipe.formId), { recursive: true });
+    await writeFile(
+      join(recipes, `${recipe.formId}.json`),
+      JSON.stringify(recipe),
+    );
+    await writeFile(
+      join(recipes, recipe.formId, "0.1.0.json"),
+      JSON.stringify({ ...recipe, version: "0.1.0" }),
+    );
+    await writeFile(join(recipes, "README.md"), "Canonical recipes");
+
+    const forms = await listForms();
+    expect(forms).toEqual([
+      expect.objectContaining({
+        formId: recipe.formId,
+        title: recipe.title,
+        version: "1.0.0",
+        visibility: "preview",
+        isPublished: true,
+      }),
+    ]);
+    const pages = ["index", "start", "help"].map((name) => ({
+      path: `apps/landing/src/content/${recipe.formId}/${name}.md`,
+      title: recipe.title,
+      formId: name === "help" ? "" : recipe.formId,
+      category: "family-birth-relationships",
+      visibility: "public",
+      hasFormButton: name === "start",
+    }));
+    expect(buildServiceRows(forms, pages)).toEqual([
+      expect.objectContaining({
+        form: forms[0],
+        hasForm: true,
+        pages: expect.arrayContaining(pages),
+      }),
+    ]);
+    expect(
+      await getRecipe({
+        data: { formId: recipe.formId },
+        context: { session: SESSION },
+      } as never),
+    ).toEqual(recipe);
+    await expect(
+      getRecipe({
+        data: { formId: "../outside" },
+        context: { session: SESSION },
+      } as never),
+    ).rejects.toThrow();
+    expect(apiGet).not.toHaveBeenCalled();
+    expect(getPublishedRecipeMock).not.toHaveBeenCalled();
+
+    vi.stubEnv("BUILDER_API_URL", "http://127.0.0.1:3003");
+    apiGet.mockRejectedValue(new TypeError("fetch failed"));
+    expect(await listForms()).toEqual(forms);
+    expect(
+      await getRecipe({
+        data: { formId: recipe.formId },
+        context: { session: SESSION },
+      } as never),
+    ).toEqual(recipe);
+
+    apiGet.mockRejectedValue(new ApiError(401, "Not authorised"));
+    await expect(listForms()).rejects.toThrow("Not authorised");
+    await expect(
+      getRecipe({
+        data: { formId: recipe.formId },
+        context: { session: SESSION },
+      } as never),
+    ).rejects.toThrow("Not authorised");
+    vi.stubEnv("BUILDER_API_URL", "https://builder-api.example.test");
+    apiGet.mockRejectedValue(new TypeError("fetch failed"));
+    await expect(listForms()).rejects.toThrow("fetch failed");
+    await expect(
+      getRecipe({
+        data: { formId: recipe.formId },
+        context: { session: SESSION },
+      } as never),
+    ).rejects.toThrow("fetch failed");
+
+    vi.stubEnv("BUILDER_API_URL", "");
+    apiGet.mockRejectedValue(new Error("BUILDER_API_URL is not set"));
+    vi.stubEnv("DEV", false);
+    await expect(listForms()).rejects.toThrow("BUILDER_API_URL is not set");
+    await expect(
+      getRecipe({
+        data: { formId: recipe.formId },
+        context: { session: SESSION },
+      } as never),
+    ).rejects.toThrow("BUILDER_API_URL is not set");
+  } finally {
+    cwd.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
 });

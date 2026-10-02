@@ -14,6 +14,7 @@ describe("primitiveSchema", () => {
       "tel",
       "email",
       "show-hide",
+      "address-lookup",
     ] as const;
 
     it.each(simpleTypes)("accepts a valid %s field", (htmlType) => {
@@ -60,13 +61,12 @@ describe("primitiveSchema", () => {
   });
 
   describe("select", () => {
-    it("accepts valid select with options and multiple", () => {
+    it("accepts valid select with options", () => {
       expect(
         primitiveSchema.safeParse({
           ...base,
           htmlType: "select",
           options: [option],
-          multiple: false,
         }).success,
       ).toBe(true);
     });
@@ -81,12 +81,13 @@ describe("primitiveSchema", () => {
       ).toBe(false);
     });
 
-    it("rejects select missing multiple", () => {
+    it("rejects select with multiple enabled", () => {
       expect(
         primitiveSchema.safeParse({
           ...base,
           htmlType: "select",
           options: [option],
+          multiple: true,
         }).success,
       ).toBe(false);
     });

@@ -25,14 +25,6 @@
     {
       "type": "webhook",
       "config": {
-        "endpoint": {
-          "env": "WEBHOOK_URL"
-        },
-        "auth": {
-          "scheme": "apiKey",
-          "header": "X-API-Key",
-          "secretEnv": "WEBHOOK_SECRET"
-        },
         "mapping": {
           "programmeCode": "SCIENCE2026",
           "applicant": {
@@ -282,7 +274,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select your relationship to the camper",
                 "value": true
               }
             }
@@ -301,7 +293,12 @@
                 "value": "other"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Enter your relationship to the camper",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -355,7 +352,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether we can call this mobile number",
                 "value": true
               }
             }
@@ -399,7 +396,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether your address is the same as the camper's address",
                 "value": true
               }
             }
@@ -435,8 +432,13 @@
             "ui": {
               "width": "long"
             },
-            "label": "Address line 2, optional",
+            "label": "Address line 2",
             "fieldId": "parent-address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -495,7 +497,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the camper has a health condition camp staff should know about",
                 "value": true
               }
             }
@@ -514,7 +516,12 @@
                 "targetFieldId": "health-condition-question"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Enter the health condition camp staff should know about",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -534,7 +541,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the camper has any allergies",
                 "value": true
               }
             }
@@ -553,7 +560,12 @@
                 "targetFieldId": "allergies-question"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Enter what the camper is allergic to",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -573,7 +585,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the camper takes any medicine",
                 "value": true
               }
             }
@@ -592,7 +604,12 @@
                 "targetFieldId": "medicine-question"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Name of medicine is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -609,7 +626,12 @@
                 "targetFieldId": "medicine-question"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Enter how much medicine the camper takes and when",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -637,7 +659,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the camper will need to take medicine during camp",
                 "value": true
               }
             }
@@ -668,7 +690,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the camper needs help to take part in camp",
                 "value": true
               }
             }
@@ -687,7 +709,12 @@
                 "value": "yes"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Enter what help the camper needs",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -714,7 +741,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether there is any food the camper cannot eat",
                 "value": true
               }
             }
@@ -758,7 +785,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select at least one option",
+                "error": "Select at least one food need",
                 "value": true
               }
             }
@@ -779,7 +806,12 @@
                 ]
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Enter details of the food allergy",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -797,7 +829,12 @@
                 ]
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Enter details of the other food need",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -882,7 +919,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether this is a mobile number",
                 "value": true
               }
             }
@@ -912,14 +949,19 @@
                 "targetFieldId": "emergency-is-mobile"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Select whether we can call this mobile number",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-tel",
           "overrides": {
             "hint": "For example, a landline, work number or another number we can use in an emergency.",
-            "label": "Other phone number, optional",
+            "label": "Other phone number",
             "fieldId": "emergency-other-phone",
             "validations": {
               "required": {
@@ -959,7 +1001,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the camper has a doctor or polyclinic they usually attend",
                 "value": true
               }
             }
@@ -978,7 +1020,12 @@
                 "targetFieldId": "doctor-question"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Name of doctor or polyclinic is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1025,7 +1072,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether camp staff can get medical help for the camper in an emergency",
                 "value": true
               }
             }
@@ -1044,7 +1091,12 @@
                 "targetFieldId": "emergency-medical-care-question"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Enter what camp staff should do in an emergency",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -1074,7 +1126,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the camper can take part in all camp activities",
                 "value": true
               }
             }
@@ -1093,7 +1145,12 @@
                 "targetFieldId": "all-activities-question"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "error": "Enter which activities the camper should not take part in",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -1124,7 +1181,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether you give permission for photos and videos",
                 "value": true
               }
             }
@@ -1155,7 +1212,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an answer",
+                "error": "Select whether the camper can make their own way home",
                 "value": true
               }
             }

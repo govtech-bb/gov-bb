@@ -10,7 +10,7 @@ Amplify Console vars, already configured).
 Across landing, forms, chat, and form_builder, env vars that silently fell back
 to a sandbox/prod/localhost target — or weakened a security control — now fail
 fast in production, and the three security-sensitive vars fail *closed*. Recorded
-as a convention in [ADR 0059](../decisions/0059-frontend-env-vars-fail-fast-and-security-vars-fail-closed.md).
+as a convention in [ADR 0074](../decisions/0074-frontend-env-vars-fail-fast-and-security-vars-fail-closed.md).
 
 Delivered as one branch (`harden-env-var-handling`, off `sandbox`) with **four
 commits, one per app**, in the order landing → forms → chat → form_builder — so a

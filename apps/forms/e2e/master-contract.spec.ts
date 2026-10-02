@@ -10,16 +10,11 @@
  *  - Declaration / submit lands on the confirmation screen
  *  - Session state is preserved across navigation (back → forward)
  */
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/api-mock";
 import { FormPage } from "./helpers/form-page";
-import { mockSuccessfulSubmission } from "./helpers/submission-mock";
 import { TEST_PNG, TEST_PNG_2, TEST_PNG_3 } from "./helpers/test-data";
 
 test.describe("Master Contract — Happy Path", () => {
-  test.beforeEach(async ({ page }) => {
-    await mockSuccessfulSubmission(page);
-  });
-
   // ─── Step 1: Personal Details ───────────────────────────────────────────────
 
   test("Step 1 — renders personal-details fields and advances", async ({
@@ -212,7 +207,7 @@ test.describe("Master Contract — Happy Path", () => {
     await form.clickContinue();
     await form.waitForStep("check-your-answers");
 
-    await form.expectStepHeading("Check Your Answers");
+    await form.expectStepHeading("Check your answers");
 
     // Entered names should appear in the review table
     await expect(page.getByText("Alice", { exact: true })).toBeVisible();

@@ -1,7 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { axe } from "jest-axe";
 import SubmissionConfirmation from "./submission-confirmation";
 import type { SubmissionState } from "@forms/types";
+import { LANDING_URL } from "../config/landing";
 
 const baseState: SubmissionState = {
   hasPayment: false,
@@ -22,6 +23,83 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
+describe("SubmissionConfirmation — printed answers (#2587)", () => {
+  const sections = [
+    {
+      stepId: "about-you",
+      title: "Tell us about yourself",
+      fields: [
+        { fieldId: "first-name", label: "First name", value: "Addie" },
+        { fieldId: "dob", label: "Date of birth", value: "5 June 1994" },
+      ],
+    },
+  ];
+
+  it("prints the answers under the question they were given for", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={{ ...baseState, sections }}
+      />,
+    );
+    expect(screen.getByText("First name")).toBeInTheDocument();
+    expect(screen.getByText("Addie")).toBeInTheDocument();
+    // The email renders the same date this way — the page must not drift.
+    expect(screen.getByText("5 June 1994")).toBeInTheDocument();
+  });
+
+  it("heads each section with the step title the applicant saw", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={{ ...baseState, sections }}
+      />,
+    );
+    expect(screen.getByText("Tell us about yourself")).toBeInTheDocument();
+  });
+
+  it("shows nothing on screen — the answers are for the printed copy only", () => {
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={{ ...baseState, sections }}
+      />,
+    );
+    expect(container.querySelector(".form-page__printed-answers")).toHaveClass(
+      "hidden",
+    );
+  });
+
+  it("adds no answers block to an outcome that carries none", () => {
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={baseState}
+      />,
+    );
+    expect(
+      container.querySelector(".form-page__printed-answers"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("adds no answers block when the list came back empty", () => {
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={{ ...baseState, sections: [] }}
+      />,
+    );
+    expect(
+      container.querySelector(".form-page__printed-answers"),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe("SubmissionConfirmation", () => {
   it("renders reference number when provided", () => {
     render(
@@ -32,6 +110,83 @@ describe("SubmissionConfirmation", () => {
       />,
     );
     expect(screen.getByText("REF-12345")).toBeInTheDocument();
+  });
+
+  it("substitutes the resolved polyclinic into the {polyclinic} token", () => {
+    // The token sits inside bold (`**{polyclinic}**`), so react-markdown splits
+    // it across a <strong>; assert on the container text, not a single element.
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Temporary Restaurant Licence"
+        stepTitle="Application submitted"
+        submissionState={{
+          ...baseState,
+          polyclinic: "Maurice Byer Polyclinic",
+        }}
+        markdownContent="Sent to the Environmental Health Department at **{polyclinic}**."
+      />,
+    );
+    expect(container.textContent).toContain("Maurice Byer Polyclinic");
+    expect(container.textContent).not.toContain("{polyclinic}");
+  });
+
+  it("falls back to a generic phrase when no polyclinic resolved", () => {
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Temporary Restaurant Licence"
+        stepTitle="Application submitted"
+        submissionState={baseState}
+        markdownContent="Sent to the Environmental Health Department at **{polyclinic}**."
+      />,
+    );
+    expect(container.textContent).toContain("your local polyclinic");
+    expect(container.textContent).not.toContain("{polyclinic}");
+  });
+
+  it("substitutes only the routed polyclinic's contact line into {polyclinicContact}", () => {
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Temporary Restaurant Licence"
+        stepTitle="Application submitted"
+        submissionState={{
+          ...baseState,
+          polyclinicContact:
+            "Maurice Byer Polyclinic - [(246) 536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)",
+        }}
+        markdownContent={
+          "## Contact\n\nIf you need help, contact your Environmental Health Service office.\n\n{polyclinicContact}"
+        }
+      />,
+    );
+    // react-markdown is stubbed in this project's vitest config, so what is
+    // asserted here is the *substitution* — the routed line reaching the
+    // renderer, and no other clinic's details with it. The rendered links and
+    // list shape are pinned where markdown really runs, in
+    // apps/api/src/email/email-body.builder.spec.ts.
+    expect(container.textContent).toContain(
+      "- Maurice Byer Polyclinic - [(246) 536-3214]",
+    );
+    expect(container.textContent).toContain("MBPC.apps@health.gov.bb");
+    // Only the routed clinic's details — none of the others.
+    expect(container.textContent).not.toContain("St. Philip Polyclinic");
+    expect(container.textContent).not.toContain("Sir Winston Scott Polyclinic");
+    expect(container.textContent).not.toContain("{polyclinicContact}");
+  });
+
+  it("falls back to the full clinic list for {polyclinicContact} when nothing resolved", () => {
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Temporary Restaurant Licence"
+        stepTitle="Application submitted"
+        submissionState={baseState}
+        markdownContent={"## Contact\n\n{polyclinicContact}"}
+      />,
+    );
+    // The all-clinics fallback lists every serving clinic (issue #254).
+    expect(container.textContent).toContain("St. Philip Polyclinic");
+    expect(container.textContent).toContain("Sir Winston Scott Polyclinic");
+    expect(container.textContent).toContain("Maurice Byer Polyclinic");
+    expect(container.textContent).not.toContain("{polyclinicContact}");
   });
 
   it("renders contact details panel when contactDetails is present", () => {
@@ -79,18 +234,26 @@ describe("SubmissionConfirmation", () => {
     expect(screen.queryByText(/contact/i)).not.toBeInTheDocument();
   });
 
-  it("renders error state when submissionSuccess is false", () => {
+  it.each([
+    {
+      failure: "submission",
+      state: { ...baseState, submissionSuccess: false },
+    },
+    { failure: "payment", state: { ...baseState, hasPayment: true } },
+  ])("retries after a $failure failure", ({ state }) => {
+    const onTryAgain = vi.fn();
     render(
       <SubmissionConfirmation
         serviceTitle="Passport"
         stepTitle="Submitted"
-        submissionState={{ ...baseState, submissionSuccess: false }}
-        onTryAgain={vi.fn()}
+        submissionState={state}
+        onTryAgain={onTryAgain}
       />,
     );
-    expect(
-      screen.getByRole("button", { name: /try again/i }),
-    ).toBeInTheDocument();
+    const retry = screen.getByRole("button", { name: /try again/i });
+    expect(retry).toHaveAttribute("type", "button");
+    fireEvent.click(retry);
+    expect(onTryAgain).toHaveBeenCalledTimes(1);
   });
 
   describe("processing state (#463)", () => {
@@ -184,6 +347,25 @@ describe("SubmissionConfirmation", () => {
       );
     });
 
+    it("fires onPaymentInitiated when Continue to payment is clicked (#1955)", () => {
+      const onPaymentInitiated = vi.fn();
+      render(
+        <SubmissionConfirmation
+          serviceTitle="Passport"
+          stepTitle="Submitted"
+          onPaymentInitiated={onPaymentInitiated}
+          submissionState={{
+            ...pendingState,
+            paymentUrl: "https://ezpay.gov.bb/pay?token=abc",
+          }}
+        />,
+      );
+      fireEvent.click(
+        screen.getByRole("link", { name: /continue to payment/i }),
+      );
+      expect(onPaymentInitiated).toHaveBeenCalledTimes(1);
+    });
+
     it.each([
       ["javascript:", "javascript:alert(1)"],
       ["data:", "data:text/html,<script>alert(1)</script>"],
@@ -227,6 +409,46 @@ describe("SubmissionConfirmation", () => {
     });
   });
 
+  it.each([
+    {
+      paymentSuccess: false,
+      labels: ["Service:", "Quantity:", "Amount:"],
+      values: ["Certificate copies", "0", "$0"],
+    },
+    {
+      paymentSuccess: true,
+      labels: ["Service:", "Amount:"],
+      values: ["Certificate copies", "$0"],
+    },
+  ])(
+    "keeps zero values and omits missing receipt details (paid: $paymentSuccess)",
+    ({ paymentSuccess, labels, values }) => {
+      render(
+        <SubmissionConfirmation
+          serviceTitle="Passport"
+          stepTitle="Submitted"
+          submissionState={{
+            ...baseState,
+            hasPayment: true,
+            paymentSuccess,
+            paymentDescription: "Certificate copies",
+            paymentUrl: "https://ezpay.gov.bb/pay?token=abc",
+            amount: 0,
+            quantity: 0,
+            referenceNumber: undefined,
+            date: "",
+          }}
+        />,
+      );
+      expect(screen.getAllByRole("term").map((row) => row.textContent)).toEqual(
+        labels,
+      );
+      expect(
+        screen.getAllByRole("definition").map((row) => row.textContent),
+      ).toEqual(values);
+    },
+  );
+
   it("passes axe accessibility audit (excluding heading-order: pre-existing component issue)", async () => {
     const { container } = render(
       <SubmissionConfirmation
@@ -268,6 +490,25 @@ describe("SubmissionConfirmation — no-payment success branch", () => {
       screen.getByText("Your submission has been saved"),
     ).toBeInTheDocument();
     expect(screen.getByText("DL-REF-001")).toBeInTheDocument();
+  });
+
+  it("hides the Submission ID when hideReferenceNumber is set (anonymous form, #2133)", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Help us improve this service"
+        stepTitle="Thank you for your feedback"
+        hideReferenceNumber
+        submissionState={{
+          hasPayment: false,
+          serviceName: "Help us improve this service",
+          submissionSuccess: true,
+          referenceNumber: "EXIT-REF-001",
+        }}
+      />,
+    );
+    expect(screen.getByText("Thank you for your feedback")).toBeInTheDocument();
+    expect(screen.queryByText("Submission ID")).not.toBeInTheDocument();
+    expect(screen.queryByText("EXIT-REF-001")).not.toBeInTheDocument();
   });
 });
 
@@ -396,6 +637,23 @@ describe("SubmissionConfirmation — markdownContent rendering", () => {
     expect(md).toHaveTextContent("Phone:");
     // Wrapper class is the styling hook for paragraph spacing (govtech.css).
     expect(md.closest(".form-page__markdown-content")).not.toBeNull();
+  });
+
+  it("substitutes the landing origin into a {landingUrl} link", () => {
+    // The page is served from the forms host, so an authored root-relative
+    // link would 404. LANDING_URL is env-driven (VITE_LANDING_URL), so the
+    // same recipe resolves to sandbox/staging/prod landing per environment.
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Test"
+        stepTitle="Done"
+        submissionState={successState}
+        markdownContent="See [mass events]({landingUrl}/business-trade/guide#anchor)."
+      />,
+    );
+    expect(screen.getByTestId("react-markdown")).toHaveTextContent(
+      `See [mass events](${LANDING_URL}/business-trade/guide#anchor).`,
+    );
   });
 
   it("does not render a markdown block when markdownContent is absent", () => {
@@ -678,5 +936,107 @@ describe("SubmissionConfirmation — undefined submissionState", () => {
     expect(screen.queryByText("ABC123456789")).not.toBeInTheDocument();
     // The component renders null when there is no state to show.
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("SubmissionConfirmation — Print button (#2132)", () => {
+  const successPayment: SubmissionState = {
+    hasPayment: true,
+    serviceName: "Passport Renewal",
+    submissionSuccess: true,
+    paymentSuccess: true,
+    referenceNumber: "REF-PAY-OK",
+    date: "19/05/2026",
+    amount: "$100.00",
+    quantity: 1,
+  };
+
+  const renderWith = (submissionState: SubmissionState) =>
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={submissionState}
+        onTryAgain={vi.fn()}
+      />,
+    );
+
+  const printButton = () => screen.queryByRole("button", { name: /print/i });
+
+  it("shows the Print button on the no-payment success confirmation", () => {
+    renderWith(baseState);
+    expect(printButton()).toBeInTheDocument();
+  });
+
+  it("shows the Print button on the payment-success confirmation", () => {
+    renderWith(successPayment);
+    expect(printButton()).toBeInTheDocument();
+  });
+
+  it("does not show the Print button while the submission is processing", () => {
+    renderWith({ ...baseState, processing: true });
+    expect(printButton()).not.toBeInTheDocument();
+  });
+
+  it("does not show the Print button on the submission-failed state", () => {
+    renderWith({ ...baseState, submissionSuccess: false });
+    expect(printButton()).not.toBeInTheDocument();
+  });
+
+  it("does not show the Print button on the payment-failed state", () => {
+    renderWith({
+      hasPayment: true,
+      serviceName: "Passport Renewal",
+      submissionSuccess: true,
+      paymentSuccess: false,
+      referenceNumber: "REF-PAY-FAIL",
+      date: "19/05/2026",
+      paymentUrl: undefined,
+    });
+    expect(printButton()).not.toBeInTheDocument();
+  });
+
+  it("calls window.print when the Print button is clicked", () => {
+    const original = window.print;
+    window.print = vi.fn();
+    try {
+      renderWith(baseState);
+      fireEvent.click(screen.getByRole("button", { name: /print/i }));
+      expect(window.print).toHaveBeenCalledTimes(1);
+    } finally {
+      window.print = original;
+    }
+  });
+
+  it("is keyboard-reachable and has an accessible name", () => {
+    renderWith(baseState);
+    // Exact-name role query proves the accessible name is "Print".
+    const btn = screen.getByRole("button", { name: "Print" });
+    // Native, enabled button with no tabindex opt-out => in the tab order.
+    expect(btn.tagName).toBe("BUTTON");
+    expect(btn).toBeEnabled();
+    expect(btn).not.toHaveAttribute("tabindex", "-1");
+    // And it can actually take focus.
+    btn.focus();
+    expect(btn).toHaveFocus();
+  });
+
+  it("passes an axe audit on a success confirmation with the Print button", async () => {
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={baseState}
+        nextSteps={[{ title: "What happens next", items: ["We review it"] }]}
+        contactDetails={{ email: "help@example.com" }}
+        feedbackUrl="https://survey.example/feedback"
+      />,
+    );
+    // heading-order is a pre-existing component issue (see the audit above),
+    // excluded so it doesn't mask a regression introduced by the Print button.
+    const results = await axe(container, {
+      rules: { "heading-order": { enabled: false } },
+    });
+    expect(results).toHaveNoViolations();
   });
 });

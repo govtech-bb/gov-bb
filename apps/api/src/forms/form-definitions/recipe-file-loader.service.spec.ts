@@ -372,6 +372,58 @@ describe("RecipeFileLoaderService", () => {
       const logged = errorSpy.mock.calls.map((c) => String(c[0])).join("\n");
       expect(logged).toMatch(/wrong-name/);
     });
+
+    // #2329: catchment routing composes the per-polyclinic CMS programme code
+    // from the recipe's own webhook mapping.programmeCode. A recipe that
+    // declares catchmentRouting without one used to boot fine and then fail
+    // the polyclinic email silently on every submission — this makes it a
+    // boot-time rejection instead.
+    it("rejects a recipe that declares catchmentRouting but no webhook mapping.programmeCode", async () => {
+      const root = await fs.mkdtemp(path.join(os.tmpdir(), "recipes-test-"));
+      tempRoots.push(root);
+      await writeFlatRecipe(root, "catchment-form", {
+        catchmentRouting: {
+          coordinatesField: "details.coordinates",
+          parishField: "details.parish",
+        },
+      });
+      const loader = new RecipeFileLoaderService(root);
+      await loader.loadAll();
+
+      expect(loader.findAll()).toEqual([]);
+      const logged = errorSpy.mock.calls.map((c) => String(c[0])).join("\n");
+      expect(logged).toMatch(/catchmentRouting/);
+    });
+
+    it("loads a recipe that declares catchmentRouting alongside a mapped webhook", async () => {
+      const root = await fs.mkdtemp(path.join(os.tmpdir(), "recipes-test-"));
+      tempRoots.push(root);
+      await writeFlatRecipe(root, "catchment-form", {
+        catchmentRouting: {
+          coordinatesField: "details.coordinates",
+          parishField: "details.parish",
+        },
+        processors: [
+          {
+            type: "webhook",
+            config: {
+              mapping: {
+                programmeCode: "SOME_CODE",
+                applicant: {
+                  name: "details.name",
+                  email: "details.email",
+                  phone: "details.phone",
+                },
+              },
+            },
+          },
+        ],
+      });
+      const loader = new RecipeFileLoaderService(root);
+      await loader.loadAll();
+
+      expect(loader.findByFormId({ formId: "catchment-form" })).not.toBeNull();
+    });
   });
 
   describe("dev hot-reload watching", () => {

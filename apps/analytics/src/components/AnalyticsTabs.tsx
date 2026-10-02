@@ -1,8 +1,10 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 
-// Primary navigation for the analytics data views. "Forms" is active on both the
-// forms list and any individual form-detail page.
-const TABS: { label: string; to: string; isActive: (p: string) => boolean }[] = [
+type Tab = { label: string; to: string; isActive: (p: string) => boolean }
+
+// Section navigation — the content areas, left-aligned. "Forms" is active on
+// both the forms list and any individual form-detail page.
+const SECTION_TABS: Tab[] = [
   { label: 'Home', to: '/', isActive: (p) => p === '/' },
   {
     label: 'Forms',
@@ -10,46 +12,61 @@ const TABS: { label: string; to: string; isActive: (p: string) => boolean }[] = 
     isActive: (p) => p.startsWith('/analytics/forms'),
   },
   {
-    label: 'Search',
-    to: '/analytics/search',
-    isActive: (p) => p.startsWith('/analytics/search'),
+    label: 'Pages',
+    to: '/analytics/pages',
+    isActive: (p) => p.startsWith('/analytics/pages'),
   },
   {
-    label: 'Projects',
-    to: '/analytics/projects',
-    isActive: (p) => p.startsWith('/analytics/projects'),
+    label: 'Tools',
+    to: '/analytics/tools',
+    isActive: (p) => p.startsWith('/analytics/tools'),
   },
 ]
+
+// Search is a global action, not a content section — kept separate from the
+// section nav and right-aligned so it reads as a distinct action rather than
+// sitting mid-list between content categories (#2161).
+const SEARCH_TAB: Tab = {
+  label: 'Search',
+  to: '/analytics/search',
+  isActive: (p) => p.startsWith('/analytics/search'),
+}
+
+function TabLink({ tab, active }: { tab: Tab; active: boolean }) {
+  return (
+    <Link
+      to={tab.to}
+      aria-current={active ? 'page' : undefined}
+      className={`relative inline-flex items-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-100 ${
+        active ? 'text-blue-00 font-bold' : 'text-mid-grey-00 hover:text-blue-00'
+      }`}
+    >
+      {tab.label}
+      {active ? (
+        <span
+          aria-hidden="true"
+          className="absolute left-0 right-0 -bottom-px h-[2px] bg-blue-100"
+        />
+      ) : null}
+    </Link>
+  )
+}
 
 export function AnalyticsTabs() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   return (
     <div className="bg-white-00 border-b border-grey-00">
-      <div className="container flex items-stretch h-11">
-        <nav className="flex items-stretch gap-xm text-caption" aria-label="Primary">
-          {TABS.map((tab) => {
-            const active = tab.isActive(pathname)
-            return (
-              <Link
-                key={tab.to}
-                to={tab.to}
-                aria-current={active ? 'page' : undefined}
-                className={`relative inline-flex items-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-100 ${
-                  active
-                    ? 'text-blue-00 font-bold'
-                    : 'text-mid-grey-00 hover:text-blue-00'
-                }`}
-              >
-                {tab.label}
-                {active ? (
-                  <span
-                    aria-hidden="true"
-                    className="absolute left-0 right-0 -bottom-px h-[2px] bg-blue-100"
-                  />
-                ) : null}
-              </Link>
-            )
-          })}
+      <div className="container flex items-stretch justify-between h-11">
+        <nav
+          className="flex items-stretch gap-xm text-caption"
+          aria-label="Primary"
+        >
+          {SECTION_TABS.map((tab) => (
+            <TabLink key={tab.to} tab={tab} active={tab.isActive(pathname)} />
+          ))}
+        </nav>
+        <nav className="flex items-stretch text-caption" aria-label="Search">
+          <TabLink tab={SEARCH_TAB} active={SEARCH_TAB.isActive(pathname)} />
         </nav>
       </div>
     </div>

@@ -35,7 +35,7 @@
  *  - `check-your-answers` is auto-injected by the renderer before declaration
  *    (guarded advance).
  *  - `declaration` is the explicit final step; its single-option confirmation
- *    checkbox input is `declaration_declaration-confirmed-confirmed`. The
+ *    checkbox input is `declaration_declaration-confirmed`. The
  *    optional `declaration-date` date widget is filled with a past date.
  *  - The `submission-confirmation` step title is "Application submitted" and the
  *    recipe sets no processing message; on the payment flow the helper's default
@@ -46,6 +46,7 @@ import { faker } from "@faker-js/faker";
 import { test } from "@playwright/test";
 import {
   STEP_TIMEOUT,
+  openSmokeForm,
   advance,
   currentStep,
   expectStep,
@@ -77,7 +78,7 @@ test.describe("Get a Death Certificate — Live Smoke", () => {
   test.fixme("submits the real form end-to-end and reaches the confirmation screen", async ({
     page,
   }) => {
-    await page.goto(`/forms/${FORM_ID}`);
+    await openSmokeForm(page, FORM_ID);
     await page.waitForURL((url) => !!url.searchParams.get("step"), {
       timeout: STEP_TIMEOUT,
     });
@@ -160,7 +161,8 @@ test.describe("Get a Death Certificate — Live Smoke", () => {
     // ─── Declaration ─────────────────────────────────────────────────────────
     step = expectStep(page, "declaration", { exact: true });
     await page
-      .locator(`input[id="declaration_declaration-confirmed-confirmed"]`)
+      .locator(`fieldset[id="declaration_declaration-confirmed"]`)
+      .getByRole("checkbox")
       .check();
     await fillDate(page, step, "declaration-date", 6, 6, 2026);
 

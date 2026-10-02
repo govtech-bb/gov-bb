@@ -78,6 +78,103 @@ describe("resolveSubmissionOutcome", () => {
     expect(resolveSubmissionOutcome(response("draft"))).toEqual({});
   });
 
+  it("carries meta.resolvedPolyclinic into the submission state (coordinate-routed forms)", () => {
+    const outcome = resolveSubmissionOutcome(
+      response("submitted", { resolvedPolyclinic: "Maurice Byer Polyclinic" }),
+    );
+    expect(outcome.subState?.polyclinic).toBe("Maurice Byer Polyclinic");
+  });
+
+  it("leaves polyclinic undefined when the response carries no resolvedPolyclinic", () => {
+    const outcome = resolveSubmissionOutcome(response("submitted"));
+    expect(outcome.subState?.polyclinic).toBeUndefined();
+  });
+
+  it("carries meta.resolvedPolyclinicContact into the submission state (coordinate-routed forms)", () => {
+    const outcome = resolveSubmissionOutcome(
+      response("submitted", {
+        resolvedPolyclinicContact:
+          "St. Philip Polyclinic - [(246) 536-4240](tel:+12465364240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)",
+      }),
+    );
+    expect(outcome.subState?.polyclinicContact).toBe(
+      "St. Philip Polyclinic - [(246) 536-4240](tel:+12465364240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)",
+    );
+  });
+
+  it("leaves polyclinicContact undefined when the response carries no resolvedPolyclinicContact", () => {
+    const outcome = resolveSubmissionOutcome(response("submitted"));
+    expect(outcome.subState?.polyclinicContact).toBeUndefined();
+  });
+
+  it("commits the caller's resolved confirmation markdown (#2068)", () => {
+    // Resolved at submit because `clearFormState` drops the answers on success;
+    // persisting it here is what lets a refresh keep the right branch.
+    const outcome = resolveSubmissionOutcome(
+      response("submitted"),
+      "An officer **will** inspect your set-up.",
+    );
+    expect(outcome.subState?.resolvedMarkdown).toBe(
+      "An officer **will** inspect your set-up.",
+    );
+  });
+
+  it("commits the resolved markdown on the payment path too", () => {
+    const outcome = resolveSubmissionOutcome(
+      response("pending_payment", {
+        deferred: {
+          amount: 100,
+          paymentUrl: "https://pay.example.com",
+          paymentId: "pay-001",
+          description: "Application fee",
+        },
+      }),
+      "Resolved body.",
+    );
+    expect(outcome.subState?.resolvedMarkdown).toBe("Resolved body.");
+  });
+
+  it("leaves resolvedMarkdown undefined when the caller resolves none", () => {
+    const outcome = resolveSubmissionOutcome(response("submitted"));
+    expect(outcome.subState?.resolvedMarkdown).toBeUndefined();
+  });
+
+  it("commits the answers the caller built for printing (#2587)", () => {
+    // Same reason as the markdown above: the draft is gone by the time the
+    // confirmation step renders, so the printed copy has to be captured now.
+    const sections = [
+      {
+        stepId: "about-you",
+        title: "Tell us about yourself",
+        fields: [
+          { fieldId: "first-name", label: "First name", value: "Addie" },
+        ],
+      },
+    ];
+    const outcome = resolveSubmissionOutcome(
+      response("submitted"),
+      undefined,
+      sections,
+    );
+    expect(outcome.subState?.sections).toEqual(sections);
+  });
+
+  it("commits the printed answers on the payment path too", () => {
+    const outcome = resolveSubmissionOutcome(
+      response("pending_payment", {
+        deferred: {
+          amount: 100,
+          paymentUrl: "https://pay.example.com",
+          paymentId: "pay-001",
+          description: "Application fee",
+        },
+      }),
+      undefined,
+      [{ stepId: "s", title: "S", fields: [] }],
+    );
+    expect(outcome.subState?.sections).toHaveLength(1);
+  });
+
   it("maps 'pending_payment' with deferred meta to a payment state and success event", () => {
     const outcome = resolveSubmissionOutcome(
       response("pending_payment", {

@@ -114,14 +114,31 @@ const webhookAuthSchema = z.discriminatedUnion("scheme", [
 // into the submission values, so any form can be mapped from its recipe without
 // hard-coding step/field conventions in the API. `name` may be a single path or
 // an ordered list joined with spaces (e.g. first + last name).
+/** A reference-code segment: 3-4 uppercase letters, e.g. `MOH`, `TRP`. */
+const referenceSegment = z.string().regex(/^[A-Z]{3,4}$/);
+
 const webhookMappingSchema = z.object({
   programmeCode: z.string().min(1),
+  /**
+   * Short code for the MDA whose CaMS this form syncs to, used as the leading
+   * segment of the submission reference (`MOH-TRP-2608-47E4AD6`). Optional: a
+   * form without one falls back to the formId-derived prefix, so an unmigrated
+   * recipe keeps minting valid references.
+   */
+  mdaCode: referenceSegment.optional(),
+  /**
+   * Short form of `programmeCode` for the reference's second segment.
+   * Separate because `programmeCode` is CaMS-issued and far too long to read
+   * aloud (`TEMP_RESTAURANT_PERMIT`).
+   */
+  programmeShortCode: referenceSegment.optional(),
   applicant: z.object({
     name: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]),
     email: z.string().min(1),
     phone: z.string().min(1),
   }),
-  // Steps dropped from form_data (process steps that aren't application content).
+  // Steps dropped from the case payload — both form_data and the labelled
+  // sections (process steps that aren't application content).
   excludeSteps: z.array(z.string()).default([]),
   // When true, form_data keeps fields nested under their step id instead of
   // hoisting them all to the top level.
@@ -148,8 +165,9 @@ const webhookConfigAuthorSchema = z
     mapping: webhookMappingSchema.optional(),
     timeoutMs: z.number().int().positive().max(30_000).default(10_000),
   })
-  .refine((c) => Boolean(c.url) || Boolean(c.endpoint), {
-    message: "webhook config requires either `url` or `endpoint`",
+  .refine((c) => Boolean(c.url) || Boolean(c.endpoint) || Boolean(c.mapping), {
+    message:
+      "webhook config requires `url`, `endpoint`, or `mapping` (a mapped webhook resolves its destination per-MDA from MDA_WEBHOOK_DESTINATIONS)",
   });
 
 const emailProcessorSchema = z.object({
@@ -215,8 +233,9 @@ const webhookConfigResolvedSchema = z
     mapping: webhookMappingSchema.optional(),
     timeoutMs: z.number().int().positive().max(30_000).default(10_000),
   })
-  .refine((c) => Boolean(c.url) || Boolean(c.endpoint), {
-    message: "webhook config requires either `url` or `endpoint`",
+  .refine((c) => Boolean(c.url) || Boolean(c.endpoint) || Boolean(c.mapping), {
+    message:
+      "webhook config requires `url`, `endpoint`, or `mapping` (a mapped webhook resolves its destination per-MDA from MDA_WEBHOOK_DESTINATIONS)",
   });
 
 export const resolvedProcessorSchema = z.discriminatedUnion("type", [

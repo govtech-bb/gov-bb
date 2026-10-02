@@ -29,8 +29,8 @@ stack rather than quoting a source, it's called out.
 
 **`main` is the trunk and single source of truth.** All work is a **short-lived
 branch off `main`** — hours, merged the same day, **never more than ~2 days** —
-merged back via a PR that must pass **CI** (no review required *for now* — see
-§2), then deleted. Merging to `main` kicks off a **sequential deploy**:
+merged back via a PR that must pass **CI** and get **one approving review**
+(see §2), then deleted. Merging to `main` kicks off a **sequential deploy**:
 `sandbox` deploys automatically; once that deploy is **fully green**, `staging`
 deploys automatically; `prod` is a **manual, windowed** deploy once `staging` is
 proven. The environments — `sandbox` / `staging` / `prod` — are **deploy
@@ -54,16 +54,16 @@ short-lived branch ──PR (CI must pass)──▶  main  (trunk · single sour
 
 ---
 
-## 2. The merge gate — CI only, no review (for now)
+## 2. The merge gate — CI plus one approving review
 
 A change merges into `main` only when **CI is green**. Branch protection
 (GitHub ruleset **"Main CI Required"**) enforces this: a PR is required, all
-required checks must pass, and there are **no direct pushes** to `main`.
+required checks must pass, **one approving review** is required, and there are
+**no direct pushes** to `main`.
 
-**No mandatory review yet.** We rely on **QA validating stability on the
-environments** rather than a required reviewer; **PR review will be introduced as
-the team matures**. (This is a deliberate, temporary choice — the canonical model
-adds a human review gate; we'll get there.)
+**Review is mandatory.** The ruleset requires one approval before a PR can merge
+(it started CI-only and added the review gate later). QA still validates
+stability on the environments after merge.
 
 ### What runs on a `main` PR (the commit stage)
 
@@ -142,7 +142,7 @@ never a fix hand-applied to the environment.
 2. Keep the change small; hide unfinished parts behind a feature flag.
 3. Run build + tests locally before pushing (`pnpm exec nx affected -t build test`).
 4. Push, open a PR **into `main`**; wait for **CI** to go green.
-5. Merge to `main` (no review required for now); branch deleted.
+5. Get one approving review, then merge to `main`; branch deleted.
 6. The deploy sequence runs: `sandbox` → (when green) `staging`; `prod` is a
    separate windowed/manual deploy. If anything goes red, fixing it comes first.
 
@@ -156,8 +156,8 @@ never a fix hand-applied to the environment.
 
 **Done & live:**
 - `main` reset to current code; it's the trunk.
-- **Merge gate enforced** — "Main CI Required" ruleset (PR + the 11 checks in §2,
-  no review).
+- **Merge gate enforced** — "Main CI Required" ruleset (PR, the 11 checks in §2
+  and one approving review).
 - README, this playbook, and the diagram reflect the model.
 
 **Remaining (the deploy-pipeline work — sequence matters):**
@@ -198,5 +198,5 @@ Verified primary/authoritative (adversarial fact-check: 25/25 claims confirmed,
 - **Google** — *Software Engineering at Google* (ch. 9 review, ch. 23 CI/CD).
 
 *The nx-affected / Amplify-ECS / sequential-deploy mappings are our synthesis of
-these principles onto our stack, not direct quotes. The "no review for now"
-choice is a deliberate, temporary deviation from the canonical model.*
+these principles onto our stack, not direct quotes. The review gate was
+added after the initial CI-only rollout.*

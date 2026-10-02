@@ -80,6 +80,7 @@ function coerceCheckbox(field: Primitive, raw: string): Coerced {
 
 const COERCERS: Record<HtmlTypes, Coercer> = {
   text: (_f, raw) => ({ value: raw }),
+  "address-lookup": (_f, raw) => ({ value: raw }),
   textarea: (_f, raw) => ({ value: raw }),
   email: (_f, raw) => ({ value: raw }),
   tel: (_f, raw) => ({ value: raw }),
@@ -98,6 +99,16 @@ const COERCERS: Record<HtmlTypes, Coercer> = {
   checkbox: coerceCheckbox,
   file: () => ({ error: "file fields can't be completed in chat" }),
   "show-hide": (_f, raw) => coerceBoolean(raw),
+  // Weekly opening hours: the stored value is a string array of
+  // "Monday 09:00 - 17:00" entries, so accept a comma/semicolon-separated
+  // list and let the field's pattern rule format-check each entry.
+  "opening-hours": (_f, raw) => ({
+    value: raw
+      .split(/[,;]/)
+      .map((entry) => entry.trim())
+      .filter((entry) => entry !== ""),
+  }),
+  content: () => ({ error: "content blocks are not answerable" }),
 };
 
 export function coerceValue(field: Primitive, raw: string): Coerced {

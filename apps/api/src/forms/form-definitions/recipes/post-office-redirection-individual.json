@@ -151,7 +151,8 @@
                 "value": 6
               },
               "required": {
-                "value": true
+                "value": true,
+                "error": "Passport Number is required"
               }
             },
             "behaviours": [
@@ -302,13 +303,7 @@
           "overrides": {
             "fieldId": "old-postcode",
             "label": "Postcode",
-            "hint": "For example, BB17004 (optional)",
-            "validations": {
-              "pattern": {
-                "error": "Enter a valid postcode (for example, BB17004)",
-                "value": "^[A-Z]{2}\\d{5}$"
-              }
-            },
+            "hint": "For example, BB17004",
             "ui": {
               "width": "medium"
             }
@@ -418,13 +413,7 @@
           "overrides": {
             "fieldId": "new-postcode",
             "label": "Postcode",
-            "hint": "For example, BB17004 (optional)",
-            "validations": {
-              "pattern": {
-                "error": "Enter a valid postcode (for example, BB17004)",
-                "value": "^[A-Z]{2}\\d{5}$"
-              }
-            },
+            "hint": "For example, BB17004",
             "ui": {
               "width": "medium"
             }
@@ -490,7 +479,7 @@
             "label": "Are there any minor dependents who also need their mail to be redirected to the new address?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether any minor dependents also need their mail redirected",
                 "value": true
               }
             },
@@ -648,7 +637,7 @@
             "label": "Are there any adults who also need their mail to be redirected to the new address?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether any adults also need their mail redirected",
                 "value": true
               }
             },
@@ -819,24 +808,6 @@
                 "value": "confirmed"
               }
             ]
-          }
-        },
-        {
-          "ref": "components/generic-date",
-          "overrides": {
-            "fieldId": "declaration-date-of-declaration",
-            "label": "Date of declaration",
-            "validations": {
-              "required": {
-                "error": "Date is required",
-                "value": true
-              },
-              "pastOrToday": {
-                "error": "Date must not be in the future",
-                "value": true
-              }
-            },
-            "isHidden": true
           }
         }
       ],

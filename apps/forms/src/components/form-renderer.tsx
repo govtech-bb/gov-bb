@@ -1,17 +1,19 @@
 import {
   ClientPrimitive,
   FieldValidationErrors,
+  FieldValidationProperties,
   FormRendererProps,
   FormValues,
 } from "@forms/types";
-import FieldRenderer from "./field-renderer";
+import FieldRenderer, { InsetFieldEntry } from "./field-renderer";
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { markdownComponents } from "./markdown-components";
 import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
+import { shallow } from "@tanstack/react-store";
 import { isDateValidationError } from "@govtech-bb/form-validation";
+import { Behaviour } from "@govtech-bb/form-types";
 import { useStepGuard } from "../hooks/use-step-guard";
 import Review from "./review";
 import SubmissionConfirmation from "./submission-confirmation";
@@ -25,14 +27,29 @@ import {
   getRepeatStepCount,
   getInstanceMarker,
   buildFieldValidationProperties,
+  collectStepErrorCodes,
 } from "@forms/lib";
 import { trackEvent } from "../lib/analytics";
 import { formCategory } from "../lib/form-category";
+import {
+  confirmationOutcome,
+  paymentReturnOutcome,
+} from "../lib/confirmation-analytics";
 import { reviewDwellSeconds } from "./review-dwell";
 import { buildValidationErrorPayload } from "./validation-error-event";
 import { stepCompleteEventName } from "./step-events";
-import { StatusBanner } from "@govtech-bb/react";
-import { resolveStepTitle } from "@govtech-bb/form-conditions";
+import {
+  Button,
+  ButtonGroup,
+  Hint,
+  ServiceHeading,
+  StatusBanner,
+} from "@govtech-bb/react";
+import {
+  resolveConditionalMarkdown,
+  resolveFieldLabel,
+  resolveStepTitle,
+} from "@govtech-bb/form-conditions";
 import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
 
 // The feedback form citizens are sent to from a confirmation page, and its
@@ -41,6 +58,10 @@ import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
 // local. The originating form id is appended as `?source=` at render time.
 const EXIT_SURVEY_FORM_ID = "exit-survey";
 const EXIT_SURVEY_FIRST_STEP = "difficulty-rating";
+
+/** Stable empty map for steps with no `conditionalLabel` fields (#2521), so
+ * the label selector returns an unchanging reference for them. */
+const EMPTY_LABELS: Record<string, string> = {};
 
 // ---------------------------------------------------------------------------
 // Field grouping (show-hide + radio/select conditional reveal)
@@ -53,15 +74,18 @@ type ShowHideFieldGroup = {
   controlled: ClientPrimitive[];
 };
 /**
- * A radio or single-value select field that has one or more sibling fields
- * that should be revealed inline (inset) when a specific option is selected.
- * Each entry in the map keys on the option value and holds the ordered list
- * of fields to reveal.
+ * A radio, single-value select or checkbox field that has one or more sibling
+ * fields that should be revealed inline (inset) when a specific option is
+ * selected. Each entry in the map keys on the option value and holds the
+ * ordered groups to reveal — groups, not bare fields, so a revealed field that
+ * is itself an option host carries its own reveals and nests a level deeper
+ * (e.g. "are you organising this event?" revealed by "is this for an event?",
+ * with the organiser's details revealed in turn under its own "no").
  */
 type OptionConditionalFieldGroup = {
   type: "option-conditional";
   field: ClientPrimitive;
-  conditionalsByOption: Map<string, ClientPrimitive[]>;
+  conditionalsByOption: Map<string, FieldGroup[]>;
 };
 type FieldGroup =
   | PlainFieldGroup
@@ -69,15 +93,41 @@ type FieldGroup =
   | OptionConditionalFieldGroup;
 
 /**
- * A field hosts inset conditional reveals when it offers a single-choice
- * option list: radios, or selects without `multiple`. Multi-selects keep the
- * page-level conditional fallback — "equal" against an array value is murky.
+ * A field hosts inset conditional reveals when its options each have a DOM
+ * position to nest under: radios, selects, and multi-option
+ * checkboxes. A single-option checkbox is a confirmation, not an option list,
+ * so its reveals stay page-level.
  */
 function supportsOptionConditionals(field: ClientPrimitive): boolean {
   return (
     field.htmlType === "radio" ||
-    (field.htmlType === "select" && !field.multiple)
+    field.htmlType === "select" ||
+    (field.htmlType === "checkbox" && (field.options?.length ?? 0) > 1)
   );
+}
+
+/**
+ * The single option value a reveal behaviour hangs off, or null when it does
+ * not name exactly one. A checkbox holds an array, so its reveals are authored
+ * as `in` with a one-entry list; `equal` covers radio/select. A behaviour
+ * naming several options (`in: ["employed", "self-employed"]`) has no single
+ * option to nest under, so it keeps the page-level fallback.
+ */
+function revealedOptionValue(behaviour: Behaviour): string | null {
+  if (behaviour.type !== "fieldConditionalOn" || !("value" in behaviour)) {
+    return null;
+  }
+  if (behaviour.operator === "equal" && !Array.isArray(behaviour.value)) {
+    return String(behaviour.value);
+  }
+  if (
+    behaviour.operator === "in" &&
+    Array.isArray(behaviour.value) &&
+    behaviour.value.length === 1
+  ) {
+    return String(behaviour.value[0]);
+  }
+  return null;
 }
 
 /**
@@ -106,23 +156,23 @@ function buildFieldGroups(fields: ClientPrimitive[]): FieldGroup[] {
       groups.push({ type: "show-hide", toggle: field, controlled });
     } else if (supportsOptionConditionals(field)) {
       // Collect sibling fields that are revealed by a specific option value
-      // on this radio/select (fieldConditionalOn + operator "equal").
+      // on this radio/select/checkbox (see `revealedOptionValue`).
       const conditionalsByOption = new Map<string, ClientPrimitive[]>();
 
       for (const other of fields) {
         if (controlledIds.has(other.id) || other.id === field.id) continue;
 
-        const revealBehaviour = other.behaviours?.find(
-          (b) =>
-            b.type === "fieldConditionalOn" &&
-            "targetFieldId" in b &&
-            b.targetFieldId === field.fieldId &&
-            "operator" in b &&
-            b.operator === "equal",
-        );
+        const optionValue = other.behaviours
+          ?.filter(
+            (b) =>
+              b.type === "fieldConditionalOn" &&
+              "targetFieldId" in b &&
+              b.targetFieldId === field.fieldId,
+          )
+          .map(revealedOptionValue)
+          .find((v) => v !== null);
 
-        if (revealBehaviour && "value" in revealBehaviour) {
-          const optionValue = String(revealBehaviour.value);
+        if (optionValue != null) {
           if (!conditionalsByOption.has(optionValue)) {
             conditionalsByOption.set(optionValue, []);
           }
@@ -135,7 +185,16 @@ function buildFieldGroups(fields: ClientPrimitive[]): FieldGroup[] {
         groups.push({
           type: "option-conditional",
           field,
-          conditionalsByOption,
+          // Group each option's reveals among themselves, so a revealed option
+          // host keeps its own reveals instead of them landing beside it. The
+          // recursion always runs on a strictly smaller set (the host is never
+          // in its own reveal list), so it terminates.
+          conditionalsByOption: new Map(
+            [...conditionalsByOption.entries()].map(([optVal, revealed]) => [
+              optVal,
+              buildFieldGroups(revealed),
+            ]),
+          ),
         });
       } else {
         groups.push({ type: "plain", field });
@@ -146,6 +205,58 @@ function buildFieldGroups(fields: ClientPrimitive[]): FieldGroup[] {
   }
 
   return groups;
+}
+
+/**
+ * Flatten grouped reveals into the entries a radio/select/checkbox renders
+ * under one option. An option-conditional group keeps its own reveal map, so
+ * the nesting carries as deep as the conditions go. A show-hide group inside a
+ * reveal keeps its pre-existing flat rendering — its bordered wrapper is a
+ * page-level affordance.
+ */
+function insetEntriesFromGroups(
+  groups: FieldGroup[],
+  resolveValidators: (field: ClientPrimitive) => FieldValidationProperties,
+): InsetFieldEntry[] {
+  return groups.flatMap((group) => {
+    if (group.type === "option-conditional") {
+      return [
+        {
+          field: group.field,
+          validationProperties: resolveValidators(group.field),
+          insetFieldsByOption: insetFieldsByOptionFromGroups(
+            group.conditionalsByOption,
+            resolveValidators,
+          ),
+        },
+      ];
+    }
+    if (group.type === "show-hide") {
+      return [group.toggle, ...group.controlled].map((field) => ({
+        field,
+        validationProperties: resolveValidators(field),
+      }));
+    }
+    return [
+      {
+        field: group.field,
+        validationProperties: resolveValidators(group.field),
+      },
+    ];
+  });
+}
+
+/** The option → inset entries map a host field is rendered with. */
+function insetFieldsByOptionFromGroups(
+  conditionalsByOption: Map<string, FieldGroup[]>,
+  resolveValidators: (field: ClientPrimitive) => FieldValidationProperties,
+): Map<string, InsetFieldEntry[]> {
+  return new Map(
+    [...conditionalsByOption.entries()].map(([optVal, groups]) => [
+      optVal,
+      insetEntriesFromGroups(groups, resolveValidators),
+    ]),
+  );
 }
 
 export default function FormRenderer({
@@ -191,6 +302,36 @@ export default function FormRenderer({
       navigateToStep("check-your-answers");
     }
   }, [currentStep?.stepId, submissionState, navigateToStep]);
+
+  // Confirmation-page analytics (#1955): the true end of the journey. Fired
+  // once per confirmation view — `form-confirmation-view` always, plus
+  // `payment-returned` when the citizen has come back from EzPay. Guarded by a
+  // ref so a submissionState identity change (persist effect) doesn't re-fire.
+  const confirmationTracked = React.useRef(false);
+  React.useEffect(() => {
+    if (currentStep?.stepId !== "submission-confirmation" || !submissionState) {
+      confirmationTracked.current = false;
+      return;
+    }
+    if (confirmationTracked.current) return;
+    confirmationTracked.current = true;
+
+    const category = formCategory(formMeta.formId);
+    trackEvent("form-confirmation-view", {
+      form: formMeta.formId,
+      category,
+      outcome: confirmationOutcome(submissionState),
+      hasPayment: submissionState.hasPayment,
+    });
+    const returned = paymentReturnOutcome(submissionState);
+    if (returned) {
+      trackEvent("payment-returned", {
+        form: formMeta.formId,
+        category,
+        outcome: returned,
+      });
+    }
+  }, [currentStep?.stepId, submissionState, formMeta.formId]);
 
   const reviewEnteredAt = React.useRef<number | null>(null);
   React.useEffect(() => {
@@ -265,7 +406,41 @@ function ActiveStep({
   navigateToStep,
   completeAndContinue,
 }: ActiveStepProps) {
-  const currentFields = [...currentStep.fields];
+  // A field may carry `conditionalLabel` overrides (#2521) that reword it off
+  // an earlier answer, so its label — like the step title below — has to
+  // recompute when the watched value changes. Only fields that actually carry
+  // overrides are resolved; every other step keeps the stable empty map and
+  // re-renders exactly as before.
+  const hasConditionalLabels = React.useMemo(
+    () => currentStep.fields.some((field) => field.conditionalLabel?.length),
+    [currentStep],
+  );
+  const resolvedLabels = useStore(
+    form.store,
+    (state) => {
+      if (!hasConditionalLabels) return EMPTY_LABELS;
+      const values = buildStepScopedValues(
+        state.values as Record<string, unknown>,
+      );
+      const labels: Record<string, string> = {};
+      for (const field of currentStep.fields) {
+        if (field.conditionalLabel?.length) {
+          labels[field.id] = resolveFieldLabel(field, values);
+        }
+      }
+      return labels;
+    },
+    shallow,
+  );
+  const currentFields = React.useMemo(
+    () =>
+      currentStep.fields.map((field) =>
+        resolvedLabels[field.id]
+          ? { ...field, label: resolvedLabels[field.id] }
+          : field,
+      ),
+    [currentStep, resolvedLabels],
+  );
 
   // #801: distinguish repeat instances beyond the first. undefined for base
   // steps / first instances (renders exactly as before).
@@ -292,6 +467,8 @@ function ActiveStep({
     }
   };
 
+  // shallow so this only re-renders (and re-runs the effect below) when a
+  // repeatable-step value actually changes, not on every store update (#1991).
   const repeatableStepValues = useStore(
     form.store,
     (state) =>
@@ -300,6 +477,7 @@ function ActiveStep({
           key.startsWith(`${stepId}${stepFieldIdConcactenator}`),
         ),
       ) as FormValues,
+    shallow,
   );
 
   React.useEffect(() => {
@@ -351,10 +529,10 @@ function ActiveStep({
           formMeta.formId,
           formCategory(formMeta.formId),
           currentStep.stepId,
-          currentFields.map((field, i) => ({
-            fieldId: field.fieldId,
-            errors: results[i],
-          })),
+          collectStepErrorCodes(
+            currentFields,
+            form.state.values as Record<string, unknown>,
+          ),
         ),
       );
       scrollToTop();
@@ -433,19 +611,23 @@ function ActiveStep({
     }
   };
 
-  const errors = useStore(form.store, (state) => {
-    const fieldValidationErrors: FieldValidationErrors = {};
-    for (const field of currentStep.fields) {
-      const fieldErrors = state.fieldMeta[field.id]?.errors ?? [];
-      if (fieldErrors.length === 0) continue;
-      // Date fields emit structured { message, parts } errors; the summary
-      // only needs the message text.
-      fieldValidationErrors[field.id] = fieldErrors.map((e: unknown) =>
-        isDateValidationError(e) ? e.message : String(e),
-      );
-    }
-    return fieldValidationErrors;
-  });
+  const errors = useStore(
+    form.store,
+    (state) => {
+      const fieldValidationErrors: FieldValidationErrors = {};
+      for (const field of currentStep.fields) {
+        const fieldErrors = state.fieldMeta[field.id]?.errors ?? [];
+        if (fieldErrors.length === 0) continue;
+        // Date fields emit structured { message, parts } errors; the summary
+        // only needs the message text.
+        fieldValidationErrors[field.id] = fieldErrors.map((e: unknown) =>
+          isDateValidationError(e) ? e.message : String(e),
+        );
+      }
+      return fieldValidationErrors;
+    },
+    shallow,
+  );
 
   const isSubmitting = useStore(form.store, (state) => state.isSubmitting);
 
@@ -463,20 +645,10 @@ function ActiveStep({
     visibleSteps[stepIndex + 1]?.stepId === "submission-confirmation";
   // Build show-hide groups so the left-border content wrapper spans the toggle
   // hint AND all conditionally-controlled sibling fields.
-  const fieldGroups = buildFieldGroups(currentFields);
-
-  // Reactively read every show-hide toggle value so the content wrapper
-  // appears/disappears when the user clicks the toggle.
-  const showHideValues = useStore(form.store, (state) => {
-    const values = state.values as Record<string, unknown>;
-    const result: Record<string, boolean> = {};
-    for (const group of fieldGroups) {
-      if (group.type === "show-hide") {
-        result[group.toggle.id] = !!values[group.toggle.id];
-      }
-    }
-    return result;
-  });
+  const fieldGroups = React.useMemo(
+    () => buildFieldGroups(currentFields),
+    [currentFields],
+  );
 
   // Resolve the step's effective title reactively: a step may carry
   // `conditionalTitle` overrides (#871) that depend on an earlier answer, so the
@@ -508,16 +680,33 @@ function ActiveStep({
             formMeta.formId,
           )}`;
     return (
-      <div className="form-page-confirmation">
+      <div>
         <SubmissionConfirmation
           key={"submission-confirmation"}
           serviceTitle={formMeta.formTitle}
           stepTitle={resolvedStepTitle}
           processingMessage={currentStep.description}
           nextSteps={currentStep.nextSteps}
-          markdownContent={currentStep.markdownContent}
+          // The branch resolved at submit, when the answers were still live
+          // (#2068). Falling back to a defaults-only resolution rather than the
+          // raw `markdownContent` matters: a state persisted before this shipped
+          // — or the error paths, which commit no resolution — would otherwise
+          // render a literal `{token}`. For a step with no conditional passages
+          // this is `markdownContent` unchanged.
+          markdownContent={
+            submissionState?.resolvedMarkdown ??
+            resolveConditionalMarkdown(currentStep, {})
+          }
+          hideReferenceNumber={currentStep.hideReferenceNumber}
           contactDetails={formMeta.contactDetails}
           onTryAgain={() => navigateToStep("check-your-answers")}
+          onPaymentInitiated={() =>
+            trackEvent("payment-initiated", {
+              form: formMeta.formId,
+              category: formCategory(formMeta.formId),
+              amount: submissionState?.amount ?? "",
+            })
+          }
           submissionState={submissionState}
           feedbackUrl={feedbackUrl}
         />
@@ -526,51 +715,60 @@ function ActiveStep({
   }
 
   return (
-    <div className="container pb-8 lg:pb-16">
-      <div className="form-page form-width">
+    <div className="govbb-width-container govbb-main-wrapper govbb-grid-row">
+      <div className="form-page govbb-grid-column-two-thirds-from-desktop">
         {isDraft && (
-          <StatusBanner variant="service-issue" data-testid="draft-banner">
+          <StatusBanner
+            variant="service"
+            data-testid="draft-banner"
+            className="mb-8"
+            rounded
+          >
             Draft mode — this is an unpublished draft and cannot be submitted.
           </StatusBanner>
         )}
-        <div className="form-page__header">
-          <p className="form-page__service-title"> {formMeta.formTitle} </p>
-          {!isContentStep && (
-            <h1 className="govbb-text-h1">
-              {/* GOV.UK caption-in-heading pattern: the caption sits inside the
+        {isContentStep ? (
+          <div className="govbb-service-heading mb-8">
+            <p className="govbb-service-heading__service">
+              {formMeta.formTitle}
+            </p>
+            {currentStep.description && (
+              <p className="govbb-service-heading__description">
+                {currentStep.description}
+              </p>
+            )}
+          </div>
+        ) : (
+          <ServiceHeading
+            service={formMeta.formTitle}
+            description={currentStep.description || undefined}
+            className="mb-8"
+          >
+            {/* GOV.UK caption-in-heading pattern: the caption sits inside the
                 h1 so the accessible name distinguishes repeat instances for
                 screen-reader heading navigation. */}
-              {instanceMarker?.hasLabel && (
-                <span
-                  data-testid="repeat-instance-marker"
-                  className="block text-caption text-mid-grey-00"
-                >
-                  {instanceMarker.text}
-                </span>
-              )}
-              {instanceMarker && !instanceMarker.hasLabel
-                ? `${resolvedStepTitle} — ${instanceMarker.text}`
-                : resolvedStepTitle}
-            </h1>
-          )}
-          {currentStep.description && (
-            <p className="form-page__step-description">
-              {currentStep.description}
-            </p>
-          )}
-        </div>
+            {instanceMarker?.hasLabel && (
+              <span
+                data-testid="repeat-instance-marker"
+                className="block text-body-sm text-muted"
+              >
+                {instanceMarker.text}
+              </span>
+            )}
+            {instanceMarker && !instanceMarker.hasLabel
+              ? `${resolvedStepTitle} — ${instanceMarker.text}`
+              : resolvedStepTitle}
+          </ServiceHeading>
+        )}
         <ErrorSummary errors={errors} />
 
         <div className="form-page__step">
           {currentStep.markdownContent && (
-            <div className="form-page__markdown-content">
+            <div className="form-page__markdown-content govbb-prose wrap-anywhere">
               {/* Recipe-authored step copy (e.g. an intro page). react-markdown
                   escapes raw HTML by default and we omit rehype-raw, so recipe
                   content cannot inject markup. */}
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={markdownComponents}
-              >
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {currentStep.markdownContent}
               </ReactMarkdown>
             </div>
@@ -591,56 +789,39 @@ function ActiveStep({
 
           {fieldGroups.map((group) => {
             if (group.type === "show-hide") {
-              const isOpen = showHideValues[group.toggle.id] ?? false;
               return (
-                <React.Fragment key={group.toggle.id}>
-                  {/* Toggle (<details>/<summary>) — the hint and controlled
-                    fields live outside the FieldRenderer so we can wrap them all
-                    in the govbb-show-hide content border */}
-                  <FieldRenderer
-                    form={form}
-                    field={group.toggle}
-                    validationProperties={resolveValidators(group.toggle)}
-                    formId={formMeta.formId}
-                    previewToken={previewToken}
-                    draftToken={draftToken}
-                  />
-                  {isOpen && (
-                    <div className="govbb-show-hide__content">
-                      {group.toggle.hint && (
-                        <p className="govbb-hint">{group.toggle.hint}</p>
-                      )}
-                      {group.controlled.map((field) => (
-                        <FieldRenderer
-                          key={field.id}
-                          form={form}
-                          field={field}
-                          validationProperties={resolveValidators(field)}
-                          formId={formMeta.formId}
-                          previewToken={previewToken}
-                          draftToken={draftToken}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </React.Fragment>
+                <FieldRenderer
+                  key={group.toggle.id}
+                  form={form}
+                  field={group.toggle}
+                  validationProperties={resolveValidators(group.toggle)}
+                  formId={formMeta.formId}
+                  previewToken={previewToken}
+                  draftToken={draftToken}
+                >
+                  {group.controlled.map((field) => (
+                    <FieldRenderer
+                      key={field.id}
+                      form={form}
+                      field={field}
+                      validationProperties={resolveValidators(field)}
+                      formId={formMeta.formId}
+                      previewToken={previewToken}
+                      draftToken={draftToken}
+                    />
+                  ))}
+                </FieldRenderer>
               );
             }
 
             if (group.type === "option-conditional") {
-              // Build a map of option value → [{field, validationProperties}]
-              // so the radio/select FieldRenderer can render inset fields per
-              // option.
-              const insetFieldsByOption = new Map(
-                [...group.conditionalsByOption.entries()].map(
-                  ([optVal, insetFields]) => [
-                    optVal,
-                    insetFields.map((f) => ({
-                      field: f,
-                      validationProperties: resolveValidators(f),
-                    })),
-                  ],
-                ),
+              // Build a map of option value → inset entries so the
+              // radio/select FieldRenderer can render inset fields per option.
+              // An entry that is itself an option host carries its own map, so
+              // the reveal nests as deep as the conditions do.
+              const insetFieldsByOption = insetFieldsByOptionFromGroups(
+                group.conditionalsByOption,
+                resolveValidators,
               );
 
               return (
@@ -669,19 +850,13 @@ function ActiveStep({
           })}
 
           {currentStep.stepId !== "submission-confirmation" && (
-            <div className="govbb-btn-group">
+            <ButtonGroup>
               {!hidePrevious && (
-                <button
-                  className="govbb-btn--secondary"
-                  type="button"
-                  onClick={handlePrevious}
-                >
+                <Button variant="secondary" onClick={handlePrevious}>
                   Previous
-                </button>
+                </Button>
               )}
-              <button
-                className="govbb-btn"
-                type="button"
+              <Button
                 disabled={
                   (isLastFormStep && isSubmitting) ||
                   (isLastFormStep && isDraft)
@@ -695,17 +870,17 @@ function ActiveStep({
                     : isLastFormStep
                       ? "Submit"
                       : "Continue"}
-              </button>
-            </div>
+              </Button>
+            </ButtonGroup>
           )}
           {currentStep.stepId !== "submission-confirmation" &&
             isLastFormStep &&
             isDraft && (
-              <p className="govbb-hint" data-testid="draft-submit-hint">
+              <Hint data-testid="draft-submit-hint">
                 Submitting is disabled for an unpublished draft. Set the
                 form&apos;s visibility to Preview or Public and publish it to
                 enable submission.
-              </p>
+              </Hint>
             )}
         </div>
       </div>

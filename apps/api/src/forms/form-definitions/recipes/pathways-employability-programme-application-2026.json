@@ -207,7 +207,6 @@
         {
           "ref": "components/name",
           "overrides": {
-            "hint": "Optional",
             "label": "Religion",
             "fieldId": "applicant-religion"
           }

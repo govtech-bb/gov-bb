@@ -211,14 +211,6 @@
               }
             }
           }
-        },
-        {
-          "ref": "components/date-of-birth",
-          "overrides": {
-            "label": "Date of declaration",
-            "fieldId": "declaration-date",
-            "isHidden": true
-          }
         }
       ]
     },
@@ -244,6 +236,26 @@
       "config": {
         "subject": "Your application for Barbados YouthADVANCE Corps (BYAC) has been received",
         "recipientField": "applicant-details.applicant-email"
+      }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "mapping": {
+          "programmeCode": "BYAC",
+          "applicant": {
+            "name": [
+              "applicant-details.applicant-first-name",
+              "applicant-details.applicant-last-name"
+            ],
+            "email": "applicant-details.applicant-email",
+            "phone": "applicant-details.applicant-phone"
+          },
+          "excludeSteps": [
+            "declaration",
+            "submission-confirmation"
+          ]
+        }
       }
     }
   ],

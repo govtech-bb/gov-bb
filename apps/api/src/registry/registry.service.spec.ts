@@ -278,6 +278,53 @@ describe("hydrateStep", () => {
     );
     expect(result.conditionalTitle).toBeUndefined();
   });
+
+  it("carries conditionalMarkdown through to the served step (#2068)", async () => {
+    // The trap #871 set for conditionalTitle: a step property the live serving
+    // path reads is silently dropped from the citizen-facing contract unless
+    // hydrateStep returns it — leaving every `{token}` in the confirmation
+    // body unfilled. Asserted on the SERVED step, not the recipe file.
+    const resolver = vi.fn().mockResolvedValue(primitiveEntry);
+    const conditionalMarkdown = [
+      {
+        token: "inspection",
+        default: "An officer may arrange an inspection.",
+        variants: [
+          {
+            targetStepId: "food-safety",
+            targetFieldId: "has-food-licence",
+            operator: "equal" as const,
+            value: "no",
+            content: "An officer will inspect your set-up.",
+          },
+        ],
+      },
+    ];
+    const result = await hydrateStep(
+      {
+        stepId: "submission-confirmation",
+        title: "Application submitted",
+        markdownContent: "Lead.\n\n{inspection}",
+        conditionalMarkdown,
+        elements: [{ ref: "components/first-name" }],
+      },
+      resolver,
+    );
+    expect(result.conditionalMarkdown).toEqual(conditionalMarkdown);
+  });
+
+  it("leaves conditionalMarkdown undefined when the step has none", async () => {
+    const resolver = vi.fn().mockResolvedValue(primitiveEntry);
+    const result = await hydrateStep(
+      {
+        stepId: "step-1",
+        title: "Step 1",
+        elements: [{ ref: "components/first-name" }],
+      },
+      resolver,
+    );
+    expect(result.conditionalMarkdown).toBeUndefined();
+  });
 });
 
 // ─── hydrateForm ───────────────────────────────────────────────────────────
@@ -352,6 +399,28 @@ describe("hydrateForm", () => {
   it("leaves closingDateTime undefined when the recipe sets none", async () => {
     const result = await hydrateForm(baseRecipe, resolver);
     expect(result.closingDateTime).toBeUndefined();
+  });
+
+  // Regression: the submission pipeline hydrates through THIS resolver (not
+  // @govtech-bb/form-builder's). catchmentRouting was dropped here, so
+  // resolvedCatchment was never computed and the webhook fell back to the
+  // static programmeCode — while form-builder's copy (which has the field, and
+  // its own tests) kept CI green. Guard the field on the api-side hydrate.
+  it("carries catchmentRouting through to the served contract (submission path)", async () => {
+    const catchmentRouting = {
+      coordinatesField: "event-details.event-address-coordinates",
+      parishField: "event-details.event-parish",
+    };
+    const result = await hydrateForm(
+      { ...baseRecipe, catchmentRouting },
+      resolver,
+    );
+    expect(result.catchmentRouting).toEqual(catchmentRouting);
+  });
+
+  it("leaves catchmentRouting undefined when the recipe has none", async () => {
+    const result = await hydrateForm(baseRecipe, resolver);
+    expect(result.catchmentRouting).toBeUndefined();
   });
 });
 

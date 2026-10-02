@@ -38,6 +38,22 @@ describe("formStepSchema", () => {
     ).toBe(false);
   });
 
+  it("preserves an optional hideReferenceNumber flag", () => {
+    expect(
+      formStepSchema.parse({ ...validStep, hideReferenceNumber: true })
+        .hideReferenceNumber,
+    ).toBe(true);
+    // omitted → undefined (the Submission ID shows as before)
+    expect(formStepSchema.parse(validStep).hideReferenceNumber).toBeUndefined();
+  });
+
+  it("rejects a non-boolean hideReferenceNumber", () => {
+    expect(
+      formStepSchema.safeParse({ ...validStep, hideReferenceNumber: "yes" })
+        .success,
+    ).toBe(false);
+  });
+
   it("accepts and preserves a conditionalTitle array", () => {
     const parsed = formStepSchema.parse({
       ...validStep,
@@ -90,6 +106,109 @@ describe("formStepSchema", () => {
         ],
       }).success,
     ).toBe(false);
+  });
+
+  it("accepts and preserves a conditionalMarkdown array", () => {
+    const conditionalMarkdown = [
+      {
+        token: "officerRequest",
+        default: "",
+        variants: [
+          {
+            targetStepId: "event-organiser",
+            targetFieldId: "is-organiser",
+            operator: "equal" as const,
+            value: "yes",
+            content: "An officer has been requested.",
+          },
+        ],
+      },
+    ];
+    const parsed = formStepSchema.parse({
+      ...validStep,
+      markdownContent: "Lead.\n\n{officerRequest}",
+      conditionalMarkdown,
+    });
+    expect(parsed.conditionalMarkdown).toEqual(conditionalMarkdown);
+  });
+
+  it("accepts an empty-string default (the passage is omitted)", () => {
+    const parsed = formStepSchema.parse({
+      ...validStep,
+      conditionalMarkdown: [
+        {
+          token: "officerRequest",
+          default: "",
+          variants: [
+            {
+              targetFieldId: "is-organiser",
+              operator: "equal",
+              value: "yes",
+              content: "Requested.",
+            },
+          ],
+        },
+      ],
+    });
+    expect(parsed.conditionalMarkdown?.[0].default).toBe("");
+  });
+
+  it("rejects a conditionalMarkdown segment with no variants", () => {
+    // A segment with nothing to branch on is always its default — a recipe
+    // authoring mistake, not a conditional.
+    expect(() =>
+      formStepSchema.parse({
+        ...validStep,
+        conditionalMarkdown: [
+          { token: "inspection", default: "Fallback.", variants: [] },
+        ],
+      }),
+    ).toThrow();
+  });
+
+  it("rejects a non-camelCase conditionalMarkdown token", () => {
+    // The token is written `{token}` inside markdownContent alongside the
+    // interpolator's own camelCase tokens.
+    expect(() =>
+      formStepSchema.parse({
+        ...validStep,
+        conditionalMarkdown: [
+          {
+            token: "officer-request",
+            default: "",
+            variants: [
+              {
+                targetFieldId: "is-organiser",
+                operator: "equal",
+                value: "yes",
+                content: "Requested.",
+              },
+            ],
+          },
+        ],
+      }),
+    ).toThrow();
+  });
+
+  it("rejects a conditionalMarkdown variant missing its content", () => {
+    expect(() =>
+      formStepSchema.parse({
+        ...validStep,
+        conditionalMarkdown: [
+          {
+            token: "inspection",
+            default: "Fallback.",
+            variants: [
+              {
+                targetFieldId: "has-food-licence",
+                operator: "equal",
+                value: "no",
+              },
+            ],
+          },
+        ],
+      }),
+    ).toThrow();
   });
 
   it("rejects missing stepId", () => {

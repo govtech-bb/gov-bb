@@ -1,4 +1,5 @@
 import type { Processor } from "@govtech-bb/form-types";
+import type { CatchmentResolution } from "@/catchment/catchment-routing.service";
 import type {
   SubmissionValues,
   SubmissionAuditTrail,
@@ -29,4 +30,6 @@ export interface SubmissionSqsMessage {
   meta: SubmissionAuditTrail;
   processors: Processor[];
   enqueuedAt: string; // ISO-8601
+  /** Resolved event-location catchment; see SubmissionCreatedEvent. */
+  resolvedCatchment?: CatchmentResolution;
 }

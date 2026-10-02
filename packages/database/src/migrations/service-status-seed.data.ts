@@ -164,10 +164,6 @@ export const SERVICE_STATUS_SEED_ROWS: {
     status: "enabled",
   },
   {
-    slug: "ministry-of-eduction-application-for-job-letter",
-    status: "disabled",
-  },
-  {
     slug: "mission-barbados",
     status: "disabled",
   },
@@ -194,10 +190,6 @@ export const SERVICE_STATUS_SEED_ROWS: {
   {
     slug: "national-summer-camp-2025-registration",
     status: "form_disabled",
-  },
-  {
-    slug: "nhc-application-rental-unit",
-    status: "disabled",
   },
   {
     slug: "nhc-land-property-application",

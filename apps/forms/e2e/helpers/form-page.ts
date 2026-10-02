@@ -35,10 +35,13 @@ export class FormPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.continueBtn = page.locator(".govbb-btn-group button.govbb-btn");
-    this.previousBtn = page.locator(
-      ".govbb-btn-group button.govbb-btn--secondary",
-    );
+    this.continueBtn = page
+      .getByRole("main")
+      .getByRole("button", { name: /^(Continue|Submit)$/ });
+    this.previousBtn = page.getByRole("button", {
+      name: "Previous",
+      exact: true,
+    });
     this.errorSummary = page.locator(".govbb-error-summary");
   }
 
@@ -115,63 +118,30 @@ export class FormPage {
       .selectOption(value);
   }
 
-  /**
-   * Click a radio option by the visible label text.
-   *
-   * All radio inputs within a field share the same `id` attribute (a known
-   * limitation of the current renderer), so we locate by filtering the
-   * [data-radio-group] that owns an input with the expected id, then clicking
-   * the [data-radio-item] whose label matches.
-   */
   async clickRadio(fieldFullId: string, labelText: string): Promise<void> {
-    const group = this.page.locator(".govbb-fieldset").filter({
-      has: this.page.locator(`input[id="${escId(fieldFullId)}"]`),
-    });
-    // Use an exact-match regex so "Male" does not accidentally match "Female".
-    const exactLabel = new RegExp(
-      `^\\s*${labelText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`,
-    );
-    const item = group.locator(".govbb-radio-item").filter({
-      has: this.page.locator("label", { hasText: exactLabel }),
-    });
-    await item.locator("input[type=radio]").first().click();
+    await this.page
+      .locator(`fieldset[id="${escId(fieldFullId)}"]`)
+      .getByRole("radio", { name: labelText, exact: true })
+      .check();
   }
 
-  /**
-   * Toggle a checkbox option by its label text.
-   * Works for both single-option and multi-option checkbox fields.
-   */
+  /** Toggle either a single-option or multi-option checkbox by its label. */
   async clickCheckbox(fieldFullId: string, labelText: string): Promise<void> {
-    const group = this.page.locator(".govbb-fieldset").filter({
-      has: this.page.locator(`input[id="${escId(fieldFullId)}"]`),
-    });
-    const exactLabel = new RegExp(
-      `^\\s*${labelText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`,
-    );
-    const option = group.locator(".govbb-checkbox-item").filter({
-      has: this.page.locator("label", { hasText: exactLabel }),
-    });
-    await option.locator("input").first().click();
+    await this.page
+      .locator(`fieldset[id="${escId(fieldFullId)}"]`)
+      .getByRole("checkbox", { name: labelText, exact: true })
+      .click();
   }
 
-  /**
-   * Fill a date field (day / month / year).
-   * Dates are rendered as three separate number inputs inside [data-date-part]
-   * divs, all sharing the same `id`.  We locate the enclosing fieldset first.
-   */
   async fillDate(
     fieldFullId: string,
     day: number,
     month: number,
     year: number,
   ): Promise<void> {
-    const dateField = this.page.locator(".govbb-fieldset").filter({
-      has: this.page.locator(`input[id="${escId(fieldFullId)}"]`),
-    });
-    const parts = dateField.locator(".govbb-date-input__part");
-    await parts.nth(0).locator("input").fill(String(day));
-    await parts.nth(1).locator("input").fill(String(month));
-    await parts.nth(2).locator("input").fill(String(year));
+    await this.fillText(`${fieldFullId}-day`, String(day));
+    await this.fillText(`${fieldFullId}-month`, String(month));
+    await this.fillText(`${fieldFullId}-year`, String(year));
   }
 
   /**
@@ -187,15 +157,24 @@ export class FormPage {
       `input[type=file][id="${escId(fieldFullId)}"]`,
     );
     const payload = Array.isArray(files) ? files : [files];
+    const finished = this.page
+      .locator(".form-page__file-field")
+      .filter({ has: input })
+      .getByRole("button", { name: /^(Remove|Dismiss) / });
+    const previousCount = await finished.count();
     await input.setInputFiles(payload);
+    await expect(finished).toHaveCount(previousCount + payload.length);
   }
 
   /** Click the "Remove" button next to the nth uploaded file (0-based). */
   async removeUploadedFile(fieldFullId: string, index: number): Promise<void> {
     const fileField = this.page
-      .locator(".govbb-file-upload")
+      .locator(".form-page__file-field")
       .filter({ has: this.page.locator(`input[id="${escId(fieldFullId)}"]`) });
-    await fileField.locator(".govbb-btn--destructive-link").nth(index).click();
+    await fileField
+      .getByRole("button", { name: /^Remove / })
+      .nth(index)
+      .click();
   }
 
   // ─── Assertions ────────────────────────────────────────────────────────────
@@ -203,7 +182,10 @@ export class FormPage {
   /** Assert that an inline [data-error] with the given message is visible. */
   async expectError(message: string): Promise<void> {
     await expect(
-      this.page.locator(".govbb-error-message", { hasText: message }),
+      this.page.locator(
+        ".govbb-error-message, .govbb-file-upload__status--error",
+        { hasText: message },
+      ),
     ).toBeVisible();
   }
 
@@ -372,77 +354,12 @@ export class FormPage {
     }
   }
 
-  /**
-   * Fill Step 5 — Financial Information (source step).
-   *
-   * The source step (`step-5-financial-information`) contains the shared field
-   * `has-bank-account` plus all the non-shared financial fields.
-   */
-  async fillStep5Source(opts?: {
-    hasBankAccount?: boolean;
-    bankName?: string;
-    accountTypeValue?: string;
-    accountNumber?: string;
-    swiftCode?: string;
-    initialDeposit?: string;
-    fundSourceLabel?: string;
-  }): Promise<void> {
-    const s = "step-5-financial-information";
-    const o = opts ?? {};
-    const hasBankAccount = o.hasBankAccount ?? true;
-
-    if (hasBankAccount) {
-      // default is "confirmed" — may already be checked, but ensure it is
-      const checkbox = this.page
-        .locator(".govbb-fieldset")
-        .filter({
-          has: this.page.locator(
-            `input[id="${escId(this.fid(s, "has-bank-account"))}"]`,
-          ),
-        })
-        .locator(".govbb-checkbox-item")
-        .filter({ hasText: "I do" })
-        .locator("input");
-      const isChecked = await checkbox.isChecked();
-      if (!isChecked) await checkbox.click();
-
-      await this.fillText(
-        this.fid(s, "bank-name"),
-        o.bankName ?? "National Bank",
-      );
-      await this.selectOption(
-        this.fid(s, "account-type"),
-        o.accountTypeValue ?? "current",
-      );
-      await this.fillText(
-        this.fid(s, "account-number"),
-        o.accountNumber ?? "12345678",
-      );
-      await this.fillText(this.fid(s, "swift-code"), o.swiftCode ?? "123456");
-    } else {
-      // Uncheck if already checked (default is confirmed)
-      const checkbox = this.page
-        .locator(".govbb-fieldset")
-        .filter({
-          has: this.page.locator(
-            `input[id="${escId(this.fid(s, "has-bank-account"))}"]`,
-          ),
-        })
-        .locator(".govbb-checkbox-item")
-        .filter({ hasText: "I do" })
-        .locator("input");
-      const isChecked = await checkbox.isChecked();
-      if (isChecked) await checkbox.click();
-    }
-
-    await this.fillNumber(
-      this.fid(s, "initial-deposit"),
-      o.initialDeposit ?? "1000",
-    );
-    await this.clickRadio(
-      this.fid(s, "fund-source"),
-      o.fundSourceLabel ?? "Employment Income",
-    );
+  /** The source step contains only the shared bank-account question. */
+  async fillStep5Source(opts?: { hasBankAccount?: boolean }): Promise<void> {
+    await this.page
+      .locator('fieldset[id="step-5-financial-information_has-bank-account"]')
+      .getByRole("checkbox", { name: "I do", exact: true })
+      .setChecked(opts?.hasBankAccount ?? true);
   }
 
   /**
@@ -487,9 +404,9 @@ export class FormPage {
 
     // Answer the "Add another?" radio if present
     const addAnotherFid = this.fid(repeatStepId, "addAnother");
-    const addAnotherGroup = this.page.locator(".govbb-fieldset").filter({
-      has: this.page.locator(`input[id="${escId(addAnotherFid)}"]`),
-    });
+    const addAnotherGroup = this.page.locator(
+      `fieldset[id="${escId(addAnotherFid)}"]`,
+    );
     if ((await addAnotherGroup.count()) > 0) {
       await this.clickRadio(addAnotherFid, o.addAnotherAnswer ?? "No");
     }

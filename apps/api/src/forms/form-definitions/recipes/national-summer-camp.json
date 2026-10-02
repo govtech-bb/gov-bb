@@ -9,6 +9,27 @@
         "recipientField": "applicant-details.applicant-email",
         "subject": "Your application for National Summer Camp Programme has been received"
       }
+    },
+    {
+      "type": "webhook",
+      "config": {
+        "mapping": {
+          "programmeCode": "CAMP",
+          "applicant": {
+            "name": [
+              "applicant-details.applicant-first-name",
+              "applicant-details.applicant-last-name"
+            ],
+            "email": "applicant-details.applicant-email",
+            "phone": "applicant-details.applicant-phone"
+          },
+          "excludeSteps": [
+            "check-your-answers",
+            "declaration",
+            "submission-confirmation"
+          ]
+        }
+      }
     }
   ],
   "steps": [
@@ -244,24 +265,6 @@
                 "value": "confirmed"
               }
             ]
-          }
-        },
-        {
-          "ref": "components/generic-date",
-          "overrides": {
-            "fieldId": "declaration-date-of-declaration",
-            "label": "Date of declaration",
-            "validations": {
-              "required": {
-                "error": "Date is required",
-                "value": true
-              },
-              "pastOrToday": {
-                "error": "Date must be today or in the past",
-                "value": true
-              }
-            },
-            "isHidden": true
           }
         }
       ],

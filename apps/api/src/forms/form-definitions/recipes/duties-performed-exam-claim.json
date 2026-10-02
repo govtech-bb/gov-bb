@@ -19,28 +19,52 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "First Name",
-            "fieldId": "first-name"
+            "fieldId": "first-name",
+            "validations": {
+              "required": {
+                "error": "First Name is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Last Name",
-            "fieldId": "last-name"
+            "fieldId": "last-name",
+            "validations": {
+              "required": {
+                "error": "Last Name is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Other Names",
-            "fieldId": "other-names"
+            "fieldId": "other-names",
+            "validations": {
+              "required": {
+                "error": "Other Names are required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "ID Number",
-            "fieldId": "id-number"
+            "fieldId": "id-number",
+            "validations": {
+              "required": {
+                "error": "ID Number is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -48,70 +72,130 @@
           "overrides": {
             "label": "Address",
             "fieldId": "address",
-            "multiline": true
+            "multiline": true,
+            "validations": {
+              "required": {
+                "error": "Address is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Parish",
-            "fieldId": "parish"
+            "fieldId": "parish",
+            "validations": {
+              "required": {
+                "error": "Parish is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Email",
-            "fieldId": "email"
+            "fieldId": "email",
+            "validations": {
+              "required": {
+                "error": "Email is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Telephone",
-            "fieldId": "telephone"
+            "fieldId": "telephone",
+            "validations": {
+              "required": {
+                "error": "Telephone is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Tamis No",
-            "fieldId": "tamis-no"
+            "fieldId": "tamis-no",
+            "validations": {
+              "required": {
+                "error": "Tamis No is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Supervisor",
-            "fieldId": "supervisor"
+            "fieldId": "supervisor",
+            "validations": {
+              "required": {
+                "error": "Supervisor is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "NIS No",
-            "fieldId": "nis-no"
+            "fieldId": "nis-no",
+            "validations": {
+              "required": {
+                "error": "NIS No is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Exam Period",
-            "fieldId": "exam-period"
+            "fieldId": "exam-period",
+            "validations": {
+              "required": {
+                "error": "Exam Period is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Claim Period From",
-            "fieldId": "claim-period-from"
+            "fieldId": "claim-period-from",
+            "validations": {
+              "required": {
+                "error": "Claim Period From is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Claim Period To",
-            "fieldId": "claim-period-to"
+            "fieldId": "claim-period-to",
+            "validations": {
+              "required": {
+                "error": "Claim Period To is required",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -255,7 +339,13 @@
           "overrides": {
             "label": "Section B Total",
             "fieldId": "section-b-total",
-            "readonly": true
+            "readonly": true,
+            "validations": {
+              "required": {
+                "error": "Section B Total is required",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -382,7 +472,13 @@
           "overrides": {
             "label": "Section C Total",
             "fieldId": "section-c-total",
-            "readonly": true
+            "readonly": true,
+            "validations": {
+              "required": {
+                "error": "Section C Total is required",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -509,7 +605,13 @@
           "overrides": {
             "label": "Section D Total",
             "fieldId": "section-d-total",
-            "readonly": true
+            "readonly": true,
+            "validations": {
+              "required": {
+                "error": "Section D Total is required",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -523,35 +625,65 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Bank/Branch",
-            "fieldId": "bank-branch"
+            "fieldId": "bank-branch",
+            "validations": {
+              "required": {
+                "error": "Bank/Branch is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Name on Account",
-            "fieldId": "name-on-account"
+            "fieldId": "name-on-account",
+            "validations": {
+              "required": {
+                "error": "Name on Account is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Account No",
-            "fieldId": "account-no"
+            "fieldId": "account-no",
+            "validations": {
+              "required": {
+                "error": "Account No is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "BIC/Swift No",
-            "fieldId": "bic-swift-no"
+            "fieldId": "bic-swift-no",
+            "validations": {
+              "required": {
+                "error": "BIC/Swift No is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Account Type",
-            "fieldId": "account-type"
+            "fieldId": "account-type",
+            "validations": {
+              "required": {
+                "error": "Account Type is required",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -567,21 +699,39 @@
             "label": "I hereby claim the sum of",
             "prefix": "$",
             "fieldId": "claim-amount",
-            "readonly": true
+            "readonly": true,
+            "validations": {
+              "required": {
+                "error": "Enter the sum you are claiming",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Signature of Claimant",
-            "fieldId": "claimant-signature"
+            "fieldId": "claimant-signature",
+            "validations": {
+              "required": {
+                "error": "Signature of Claimant is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Date",
-            "fieldId": "claimant-date"
+            "fieldId": "claimant-date",
+            "validations": {
+              "required": {
+                "error": "Date is required",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -595,42 +745,78 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Signature of Supervisor",
-            "fieldId": "supervisor-signature"
+            "fieldId": "supervisor-signature",
+            "validations": {
+              "required": {
+                "error": "Signature of Supervisor is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Date",
-            "fieldId": "supervisor-date"
+            "fieldId": "supervisor-date",
+            "validations": {
+              "required": {
+                "error": "Date is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Examination Verifier Signature",
-            "fieldId": "exam-verifier-signature"
+            "fieldId": "exam-verifier-signature",
+            "validations": {
+              "required": {
+                "error": "Examination Verifier Signature is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Date",
-            "fieldId": "exam-verifier-date"
+            "fieldId": "exam-verifier-date",
+            "validations": {
+              "required": {
+                "error": "Date is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Accounting Officer Signature",
-            "fieldId": "accounting-officer-signature"
+            "fieldId": "accounting-officer-signature",
+            "validations": {
+              "required": {
+                "error": "Accounting Officer Signature is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "Date",
-            "fieldId": "accounting-officer-date"
+            "fieldId": "accounting-officer-date",
+            "validations": {
+              "required": {
+                "error": "Date is required",
+                "value": true
+              }
+            }
           }
         }
       ],

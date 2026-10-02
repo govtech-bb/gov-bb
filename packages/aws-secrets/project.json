@@ -8,7 +8,7 @@
       "executor": "@nx/js:tsc",
       "outputs": ["{options.outputPath}"],
       "options": {
-        "outputPath": "dist/packages/aws-secrets",
+        "outputPath": "packages/aws-secrets/dist",
         "tsConfig": "packages/aws-secrets/tsconfig.json",
         "main": "packages/aws-secrets/src/index.ts"
       }

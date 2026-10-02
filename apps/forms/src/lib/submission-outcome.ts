@@ -1,4 +1,5 @@
 import { FormSubmissionResponse, SubmissionState } from "@forms/types";
+import type { SummarySection } from "@govtech-bb/submission-summary";
 
 type SubmissionEvent =
   | { name: "form-submit-success" }
@@ -19,6 +20,8 @@ export interface SubmissionOutcome {
  */
 export function resolveSubmissionOutcome(
   response: FormSubmissionResponse,
+  resolvedMarkdown?: string,
+  sections?: SummarySection[],
 ): SubmissionOutcome {
   const base = {
     // Prefer the human-readable referenceCode (e.g. "JPP-20260604-130732-9JZRZC")
@@ -30,6 +33,22 @@ export function resolveSubmissionOutcome(
     // formatDate() handle it cleanly.
     date: response.data.submittedAt ?? undefined,
     serviceName: response.data.formId,
+    // Polyclinic the catchment router resolved (coordinate-routed forms only).
+    // The confirmation page substitutes it into the `{polyclinic}` token; absent
+    // for every other form, where the token falls back to a generic phrase.
+    polyclinic: response.meta?.resolvedPolyclinic,
+    // The routed polyclinic's single contact line (coordinate-routed forms
+    // only). The confirmation page substitutes it into the `{polyclinicContact}`
+    // token so only that clinic's details are shown; absent for every other
+    // form, where the token falls back to the full clinic list (#254).
+    polyclinicContact: response.meta?.resolvedPolyclinicContact,
+    // Confirmation body with its per-answer passages already filled (#2068).
+    // Resolved by the caller while the answers are still in the form store —
+    // submit success clears the draft, so it cannot be recomputed later.
+    resolvedMarkdown,
+    // The answers as labelled sections for the printed copy (#2587), built by
+    // the caller for the same reason and at the same moment.
+    sections,
   };
 
   // Drive the UI off the SUBMISSION status (`data.status`: submitted /

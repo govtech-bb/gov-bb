@@ -16,6 +16,12 @@ export interface FormMeta {
   /** Application deadline (#1936); when past, the closed page is shown. */
   closingDateTime?: string;
   steps: ClientFormStep[];
+  /** The contract's steps before `setupRepeatSteps` split the repeatables
+   * across a shared page and one page per instance. The printed confirmation
+   * builds its sections from these, so the paper copy carries each instance's
+   * own answers in the order the recipe asks for them — the same list, in the
+   * same order, that the API renders the MDA email from. */
+  contractSteps: ClientFormStep[];
   defaultValues: Record<string, unknown>;
   validationProperties: Record<string, FieldValidationProperties>;
   stepConditionalTargets: Record<stepId, fieldId>;

@@ -10,7 +10,7 @@
         "{options.outputPath}"
       ],
       "options": {
-        "outputPath": "dist/packages/form-conditions",
+        "outputPath": "packages/form-conditions/dist",
         "tsConfig": "packages/form-conditions/tsconfig.json",
         "main": "packages/form-conditions/src/index.ts"
       }

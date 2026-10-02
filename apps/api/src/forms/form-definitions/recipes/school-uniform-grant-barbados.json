@@ -198,14 +198,26 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "N.I.S NO",
-            "fieldId": "parent-nlis-no"
+            "fieldId": "parent-nlis-no",
+            "validations": {
+              "required": {
+                "error": "N.I.S NO is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "TAMIS NO",
-            "fieldId": "parent-tamis-no"
+            "fieldId": "parent-tamis-no",
+            "validations": {
+              "required": {
+                "error": "TAMIS NO is required",
+                "value": true
+              }
+            }
           }
         }
       ],

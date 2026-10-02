@@ -41,6 +41,8 @@ function makeUploaded(
   };
 }
 
+// A field with no `fileTypes` is a recipe defect, so the shared fixture
+// declares one. The unconstrained case has its own tests below.
 const baseField: FileUploadProps["field"] = {
   id: "step-1.doc-field",
   fieldId: "doc-field",
@@ -52,6 +54,17 @@ const baseField: FileUploadProps["field"] = {
   hidden: false,
   conditionallyHidden: false,
   behaviours: [],
+  validations: {
+    fileTypes: {
+      value: ["application/pdf", "image/png", "image/jpeg"],
+      error: "Upload a PDF, PNG or JPEG",
+    },
+  },
+};
+
+const noFileTypesField: FileUploadProps["field"] = {
+  ...baseField,
+  validations: {},
 };
 
 const baseSharedProps: FileUploadProps["sharedProps"] = {
@@ -244,10 +257,18 @@ describe("FileUpload", () => {
         selector: ".govbb-file-upload__status--error",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent(
-      /bad\.pdf:.*file upload failed/i,
-    );
+    expect(
+      screen.getByText(/bad\.pdf:.*file upload failed/i, {
+        selector: '[role="status"]',
+      }),
+    ).toBeInTheDocument();
     expect(onFileChange).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Dismiss bad.pdf" }));
+    expect(fileInput).toHaveFocus();
+    expect(
+      screen.queryByRole("button", { name: "Dismiss bad.pdf" }),
+    ).toBeNull();
   });
 
   it("rejects an oversize file client-side without calling the upload API", async () => {
@@ -255,7 +276,7 @@ describe("FileUpload", () => {
     const { onFileChange, fileInput } = renderComponent({
       field: {
         ...baseField,
-        validations: { maxSize: { value: 1024 } }, // 1KB cap
+        validations: { ...baseField.validations, maxSize: { value: 1024 } }, // 1KB cap
       },
     });
 
@@ -266,9 +287,11 @@ describe("FileUpload", () => {
         selector: ".govbb-file-upload__status--error",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent(
-      /huge\.pdf:.*larger than/i,
-    );
+    expect(
+      screen.getByText(/huge\.pdf:.*larger than/i, {
+        selector: '[role="status"]',
+      }),
+    ).toBeInTheDocument();
     expect(mockUploadFile).not.toHaveBeenCalled();
     expect(onFileChange).not.toHaveBeenCalled();
   });
@@ -298,7 +321,9 @@ describe("FileUpload", () => {
     const user = userEvent.setup();
     const fileA = makeUploaded("alpha.pdf");
     const fileB = makeUploaded("beta.pdf", "application/pdf", 200);
-    const { onFileChange } = renderComponent({ value: [fileA, fileB] });
+    const { onFileChange, fileInput } = renderComponent({
+      value: [fileA, fileB],
+    });
 
     expect(screen.getByText("alpha.pdf")).toBeInTheDocument();
     expect(screen.getByText("beta.pdf")).toBeInTheDocument();
@@ -310,6 +335,7 @@ describe("FileUpload", () => {
     const remaining = onFileChange.mock.calls[0][0] as UploadedFile[];
     expect(remaining).toHaveLength(1);
     expect(remaining[0].name).toBe("beta.pdf");
+    expect(fileInput).toHaveFocus();
   });
 
   it("calls onFileChange with null when the only file is removed", async () => {
@@ -385,9 +411,151 @@ describe("FileUpload", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders fallback description when no fileTypes validation is set", () => {
-    renderComponent();
+  it("warns in the console for a field with no fileTypes without blocking the applicant", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    renderComponent({ field: { ...noFileTypesField, hint: undefined } });
+
+    // Whoever is reviewing the form needs to see this even though the applicant
+    // is shown nothing — it is a recipe defect, not applicant error.
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("no `fileTypes` validation is configured"),
+    );
+    expect(
+      screen.queryByText(/not correctly configured/i),
+    ).not.toBeInTheDocument();
+    warn.mockRestore();
+  });
+
+  // A field with no allowlist must not become impossible to satisfy — that is
+  // the bug this branch set out to fix. It takes a typed file (the same call the
+  // API's presign gate makes) and refuses only one it cannot identify.
+  it("uploads a typed file against a field with no fileTypes", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const user = userEvent.setup();
+    const { onFileChange, fileInput } = renderComponent({
+      field: noFileTypesField,
+    });
+
+    await user.upload(fileInput, makeFile("a.pdf", "application/pdf", 10));
+
+    await waitFor(() => expect(mockUploadFile).toHaveBeenCalledTimes(1));
+    expect(onFileChange).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("refuses an unidentifiable file against a field with no fileTypes", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const user = userEvent.setup();
+    const { onFileChange, fileInput } = renderComponent({
+      field: noFileTypesField,
+    });
+
+    await user.upload(fileInput, makeFile("scan", "", 10));
+
+    expect(
+      await screen.findByText(/file type could not be identified/i, {
+        selector: ".govbb-file-upload__status--error",
+      }),
+    ).toBeInTheDocument();
+    expect(mockUploadFile).not.toHaveBeenCalled();
+    expect(onFileChange).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  // #2384: the form builder wrote `fileTypes.value` as a comma-separated
+  // string, which reached this component and threw "map is not a function" —
+  // the error boundary then replaced the whole step with "Something went
+  // wrong", making the form impossible to navigate past. The schema now
+  // rejects that shape, but DB drafts never pass through CI, so the renderer
+  // tolerates it the way `fileTypesRunner` already does.
+  it("tolerates a comma-separated fileTypes string instead of crashing", () => {
+    renderComponent({
+      field: {
+        ...baseField,
+        validations: {
+          fileTypes: {
+            value: "application/pdf,image/jpeg,image/png",
+          } as unknown as { value: string[] },
+        },
+      },
+    });
+    expect(
+      screen.getByText(/attach a pdf, jpeg, or png file/i),
+    ).toBeInTheDocument();
+  });
+
+  it("constrains the native picker when fileTypes is a comma-separated string", () => {
+    const { container } = renderComponent({
+      field: {
+        ...baseField,
+        validations: {
+          fileTypes: {
+            value: ".pdf,.docx",
+          } as unknown as { value: string[] },
+        },
+      },
+    });
+    expect(container.querySelector("input[type=file]")).toHaveAttribute(
+      "accept",
+      ".pdf,.docx",
+    );
+  });
+
+  it("renders the authored hint instead of the derived file-type description, without leaking raw MIME subtypes", () => {
+    const { fileInput } = renderComponent({
+      sharedProps: {
+        ...baseSharedProps,
+        "aria-describedby": `${baseField.id}-hint`,
+      },
+      field: {
+        ...baseField,
+        hint: "A list of the food vendors taking part in your event. PDF, JPG, PNG, DOC or DOCX.",
+        validations: {
+          fileTypes: {
+            value: [
+              "application/pdf",
+              "image/jpeg",
+              "image/png",
+              "application/msword",
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ],
+          },
+        },
+      },
+    });
+    expect(
+      screen.getByText(
+        "A list of the food vendors taking part in your event. PDF, JPG, PNG, DOC or DOCX.",
+      ),
+    ).toBeInTheDocument();
+    expect(fileInput).toHaveAccessibleDescription(
+      "A list of the food vendors taking part in your event. PDF, JPG, PNG, DOC or DOCX.",
+    );
+    expect(
+      screen.queryByText(
+        /vnd\.openxmlformats-officedocument\.wordprocessingml\.document/i,
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says there are no file type restrictions when both hint and fileTypes are absent", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    renderComponent({ field: { ...noFileTypesField, hint: undefined } });
     expect(screen.getByText(/no file type restrictions/i)).toBeInTheDocument();
+    warn.mockRestore();
+  });
+
+  it("treats a whitespace-only hint as absent, falling back to the derived file-type description", () => {
+    renderComponent({
+      field: {
+        ...baseField,
+        hint: "   ",
+        validations: {
+          fileTypes: { value: ["image/png", "image/jpeg"] },
+        },
+      },
+    });
+    expect(screen.getByText(/attach a png or jpeg file/i)).toBeInTheDocument();
   });
 
   it("derives the accept attribute from MIME-type validations", () => {
@@ -426,8 +594,10 @@ describe("FileUpload", () => {
   });
 
   it("leaves accept empty when no fileTypes validation is set", () => {
-    const { fileInput } = renderComponent();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { fileInput } = renderComponent({ field: noFileTypesField });
     expect(fileInput.accept).toBe("");
+    warn.mockRestore();
   });
 
   // -------------------------------------------------------------------------
@@ -440,10 +610,11 @@ describe("FileUpload", () => {
 
     await user.upload(fileInput, makeFile("report.pdf", "application/pdf", 64));
 
-    const status = screen.getByRole("status");
-    await waitFor(() =>
-      expect(status).toHaveTextContent(/report\.pdf added\./i),
-    );
+    expect(
+      await screen.findByText(/report\.pdf added\./i, {
+        selector: '[role="status"]',
+      }),
+    ).toBeInTheDocument();
   });
 
   it("announces when a file is removed", async () => {
@@ -452,9 +623,11 @@ describe("FileUpload", () => {
 
     await user.click(screen.getByRole("button", { name: /remove/i }));
 
-    expect(screen.getByRole("status")).toHaveTextContent(
-      /alpha\.pdf removed\./i,
-    );
+    expect(
+      screen.getByText(/alpha\.pdf removed\./i, {
+        selector: '[role="status"]',
+      }),
+    ).toBeInTheDocument();
   });
 
   // -------------------------------------------------------------------------
@@ -470,9 +643,23 @@ describe("FileUpload", () => {
     expect(screen.getByText(/5\.0 MB/i)).toBeInTheDocument();
   });
 
-  it("renders '--' for max size when validations has no maxSize", () => {
+  // A recipe that caps per-file size only (`itemMaxSize`) sets no `maxSize`, and
+  // the old "Max Size: --" placeholder read as a broken value rather than as "no
+  // limit" — so the label is omitted entirely instead.
+  it("omits the max-size label entirely when validations has no maxSize", () => {
     renderComponent({ field: { ...baseField, validations: {} } });
-    expect(screen.getByText(/Max Size:.*--/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Max Size/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("--")).not.toBeInTheDocument();
+  });
+
+  it("omits the max-size label when only itemMaxSize (a per-file cap) is set", () => {
+    renderComponent({
+      field: {
+        ...baseField,
+        validations: { itemMaxSize: { value: 5 * 1024 * 1024 } },
+      },
+    });
+    expect(screen.queryByText(/Max Size/i)).not.toBeInTheDocument();
   });
 
   // -------------------------------------------------------------------------

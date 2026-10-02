@@ -1,0 +1,198 @@
+import type { ConditionalMarkdown, FormStep } from "@govtech-bb/form-types";
+import { evaluateCondition, flattenStepValues } from "./internals";
+// Type-only, so this back-reference to the barrel is erased at compile time and
+// creates no runtime cycle — the same shape `internals.ts` already uses.
+import type { StepScopedValues } from "./index";
+
+/**
+ * How one confirmation `{token}` behaves when it is substituted.
+ *
+ * Owned here in exactly one place so the confirmation page and the applicant
+ * email can never drift — they previously carried duplicate
+ * `replaceAll("{polyclinic}", … ?? "your local polyclinic")` literals kept in
+ * step only by a comment (#2201).
+ */
+type TokenSpec = {
+  /** Substituted when the caller has no value for the token. */
+  fallback: string;
+  /**
+   * Applied to a caller-supplied value before substitution. Returning
+   * `undefined` rejects the value and hands the token back to `fallback`.
+   * Tokens without a normaliser substitute whatever the caller passed,
+   * empty string included.
+   */
+  normalise?: (value: string) => string | undefined;
+};
+
+/**
+ * The canonical Environmental Health contact line for every serving polyclinic,
+ * keyed by the **resolved** catchment name — the same name `{polyclinic}`
+ * renders. The single source for both sides of `{polyclinicContact}`: the API
+ * reads one row by resolved catchment (`CATCHMENT_CONTACT` in
+ * `apps/api/src/catchment/polyclinic-routing.ts` is this map), and the
+ * all-clinics fallback below is derived from its values, so the routed single
+ * line and the fallback cannot drift.
+ *
+ * Keyed rather than a flat list because the key is what the API resolves by;
+ * recovering it from the line text would make the prose format load-bearing.
+ * Order is alphabetical and is the order the fallback list renders in.
+ *
+ * NOTE: these names normalise the authored copy ("Randall", "Winston Scott",
+ * "St. Phillip", "… and …") to the routing/GeoJSON spellings ("Randal", "Sir
+ * Winston Scott", "St. Philip", "… & …") so the contact section always agrees
+ * with the `{polyclinic}` name in the same confirmation body (#254).
+ */
+export const POLYCLINIC_CONTACTS: Record<string, string> = {
+  "Branford Taitt Polyclinic":
+    "Branford Taitt Polyclinic - [(246) 536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)",
+  "David Thompson Health & Social Services Complex":
+    "David Thompson Health & Social Services Complex - [(246) 536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)",
+  "Eunice Gibson Polyclinic":
+    "Eunice Gibson Polyclinic - [(246) 536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)",
+  "Maurice Byer Polyclinic":
+    "Maurice Byer Polyclinic - [(246) 536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)",
+  "Randal Phillips Polyclinic":
+    "Randal Phillips Polyclinic - [(246) 536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)",
+  "Sir Winston Scott Polyclinic":
+    "Sir Winston Scott Polyclinic - [(246) 536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)",
+  "St. Philip Polyclinic":
+    "St. Philip Polyclinic - [(246) 536-4240](tel:+12465364240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)",
+};
+
+/**
+ * The `{polyclinicContact}` fallback — every serving clinic listed, for a
+ * non-routed form or a submission nothing resolved for. Each line is a Markdown
+ * bullet so the fallback renders as the same list the recipes used to hardcode
+ * (a bare `\n` join would collapse into one run-on paragraph).
+ */
+export const ALL_POLYCLINIC_CONTACTS_MARKDOWN = Object.values(
+  POLYCLINIC_CONTACTS,
+)
+  .map((line) => `- ${line}`)
+  .join("\n");
+
+const TOKENS = {
+  // Coordinate-routed forms name the resolved polyclinic; non-routed forms and
+  // unresolved submissions read the generic phrase instead.
+  polyclinic: { fallback: "your local polyclinic" },
+
+  // Coordinate-routed forms list only the resolved clinic's contact line;
+  // non-routed forms and unresolved submissions read the full list so the
+  // citizen still has a way to reach the right office (#254).
+  polyclinicContact: {
+    fallback: ALL_POLYCLINIC_CONTACTS_MARKDOWN,
+    // Both branches must be the same Markdown construct. The fallback is a
+    // bullet list, so a routed single line becomes a one-item list rather than
+    // a bare paragraph — recipes place the token at column 0, and `apps/forms`
+    // styles `ul`/`li` with govbb-list--bullet but leaves `p` unmapped, so an
+    // unprefixed line would lose the list treatment the copy was authored in.
+    normalise: (value) => (value ? `- ${value}` : undefined),
+  },
+
+  // Origin of the public landing site, so recipe copy can link to a service
+  // page as `{landingUrl}/business-trade/…` and resolve per environment. Both
+  // confirmation surfaces sit off the landing origin — the confirmation page
+  // is served from `forms.<env>.alpha.gov.bb`, and an email has no base URL at
+  // all — so a root-relative link would 404 on one and be dead on the other.
+  landingUrl: {
+    fallback: "https://alpha.gov.bb",
+    // A trailing slash would double up against the authored `{landingUrl}/path`,
+    // and a blank origin would emit exactly the root-relative link the token
+    // exists to avoid. Both degrade to prod, which is a real page.
+    normalise: (value) => value.replace(/\/+$/, "") || undefined,
+  },
+} satisfies Record<string, TokenSpec>;
+
+/** Values a caller may supply for the known confirmation tokens. */
+export type ConfirmationTokens = {
+  [K in keyof typeof TOKENS]?: string | null;
+};
+
+/**
+ * Substitute confirmation `{token}` placeholders in a recipe's authored
+ * `markdownContent` with the caller-supplied value, or the shared fallback when
+ * the caller has none.
+ *
+ * The single source of truth for both confirmation surfaces — the live
+ * confirmation page (`apps/forms`) and the applicant email (`apps/api`) — so the
+ * copy an applicant sees on screen matches the copy in their email. Callers pass
+ * only the values they have; the fallback lives here, not at the call site.
+ *
+ * Returns `undefined` when `markdownContent` is absent, matching the optional
+ * chaining (`markdownContent?.replaceAll(...)`) both call sites relied on, so
+ * this extraction is behaviour-preserving.
+ */
+export function interpolateConfirmationMarkdown(
+  markdownContent: string | undefined,
+  tokens: ConfirmationTokens,
+): string | undefined {
+  if (markdownContent === undefined) return undefined;
+
+  let result = markdownContent;
+  for (const token of Object.keys(TOKENS) as (keyof typeof TOKENS)[]) {
+    const spec: TokenSpec = TOKENS[token];
+    const supplied = tokens[token];
+    const value =
+      supplied === undefined || supplied === null
+        ? undefined
+        : spec.normalise
+          ? spec.normalise(supplied)
+          : supplied;
+    result = result.replaceAll(`{${token}}`, value ?? spec.fallback);
+  }
+  return result;
+}
+
+/**
+ * Fill the `{token}` placeholders a confirmation body declares in
+ * `conditionalMarkdown` (#2068), each with the passage that matches the
+ * submitted answers.
+ *
+ * Where {@link interpolateConfirmationMarkdown} substitutes *data* (the routed
+ * polyclinic, the landing origin), this substitutes *copy* chosen by an answer:
+ * whether an inspection is certain or merely possible, whether an
+ * officer-request paragraph applies at all. Several passages of one body vary
+ * independently, which is why this is not the whole-body, first-match-wins
+ * shape of `resolveStepTitle` — that would need one full copy of the body per
+ * combination of answers.
+ *
+ * Within a segment the first matching variant wins and `default` is the
+ * fallback, exactly as `conditionalTitle`/`conditionalLabel` behave. A segment
+ * with no match and an empty `default` drops its passage; markdown collapses
+ * the blank lines left behind.
+ *
+ * Run this BEFORE `interpolateConfirmationMarkdown` so a conditional passage
+ * may itself carry `{polyclinic}` / `{landingUrl}`. The corollary: a segment
+ * must not be named after one of those tokens, or it would shadow it.
+ *
+ * Both confirmation surfaces resolve through here — the live page (via the
+ * value persisted at submit, since the draft answers are cleared once the
+ * submission succeeds) and the applicant email — so the branch an applicant
+ * reads on screen is the branch in their inbox.
+ *
+ * Returns `undefined` when the step carries no `markdownContent`, matching
+ * `interpolateConfirmationMarkdown` so the two compose directly.
+ */
+export function resolveConditionalMarkdown(
+  step: Pick<FormStep, "markdownContent" | "conditionalMarkdown">,
+  values: StepScopedValues,
+): string | undefined {
+  const { markdownContent } = step;
+  if (markdownContent === undefined) return undefined;
+
+  const segments: ConditionalMarkdown[] = step.conditionalMarkdown ?? [];
+  if (segments.length === 0) return markdownContent;
+
+  const flatValues = flattenStepValues(values);
+  let result = markdownContent;
+  for (const segment of segments) {
+    const match = segment.variants.find((variant) =>
+      evaluateCondition(variant, values, flatValues),
+    );
+    result = result.replaceAll(
+      `{${segment.token}}`,
+      match?.content ?? segment.default,
+    );
+  }
+  return result;
+}

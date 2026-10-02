@@ -1,6 +1,10 @@
 import { z } from "zod";
 import type { ValidationConfig } from "@govtech-bb/form-types";
-import { durationSince, type DurationUnit } from "@govtech-bb/expressions";
+import {
+  durationSince,
+  durationUntil,
+  type DurationUnit,
+} from "@govtech-bb/expressions";
 import type { RuleRunner } from "../types";
 import { resolveReference, MISSING } from "./resolve-reference";
 
@@ -10,17 +14,24 @@ const TRANSFORM_UNIT: Record<string, DurationUnit> = {
   yearsSince: "years",
   monthsSince: "months",
   daysSince: "days",
+  daysUntil: "days",
 };
 
 // The number the bound is checked against. With `config.transform` set, the
-// field's date value is run through `durationSince` first (e.g. a DOB becomes a
-// whole-year age, #1020); otherwise the raw value is coerced. An invalid/empty
-// date yields NaN, which fails every bound below — the gating the #992 fix
-// needs (a 1903 DOB can't satisfy `max: 24, transform: "yearsSince"`).
-const comparand = (value: unknown, config: ValidationConfig): number =>
-  config.transform
-    ? durationSince(value, TRANSFORM_UNIT[config.transform])
-    : num(value);
+// field's date value is run through a duration primitive first (e.g. a DOB
+// becomes a whole-year age via `yearsSince`, #1020; a future event date becomes
+// a lead time in days via `daysUntil`); otherwise the raw value is coerced. The
+// `*Since` transforms count backwards from today, `daysUntil` forwards to the
+// date. An invalid/empty date yields NaN, which fails every bound below — the
+// gating the #992 fix needs (a 1903 DOB can't satisfy `max: 24, transform:
+// "yearsSince"`).
+const comparand = (value: unknown, config: ValidationConfig): number => {
+  if (!config.transform) return num(value);
+  const unit = TRANSFORM_UNIT[config.transform];
+  return config.transform === "daysUntil"
+    ? durationUntil(value, unit)
+    : durationSince(value, unit);
+};
 
 // Equality used by `equal` / `notEqual`. These rules apply to text fields as
 // well as numbers, so compare numerically only when both sides are genuine

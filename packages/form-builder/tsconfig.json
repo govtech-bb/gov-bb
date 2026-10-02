@@ -10,5 +10,9 @@
     "types": ["vitest/globals", "node"]
   },
   "include": ["src/**/*"],
-  "references": [{ "path": "../form-types" }, { "path": "../registry" }]
+  "references": [
+    { "path": "../form-types" },
+    { "path": "../form-validation" },
+    { "path": "../registry" }
+  ]
 }

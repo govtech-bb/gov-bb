@@ -59,7 +59,13 @@
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "pupil-other-names",
-            "label": "Other Names"
+            "label": "Other Names",
+            "validations": {
+              "required": {
+                "error": "Other Names are required",
+                "value": true
+              }
+            }
           }
         },
         {

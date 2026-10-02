@@ -26,6 +26,10 @@ export default defineConfig({
         // browser bundle). The Umami API key stays here on the server only.
         // Trade-off: rotating a value needs a redeploy.
         runtimeConfig: {
+          // Prod: only the secret's ARN is baked (non-sensitive); the SSR Lambda
+          // fetches the key from Secrets Manager at runtime (see lib/report.ts).
+          // Sandbox/dev still bake the raw key via their pipeline/`.env`.
+          analyticsUmamiSecretArn: process.env.ANALYTICS_UMAMI_SECRET_ARN ?? '',
           umamiApiKey: process.env.UMAMI_API_KEY ?? '',
           umamiLandingWebsiteId: process.env.UMAMI_LANDING_WEBSITE_ID ?? '',
           umamiFormsWebsiteId: process.env.UMAMI_FORMS_WEBSITE_ID ?? '',

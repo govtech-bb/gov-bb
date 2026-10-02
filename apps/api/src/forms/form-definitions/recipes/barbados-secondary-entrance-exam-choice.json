@@ -384,14 +384,6 @@
               }
             ]
           }
-        },
-        {
-          "ref": "components/date-of-birth",
-          "overrides": {
-            "fieldId": "declaration-date",
-            "label": "Date of declaration",
-            "isHidden": true
-          }
         }
       ],
       "behaviours": []

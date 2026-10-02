@@ -10,7 +10,7 @@
         "{options.outputPath}"
       ],
       "options": {
-        "outputPath": "dist/packages/analytics",
+        "outputPath": "packages/analytics/dist",
         "tsConfig": "packages/analytics/tsconfig.json",
         "main": "packages/analytics/src/index.ts"
       }

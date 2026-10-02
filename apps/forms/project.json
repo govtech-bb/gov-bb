@@ -11,7 +11,26 @@
         "command": "npm run build",
         "cwd": "apps/forms"
       },
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "inputs": [
+        "production",
+        "^production",
+        {
+          "env": "VITE_API_URL"
+        },
+        {
+          "env": "VITE_LANDING_URL"
+        },
+        {
+          "env": "VITE_PAYMENT_ALLOWED_ORIGINS"
+        },
+        {
+          "env": "VITE_UMAMI_SRC"
+        },
+        {
+          "env": "VITE_UMAMI_WEBSITE_ID"
+        }
+      ]
     },
     "dev": {
       "executor": "nx:run-commands",

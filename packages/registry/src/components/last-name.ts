@@ -1,4 +1,8 @@
 import { TextPrimitive } from "@govtech-bb/form-types";
+import {
+  PERSON_NAME_PATTERN,
+  PERSON_NAME_ALLOWED,
+} from "../person-name-pattern";
 
 export const LastName: TextPrimitive = {
   fieldId: "last-name",
@@ -14,9 +18,8 @@ export const LastName: TextPrimitive = {
       error: "Last name must be at least 2 characters",
     },
     pattern: {
-      value:
-        "^\\s*[A-Za-zÀ-ÖØ-öø-ÿ](?:[A-Za-zÀ-ÖØ-öø-ÿ\\s'-]*[A-Za-zÀ-ÖØ-öø-ÿ])?\\s*$",
-      error: "Last name must contain only letters, hyphens, or apostrophes",
+      value: PERSON_NAME_PATTERN,
+      error: `Last name must contain only ${PERSON_NAME_ALLOWED}`,
     },
   },
 };

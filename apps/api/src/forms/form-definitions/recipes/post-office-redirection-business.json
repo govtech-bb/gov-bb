@@ -305,7 +305,7 @@
         {
           "ref": "components/postcode",
           "overrides": {
-            "hint": "For example, BB17004 (optional)",
+            "hint": "For example, BB17004",
             "fieldId": "current-address-postcode"
           }
         }
@@ -431,7 +431,7 @@
         {
           "ref": "components/postcode",
           "overrides": {
-            "hint": "For example, BB17004 (optional)",
+            "hint": "For example, BB17004",
             "fieldId": "new-address-postcode"
           }
         },

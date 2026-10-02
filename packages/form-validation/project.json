@@ -10,7 +10,7 @@
         "{options.outputPath}"
       ],
       "options": {
-        "outputPath": "dist/packages/form-validation",
+        "outputPath": "packages/form-validation/dist",
         "tsConfig": "packages/form-validation/tsconfig.json",
         "main": "packages/form-validation/src/index.ts"
       }

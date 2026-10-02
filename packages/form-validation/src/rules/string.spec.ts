@@ -84,6 +84,21 @@ describe("patternRunner", () => {
     );
   });
 
+  it("compiles patterns in Unicode mode so \\p{L} works (#1843)", () => {
+    // Without the `u` flag `\p{L}` is a literal "p{L}" and this would not match
+    // a Cyrillic letter. With it, any-script letters match.
+    expect(patternRunner("Владимир", cfg("^\\p{L}+$"), {})).toBeNull();
+    expect(patternRunner("123", cfg("^\\p{L}+$"), {})).toBe("Invalid format");
+  });
+
+  it("trims before testing so a stray space is not a validation error", () => {
+    expect(patternRunner(" BB17004 ", cfg("^BB\\d{5}$"), {})).toBeNull();
+    expect(patternRunner("BB17004\n", cfg("^BB\\d{5}$"), {})).toBeNull();
+    expect(patternRunner("BB 17004", cfg("^BB\\d{5}$"), {})).toBe(
+      "Invalid format",
+    );
+  });
+
   it("fails closed on an invalid regex instead of throwing (#335)", () => {
     expect(patternRunner("anything", cfg("["), {})).toBe("Invalid format");
   });

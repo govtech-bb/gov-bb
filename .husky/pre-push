@@ -2,7 +2,7 @@
 # "Type Check" required check in .github/workflows/ci.yml. Running them
 # pre-push duplicates that work AND blocks pushes when local node_modules
 # drift from origin (e.g. a new workspace dep was added that hasn't been
-# `pnpm install`-ed yet). Branch protection on `sandbox` requires Type
+# `pnpm install`-ed yet). Branch protection on `main` requires Type
 # Check to pass before merge, so anything that would have been caught here
 # is caught at the merge gate without burning contributors' time on every
 # push.

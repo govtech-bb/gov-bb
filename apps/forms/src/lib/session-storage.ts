@@ -91,26 +91,6 @@ export function markStepCompleted(formId: string, stepId: string) {
   }
 }
 
-// Check if a specific step is completed
-export function isStepCompleted(formId: string, stepId: string): boolean {
-  const completedSteps = getCompletedSteps(formId);
-  return completedSteps.includes(stepId);
-}
-
-// Find the last completed step
-export function getLastCompletedStep(
-  formId: string,
-  steps: { stepId: string }[],
-): string | null {
-  const completedSteps = getCompletedSteps(formId);
-  for (let i = steps.length - 1; i >= 0; i--) {
-    if (completedSteps.includes(steps[i].stepId)) {
-      return steps[i].stepId;
-    }
-  }
-  return null;
-}
-
 /**
  * Returns the first step in `activeSteps` that has not yet been completed.
  *

@@ -17,6 +17,12 @@ describe("valueIsEmpty", () => {
     expect(valueIsEmpty(["a"])).toBe(false);
   });
 
+  it("treats an all-blank string array as empty (no answer was given)", () => {
+    expect(valueIsEmpty([""])).toBe(true);
+    expect(valueIsEmpty(["", "  "])).toBe(true);
+    expect(valueIsEmpty(["", "a"])).toBe(false);
+  });
+
   it("treats `false` as empty and `true` as non-empty", () => {
     expect(valueIsEmpty(false)).toBe(true);
     expect(valueIsEmpty(true)).toBe(false);

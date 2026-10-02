@@ -7,7 +7,11 @@ import {
 import type { AnyFieldApi } from "@tanstack/react-form";
 import { valueIsEmpty } from "./validation-methods";
 import { buildStepScopedValues } from "./helpers/value-tree";
-import { validate, validateDateField } from "@govtech-bb/form-validation";
+import {
+  validate,
+  validateDateField,
+  validateFieldEntries,
+} from "@govtech-bb/form-validation";
 import type { StepScopedValues } from "@govtech-bb/form-validation";
 import {
   evaluateCondition,
@@ -30,7 +34,7 @@ export const buildValidation = (
     for (const field of step.fields) {
       fieldValidationProperties[field.id] =
         buildFieldValidationProperties(field);
-      if (field.defaultValue) {
+      if (field.htmlType !== "content" && field.defaultValue) {
         defaults[field.id] = field.defaultValue;
       }
     }
@@ -171,9 +175,14 @@ export const buildFieldValidationProperties = (
   field: ClientPrimitive,
 ): FieldValidationProperties => {
   // The show-hide toggle stores a boolean (open/closed state) and never has its
-  // own validation rules; fields without validations have nothing to check.
-  // Either way, return a pass-through handler so the pipeline ignores them.
-  if (field.htmlType === "show-hide" || !field.validations) {
+  // own validation rules; a content element carries no submission value at
+  // all; fields without validations have nothing to check. Either way, return
+  // a pass-through handler so the pipeline ignores them.
+  if (
+    field.htmlType === "show-hide" ||
+    field.htmlType === "content" ||
+    !field.validations
+  ) {
     return {
       onDynamic(_input) {
         return undefined;
@@ -255,4 +264,49 @@ export const buildFieldValidationProperties = (
     },
     onChangeListenTo: listenTo,
   };
+};
+
+// Collect the stable reason codes for every field that fails on the current
+// step, for the `form-validation-error` analytics event. Reuses the exact
+// value-tree / optionalIf / date orchestration the display validators use (via
+// the shared `validateFieldEntries`), so the codes match what the user saw —
+// but returns codes instead of the user-facing message strings. Fields with no
+// failures are omitted. `formValues` is the live form state, keyed by the
+// composite field id (`stepId_fieldId`), as `form.state.values`.
+export const collectStepErrorCodes = (
+  fields: ClientPrimitive[],
+  formValues: Record<string, unknown>,
+): { fieldId: string; codes: string[] }[] => {
+  const out: { fieldId: string; codes: string[] }[] = [];
+  for (const field of fields) {
+    if (
+      field.htmlType === "show-hide" ||
+      field.htmlType === "content" ||
+      !field.validations
+    )
+      continue;
+    const primitive = clientPrimitiveToPrimitive(field);
+    const { stepValues, allValues } = buildValueTrees(
+      field,
+      formValues,
+      formValues[field.id],
+    );
+    const primitiveToValidate = isOptionalNow(
+      field.behaviours,
+      field.stepId,
+      allValues,
+    )
+      ? stripRequired(primitive)
+      : primitive;
+    const entries = validateFieldEntries(
+      primitiveToValidate,
+      stepValues[field.fieldId],
+      allValues,
+      stepValues,
+    );
+    if (entries.length > 0) {
+      out.push({ fieldId: field.fieldId, codes: entries.map((e) => e.code) });
+    }
+  }
+  return out;
 };

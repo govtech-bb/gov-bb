@@ -10,8 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AnalyticsToolsRouteImport } from './routes/analytics/tools'
 import { Route as AnalyticsSearchRouteImport } from './routes/analytics/search'
-import { Route as AnalyticsProjectsRouteImport } from './routes/analytics/projects'
+import { Route as AnalyticsPagesRouteImport } from './routes/analytics/pages'
 import { Route as AnalyticsFormsIndexRouteImport } from './routes/analytics/forms/index'
 import { Route as AnalyticsFormsFormIdRouteImport } from './routes/analytics/forms/$formId'
 
@@ -20,14 +21,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnalyticsToolsRoute = AnalyticsToolsRouteImport.update({
+  id: '/analytics/tools',
+  path: '/analytics/tools',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnalyticsSearchRoute = AnalyticsSearchRouteImport.update({
   id: '/analytics/search',
   path: '/analytics/search',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AnalyticsProjectsRoute = AnalyticsProjectsRouteImport.update({
-  id: '/analytics/projects',
-  path: '/analytics/projects',
+const AnalyticsPagesRoute = AnalyticsPagesRouteImport.update({
+  id: '/analytics/pages',
+  path: '/analytics/pages',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnalyticsFormsIndexRoute = AnalyticsFormsIndexRouteImport.update({
@@ -43,23 +49,26 @@ const AnalyticsFormsFormIdRoute = AnalyticsFormsFormIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/analytics/projects': typeof AnalyticsProjectsRoute
+  '/analytics/pages': typeof AnalyticsPagesRoute
   '/analytics/search': typeof AnalyticsSearchRoute
+  '/analytics/tools': typeof AnalyticsToolsRoute
   '/analytics/forms/$formId': typeof AnalyticsFormsFormIdRoute
   '/analytics/forms/': typeof AnalyticsFormsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/analytics/projects': typeof AnalyticsProjectsRoute
+  '/analytics/pages': typeof AnalyticsPagesRoute
   '/analytics/search': typeof AnalyticsSearchRoute
+  '/analytics/tools': typeof AnalyticsToolsRoute
   '/analytics/forms/$formId': typeof AnalyticsFormsFormIdRoute
   '/analytics/forms': typeof AnalyticsFormsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/analytics/projects': typeof AnalyticsProjectsRoute
+  '/analytics/pages': typeof AnalyticsPagesRoute
   '/analytics/search': typeof AnalyticsSearchRoute
+  '/analytics/tools': typeof AnalyticsToolsRoute
   '/analytics/forms/$formId': typeof AnalyticsFormsFormIdRoute
   '/analytics/forms/': typeof AnalyticsFormsIndexRoute
 }
@@ -67,30 +76,34 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/analytics/projects'
+    | '/analytics/pages'
     | '/analytics/search'
+    | '/analytics/tools'
     | '/analytics/forms/$formId'
     | '/analytics/forms/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/analytics/projects'
+    | '/analytics/pages'
     | '/analytics/search'
+    | '/analytics/tools'
     | '/analytics/forms/$formId'
     | '/analytics/forms'
   id:
     | '__root__'
     | '/'
-    | '/analytics/projects'
+    | '/analytics/pages'
     | '/analytics/search'
+    | '/analytics/tools'
     | '/analytics/forms/$formId'
     | '/analytics/forms/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AnalyticsProjectsRoute: typeof AnalyticsProjectsRoute
+  AnalyticsPagesRoute: typeof AnalyticsPagesRoute
   AnalyticsSearchRoute: typeof AnalyticsSearchRoute
+  AnalyticsToolsRoute: typeof AnalyticsToolsRoute
   AnalyticsFormsFormIdRoute: typeof AnalyticsFormsFormIdRoute
   AnalyticsFormsIndexRoute: typeof AnalyticsFormsIndexRoute
 }
@@ -104,6 +117,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/analytics/tools': {
+      id: '/analytics/tools'
+      path: '/analytics/tools'
+      fullPath: '/analytics/tools'
+      preLoaderRoute: typeof AnalyticsToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/analytics/search': {
       id: '/analytics/search'
       path: '/analytics/search'
@@ -111,11 +131,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/analytics/projects': {
-      id: '/analytics/projects'
-      path: '/analytics/projects'
-      fullPath: '/analytics/projects'
-      preLoaderRoute: typeof AnalyticsProjectsRouteImport
+    '/analytics/pages': {
+      id: '/analytics/pages'
+      path: '/analytics/pages'
+      fullPath: '/analytics/pages'
+      preLoaderRoute: typeof AnalyticsPagesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/analytics/forms/': {
@@ -137,8 +157,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AnalyticsProjectsRoute: AnalyticsProjectsRoute,
+  AnalyticsPagesRoute: AnalyticsPagesRoute,
   AnalyticsSearchRoute: AnalyticsSearchRoute,
+  AnalyticsToolsRoute: AnalyticsToolsRoute,
   AnalyticsFormsFormIdRoute: AnalyticsFormsFormIdRoute,
   AnalyticsFormsIndexRoute: AnalyticsFormsIndexRoute,
 }

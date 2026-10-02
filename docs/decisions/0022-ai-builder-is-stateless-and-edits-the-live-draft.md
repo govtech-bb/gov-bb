@@ -1,5 +1,8 @@
 # 0022 — AI builder is stateless and edits the live draft
 
+> The transport and application flow described here is superseded by
+> [ADR 0072](0072-builder-ai-streams-with-reviewed-client-edits.md). Domain guardrails still apply.
+
 **Date:** 2026-06-01
 **Status:** Accepted
 **Supersedes:** [0011 — Builder-mode handoff goes through persistence](./0011-builder-mode-handoff-goes-through-persistence.md)
@@ -64,7 +67,7 @@ draft; the AI assistant is a panel within that screen, not a separate mode.
   endpoints were removed outright.
 - **Upload is inline-only.** With the session gone, the dormant presigned-S3
   upload path (keyed per session) was removed; PDF/image upload uses inline
-  base64 with the 4 MB client guard. Lifting that cap means a *stateless*
+  base64 with the 4 MB client guard. Lifting that cap means a _stateless_
   presigned flow (keys scoped by a random id, not a session), re-adding the
   `@aws-sdk/client-s3` deps at that time.
 - **ADR 0011 no longer holds.** "Open implies created" and "handoff goes through

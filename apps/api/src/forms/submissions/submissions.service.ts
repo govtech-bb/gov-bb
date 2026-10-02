@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable } from "@nestjs/common";
+import { HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import type { DeepPartial } from "typeorm";
 import {
@@ -8,24 +8,43 @@ import {
 import { AppError } from "@/common/errors";
 import { isFormClosed } from "@govtech-bb/form-types";
 import { ExpressionsService } from "@/expressions/expressions.service";
+import {
+  CatchmentRoutingService,
+  type CatchmentResolution,
+} from "@/catchment/catchment-routing.service";
+import {
+  fillParishRoutingCoordinate,
+  isRoutingCoordinate,
+} from "@/catchment/parish-routing-point";
 import { FormSubmissionRepository } from "./form-submission.repository";
 import { SubmissionPipelineService } from "./submission-pipeline.service";
 import { ProcessorFactory } from "./processors/processor-factory.service";
-import { generateReferenceCode } from "./reference-code";
+import {
+  generateReferenceCode,
+  referencePrefixFromProcessors,
+} from "./reference-code";
+import {
+  programmeCodeFromProcessors,
+  readPath,
+} from "./processors/webhook-mapping";
 import type {
   SubmitDto,
   SubmitResult,
   SubmissionCreatedEvent,
+  SubmissionValues,
 } from "./submissions.types";
 
 @Injectable()
 export class SubmissionsService {
+  private readonly logger = new Logger(SubmissionsService.name);
+
   constructor(
     private readonly submissionRepo: FormSubmissionRepository,
     private readonly pipeline: SubmissionPipelineService,
     private readonly eventEmitter: EventEmitter2,
     private readonly processorFactory: ProcessorFactory,
     private readonly expressions: ExpressionsService,
+    private readonly catchmentRouting: CatchmentRoutingService,
   ) {}
 
   async submit(dto: SubmitDto): Promise<SubmitResult> {
@@ -41,6 +60,12 @@ export class SubmissionsService {
 
     if (existing) {
       const isProcessing = existing.status === FormSubmissionStatus.PROCESSING;
+      // A replay is a refresh or a retry of a submission that already routed, so
+      // it has to name the same polyclinic (and show the same contact line) the
+      // first response did — otherwise the confirmation page falls back to the
+      // generic phrase for a submission that went somewhere specific. Re-derived
+      // from the stored values, which is why the coordinate is persisted.
+      const resolvedCatchment = await this.catchmentForStored(existing);
       return {
         outcome: isProcessing ? "in_progress" : "duplicate",
         data: existing,
@@ -48,11 +73,19 @@ export class SubmissionsService {
           ? "Submission is currently being processed"
           : "Submission already exists",
         statusCode: isProcessing ? HttpStatus.ACCEPTED : HttpStatus.OK,
+        ...(resolvedCatchment && {
+          resolvedPolyclinic: resolvedCatchment.polyclinic,
+          resolvedPolyclinicContact: resolvedCatchment.polyclinicContact,
+        }),
       };
     }
 
-    const { draft, contract, auditTrail, normalizedValues } =
-      await this.pipeline.run(dto);
+    const {
+      draft,
+      contract,
+      auditTrail,
+      normalizedValues: pipelineValues,
+    } = await this.pipeline.run(dto);
 
     // #1936: reject a submission whose form has closed. The UI gates this too,
     // but a direct POST would otherwise slip through. Smoke submissions bypass
@@ -63,6 +96,35 @@ export class SubmissionsService {
     ) {
       throw AppError.badRequest("Applications for this form have closed");
     }
+
+    // A catchment-routed form MUST end up with a coordinate: the polyclinic
+    // named on the confirmation page, the CMS programme code and the MDA inbox
+    // all come from resolving one. The coordinate is written by an address
+    // lookup, which a free-typed address or a /geocode outage skips — so fill it
+    // from the parish the citizen selected, and reject the submission when there
+    // is no routable parish either, rather than routing it nowhere and telling
+    // the citizen to contact "your local polyclinic".
+    const normalizedValues = contract.catchmentRouting
+      ? fillParishRoutingCoordinate(pipelineValues, contract.catchmentRouting)
+      : pipelineValues;
+
+    if (
+      contract.catchmentRouting &&
+      !isRoutingCoordinate(
+        readPath(normalizedValues, contract.catchmentRouting.coordinatesField),
+      )
+    ) {
+      const { parishField } = contract.catchmentRouting;
+      const dot = parishField.indexOf(".");
+      throw AppError.unprocessable({
+        [parishField.slice(0, dot)]: {
+          [parishField.slice(dot + 1)]: [
+            "Select the parish so we can send your application to the right Environmental Health office",
+          ],
+        },
+      });
+    }
+
     // #1196: versionless submissions persist form_version = NULL (the recipe
     // resolves to the canonical flat file). A draft-sourced submission carries
     // its draft's pin (may itself be null) for the legacy fallback window.
@@ -108,6 +170,11 @@ export class SubmissionsService {
       : split.gating;
     const hasGating = gatingProcessors.length > 0;
 
+    // The MDA-PROG prefix is declared on the recipe (#2318), so it costs no DB
+    // read and is identical in every environment. Resolved once, outside the
+    // mint retry loop.
+    const referencePrefix = referencePrefixFromProcessors(rawProcessors);
+
     const saved = await this.saveWithUniqueReference(
       dto.formId,
       idempotencyKey,
@@ -122,7 +189,27 @@ export class SubmissionsService {
           : FormSubmissionStatus.SUBMITTED,
         ...(hasGating ? {} : { submittedAt: new Date() }),
       },
+      referencePrefix,
     );
+
+    // Coordinate-based catchment routing: when the recipe declares which fields
+    // hold the event coordinates + parish, resolve the serving polyclinic once
+    // here and attach it to the event so both the webhook (programme_code) and
+    // the MDA email (catchment.mdaEmail recipient) agree. Absent block → undefined.
+    const routing = contract.catchmentRouting;
+    const resolvedCatchment = routing
+      ? (this.catchmentRouting.resolve({
+          formId: dto.formId,
+          // The recipe's own programme code, which the per-catchment code is
+          // composed from. Read from `contract.processors`, not the
+          // smoke-emptied `rawProcessors` — the code is the form's identity,
+          // not a side effect of which processors happen to fire.
+          programmeCode: programmeCodeFromProcessors(contract.processors ?? []),
+          coordinates:
+            readPath(normalizedValues, routing.coordinatesField) ?? undefined,
+          parish: readPath(normalizedValues, routing.parishField) ?? undefined,
+        }) ?? undefined)
+      : undefined;
 
     const event: SubmissionCreatedEvent = {
       submissionId: saved.id,
@@ -134,6 +221,7 @@ export class SubmissionsService {
       values: normalizedValues,
       meta: auditTrail,
       isSmokeSubmission: dto.isSmokeSubmission,
+      resolvedCatchment,
     };
 
     if (hasGating) {
@@ -170,6 +258,10 @@ export class SubmissionsService {
         message: "Payment required",
         statusCode: HttpStatus.OK,
         deferred,
+        ...(resolvedCatchment && {
+          resolvedPolyclinic: resolvedCatchment.polyclinic,
+          resolvedPolyclinicContact: resolvedCatchment.polyclinicContact,
+        }),
       };
     }
 
@@ -180,7 +272,43 @@ export class SubmissionsService {
       data: saved,
       message: "Submission created",
       statusCode: HttpStatus.CREATED,
+      ...(resolvedCatchment && {
+        resolvedPolyclinic: resolvedCatchment.polyclinic,
+        resolvedPolyclinicContact: resolvedCatchment.polyclinicContact,
+      }),
     };
+  }
+
+  /**
+   * The catchment an already-persisted submission routed to, or undefined when
+   * its form is not catchment-routed (or the recipe can no longer be resolved —
+   * a replay must not fail just because the routing lookup did).
+   */
+  private async catchmentForStored(
+    submission: FormSubmissionEntity,
+  ): Promise<CatchmentResolution | undefined> {
+    try {
+      const contract = await this.pipeline.resolveContract(submission.formId);
+      const routing = contract.catchmentRouting;
+      if (!routing) return undefined;
+      const values = submission.values as SubmissionValues;
+      return (
+        this.catchmentRouting.resolve({
+          formId: submission.formId,
+          programmeCode: programmeCodeFromProcessors(contract.processors ?? []),
+          coordinates: readPath(values, routing.coordinatesField) ?? undefined,
+          parish: readPath(values, routing.parishField) ?? undefined,
+        }) ?? undefined
+      );
+    } catch (err) {
+      // Degrade to the generic confirmation copy rather than failing a replay of
+      // a submission the API has already accepted — but say so, because it means
+      // the recipe no longer resolves for a form that has live submissions.
+      this.logger.warn(
+        `[catchment] replay could not re-derive the polyclinic for submission "${submission.id}" (form "${submission.formId}"): ${String(err)}`,
+      );
+      return undefined;
+    }
   }
 
   /**
@@ -196,10 +324,13 @@ export class SubmissionsService {
     formId: string,
     idempotencyKey: string,
     entityData: DeepPartial<FormSubmissionEntity>,
+    referencePrefix?: string,
   ): Promise<FormSubmissionEntity> {
     const MAX_ATTEMPTS = 5;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      const referenceCode = generateReferenceCode(formId);
+      const referenceCode = generateReferenceCode(formId, {
+        prefix: referencePrefix,
+      });
       try {
         return await this.submissionRepo.tx(async (repo) => {
           const doubleCheck = await repo.findOne({

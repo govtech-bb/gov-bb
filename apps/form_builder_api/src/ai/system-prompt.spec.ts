@@ -130,6 +130,12 @@ describe("AI system prompt", () => {
     expect(prompt).toContain("stays VISIBLE but becomes optional");
   });
 
+  it("forbids writing (optional) into labels and teaches required value false", () => {
+    expect(prompt).toContain('NEVER write "(optional)"');
+    expect(prompt).toContain('"required": { "value": false }');
+    expect(prompt).toContain("omission inherits the registry");
+  });
+
   it("guards the alternative-identity pattern (reveal toggle + optionalIf)", () => {
     expect(prompt).toContain(
       "Never leave the primary field unconditionally required next to a reveal toggle",
@@ -158,10 +164,36 @@ describe("AI system prompt", () => {
     expect(prompt).toContain("only meaningful alongside");
   });
 
-  it("never mentions the deliberately-excluded fieldArray behaviour", () => {
-    // fieldArray is intentionally withheld (overlaps a repeatable step and
-    // invites misuse). Pin its absence so an edit can't quietly reintroduce it.
-    expect(prompt).not.toContain("fieldArray");
+  it("documents the fieldArray behaviour with its JSON shape", () => {
+    expect(prompt).toContain('"type": "fieldArray"');
+    expect(prompt).toContain('"min"');
+    expect(prompt).toContain('"max"');
+    expect(prompt).toContain('"addAnotherLabel"');
+  });
+
+  it("restricts fieldArray to the supported field types only", () => {
+    expect(prompt).toContain("text, number, time, tel, email, textarea");
+    expect(prompt).toContain("must NOT be used on other field types");
+  });
+
+  it("gives the fieldArray vs repeatable decision rule", () => {
+    expect(prompt).toMatch(
+      /one (question|field) (is )?answered (several|multiple) times/i,
+    );
+    expect(prompt).toMatch(/group of fields (that )?repeat(s)? together/i);
+  });
+
+  it("teaches the same-for-every-item gate instead of N fields to fill one by one", () => {
+    expect(prompt).toContain("Ask One Question Once, Not Once Per Item");
+    // The three parts of the pattern: the gate, the shared field on "yes", and
+    // the per-item fields keeping their own condition plus a second on "no".
+    expect(prompt).toContain('gate being `"yes"`');
+    expect(prompt).toContain('gate being `"no"`');
+    // The pattern only works because stacked conditions AND together — without
+    // that, a per-item field would show alongside the shared one.
+    expect(prompt).toMatch(/combine with AND/i);
+    // ...and it must stay opt-in: a gate is wrong when answers differ per item.
+    expect(prompt).toMatch(/answers normally differ per item/i);
   });
 
   it("directs relationship fields to components/relationship, not a text input", () => {
@@ -172,10 +204,13 @@ describe("AI system prompt", () => {
     expect(prompt).not.toContain("free-text relationship fields");
   });
 
-  it("makes address line 2 and similar continuation lines optional by default", () => {
-    // Explicit never-infer-required rule for continuation lines.
+  it("makes address line 2 and similar continuation lines explicitly optional", () => {
+    // Continuation lines must carry an explicit required: {value: false} —
+    // omission inherits required: true from the registry base.
     expect(prompt).toContain('"address line 2"');
-    expect(prompt).toContain("optional by default");
+    expect(prompt).toContain(
+      'These must be OPTIONAL: set `"required": {"value": false}` explicitly',
+    );
     // The inferred-required list must name line 1 specifically, not bare
     // "address" (which would sweep line 2 into required-by-default).
     expect(prompt).toMatch(
@@ -216,5 +251,58 @@ describe("AI system prompt", () => {
     expect(prompt).toMatch(/^- maxYear: /m);
     expect(prompt).toContain('"currentYear": true');
     expect(prompt).toContain("do NOT accept referenceFieldId");
+  });
+
+  // #2710: a required rule with no error (or a generic one) makes the runtime
+  // fall back to "This field is required", which names no field and becomes the
+  // error-summary link text verbatim. No example may teach that by example.
+  it("gives every required example an error message that names the field", () => {
+    // Messages that name no field. Matched case-insensitively on the whole
+    // error string, so "Type of licence is required" is unaffected.
+    const NAMES_NOTHING = [
+      "this field is required",
+      "error message",
+      "required",
+      "select an option",
+      "select an answer",
+      "...",
+    ];
+    // Quoted key only — the `- required: {...}` line in the Validation Types
+    // list documents the shape, it is not an element example.
+    const rules = [...prompt.matchAll(/"required":\s*\{[^}]*\}/g)]
+      .map((match) => match[0])
+      .filter((rule) => /"value":\s*true/.test(rule));
+    expect(rules.length).toBeGreaterThan(0);
+
+    const offenders = rules.filter((rule) => {
+      const error = rule.match(/"error":\s*"([^"]*)"/)?.[1]?.trim() ?? "";
+      return error === "" || NAMES_NOTHING.includes(error.toLowerCase());
+    });
+    expect(offenders).toEqual([]);
+  });
+
+  it("names the generic sentinel only to forbid it, never as an example", () => {
+    expect(prompt).not.toMatch(/"error":\s*"This field is required"/i);
+    expect(prompt).toContain('NEVER "This field is required"');
+  });
+
+  it("states the required rule on every generic-primitive element example", () => {
+    // The generic primitives are required-by-default, so an example that omits
+    // the rule silently emits a required field carrying the sentinel — which is
+    // invisible to the check above, since it inspects rules that are present.
+    // One element object per line is this prompt's house style.
+    const silent = prompt
+      .split("\n")
+      .filter((line) => /^\s*\{"ref": "components\/generic-/.test(line))
+      .filter((line) => !line.includes('"required"'));
+    expect(silent).toEqual([]);
+  });
+
+  it("makes the repeatable-step example's detail fields explicitly required", () => {
+    // This example is copied near-verbatim into real recipes, and
+    // components/generic-* are required-by-default — omitting the rule ships
+    // the generic sentinel as the message.
+    expect(prompt).toContain('"error": "Type of licence is required"');
+    expect(prompt).toContain('"error": "Date of endorsement is required"');
   });
 });

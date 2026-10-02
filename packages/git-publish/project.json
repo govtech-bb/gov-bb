@@ -8,7 +8,7 @@
       "executor": "@nx/js:tsc",
       "outputs": ["{options.outputPath}"],
       "options": {
-        "outputPath": "dist/packages/git-publish",
+        "outputPath": "packages/git-publish/dist",
         "tsConfig": "packages/git-publish/tsconfig.json",
         "main": "packages/git-publish/src/index.ts"
       }

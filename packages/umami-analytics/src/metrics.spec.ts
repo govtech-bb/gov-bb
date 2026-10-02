@@ -8,6 +8,7 @@ import {
   buildSearchReport,
   buildSources,
   parseEventName,
+  tallyFieldErrors,
   tallyFields,
   weightedAverage,
   weightedSum,
@@ -96,6 +97,50 @@ describe("tallyFields", () => {
       { field: "email", count: 8 },
       { field: "first-name", count: 4 },
     ]);
+  });
+});
+
+describe("tallyFieldErrors", () => {
+  it("parses field:code pairs into per-field, per-reason tallies sorted desc", () => {
+    const rows = tallyFieldErrors([
+      { value: "parish:required;id-number:required|pattern", total: 20 },
+      { value: "id-number:pattern", total: 4 },
+      { value: "parish:required", total: 9 },
+    ]);
+    expect(rows).toEqual([
+      {
+        field: "parish",
+        count: 29,
+        reasons: [{ code: "required", count: 29 }],
+      },
+      {
+        field: "id-number",
+        count: 24,
+        reasons: [
+          { code: "pattern", count: 24 },
+          { code: "required", count: 20 },
+        ],
+      },
+    ]);
+  });
+
+  it("does not split on characters inside codes or ids (no comma collision)", () => {
+    // A postcode message like "Enter a valid postcode, for example BB17004"
+    // never reaches here — only the stable code does, so nothing splits.
+    const rows = tallyFieldErrors([{ value: "postcode:pattern", total: 30 }]);
+    expect(rows).toEqual([
+      {
+        field: "postcode",
+        count: 30,
+        reasons: [{ code: "pattern", count: 30 }],
+      },
+    ]);
+  });
+
+  it("ignores malformed entries", () => {
+    expect(tallyFieldErrors([{ value: ";;no-colon;:bad;", total: 5 }])).toEqual(
+      [],
+    );
   });
 });
 

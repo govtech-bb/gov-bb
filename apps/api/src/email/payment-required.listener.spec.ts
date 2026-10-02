@@ -60,6 +60,7 @@ describe("PaymentRequiredListener", () => {
 
     expect(formDefs.findByFormId).toHaveBeenCalledWith({
       formId: "birth-certificate",
+      bypassVisibility: true,
     });
     expect(templateSvc.render).toHaveBeenCalledWith(
       "payment-required",

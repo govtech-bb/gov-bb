@@ -4,12 +4,36 @@ const mockRepo = {
   findRecent: vi.fn(),
 };
 
+const mockWebhookDestinations = {
+  getAudit: vi.fn(),
+};
+
 describe("MonitoringController", () => {
   let controller: MonitoringController;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    controller = new MonitoringController(mockRepo as never);
+    controller = new MonitoringController(
+      mockRepo as never,
+      mockWebhookDestinations as never,
+    );
+  });
+
+  describe("webhookDestinationsAudit (GET /monitoring/webhook-destinations)", () => {
+    it("returns the per-MDA destinations audit", () => {
+      const audit = {
+        issues: [],
+        missingMinistries: ["health"],
+        configuredMinistries: ["youth", "education"],
+        ok: false,
+      };
+      mockWebhookDestinations.getAudit.mockReturnValue(audit);
+
+      const result = controller.webhookDestinationsAudit();
+
+      expect(result).toMatchObject({ status: "success" });
+      expect(result.data).toEqual(audit);
+    });
   });
 
   describe("recentNotifications (GET /monitoring/notification-log)", () => {

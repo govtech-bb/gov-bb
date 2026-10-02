@@ -1,0 +1,618 @@
+/**
+ * apply-for-food-business-licence.smoke.spec.ts
+ *
+ * Live, on-demand smoke test for the Apply to Environmental Health for a food
+ * business licence service (formId `apply-for-food-business-licence`, programme
+ * `FOOD_BUSINESS_LICENCE`).
+ *
+ * Drives the REAL form, fills every step with valid @faker-js/faker data,
+ * SUBMITS FOR REAL, and asserts the confirmation screen is reached with a
+ * reference code.
+ *
+ * Like the other specs under e2e/smoke it runs ONLY via
+ * playwright.smoke.config.ts — the normal `test:e2e` / CI suite ignores this
+ * directory (ADR 0027 / 0029), and no workflow runs it automatically.
+ *
+ * Run on demand (from the repo root):
+ *   SMOKE_BASE_URL=https://forms.sandbox.alpha.gov.bb PREVIEW_TOKEN=… \
+ *     pnpm --filter @govtech-bb/forms exec playwright test \
+ *     --config playwright.smoke.config.ts apply-for-food-business-licence
+ *
+ * Useful env overrides:
+ *   SMOKE_BASE_URL   target environment. REQUIRED — playwright.smoke.config.ts
+ *                    throws without it so a real submission can never land in an
+ *                    unintended environment by default.
+ *   PREVIEW_TOKEN    recipe preview secret — appended as ?preview=<token>.
+ *                    REQUIRED while the recipe is visibility:preview, because a
+ *                    non-public recipe 404s without one. Pass it on the command
+ *                    line so the secret never lands in the repo.
+ *   SMOKE_SLOWMO     ms delay per action for watching a headed run.
+ *   SMOKE_HOLD_CYA   pause a headed run on "Check your answers", before submit.
+ *   SMOKE_HOLD       pause a headed run on the confirmation screen.
+ *   FAKER_SEED       fix faker's RNG for a reproducible data set.
+ *
+ * Form-specific notes:
+ *  - Four branches interlock, so the two tests are picked to walk both sides of
+ *    each of them:
+ *      · `completing-for` = "someone-else" reveals `food-business-relationship`
+ *        inline — a SELECT (`components/relationship`), not a radio group. The other option's value is **"yes"** ("applying as an owner"),
+ *        not "myself" — the question was reworded to a yes/no shape but only
+ *        the first value was renamed, so the pair reads `yes` / `someone-else`.
+ *      · On `applicant-details`, `country` gates the last field both ways:
+ *        "barbados" shows `applicant-parish`, anything else shows `town`.
+ *      · `application-type` = "renewal" reveals `licence-number` AND hides
+ *        `business-already-open` on the next step — which transitively hides
+ *        both start-date fields, since each is gated on that answer. So the
+ *        renewal branch asks for no dates at all.
+ *      · `preparation-location` including "at-another-food-business" or
+ *        "at-another-location" puts the repeatable `other-preparation-locations`
+ *        step into the journey (stepConditionalOn, `in`).
+ *  - `about-you` now holds ONLY `completing-for`, `food-business-relationship`
+ *    and the three name fields. The contact and address block that used to sit
+ *    beside them moved to `applicant-details` and was renamed `your-*` →
+ *    `applicant-*`; `application-type` / `licence-number` moved the other way,
+ *    onto their own `application-details` step. There is no
+ *    `relationship-to-business`, `other-relationship` or `applicant-type` any
+ *    more — `food-business-relationship` on step 1 replaced all three.
+ *  - `applicant-phone` carries a `fieldArray` behaviour (min 1, max 4). Row 0
+ *    keeps the plain `${stepId}_applicant-phone` id — only rows 1+ are
+ *    index-suffixed — so one `fillField` is enough and the "Add another
+ *    telephone number" button is left alone.
+ *  - Telephone fields run libphonenumber-js `.isValid()`, so a random
+ *    `246 NNN NNNN` is rejected — the exchange has to be a real assignable one.
+ *  - The food business address is an address-lookup (geocoder) field, so it
+ *    cannot take a free-text faker address — the geocoder must return a real
+ *    Barbados match to populate the hidden coordinates the catchment router
+ *    reads (`catchmentRouting.coordinatesField` =
+ *    `about-the-food-business.business-location-address-coordinates`). We
+ *    faker-pick from a pool of known-geocodable locations, select the first
+ *    suggestion, then assert `business-location-address-coordinates` filled.
+ *    `business-location-address-line-2` is one of the geocoder's write targets
+ *    and is optional, so whatever the picked suggestion wrote is left alone.
+ *  - `other-preparation-locations` is a repeatable step (min 1, max 5) with no
+ *    sharedFields, so the base step IS place 1 and carries the injected
+ *    `addAnother` radio. One place is enough; test 2 answers "no".
+ *  - `staff-list-upload` is the only required upload. `medical-certificates-
+ *    upload` is optional and `multiple: true` (two files, added one at a time —
+ *    the widget reuses a non-multiple input). `floor-plan-upload` is optional
+ *    and single. All three are exercised anyway so a real run proves the whole
+ *    upload path, not just the field that blocks.
+ *  - NOT covered, and deliberately: `business-already-open` = "no", which swaps
+ *    `business-start-date` for `business-expected-start-date`. Both tests are
+ *    real submissions, so the suite stays at two; test 1 takes the "yes" path
+ *    because `pastOrToday` is the riskier of the two date rules.
+ *  - The confirmation step's `markdownContent` opens with the `{polyclinic}`
+ *    token, so the resolved-catchment name IS on screen. We assert the
+ *    Environmental Health copy rather than the name itself: which polyclinic
+ *    resolves depends on the faker-picked address, so pinning a specific one
+ *    would flake.
+ */
+import { faker } from "@faker-js/faker";
+import { test, expect, type Page } from "@playwright/test";
+import {
+  STEP_TIMEOUT,
+  openSmokeForm,
+  advance,
+  expectStep,
+  fillDate,
+  fillField,
+  fillGeocodedAddress,
+  selectDropdown,
+  selectRadio,
+  submitAndConfirm,
+  tickCheckbox,
+  uploadMany,
+  uploadOne,
+} from "../helpers/smoke";
+import { TEST_PNG } from "../helpers/test-data";
+
+export const FORM_ID = "apply-for-food-business-licence";
+
+/**
+ * Real, geocodable Barbados locations. A free-text faker address won't resolve,
+ * and the catchment router needs the hidden coordinates the geocoder writes when
+ * a suggestion is picked — so the business location is chosen from this pool.
+ */
+const GEOCODABLE_ADDRESSES = [
+  "Jemmotts Lane, Bridgetown",
+  "Broad Street, Bridgetown",
+  "Speightstown",
+  "Holetown",
+  "Oistins",
+] as const;
+
+/**
+ * Parish <select> option values (slugs) from components/parish, minus
+ * `st-michael` — picking St. Michael hides `your-country`, which test 2 needs
+ * visible. Test 1 asks for St. Michael by name.
+ */
+const NON_ST_MICHAEL_PARISHES = [
+  "christ-church",
+  "st-andrew",
+  "st-george",
+  "st-james",
+  "st-john",
+  "st-joseph",
+  "st-lucy",
+  "st-peter",
+  "st-philip",
+  "st-thomas",
+] as const;
+
+/**
+ * Valid Barbados mobile exchanges (the `2XX` after `246`). The phone validation
+ * rule runs libphonenumber-js `.isValid()` against real assignable ranges, so a
+ * random `246 NNN NNNN` is rejected — the exchange must be a real one.
+ */
+const BB_MOBILE_EXCHANGES = [
+  "230",
+  "231",
+  "240",
+  "249",
+  "250",
+  "260",
+  "262",
+  "288",
+] as const;
+
+function bbMobileNumber(): string {
+  return `246 ${faker.helpers.arrayElement(BB_MOBILE_EXCHANGES)} ${faker.string.numeric(4)}`;
+}
+
+/** Build a complete, valid set of answers for either branch. */
+export function buildData() {
+  if (process.env.FAKER_SEED) faker.seed(Number(process.env.FAKER_SEED));
+
+  const startedOn = faker.date.past({ years: 2 });
+  const expectedStart = faker.date.soon({ days: 90 });
+
+  return {
+    yourFirstName: faker.person.firstName(),
+    yourMiddleName: faker.person.middleName(),
+    yourLastName: faker.person.lastName(),
+
+    applicantTelephone: bbMobileNumber(),
+    // Goes to the monitored test inbox so a real run is verifiable end-to-end.
+    applicantEmail: "testing@govtech.bb",
+    applicantAddressLine1: faker.location.streetAddress(),
+    applicantAddressLine2: faker.location.street(),
+    applicantParish: faker.helpers.arrayElement(NON_ST_MICHAEL_PARISHES),
+    // Only asked when the applicant's country is not Barbados.
+    applicantTown: faker.location.city(),
+    licenceNumber: `FBL-${faker.string.numeric(5)}`,
+
+    foodBusinessType: "Takeaway",
+    // Timestamped so the resulting submission is easy to find in the target env.
+    foodBusinessName: `Smoke Test Food Business ${new Date().toISOString()}`,
+    vehicleRegistrationNumber: `V-${faker.string.numeric(5)}`,
+    startedOn,
+    expectedStart,
+    businessLocationAddress: faker.helpers.arrayElement(GEOCODABLE_ADDRESSES),
+
+    otherPrepBusinessName: `Smoke Test Prep Kitchen ${faker.string.alpha(4)}`,
+    otherPrepAddressLine1: faker.location.streetAddress(),
+    otherPrepAddressLine2: faker.location.street(),
+    otherPrepParish: faker.helpers.arrayElement(NON_ST_MICHAEL_PARISHES),
+
+    maleStaffCount: String(faker.number.int({ min: 0, max: 10 })),
+    femaleStaffCount: String(faker.number.int({ min: 1, max: 20 })),
+  };
+}
+
+/** Open the form at its first step, carrying the preview token when supplied. */
+export async function openForm(page: Page): Promise<void> {
+  await openSmokeForm(page, FORM_ID);
+  await page.waitForURL((url) => !!url.searchParams.get("step"), {
+    timeout: STEP_TIMEOUT,
+  });
+}
+
+/**
+ * Step 1 — the person filling the form in, and their relationship to the
+ * business. Note the option value is "yes" (applying as an owner), not
+ * "myself" — see the header note. "someone-else" reveals
+ * `food-business-relationship`.
+ */
+export async function fillAboutYou(
+  page: Page,
+  data: ReturnType<typeof buildData>,
+  completingFor: "yes" | "someone-else",
+  relationship?:
+    | "owner"
+    | "co-owner"
+    | "director-co"
+    | "manager-operator"
+    | "rep"
+    | "something-else",
+): Promise<void> {
+  const step = expectStep(page, "about-you");
+  await expect(page.locator("h1")).toContainText("About you");
+
+  // `food-business-relationship` is `components/relationship`, a SELECT — not
+  // a radio group like `completing-for` beside it.
+  const relationshipSelect = page.locator(
+    `select[id="${step}_food-business-relationship"]`,
+  );
+  await expect(relationshipSelect).toBeHidden();
+
+  await selectRadio(page, step, "completing-for", completingFor);
+  if (completingFor === "someone-else") {
+    await expect(relationshipSelect).toBeVisible({ timeout: STEP_TIMEOUT });
+    await selectDropdown(
+      page,
+      step,
+      "food-business-relationship",
+      relationship ?? "rep",
+    );
+  } else {
+    // The gate's whole purpose: an owner is not asked how they relate to their
+    // own business.
+    await expect(relationshipSelect).toBeHidden();
+  }
+
+  await fillField(page, step, "your-first-name", data.yourFirstName);
+  await fillField(page, step, "your-middle-name", data.yourMiddleName);
+  await fillField(page, step, "your-last-name", data.yourLastName);
+  await advance(page, step);
+}
+
+/**
+ * Step 2 — the applicant's contact details and address. `country` gates the
+ * last field both ways: "barbados" shows `applicant-parish`, anything else
+ * shows `town`. Whichever branch is not taken must render nothing — asserted,
+ * so a conditional that stops resolving fails here loudly.
+ */
+export async function fillApplicantDetails(
+  page: Page,
+  data: ReturnType<typeof buildData>,
+  country: string,
+): Promise<void> {
+  const step = expectStep(page, "applicant-details");
+  await expect(page.locator("h1")).toContainText("Applicant details");
+
+  await fillField(page, step, "applicant-email", data.applicantEmail);
+  // fieldArray row 0 keeps the unsuffixed id — see the header note.
+  await fillField(page, step, "applicant-phone", data.applicantTelephone);
+  await fillField(
+    page,
+    step,
+    "applicant-address-line-1",
+    data.applicantAddressLine1,
+  );
+  await fillField(
+    page,
+    step,
+    "applicant-address-line-2",
+    data.applicantAddressLine2,
+  );
+
+  const parish = page.locator(`select[id="${step}_applicant-parish"]`);
+  const town = page.locator(`[id="${step}_town"]`);
+  await selectDropdown(page, step, "country", country);
+  if (country === "barbados") {
+    await expect(parish).toBeVisible({ timeout: STEP_TIMEOUT });
+    await expect(town).toBeHidden();
+    await selectDropdown(page, step, "applicant-parish", data.applicantParish);
+  } else {
+    await expect(town).toBeVisible({ timeout: STEP_TIMEOUT });
+    await expect(parish).toBeHidden();
+    await town.fill(data.applicantTown);
+  }
+
+  await advance(page, step);
+}
+
+/**
+ * Step 3 — new or renewal. This pair used to sit at the foot of
+ * `applicant-details`; it now has its own step. "renewal" reveals
+ * `licence-number` here AND hides `business-already-open` on the next step,
+ * which transitively hides both start-date fields.
+ */
+export async function fillApplicationDetails(
+  page: Page,
+  data: ReturnType<typeof buildData>,
+  applicationType: "first-time" | "renewal",
+): Promise<void> {
+  const step = expectStep(page, "application-details");
+  await expect(page.locator("h1")).toContainText("Application details");
+
+  const licenceNumber = page.locator(`[id="${step}_licence-number"]`);
+  await expect(licenceNumber).toBeHidden();
+  await selectRadio(page, step, "application-type", applicationType);
+  if (applicationType === "renewal") {
+    await expect(licenceNumber).toBeVisible({ timeout: STEP_TIMEOUT });
+    await licenceNumber.fill(data.licenceNumber);
+  } else {
+    await expect(licenceNumber).toBeHidden();
+  }
+
+  await advance(page, step);
+}
+
+/**
+ * Step 4 — the business itself, including the geocoded address.
+ * `business-already-open` is only asked on a first-time application, and both
+ * date fields hang off its answer.
+ */
+export async function fillAboutTheFoodBusiness(
+  page: Page,
+  data: ReturnType<typeof buildData>,
+  opts: {
+    premisesType: "fixed-property" | "mobile-van" | "stall-cart";
+    alreadyOpen?: "yes" | "no";
+  },
+): Promise<void> {
+  const step = expectStep(page, "about-the-food-business");
+  await expect(page.locator("h1")).toContainText("About the food business");
+  await fillField(page, step, "food-business-type", data.foodBusinessType);
+  await fillField(page, step, "food-business-name", data.foodBusinessName);
+
+  const vehicleRegistration = page.locator(
+    `[id="${step}_vehicle-registration-number"]`,
+  );
+  await expect(vehicleRegistration).toBeHidden();
+  await selectRadio(page, step, "premises-type", opts.premisesType);
+  if (opts.premisesType === "mobile-van") {
+    await expect(vehicleRegistration).toBeVisible({ timeout: STEP_TIMEOUT });
+    await vehicleRegistration.fill(data.vehicleRegistrationNumber);
+  } else {
+    await expect(vehicleRegistration).toBeHidden();
+  }
+
+  const alreadyOpenYes = page.locator(
+    `fieldset[id="${step}_business-already-open"] input[type=radio][value="yes"]`,
+  );
+  if (opts.alreadyOpen) {
+    await expect(alreadyOpenYes).toBeVisible({ timeout: STEP_TIMEOUT });
+    await selectRadio(page, step, "business-already-open", opts.alreadyOpen);
+    if (opts.alreadyOpen === "yes") {
+      // `pastOrToday` — a future start date is refused here.
+      await fillDate(
+        page,
+        step,
+        "business-start-date",
+        data.startedOn.getDate(),
+        data.startedOn.getMonth() + 1,
+        data.startedOn.getFullYear(),
+      );
+    } else {
+      await fillDate(
+        page,
+        step,
+        "business-expected-start-date",
+        data.expectedStart.getDate(),
+        data.expectedStart.getMonth() + 1,
+        data.expectedStart.getFullYear(),
+      );
+    }
+  } else {
+    // A renewal never asks whether the business is open, so neither date field
+    // is reachable — the transitive hide described in the header note.
+    await expect(alreadyOpenYes).toBeHidden();
+    await expect(
+      page.locator(`input[id="${step}_business-start-date-day"]`),
+    ).toBeHidden();
+    await expect(
+      page.locator(`input[id="${step}_business-expected-start-date-day"]`),
+    ).toBeHidden();
+  }
+
+  await fillGeocodedAddress(
+    page,
+    step,
+    {
+      lineFieldId: "business-location-address-line-1",
+      coordinatesFieldId: "business-location-address-coordinates",
+    },
+    data.businessLocationAddress,
+  );
+  // `business-location-address-line-2` is optional and is one of the geocoder's
+  // write targets — leave whatever the picked suggestion wrote.
+  // The geocoder fills parish from the picked suggestion; assert rather than
+  // overwrite, since that value is the catchment router's fallback.
+  await expect(
+    page.locator(`select[id="${step}_business-location-parish"]`),
+  ).not.toHaveValue("");
+
+  await advance(page, step);
+}
+
+/**
+ * Step 4 — where food is prepared. Ticking "at another food business" or "at
+ * another location" is what puts the repeatable step into the journey.
+ */
+export async function fillWhereFoodIsPrepared(
+  page: Page,
+  preparationLocation:
+    | "at-food-business"
+    | "at-another-food-business"
+    | "at-another-location",
+): Promise<void> {
+  const step = expectStep(page, "where-food-is-prepared");
+  await expect(page.locator("h1")).toContainText(
+    "Where food and drink is prepared",
+  );
+  await selectRadio(page, step, "will-prepare-food", "yes");
+  await tickCheckbox(page, step, "preparation-location", preparationLocation);
+  await advance(page, step);
+}
+
+/**
+ * Step 5 — the repeatable `other-preparation-locations`. Only in the journey
+ * when step 4 named an off-site kitchen. One place, then "no".
+ */
+export async function fillOtherPreparationLocation(
+  page: Page,
+  data: ReturnType<typeof buildData>,
+): Promise<void> {
+  const step = expectStep(page, "other-preparation-locations");
+  await expect(page.locator("h1")).toContainText(
+    "Where else food and drink is prepared",
+  );
+  await fillField(
+    page,
+    step,
+    "other-prep-business-name",
+    data.otherPrepBusinessName,
+  );
+  await fillField(
+    page,
+    step,
+    "other-prep-address-line-1",
+    data.otherPrepAddressLine1,
+  );
+  await fillField(
+    page,
+    step,
+    "other-prep-address-line-2",
+    data.otherPrepAddressLine2,
+  );
+  await selectDropdown(page, step, "other-prep-parish", data.otherPrepParish);
+  await selectRadio(page, step, "addAnother", "no");
+  await advance(page, step);
+}
+
+/** Step 6 — staff counts and the staff-list / medical-certificate uploads. */
+export async function fillPeopleWorkingAtTheFoodBusiness(
+  page: Page,
+  data: ReturnType<typeof buildData>,
+): Promise<void> {
+  const step = expectStep(page, "people-working-at-the-food-business");
+  await expect(page.locator("h1")).toContainText(
+    "People working at the food business",
+  );
+  await fillField(page, step, "male-staff-count", data.maleStaffCount);
+  await fillField(page, step, "female-staff-count", data.femaleStaffCount);
+  await uploadOne(page, step, "staff-list-upload", {
+    name: "staff-list.png",
+    mimeType: TEST_PNG.mimeType,
+    buffer: TEST_PNG.buffer,
+  });
+  // `multiple: true` — the widget reuses one non-multiple input, so files are
+  // added one at a time and must have distinct names.
+  await uploadMany(page, step, "medical-certificates-upload", [
+    {
+      name: "medical-cert-1.png",
+      mimeType: TEST_PNG.mimeType,
+      buffer: TEST_PNG.buffer,
+    },
+    {
+      name: "medical-cert-2.png",
+      mimeType: TEST_PNG.mimeType,
+      buffer: TEST_PNG.buffer,
+    },
+  ]);
+  await advance(page, step);
+}
+
+/** Step 7 — the optional floor plan. Uploaded anyway to exercise the path. */
+export async function fillFloorPlan(page: Page): Promise<void> {
+  const step = expectStep(page, "floor-plan");
+  await expect(page.locator("h1")).toContainText("Floor plan");
+  await uploadOne(page, step, "floor-plan-upload", {
+    name: "floor-plan.png",
+    mimeType: TEST_PNG.mimeType,
+    buffer: TEST_PNG.buffer,
+  });
+  await advance(page, step);
+}
+
+/** Tick the single declaration checkbox and submit for real. */
+async function confirmAndSubmit(page: Page): Promise<void> {
+  const step = expectStep(page, "declaration");
+  await expect(page.locator("h1")).toContainText("Declaration");
+  await page
+    .locator(`fieldset[id="${step}_declaration-confirmed"]`)
+    .getByRole("checkbox")
+    .check();
+
+  await submitAndConfirm(page, {
+    heading: "Application submitted",
+    referenceLabel: "Submission ID",
+  });
+
+  // The confirmation markdown names the resolved polyclinic's Environmental
+  // Health Department — assert that copy, not a specific polyclinic name. See
+  // the header note.
+  await expect(page.getByText(/Environmental Health/).first()).toBeVisible();
+}
+
+test.describe("Apply for a Food Business Licence — Live Smoke", () => {
+  test("submits a first-time application for an open, fixed-property business", async ({
+    page,
+  }) => {
+    const data = buildData();
+    if (process.env.SMOKE_LOG_DATA)
+      console.log("[smoke-data]", JSON.stringify(data, null, 2));
+
+    await openForm(page);
+    // "yes" — an owner is never asked how they relate to the business.
+    await fillAboutYou(page, data, "yes");
+    // Barbados shows the parish and hides the town.
+    await fillApplicantDetails(page, data, "barbados");
+    await fillApplicationDetails(page, data, "first-time");
+    await fillAboutTheFoodBusiness(page, data, {
+      premisesType: "fixed-property",
+      alreadyOpen: "yes",
+    });
+    // All preparation on site, so `other-preparation-locations` stays out.
+    await fillWhereFoodIsPrepared(page, "at-food-business");
+    await fillPeopleWorkingAtTheFoodBusiness(page, data);
+    await fillFloorPlan(page);
+
+    // ─── Check your answers ─────────────────────────────────────────────────
+    const step = expectStep(page, "check-your-answers");
+    await expect(page.locator("h1")).toContainText("Check your answers");
+    await expect(page.getByText(data.foodBusinessName).first()).toBeVisible();
+    // Neither the renewal reference nor the vehicle registration was asked.
+    await expect(page.getByText(data.licenceNumber)).toHaveCount(0);
+    await expect(page.getByText(data.vehicleRegistrationNumber)).toHaveCount(0);
+    // SMOKE_HOLD_CYA=1 pauses a headed run here so the review screen can be
+    // inspected before anything is submitted (matches the sibling specs).
+    if (process.env.SMOKE_HOLD_CYA) await page.pause();
+    await advance(page, step);
+
+    await confirmAndSubmit(page);
+
+    if (process.env.SMOKE_HOLD) await page.pause();
+  });
+
+  test("submits a renewal on someone else's behalf, for a mobile van prepping off-site", async ({
+    page,
+  }) => {
+    const data = buildData();
+    if (process.env.SMOKE_LOG_DATA)
+      console.log("[smoke-data]", JSON.stringify(data, null, 2));
+
+    await openForm(page);
+    // "someone-else" reveals the relationship question.
+    await fillAboutYou(page, data, "someone-else", "something-else");
+    // A non-Barbados country shows the town and hides the parish.
+    await fillApplicantDetails(page, data, "jamaica");
+    await fillApplicationDetails(page, data, "renewal");
+    // A renewal never asks whether the business is open, so no dates.
+    await fillAboutTheFoodBusiness(page, data, { premisesType: "mobile-van" });
+    await fillWhereFoodIsPrepared(page, "at-another-food-business");
+    await fillOtherPreparationLocation(page, data);
+    await fillPeopleWorkingAtTheFoodBusiness(page, data);
+    await fillFloorPlan(page);
+
+    const step = expectStep(page, "check-your-answers");
+    await expect(page.locator("h1")).toContainText("Check your answers");
+    // Every revealed field made it into the review.
+    await expect(page.getByText(data.applicantTown).first()).toBeVisible();
+    await expect(page.getByText(data.licenceNumber).first()).toBeVisible();
+    await expect(
+      page.getByText(data.vehicleRegistrationNumber).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByText(data.otherPrepBusinessName).first(),
+    ).toBeVisible();
+    if (process.env.SMOKE_HOLD_CYA) await page.pause();
+    await advance(page, step);
+
+    await confirmAndSubmit(page);
+
+    if (process.env.SMOKE_HOLD) await page.pause();
+  });
+});

@@ -29,6 +29,7 @@ import { faker } from "@faker-js/faker";
 import { test } from "@playwright/test";
 import {
   STEP_TIMEOUT,
+  openSmokeForm,
   advance,
   currentStep,
   expectStep,
@@ -48,7 +49,7 @@ test.describe("CAPE Exam Registration — Live Smoke", () => {
     const firstName = faker.person.firstName();
     const lastName = faker.person.lastName();
 
-    await page.goto(`/forms/${FORM_ID}`);
+    await openSmokeForm(page, FORM_ID);
     await page.waitForURL((url) => !!url.searchParams.get("step"), {
       timeout: STEP_TIMEOUT,
     });
@@ -83,7 +84,8 @@ test.describe("CAPE Exam Registration — Live Smoke", () => {
     // ─── Declaration ─────────────────────────────────────────────────────────
     step = expectStep(page, "declaration", { exact: true });
     await page
-      .locator(`input[id="${step}_declaration-confirmed-confirmed"]`)
+      .locator(`fieldset[id="${step}_declaration-confirmed"]`)
+      .getByRole("checkbox")
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────

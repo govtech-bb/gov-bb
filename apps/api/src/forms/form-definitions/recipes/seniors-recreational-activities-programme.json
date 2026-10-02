@@ -36,7 +36,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are registering for yourself or for someone else",
                 "value": true
               }
             }
@@ -68,7 +68,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are also the emergency contact person",
                 "value": true
               }
             }
@@ -129,18 +129,12 @@
           "ref": "components/address",
           "overrides": {
             "label": "Address line 1",
-            "fieldId": "address-line-1",
-            "validations": {
-              "required": {
-                "value": true
-              }
-            }
+            "fieldId": "address-line-1"
           }
         },
         {
           "ref": "components/address",
           "overrides": {
-            "hint": "Optional",
             "label": "Address line 2",
             "fieldId": "address-line-2",
             "validations": {
@@ -162,7 +156,6 @@
         {
           "ref": "components/email",
           "overrides": {
-            "hint": "Optional",
             "validations": {
               "required": {
                 "value": false
@@ -222,7 +215,8 @@
             ],
             "validations": {
               "required": {
-                "value": true
+                "value": true,
+                "error": "Select your current health status"
               }
             }
           }
@@ -248,7 +242,8 @@
             ],
             "validations": {
               "required": {
-                "value": true
+                "value": true,
+                "error": "Enter a description of the health condition or disability"
               }
             }
           }
@@ -384,7 +379,6 @@
         {
           "ref": "components/email",
           "overrides": {
-            "hint": "Optional",
             "fieldId": "some-email",
             "validations": {
               "required": {
@@ -444,7 +438,6 @@
         {
           "ref": "components/email",
           "overrides": {
-            "hint": "Optional",
             "fieldId": "emer-email",
             "validations": {
               "required": {

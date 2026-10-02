@@ -29,6 +29,11 @@ export interface BehaviourTypeDescriptor {
   label: string; // display name
   scopes: BehaviourScope[];
   params: BehaviourParamDescriptor[];
+  // When set, the behaviour only works on fields whose htmlType is listed —
+  // the editor offers it disabled (with a reason) on other field types instead
+  // of letting authors ship a silently-inert behaviour (#2317). Absent = all
+  // field types.
+  supportedHtmlTypes?: string[];
 }
 
 export const BEHAVIOUR_TYPE_DESCRIPTORS: BehaviourTypeDescriptor[] = [
@@ -151,12 +156,44 @@ export const BEHAVIOUR_TYPE_DESCRIPTORS: BehaviourTypeDescriptor[] = [
     ],
   },
   {
+    // One question answered several times (e.g. middle names) — the runtime
+    // repeats the single control with an "Add Another" link. Author-facing
+    // copy avoids the "Field Array" jargon and reads as what the applicant
+    // experiences; min is a render floor (how many boxes to start with),
+    // never a validation rule (#2317).
     type: "fieldArray",
-    label: "Field Array",
+    label: "Answer more than once",
     scopes: ["field"],
+    // The runtime only repeats the renderers that go through
+    // renderRepeatableOrSingle (apps/forms field-renderer): the text-like
+    // inputs and textarea. Everything else must not offer it.
+    supportedHtmlTypes: ["text", "number", "time", "tel", "email", "textarea"],
     params: [
-      { name: "min", label: "Min", kind: "number" },
-      { name: "max", label: "Max", kind: "number" },
+      {
+        name: "min",
+        label: "Start with",
+        kind: "number",
+        defaultValue: 1,
+        minValue: 1,
+      },
+      {
+        name: "max",
+        label: "Allow up to",
+        kind: "number",
+        defaultValue: 4,
+        minValue: 1,
+        atLeastParam: "min",
+      },
+      // Optional override for the runtime's hardcoded "Add Another" link
+      // text. Blank means absent: the editor deletes the key so the runtime
+      // fallback applies — it must never store "".
+      {
+        name: "addAnotherLabel",
+        label: '"Add another" link text',
+        kind: "text",
+        optional: true,
+        placeholder: "Add Another",
+      },
     ],
   },
   {

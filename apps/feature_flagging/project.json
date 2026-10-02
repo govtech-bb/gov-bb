@@ -13,12 +13,49 @@
     },
     "build": {
       "executor": "nx:run-commands",
-      "outputs": ["{projectRoot}/dist"],
+      "outputs": ["{projectRoot}/dist", "{projectRoot}/.amplify-hosting"],
       "options": {
         "command": "npm run build",
         "cwd": "apps/feature_flagging"
       },
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "inputs": [
+        "production",
+        "^production",
+        {
+          "env": "AWS_APP_ID"
+        },
+        {
+          "env": "AWS_BRANCH"
+        },
+        {
+          "env": "FEATURE_FLAGGING_API_URL"
+        },
+        {
+          "env": "FEATURE_FLAGGING_GITHUB_OAUTH_SECRET_ARN"
+        },
+        {
+          "env": "FEATURE_FLAGGING_TOKENS_SECRET_ARN"
+        },
+        {
+          "env": "FORMS_URL"
+        },
+        {
+          "env": "GITHUB_ORG"
+        },
+        {
+          "env": "GITHUB_TEAM_SLUG"
+        },
+        {
+          "env": "LANDING_URL"
+        },
+        {
+          "env": "NITRO_PRESET"
+        },
+        {
+          "env": "OAUTH_REDIRECT_BASE"
+        }
+      ]
     },
     "lint": {
       "executor": "@nx/eslint:lint",

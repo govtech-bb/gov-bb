@@ -51,4 +51,13 @@ describe("ConfirmUploadDto", () => {
       await fieldsWithErrors({ ...VALID, fieldId: "policeCertificate" }),
     ).toEqual([]);
   });
+
+  // #1853: formId is lowercase kebab-case (ADR 0028). An uppercase formId must
+  // be rejected here rather than surviving presign and failing KEY_PATTERN at
+  // confirm.
+  it("rejects an uppercase formId", async () => {
+    expect(
+      await fieldsWithErrors({ ...VALID, formId: "Passport-Renewal" }),
+    ).toContain("formId");
+  });
 });

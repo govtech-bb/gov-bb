@@ -2,18 +2,24 @@ export {
   primitiveMetadataSchema,
   htmlTypesSchema,
   optionSchema,
+  optionGroupSchema,
+  contentVariantSchema,
   basePrimitiveSchema,
   textPrimitiveSchema,
   textAreaPrimitiveSchema,
   datePrimitiveSchema,
   numberPrimitiveSchema,
+  timePrimitiveSchema,
   telPrimitiveSchema,
   emailPrimitiveSchema,
   checkboxPrimitiveSchema,
+  checkboxAccordionPrimitiveSchema,
   selectPrimitiveSchema,
   radioPrimitiveSchema,
   filePrimitiveSchema,
   showHidePrimitiveSchema,
+  openingHoursPrimitiveSchema,
+  contentPrimitiveSchema,
   primitiveSchema,
   fieldOverridesSchema,
   primitiveUISchema,
@@ -24,6 +30,7 @@ export type {
   BasePrimitive,
   FieldOverrides,
   Option,
+  OptionGroup,
   SelectPrimitive,
   RadioPrimitive,
   FilePrimitive,
@@ -31,13 +38,20 @@ export type {
   TextAreaPrimitive,
   DatePrimitive,
   NumberPrimitive,
+  TimePrimitive,
   TelPrimitive,
   EmailPrimitive,
   CheckboxPrimitive,
+  CheckboxAccordionPrimitive,
   ShowHidePrimitive,
+  AddressLookupPrimitive,
+  OpeningHoursPrimitive,
+  ContentPrimitive,
+  ContentVariant,
   Primitive,
   HtmlTypes,
   PrimitiveUI,
+  GeocodeTargets,
 } from "./primitive.type";
 
 export {
@@ -46,6 +60,7 @@ export {
   validationRuleSchema,
   fieldValueSchema,
   dateValueInputSchema,
+  normalizeRuleValues,
 } from "./validation.type";
 
 export type {
@@ -68,6 +83,9 @@ export {
   equalityOperationsSchema,
   durationTransformSchema,
   conditionalTitleSchema,
+  conditionalLabelSchema,
+  conditionalMarkdownSchema,
+  conditionalMarkdownVariantSchema,
 } from "./behavior.type";
 
 export type {
@@ -81,6 +99,9 @@ export type {
   EqualityOperations,
   DurationTransform,
   ConditionalTitle,
+  ConditionalLabel,
+  ConditionalMarkdown,
+  ConditionalMarkdownVariant,
 } from "./behavior.type";
 
 export type { Block } from "./block.type";
@@ -89,7 +110,11 @@ export type { SubmissionValues } from "./submission.type";
 
 export type { ApiResponseShape } from "./api-response.type";
 
-export { valueIsEmpty, isDateComplete } from "./value-empty";
+export {
+  valueIsEmpty,
+  isDateComplete,
+  isAllBlankStringArray,
+} from "./value-empty";
 
 export {
   assembleStepKeyedValues,
@@ -174,14 +199,18 @@ export type {
   DraftRecipe,
   DateTimeFormat,
   ContactDetails,
+  CatchmentRouting,
   RecipeVisibility,
   RecipeMeta,
 } from "./service-contract.type";
 
 export {
   deployBranchPrefix,
+  deployBranchLabel,
   deployBranchName,
   eraseBranchName,
+  fitBranchSegment,
+  formIdFromDeployBranch,
 } from "./deploy-branch";
 
 export type {
@@ -194,3 +223,6 @@ export type {
   PublicFormSummary,
   BuilderFormSummary,
 } from "./form-summary.type";
+
+export { canonicalizeRecipe, serializeRecipe } from "./canonical-json";
+export * from "./service-workspace.type";

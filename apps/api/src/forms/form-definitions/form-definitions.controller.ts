@@ -16,6 +16,11 @@ import { FormDisabledOverridesService } from "../form-disabled-overrides/form-di
 import { GetFormDefinitionDocs } from "./form-definitions.docs";
 import { ApiResponse as AppApiResponse } from "@/common/response";
 import { isValidSecretToken } from "@/common/secret-token";
+import {
+  PREVIEW_COOKIE_NAME,
+  PREVIEW_COOKIE_BYPASS_VALUES,
+  readPreviewCookie,
+} from "@/common/preview-cookie";
 import type { ApiResponseShape } from "@/common/response";
 import type {
   PublicFormSummary,
@@ -23,36 +28,14 @@ import type {
 } from "@govtech-bb/form-types";
 
 /**
- * Cross-app shared preview cookie (#1646 Phase 3, ADR 0058). Byte-identical to
- * the one apps/landing mints (name/path/4h TTL) so the browser stores a single
- * grant visible to landing, forms and the API across the parent domain.
+ * The shared `preview` cookie (name/bypass values/reader) is single-sourced in
+ * `@/common/preview-cookie` (#2116) so the file-upload path shares one copy.
+ * It is byte-identical to the one apps/landing mints (name/path/4h TTL) so the
+ * browser stores a single grant visible to landing, forms and the API across
+ * the parent domain (#1646 Phase 3, ADR 0058).
  */
-const PREVIEW_COOKIE_NAME = "preview";
 /** 4 hours, in MILLISECONDS — express `res.cookie` maxAge unit. Matches landing's 4h. */
 const PREVIEW_COOKIE_MAX_AGE_MS = 4 * 60 * 60 * 1000;
-/**
- * Cookie values that grant a visibility bypass: the level name, or the legacy
- * boolean grant `"1"`. Mirrors `levelFromCookie` in apps/landing/src/lib/preview.ts.
- */
-const PREVIEW_COOKIE_BYPASS_VALUES = new Set(["preview", "draft", "1"]);
-
-/**
- * Pull the `preview` cookie's value out of a raw `Cookie` request header without
- * a cookie-parser dependency. Returns undefined when the cookie is absent.
- */
-function readPreviewCookie(
-  cookieHeader: string | undefined,
-): string | undefined {
-  if (!cookieHeader) return undefined;
-  for (const pair of cookieHeader.split(";")) {
-    const eq = pair.indexOf("=");
-    if (eq === -1) continue;
-    if (pair.slice(0, eq).trim() === PREVIEW_COOKIE_NAME) {
-      return pair.slice(eq + 1).trim();
-    }
-  }
-  return undefined;
-}
 
 @ApiTags("Form Definitions")
 @ApiBearerAuth()

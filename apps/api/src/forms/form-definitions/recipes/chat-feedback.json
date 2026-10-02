@@ -60,7 +60,7 @@
             "ui": {
               "width": "long"
             },
-            "label": "What could we do to improve? (optional)",
+            "label": "What could we do to improve?",
             "fieldId": "improvement-comment"
           }
         }

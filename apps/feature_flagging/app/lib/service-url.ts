@@ -4,7 +4,8 @@ import type { ServiceRow } from "./catalogue";
 // `define` (see vite.config.ts) — Amplify Compute doesn't pass console vars to
 // the SSR Lambda at runtime, and these are read from the client bundle too.
 // Unset (local dev) falls back to the docker-stack origins so localhost links
-// stay on localhost; deployed builds MUST set both or links point at localhost.
+// stay on localhost; a deployed build without both set fails in vite.config.ts
+// rather than silently baking these fallbacks (#2167).
 const LANDING_URL = (
   process.env.LANDING_URL || "http://localhost:3000"
 ).replace(/\/+$/, "");

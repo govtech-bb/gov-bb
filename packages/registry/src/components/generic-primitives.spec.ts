@@ -6,17 +6,19 @@ const EXPECTED_GENERIC_FIELD_IDS = [
   "generic-textarea",
   "generic-number",
   "generic-date",
+  "generic-time",
   "generic-tel",
   "generic-email",
   "generic-checkbox",
+  "generic-checkbox-accordion",
   "generic-radio",
   "generic-file",
   "generic-select",
 ] as const;
 
 describe("generic primitives", () => {
-  it("exposes exactly 10 entries via REGISTRY_PRIMITIVES", () => {
-    expect(Object.keys(REGISTRY_PRIMITIVES)).toHaveLength(10);
+  it("exposes exactly 12 entries via REGISTRY_PRIMITIVES", () => {
+    expect(Object.keys(REGISTRY_PRIMITIVES)).toHaveLength(12);
   });
 
   it.each(EXPECTED_GENERIC_FIELD_IDS)(

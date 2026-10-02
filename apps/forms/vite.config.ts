@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   resolve: {
     tsconfigPaths: true,
   },
@@ -13,7 +13,9 @@ export default defineConfig({
     tanstackRouter({
       target: "react",
       autoCodeSplitting: true,
+      // The local demo uses the checked-in tree without rewriting source files.
+      enableRouteGeneration: mode !== "demo",
     }),
     react(),
   ],
-});
+}));

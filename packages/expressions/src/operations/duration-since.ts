@@ -1,4 +1,5 @@
 import { DateTime } from "luxon";
+import { parseDate } from "./parse-date";
 import { DEFAULT_ZONE } from "./zone";
 
 export type DurationUnit = "years" | "months" | "days";
@@ -19,28 +20,4 @@ export function durationSince(date: unknown, unit: DurationUnit): number {
   if (dt === null || !dt.isValid) return NaN;
   const now = DateTime.now().setZone(DEFAULT_ZONE);
   return Math.floor(now.diff(dt, unit).as(unit));
-}
-
-function parseDate(value: unknown): DateTime | null {
-  if (isDateValue(value)) {
-    const day = Number(value.day);
-    const month = Number(value.month);
-    const year = Number(value.year);
-    if (!day || !month || !year) return null;
-    return DateTime.fromObject({ day, month, year }, { zone: DEFAULT_ZONE });
-  }
-  // Date-only ("YYYY-MM-DD") and full ISO both supported.
-  return DateTime.fromISO(String(value), { zone: DEFAULT_ZONE });
-}
-
-function isDateValue(
-  value: unknown,
-): value is { day: unknown; month: unknown; year: unknown } {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "day" in value &&
-    "month" in value &&
-    "year" in value
-  );
 }

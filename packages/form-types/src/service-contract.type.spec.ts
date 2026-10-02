@@ -405,6 +405,59 @@ describe("draftRecipeSchema (#1499)", () => {
   });
 });
 
+describe("catchmentRouting", () => {
+  const RECIPE_BASE = {
+    formId: "f",
+    title: "T",
+    steps: [],
+    createdAt: "2026-07-28T00:00:00Z",
+    updatedAt: "2026-07-28T00:00:00Z",
+  };
+
+  it("accepts a catchmentRouting block on the recipe schema", () => {
+    const parsed = serviceContractRecipeSchema.parse({
+      ...RECIPE_BASE,
+      catchmentRouting: {
+        coordinatesField: "event-details.event-address-coordinates",
+        parishField: "event-details.event-parish",
+      },
+    });
+    expect(parsed.catchmentRouting?.parishField).toBe(
+      "event-details.event-parish",
+    );
+  });
+
+  it("is optional (absent parses)", () => {
+    expect(
+      serviceContractRecipeSchema.parse(RECIPE_BASE).catchmentRouting,
+    ).toBeUndefined();
+  });
+
+  it("rejects a block missing coordinatesField", () => {
+    expect(
+      serviceContractRecipeSchema.safeParse({
+        ...RECIPE_BASE,
+        catchmentRouting: { parishField: "a.b" },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("carries catchmentRouting on the served contract schema", () => {
+    const parsed = serviceContractSchema.parse({
+      formId: "f",
+      title: "T",
+      steps: [],
+      createdAt: "2026-07-28T00:00:00Z",
+      updatedAt: "2026-07-28T00:00:00Z",
+      catchmentRouting: {
+        coordinatesField: "s.coords",
+        parishField: "s.parish",
+      },
+    });
+    expect(parsed.catchmentRouting?.coordinatesField).toBe("s.coords");
+  });
+});
+
 describe("getRecipeVisibility (#1646)", () => {
   it("returns preview when the recipe carries no meta", () => {
     expect(getRecipeVisibility({})).toBe("preview");

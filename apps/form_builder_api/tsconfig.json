@@ -1,26 +1,22 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "module": "CommonJS",
-    "moduleResolution": "node",
+    "module": "Node16",
+    "moduleResolution": "Node16",
     "target": "ES2022",
     "outDir": "dist",
     "rootDir": "src",
     "esModuleInterop": true,
     "strict": true,
     "skipLibCheck": true,
-    "declaration": true,
+    "declaration": false,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "isolatedModules": true,
     "paths": {
-      "@govtech-bb/ai-bedrock/converse": [
-        "dist/packages/ai-bedrock/src/converse.d.ts"
-      ],
       "@govtech-bb/database": ["../../packages/database/src/index.ts"],
       "@govtech-bb/form-builder": ["../../packages/form-builder/src/index.ts"],
-      "@govtech-bb/form-types": ["../../packages/form-types/src/index.ts"],
-      "@govtech-bb/git-publish": ["../../packages/git-publish/src/index.ts"]
+      "@govtech-bb/form-types": ["../../packages/form-types/src/index.ts"]
     }
   },
   "include": ["src/**/*.ts"],

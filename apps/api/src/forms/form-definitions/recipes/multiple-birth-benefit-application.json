@@ -57,7 +57,6 @@
         {
           "ref": "components/address",
           "overrides": {
-            "hint": "Optional",
             "label": "Address line 2",
             "fieldId": "address-line-2",
             "validations": {
@@ -72,9 +71,7 @@
         },
         {
           "ref": "components/postcode",
-          "overrides": {
-            "hint": "Optional"
-          }
+          "overrides": {}
         },
         {
           "ref": "components/email",
@@ -197,7 +194,6 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "hint": "Optional",
             "label": "Nursery or school attending",
             "fieldId": "child-school",
             "validations": {
@@ -277,6 +273,10 @@
                   "image/jpeg",
                   "image/png"
                 ]
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
               }
             }
           }
@@ -300,6 +300,10 @@
                   "image/jpeg",
                   "image/png"
                 ]
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
               }
             }
           }
@@ -323,6 +327,10 @@
                   "image/jpeg",
                   "image/png"
                 ]
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
               }
             }
           }
@@ -345,6 +353,10 @@
                   "image/jpeg",
                   "image/png"
                 ]
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
               }
             }
           }

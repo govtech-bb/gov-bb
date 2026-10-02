@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -12,8 +13,13 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { Primitive, ServiceContract } from "@govtech-bb/form-types";
+import {
+  fileTypesRunner,
+  UNVERIFIED_CONTENT_TYPE,
+} from "@govtech-bb/form-validation";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import { isValidSecretToken } from "../common/secret-token";
+import { AppError } from "../common/errors";
 import { buildSubmissionKey, parseSubmissionKey } from "./submission-key";
 import type {
   SubmissionValues,
@@ -34,6 +40,24 @@ export interface SubmissionFileEntry {
   type: string;
 }
 
+/**
+ * A HeadObject failure that means the object genuinely isn't there — as opposed
+ * to a transient or permission error where the object may still exist. S3
+ * returns `NotFound` (HTTP 404) for a missing key; `NoSuchKey` is matched
+ * defensively.
+ */
+function isGenuineMiss(err: unknown): boolean {
+  const e = err as {
+    name?: string;
+    $metadata?: { httpStatusCode?: number };
+  } | null;
+  return (
+    e?.name === "NotFound" ||
+    e?.name === "NoSuchKey" ||
+    e?.$metadata?.httpStatusCode === 404
+  );
+}
+
 @Injectable()
 export class FilesService {
   private readonly s3: S3Client;
@@ -41,6 +65,7 @@ export class FilesService {
   private readonly globalMaxSize: number;
   private readonly presignTtl: number;
   private readonly readTtl: number;
+  private readonly logger = new Logger(FilesService.name);
 
   constructor(
     private readonly config: ConfigService,
@@ -76,13 +101,16 @@ export class FilesService {
     dto: PresignUploadDto,
     previewToken?: string,
     draftToken?: string,
+    // A valid shared `preview` cookie grants the visibility bypass on its own
+    // (#2116) — the browser drops the URL token but still sends the cookie.
+    previewCookieBypass = false,
   ): Promise<PresignUploadResponseDto> {
     this.assertConfigured();
     const field = await this.resolveFileField(
       dto.formId,
       dto.stepId,
       dto.fieldId,
-      this.isValidRecipeToken(previewToken),
+      this.isValidRecipeToken(previewToken) || previewCookieBypass,
       this.isValidRecipeToken(draftToken),
     );
 
@@ -115,6 +143,8 @@ export class FilesService {
     dto: ConfirmUploadDto,
     previewToken?: string,
     draftToken?: string,
+    // See presignUpload — the shared `preview` cookie grants the bypass (#2116).
+    previewCookieBypass = false,
   ): Promise<FileAttachmentDto> {
     this.assertConfigured();
     // Bind confirm to presign (#284): the key embeds the (formId, stepId,
@@ -140,7 +170,7 @@ export class FilesService {
       dto.formId,
       dto.stepId,
       dto.fieldId,
-      this.isValidRecipeToken(previewToken),
+      this.isValidRecipeToken(previewToken) || previewCookieBypass,
       this.isValidRecipeToken(draftToken),
     );
 
@@ -187,8 +217,21 @@ export class FilesService {
             );
           } catch (err: unknown) {
             const name = (err as { name?: string } | null)?.name;
+            // Throttle → re-raise so the batch backs off (unchanged).
             if (name && /Throttl|SlowDown|Limit/i.test(name)) throw err;
-            missing.add(key);
+            // A genuine miss (object absent) stays a "missing" result so the
+            // citizen still sees the field-level "Uploaded file not found".
+            if (isGenuineMiss(err)) {
+              missing.add(key);
+              return;
+            }
+            // Anything else is a transient/unexpected S3 failure — the object
+            // may well exist. Fail loud with the real cause logged, rather than
+            // mislabelling a present file as missing (#1989).
+            this.logger.error(
+              `HeadObject failed for ${key}: ${name ?? "unknown error"}`,
+            );
+            throw AppError.internal("Could not verify uploaded files");
           }
         }),
       );
@@ -430,24 +473,42 @@ export class FilesService {
     contentType: string,
     fileName: string,
   ): void {
-    const allowed = field.validations?.fileTypes?.value as string[] | undefined;
-    if (!allowed || allowed.length === 0) return;
+    const rule = field.validations?.fileTypes;
+    const allowed = Array.isArray(rule?.value)
+      ? (rule.value as string[])
+      : undefined;
 
-    // Allowlist entries starting with "." are extension patterns; everything
-    // else is a MIME type. A file is accepted if EITHER matches — users
-    // typically configure `[".pdf", "application/pdf"]` meaning "PDFs OK".
-    // Note: contentType is client-supplied (S3 does not sniff bytes), so this
-    // is policy enforcement, not malware defense.
-    const lc = allowed.map((s) => s.toLowerCase());
-    const parts = fileName.split(".");
-    const ext =
-      parts.length > 1 ? `.${parts[parts.length - 1]!.toLowerCase()}` : "";
+    // `application/octet-stream` is what the client sends when the browser
+    // could not type the file at all (an extensionless scan, an unrecognised
+    // document) — "unknown binary", not a claim about content.
+    const unverified = contentType.toLowerCase() === UNVERIFIED_CONTENT_TYPE;
 
-    if (lc.includes(contentType.toLowerCase()) || lc.includes(ext)) return;
+    if (!allowed || allowed.length === 0) {
+      // Fail closed. With no allowlist there is nothing to check an unverified
+      // file against, so accepting it would mean storing something we cannot
+      // identify by type OR extension. A field that genuinely wants to take
+      // anything should say so by listing the types it accepts.
+      if (unverified) {
+        throw new BadRequestException(
+          "The file type could not be identified. Rename the file so it has " +
+            "its correct extension (for example .pdf or .jpg) and try again.",
+        );
+      }
+      return;
+    }
 
-    throw new BadRequestException(
-      `Content type ${contentType} not allowed for this field`,
+    // Delegate to the shared runner rather than re-implementing the match:
+    // it normalises MIME / dotted / dotless allowlist entries to a bare
+    // extension, so `image/png` accepts `scan.png`. The local re-implementation
+    // this replaces matched only verbatim, which meant an untyped file the
+    // client validated as fine was still refused here.
+    // contentType is client-supplied (S3 does not sniff bytes), so this stays
+    // policy enforcement, not malware defence.
+    const error = fileTypesRunner(
+      [{ name: fileName, size: 0, type: contentType }],
+      { ...rule, value: allowed },
     );
+    if (error) throw new BadRequestException(error);
   }
 
   private resolveMaxSize(field: Primitive): number {

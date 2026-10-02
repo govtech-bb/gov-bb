@@ -8,7 +8,11 @@ import {
 import { ApiProperty } from "@nestjs/swagger";
 import { SUBMISSION_KEY_PATTERN } from "../submission-key";
 
-const FORM_ID_PATTERN = /^[a-z0-9-]+$/i;
+// Lowercase-only (no `i` flag): a formId is a canonical lowercase kebab-case id
+// (ADR 0028). Rejecting uppercase here matches SUBMISSION_KEY_PATTERN's
+// lowercase formId segment, so an uppercase id can't presign then fail at
+// confirm (#1853).
+const FORM_ID_PATTERN = /^[a-z0-9-]+$/;
 const SLUG_PATTERN = /^[a-z0-9-]+$/i;
 // fieldId is embedded in the S3 key path (#284), so it must be path-safe — no
 // "/" or ".." that could escape the prefix. Allows the camelCase recipe field
