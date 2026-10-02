@@ -353,7 +353,6 @@
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "pool-usage-type",
-                "targetStepId": "pool-details",
                 "operator": "in",
                 "value": [
                   "other"
