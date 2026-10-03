@@ -128,7 +128,7 @@ describe("publishRecipe", () => {
     const result = await publishRecipe({
       data: { recipe: RECIPE, description: "Updates passport-renewal" },
       context: { session: SESSION },
-    });
+    } as never);
 
     expect(result).toEqual({
       prUrl: "https://github.com/govtech-bb/gov-bb/pull/42",
@@ -219,7 +219,7 @@ describe("publishRecipe", () => {
     await publishRecipe({
       data: { recipe: RECIPE, description: "" },
       context: { session: SESSION },
-    });
+    } as never);
 
     const putBody = JSON.parse(
       (fetchMock.mock.calls[4][1] as RequestInit).body as string,
@@ -267,7 +267,7 @@ describe("publishRecipe", () => {
     await publishRecipe({
       data: { recipe: RECIPE, description: "" },
       context: { session: SESSION },
-    });
+    } as never);
 
     const putBody = JSON.parse(
       (fetchMock.mock.calls[4][1] as RequestInit).body as string,
@@ -323,7 +323,7 @@ describe("publishRecipe", () => {
     await publishRecipe({
       data: { recipe: incoming, description: "" },
       context: { session: SESSION },
-    });
+    } as never);
 
     const putBody = JSON.parse(
       (fetchMock.mock.calls[4][1] as RequestInit).body as string,
@@ -356,7 +356,7 @@ describe("publishRecipe", () => {
     await publishRecipe({
       data: { recipe: RECIPE, description: "" },
       context: { session: SESSION },
-    });
+    } as never);
 
     const putBody = JSON.parse(
       (fetchMock.mock.calls[4][1] as RequestInit).body as string,
@@ -390,7 +390,7 @@ describe("publishRecipe", () => {
     await publishRecipe({
       data: { recipe: RECIPE, description: "" },
       context: { session: SESSION },
-    });
+    } as never);
 
     const putBody = JSON.parse(
       (fetchMock.mock.calls[4][1] as RequestInit).body as string,
@@ -421,7 +421,7 @@ describe("publishRecipe", () => {
       publishRecipe({
         data: { recipe: RECIPE, description: "" },
         context: { session: SESSION },
-      }),
+      } as never),
     ).rejects.toThrow(/validation failed/i);
     expect(api.put).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
@@ -436,7 +436,7 @@ describe("publishRecipe", () => {
       publishRecipe({
         data: { recipe: RECIPE, description: "" },
         context: { session: SESSION },
-      }),
+      } as never),
     ).rejects.toThrow(/another editor holds this form/i);
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -458,7 +458,7 @@ describe("publishRecipe", () => {
       publishRecipe({
         data: { recipe: RECIPE, description: "" },
         context: { session: SESSION },
-      }),
+      } as never),
     ).rejects.toThrow(/failed to write recipe file/i);
     const del = fetchMock.mock.calls.find(
       (c) => (c[1] as RequestInit | undefined)?.method === "DELETE",
@@ -476,7 +476,7 @@ describe("publishRecipe", () => {
     await publishRecipe({
       data: { recipe: RECIPE, description: "" },
       context: { session: SESSION },
-    });
+    } as never);
 
     expect(fetchMock.mock.calls[1][0]).toContain("/git/ref/heads/sandbox");
     const prBody = JSON.parse(
@@ -509,7 +509,7 @@ describe("publishRecipe", () => {
     const result = await publishRecipe({
       data: { recipe: RECIPE, description: "Bumped a copy typo" },
       context: { session: SESSION },
-    });
+    } as never);
 
     expect(result).toEqual({
       prUrl: "https://github.com/govtech-bb/gov-bb/pull/17",
@@ -582,7 +582,7 @@ describe("publishRecipe", () => {
     await publishRecipe({
       data: { recipe: RECIPE, description: "" },
       context: { session: SESSION },
-    });
+    } as never);
 
     const putBody = JSON.parse(
       (fetchMock.mock.calls[2][1] as RequestInit).body as string,
@@ -624,7 +624,7 @@ describe("publishRecipe", () => {
     const result = await publishRecipe({
       data: { recipe: siblingRecipe, description: "" },
       context: { session: SESSION },
-    });
+    } as never);
 
     expect(result).toEqual({
       prUrl: "https://github.com/govtech-bb/gov-bb/pull/43",
@@ -668,7 +668,7 @@ describe("publishRecipe", () => {
     const result = await publishRecipe({
       data: { recipe: RECIPE, description: "" },
       context: { session: SESSION },
-    });
+    } as never);
 
     expect(result).toEqual({
       prUrl: "https://github.com/govtech-bb/gov-bb/pull/42",
@@ -711,7 +711,7 @@ describe("publishRecipe", () => {
     const result = await publishRecipe({
       data: { recipe: eraseLikeRecipe, description: "" },
       context: { session: SESSION },
-    });
+    } as never);
 
     expect(result).toEqual({
       prUrl: "https://github.com/govtech-bb/gov-bb/pull/44",
@@ -748,7 +748,7 @@ describe("publishRecipe", () => {
     const result = await publishRecipe({
       data: { recipe: longRecipe, description: "" },
       context: { session: SESSION },
-    });
+    } as never);
 
     expect(result).toEqual({
       prUrl: "https://github.com/govtech-bb/gov-bb/pull/17",
@@ -781,7 +781,7 @@ describe("publishRecipe", () => {
       // would add.
       data: { recipe: RECIPE, description: "   " },
       context: { session: SESSION },
-    });
+    } as never);
 
     expect(result.updatedExistingPR).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(3); // no comment POST
@@ -804,7 +804,7 @@ describe("publishRecipe", () => {
     const result = await publishRecipe({
       data: { recipe: RECIPE, description: "Fixed a typo" },
       context: { session: SESSION },
-    });
+    } as never);
 
     // The recipe is already committed by this point — a failed comment must
     // never fail a deploy that already succeeded.
@@ -832,7 +832,7 @@ describe("publishRecipe", () => {
       publishRecipe({
         data: { recipe: RECIPE, description: "" },
         context: { session: SESSION },
-      }),
+      } as never),
     ).rejects.toThrow(/failed to write recipe file/i);
 
     // Deleting an already-open PR's branch would close that PR and destroy
@@ -858,7 +858,9 @@ describe("listOpenDeployPRs", () => {
       );
     globalThis.fetch = fetchMock;
 
-    const result = await listOpenDeployPRs({ context: { session: SESSION } });
+    const result = await listOpenDeployPRs({
+      context: { session: SESSION },
+    } as never);
 
     expect(result).toEqual([
       {
@@ -923,7 +925,7 @@ describe("eraseRecipe", () => {
     const result = await eraseRecipe({
       data: ERASE,
       context: { session: SESSION },
-    });
+    } as never);
 
     expect(result).toEqual({
       prUrl: "https://github.com/govtech-bb/gov-bb/pull/99",
@@ -1030,7 +1032,7 @@ describe("eraseRecipe", () => {
     globalThis.fetch = fetchMock;
 
     await expect(
-      eraseRecipe({ data: ERASE, context: { session: SESSION } }),
+      eraseRecipe({ data: ERASE, context: { session: SESSION } } as never),
     ).rejects.toThrow(/disabled/i);
 
     // The disabled gate fires before any GitHub call.
@@ -1045,7 +1047,7 @@ describe("eraseRecipe", () => {
     globalThis.fetch = fetchMock;
 
     await expect(
-      eraseRecipe({ data: ERASE, context: { session: SESSION } }),
+      eraseRecipe({ data: ERASE, context: { session: SESSION } } as never),
     ).rejects.toThrow(/nothing to erase/i);
 
     // Only the listing was attempted — no branch created.
@@ -1070,7 +1072,7 @@ describe("eraseRecipe", () => {
     globalThis.fetch = fetchMock;
 
     await expect(
-      eraseRecipe({ data: ERASE, context: { session: SESSION } }),
+      eraseRecipe({ data: ERASE, context: { session: SESSION } } as never),
     ).rejects.toThrow(/Failed to create tree/);
 
     const cleanup = fetchMock.mock.calls[5];
@@ -1092,7 +1094,7 @@ describe("eraseRecipe", () => {
     globalThis.fetch = fetchMock;
 
     await expect(
-      eraseRecipe({ data: ERASE, context: { session: SESSION } }),
+      eraseRecipe({ data: ERASE, context: { session: SESSION } } as never),
     ).rejects.toThrow(/Failed to create branch/);
 
     // No DELETE — the branch was never created.
@@ -1122,7 +1124,7 @@ describe("eraseRecipe", () => {
       );
     globalThis.fetch = fetchMock;
 
-    await eraseRecipe({ data: ERASE, context: { session: SESSION } });
+    await eraseRecipe({ data: ERASE, context: { session: SESSION } } as never);
 
     // listVersions and the base ref both read sandbox.
     expect(fetchMock.mock.calls[0][0]).toContain("?ref=sandbox");
@@ -1158,7 +1160,7 @@ describe("eraseRecipe", () => {
     globalThis.fetch = fetchMock;
 
     await expect(
-      eraseRecipe({ data: ERASE, context: { session: SESSION } }),
+      eraseRecipe({ data: ERASE, context: { session: SESSION } } as never),
     ).rejects.toThrow(/Failed to open pull request/);
 
     const cleanup = fetchMock.mock.calls[8];
@@ -1178,7 +1180,7 @@ describe("eraseRecipe", () => {
       eraseRecipe({
         data: { ...ERASE, reason: "" },
         context: { session: SESSION },
-      }),
+      } as never),
     ).rejects.toThrow();
 
     expect(api.get).not.toHaveBeenCalled();

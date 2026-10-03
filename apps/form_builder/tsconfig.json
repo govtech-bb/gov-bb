@@ -9,6 +9,7 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "composite": false,
     "noEmit": true,
+    "declaration": false,
     "allowImportingTsExtensions": true
   },
   "include": ["app/**/*", "vitest.setup.ts"]

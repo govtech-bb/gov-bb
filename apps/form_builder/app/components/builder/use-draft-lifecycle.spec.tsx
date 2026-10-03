@@ -5,7 +5,7 @@ import { respondToConfirmation } from "../../test/ui";
 import { act, renderHook } from "../../test/ui";
 import { useDraftLifecycle } from "./use-draft-lifecycle";
 import { EMPTY_DRAFT } from "./recipe-reducer";
-import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
+import type { RecipeDraft } from "@govtech-bb/form-builder";
 
 // A bare vi.fn (rather than vi.mocked on the real createServerFn) so
 // mockResolvedValue isn't fighting the fetcher's return type — same pattern as
@@ -14,8 +14,6 @@ const validateRecipe = vi.fn();
 vi.mock("../../server/registry", () => ({
   validateRecipe: (...args: unknown[]) => validateRecipe(...args),
 }));
-
-const CATALOG: RegistryCatalog = { components: [], blocks: [], custom: [] };
 
 type Params = Parameters<typeof useDraftLifecycle>[0];
 
@@ -38,9 +36,7 @@ function render(overrides: Partial<Params> = {}) {
   const hook = renderHook(() =>
     useDraftLifecycle({
       draft: EMPTY_DRAFT,
-      catalog: CATALOG,
       savedDraft: null,
-      hasUnsavedChanges: false,
       dispatch,
       setSavedDraft,
       setLoadedFromId,
