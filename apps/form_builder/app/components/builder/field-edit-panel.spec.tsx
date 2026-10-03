@@ -758,3 +758,29 @@ it("adds no override key when saved with the Field ID display untouched", async 
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
   expect(lastOverrides(dispatch)).toEqual({});
 });
+
+it("warns that the effective id is shared without any override typed", () => {
+  // Two untouched Text fields both resolve to `generic-text`. The duplicate
+  // check runs on the effective id, and the warning repeats under the
+  // read-only Field ID because the override input sits in the collapsed
+  // Advanced settings.
+  const field = makeField("components/generic-text");
+  const twin: RecipeFieldDraft = { ...field, id: "f2" };
+  const draft = makeDraft(field);
+  draft.steps[0].fields.push(twin);
+  render(
+    <FieldEditPanel
+      open
+      field={field}
+      catalog={catalog}
+      draft={draft}
+      stepId="step-1"
+      dispatch={vi.fn()}
+      onClose={vi.fn()}
+    />,
+  );
+
+  expect(fieldIdDisplay()).toHaveAttribute("aria-invalid", "true");
+  // Once under Field ID, once under the (keepMounted) Field ID Override.
+  expect(screen.getAllByText(/already used by another field/)).toHaveLength(2);
+});
