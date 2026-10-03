@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { CodeBlock } from "./code-block";
 import { StreamingText } from "./streaming-text";

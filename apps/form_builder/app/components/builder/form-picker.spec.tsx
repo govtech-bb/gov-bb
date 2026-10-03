@@ -1,7 +1,6 @@
 /**
  * @vitest-environment jsdom
  */
-import "@testing-library/jest-dom";
 import { render, screen } from "../../test/ui";
 import userEvent from "@testing-library/user-event";
 import type { Mock } from "vitest";
@@ -239,7 +238,7 @@ describe("FormPicker", () => {
   });
 
   it("duplicating a public form starts the copy hidden (visibility: draft, #1682)", async () => {
-    (getRecipe as Mock).mockResolvedValue({
+    (getRecipe as unknown as Mock).mockResolvedValue({
       formId: "passport",
       title: "Passport Application",
       steps: [],
@@ -263,8 +262,8 @@ describe("FormPicker", () => {
   it("renders Enable (not Delete) for a disabled draft-only form and keeps the row clickable", async () => {
     // Pending promises so handleSelect records the open attempt without running
     // the downstream deserialize/onLoad in this render-focused test.
-    (getRecipe as Mock).mockReturnValue(new Promise(() => {}));
-    (getFormConfig as Mock).mockReturnValue(new Promise(() => {}));
+    (getRecipe as unknown as Mock).mockReturnValue(new Promise(() => {}));
+    (getFormConfig as unknown as Mock).mockReturnValue(new Promise(() => {}));
     const onEnable = vi.fn();
     renderPicker({ forms: [DISABLED_DRAFT], onEnable });
 
