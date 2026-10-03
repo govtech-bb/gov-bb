@@ -22,8 +22,8 @@ export const serviceTabs = [
   ["form", "Application form"],
   ["journey", "Journey map"],
   ["delivery", "After submission"],
-  ["publish", "Publish"],
   ["details", "Details"],
+  ["publish", "Publish"],
 ] as const;
 export type ServiceTab = (typeof serviceTabs)[number][0];
 
