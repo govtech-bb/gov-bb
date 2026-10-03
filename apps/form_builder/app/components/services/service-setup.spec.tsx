@@ -1,5 +1,4 @@
 /** @vitest-environment jsdom */
-import "@testing-library/jest-dom";
 import { useState, type ReactNode } from "react";
 import { render, screen, waitFor, within } from "../../test/ui";
 import { chooseOption, openSelect } from "../../test/select";

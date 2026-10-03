@@ -2,7 +2,6 @@ import { respondToConfirmation } from "../../test/ui";
 /**
  * @vitest-environment jsdom
  */
-import "@testing-library/jest-dom";
 import { createElement, type ReactElement, type ReactNode } from "react";
 import { render, screen, fireEvent, within, waitFor } from "../../test/ui";
 import userEvent from "@testing-library/user-event";

@@ -3,7 +3,6 @@ import { openSelect, chooseOption } from "../../test/select";
 /**
  * @vitest-environment jsdom
  */
-import "@testing-library/jest-dom";
 import { render, screen, within } from "../../test/ui";
 import userEvent from "@testing-library/user-event";
 import { useReducer } from "react";

@@ -8,7 +8,6 @@ import type { Mock } from "vitest";
  * unchecking a base-required field must write an explicit `value: false` so the
  * merge can override the base — otherwise the field is always required.
  */
-import "@testing-library/jest-dom";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { getCatalog } from "@govtech-bb/form-builder";
