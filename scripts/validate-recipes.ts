@@ -2,6 +2,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import {
+  checkCatchmentRoutingHasMapping,
   serializeRecipe,
   serviceContractRecipeSchema,
 } from "@govtech-bb/form-types";
@@ -106,6 +107,13 @@ async function main(): Promise<void> {
     }
 
     errors.push(...checkWebhookRecipe(recipe, relative));
+    // The API's boot-time rule (#2877): a catchment-routed recipe with no
+    // mapped webhook is refused by the loader, so catch it before it merges.
+    errors.push(
+      ...checkCatchmentRoutingHasMapping(recipe).map(
+        (e) => `${relative}: ${e}`,
+      ),
+    );
     errors.push(...checkFileFieldsDeclareTypes(recipe, relative));
     errors.push(
       ...checkRequiredErrorsAreSpecific(recipe, relative, BUILTIN_REGISTRY),
