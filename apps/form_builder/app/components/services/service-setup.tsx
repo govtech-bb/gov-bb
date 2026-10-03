@@ -185,7 +185,9 @@ export function ServiceSetup({
                 <Select
                   label="Where do people start?"
                   value={manifest.entryPoint ?? ""}
-                  onValueChange={(v) => change({ entryPoint: String(v) || null })}
+                  onValueChange={(v) =>
+                    change({ entryPoint: String(v) || null })
+                  }
                   items={[
                     { value: "", label: "Choose a starting point" },
                     ...manifest.pages.map((p) => ({
@@ -822,6 +824,9 @@ function ServiceSubmissionActions({
     ...EMPTY_DRAFT,
     processors,
     contactDetails: recipe.contactDetails ?? value.manifest.contactDetails,
+    // So the editor's catchment-needs-a-mapped-webhook warning (#2877) fires
+    // here too; the dispatch below never writes it back.
+    catchmentRouting: recipe.catchmentRouting,
   };
   return (
     <ProcessorsEditor

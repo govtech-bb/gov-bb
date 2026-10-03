@@ -98,9 +98,7 @@ function Harness({ initial = draft() }: { initial?: ServiceDraft }) {
       return next;
     },
   } as ServiceState;
-  return (
-    <ServiceSetup workspace={workspace} section="delivery" />
-  );
+  return <ServiceSetup workspace={workspace} section="delivery" />;
 }
 
 beforeEach(() => {
@@ -352,6 +350,23 @@ it("edits email subjects and connections in one screen while preserving payment 
   expect(
     screen.getAllByRole("heading", { name: "After submission" }),
   ).toHaveLength(1);
+});
+
+it("warns in the advanced actions when a catchment-routed form has no mapped webhook (#2877)", async () => {
+  const initial = draft();
+  // The fixture's two email actions are the shape an Environmental Health
+  // form is left in once its only webhook has been removed.
+  initial.recipe!.catchmentRouting = {
+    coordinatesField: "contact.coordinates",
+    parishField: "contact.parish",
+  };
+  render(<Harness initial={initial} />);
+  await userEvent.click(
+    screen.getByRole("button", { name: "Advanced action settings" }),
+  );
+  expect(screen.getByText(/routes by catchment/i)).toHaveTextContent(
+    /cannot be deployed/i,
+  );
 });
 
 it("keeps incomplete payments in the editor and explains what prevents saving", async () => {

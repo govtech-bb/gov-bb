@@ -1,4 +1,7 @@
-import { classifyRecipientField } from "@govtech-bb/form-types";
+import {
+  checkCatchmentRoutingHasMapping,
+  classifyRecipientField,
+} from "@govtech-bb/form-types";
 import { submissionActionSummary } from "../../lib/submission-actions";
 import { useConfirmation } from "../ui/dialog/confirmation";
 import { ScrollArea } from "../ui/scroll-area";
@@ -63,6 +66,11 @@ export function ProcessorsEditor({
       !!p.config.recipientField.trim() &&
       classifyRecipientField(p.config.recipientField) === "submitted",
   );
+  // A catchment-routed form (the Environmental Health licences) needs a mapped
+  // webhook or the API refuses it at boot (#2877). Removing it stays allowed
+  // and the draft can still be saved — the Deploy gate is what blocks it.
+  const missingCatchmentWebhook =
+    checkCatchmentRoutingHasMapping(draft).length > 0;
   const questionLabels = Object.fromEntries(
     fields.map((f) => [`${f.stepId}.${f.fieldId}`, f.display]),
   );
@@ -113,6 +121,16 @@ export function ProcessorsEditor({
             <div className="min-w-0 flex-1">
               Applicants will not receive a confirmation email. To send one, add
               an email action and choose their email question as the recipient.
+            </div>
+          </Banner>
+        )}
+
+        {missingCatchmentWebhook && (
+          <Banner variant="alert" size="sm" role="alert">
+            <div className="min-w-0 flex-1">
+              This form routes by catchment and needs a webhook action with a
+              programme code. You can save the draft, but it cannot be deployed
+              until one is added.
             </div>
           </Banner>
         )}
