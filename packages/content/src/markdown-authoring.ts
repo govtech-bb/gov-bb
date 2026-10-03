@@ -498,7 +498,7 @@ export function analyzeMarkdownCompatibility(
       if (!isStartLink && !(tag.name === "br" && isSafeBreakTag(tag.raw))) {
         addReason(reasons, {
           code: "unsupported-html",
-          message: `The <${tag.name}> HTML tag can only be edited safely in Markdown mode.`,
+          message: `The ${tag.raw} HTML tag can only be edited safely in Markdown mode.`,
           token: tag.name,
         });
       }
