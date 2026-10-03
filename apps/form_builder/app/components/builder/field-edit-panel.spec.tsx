@@ -784,3 +784,121 @@ it("warns that the effective id is shared without any override typed", () => {
   // Once under Field ID, once under the (keepMounted) Field ID Override.
   expect(screen.getAllByText(/already used by another field/)).toHaveLength(2);
 });
+
+// --- Type-specific settings (#2873) ----------------------------------------
+// Attributes only one htmlType's renderer reads — a content block's style,
+// markdown body and details summary — come from CUSTOM_ATTRIBUTE_DESCRIPTORS
+// and are edited under "Type-specific settings" inside Availability, which
+// opens by default when the type has any. Values follow the ui-editor
+// contract: show the effective value (override ?? registry default), drop the
+// key when it is set back to that default or cleared.
+
+const typeSettingsHeading = () => screen.queryByText("Type-specific settings");
+const availabilityTrigger = () =>
+  screen.getByRole("button", { name: "Availability" });
+const styleSelect = () => screen.getByRole("combobox", { name: /^style$/i });
+const contentInput = () => screen.getByLabelText("Content");
+const summaryInput = () => screen.queryByLabelText("Summary");
+
+it("offers no type-specific settings for a plain field and leaves Availability collapsed", () => {
+  renderPanel(makeField("components/last-name"));
+  expect(typeSettingsHeading()).not.toBeInTheDocument();
+  expect(availabilityTrigger()).toHaveAttribute("aria-expanded", "false");
+});
+
+it("opens Availability on an Information block with Style and Content, and hides the valueless controls", () => {
+  renderPanel(makeField("components/content"));
+  expect(typeSettingsHeading()).toBeInTheDocument();
+  expect(availabilityTrigger()).toHaveAttribute("aria-expanded", "true");
+  expect(styleSelect()).toHaveTextContent("Text"); // registry default
+  expect(contentInput()).toHaveValue("");
+  expect(summaryInput()).not.toBeInTheDocument();
+  // A content block holds no value: Required, validation rules and Hint
+  // would all be authored no-ops.
+  expect(
+    screen.queryByRole("checkbox", { name: /^required$/i }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Validation rules" }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Hint")).not.toBeInTheDocument();
+});
+
+it("dispatches variant and content, and no summary, for an inset block", async () => {
+  const dispatch = renderPanel(makeField("components/content"));
+  await chooseOption(styleSelect(), "Inset");
+  await userEvent.type(contentInput(), "Bring your **National ID**.");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({
+    variant: "inset",
+    content: "Bring your **National ID**.",
+  });
+});
+
+it("shows Summary only once the effective Style is details, and saves all three keys", async () => {
+  const dispatch = renderPanel(makeField("components/content"));
+  expect(summaryInput()).not.toBeInTheDocument();
+  await chooseOption(styleSelect(), "Details");
+  expect(summaryInput()).toBeInTheDocument();
+  await userEvent.type(summaryInput()!, "What you will need");
+  await userEvent.type(contentInput(), "Two recent photos.");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({
+    variant: "details",
+    summary: "What you will need",
+    content: "Two recent photos.",
+  });
+});
+
+it("drops variant when Style returns to the registry default, and content when cleared", async () => {
+  const dispatch = renderPanel(
+    makeFieldWith("components/content", {
+      variant: "inset",
+      content: "Old body",
+    }),
+  );
+  expect(styleSelect()).toHaveTextContent("Inset");
+  await chooseOption(styleSelect(), "Text");
+  await userEvent.clear(contentInput());
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({});
+});
+
+it("reopens with the stored style, summary and content (round-trip, panel half)", () => {
+  renderPanel(
+    makeFieldWith("components/content", {
+      variant: "details",
+      summary: "More about fees",
+      content: "Fees are **non-refundable**.",
+    }),
+  );
+  expect(styleSelect()).toHaveTextContent("Details");
+  expect(summaryInput()).toHaveValue("More about fees");
+  expect(contentInput()).toHaveValue("Fees are **non-refundable**.");
+});
+
+it("shows the effective label as the Summary placeholder — the renderer's fallback", () => {
+  renderPanel(
+    makeFieldWith("components/content", {
+      variant: "details",
+      label: "Opening hours",
+    }),
+  );
+  expect(summaryInput()).toHaveAttribute("placeholder", "Opening hours");
+});
+
+it("leaves a stored summary alone when Style moves off details", async () => {
+  const dispatch = renderPanel(
+    makeFieldWith("components/content", {
+      variant: "details",
+      summary: "Keep me",
+    }),
+  );
+  await chooseOption(styleSelect(), "Warning");
+  expect(summaryInput()).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({
+    variant: "warning",
+    summary: "Keep me",
+  });
+});
