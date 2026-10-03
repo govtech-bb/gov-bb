@@ -83,6 +83,9 @@ interface OverrideFormProps {
   // editor collapses to, so a registry default (e.g. National ID's
   // `width: "short"`) is shown truthfully and overriding it persists (#789).
   baseUi?: PrimitiveUI;
+  // fieldId declared on the base primitive (block child: the element's) — the
+  // id the field resolves to until a Field ID Override replaces it (#2685).
+  defaultFieldId?: string;
 }
 
 const OPTIONS_HTML_TYPES: ReadonlySet<HtmlTypes> = new Set([
@@ -433,15 +436,23 @@ interface PlainOverrideFieldsProps {
   patch: (partial: Partial<FieldOverrides>) => void;
   fg: (isOverridden: boolean) => string;
   defaultLabel?: string;
+  // The id the field resolves to right now (override ?? registry default);
+  // undefined for a custom component that declares none.
+  effectiveFieldId: string | undefined;
+  // True when that effective id duplicates another field's resolved id.
+  fieldIdDuplicate: boolean;
 }
 
-// The unconditional override fields: the free-text Label and Hint, and the
-// Disabled / Hidden toggles. No branching beyond the shared override-highlight.
+// The unconditional override fields: the free-text Label, the read-only
+// effective Field ID, Hint, and the Disabled / Hidden toggles. No branching
+// beyond the shared override-highlight.
 function PlainOverrideFields({
   overrides,
   patch,
   fg,
   defaultLabel,
+  effectiveFieldId,
+  fieldIdDuplicate,
 }: PlainOverrideFieldsProps) {
   return (
     <>
@@ -467,6 +478,31 @@ function PlainOverrideFields({
           label={"Label"}
           className="w-full min-w-0"
         />
+      </div>
+
+      {/* The id this field resolves to (ADR 0010): the override when set,
+          else the registry default — never derived from the label. Tracks the
+          Field ID Override as it is typed. readOnly, not disabled: it stays
+          focusable and copyable. The shared-id warning repeats here because
+          the override input lives in the collapsed Advanced settings. */}
+      <div className={fg(false)}>
+        <Input
+          type="text"
+          value={effectiveFieldId ?? "—"}
+          readOnly
+          aria-invalid={fieldIdDuplicate ? true : undefined}
+          label={"Field ID"}
+          description="Change it under Advanced settings → Field ID Override."
+          className="w-full min-w-0 font-mono text-ui-subtle"
+        />
+        {fieldIdDuplicate && (
+          <span
+            role="alert"
+            style={{ fontSize: "0.75rem", color: "var(--ui-danger-text)" }}
+          >
+            {FIELD_ID_DUPLICATE_ERROR}
+          </span>
+        )}
       </div>
 
       <div
@@ -536,9 +572,15 @@ function OverrideForm({
   baseValidations,
   baseUi,
   defaultLabel,
+  defaultFieldId,
 }: OverrideFormProps) {
+  // The id the field resolves to right now (ADR 0010): the unsaved override
+  // when set, else the registry default. The duplicate check runs on it, so
+  // two untouched fields of one type warn without anyone typing an override.
+  // Advisory only — the recipe-wide gate still blocks Save/Deploy.
+  const effectiveFieldId = overrides.fieldId ?? defaultFieldId;
   const fieldIdDuplicate =
-    checkDuplicateFieldId?.(overrides.fieldId ?? "") ?? false;
+    checkDuplicateFieldId?.(effectiveFieldId ?? "") ?? false;
 
   function patch(partial: Partial<FieldOverrides>) {
     const next = { ...overrides, ...partial };
@@ -572,6 +614,8 @@ function OverrideForm({
         patch={patch}
         fg={fg}
         defaultLabel={defaultLabel}
+        effectiveFieldId={effectiveFieldId}
+        fieldIdDuplicate={fieldIdDuplicate}
       />
       <RequiredRuleEditor
         validations={overrides.validations}
@@ -815,6 +859,7 @@ function FieldEditForm({
                   baseValidations={element.validations}
                   baseUi={element.ui}
                   defaultLabel={element.label}
+                  defaultFieldId={element.fieldId}
                 />
               </div>
             );
@@ -874,6 +919,9 @@ function FieldEditForm({
             baseUi={item && "primitive" in item ? item.primitive.ui : undefined}
             defaultLabel={
               item && "primitive" in item ? item.primitive.label : undefined
+            }
+            defaultFieldId={
+              item && "primitive" in item ? item.primitive.fieldId : undefined
             }
           />
         </>

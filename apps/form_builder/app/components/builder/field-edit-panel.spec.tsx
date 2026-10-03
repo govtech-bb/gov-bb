@@ -663,3 +663,124 @@ it("does not derive a message from the registry's placeholder label", async () =
 
   expect(requiredErrorInput()).not.toHaveValue("Text is required");
 });
+
+// --- Effective Field ID (#2685) -------------------------------------------
+// A field's id is the registry default until the Field ID Override replaces it
+// (ADR 0010) — never a kebab of the label. The read-only "Field ID" input under
+// Label shows that effective id, live from the panel's unsaved overrides, and
+// persists nothing. Queries stay on the exact string: "Field ID Override" is a
+// second input in the same dialog.
+
+const fieldIdDisplay = () => screen.getByLabelText("Field ID");
+
+it("shows the registry default fieldId read-only for an untouched component", () => {
+  renderPanel(makeField("components/generic-text"));
+  expect(fieldIdDisplay()).toHaveValue("generic-text");
+  expect(fieldIdDisplay()).toHaveAttribute("readonly");
+});
+
+it("shows the override when a fieldId override is set", () => {
+  renderPanel(
+    makeFieldWith("components/generic-text", { fieldId: "my-custom-id" }),
+  );
+  expect(fieldIdDisplay()).toHaveValue("my-custom-id");
+});
+
+it("tracks the Field ID Override as it is typed, before Save, and falls back when cleared", async () => {
+  renderPanel(makeField("components/generic-text"));
+  openAdvancedSettings();
+  const override = screen.getByLabelText("Field ID Override");
+
+  await userEvent.type(override, "applicant-surname");
+  expect(fieldIdDisplay()).toHaveValue("applicant-surname");
+
+  await userEvent.clear(override);
+  expect(fieldIdDisplay()).toHaveValue("generic-text");
+});
+
+it("shows one Field ID per block child, valued from the element", () => {
+  renderPanel({
+    id: "b1",
+    kind: "block",
+    ref: "blocks/additional-information",
+    overrides: {},
+  });
+  const ids = screen.getAllByLabelText("Field ID");
+  expect(ids).toHaveLength(1);
+  expect(ids[0]).toHaveValue("additional-details");
+});
+
+it("shows a block child's childOverrides fieldId over the element default", () => {
+  renderPanel({
+    id: "b1",
+    kind: "block",
+    ref: "blocks/additional-information",
+    overrides: {},
+    childOverrides: { "additional-details": { fieldId: "extra-notes" } },
+  });
+  expect(fieldIdDisplay()).toHaveValue("extra-notes");
+});
+
+it("shows a dash for a custom component whose definition has no fieldId", () => {
+  const field: RecipeFieldDraft = {
+    id: "f1",
+    kind: "custom",
+    ref: "components/custom-widget",
+    overrides: {},
+  };
+  render(
+    <FieldEditPanel
+      open
+      field={field}
+      catalog={{
+        ...catalog,
+        custom: [
+          {
+            ref: "components/custom-widget",
+            displayName: "Widget",
+            namespace: "custom",
+            type: "widget",
+            definition: { htmlType: "text", label: "Widget" },
+          },
+        ],
+      }}
+      draft={makeDraft(field)}
+      stepId="step-1"
+      dispatch={vi.fn()}
+      onClose={vi.fn()}
+    />,
+  );
+  expect(fieldIdDisplay()).toHaveValue("—");
+});
+
+it("adds no override key when saved with the Field ID display untouched", async () => {
+  const dispatch = renderPanel(makeField("components/generic-text"));
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({});
+});
+
+it("warns that the effective id is shared without any override typed", () => {
+  // Two untouched Text fields both resolve to `generic-text`. The duplicate
+  // check runs on the effective id, and the warning repeats under the
+  // read-only Field ID because the override input sits in the collapsed
+  // Advanced settings.
+  const field = makeField("components/generic-text");
+  const twin: RecipeFieldDraft = { ...field, id: "f2" };
+  const draft = makeDraft(field);
+  draft.steps[0].fields.push(twin);
+  render(
+    <FieldEditPanel
+      open
+      field={field}
+      catalog={catalog}
+      draft={draft}
+      stepId="step-1"
+      dispatch={vi.fn()}
+      onClose={vi.fn()}
+    />,
+  );
+
+  expect(fieldIdDisplay()).toHaveAttribute("aria-invalid", "true");
+  // Once under Field ID, once under the (keepMounted) Field ID Override.
+  expect(screen.getAllByText(/already used by another field/)).toHaveLength(2);
+});
