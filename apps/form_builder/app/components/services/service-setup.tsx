@@ -275,9 +275,9 @@ export function ServiceSetup({
                   />
                 </Field>
                 <p className="text-sm text-ui-subtle">
-                  These details help applicants contact the department.
-                  Department notifications use the department email chosen in
-                  After submission.
+                  Optional. These details help applicants contact the
+                  department. Department notifications use the department email
+                  chosen in After submission.
                 </p>
               </div>
               <div className="space-y-5">

@@ -249,6 +249,8 @@ describe("serviceReadiness", () => {
       applicantEmail: "configured",
     });
     expect(serviceReadiness(value)).toEqual({ ready: true, issues: [] });
+    value.manifest.contactDetails = undefined;
+    expect(serviceReadiness(value)).toEqual({ ready: true, issues: [] });
   });
 
   it("reports release, category and entry point gaps", () => {
@@ -257,7 +259,7 @@ describe("serviceReadiness", () => {
     ).toEqual(["visibility", "category", "entry"]);
   });
 
-  it("accepts public contact details from the recipe and requires an email or telephone", () => {
+  it("treats public contact details as optional but validates a typed email", () => {
     const fromRecipe = withForm(
       { delivery: "configured", applicantEmail: "configured" },
       { contactDetails: { telephoneNumber: "246 000 0000" } },
@@ -266,10 +268,35 @@ describe("serviceReadiness", () => {
     expect(ids(fromRecipe)).toEqual([]);
     const none = snapshot();
     none.manifest.contactDetails = undefined;
-    expect(ids(none)).toEqual(["contact"]);
+    expect(ids(none)).toEqual([]);
     const invalid = snapshot();
     invalid.manifest.contactDetails = { email: "not-an-email" };
     expect(ids(invalid)).toEqual(["contact-email"]);
+  });
+
+  it("requires a public email when a delivery action sends to the contact email", () => {
+    const contactEmail = {
+      type: "email",
+      config: { recipientField: "contactDetails.email", subject: "New" },
+    };
+    const toContact = (contactDetails: Record<string, unknown> | undefined) =>
+      withForm(
+        { delivery: "configured", applicantEmail: "configured" },
+        { processors: [applicantEmail, contactEmail], contactDetails },
+      );
+    const withoutEmail = toContact({ telephoneNumber: "246 000 0000" });
+    withoutEmail.manifest.contactDetails = undefined;
+    expect(serviceReadiness(withoutEmail).issues).toEqual([
+      {
+        id: "contact-recipient",
+        section: "delivery",
+        message:
+          "Add a public email address or change the department email recipient",
+      },
+    ]);
+    const withEmail = toContact({ email: "dept@example.test" });
+    withEmail.manifest.contactDetails = undefined;
+    expect(ids(withEmail)).toEqual([]);
   });
 
   it("asks for unfinished pages by title and flags pages linked to another form", () => {

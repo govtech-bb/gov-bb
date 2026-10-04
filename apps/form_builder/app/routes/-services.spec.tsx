@@ -327,10 +327,9 @@ it("adds a start page and points the entry page's Start button at it", async () 
   expect(entry.body).toContain('href="/education/pension-advice/start"');
 });
 
-it("offers Publish once every step is done", async () => {
+it("offers Publish once every step is done, without requiring contact details", async () => {
   const ready = pensionAdvice();
   ready.manifest.visibility = "preview";
-  ready.manifest.contactDetails = { email: "help@example.test" };
   ready.pages[0] = {
     ...ready.pages[0]!,
     body: "## Overview\n\nWhat this service does.",
@@ -343,6 +342,15 @@ it("offers Publish once every step is done", async () => {
   expect(
     screen.queryByRole("button", { name: /^Continue:/ }),
   ).not.toBeInTheDocument();
+  const contact = screen
+    .getByRole("heading", { name: "Contact details" })
+    .closest("li")!;
+  expect(
+    within(contact).getByText(
+      "Optional. Add a public email address or telephone number so applicants can reach the department.",
+    ),
+  ).toBeInTheDocument();
+  expect(within(contact).getByText("Optional")).toBeInTheDocument();
 });
 
 it("adopts a legacy service onto the same overview even when its form cannot be loaded", async () => {

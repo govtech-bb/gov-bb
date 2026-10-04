@@ -296,6 +296,7 @@ export function ServiceWorkbench({
         ] satisfies Row[])
       : []),
   ];
+  const contact = manifest.contactDetails ?? draft.recipe?.contactDetails;
   const details: Row[] = [
     {
       id: "about",
@@ -313,12 +314,14 @@ export function ServiceWorkbench({
       id: "contact",
       title: "Contact details",
       detail:
-        issueFor("contact") ??
         issueFor("contact-email") ??
-        manifest.contactDetails?.email ??
-        manifest.contactDetails?.telephoneNumber ??
-        "",
-      done: !issueFor("contact") && !issueFor("contact-email"),
+        contact?.email ??
+        contact?.telephoneNumber ??
+        "Optional. Add a public email address or telephone number so applicants can reach the department.",
+      done:
+        !!(contact?.email || contact?.telephoneNumber) &&
+        !issueFor("contact-email"),
+      optional: !contact?.email && !contact?.telephoneNumber,
       cta: "add contact details",
       label: "Edit",
       run: () => void go("details"),
