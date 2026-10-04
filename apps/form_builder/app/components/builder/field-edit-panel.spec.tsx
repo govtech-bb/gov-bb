@@ -785,6 +785,72 @@ it("warns that the effective id is shared without any override typed", () => {
   expect(screen.getAllByText(/already used by another field/)).toHaveLength(2);
 });
 
+// --- Duplicate Field ID warning for block children (#2896) -----------------
+// Every child of one block shares the block's editor id, so the per-child
+// check has to exclude the child being edited rather than the whole block —
+// otherwise a clash between two siblings would never warn.
+
+const duplicateWarnings = () =>
+  screen.queryAllByText(/already used by another field/);
+const flaggedFieldIds = () =>
+  screen
+    .getAllByLabelText("Field ID")
+    .filter((el) => el.getAttribute("aria-invalid") === "true")
+    .map((el) => (el as HTMLInputElement).value);
+
+it("warns on both block children that resolve to the same effective id", () => {
+  renderPanel({
+    id: "b1",
+    kind: "block",
+    ref: "blocks/contact-information",
+    overrides: {},
+    childOverrides: { "mobile-telephone": { fieldId: "telephone" } },
+  });
+  expect(flaggedFieldIds()).toEqual(["telephone", "telephone"]);
+  // Field ID plus the keepMounted Field ID Override, for each of the two.
+  expect(duplicateWarnings()).toHaveLength(4);
+});
+
+it("warns on a block child whose id a standalone field already uses, without typing", () => {
+  const block: RecipeFieldDraft = {
+    id: "b1",
+    kind: "block",
+    ref: "blocks/additional-information",
+    overrides: {},
+  };
+  const draft = makeDraft(block);
+  draft.steps[0].fields.push({
+    id: "f2",
+    kind: "component",
+    ref: "components/additional-details",
+    overrides: {},
+  });
+  render(
+    <FieldEditPanel
+      open
+      field={block}
+      catalog={catalog}
+      draft={draft}
+      stepId="step-1"
+      dispatch={vi.fn()}
+      onClose={vi.fn()}
+    />,
+  );
+  expect(flaggedFieldIds()).toEqual(["additional-details"]);
+  expect(duplicateWarnings()).toHaveLength(2);
+});
+
+it("shows no warning for block siblings with different ids", () => {
+  renderPanel({
+    id: "b1",
+    kind: "block",
+    ref: "blocks/contact-information",
+    overrides: {},
+  });
+  expect(flaggedFieldIds()).toEqual([]);
+  expect(duplicateWarnings()).toHaveLength(0);
+});
+
 // --- Type-specific settings (#2873) ----------------------------------------
 // Attributes only one htmlType's renderer reads — a content block's style,
 // markdown body and details summary — come from CUSTOM_ATTRIBUTE_DESCRIPTORS

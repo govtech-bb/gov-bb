@@ -72,7 +72,7 @@ interface OverrideFormProps {
   currentStepId: string;
   onChange: (overrides: FieldOverrides) => void;
   // Returns true when the candidate Field ID Override duplicates another field's
-  // resolved id. Omitted for block-child forms (deferred to the recipe-wide gate).
+  // resolved id — another component, or another child of the same block (#2896).
   checkDuplicateFieldId?: (candidateId: string) => boolean;
   defaultOptions?: Option[];
   defaultRequired?: boolean;
@@ -999,6 +999,15 @@ function FieldEditForm({
                   currentStepId={stepId}
                   onChange={(updated) =>
                     handleChildOverrideChange(element.fieldId, updated)
+                  }
+                  checkDuplicateFieldId={(candidate) =>
+                    fieldIdDuplicatesAnother(
+                      draft,
+                      catalog,
+                      field.id,
+                      candidate,
+                      element.fieldId,
+                    )
                   }
                   defaultOptions={element.options}
                   defaultRequired={isRequiredRule(
