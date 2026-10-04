@@ -59,6 +59,9 @@ jobs:
       - name: Type check landing
         run: pnpm exec nx run landing:typecheck
 
+      - name: Type check form builder
+        run: pnpm exec nx run form-builder-app:typecheck
+
       - name: Report type check results
         if: steps.typecheck.outcome == 'failure'
         run: |

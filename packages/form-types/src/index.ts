@@ -204,6 +204,8 @@ export type {
   RecipeMeta,
 } from "./service-contract.type";
 
+export { checkCatchmentRoutingHasMapping } from "./catchment-routing-guard";
+
 export {
   deployBranchPrefix,
   deployBranchLabel,

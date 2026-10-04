@@ -1,7 +1,7 @@
 import { Collapsible } from "../ui/collapsible";
 import { cn } from "../ui/utils/cn";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
+import { Input, Textarea } from "../ui/input";
 import { Select } from "../ui/select";
 import { Checkbox } from "../ui/checkbox";
 import { useState, useMemo, useId, type ReactNode } from "react";
@@ -10,6 +10,7 @@ import {
   fieldIdDuplicatesAnother,
   getSwappableRefs,
   migrateOverridesForRef,
+  CUSTOM_ATTRIBUTE_DESCRIPTORS,
 } from "@govtech-bb/form-builder";
 import type {
   RecipeFieldDraft,
@@ -17,12 +18,15 @@ import type {
   ChildOverrides,
   BlockDefinition,
   RecipeDraft,
+  CustomAttributeDescriptor,
+  CustomAttributeKey,
 } from "@govtech-bb/form-builder";
 import { primitiveUISchema } from "@govtech-bb/form-types";
 import type {
   FieldOverrides,
   HtmlTypes,
   Option,
+  Primitive,
   PrimitiveUI,
   ValidationRule,
 } from "@govtech-bb/form-types";
@@ -83,6 +87,13 @@ interface OverrideFormProps {
   // editor collapses to, so a registry default (e.g. National ID's
   // `width: "short"`) is shown truthfully and overriding it persists (#789).
   baseUi?: PrimitiveUI;
+  // fieldId declared on the base primitive (block child: the element's) — the
+  // id the field resolves to until a Field ID Override replaces it (#2685).
+  defaultFieldId?: string;
+  // The base primitive itself (registry component or block element) — the
+  // fallback the type-specific settings read their effective values from
+  // (#2873).
+  basePrimitive?: Primitive;
 }
 
 const OPTIONS_HTML_TYPES: ReadonlySet<HtmlTypes> = new Set([
@@ -428,21 +439,138 @@ function OptionsSection({
   );
 }
 
+interface CustomAttributesEditorProps {
+  descriptors: CustomAttributeDescriptor[];
+  overrides: FieldOverrides;
+  basePrimitive: Primitive | undefined;
+  patch: (partial: Partial<FieldOverrides>) => void;
+  fg: (isOverridden: boolean) => string;
+}
+
+// Descriptor-driven editor for the attributes only this htmlType's renderer
+// reads (a content block's style, markdown body and details summary), one
+// control per CUSTOM_ATTRIBUTE_DESCRIPTORS entry (#2873). Same contract as
+// the `ui` editor: show the effective value (override ?? base primitive), and
+// drop the key when the author sets it back to the base value or clears it.
+function CustomAttributesEditor({
+  descriptors,
+  overrides,
+  basePrimitive,
+  patch,
+  fg,
+}: CustomAttributesEditorProps) {
+  function effective(key: CustomAttributeKey | "label"): string | undefined {
+    return overrides[key] ?? basePrimitive?.[key];
+  }
+
+  function setKey(key: CustomAttributeKey, value: string) {
+    // An empty control, or one set back to the base value, drops the key so
+    // the merge falls through to the base (the `ui` editor's contract).
+    const next =
+      value === "" || value === basePrimitive?.[key] ? undefined : value;
+    patch({ [key]: next } as Partial<FieldOverrides>);
+  }
+
+  return (
+    <>
+      <div className="mt-5 mb-2 text-[12px] font-semibold tracking-[0.05em] text-ui-subtle uppercase">
+        Type-specific settings
+      </div>
+      {descriptors.map((descriptor) => {
+        if (
+          descriptor.showWhen &&
+          effective(descriptor.showWhen.key) !== descriptor.showWhen.equals
+        )
+          return null;
+        const value = effective(descriptor.key) ?? "";
+        const isOverridden = overrides[descriptor.key] !== undefined;
+
+        if (descriptor.kind === "enum") {
+          return (
+            <div key={descriptor.key} className={fg(isOverridden)}>
+              <Select
+                label={descriptor.label}
+                value={value}
+                onValueChange={(nextValue) => {
+                  if (nextValue === null) return;
+                  setKey(descriptor.key, nextValue);
+                }}
+                items={descriptor.options.map((opt) => ({
+                  value: opt,
+                  label: humanize(opt),
+                }))}
+              />
+            </div>
+          );
+        }
+
+        const placeholder = descriptor.fallbackKey
+          ? effective(descriptor.fallbackKey)
+          : undefined;
+
+        if (descriptor.kind === "markdown") {
+          return (
+            <div key={descriptor.key} className={fg(isOverridden)}>
+              <Textarea
+                value={value}
+                onChange={(e) => setKey(descriptor.key, e.target.value)}
+                placeholder={placeholder}
+                label={descriptor.label}
+                description={descriptor.hint}
+                autoResize
+                minRows={4}
+                className="w-full min-w-0"
+              />
+            </div>
+          );
+        }
+
+        return (
+          <div key={descriptor.key} className={fg(isOverridden)}>
+            <Input
+              type="text"
+              value={value}
+              onChange={(e) => setKey(descriptor.key, e.target.value)}
+              placeholder={placeholder}
+              label={descriptor.label}
+              description={descriptor.hint}
+              className="w-full min-w-0"
+            />
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 interface PlainOverrideFieldsProps {
   overrides: FieldOverrides;
+  htmlType: HtmlTypes;
+  basePrimitive: Primitive | undefined;
   patch: (partial: Partial<FieldOverrides>) => void;
   fg: (isOverridden: boolean) => string;
   defaultLabel?: string;
+  // The id the field resolves to right now (override ?? registry default);
+  // undefined for a custom component that declares none.
+  effectiveFieldId: string | undefined;
+  // True when that effective id duplicates another field's resolved id.
+  fieldIdDuplicate: boolean;
 }
 
-// The unconditional override fields: the free-text Label and Hint, and the
-// Disabled / Hidden toggles. No branching beyond the shared override-highlight.
+// The unconditional override fields: the free-text Label, the read-only
+// effective Field ID, Hint, and the Availability collapsible — the Disabled /
+// Hidden toggles plus the type-specific settings when the htmlType has any.
 function PlainOverrideFields({
   overrides,
+  htmlType,
+  basePrimitive,
   patch,
   fg,
   defaultLabel,
+  effectiveFieldId,
+  fieldIdDuplicate,
 }: PlainOverrideFieldsProps) {
+  const customDescriptors = CUSTOM_ATTRIBUTE_DESCRIPTORS[htmlType];
   return (
     <>
       <div
@@ -469,19 +597,53 @@ function PlainOverrideFields({
         />
       </div>
 
-      <div
-        className={fg(overrides.hint !== undefined && overrides.hint !== "")}
-      >
+      {/* The id this field resolves to (ADR 0010): the override when set,
+          else the registry default — never derived from the label. Tracks the
+          Field ID Override as it is typed. readOnly, not disabled: it stays
+          focusable and copyable. The shared-id warning repeats here because
+          the override input lives in the collapsed Advanced settings. */}
+      <div className={fg(false)}>
         <Input
           type="text"
-          value={overrides.hint ?? ""}
-          onChange={(e) => patch({ hint: e.target.value || undefined })}
-          label={"Hint"}
-          className="w-full min-w-0"
+          value={effectiveFieldId ?? "—"}
+          readOnly
+          aria-invalid={fieldIdDuplicate ? true : undefined}
+          label={"Field ID"}
+          description="Change it under Advanced settings → Field ID Override."
+          className="w-full min-w-0 font-mono text-ui-subtle"
         />
+        {fieldIdDuplicate && (
+          <span
+            role="alert"
+            style={{ fontSize: "0.75rem", color: "var(--ui-danger-text)" }}
+          >
+            {FIELD_ID_DUPLICATE_ERROR}
+          </span>
+        )}
       </div>
 
-      <Collapsible.Root className="mb-4">
+      {/* A content block never renders a hint (content-field.tsx reads only
+          variant/content/summary), so offering one would author a no-op. */}
+      {htmlType !== "content" && (
+        <div
+          className={fg(overrides.hint !== undefined && overrides.hint !== "")}
+        >
+          <Input
+            type="text"
+            value={overrides.hint ?? ""}
+            onChange={(e) => patch({ hint: e.target.value || undefined })}
+            label={"Hint"}
+            className="w-full min-w-0"
+          />
+        </div>
+      )}
+
+      {/* Open by default when the type has settings of its own: for an
+          Information block the body text *is* the question (#2873). */}
+      <Collapsible.Root
+        className="mb-4"
+        defaultOpen={customDescriptors.length > 0}
+      >
         <Collapsible.DefaultTrigger className="cursor-pointer py-2 text-sm text-ui-subtle">
           Availability
         </Collapsible.DefaultTrigger>
@@ -516,6 +678,15 @@ function PlainOverrideFields({
                 label={<> Hidden</>}
               />
             </div>
+            {customDescriptors.length > 0 && (
+              <CustomAttributesEditor
+                descriptors={customDescriptors}
+                overrides={overrides}
+                basePrimitive={basePrimitive}
+                patch={patch}
+                fg={fg}
+              />
+            )}
           </div>
         </Collapsible.Panel>
       </Collapsible.Root>
@@ -536,9 +707,16 @@ function OverrideForm({
   baseValidations,
   baseUi,
   defaultLabel,
+  defaultFieldId,
+  basePrimitive,
 }: OverrideFormProps) {
+  // The id the field resolves to right now (ADR 0010): the unsaved override
+  // when set, else the registry default. The duplicate check runs on it, so
+  // two untouched fields of one type warn without anyone typing an override.
+  // Advisory only — the recipe-wide gate still blocks Save/Deploy.
+  const effectiveFieldId = overrides.fieldId ?? defaultFieldId;
   const fieldIdDuplicate =
-    checkDuplicateFieldId?.(overrides.fieldId ?? "") ?? false;
+    checkDuplicateFieldId?.(effectiveFieldId ?? "") ?? false;
 
   function patch(partial: Partial<FieldOverrides>) {
     const next = { ...overrides, ...partial };
@@ -565,22 +743,34 @@ function OverrideForm({
   function fg(_isOverridden: boolean) {
     return "mb-4 flex flex-col gap-1.5 [&_input]:w-full [&_label]:text-sm [&_label]:font-medium";
   }
+
+  // A content block holds no value, so Required and validation rules would
+  // be authored no-ops (VALIDATION_RULE_DESCRIPTORS.content is []). Label
+  // stays: it names the field row and is the `details` summary fallback.
+  const isContent = htmlType === "content";
+
   return (
     <div>
       <PlainOverrideFields
         overrides={overrides}
+        htmlType={htmlType}
+        basePrimitive={basePrimitive}
         patch={patch}
         fg={fg}
         defaultLabel={defaultLabel}
+        effectiveFieldId={effectiveFieldId}
+        fieldIdDuplicate={fieldIdDuplicate}
       />
-      <RequiredRuleEditor
-        validations={overrides.validations}
-        defaultRequired={defaultRequired}
-        baseValidations={baseValidations}
-        label={overrides.label ?? defaultLabel}
-        onChange={(validations) => patch({ validations })}
-        fg={fg}
-      />
+      {!isContent && (
+        <RequiredRuleEditor
+          validations={overrides.validations}
+          defaultRequired={defaultRequired}
+          baseValidations={baseValidations}
+          label={overrides.label ?? defaultLabel}
+          onChange={(validations) => patch({ validations })}
+          fg={fg}
+        />
+      )}
       <OptionsSection
         htmlType={htmlType}
         options={overrides.options}
@@ -588,21 +778,23 @@ function OverrideForm({
         patch={patch}
         fg={fg}
       />
-      <Collapsible.Root className="mt-5 border-t border-ui-hairline">
-        <Collapsible.DefaultTrigger className="cursor-pointer py-4 text-sm font-medium">
-          Validation rules
-        </Collapsible.DefaultTrigger>
-        <Collapsible.Panel keepMounted>
-          <ValidationRulesEditor
-            htmlType={htmlType}
-            rules={overrides.validations}
-            baseRules={baseValidations}
-            fieldRefs={fieldRefs}
-            stepRefs={stepRefs}
-            onChange={(validations) => patch({ validations })}
-          />
-        </Collapsible.Panel>
-      </Collapsible.Root>
+      {!isContent && (
+        <Collapsible.Root className="mt-5 border-t border-ui-hairline">
+          <Collapsible.DefaultTrigger className="cursor-pointer py-4 text-sm font-medium">
+            Validation rules
+          </Collapsible.DefaultTrigger>
+          <Collapsible.Panel keepMounted>
+            <ValidationRulesEditor
+              htmlType={htmlType}
+              rules={overrides.validations}
+              baseRules={baseValidations}
+              fieldRefs={fieldRefs}
+              stepRefs={stepRefs}
+              onChange={(validations) => patch({ validations })}
+            />
+          </Collapsible.Panel>
+        </Collapsible.Root>
+      )}
       <Collapsible.Root className="border-t border-ui-hairline">
         <Collapsible.DefaultTrigger className="cursor-pointer py-4 text-sm font-medium">
           Logic and conditions
@@ -815,6 +1007,8 @@ function FieldEditForm({
                   baseValidations={element.validations}
                   baseUi={element.ui}
                   defaultLabel={element.label}
+                  defaultFieldId={element.fieldId}
+                  basePrimitive={element}
                 />
               </div>
             );
@@ -874,6 +1068,12 @@ function FieldEditForm({
             baseUi={item && "primitive" in item ? item.primitive.ui : undefined}
             defaultLabel={
               item && "primitive" in item ? item.primitive.label : undefined
+            }
+            defaultFieldId={
+              item && "primitive" in item ? item.primitive.fieldId : undefined
+            }
+            basePrimitive={
+              item && "primitive" in item ? item.primitive : undefined
             }
           />
         </>

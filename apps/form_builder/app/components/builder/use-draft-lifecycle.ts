@@ -19,6 +19,9 @@ interface UseDraftLifecycleParams {
   dispatch: Dispatch<RecipeAction>;
   setSavedDraft: (draft: RecipeDraft | null) => void;
   setLoadedFromId: (id: string | null) => void;
+  /** The committed recipe sha the loaded draft came from (#2489) — set with
+   * the draft on load, cleared with the id on New/Duplicate. */
+  setLoadedSourceSha: (sha: string | null) => void;
   setSelectedStepId: (id: string | null) => void;
   setMainView: (view: "step" | "processors" | "contactDetails") => void;
   setValidateResult: (result: RecipeValidateResponse | null) => void;
@@ -50,6 +53,7 @@ export function useDraftLifecycle({
   dispatch,
   setSavedDraft,
   setLoadedFromId,
+  setLoadedSourceSha,
   setSelectedStepId,
   setMainView,
   setValidateResult,
@@ -64,7 +68,11 @@ export function useDraftLifecycle({
   setIsPreviewOpen,
 }: UseDraftLifecycleParams) {
   const confirm = useConfirmation();
-  const handleLoad = (loadedDraft: RecipeDraft, formId: string) => {
+  const handleLoad = (
+    loadedDraft: RecipeDraft,
+    formId: string,
+    sourceSha: string | null,
+  ) => {
     const loadAction = { type: "LOAD_DRAFT" as const, draft: loadedDraft };
     dispatch(loadAction);
     // Snapshot the *normalized* draft the reducer produces — LOAD_DRAFT
@@ -75,6 +83,7 @@ export function useDraftLifecycle({
     // the reducer's required first arg.
     setSavedDraft(recipeReducer(draft, loadAction));
     setLoadedFromId(formId);
+    setLoadedSourceSha(sourceSha);
     // Open the first step straight away so the author lands in an editable
     // state. firstStepId mirrors LOAD_DRAFT's [...editable, ...required]
     // ordering, so it picks the step the reducer puts first (not loadedDraft[0]).
@@ -114,6 +123,7 @@ export function useDraftLifecycle({
     setSelectedStepId(null);
     setMainView("step");
     setLoadedFromId(null);
+    setLoadedSourceSha(null);
     setValidateResult(null);
     setSubmitSuccess(false);
     setSubmitError(null);
@@ -170,6 +180,7 @@ export function useDraftLifecycle({
     dispatch({ type: "LOAD_DRAFT", draft: dupDraft });
     setSavedDraft(null);
     setLoadedFromId(null);
+    setLoadedSourceSha(null);
     setSelectedStepId(firstStepId(dupDraft));
     setMainView("step");
     setValidateResult(null);

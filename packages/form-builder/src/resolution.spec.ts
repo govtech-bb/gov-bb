@@ -251,6 +251,35 @@ describe("hydrateForm", () => {
     expect(contract.steps[0].elements[0].hint).toBe("Use work email");
   });
 
+  it("carries a content block's variant/content/summary overrides onto the resolved primitive (#2873)", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [
+            {
+              ref: "components/content",
+              overrides: {
+                variant: "details",
+                summary: "What you will need",
+                content: "Bring your **National ID**.",
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    const contract = hydrateForm(recipe, catalog);
+    expect(contract.steps[0].elements[0]).toMatchObject({
+      htmlType: "content",
+      variant: "details",
+      summary: "What you will need",
+      content: "Bring your **National ID**.",
+    });
+  });
+
   it("applies isDisabled override on a component field", () => {
     const recipe = makeRecipe({
       steps: [

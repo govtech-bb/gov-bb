@@ -8,7 +8,6 @@ import type { Mock } from "vitest";
  * unchecking a base-required field must write an explicit `value: false` so the
  * merge can override the base — otherwise the field is always required.
  */
-import "@testing-library/jest-dom";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { getCatalog } from "@govtech-bb/form-builder";
@@ -663,4 +662,243 @@ it("does not derive a message from the registry's placeholder label", async () =
   await userEvent.clear(labelInput());
 
   expect(requiredErrorInput()).not.toHaveValue("Text is required");
+});
+
+// --- Effective Field ID (#2685) -------------------------------------------
+// A field's id is the registry default until the Field ID Override replaces it
+// (ADR 0010) — never a kebab of the label. The read-only "Field ID" input under
+// Label shows that effective id, live from the panel's unsaved overrides, and
+// persists nothing. Queries stay on the exact string: "Field ID Override" is a
+// second input in the same dialog.
+
+const fieldIdDisplay = () => screen.getByLabelText("Field ID");
+
+it("shows the registry default fieldId read-only for an untouched component", () => {
+  renderPanel(makeField("components/generic-text"));
+  expect(fieldIdDisplay()).toHaveValue("generic-text");
+  expect(fieldIdDisplay()).toHaveAttribute("readonly");
+});
+
+it("shows the override when a fieldId override is set", () => {
+  renderPanel(
+    makeFieldWith("components/generic-text", { fieldId: "my-custom-id" }),
+  );
+  expect(fieldIdDisplay()).toHaveValue("my-custom-id");
+});
+
+it("tracks the Field ID Override as it is typed, before Save, and falls back when cleared", async () => {
+  renderPanel(makeField("components/generic-text"));
+  openAdvancedSettings();
+  const override = screen.getByLabelText("Field ID Override");
+
+  await userEvent.type(override, "applicant-surname");
+  expect(fieldIdDisplay()).toHaveValue("applicant-surname");
+
+  await userEvent.clear(override);
+  expect(fieldIdDisplay()).toHaveValue("generic-text");
+});
+
+it("shows one Field ID per block child, valued from the element", () => {
+  renderPanel({
+    id: "b1",
+    kind: "block",
+    ref: "blocks/additional-information",
+    overrides: {},
+  });
+  const ids = screen.getAllByLabelText("Field ID");
+  expect(ids).toHaveLength(1);
+  expect(ids[0]).toHaveValue("additional-details");
+});
+
+it("shows a block child's childOverrides fieldId over the element default", () => {
+  renderPanel({
+    id: "b1",
+    kind: "block",
+    ref: "blocks/additional-information",
+    overrides: {},
+    childOverrides: { "additional-details": { fieldId: "extra-notes" } },
+  });
+  expect(fieldIdDisplay()).toHaveValue("extra-notes");
+});
+
+it("shows a dash for a custom component whose definition has no fieldId", () => {
+  const field: RecipeFieldDraft = {
+    id: "f1",
+    kind: "custom",
+    ref: "components/custom-widget",
+    overrides: {},
+  };
+  render(
+    <FieldEditPanel
+      open
+      field={field}
+      catalog={{
+        ...catalog,
+        custom: [
+          {
+            ref: "components/custom-widget",
+            displayName: "Widget",
+            namespace: "custom",
+            type: "widget",
+            definition: { htmlType: "text", label: "Widget" },
+          },
+        ],
+      }}
+      draft={makeDraft(field)}
+      stepId="step-1"
+      dispatch={vi.fn()}
+      onClose={vi.fn()}
+    />,
+  );
+  expect(fieldIdDisplay()).toHaveValue("—");
+});
+
+it("adds no override key when saved with the Field ID display untouched", async () => {
+  const dispatch = renderPanel(makeField("components/generic-text"));
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({});
+});
+
+it("warns that the effective id is shared without any override typed", () => {
+  // Two untouched Text fields both resolve to `generic-text`. The duplicate
+  // check runs on the effective id, and the warning repeats under the
+  // read-only Field ID because the override input sits in the collapsed
+  // Advanced settings.
+  const field = makeField("components/generic-text");
+  const twin: RecipeFieldDraft = { ...field, id: "f2" };
+  const draft = makeDraft(field);
+  draft.steps[0].fields.push(twin);
+  render(
+    <FieldEditPanel
+      open
+      field={field}
+      catalog={catalog}
+      draft={draft}
+      stepId="step-1"
+      dispatch={vi.fn()}
+      onClose={vi.fn()}
+    />,
+  );
+
+  expect(fieldIdDisplay()).toHaveAttribute("aria-invalid", "true");
+  // Once under Field ID, once under the (keepMounted) Field ID Override.
+  expect(screen.getAllByText(/already used by another field/)).toHaveLength(2);
+});
+
+// --- Type-specific settings (#2873) ----------------------------------------
+// Attributes only one htmlType's renderer reads — a content block's style,
+// markdown body and details summary — come from CUSTOM_ATTRIBUTE_DESCRIPTORS
+// and are edited under "Type-specific settings" inside Availability, which
+// opens by default when the type has any. Values follow the ui-editor
+// contract: show the effective value (override ?? registry default), drop the
+// key when it is set back to that default or cleared.
+
+const typeSettingsHeading = () => screen.queryByText("Type-specific settings");
+const availabilityTrigger = () =>
+  screen.getByRole("button", { name: "Availability" });
+const styleSelect = () => screen.getByRole("combobox", { name: /^style$/i });
+const contentInput = () => screen.getByLabelText("Content");
+const summaryInput = () => screen.queryByLabelText("Summary");
+
+it("offers no type-specific settings for a plain field and leaves Availability collapsed", () => {
+  renderPanel(makeField("components/last-name"));
+  expect(typeSettingsHeading()).not.toBeInTheDocument();
+  expect(availabilityTrigger()).toHaveAttribute("aria-expanded", "false");
+});
+
+it("opens Availability on an Information block with Style and Content, and hides the valueless controls", () => {
+  renderPanel(makeField("components/content"));
+  expect(typeSettingsHeading()).toBeInTheDocument();
+  expect(availabilityTrigger()).toHaveAttribute("aria-expanded", "true");
+  expect(styleSelect()).toHaveTextContent("Text"); // registry default
+  expect(contentInput()).toHaveValue("");
+  expect(summaryInput()).not.toBeInTheDocument();
+  // A content block holds no value: Required, validation rules and Hint
+  // would all be authored no-ops.
+  expect(
+    screen.queryByRole("checkbox", { name: /^required$/i }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Validation rules" }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Hint")).not.toBeInTheDocument();
+});
+
+it("dispatches variant and content, and no summary, for an inset block", async () => {
+  const dispatch = renderPanel(makeField("components/content"));
+  await chooseOption(styleSelect(), "Inset");
+  await userEvent.type(contentInput(), "Bring your **National ID**.");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({
+    variant: "inset",
+    content: "Bring your **National ID**.",
+  });
+});
+
+it("shows Summary only once the effective Style is details, and saves all three keys", async () => {
+  const dispatch = renderPanel(makeField("components/content"));
+  expect(summaryInput()).not.toBeInTheDocument();
+  await chooseOption(styleSelect(), "Details");
+  expect(summaryInput()).toBeInTheDocument();
+  await userEvent.type(summaryInput()!, "What you will need");
+  await userEvent.type(contentInput(), "Two recent photos.");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({
+    variant: "details",
+    summary: "What you will need",
+    content: "Two recent photos.",
+  });
+});
+
+it("drops variant when Style returns to the registry default, and content when cleared", async () => {
+  const dispatch = renderPanel(
+    makeFieldWith("components/content", {
+      variant: "inset",
+      content: "Old body",
+    }),
+  );
+  expect(styleSelect()).toHaveTextContent("Inset");
+  await chooseOption(styleSelect(), "Text");
+  await userEvent.clear(contentInput());
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({});
+});
+
+it("reopens with the stored style, summary and content (round-trip, panel half)", () => {
+  renderPanel(
+    makeFieldWith("components/content", {
+      variant: "details",
+      summary: "More about fees",
+      content: "Fees are **non-refundable**.",
+    }),
+  );
+  expect(styleSelect()).toHaveTextContent("Details");
+  expect(summaryInput()).toHaveValue("More about fees");
+  expect(contentInput()).toHaveValue("Fees are **non-refundable**.");
+});
+
+it("shows the effective label as the Summary placeholder — the renderer's fallback", () => {
+  renderPanel(
+    makeFieldWith("components/content", {
+      variant: "details",
+      label: "Opening hours",
+    }),
+  );
+  expect(summaryInput()).toHaveAttribute("placeholder", "Opening hours");
+});
+
+it("leaves a stored summary alone when Style moves off details", async () => {
+  const dispatch = renderPanel(
+    makeFieldWith("components/content", {
+      variant: "details",
+      summary: "Keep me",
+    }),
+  );
+  await chooseOption(styleSelect(), "Warning");
+  expect(summaryInput()).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({
+    variant: "warning",
+    summary: "Keep me",
+  });
 });

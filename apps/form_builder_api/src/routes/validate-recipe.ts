@@ -6,7 +6,11 @@ import {
   collectGenericRequiredMessages,
 } from "@govtech-bb/form-builder";
 import type { RequiredMessageDefect } from "@govtech-bb/form-builder";
-import type { ValidationResult, ValidationIssue } from "@govtech-bb/form-types";
+import {
+  checkCatchmentRoutingHasMapping,
+  type ValidationResult,
+  type ValidationIssue,
+} from "@govtech-bb/form-types";
 import { getFullCatalog } from "../catalog.js";
 
 /**
@@ -29,7 +33,7 @@ const REQUIRED_DEFECT_CAUSE: Record<RequiredMessageDefect, string> = {
 };
 
 /**
- * The full author-time recipe validation, in four layers, run against the live
+ * The full author-time recipe validation, in five layers, run against the live
  * catalog (builtin + DB custom components):
  *
  *   1. `validateFormContract` — the `serviceContractRecipeSchema` parse
@@ -48,6 +52,11 @@ const REQUIRED_DEFECT_CAUSE: Record<RequiredMessageDefect, string> = {
  *      `pnpm validate-recipes` runs the same rule over the committed recipes;
  *      this is the half that catches a recipe before it is deployed from the
  *      builder, including one built on a DB custom component (#2714).
+ *   5. `checkCatchmentRoutingHasMapping` — a catchment-routed recipe must keep
+ *      a webhook with `mapping.programmeCode`, or the API refuses it at boot
+ *      and the form is not served (#2877). The builder lets an author Remove
+ *      that webhook (Save draft stays possible); this is what stops the draft
+ *      being deployed. `pnpm validate-recipes` runs the same shared check.
  *
  * Used by `POST /builder/registry/validate` (the client Deploy gate). It was
  * also the server backstop for `POST /builder/publish` until that dormant route
@@ -91,6 +100,13 @@ export async function validateRecipeFully(
     );
   if (genericRequiredIssues.length > 0) {
     return { ok: false, issues: genericRequiredIssues };
+  }
+
+  const catchmentIssues: ValidationIssue[] = checkCatchmentRoutingHasMapping(
+    result.data,
+  ).map((message) => ({ path: "processors", message }));
+  if (catchmentIssues.length > 0) {
+    return { ok: false, issues: catchmentIssues };
   }
 
   return result;

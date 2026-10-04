@@ -8,7 +8,11 @@ import {
   type PublicFormSummary,
 } from "@govtech-bb/form-types";
 import { api, ApiError } from "./api-client";
-import { getPublishedRecipe, RECIPES_BASE } from "./github-recipes";
+import {
+  getPublishedRecipe,
+  getRecipeCommittedAt,
+  RECIPES_BASE,
+} from "./github-recipes";
 import type { BuilderFormSummary } from "../types/index";
 import { requireSession } from "./auth/require-session";
 import {
@@ -61,7 +65,9 @@ async function listLocalForms(): Promise<BuilderFormSummary[]> {
     title: recipe.title,
     version: recipe.version ?? "",
     publishedVersion: recipe.version,
-    visibility: recipe.meta?.visibility ?? "public",
+    // No `visibility`: a form's status is apps/api's effective visibility
+    // (#2875), and there is no API here — the builder shows it as unavailable
+    // rather than guessing from the recipe file.
     isPublished: true,
     isDisabled: false,
     isOrphanOverride: false,
@@ -95,11 +101,13 @@ export const listForms = createServerFn({ method: "GET" })
     const publishedVersionByFormId = new Map(
       published.map((p) => [p.formId, p.version] as const),
     );
-    // Launch-gate visibility from the authoring published index (#1835), keyed
-    // by formId so it survives the draft-wins merge below. Undefined for a
-    // draft-only form (absent from the index) and when the proxy fell back to
-    // the public-only list (no token → no `visibility` field); the picker
-    // badges only non-public values.
+    // The *effective* status apps/api reports per form (#1835, #2875: a
+    // service_status row wins, recipe `meta.visibility` is the no-row
+    // fallback), keyed by formId so it survives the draft-wins merge below.
+    // The only status the builder shows — it never reads the recipe's own
+    // field. Undefined for a draft-only form (absent from the index) and when
+    // the proxy fell back to the public-only list (no token → no `visibility`
+    // field), which the builder renders as "Status unavailable".
     const visibilityByFormId = new Map(
       published.map((p) => [p.formId, p.visibility] as const),
     );
@@ -147,8 +155,8 @@ export const listForms = createServerFn({ method: "GET" })
     // entry won the merge with isPublished=false) keeps its Published state.
     // `isOrphanOverride` flags a disabled override with no underlying draft or
     // published recipe — the picker renders it Enable-only and non-openable.
-    // `visibility` (#1835) rides through from the published index so the picker
-    // can badge a non-public published form (undefined for orphan/draft-only).
+    // `visibility` (#1835, #2875) rides through from the published index as
+    // the form's API-reported status (undefined for orphan/draft-only).
     return Array.from(byFormId.values()).map((f) => ({
       ...f,
       isPublished: f.isPublished || publishedIds.has(f.formId),
@@ -178,9 +186,22 @@ export async function resolveStoredRecipe(
   formId: string,
   token: string,
 ): Promise<ServiceContractRecipe | null> {
-  if (canReadLocalRecipes()) {
-    return (await readLocalRecipes(formId))[0] ?? null;
-  }
+  return (await resolveStoredRecipeSource(formId, token))?.recipe ?? null;
+}
+
+// resolveStoredRecipe plus where the recipe came from: `fromDraftRow` is true
+// only for the DB scratch row — the one copy that can go stale against the
+// committed recipe (#2489). getRecipe needs the distinction; the save paths
+// don't.
+async function resolveStoredRecipeSource(
+  formId: string,
+  token: string,
+): Promise<{ recipe: ServiceContractRecipe; fromDraftRow: boolean } | null> {
+  const local = async () => {
+    const recipe = (await readLocalRecipes(formId))[0];
+    return recipe ? { recipe, fromDraftRow: false } : null;
+  };
+  if (canReadLocalRecipes()) return local();
   // #1196: the DB scratch row is the current working draft — prefer it. Guard
   // on truthiness (not just a non-404 response) so a falsy body — a 204 or a
   // `200 null` for an empty draft row — falls through to the published copy
@@ -190,13 +211,16 @@ export async function resolveStoredRecipe(
       `/builder/forms/${encodeURIComponent(formId)}`,
     );
     if (draft) {
-      // #1682: a form's visibility (`meta.visibility`) was written straight into
-      // the published flat files (#1676) for the #1517 flagged forms, bypassing
-      // the builder save flow — so their pre-existing DB scratch rows carry no
-      // `meta`. When the working copy has none, hydrate it from the published
-      // recipe so the builder's visibility control reflects the live launch gate
-      // instead of defaulting to "public". A draft that *did* set visibility
-      // keeps its own value; an unpublished draft (no flat file) stays metaless.
+      // ADR 0059: `meta.visibility` was written straight into the published
+      // flat files (#1676) for the #1517 flagged forms, bypassing the builder
+      // save flow — so their pre-existing DB scratch rows carry no `meta`.
+      // When the working copy has none, hydrate it from the published recipe.
+      // Since #2875 the builder no longer *shows* this value (status comes
+      // from apps/api), so the hydration's remaining job is to carry the
+      // committed `meta` through a Deploy: `carryUnauthoredFields` treats
+      // `meta` as builder-authored, so a metaless draft would otherwise delete
+      // it from the recipe on the live site. An unpublished draft (no flat
+      // file) stays metaless.
       if (draft.meta === undefined) {
         try {
           const published = serviceContractRecipeSchema.parse(
@@ -207,23 +231,54 @@ export async function resolveStoredRecipe(
           // No published flat file yet — leave meta absent (treated as public).
         }
       }
-      return draft;
+      return { recipe: draft, fromDraftRow: true };
     }
   } catch (err) {
-    if (canReadLocalRecipes(err))
-      return (await readLocalRecipes(formId))[0] ?? null;
+    if (canReadLocalRecipes(err)) return local();
     if (!(err instanceof ApiError) || err.status !== 404) throw err;
   }
 
-  if (import.meta.env.DEV && !token)
-    return (await readLocalRecipes(formId))[0] ?? null;
+  if (import.meta.env.DEV && !token) return local();
 
   // No draft row — seed from the published canonical flat file.
   try {
     const recipe = await getPublishedRecipe(token, { formId });
-    return serviceContractRecipeSchema.parse(recipe);
+    return {
+      recipe: serviceContractRecipeSchema.parse(recipe),
+      fromDraftRow: false,
+    };
   } catch {
     return null;
+  }
+}
+
+// #2489: a draft row that predates a change to the committed recipe — a
+// hand-fix merged while the row sat idle — is brought back in line with that
+// recipe when the form is opened, so a later Deploy republishes the fix rather
+// than reverting it. The API decides staleness from the row's own updated_at
+// in one compare-and-swap (form_builder_api resyncFormHandler); a draft saved
+// after the commit is kept, and with no committed copy the draft is left
+// alone. Any failure keeps the draft and never blocks opening the form — the
+// stale-base guard in publishRecipe is the backstop.
+async function resyncStaleDraft(
+  formId: string,
+  draft: ServiceContractRecipe,
+  token: string,
+): Promise<ServiceContractRecipe> {
+  try {
+    const committedAt = await getRecipeCommittedAt(token, formId);
+    if (!committedAt) return draft;
+    const committed = serviceContractRecipeSchema.parse(
+      await getPublishedRecipe(token, { formId }),
+    );
+    const { resynced } = await api.post<{ resynced: boolean }>(
+      `/builder/forms/${encodeURIComponent(formId)}/resync`,
+      { recipe: committed, committedAt },
+    );
+    return resynced ? committed : draft;
+  } catch (err) {
+    console.warn(`[forms] stale-draft re-sync skipped for ${formId}:`, err);
+    return draft;
   }
 }
 
@@ -249,11 +304,15 @@ export const getRecipe = createServerFn({ method: "GET", strict: false })
   .handler(async ({ data, context }): Promise<ServiceContractRecipe> => {
     // #1196 precedence (draft row, else published) lives in resolveStoredRecipe,
     // so getRecipe and the save path resolve from the same source.
-    const recipe = await resolveStoredRecipe(
-      data.formId,
-      context.session.accessToken,
-    );
-    if (!recipe) throw new Error(`No recipe found for formId: ${data.formId}`);
+    const token = context.session.accessToken;
+    const resolved = await resolveStoredRecipeSource(data.formId, token);
+    if (!resolved)
+      throw new Error(`No recipe found for formId: ${data.formId}`);
+    // Only the draft row can be stale against the committed recipe (#2489);
+    // the published fallback *is* the committed recipe.
+    const recipe = resolved.fromDraftRow
+      ? await resyncStaleDraft(data.formId, resolved.recipe, token)
+      : resolved.recipe;
     // Strip processor secrets before the recipe reaches the browser (#294).
     return redactRecipeSecrets(recipe);
   });

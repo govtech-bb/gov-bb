@@ -256,6 +256,17 @@ type FetchPublishedResult =
 // smallest bound that shouldn't trip a warm-but-loaded upstream.
 const PUBLISHED_FETCH_TIMEOUT_MS = 2500;
 
+// Once per process: the published-forms proxy is hit on every list and every
+// save (uniqueness backstop), so a per-call warning would drown the dev log.
+let warnedMissingPreviewToken = false;
+function warnMissingPreviewToken(): void {
+  if (warnedMissingPreviewToken) return;
+  warnedMissingPreviewToken = true;
+  console.warn(
+    "[forms] RECIPE_PREVIEW_TOKEN is unset — proxying apps/api's public-only list; the builder will show every published form's status as unavailable (#2875)",
+  );
+}
+
 // Fetch apps/api's published-recipe index, owning the URL build, the SSRF
 // protocol guard, a bounded timeout, and the success/failure distinction.
 // Shared by listPublishedHandler (the proxy) and the write handlers (uniqueness
@@ -290,11 +301,13 @@ async function fetchPublishedForms(): Promise<FetchPublishedResult> {
     PUBLISHED_FETCH_TIMEOUT_MS,
   );
   // Forward the recipe-preview token so apps/api returns the authoring list
-  // (non-public forms + visibility, #1835). Optional / fail-open: unset → omit
-  // the header and take today's public-only list (never a boot crash, #1627).
-  // Read directly from process.env like the other env reads in this file (env.ts
-  // validates at boot; this token is optional so there is nothing to enforce).
+  // (non-public forms + effective visibility, #1835). env.ts requires it in
+  // production (#2875); outside prod an unset token falls back to the
+  // public-only list, which carries no `visibility` — the builder then shows
+  // every published form as "Status unavailable". Warn once so that is never
+  // silent. Read directly from process.env like the other env reads here.
   const previewToken = process.env.RECIPE_PREVIEW_TOKEN;
+  if (!previewToken) warnMissingPreviewToken();
   try {
     const upstream = await fetch(
       `${baseUrl.replace(/\/$/, "")}/form-definitions`,
@@ -675,15 +688,18 @@ export async function updateFormHandler(
       // the loser raising an unhandled 23505 and 500ing. Raw SQL, like the
       // UPDATE below: TypeORM's upsert() types the recipe through
       // QueryDeepPartialEntity, which can't express its nested element unions.
+      // Both writes stamp updated_at themselves (#2489): the column's NOW()
+      // default fires only on insert and @UpdateDateColumn only through the
+      // ORM, so without this a row would read as last-saved at creation.
       await manager.query(
         `INSERT INTO form_definitions (form_id, version, schema, published_at)
          VALUES ($1, NULL, $2, NULL)
-         ON CONFLICT (form_id) DO UPDATE SET schema = EXCLUDED.schema`,
+         ON CONFLICT (form_id) DO UPDATE SET schema = EXCLUDED.schema, updated_at = NOW()`,
         [req.params.formId, recipe],
       );
     } else {
       await manager.query(
-        `UPDATE form_definitions SET schema = $1 WHERE id = $2`,
+        `UPDATE form_definitions SET schema = $1, updated_at = NOW() WHERE id = $2`,
         [recipe, rows[0].id],
       );
     }
@@ -800,8 +816,11 @@ export async function rekeyFormHandler(
     // the builder picker, so it can be re-keyed while disabled. The leftover
     // old-ID tombstone then surfaces as an orphan-override row whose Enable
     // clears it, so the old ID isn't trapped.
+    // A re-key is a save of the author's draft (step 6 writes the edited
+    // content), so updated_at moves with it — raw SQL, hence stamped by hand
+    // (#2489; see updateFormHandler).
     await manager.query(
-      `UPDATE form_definitions SET form_id = $1 WHERE form_id = $2`,
+      `UPDATE form_definitions SET form_id = $1, updated_at = NOW() WHERE form_id = $2`,
       [newFormId, oldFormId],
     );
     // Move the per-form config (the MDA contact link) to the new ID too, so a
@@ -816,7 +835,7 @@ export async function rekeyFormHandler(
     // 6. Persist the edited content under the new ID. Step 5 already moved the
     // single row, so update its schema in place.
     await manager.query(
-      `UPDATE form_definitions SET schema = $1 WHERE form_id = $2`,
+      `UPDATE form_definitions SET schema = $1, updated_at = NOW() WHERE form_id = $2`,
       [recipe, newFormId],
     );
     return { status: 200, body: { ok: true } };
@@ -824,6 +843,66 @@ export async function rekeyFormHandler(
   res.status(result.status).json(result.body);
 }
 formsRouter.post("/:formId/rekey", rekeyFormHandler);
+
+// POST /builder/forms/:formId/resync — bring a stale draft row back in line
+// with the committed recipe (#2489). The builder calls this when it opens a
+// form whose draft row may predate a change that reached the committed recipe
+// (a hand-fix merged while the row sat idle), so a later Deploy republishes
+// the fix instead of reverting it. `committedAt` is the committer date of the
+// latest commit touching the recipe file; the row is overwritten only when it
+// was last saved before that, so a draft edited after the commit is never
+// replaced. The comparison lives in the UPDATE's WHERE so two tabs opening the
+// same form race safely: one wins, the other sees the same result.
+//
+// `updated_at > created_at` limits the re-sync to rows saved at least once
+// since updated_at began recording saves (the change that added this). Before
+// that nothing ever bumped updated_at, so every older row has updated_at equal
+// to created_at — both take the same NOW() on insert — and its timestamp says
+// nothing about when it was really last edited. Overwriting such a row could
+// discard un-deployed work, so it is left alone until its next save. The same
+// holds for a row inserted after that change and never saved again.
+//
+// Not an author edit, so no presence gate: the row is being set to what is
+// already live.
+const resyncBodySchema = z.object({ committedAt: z.string().datetime() });
+
+export async function resyncFormHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  // Same write-boundary gates as every other recipe write: structurally valid
+  // (#1499) and SSRF-safe processors (#281), even for a recipe that came from
+  // the repo.
+  const recipe = parseDraftRecipe(req.body?.recipe, res);
+  if (!recipe) return;
+  const processorError = validateRecipeProcessors(recipe);
+  if (processorError) {
+    res
+      .status(400)
+      .json({ error: `Invalid processor config: ${processorError}` });
+    return;
+  }
+  const body = resyncBodySchema.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: formatZodError(body.error, "committedAt") });
+    return;
+  }
+  const ds = await getDataSource();
+  // updated_at is `timestamp` and NOW() was stored through the session time
+  // zone, so compare against the timestamptz parameter the same way rather
+  // than assuming UTC. TypeORM's Postgres query() returns `[rows, rowCount]`
+  // for an UPDATE — the count is the answer, not the array's length.
+  const [, affected]: [unknown, number] = await ds.query(
+    `UPDATE form_definitions
+        SET schema = $1, updated_at = NOW()
+      WHERE form_id = $2
+        AND updated_at > created_at
+        AND updated_at < $3::timestamptz`,
+    [recipe, String(req.params.formId), body.data.committedAt],
+  );
+  res.json({ resynced: affected > 0 });
+}
+formsRouter.post("/:formId/resync", resyncFormHandler);
 
 // DELETE /builder/forms/:formId/versions/:version — surgically remove a single
 // draft version row. Unlike the form-level delete below, this writes NO

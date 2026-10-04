@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import matter from "gray-matter";
 import {
   serviceReadiness,
   serviceSnapshotSchema,
@@ -44,7 +45,6 @@ const snapshot = serviceSnapshotSchema.parse({
     schemaVersion: 1,
     serviceId: "test-service",
     title: "Test service",
-    visibility: "preview",
     category: "health",
     formId: null,
     entryPoint: main,
@@ -145,7 +145,9 @@ it("retains all pages in one immutable Git commit without private configuration"
   );
   expect(tree.tree[1].content).toContain("Original main page");
   expect(tree.tree[2].content).toContain("Separate guidance");
-  expect(tree.tree[1].content).toContain("visibility: preview");
+  // The page keeps its own visibility; the manifest no longer carries one.
+  expect(tree.tree[1].content).toContain("visibility: public");
+  expect(JSON.parse(tree.tree[0].content)).not.toHaveProperty("visibility");
   expect(
     fetcher.mock.calls.filter(([url]) => url.endsWith("/git/commits")),
   ).toHaveLength(1);
@@ -184,6 +186,25 @@ it("reuses a matching retained tag and refuses a changed checkpoint", async () =
   );
   await expect(invoke(retainServiceVersion)).rejects.toThrow("does not match");
   expect(api.post).not.toHaveBeenCalled();
+});
+
+it("publishes the recipe's own status and each page's own visibility (#2683)", () => {
+  const withForm = serviceSnapshotSchema.parse({
+    ...snapshot,
+    manifest: { ...snapshot.manifest, formId: "test-form" },
+    recipe: {
+      formId: "test-form",
+      title: "Application",
+      steps: [],
+      meta: { visibility: "maintenance" },
+    },
+  });
+  const files = checkpointFiles(withForm);
+  expect(JSON.parse(files[0].content)).not.toHaveProperty("visibility");
+  expect(matter(files[1].content).data.visibility).toBe("public");
+  expect(JSON.parse(files[3].content).meta).toEqual({
+    visibility: "maintenance",
+  });
 });
 
 it("refuses publication when the source revision changes", async () => {
@@ -228,4 +249,57 @@ it("adopts a service even when its form cannot be fetched", async () => {
   expect(serviceReadiness(result).issues.map((issue) => issue.id)).toContain(
     "missing-form",
   );
+  expect(result.manifest.setup).toEqual({
+    step: "about",
+    delivery: "undecided",
+    applicantEmail: "undecided",
+  });
+});
+
+it("seeds the After submission decisions and public contact from the recipe (#2683)", async () => {
+  vi.mocked(resolveStoredRecipe).mockResolvedValue({
+    formId: "csec",
+    title: "CSEC Examination",
+    steps: [
+      {
+        stepId: "your-details",
+        title: "Your details",
+        elements: [{ ref: "components/generic-text" }],
+      },
+      { stepId: "submission-confirmation", title: "Done", elements: [] },
+    ],
+    processors: [
+      {
+        type: "email",
+        config: { recipientField: "your-details.email" },
+      },
+    ],
+    contactDetails: { email: "exams@example.test" },
+  } as never);
+  vi.mocked(api.get).mockResolvedValue({
+    mdaContactId: null,
+    processors: null,
+  });
+  const result = await (
+    loadServiceSource as unknown as (arg: unknown) => Promise<ServiceSnapshot>
+  )({
+    data: {
+      serviceId: "csec",
+      title: "CSEC Examination",
+      category: "education",
+      formId: "csec",
+      paths: [],
+    },
+    context: { session: { login: "editor", accessToken: "test-token" } },
+  });
+  expect(result.manifest).not.toHaveProperty("visibility");
+  expect(result.manifest.contactDetails).toEqual({
+    email: "exams@example.test",
+  });
+  expect(result.manifest.setup).toEqual({
+    step: "about",
+    delivery: "none",
+    applicantEmail: "configured",
+  });
+  expect(serviceReadiness(result)).toEqual({ ready: true, issues: [] });
 });

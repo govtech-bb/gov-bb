@@ -36,12 +36,13 @@ vi.mock("./api-client", () => {
 // the precedence tests don't hit GitHub.
 vi.mock("./github-recipes", () => ({
   getPublishedRecipe: vi.fn(),
+  getRecipeCommittedAt: vi.fn(),
   RECIPES_BASE: "apps/api/src/forms/form-definitions/recipes",
 }));
 
 import { getSession } from "./session-cipher.server";
 import { api, ApiError } from "./api-client";
-import { getPublishedRecipe } from "./github-recipes";
+import { getPublishedRecipe, getRecipeCommittedAt } from "./github-recipes";
 import {
   listForms,
   getRecipe,
@@ -51,6 +52,7 @@ import {
 } from "./forms";
 
 const getPublishedRecipeMock = getPublishedRecipe as Mock;
+const getRecipeCommittedAtMock = getRecipeCommittedAt as Mock;
 
 const SESSION = {
   login: "alice",
@@ -730,6 +732,118 @@ describe("getRecipe (draft-vs-published precedence)", () => {
   });
 });
 
+// #2489: a draft row that predates the latest commit to the recipe (a hand-fix
+// merged while the row sat idle) is replaced by the committed recipe on open,
+// so a later Deploy republishes the fix instead of reverting it. Staleness is
+// decided by the API from the row's own updated_at (forms.resync.db.spec.ts
+// covers the SQL); this spec covers what getRecipe does around that call.
+describe("getRecipe — re-syncs a stale draft row from the committed recipe (#2489)", () => {
+  const FORM_ID = "apply-for-conductor-licence";
+  const COMMITTED_AT = "2026-09-15T10:00:00Z";
+  const apiPost = api.post as Mock;
+  // meta on both copies keeps the #1682 hydration fetch out of the way.
+  const published = {
+    formId: FORM_ID,
+    title: "Apply for Conductor Licence",
+    description: "Apply for a conductor licence",
+    version: "1.3.0",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-09-15T00:00:00.000Z",
+    steps: [],
+    meta: { visibility: "public" },
+  };
+  const draft = { ...published, title: "Conductor (draft)", version: "1.1.0" };
+
+  function call() {
+    return getRecipe({
+      data: { formId: FORM_ID },
+      context: { session: SESSION },
+    } as never);
+  }
+
+  it("replaces the draft with the committed recipe when the API confirms the row predates the commit", async () => {
+    apiGet.mockResolvedValue(draft);
+    getRecipeCommittedAtMock.mockResolvedValue(COMMITTED_AT);
+    getPublishedRecipeMock.mockResolvedValue(published);
+    apiPost.mockResolvedValue({ resynced: true });
+
+    const result = await call();
+
+    expect(result.title).toBe("Apply for Conductor Licence");
+    expect(getRecipeCommittedAtMock).toHaveBeenCalledWith(
+      SESSION.accessToken,
+      FORM_ID,
+    );
+    expect(apiPost).toHaveBeenCalledWith(`/builder/forms/${FORM_ID}/resync`, {
+      recipe: expect.objectContaining({ title: "Apply for Conductor Licence" }),
+      committedAt: COMMITTED_AT,
+    });
+  });
+
+  it("keeps the draft when the API reports it was saved after the commit (or is a pre-#2489 row)", async () => {
+    apiGet.mockResolvedValue(draft);
+    getRecipeCommittedAtMock.mockResolvedValue(COMMITTED_AT);
+    getPublishedRecipeMock.mockResolvedValue(published);
+    apiPost.mockResolvedValue({ resynced: false });
+
+    const result = await call();
+
+    expect(result.title).toBe("Conductor (draft)");
+  });
+
+  it("leaves a draft with no committed copy alone", async () => {
+    apiGet.mockResolvedValue(draft);
+    getRecipeCommittedAtMock.mockResolvedValue(null); // no commit touches it
+
+    const result = await call();
+
+    expect(result.title).toBe("Conductor (draft)");
+    expect(getPublishedRecipeMock).not.toHaveBeenCalled();
+    expect(apiPost).not.toHaveBeenCalled();
+  });
+
+  it("keeps the draft and still opens the form when GitHub cannot be reached", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    apiGet.mockResolvedValue(draft);
+    getRecipeCommittedAtMock.mockRejectedValue(new Error("GitHub 503"));
+
+    const result = await call();
+
+    expect(result.title).toBe("Conductor (draft)");
+    expect(apiPost).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("re-sync skipped"),
+      expect.any(Error),
+    );
+    warn.mockRestore();
+  });
+
+  it("keeps the draft and still opens the form when the API re-sync call fails", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    apiGet.mockResolvedValue(draft);
+    getRecipeCommittedAtMock.mockResolvedValue(COMMITTED_AT);
+    getPublishedRecipeMock.mockResolvedValue(published);
+    apiPost.mockRejectedValue(new ApiError(500, "db down"));
+
+    const result = await call();
+
+    expect(result.title).toBe("Conductor (draft)");
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("does not re-sync the published fallback — with no draft row there is nothing stale", async () => {
+    apiGet.mockRejectedValue(new ApiError(404, "not found"));
+    getPublishedRecipeMock.mockResolvedValue(published);
+
+    const result = await call();
+
+    expect(result.title).toBe("Apply for Conductor Licence");
+    expect(getRecipeCommittedAtMock).not.toHaveBeenCalled();
+    expect(apiPost).not.toHaveBeenCalled();
+  });
+});
+
 describe("listForms — hasDraftRow (#2411)", () => {
   function stub(drafts: unknown[], published: unknown[]) {
     apiGet.mockImplementation((path: string) => {
@@ -850,10 +964,12 @@ it("connects local service pages to canonical recipes and opens them only in unc
         formId: recipe.formId,
         title: recipe.title,
         version: "1.0.0",
-        visibility: "preview",
         isPublished: true,
       }),
     ]);
+    // #2875: no API here, so no status — the recipe's `meta.visibility` is
+    // never read as one (the builder renders this as "Status unavailable").
+    expect(forms[0]).not.toHaveProperty("visibility");
     const pages = ["index", "start", "help"].map((name) => ({
       path: `apps/landing/src/content/${recipe.formId}/${name}.md`,
       title: recipe.title,
