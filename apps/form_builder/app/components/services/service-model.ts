@@ -117,6 +117,11 @@ export function serviceStatus(service: ServiceRow): string {
   if (service.form?.isDisabled) return "Disabled";
   if (service.form) {
     if (!service.form.isPublished) return "Draft";
+    // `visibility` is the effective status apps/api reports (#2875): a
+    // service_status row wins, the recipe is only the no-row fallback. The
+    // builder never reads the recipe itself, so a published form the index
+    // returned without one is unknown — not "Published".
+    if (service.form.visibility === undefined) return "Status unavailable";
     return service.form.visibility === "draft"
       ? "Draft"
       : service.form.visibility === "preview"

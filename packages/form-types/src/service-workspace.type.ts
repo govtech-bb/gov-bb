@@ -30,6 +30,9 @@ export const serviceManifestSchema = z
   .object({
     schemaVersion: z.literal(1),
     serviceId: serviceIdSchema,
+    // Legacy seed. The builder no longer reads or offers it (#2875): a
+    // service's live status is the `service_status` row, set in Feature
+    // flagging. Kept only because `checkpointFiles` still writes it (#2683).
     visibility: z.enum(["draft", "preview", "public"]).default("draft"),
     title: z.string().trim().min(1).max(250),
     description: z.string().max(5000).default(""),
@@ -188,8 +191,6 @@ export function serviceReadiness(snapshot: ServiceSnapshot): ServiceReadiness {
     section: ServiceReadiness["issues"][number]["section"],
     message: string,
   ) => issues.push({ id, section, message });
-  if (!manifest.visibility || manifest.visibility === "draft")
-    issue("visibility", "about", "Choose a preview or public release");
   if (!manifest.category)
     issue("category", "about", "Choose a service category");
   if (!manifest.entryPoint)
