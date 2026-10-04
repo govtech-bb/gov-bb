@@ -47,6 +47,7 @@ import {
   listForms,
   getRecipe,
   rekeyRecipe,
+  resolveCurrentRecipe,
   submitRecipe,
   updateRecipe,
 } from "./forms";
@@ -841,6 +842,61 @@ describe("getRecipe — re-syncs a stale draft row from the committed recipe (#2
     expect(result.title).toBe("Apply for Conductor Licence");
     expect(getRecipeCommittedAtMock).not.toHaveBeenCalled();
     expect(apiPost).not.toHaveBeenCalled();
+  });
+});
+
+// #2897: the services workspace's first adoption reads the form through this
+// same resolver, so the recipe it stores is the one getRecipe would show —
+// including the #2489 re-sync of a stale draft row — rather than the raw row.
+describe("resolveCurrentRecipe — shared by getRecipe and services adoption (#2897)", () => {
+  const FORM_ID = "apply-for-conductor-licence";
+  const COMMITTED_AT = "2026-09-15T10:00:00Z";
+  const apiPost = api.post as Mock;
+  const published = {
+    formId: FORM_ID,
+    title: "Apply for Conductor Licence",
+    description: "Apply for a conductor licence",
+    version: "1.3.0",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-09-15T00:00:00.000Z",
+    steps: [],
+    meta: { visibility: "public" },
+  };
+  const draft = { ...published, title: "Conductor (draft)", version: "1.1.0" };
+
+  it("replaces a stale draft row with the committed recipe, as getRecipe does", async () => {
+    apiGet.mockResolvedValue(draft);
+    getRecipeCommittedAtMock.mockResolvedValue(COMMITTED_AT);
+    getPublishedRecipeMock.mockResolvedValue(published);
+    apiPost.mockResolvedValue({ resynced: true });
+
+    const result = await resolveCurrentRecipe(FORM_ID, SESSION.accessToken);
+
+    expect(result?.title).toBe("Apply for Conductor Licence");
+    expect(apiPost).toHaveBeenCalledWith(
+      `/builder/forms/${FORM_ID}/resync`,
+      expect.objectContaining({ committedAt: COMMITTED_AT }),
+    );
+  });
+
+  it("keeps a draft row the API says was saved after the commit", async () => {
+    apiGet.mockResolvedValue(draft);
+    getRecipeCommittedAtMock.mockResolvedValue(COMMITTED_AT);
+    getPublishedRecipeMock.mockResolvedValue(published);
+    apiPost.mockResolvedValue({ resynced: false });
+
+    const result = await resolveCurrentRecipe(FORM_ID, SESSION.accessToken);
+
+    expect(result?.title).toBe("Conductor (draft)");
+  });
+
+  it("returns null when neither a draft row nor a committed copy exists", async () => {
+    apiGet.mockRejectedValue(new ApiError(404, "not found"));
+    getPublishedRecipeMock.mockRejectedValue(new Error("no published recipe"));
+
+    await expect(
+      resolveCurrentRecipe(FORM_ID, SESSION.accessToken),
+    ).resolves.toBeNull();
   });
 });
 

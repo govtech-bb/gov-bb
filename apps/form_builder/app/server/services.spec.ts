@@ -13,7 +13,7 @@ import {
   publishServiceVersion,
   retainServiceVersion,
 } from "./services";
-import { resolveStoredRecipe } from "./forms";
+import { resolveStoredRecipe, resolveCurrentRecipe } from "./forms";
 import { loadLandingContentPage } from "./content";
 
 vi.mock("./api-client", () => ({
@@ -33,7 +33,10 @@ vi.mock("./publish", () => ({
   resolveBaseBranch: () => "main",
   carryUnauthoredFields: (_old: unknown, recipe: unknown) => recipe,
 }));
-vi.mock("./forms", () => ({ resolveStoredRecipe: vi.fn() }));
+vi.mock("./forms", () => ({
+  resolveStoredRecipe: vi.fn(),
+  resolveCurrentRecipe: vi.fn(),
+}));
 vi.mock("./content", () => ({ loadLandingContentPage: vi.fn() }));
 vi.mock("./auth/require-session", () => ({ requireSession: {} }));
 
@@ -216,7 +219,7 @@ it("refuses publication when the source revision changes", async () => {
 });
 
 it("adopts a service even when its form cannot be fetched", async () => {
-  vi.mocked(resolveStoredRecipe).mockRejectedValue(
+  vi.mocked(resolveCurrentRecipe).mockRejectedValue(
     new Error("BUILDER_API_URL is not set"),
   );
   vi.mocked(api.get).mockRejectedValue(new Error("BUILDER_API_URL is not set"));
@@ -256,8 +259,45 @@ it("adopts a service even when its form cannot be fetched", async () => {
   });
 });
 
-it("seeds the After submission decisions and public contact from the recipe (#2683)", async () => {
+it("adopts a form through the same stale-draft re-sync getRecipe uses (#2897)", async () => {
+  // resolveCurrentRecipe hands back the committed recipe once the API has
+  // confirmed the draft row predated it (forms.spec covers that exchange).
+  // First adoption must store that copy — not the pre-fix row the save-path
+  // resolver (resolveStoredRecipe) would return — so adopting and the later
+  // getServiceDraft refresh (which goes through getRecipe) agree.
+  const committed = {
+    formId: "csec",
+    title: "CSEC Examination (fixed on main)",
+    steps: [{ stepId: "submission-confirmation", title: "Done", elements: [] }],
+  };
+  vi.mocked(resolveCurrentRecipe).mockResolvedValue(committed as never);
   vi.mocked(resolveStoredRecipe).mockResolvedValue({
+    ...committed,
+    title: "CSEC Examination (stale row)",
+  } as never);
+  vi.mocked(api.get).mockResolvedValue({
+    mdaContactId: null,
+    processors: null,
+  });
+  const result = await (
+    loadServiceSource as unknown as (arg: unknown) => Promise<ServiceSnapshot>
+  )({
+    data: {
+      serviceId: "csec",
+      title: "CSEC Examination",
+      category: "education",
+      formId: "csec",
+      paths: [],
+    },
+    context: { session: { login: "editor", accessToken: "test-token" } },
+  });
+  expect(result.recipe?.title).toBe("CSEC Examination (fixed on main)");
+  expect(resolveCurrentRecipe).toHaveBeenCalledWith("csec", "test-token");
+  expect(resolveStoredRecipe).not.toHaveBeenCalled();
+});
+
+it("seeds the After submission decisions and public contact from the recipe (#2683)", async () => {
+  vi.mocked(resolveCurrentRecipe).mockResolvedValue({
     formId: "csec",
     title: "CSEC Examination",
     steps: [

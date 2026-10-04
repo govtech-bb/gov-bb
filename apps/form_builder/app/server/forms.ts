@@ -298,21 +298,37 @@ async function restoreSecretsForSave(
   return restored;
 }
 
+// The recipe to show when a form is opened: resolveStoredRecipe's precedence
+// (#1196: draft row, else published) with the draft row brought back in line
+// with the committed recipe when it is stale (#2489). Only the draft row can be
+// stale; the published fallback *is* the committed recipe. Shared by getRecipe
+// and the services workspace's first adoption (loadServiceSource, #2897) so
+// adopting a form and the later getRecipe refresh store the same recipe. The
+// save paths keep resolveStoredRecipe: a save restores secrets from the row as
+// it is, and must not re-sync it underneath the edit being saved. Secrets are
+// NOT redacted here — each caller does that at its own boundary.
+export async function resolveCurrentRecipe(
+  formId: string,
+  token: string,
+): Promise<ServiceContractRecipe | null> {
+  const resolved = await resolveStoredRecipeSource(formId, token);
+  if (!resolved) return null;
+  return resolved.fromDraftRow
+    ? resyncStaleDraft(formId, resolved.recipe, token)
+    : resolved.recipe;
+}
+
 export const getRecipe = createServerFn({ method: "GET", strict: false })
   .middleware([requireSession])
   .inputValidator(z.object({ formId: z.string() }))
   .handler(async ({ data, context }): Promise<ServiceContractRecipe> => {
     // #1196 precedence (draft row, else published) lives in resolveStoredRecipe,
     // so getRecipe and the save path resolve from the same source.
-    const token = context.session.accessToken;
-    const resolved = await resolveStoredRecipeSource(data.formId, token);
-    if (!resolved)
-      throw new Error(`No recipe found for formId: ${data.formId}`);
-    // Only the draft row can be stale against the committed recipe (#2489);
-    // the published fallback *is* the committed recipe.
-    const recipe = resolved.fromDraftRow
-      ? await resyncStaleDraft(data.formId, resolved.recipe, token)
-      : resolved.recipe;
+    const recipe = await resolveCurrentRecipe(
+      data.formId,
+      context.session.accessToken,
+    );
+    if (!recipe) throw new Error(`No recipe found for formId: ${data.formId}`);
     // Strip processor secrets before the recipe reaches the browser (#294).
     return redactRecipeSecrets(recipe);
   });

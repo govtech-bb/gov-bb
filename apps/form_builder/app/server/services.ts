@@ -17,7 +17,7 @@ import {
 } from "@govtech-bb/form-types";
 import { api, ApiError } from "./api-client";
 import { requireSession } from "./auth/require-session";
-import { resolveStoredRecipe } from "./forms";
+import { resolveStoredRecipe, resolveCurrentRecipe } from "./forms";
 import { loadLandingContentPage } from "./content";
 import {
   redactRecipeSecrets,
@@ -117,9 +117,12 @@ export const loadServiceSource = createServerFn({
       );
     const formId = savedManifest ? savedManifest.formId : (data.formId ?? null);
     // A form that cannot be fetched must not block the workspace: readiness
-    // reports the missing form and the next load retries.
+    // reports the missing form and the next load retries. Read through the
+    // same resolver as getRecipe so a stale draft row is re-synced with the
+    // committed recipe on first adoption too, not only on the next
+    // getServiceDraft refresh (#2897, ADR 0075).
     const recipe = formId
-      ? await resolveStoredRecipe(formId, token).catch(() => null)
+      ? await resolveCurrentRecipe(formId, token).catch(() => null)
       : null;
     const paths = savedManifest?.pages.map((p) => p.path) ?? data.paths ?? [];
     const pages = await Promise.all(
