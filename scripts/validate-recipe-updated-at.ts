@@ -20,9 +20,10 @@
  *
  * Deliberately not an nx target: nx's `default` inputs skip content-only
  * changes, so this has to be an always-run step (ci.yml "Validate Recipes"
- * and `lint-staged` in the root package.json). It applies from the change
- * that added it onwards; recipes whose `updatedAt` predates earlier hand
- * edits are not revisited.
+ * and `lint-staged` in apps/api/package.json — lint-staged routes each file
+ * to its closest config, so a root-level glob never sees a recipe). The
+ * backfill that landed with it set every recipe's `updatedAt` to its last
+ * commit date, so the guard holds from there on.
  */
 import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";

@@ -93,7 +93,6 @@
     "luxon": "^3.7.2"
   },
   "lint-staged": {
-    "*.{json,ts}": "pnpm exec prettier --write",
-    "apps/api/src/forms/form-definitions/recipes/*.json": "tsx scripts/validate-recipe-updated-at.ts --staged"
+    "*.{json,ts}": "pnpm exec prettier --write"
   }
 }
