@@ -102,17 +102,35 @@ describe("AI system prompt", () => {
     for (const variant of contentVariantSchema.options) {
       expect(prompt).toContain(`"${variant}"`);
     }
-    expect(prompt).toContain('"content"');
+    // The key's own bullet, then every worked example carrying the shape —
+    // anchored so the word "content" elsewhere in the prompt cannot satisfy it.
+    expect(prompt).toMatch(/^ {2}- `"content"` — the markdown body/m);
+    const examples = prompt.match(/^\{"ref": "components\/content".*$/gm) ?? [];
+    expect(examples).not.toEqual([]);
+    for (const example of examples) {
+      expect(example).toContain('"variant"');
+      expect(example).toContain('"content"');
+    }
     // summary is the details disclosure's clickable line, falling back to label.
     expect(prompt).toMatch(/"summary".*details/);
     expect(prompt).toContain("falls back to `label`");
+    expect(
+      examples.some(
+        (example) =>
+          example.includes('"variant": "details"') &&
+          example.includes('"summary"'),
+      ),
+    ).toBe(true);
   });
 
   it("documents address-lookup with its same-step geocodeTargets", () => {
     expect(prompt).toContain("components/address-lookup");
     expect(prompt).toContain('"geocodeTargets"');
-    // geocodeTargetsSchema is not exported from the form-types barrel; the
-    // type is, so a renamed key fails here at type level.
+    // geocodeTargetsSchema is not exported from the form-types barrel (#2886
+    // adds that export — switch to it once merged), so the keys are listed
+    // here and must be kept in step with the schema by hand. The annotation is
+    // documentation only: nothing type-checks this spec (the api tsconfig
+    // excludes specs and vitest does not typecheck).
     const targetKeys: (keyof GeocodeTargets)[] = [
       "line2FieldId",
       "parishFieldId",
@@ -126,9 +144,15 @@ describe("AI system prompt", () => {
 
   it("documents the checkbox accordion's groups shape", () => {
     expect(prompt).toContain("components/generic-checkbox-accordion");
-    expect(prompt).toContain('"groups"');
+    // Anchor on the worked example — the line the model copies — rather than
+    // on bare key names: "label" and "options" appear throughout the prompt.
+    const example = prompt.match(
+      /^\{"ref": "components\/generic-checkbox-accordion".*$/m,
+    )?.[0];
+    expect(example).toBeDefined();
+    expect(example).toContain('"groups"');
     for (const key of Object.keys(optionGroupSchema.shape)) {
-      expect(prompt).toContain(`"${key}"`);
+      expect(example).toContain(`"${key}"`);
     }
   });
 
@@ -136,8 +160,12 @@ describe("AI system prompt", () => {
     expect(prompt).toContain("components/generic-time");
     expect(prompt).toContain("components/opening-hours");
     expect(prompt).toContain('"step"');
-    // generic-time's registry default, so an override is only for a different increment.
-    expect(prompt).toContain("1800");
+    // The prompt quotes generic-time's registry default so an override is only
+    // for a different increment — read from the registry, so retuning the
+    // default fails here instead of leaving a stale number in the prompt.
+    const defaultStep = REGISTRY_PRIMITIVES["components/generic-time"].step;
+    expect(defaultStep).toBeDefined();
+    expect(prompt).toContain(`registry default is ${defaultStep}`);
     // opening-hours honours step only when it is a whole number of minutes.
     expect(prompt).toContain("multiple of 60");
   });
