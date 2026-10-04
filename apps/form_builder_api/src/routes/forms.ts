@@ -848,10 +848,11 @@ formsRouter.post("/:formId/rekey", rekeyFormHandler);
 // with the committed recipe (#2489). The builder calls this when it opens a
 // form whose draft row may predate a change that reached the committed recipe
 // (a hand-fix merged while the row sat idle), so a later Deploy republishes
-// the fix instead of reverting it. `committedAt` is the committer date of the
-// latest commit touching the recipe file; the row is overwritten only when it
-// was last saved before that, so a draft edited after the commit is never
-// replaced. The comparison lives in the UPDATE's WHERE so two tabs opening the
+// the fix instead of reverting it. `committedAt` is when the committed recipe
+// last changed: its own `updatedAt`, or the committer date of the latest
+// commit touching the file when the recipe carries no stamp (#2878). The row
+// is overwritten only when it was last saved before that, so a draft edited
+// after the change is never replaced. The comparison lives in the UPDATE's WHERE so two tabs opening the
 // same form race safely: one wins, the other sees the same result.
 //
 // `updated_at > created_at` limits the re-sync to rows saved at least once

@@ -263,11 +263,11 @@ async function resolveStoredRecipeSource(
 
 // #2878: when the committed recipe last changed, by its own `updatedAt` —
 // normalised to the UTC instant the API's `datetime()` accepts — or null when
-// the file carries none it can use. Storage-agnostic: a recipe that stops
-// living in git still says when it was written.
+// the stamp is absent. A present stamp is a valid datetime: the recipe was
+// schema-parsed, so a malformed one never reaches here. Storage-agnostic: a
+// recipe that stops living in git still says when it was written.
 function recipeUpdatedAt(recipe: { updatedAt?: string }): string | null {
-  const t = Date.parse(recipe.updatedAt ?? "");
-  return Number.isNaN(t) ? null : new Date(t).toISOString();
+  return recipe.updatedAt ? new Date(recipe.updatedAt).toISOString() : null;
 }
 
 // #2489: a draft row that predates a change to the committed recipe — a
@@ -288,7 +288,7 @@ async function resyncStaleDraft(
 ): Promise<ServiceContractRecipe> {
   try {
     // Parsed with the stamp-optional draft schema on purpose: a committed
-    // copy without a usable `updatedAt` must still parse for the git fallback
+    // copy without an `updatedAt` must still parse for the git fallback
     // below to apply. The row it may replace is never parsed here at all, and
     // the browser fills absent stamps (load-form-draft.ts), so the widening
     // to ServiceContractRecipe is safe.
@@ -300,8 +300,9 @@ async function resyncStaleDraft(
     // Freshness is the committed recipe's own `updatedAt` (#2878), which every
     // write now moves (Deploy stamps it; `pnpm validate-recipe-updated-at`
     // gates hand edits). The committer date of its latest commit is the
-    // fallback for a committed copy that carries no usable stamp — read only
-    // then, so the check keeps working once recipes stop living in git.
+    // fallback for a committed copy whose stamp is absent — read only then,
+    // so the check keeps working once recipes stop living in git. A stamp
+    // that is not a datetime fails the parse above and keeps the draft.
     const committedAt =
       recipeUpdatedAt(committed) ?? (await getRecipeCommittedAt(token, formId));
     if (!committedAt) return draft;

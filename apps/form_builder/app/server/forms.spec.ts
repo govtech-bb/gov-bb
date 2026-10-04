@@ -750,7 +750,7 @@ describe("getRecipe (draft-vs-published precedence)", () => {
 // decided by the API from the row's own updated_at (forms.resync.db.spec.ts
 // covers the SQL); this spec covers what getRecipe does around that call.
 // #2878: "committed at" is the recipe's own `updatedAt`; the git committer
-// date is read only for a committed copy that carries no usable stamp.
+// date is read only for a committed copy whose stamp is absent.
 describe("getRecipe — re-syncs a stale draft row from the committed recipe (#2489)", () => {
   const FORM_ID = "apply-for-conductor-licence";
   const COMMITTED_AT = "2026-09-15T10:00:00Z";
@@ -837,6 +837,22 @@ describe("getRecipe — re-syncs a stale draft row from the committed recipe (#2
 
     expect(result.title).toBe("Conductor (draft)");
     expect(apiPost).not.toHaveBeenCalled();
+  });
+
+  it("keeps the draft, with no git fallback, when the committed updatedAt is not a datetime", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    apiGet.mockResolvedValue(draft);
+    getPublishedRecipeMock.mockResolvedValue({
+      ...published,
+      updatedAt: "last Tuesday",
+    });
+
+    const result = await call();
+
+    expect(result.title).toBe("Conductor (draft)");
+    expect(getRecipeCommittedAtMock).not.toHaveBeenCalled();
+    expect(apiPost).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it("keeps the draft when the API reports it was saved after the committed stamp (or is a pre-#2489 row)", async () => {

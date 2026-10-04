@@ -14,10 +14,9 @@
  *     Re-publishing a form *modifies* its flat file rather than adding a new
  *     versioned one, so we match both Added and Modified (AM).
  *   - Skips a modified recipe whose content did not change — only its
- *     `updatedAt` moved (#2878: the stamp backfill, a page-only service
- *     publication). "Content" is recipe-content.ts's definition, shared with
- *     the updatedAt guard. An added recipe, or a blob that does not parse, is
- *     archived as before.
+ *     `updatedAt` moved (#2878: e.g. the stamp backfill). "Content" is
+ *     recipe-content.ts's definition, shared with the updatedAt guard. An
+ *     added recipe, or a blob that does not parse, is archived as before.
  *   - POSTs to /admin/drafts/{formId}/archive for each.
  *   - 204 / 404 = success. Any other status, or a failed request, is logged,
  *     the remaining forms are still attempted, and the run then exits 1.
@@ -62,8 +61,7 @@ export interface SelectDraftsDeps {
 /**
  * Drop the recipes whose change only moved `updatedAt` (#2878): a draft
  * expires on publish because the published content supersedes it, and a
- * stamp-only commit — the backfill, a page-only service publication —
- * published nothing new. A recipe the `before` revision does not have was
+ * stamp-only commit — the backfill, say — published nothing new. A recipe the `before` revision does not have was
  * added, and a blob that does not parse cannot be judged; both are archived
  * as before. Pure apart from the injected reads.
  */
