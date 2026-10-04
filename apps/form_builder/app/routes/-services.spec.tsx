@@ -399,6 +399,34 @@ it("badges a published form the API returned without a status as unavailable in 
   expect(within(row).queryByText("Public")).not.toBeInTheDocument();
 });
 
+it("keeps only public services listed under the Public filter tab (#2898)", async () => {
+  // The tab's value is matched against serviceStatus() lower-cased, so the
+  // tab and FORM_STATUS_LABEL.public must stay the same word. Beta remains an
+  // unpublished draft and must drop out.
+  const user = userEvent.setup();
+  forms.forms = [
+    { ...alpha, visibility: "public" },
+    {
+      ...alpha,
+      id: "beta",
+      formId: "beta",
+      title: "Beta service",
+      isPublished: false,
+    },
+  ];
+  renderServices();
+  const list = await screen.findByRole("list", { name: "Services" });
+  expect(within(list).getAllByRole("link")).toHaveLength(2);
+  await user.click(screen.getByRole("tab", { name: "Public" }));
+  expect(within(list).getAllByRole("link")).toHaveLength(1);
+  expect(
+    within(list).getByRole("heading", { name: "Alpha service" }),
+  ).toBeInTheDocument();
+  expect(
+    within(list).queryByRole("heading", { name: "Beta service" }),
+  ).not.toBeInTheDocument();
+});
+
 it("adopts a legacy service onto the same overview even when its form cannot be loaded", async () => {
   const base = emptyService("Alpha service");
   vi.mocked(

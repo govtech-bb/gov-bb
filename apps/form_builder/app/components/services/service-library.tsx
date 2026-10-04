@@ -89,7 +89,10 @@ export function ServiceLibrary({
           { value: "all", label: `All (${services.length})` },
           { value: "draft", label: "Drafts" },
           { value: "review", label: "In review" },
-          { value: "public", label: FORM_STATUS_LABEL.public },
+          {
+            value: FORM_STATUS_LABEL.public.toLowerCase(),
+            label: FORM_STATUS_LABEL.public,
+          },
         ]}
       />
       <div className="mb-4 flex flex-wrap items-center gap-2">

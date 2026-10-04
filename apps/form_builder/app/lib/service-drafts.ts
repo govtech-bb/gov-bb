@@ -335,6 +335,12 @@ export async function attachServiceForm({
     getFormConfig({ data }),
     getFormSourceSha({ data }),
   ]);
+  // A published manifest is not re-seeded by save() (#2683), so a service
+  // that went live with pages only inherits the recipe's contact details here
+  // (#2894), written the way seedServiceManifest writes them: no key when
+  // neither has one.
+  const contactDetails =
+    current.manifest.contactDetails ?? recipe.contactDetails;
   return save(
     {
       ...current,
@@ -344,11 +350,7 @@ export async function attachServiceForm({
       manifest: {
         ...current.manifest,
         formId: data.formId,
-        // A published manifest is not re-seeded by save() (#2683), so a
-        // service that went live with pages only inherits the recipe's contact
-        // details here (#2894).
-        contactDetails:
-          current.manifest.contactDetails ?? recipe.contactDetails,
+        ...(contactDetails ? { contactDetails } : {}),
       },
     },
     data.expectedRevision,

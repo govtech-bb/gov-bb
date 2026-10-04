@@ -155,6 +155,11 @@ const withContact = draftRecipeSchema.parse({
   steps: [],
   contactDetails: { email: "health@gov.bb", telephoneNumber: "246-555-0100" },
 });
+const withoutContact = draftRecipeSchema.parse({
+  title: "Application",
+  formId: "test-form",
+  steps: [],
+});
 it("attaching a form to a published service inherits the recipe's contact details (#2894)", async () => {
   vi.mocked(getRecipe).mockResolvedValue(withContact as never);
   const published = await saveServiceDraft({
@@ -194,6 +199,21 @@ it("keeps the manifest's own contact details when attaching a form that has its 
     },
   });
   expect(connected.manifest.contactDetails).toEqual(own);
+});
+it("leaves contactDetails off the manifest when neither it nor the recipe has one", async () => {
+  // Same shape seedServiceManifest writes: no key, not `undefined`.
+  vi.mocked(getRecipe).mockResolvedValue(withoutContact as never);
+  const published = await saveServiceDraft({
+    data: { snapshot: publishedPagesOnly, expectedRevision: 0 },
+  });
+  const connected = await attachServiceForm({
+    data: {
+      serviceId: "test-service",
+      expectedRevision: published.revision,
+      formId: "test-form",
+    },
+  });
+  expect(connected.manifest).not.toHaveProperty("contactDetails");
 });
 const applicantEmailOnly = draftRecipeSchema.parse({
   formId: "test-form",
