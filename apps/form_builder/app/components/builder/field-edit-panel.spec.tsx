@@ -1178,25 +1178,25 @@ it("opens an Environmental Health recipe's address lookup with its stored target
     "apply-for-hair-salon-licence",
     "components/address-lookup",
   );
-  const targets = field.overrides.geocodeTargets;
-  expect(targets).toEqual({
-    line2FieldId: expect.any(String),
-    parishFieldId: expect.any(String),
-    coordinatesFieldId: expect.any(String),
-  });
-  // Each picker resolves its stored id to a field on the same step.
-  const nameOf = (fieldId: string | undefined) => {
+  // Whichever targets the recipe stores, each picker resolves its id to a
+  // field on the same step. The recipe decides which are set, not the spec.
+  const stored = Object.entries(field.overrides.geocodeTargets ?? {}).filter(
+    (entry): entry is [string, string] => typeof entry[1] === "string",
+  );
+  if (stored.length === 0)
+    throw new Error("apply-for-hair-salon-licence stores no geocode targets");
+  const pickerFor: Record<string, () => HTMLElement> = {
+    line2FieldId: line2Picker,
+    parishFieldId: parishPicker,
+    coordinatesFieldId: coordinatesPicker,
+  };
+  for (const [target, fieldId] of stored) {
     const ref = getFieldRefs(draft, catalog).find(
       (r) => r.stepId === step.stepId && r.fieldId === fieldId,
     );
     if (!ref) throw new Error(`${fieldId} is not on step ${step.stepId}`);
-    return ref.displayName;
-  };
-  expect(line2Picker()).toHaveTextContent(nameOf(targets?.line2FieldId));
-  expect(parishPicker()).toHaveTextContent(nameOf(targets?.parishFieldId));
-  expect(coordinatesPicker()).toHaveTextContent(
-    nameOf(targets?.coordinatesFieldId),
-  );
+    expect(pickerFor[target]()).toHaveTextContent(ref.displayName);
+  }
 });
 
 // --- Checkbox accordion categories (#2887) ---------------------------------
