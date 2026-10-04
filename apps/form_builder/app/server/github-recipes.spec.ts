@@ -1,5 +1,9 @@
 import type { Mock } from "vitest";
-import { getPublishedRecipe, getRecipeCommittedAt } from "./github-recipes";
+import {
+  getPublishedRecipe,
+  getRecipeCommittedAt,
+  RecipeNotFoundError,
+} from "./github-recipes";
 import { REPO_NAME } from "./github-repo";
 
 const REPO_OWNER = "govtech-bb";
@@ -147,14 +151,16 @@ describe("github-recipes", () => {
       expect(lastFetch(fetchMock).url).toMatch(/\?ref=sandbox$/);
     });
 
-    it("throws when the file is missing (404)", async () => {
+    it("throws RecipeNotFoundError when the file is missing (404)", async () => {
       fetchMock.mockResolvedValueOnce(
         makeJsonResponse(404, { message: "Not Found" }),
       );
 
-      await expect(
-        getPublishedRecipe(TOKEN, { formId: "ghost" }),
-      ).rejects.toThrow(/not found/i);
+      // Typed so the #2489 re-sync can tell "nothing committed" (expected for
+      // a never-deployed draft) from a read that failed (#2878).
+      const read = getPublishedRecipe(TOKEN, { formId: "ghost" });
+      await expect(read).rejects.toBeInstanceOf(RecipeNotFoundError);
+      await expect(read).rejects.toThrow(/not found/i);
     });
 
     it("throws when the response is not base64-encoded", async () => {

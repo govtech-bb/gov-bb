@@ -117,8 +117,9 @@ function renderPrBody({
 /**
  * Read the recipe file's blob sha (if it exists) from `branch` and build the
  * exact object a PUT to that branch should carry: the incoming recipe, plus
- * the committed file's `createdAt` (#1720) and any top-level fields the
- * builder cannot author (#2376/#2377 — `carryUnauthoredFields`).
+ * the committed file's `createdAt` (#1720), any top-level fields the
+ * builder cannot author (#2376/#2377 — `carryUnauthoredFields`), and an
+ * `updatedAt` stamped at the write (#2878).
  *
  * Shared by the create path (PUT onto a freshly-created branch) and the reuse
  * path (PUT onto an already-open PR's branch) — same lookup, just a different
@@ -152,6 +153,12 @@ async function loadRecipeForWrite(
     ...recipe,
     ...carriedFields,
     ...(preservedCreatedAt ? { createdAt: preservedCreatedAt } : {}),
+    // Stamped here, at the write, whatever the payload carried: the committed
+    // `updatedAt` is what the builder compares a draft row against to decide
+    // it is stale (#2878, ADR 0075), so every Deploy — a fresh PR or a
+    // re-deploy onto an open one — must move it. Date.now() is the clock
+    // deployBranchName already uses.
+    updatedAt: new Date(Date.now()).toISOString(),
   } as ServiceContractRecipe;
   return { recipeToPublish, existingSha };
 }
@@ -359,8 +366,8 @@ export const publishRecipe = createServerFn({ method: "POST" })
         // the Contents API requires `sha` to update an existing file. The same
         // response carries the committed file's content, so preserve its
         // original `createdAt` rather than restamping it (#1720); `updatedAt`
-        // stays at the freshly-serialized value. On first publish (no existing
-        // file) the recipe is written verbatim with both stamps minted.
+        // is stamped at the write (#2878). On first publish (no existing
+        // file) the recipe keeps its minted `createdAt`.
         const { recipeToPublish, existingSha } = await loadRecipeForWrite(
           token,
           branch,

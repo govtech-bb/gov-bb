@@ -104,6 +104,21 @@ is kept in line with the committed recipe (the second half of #2489):
   builder logs and serves the row it has. The stale-base guard above is the
   backstop for a stale row that could not be re-synced.
 
+> **Amended 2026-10-04 ([#2878](https://github.com/govtech-bb/gov-bb/issues/2878)).**
+> "Newer" is decided from the committed recipe's own `updatedAt`, not the
+> commit date: the builder sends that stamp as the value the `UPDATE`
+> compares `updated_at` against, and reads the committer date only for a
+> committed copy that carries no usable `updatedAt`. The check no longer
+> depends on the recipe living in git (govtech-bb/projects#918 may move
+> recipes out of it), and the per-open Commits `GET` goes away except on that
+> fallback. In return every write must move `updatedAt`: the Deploy stamps it
+> at the write, and `pnpm validate-recipe-updated-at` (an always-run step in
+> CI's Validate Recipes job and a lint-staged pre-commit task) fails a hand
+> edit that changes a recipe's content without moving it forward. Recipes
+> whose `updatedAt` predates earlier hand edits are not revisited: until such
+> a recipe is next written, a draft row saved after that stale stamp is not
+> re-synced against it.
+
 ## Consequences
 
 - One extra Contents `GET` on the base branch per Deploy and per legacy form

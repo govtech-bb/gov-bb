@@ -18,6 +18,13 @@ interface ContentsFile {
   content: string | null;
 }
 
+/**
+ * The flat recipe file is not committed on the base branch. Typed so the
+ * #2489 re-sync can tell "nothing committed yet" — the normal state of a
+ * never-deployed draft — from a read that failed (#2878).
+ */
+export class RecipeNotFoundError extends Error {}
+
 function ghHeaders(token: string): Record<string, string> {
   return {
     Authorization: `Bearer ${token}`,
@@ -128,7 +135,9 @@ async function fetchRecipeFile(
     token,
   );
   if (res.status === 404) {
-    throw new Error(`Recipe not found: ${RECIPES_BASE}/${formId}.json`);
+    throw new RecipeNotFoundError(
+      `Recipe not found: ${RECIPES_BASE}/${formId}.json`,
+    );
   }
   if (res.status < 200 || res.status >= 300) {
     throw new Error(

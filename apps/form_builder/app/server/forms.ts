@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import {
   serviceContractRecipeSchema,
+  draftRecipeSchema,
   processorSchema,
   type ServiceContractRecipe,
   type Processor,
@@ -11,6 +12,7 @@ import { api, ApiError } from "./api-client";
 import {
   getPublishedRecipe,
   getRecipeCommittedAt,
+  RecipeNotFoundError,
   RECIPES_BASE,
 } from "./github-recipes";
 import type { BuilderFormSummary } from "../types/index";
@@ -259,16 +261,25 @@ async function resolveStoredRecipeSource(
   }
 }
 
+// #2878: when the committed recipe last changed, by its own `updatedAt` —
+// normalised to the UTC instant the API's `datetime()` accepts — or null when
+// the file carries none it can use. Storage-agnostic: a recipe that stops
+// living in git still says when it was written.
+function recipeUpdatedAt(recipe: { updatedAt?: string }): string | null {
+  const t = Date.parse(recipe.updatedAt ?? "");
+  return Number.isNaN(t) ? null : new Date(t).toISOString();
+}
+
 // #2489: a draft row that predates a change to the committed recipe — a
 // hand-fix merged while the row sat idle — is brought back in line with that
 // recipe when the form is opened, so a later Deploy republishes the fix rather
 // than reverting it. The API decides staleness from the row's own updated_at
 // in one compare-and-swap (form_builder_api resyncFormHandler); a draft saved
-// after the commit is kept, and with no committed copy the draft is left
-// alone. Any failure keeps the draft and never blocks opening the form — the
-// stale-base guard in publishRecipe is the backstop. `published` is the
-// committed recipe when the caller already read it (#2900); otherwise it is
-// read here.
+// after the committed recipe's `updatedAt` is kept, and with no committed copy
+// the draft is left alone. Any failure keeps the draft and never blocks
+// opening the form — the stale-base guard in publishRecipe is the backstop.
+// `published` is the committed recipe when the caller already read it
+// (#2900); otherwise it is read here.
 async function resyncStaleDraft(
   formId: string,
   draft: ServiceContractRecipe,
@@ -276,19 +287,33 @@ async function resyncStaleDraft(
   published?: ServiceContractRecipe,
 ): Promise<ServiceContractRecipe> {
   try {
-    const committedAt = await getRecipeCommittedAt(token, formId);
-    if (!committedAt) return draft;
+    // Parsed with the stamp-optional draft schema on purpose: a committed
+    // copy without a usable `updatedAt` must still parse for the git fallback
+    // below to apply. The row it may replace is never parsed here at all, and
+    // the browser fills absent stamps (load-form-draft.ts), so the widening
+    // to ServiceContractRecipe is safe.
     const committed =
       published ??
-      serviceContractRecipeSchema.parse(
+      (draftRecipeSchema.parse(
         await getPublishedRecipe(token, { formId }),
-      );
+      ) as ServiceContractRecipe);
+    // Freshness is the committed recipe's own `updatedAt` (#2878), which every
+    // write now moves (Deploy stamps it; `pnpm validate-recipe-updated-at`
+    // gates hand edits). The committer date of its latest commit is the
+    // fallback for a committed copy that carries no usable stamp — read only
+    // then, so the check keeps working once recipes stop living in git.
+    const committedAt =
+      recipeUpdatedAt(committed) ?? (await getRecipeCommittedAt(token, formId));
+    if (!committedAt) return draft;
     const { resynced } = await api.post<{ resynced: boolean }>(
       `/builder/forms/${encodeURIComponent(formId)}/resync`,
       { recipe: committed, committedAt },
     );
     return resynced ? committed : draft;
   } catch (err) {
+    // Nothing committed → nothing to re-sync against; the normal state of a
+    // never-deployed draft, not worth a warning.
+    if (err instanceof RecipeNotFoundError) return draft;
     console.warn(`[forms] stale-draft re-sync skipped for ${formId}:`, err);
     return draft;
   }

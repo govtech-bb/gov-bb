@@ -43,6 +43,10 @@ const RECIPE: ServiceContractRecipe = {
   updatedAt: "2026-05-22T00:00:00.000Z",
   steps: [],
 };
+// Every Deploy stamps `updatedAt` at the write from the frozen clock below
+// (#2878), whatever the payload carried.
+const STAMPED_AT = new Date(1_700_000_000_000).toISOString();
+const STAMPED_RECIPE = { ...RECIPE, updatedAt: STAMPED_AT };
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -190,7 +194,7 @@ describe("publishRecipe", () => {
     expect(putBody.message).toBe("Publish passport-renewal");
     expect(putBody.sha).toBe("existing-blob-sha");
     expect(Buffer.from(putBody.content, "base64").toString("utf8")).toBe(
-      serializeRecipe(RECIPE),
+      serializeRecipe(STAMPED_RECIPE),
     );
     // POST PR
     const prBody = JSON.parse(
@@ -251,7 +255,8 @@ describe("publishRecipe", () => {
       Buffer.from(putBody.content, "base64").toString("utf8"),
     );
     expect(written.createdAt).toBe(committedCreatedAt);
-    expect(written.updatedAt).toBe(RECIPE.updatedAt);
+    // #2878: stamped at the write, not carried from the payload.
+    expect(written.updatedAt).toBe(STAMPED_AT);
   });
 
   it("carries a committed field the builder cannot author through a publish that omits it", async () => {
@@ -395,10 +400,11 @@ describe("publishRecipe", () => {
     const putBody = JSON.parse(
       (fetchMock.mock.calls[5][1] as RequestInit).body as string,
     );
-    // No existing file → no sha, recipe written verbatim with its minted stamps.
+    // No existing file → no sha; the recipe is written with its minted
+    // createdAt and `updatedAt` stamped at the write (#2878).
     expect(putBody.sha).toBeUndefined();
     expect(Buffer.from(putBody.content, "base64").toString("utf8")).toBe(
-      serializeRecipe(RECIPE),
+      serializeRecipe(STAMPED_RECIPE),
     );
   });
 
@@ -437,7 +443,7 @@ describe("publishRecipe", () => {
   "description": "Renew your passport",
   "steps": [],
   "createdAt": "2026-01-01T00:00:00.000Z",
-  "updatedAt": "2026-05-22T00:00:00.000Z",
+  "updatedAt": "${STAMPED_AT}",
   "version": "1.2.0"
 }
 `,
