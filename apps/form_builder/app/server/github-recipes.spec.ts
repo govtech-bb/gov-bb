@@ -1,5 +1,5 @@
 import type { Mock } from "vitest";
-import { getPublishedRecipe } from "./github-recipes";
+import { getPublishedRecipe, getRecipeCommittedAt } from "./github-recipes";
 import { REPO_NAME } from "./github-repo";
 
 const REPO_OWNER = "govtech-bb";
@@ -31,6 +31,54 @@ describe("github-recipes", () => {
 
   afterEach(() => {
     vi.resetAllMocks();
+  });
+
+  describe("getRecipeCommittedAt (#2489)", () => {
+    it("returns the committer date of the latest commit touching the flat recipe", async () => {
+      fetchMock.mockResolvedValueOnce(
+        makeJsonResponse(200, [
+          {
+            sha: "abc123",
+            commit: {
+              // A rebased fix: written on the 10th, landed on the 15th. Landing
+              // is what makes a draft stale, so the committer date wins.
+              author: { date: "2026-09-10T08:00:00Z" },
+              committer: { date: "2026-09-15T10:00:00Z" },
+            },
+          },
+        ]),
+      );
+
+      const date = await getRecipeCommittedAt(TOKEN, "passport-renewal");
+
+      expect(date).toBe("2026-09-15T10:00:00Z");
+      const { url, init } = lastFetch(fetchMock);
+      // Same branch as getPublishedRecipe (the repo default), one commit.
+      expect(url).toBe(
+        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/commits?path=apps%2Fapi%2Fsrc%2Fforms%2Fform-definitions%2Frecipes%2Fpassport-renewal.json&per_page=1`,
+      );
+      expect((init.headers as Record<string, string>).Authorization).toBe(
+        `Bearer ${TOKEN}`,
+      );
+    });
+
+    it("returns null when no commit touches the path (nothing committed)", async () => {
+      fetchMock.mockResolvedValueOnce(makeJsonResponse(200, []));
+
+      await expect(
+        getRecipeCommittedAt(TOKEN, "never-published"),
+      ).resolves.toBeNull();
+    });
+
+    it("throws on a non-2xx response", async () => {
+      fetchMock.mockResolvedValueOnce(
+        makeJsonResponse(500, { message: "boom" }),
+      );
+
+      await expect(
+        getRecipeCommittedAt(TOKEN, "passport-renewal"),
+      ).rejects.toThrow(/Commits API returned 500/);
+    });
   });
 
   describe("getPublishedRecipe", () => {

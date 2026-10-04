@@ -168,6 +168,7 @@ export const Route = createFileRoute("/builder/")({
       initialDraft: loaded?.draft ?? null,
       initialService,
       initialFormId: formId,
+      initialSourceSha: loaded?.sourceSha ?? null,
     };
   },
   ssr: false,
@@ -188,8 +189,14 @@ function BuilderPage() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const { user } = Route.useRouteContext();
-  const { catalog, baseBranch, initialDraft, initialFormId, initialService } =
-    Route.useLoaderData();
+  const {
+    catalog,
+    baseBranch,
+    initialDraft,
+    initialFormId,
+    initialService,
+    initialSourceSha,
+  } = Route.useLoaderData();
   const {
     forms,
     loadError: formsLoadError,
@@ -290,6 +297,13 @@ function BuilderPage() {
   }, [search.step, search.view]);
   const [loadedFromId, setLoadedFromId] = useState<string | null>(
     initialFormId ?? null,
+  );
+  // The committed recipe sha the loaded draft came from (#2489). Set with the
+  // draft on load and cleared with loadedFromId on New/Duplicate — never
+  // refreshed on its own, so Deploy always vouches for the revision the
+  // author actually saw.
+  const [loadedSourceSha, setLoadedSourceSha] = useState<string | null>(
+    initialSourceSha,
   );
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
@@ -433,6 +447,7 @@ function BuilderPage() {
       }),
     draft,
     loadedFromId,
+    loadedSourceSha,
     forms,
     hasUnsavedChanges,
     setSavedDraft,
@@ -458,6 +473,7 @@ function BuilderPage() {
     dispatch,
     setSavedDraft,
     setLoadedFromId,
+    setLoadedSourceSha,
     setSelectedStepId,
     setMainView,
     setValidateResult,
@@ -473,19 +489,24 @@ function BuilderPage() {
   });
 
   // Search navigation can load a different service while this route stays mounted.
-  // Background revalidation of the same form must never replace unsaved edits.
+  // Background revalidation of the same form must never replace unsaved edits
+  // — nor the source sha they were loaded against (#2489).
   const applyLinkedDraft = useEffectEvent(
-    (incoming: RecipeDraft, formId: string) => {
-      if (formId !== loadedFromId) loadDraft(incoming, formId);
+    (incoming: RecipeDraft, formId: string, sourceSha: string | null) => {
+      if (formId !== loadedFromId) loadDraft(incoming, formId, sourceSha);
     },
   );
   useEffect(() => {
     if (initialDraft && initialFormId)
-      applyLinkedDraft(initialDraft, initialFormId);
-  }, [initialDraft, initialFormId]);
+      applyLinkedDraft(initialDraft, initialFormId, initialSourceSha);
+  }, [initialDraft, initialFormId, initialSourceSha]);
 
-  function handleLoad(incoming: RecipeDraft, formId: string) {
-    loadDraft(incoming, formId);
+  function handleLoad(
+    incoming: RecipeDraft,
+    formId: string,
+    sourceSha: string | null,
+  ) {
+    loadDraft(incoming, formId, sourceSha);
     void navigate({
       to: "/builder",
       search: { formId, service: serviceKey },

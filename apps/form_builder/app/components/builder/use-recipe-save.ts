@@ -16,6 +16,10 @@ interface UseRecipeSaveParams {
   onServicePublish?: () => void;
   draft: RecipeDraft;
   loadedFromId: string | null;
+  /** The committed recipe's blob sha the loaded draft came from, or null for a
+   * form with no committed copy. Deploy sends it as `expectedSourceSha` so
+   * publishRecipe can refuse a stale base (#2489). */
+  loadedSourceSha: string | null;
   forms: BuilderFormSummary[] | null;
   /** Live unsaved-changes flag — the Deploy handler hard-gates on it (#331). */
   hasUnsavedChanges: boolean;
@@ -42,6 +46,7 @@ export function useRecipeSave({
   onServicePublish,
   draft,
   loadedFromId,
+  loadedSourceSha,
   forms,
   hasUnsavedChanges,
   setSavedDraft,
@@ -196,7 +201,9 @@ export function useRecipeSave({
     setPublishError(null);
     try {
       const recipe = serializeRecipeDraft(draft);
-      const result = await publishRecipe({ data: { recipe, description } });
+      const result = await publishRecipe({
+        data: { recipe, description, expectedSourceSha: loadedSourceSha },
+      });
       setPublishSuccess(result);
       // Deploy opens a review PR; the published index is unchanged until it
       // merges — preserve the existing picker row.

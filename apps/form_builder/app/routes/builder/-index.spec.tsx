@@ -96,6 +96,17 @@ vi.mock("../../server/forms", () => ({
   getRecipe: (...args: unknown[]) => getRecipe(...args),
   getFormConfig: (...args: unknown[]) => getFormConfig(...args),
 }));
+// The committed recipe sha loadFormWorkspace captures for the Deploy
+// stale-base guard (#2489). Resolve to "nothing committed" by default so the
+// picker's Promise.all load path works without GitHub; the rest of the module
+// stays real (service-drafts imports it).
+const getFormSourceSha = vi.fn((..._args: unknown[]) =>
+  Promise.resolve<string | null>(null),
+);
+vi.mock("../../server/services", async (original) => ({
+  ...(await original<typeof import("../../server/services")>()),
+  getFormSourceSha: (...args: unknown[]) => getFormSourceSha(...args),
+}));
 // MDA contact directory (issue #607) — stub the server fn and the hook so the
 // contact-details dropdown doesn't pull a real RPC at module-eval.
 vi.mock("../../server/mda-contacts", () => ({

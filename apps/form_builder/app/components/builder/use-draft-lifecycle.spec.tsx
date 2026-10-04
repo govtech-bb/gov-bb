@@ -21,6 +21,7 @@ function render(overrides: Partial<Params> = {}) {
   const dispatch = vi.fn();
   const setSavedDraft = vi.fn();
   const setLoadedFromId = vi.fn();
+  const setLoadedSourceSha = vi.fn();
   const setSelectedStepId = vi.fn();
   const setMainView = vi.fn();
   const setValidateResult = vi.fn();
@@ -40,6 +41,7 @@ function render(overrides: Partial<Params> = {}) {
       dispatch,
       setSavedDraft,
       setLoadedFromId,
+      setLoadedSourceSha,
       setSelectedStepId,
       setMainView,
       setValidateResult,
@@ -60,6 +62,7 @@ function render(overrides: Partial<Params> = {}) {
     dispatch,
     setSavedDraft,
     setLoadedFromId,
+    setLoadedSourceSha,
     setSelectedStepId,
     setMainView,
     setValidateResult,
@@ -91,6 +94,7 @@ describe("useDraftLifecycle", () => {
         dispatch,
         setSavedDraft,
         setLoadedFromId,
+        setLoadedSourceSha,
         setSelectedStepId,
         setIsPickerOpen,
         setIsSubmitOpen,
@@ -105,6 +109,9 @@ describe("useDraftLifecycle", () => {
       expect(dispatch).toHaveBeenCalledWith({ type: "RESET" });
       expect(setSavedDraft).toHaveBeenCalledWith(null);
       expect(setLoadedFromId).toHaveBeenCalledWith(null);
+      // The source sha goes with the id: a New form has no committed copy to
+      // vouch for at Deploy (#2489).
+      expect(setLoadedSourceSha).toHaveBeenCalledWith(null);
       expect(setSelectedStepId).toHaveBeenCalledWith(null);
       expect(setIsPickerOpen).toHaveBeenCalledWith(false);
       expect(setIsSubmitOpen).toHaveBeenCalledWith(false);
@@ -124,13 +131,15 @@ describe("useDraftLifecycle", () => {
         result,
         dispatch,
         setLoadedFromId,
+        setLoadedSourceSha,
         setSavedDraft,
         setValidateResult,
         setLastSaveStatus,
       } = render();
+      const sha = "3f786850e387550fdab836ed7e6dc881de23001b";
 
       act(() => {
-        result.current.handleLoad(loadedDraft, "some-id");
+        result.current.handleLoad(loadedDraft, "some-id", sha);
       });
 
       expect(dispatch).toHaveBeenCalledWith({
@@ -138,6 +147,9 @@ describe("useDraftLifecycle", () => {
         draft: loadedDraft,
       });
       expect(setLoadedFromId).toHaveBeenCalledWith("some-id");
+      // The committed sha the draft was loaded against rides with the id so
+      // Deploy can refuse a stale base (#2489).
+      expect(setLoadedSourceSha).toHaveBeenCalledWith(sha);
       expect(setSavedDraft).toHaveBeenCalledTimes(1);
       expect(setValidateResult).toHaveBeenCalledWith(null);
       expect(setLastSaveStatus).toHaveBeenCalledWith("idle");
@@ -196,7 +208,13 @@ describe("useDraftLifecycle", () => {
         formId: "passport-copy",
         title: "Passport (copy)",
       };
-      const { result, dispatch, setSavedDraft, setLoadedFromId } = render();
+      const {
+        result,
+        dispatch,
+        setSavedDraft,
+        setLoadedFromId,
+        setLoadedSourceSha,
+      } = render();
 
       act(() => {
         result.current.handleDuplicate(dupDraft);
@@ -208,6 +226,9 @@ describe("useDraftLifecycle", () => {
       });
       expect(setSavedDraft).toHaveBeenCalledWith(null);
       expect(setLoadedFromId).toHaveBeenCalledWith(null);
+      // A copy is a brand-new form: it must not inherit the original's
+      // committed sha, or its first Deploy would be refused as stale (#2489).
+      expect(setLoadedSourceSha).toHaveBeenCalledWith(null);
     });
   });
 });
