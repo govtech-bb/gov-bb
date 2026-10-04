@@ -80,10 +80,11 @@ is kept in line with the committed recipe (the second half of #2489):
   it was written and landing is what makes a draft stale. A row with no
   committed copy is never touched.
 - **Staleness is decided by the database, in one statement**, from the row's
-  own `updated_at`: `UPDATE … WHERE updated_at < <committed at>` with
-  `RETURNING`. Two tabs opening the same form race safely — one replaces, the
-  other sees the result. The builder learns whether it should show the
-  committed copy or the row from that single answer.
+  own `updated_at`: `UPDATE … WHERE updated_at < <committed at>`, answered by
+  the number of rows it matched (TypeORM's Postgres `query()` returns
+  `[rows, rowCount]` for an `UPDATE`). Two tabs opening the same form race
+  safely — one replaces, the other sees the result. The builder learns whether
+  it should show the committed copy or the row from that single answer.
 - **A row's `updated_at` is trusted only once a save has moved it**
   (`updated_at > created_at`). Until #2489, nothing bumped `updated_at` after
   insert — both stamps take the same `NOW()` default — so an older row's
