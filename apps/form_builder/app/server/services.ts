@@ -306,10 +306,9 @@ async function github<T>(
 }
 
 // `recipeUpdatedAt` is the stamp the recipe file is written with (#2878): a
-// checkpoint write passes the time of that write (retainVersion), and a
-// re-check of an existing checkpoint passes the stamp it was written with.
-// Omitted, the recipe is emitted as the snapshot holds it — only right for
-// callers that use the paths, never the content.
+// checkpoint write passes the time of that write (retainVersion). Omitted,
+// the recipe is emitted as the snapshot holds it — right for callers that use
+// the paths, or compare the recipe by content (sameRecipeContent).
 export function checkpointFiles(
   snapshot: ServiceSnapshot,
   recipeUpdatedAt?: string,
@@ -346,34 +345,39 @@ export function checkpointFiles(
 function recipeFilePath(formId: string): string {
   return `apps/api/src/forms/form-definitions/recipes/${formId}.json`;
 }
-// The `updatedAt` the recipe was written with when the checkpoint at
-// `commitSha` was created, or null when it holds no readable recipe. Lets a
-// saved version published later (same id) be compared with the bytes that
-// were actually written rather than with today's stamp (#2878).
-async function checkpointRecipeStamp(
-  token: string,
-  commitSha: string,
-  snapshot: ServiceSnapshot,
-): Promise<string | null> {
-  if (!snapshot.recipe) return null;
-  const response = await getContents(
-    token,
-    recipeFilePath(snapshot.recipe.formId),
-    commitSha,
-  );
-  if (!response.ok) return null;
-  const file = (await response.json()) as { content?: string };
-  if (!file.content) return null;
+// True when two recipe files hold the same content: the parsed JSON objects
+// with `updatedAt` removed (#2878) — the definition scripts/recipe-content.ts
+// gives the CI guard and the archive job, so a stamp-only difference is never
+// a change.
+function sameRecipeContent(a: string, b: string): boolean {
+  const content = (raw: string) => {
+    const { updatedAt: _stamp, ...rest } = JSON.parse(raw) as Record<
+      string,
+      unknown
+    >;
+    return rest;
+  };
   try {
-    const stamp = (
-      JSON.parse(Buffer.from(file.content, "base64").toString()) as {
-        updatedAt?: unknown;
-      }
-    ).updatedAt;
-    return typeof stamp === "string" ? stamp : null;
+    return isDeepStrictEqual(content(a), content(b));
   } catch {
-    return null;
+    return false;
   }
+}
+// The file at `path` on `ref`, or null when it does not exist there.
+async function readFileAt(
+  token: string,
+  path: string,
+  ref: string,
+  failure: string,
+): Promise<{ sha: string; content: string } | null> {
+  const response = await getContents(token, path, ref);
+  if (response.status === 404) return null;
+  if (!response.ok) throw await ghError(failure, response);
+  const file = (await response.json()) as { sha: string; content?: string };
+  return {
+    sha: file.sha,
+    content: Buffer.from(file.content ?? "", "base64").toString(),
+  };
 }
 const versionInput = z.object({
   id: z.string().uuid(),
@@ -398,31 +402,32 @@ async function retainVersion(
   const existing = response.ok
     ? ((await response.json()) as { object: { sha: string } })
     : null;
-  // The recipe is written with `updatedAt` stamped at this write, as builder
-  // Deploy does (#2878). A checkpoint that already exists is compared with
-  // the stamp it was written with, so a saved version published later still
-  // matches its tag; a recipe whose content differs still does not.
-  const writtenAt = existing
-    ? await checkpointRecipeStamp(token, existing.object.sha, data.snapshot)
+  const recipePath = data.snapshot.recipe
+    ? recipeFilePath(data.snapshot.recipe.formId)
     : null;
-  const files = checkpointFiles(data.snapshot, writtenAt ?? recipeWriteStamp());
   if (existing) {
+    // A saved version's recipe is compared by content, whatever `updatedAt`
+    // it was written with (#2878), so publishing it later still matches its
+    // tag; every other file by blob sha.
     await Promise.all(
-      files.map(async (file) => {
-        const content = Buffer.from(file.content);
-        const expected = createHash("sha1")
-          .update(`blob ${content.length}\0`)
-          .update(content)
-          .digest("hex");
-        const response = await getContents(
+      checkpointFiles(data.snapshot).map(async (file) => {
+        const saved = await readFileAt(
           token,
           file.path,
           existing.object.sha,
+          "Could not read the saved Git version",
         );
-        if (
-          !response.ok ||
-          ((await response.json()) as { sha: string }).sha !== expected
-        )
+        const content = Buffer.from(file.content);
+        const matches =
+          saved !== null &&
+          (file.path === recipePath
+            ? sameRecipeContent(saved.content, file.content)
+            : saved.sha ===
+              createHash("sha1")
+                .update(`blob ${content.length}\0`)
+                .update(content)
+                .digest("hex"));
+        if (!matches)
           throw new Error("The existing Git version does not match this draft");
       }),
     );
@@ -436,6 +441,23 @@ async function retainVersion(
     token,
     `/git/commits/${base.object.sha}`,
   );
+  // The recipe is written with `updatedAt` stamped at this write, as builder
+  // Deploy does (#2878) — but only when its content differs from the recipe
+  // the checkpoint's parent holds. Otherwise (a pages-only publication) the
+  // committed file is written back byte for byte, so its stamp does not move
+  // and the next open does not re-sync a draft row over unsaved edits.
+  const files = checkpointFiles(data.snapshot, recipeWriteStamp());
+  const recipeFile = files.find((file) => file.path === recipePath);
+  if (recipeFile) {
+    const committed = await readFileAt(
+      token,
+      recipeFile.path,
+      base.object.sha,
+      "Could not read the published application",
+    );
+    if (committed && sameRecipeContent(committed.content, recipeFile.content))
+      recipeFile.content = committed.content;
+  }
   const tree = await github<{ sha: string }>(token, "/git/trees", "POST", {
     base_tree: parent.tree.sha,
     tree: files.map((file) => ({ ...file, mode: "100644", type: "blob" })),
