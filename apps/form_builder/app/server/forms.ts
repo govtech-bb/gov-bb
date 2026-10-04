@@ -61,7 +61,9 @@ async function listLocalForms(): Promise<BuilderFormSummary[]> {
     title: recipe.title,
     version: recipe.version ?? "",
     publishedVersion: recipe.version,
-    visibility: recipe.meta?.visibility ?? "public",
+    // No `visibility`: a form's status is apps/api's effective visibility
+    // (#2875), and there is no API here — the builder shows it as unavailable
+    // rather than guessing from the recipe file.
     isPublished: true,
     isDisabled: false,
     isOrphanOverride: false,
@@ -95,11 +97,13 @@ export const listForms = createServerFn({ method: "GET" })
     const publishedVersionByFormId = new Map(
       published.map((p) => [p.formId, p.version] as const),
     );
-    // Launch-gate visibility from the authoring published index (#1835), keyed
-    // by formId so it survives the draft-wins merge below. Undefined for a
-    // draft-only form (absent from the index) and when the proxy fell back to
-    // the public-only list (no token → no `visibility` field); the picker
-    // badges only non-public values.
+    // The *effective* status apps/api reports per form (#1835, #2875: a
+    // service_status row wins, recipe `meta.visibility` is the no-row
+    // fallback), keyed by formId so it survives the draft-wins merge below.
+    // The only status the builder shows — it never reads the recipe's own
+    // field. Undefined for a draft-only form (absent from the index) and when
+    // the proxy fell back to the public-only list (no token → no `visibility`
+    // field), which the builder renders as "Status unavailable".
     const visibilityByFormId = new Map(
       published.map((p) => [p.formId, p.visibility] as const),
     );
@@ -147,8 +151,8 @@ export const listForms = createServerFn({ method: "GET" })
     // entry won the merge with isPublished=false) keeps its Published state.
     // `isOrphanOverride` flags a disabled override with no underlying draft or
     // published recipe — the picker renders it Enable-only and non-openable.
-    // `visibility` (#1835) rides through from the published index so the picker
-    // can badge a non-public published form (undefined for orphan/draft-only).
+    // `visibility` (#1835, #2875) rides through from the published index as
+    // the form's API-reported status (undefined for orphan/draft-only).
     return Array.from(byFormId.values()).map((f) => ({
       ...f,
       isPublished: f.isPublished || publishedIds.has(f.formId),
@@ -190,13 +194,16 @@ export async function resolveStoredRecipe(
       `/builder/forms/${encodeURIComponent(formId)}`,
     );
     if (draft) {
-      // #1682: a form's visibility (`meta.visibility`) was written straight into
-      // the published flat files (#1676) for the #1517 flagged forms, bypassing
-      // the builder save flow — so their pre-existing DB scratch rows carry no
-      // `meta`. When the working copy has none, hydrate it from the published
-      // recipe so the builder's visibility control reflects the live launch gate
-      // instead of defaulting to "public". A draft that *did* set visibility
-      // keeps its own value; an unpublished draft (no flat file) stays metaless.
+      // ADR 0059: `meta.visibility` was written straight into the published
+      // flat files (#1676) for the #1517 flagged forms, bypassing the builder
+      // save flow — so their pre-existing DB scratch rows carry no `meta`.
+      // When the working copy has none, hydrate it from the published recipe.
+      // Since #2875 the builder no longer *shows* this value (status comes
+      // from apps/api), so the hydration's remaining job is to carry the
+      // committed `meta` through a Deploy: `carryUnauthoredFields` treats
+      // `meta` as builder-authored, so a metaless draft would otherwise delete
+      // it from the recipe on the live site. An unpublished draft (no flat
+      // file) stays metaless.
       if (draft.meta === undefined) {
         try {
           const published = serviceContractRecipeSchema.parse(

@@ -850,10 +850,12 @@ it("connects local service pages to canonical recipes and opens them only in unc
         formId: recipe.formId,
         title: recipe.title,
         version: "1.0.0",
-        visibility: "preview",
         isPublished: true,
       }),
     ]);
+    // #2875: no API here, so no status — the recipe's `meta.visibility` is
+    // never read as one (the builder renders this as "Status unavailable").
+    expect(forms[0]).not.toHaveProperty("visibility");
     const pages = ["index", "start", "help"].map((name) => ({
       path: `apps/landing/src/content/${recipe.formId}/${name}.md`,
       title: recipe.title,

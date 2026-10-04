@@ -144,6 +144,7 @@ let mockForms: {
   version: string;
   isPublished: boolean;
   publishedVersion?: string;
+  visibility?: "public" | "preview" | "draft" | "maintenance";
 }[] = [];
 const mockRefetch = vi.fn();
 const mockUpsertForm = vi.fn();
@@ -733,22 +734,25 @@ describe("BuilderPage — unsaved changes + Discard", () => {
     mockEmptyDraft = VALID_DRAFT; // dirty, never saved ⇒ unsaved changes
     renderBuilder();
 
-    expect(screen.getByRole("button", { name: /publish/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^publish$/i })).toBeDisabled();
   });
 
-  it("disables Deploy for a clean form whose visibility is draft (#1682)", async () => {
+  it("lets a clean form Deploy regardless of its recipe meta.visibility, and shows the API's status instead (#2875)", async () => {
     mockEmptyDraft = INVALID_DRAFT;
+    // The list stamps the status apps/api reports (a service_status row wins
+    // over the recipe); the recipe below says `draft`, the API says `public`.
     mockForms = [
       {
         id: "wip",
         formId: "wip-form",
         title: "WIP Form",
         version: "1.0.0",
-        isPublished: false,
+        isPublished: true,
+        visibility: "public",
       },
     ];
-    // Loaded clean (no edits) so the ONLY thing blocking Deploy is the draft
-    // visibility — proves the gate, not the unsaved-changes gate.
+    // Loaded clean (no edits) so nothing but a visibility gate could block
+    // Deploy — #1682's gate on `meta.visibility === "draft"` is gone.
     getRecipe.mockResolvedValue({
       formId: "wip-form",
       title: "WIP Form",
@@ -789,12 +793,63 @@ describe("BuilderPage — unsaved changes + Discard", () => {
     await userEvent.click(await screen.findByText("WIP Form"));
     expect(await screen.findByDisplayValue("wip-form")).toBeInTheDocument();
 
-    expect(screen.getByRole("button", { name: /publish/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^publish$/i })).toBeEnabled();
     expect(
-      screen.getByText(
-        /set visibility to preview or public in form settings to publish/i,
-      ),
-    ).toBeInTheDocument();
+      screen.queryByText(/set visibility to preview or public/i),
+    ).not.toBeInTheDocument();
+    // The toolbar shows the API's status, not the recipe's `draft`.
+    expect(screen.getByTestId("form-status")).toHaveTextContent("Public");
+  });
+
+  it("shows 'Not published' for a form absent from the published index (#2875)", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    mockForms = [
+      {
+        id: "wip",
+        formId: "wip-form",
+        title: "WIP Form",
+        version: "1.0.0",
+        isPublished: false,
+      },
+    ];
+    getRecipe.mockResolvedValue({
+      formId: "wip-form",
+      title: "WIP Form",
+      version: "1.0.0",
+      steps: [
+        {
+          stepId: "check-your-answers",
+          title: "Check your answers",
+          elements: [],
+          behaviours: [],
+        },
+        {
+          stepId: "declaration",
+          title: "Declaration",
+          elements: [],
+          behaviours: [],
+        },
+        {
+          stepId: "submission-confirmation",
+          title: "Submission Confirmation",
+          elements: [],
+          behaviours: [],
+        },
+      ],
+      createdAt: "2020-01-01T00:00:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+      // A `public` seed in the recipe must not surface as the status.
+      meta: { visibility: "public" },
+    });
+    renderBuilder();
+
+    await userEvent.click(formMenuItem("Open form"));
+    await userEvent.click(await screen.findByText("WIP Form"));
+    expect(await screen.findByDisplayValue("wip-form")).toBeInTheDocument();
+
+    expect(screen.getByTestId("form-status")).toHaveTextContent(
+      "Not published",
+    );
   });
 
   it("clears the form when Discard is confirmed and there is no saved baseline", async () => {
@@ -1087,7 +1142,7 @@ describe("BuilderPage — Open picker freshness after save", () => {
     expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
 
     // Deploy from the toolbar opens the modal and resolves the target version.
-    await userEvent.click(screen.getByRole("button", { name: /publish/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
     const publishModal = (
       screen
         .getByText("Publish form", { selector: "h2" })

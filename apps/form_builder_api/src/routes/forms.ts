@@ -256,6 +256,17 @@ type FetchPublishedResult =
 // smallest bound that shouldn't trip a warm-but-loaded upstream.
 const PUBLISHED_FETCH_TIMEOUT_MS = 2500;
 
+// Once per process: the published-forms proxy is hit on every list and every
+// save (uniqueness backstop), so a per-call warning would drown the dev log.
+let warnedMissingPreviewToken = false;
+function warnMissingPreviewToken(): void {
+  if (warnedMissingPreviewToken) return;
+  warnedMissingPreviewToken = true;
+  console.warn(
+    "[forms] RECIPE_PREVIEW_TOKEN is unset — proxying apps/api's public-only list; the builder will show every published form's status as unavailable (#2875)",
+  );
+}
+
 // Fetch apps/api's published-recipe index, owning the URL build, the SSRF
 // protocol guard, a bounded timeout, and the success/failure distinction.
 // Shared by listPublishedHandler (the proxy) and the write handlers (uniqueness
@@ -290,11 +301,13 @@ async function fetchPublishedForms(): Promise<FetchPublishedResult> {
     PUBLISHED_FETCH_TIMEOUT_MS,
   );
   // Forward the recipe-preview token so apps/api returns the authoring list
-  // (non-public forms + visibility, #1835). Optional / fail-open: unset → omit
-  // the header and take today's public-only list (never a boot crash, #1627).
-  // Read directly from process.env like the other env reads in this file (env.ts
-  // validates at boot; this token is optional so there is nothing to enforce).
+  // (non-public forms + effective visibility, #1835). env.ts requires it in
+  // production (#2875); outside prod an unset token falls back to the
+  // public-only list, which carries no `visibility` — the builder then shows
+  // every published form as "Status unavailable". Warn once so that is never
+  // silent. Read directly from process.env like the other env reads here.
   const previewToken = process.env.RECIPE_PREVIEW_TOKEN;
+  if (!previewToken) warnMissingPreviewToken();
   try {
     const upstream = await fetch(
       `${baseUrl.replace(/\/$/, "")}/form-definitions`,

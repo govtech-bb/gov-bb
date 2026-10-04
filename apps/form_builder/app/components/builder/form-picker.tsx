@@ -16,6 +16,7 @@ import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 import type { BuilderFormSummary } from "../../types/index";
 import { Dialog } from "../ui/dialog";
 import { loadFormDraft } from "./load-form-draft";
+import { FORM_STATUS_LABEL, formStatus } from "../../lib/form-status";
 
 interface FormPickerProps {
   open: boolean;
@@ -236,6 +237,9 @@ export function FormPicker({
             <div className="space-y-3 p-1">
               {filtered.map((form) => {
                 const pr = openPRs?.get(form.formId);
+                // The live status apps/api reports (#2875); badged whenever a
+                // published form is not plainly public, incl. "unavailable".
+                const status = formStatus(form);
                 return (
                   <div
                     key={form.id}
@@ -258,9 +262,9 @@ export function FormPicker({
                       {form.isPublished && (
                         <Badge variant="success">Published</Badge>
                       )}
-                      {form.visibility && form.visibility !== "public" && (
-                        <Badge variant="secondary" className="capitalize">
-                          {form.visibility}
+                      {status && status !== "public" && (
+                        <Badge variant="secondary">
+                          {FORM_STATUS_LABEL[status]}
                         </Badge>
                       )}
                       {form.isDisabled && (

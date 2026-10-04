@@ -280,23 +280,6 @@ export function ServiceSetup({
                   chosen in After submission.
                 </p>
               </div>
-              <div className="space-y-5">
-                <h3 className="text-base font-semibold text-ui-strong">
-                  Release
-                </h3>
-                <Select
-                  label="Who can use this service?"
-                  value={manifest.visibility ?? "draft"}
-                  onValueChange={(v) =>
-                    change({ visibility: v as "draft" | "preview" | "public" })
-                  }
-                  items={{
-                    draft: "Keep as a draft",
-                    preview: "People with preview access",
-                    public: "Everyone",
-                  }}
-                />
-              </div>
             </>
           ) : (
             <DeliverySettings

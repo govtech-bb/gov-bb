@@ -77,6 +77,19 @@ it("allows a form without forced page slots and derives status from actual state
       buildServiceRows([{ ...form, visibility: "preview" }], [page])[0],
     ),
   ).toBe("Preview");
+  // #2875: `visibility` is the status apps/api reports for the form; a
+  // published form the index returned without one is unknown, never assumed
+  // Published — and the page frontmatter beside it is not consulted.
+  expect(
+    serviceStatus(
+      buildServiceRows([{ ...form, visibility: "public" }], [page])[0],
+    ),
+  ).toBe("Published");
+  expect(
+    serviceStatus(
+      buildServiceRows([form], [{ ...page, visibility: "public" }])[0],
+    ),
+  ).toBe("Status unavailable");
   expect(
     serviceStatus(
       buildServiceRows([], [{ ...page, formId: "", visibility: "draft" }])[0],

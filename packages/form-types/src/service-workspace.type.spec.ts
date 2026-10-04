@@ -253,10 +253,13 @@ describe("serviceReadiness", () => {
     expect(serviceReadiness(value)).toEqual({ ready: true, issues: [] });
   });
 
-  it("reports release, category and entry point gaps", () => {
+  it("reports category and entry point gaps, never the manifest visibility seed (#2875)", () => {
+    // A service's live status is the service_status row set in Feature
+    // flagging; the manifest's `visibility` is a legacy seed the author can no
+    // longer edit, so a `draft` seed must not block Publish.
     expect(
       ids(snapshot({ visibility: "draft", category: "", entryPoint: null })),
-    ).toEqual(["visibility", "category", "entry"]);
+    ).toEqual(["category", "entry"]);
   });
 
   it("treats public contact details as optional but validates a typed email", () => {

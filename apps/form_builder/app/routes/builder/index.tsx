@@ -28,10 +28,9 @@ import {
 import type {
   ServiceContract,
   ServiceContractRecipe,
-  RecipeVisibility,
 } from "@govtech-bb/form-types";
-import { getRecipeVisibility } from "@govtech-bb/form-types";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
+import { loadedFormStatus } from "../../lib/form-status";
 
 import { Sidebar } from "../../components/ui/sidebar";
 
@@ -398,7 +397,6 @@ function BuilderPage() {
     runValidation,
     blockedByUniqueness,
     blockedByIncompletePayment,
-    blockedByDraftVisibility,
     dismiss,
   } = useRecipeValidation({
     draft,
@@ -579,7 +577,6 @@ function BuilderPage() {
   };
 
   const handleDeployClick = async () => {
-    if (blockedByDraftVisibility()) return;
     if (blockedByUniqueness()) return;
     if (blockedByIncompletePayment()) return;
     const result = await runValidation();
@@ -642,10 +639,6 @@ function BuilderPage() {
       title,
       description: draft.description,
     });
-  };
-
-  const handleVisibilityChange = (visibility: RecipeVisibility) => {
-    dispatch({ type: "SET_VISIBILITY", visibility });
   };
 
   // Create an MDA contact via the API, patch it into the local directory so the
@@ -802,8 +795,12 @@ function BuilderPage() {
           isPublishing={isPublishing}
           isReadOnly={isReadOnly}
           lastSaveStatus={lastSaveStatus}
-          visibility={getRecipeVisibility(draft)}
-          onVisibilityChange={handleVisibilityChange}
+          // The live status apps/api reports for this form (#2875), read from
+          // the forms list the picker already fetches — never from `draft.meta`.
+          status={loadedFormStatus(draft.formId, {
+            forms,
+            loadError: formsLoadError,
+          })}
           onFormIdChange={handleFormIdChange}
           onTitleChange={handleTitleChange}
           onNew={handleNew}
