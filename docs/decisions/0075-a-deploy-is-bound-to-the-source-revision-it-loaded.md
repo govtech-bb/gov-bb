@@ -114,10 +114,11 @@ is kept in line with the committed recipe (the second half of #2489):
 > fallback. In return every write must move `updatedAt`: the Deploy stamps it
 > at the write, and `pnpm validate-recipe-updated-at` (an always-run step in
 > CI's Validate Recipes job and a lint-staged pre-commit task) fails a hand
-> edit that changes a recipe's content without moving it forward. Recipes
-> whose `updatedAt` predates earlier hand edits are not revisited: until such
-> a recipe is next written, a draft row saved after that stale stamp is not
-> re-synced against it.
+> edit that changes a recipe's content without moving it forward. Every
+> recipe whose `updatedAt` predated its last commit on `main` was backfilled
+> to that commit's committer date in the same change (all 90 flat files), so
+> the switch alters no freshness decision: the stamp a draft row is compared
+> against is the date the git check was already using.
 
 ## Consequences
 
