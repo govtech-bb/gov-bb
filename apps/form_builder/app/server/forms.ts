@@ -192,11 +192,17 @@ export async function resolveStoredRecipe(
 // resolveStoredRecipe plus where the recipe came from: `fromDraftRow` is true
 // only for the DB scratch row — the one copy that can go stale against the
 // committed recipe (#2489). getRecipe needs the distinction; the save paths
-// don't.
+// don't. `published` is the committed recipe when this call already read it
+// (to hydrate a metaless row), so the re-sync can reuse it instead of reading
+// the same file again (#2900).
 async function resolveStoredRecipeSource(
   formId: string,
   token: string,
-): Promise<{ recipe: ServiceContractRecipe; fromDraftRow: boolean } | null> {
+): Promise<{
+  recipe: ServiceContractRecipe;
+  fromDraftRow: boolean;
+  published?: ServiceContractRecipe;
+} | null> {
   const local = async () => {
     const recipe = (await readLocalRecipes(formId))[0];
     return recipe ? { recipe, fromDraftRow: false } : null;
@@ -221,9 +227,10 @@ async function resolveStoredRecipeSource(
       // `meta` as builder-authored, so a metaless draft would otherwise delete
       // it from the recipe on the live site. An unpublished draft (no flat
       // file) stays metaless.
+      let published: ServiceContractRecipe | undefined;
       if (draft.meta === undefined) {
         try {
-          const published = serviceContractRecipeSchema.parse(
+          published = serviceContractRecipeSchema.parse(
             await getPublishedRecipe(token, { formId }),
           );
           if (published.meta !== undefined) draft.meta = published.meta;
@@ -231,7 +238,7 @@ async function resolveStoredRecipeSource(
           // No published flat file yet — leave meta absent (treated as public).
         }
       }
-      return { recipe: draft, fromDraftRow: true };
+      return { recipe: draft, fromDraftRow: true, published };
     }
   } catch (err) {
     if (canReadLocalRecipes(err)) return local();
@@ -259,18 +266,23 @@ async function resolveStoredRecipeSource(
 // in one compare-and-swap (form_builder_api resyncFormHandler); a draft saved
 // after the commit is kept, and with no committed copy the draft is left
 // alone. Any failure keeps the draft and never blocks opening the form — the
-// stale-base guard in publishRecipe is the backstop.
+// stale-base guard in publishRecipe is the backstop. `published` is the
+// committed recipe when the caller already read it (#2900); otherwise it is
+// read here.
 async function resyncStaleDraft(
   formId: string,
   draft: ServiceContractRecipe,
   token: string,
+  published?: ServiceContractRecipe,
 ): Promise<ServiceContractRecipe> {
   try {
     const committedAt = await getRecipeCommittedAt(token, formId);
     if (!committedAt) return draft;
-    const committed = serviceContractRecipeSchema.parse(
-      await getPublishedRecipe(token, { formId }),
-    );
+    const committed =
+      published ??
+      serviceContractRecipeSchema.parse(
+        await getPublishedRecipe(token, { formId }),
+      );
     const { resynced } = await api.post<{ resynced: boolean }>(
       `/builder/forms/${encodeURIComponent(formId)}/resync`,
       { recipe: committed, committedAt },
@@ -314,7 +326,7 @@ export async function resolveCurrentRecipe(
   const resolved = await resolveStoredRecipeSource(formId, token);
   if (!resolved) return null;
   return resolved.fromDraftRow
-    ? resyncStaleDraft(formId, resolved.recipe, token)
+    ? resyncStaleDraft(formId, resolved.recipe, token, resolved.published)
     : resolved.recipe;
 }
 

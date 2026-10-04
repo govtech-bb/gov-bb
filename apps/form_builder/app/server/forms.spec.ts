@@ -833,6 +833,33 @@ describe("getRecipe — re-syncs a stale draft row from the committed recipe (#2
     warn.mockRestore();
   });
 
+  it("reads the committed recipe once when the metaless row already hydrated it (#2900)", async () => {
+    // A legacy row with no `meta` fetches the committed recipe to hydrate it
+    // (#1682); the re-sync must reuse that copy, not read the same file again.
+    const { meta: _meta, ...metalessDraft } = draft;
+    apiGet.mockResolvedValue(metalessDraft);
+    getRecipeCommittedAtMock.mockResolvedValue(COMMITTED_AT);
+    getPublishedRecipeMock.mockResolvedValue(published);
+    apiPost.mockResolvedValue({ resynced: true });
+
+    const result = await call();
+
+    expect(result.title).toBe("Apply for Conductor Licence");
+    expect(result.meta).toEqual({ visibility: "public" });
+    expect(getPublishedRecipeMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("reads the committed recipe once for a row that needed no hydration (#2900)", async () => {
+    apiGet.mockResolvedValue(draft);
+    getRecipeCommittedAtMock.mockResolvedValue(COMMITTED_AT);
+    getPublishedRecipeMock.mockResolvedValue(published);
+    apiPost.mockResolvedValue({ resynced: true });
+
+    await call();
+
+    expect(getPublishedRecipeMock).toHaveBeenCalledTimes(1);
+  });
+
   it("does not re-sync the published fallback — with no draft row there is nothing stale", async () => {
     apiGet.mockRejectedValue(new ApiError(404, "not found"));
     getPublishedRecipeMock.mockResolvedValue(published);
