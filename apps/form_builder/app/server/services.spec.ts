@@ -32,7 +32,10 @@ vi.mock("./github", () => ({
 vi.mock("./publish", () => ({
   resolveBaseBranch: () => "main",
   carryUnauthoredFields: (_old: unknown, recipe: unknown) => recipe,
+  // The clock Deploy stamps `updatedAt` with (#2878); frozen here.
+  recipeWriteStamp: () => STAMPED_AT,
 }));
+const STAMPED_AT = "2026-10-04T12:00:00.000Z";
 vi.mock("./forms", () => ({
   resolveStoredRecipe: vi.fn(),
   resolveCurrentRecipe: vi.fn(),
@@ -189,6 +192,117 @@ it("reuses a matching retained tag and refuses a changed checkpoint", async () =
   );
   await expect(invoke(retainServiceVersion)).rejects.toThrow("does not match");
   expect(api.post).not.toHaveBeenCalled();
+});
+
+// #2878: the services publication is a recipe write like builder Deploy, so
+// the checkpoint it commits carries an `updatedAt` stamped at that write —
+// the committed stamp is what the builder compares a draft row against, and
+// the CI guard refuses a recipe whose content changed without moving it.
+describe("recipe updatedAt on the services publish write (#2878)", () => {
+  const recipe = {
+    formId: "test-form",
+    title: "Application",
+    steps: [],
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-05-22T00:00:00.000Z",
+  };
+  const withForm = serviceSnapshotSchema.parse({
+    ...snapshot,
+    manifest: { ...snapshot.manifest, formId: "test-form" },
+    recipe,
+  });
+  const recipePath =
+    "apps/api/src/forms/form-definitions/recipes/test-form.json";
+  const blobSha = (content: string) => {
+    const buffer = Buffer.from(content);
+    return createHash("sha1")
+      .update(`blob ${buffer.length}\0`)
+      .update(buffer)
+      .digest("hex");
+  };
+  const retain = () =>
+    (retainServiceVersion as unknown as (arg: unknown) => Promise<unknown>)({
+      data: { id, label: detail.label, snapshot: withForm },
+      context: { session: { login: "editor", accessToken: "test-token" } },
+    });
+
+  it("stamps updatedAt at the write, whatever the snapshot carried", async () => {
+    const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/git/ref/tags/")) return json({}, 404);
+      if (url.endsWith("/git/ref/heads/main"))
+        return json({ object: { sha: "a".repeat(40) } });
+      if (url.endsWith(`/git/commits/${"a".repeat(40)}`))
+        return json({ tree: { sha: "base-tree" } });
+      if (url.endsWith("/git/trees")) return json({ sha: "service-tree" });
+      if (url.endsWith("/git/commits")) return json({ sha: "b".repeat(40) });
+      if (url.endsWith("/git/refs")) return json({});
+      throw new Error(`Unexpected request: ${init?.method} ${url}`);
+    });
+    vi.stubGlobal("fetch", fetcher);
+
+    await retain();
+
+    const tree = JSON.parse(
+      fetcher.mock.calls.find(([url]) => url.endsWith("/git/trees"))![1]!
+        .body as string,
+    );
+    const written = tree.tree.find(
+      (file: { path: string }) => file.path === recipePath,
+    );
+    expect(JSON.parse(written.content)).toMatchObject({
+      title: "Application",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: STAMPED_AT,
+    });
+  });
+
+  it("compares a retained checkpoint with the stamp it was written with, so publishing a saved version still matches", async () => {
+    // A named version retained earlier was stamped then; publishing it later
+    // (same id) recomputes the files on a different day and must still find
+    // the tag matching — the stamp comes from the tag, not from the clock.
+    const writtenAt = "2026-09-30T08:15:00.000Z";
+    const fetcher = vi.fn(async () =>
+      json({ object: { sha: "b".repeat(40) } }),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    vi.mocked(getContents).mockImplementation(async (_token, path) => {
+      const content = checkpointFiles(withForm, writtenAt).find(
+        (f) => f.path === path,
+      )!.content;
+      return json({
+        sha: blobSha(content),
+        content: Buffer.from(content).toString("base64"),
+      });
+    });
+
+    await expect(retain()).resolves.toMatchObject({
+      gitSha: "b".repeat(40),
+    });
+    // Only the tag ref was read: no new tree, commit or ref was written.
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("still refuses a retained checkpoint whose recipe content differs", async () => {
+    const fetcher = vi.fn(async () =>
+      json({ object: { sha: "b".repeat(40) } }),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    vi.mocked(getContents).mockImplementation(async (_token, path) => {
+      const content = checkpointFiles(
+        serviceSnapshotSchema.parse({
+          ...withForm,
+          recipe: { ...recipe, title: "Different application" },
+        }),
+        STAMPED_AT,
+      ).find((f) => f.path === path)!.content;
+      return json({
+        sha: blobSha(content),
+        content: Buffer.from(content).toString("base64"),
+      });
+    });
+
+    await expect(retain()).rejects.toThrow("does not match");
+  });
 });
 
 it("publishes the recipe's own status and each page's own visibility (#2683)", () => {

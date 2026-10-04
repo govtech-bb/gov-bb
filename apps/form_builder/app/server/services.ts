@@ -32,7 +32,11 @@ import {
   openPullRequest,
   listOpenPRHeads,
 } from "./github";
-import { resolveBaseBranch, carryUnauthoredFields } from "./publish";
+import {
+  resolveBaseBranch,
+  carryUnauthoredFields,
+  recipeWriteStamp,
+} from "./publish";
 import { contentSlug, startPageUrl } from "../lib/content";
 
 export const getServiceUser = createServerFn({ method: "GET" })
@@ -301,8 +305,14 @@ async function github<T>(
   return response.json() as Promise<T>;
 }
 
+// `recipeUpdatedAt` is the stamp the recipe file is written with (#2878): a
+// checkpoint write passes the time of that write (retainVersion), and a
+// re-check of an existing checkpoint passes the stamp it was written with.
+// Omitted, the recipe is emitted as the snapshot holds it — only right for
+// callers that use the paths, never the content.
 export function checkpointFiles(
   snapshot: ServiceSnapshot,
+  recipeUpdatedAt?: string,
 ): { path: string; content: string }[] {
   const manifest = snapshot.manifest;
   // Publication writes no visibility (#2683): a page's is its own frontmatter
@@ -319,11 +329,51 @@ export function checkpointFiles(
   ];
   if (snapshot.recipe)
     files.push({
-      path: `apps/api/src/forms/form-definitions/recipes/${snapshot.recipe.formId}.json`,
+      path: recipeFilePath(snapshot.recipe.formId),
       content:
-        JSON.stringify(redactRecipeSecrets(snapshot.recipe), null, 2) + "\n",
+        JSON.stringify(
+          redactRecipeSecrets(
+            recipeUpdatedAt
+              ? { ...snapshot.recipe, updatedAt: recipeUpdatedAt }
+              : snapshot.recipe,
+          ),
+          null,
+          2,
+        ) + "\n",
     });
   return files;
+}
+function recipeFilePath(formId: string): string {
+  return `apps/api/src/forms/form-definitions/recipes/${formId}.json`;
+}
+// The `updatedAt` the recipe was written with when the checkpoint at
+// `commitSha` was created, or null when it holds no readable recipe. Lets a
+// saved version published later (same id) be compared with the bytes that
+// were actually written rather than with today's stamp (#2878).
+async function checkpointRecipeStamp(
+  token: string,
+  commitSha: string,
+  snapshot: ServiceSnapshot,
+): Promise<string | null> {
+  if (!snapshot.recipe) return null;
+  const response = await getContents(
+    token,
+    recipeFilePath(snapshot.recipe.formId),
+    commitSha,
+  );
+  if (!response.ok) return null;
+  const file = (await response.json()) as { content?: string };
+  if (!file.content) return null;
+  try {
+    const stamp = (
+      JSON.parse(Buffer.from(file.content, "base64").toString()) as {
+        updatedAt?: unknown;
+      }
+    ).updatedAt;
+    return typeof stamp === "string" ? stamp : null;
+  } catch {
+    return null;
+  }
 }
 const versionInput = z.object({
   id: z.string().uuid(),
@@ -335,7 +385,6 @@ async function retainVersion(
   data: z.infer<typeof versionInput>,
   author: string,
 ) {
-  const files = checkpointFiles(data.snapshot);
   const gitRef = `refs/tags/service-checkpoints/${data.snapshot.manifest.serviceId}/${data.id}`;
   if (!token) throw new Error("Sign in with GitHub to save a named version.");
   const response = await fetch(
@@ -349,6 +398,14 @@ async function retainVersion(
   const existing = response.ok
     ? ((await response.json()) as { object: { sha: string } })
     : null;
+  // The recipe is written with `updatedAt` stamped at this write, as builder
+  // Deploy does (#2878). A checkpoint that already exists is compared with
+  // the stamp it was written with, so a saved version published later still
+  // matches its tag; a recipe whose content differs still does not.
+  const writtenAt = existing
+    ? await checkpointRecipeStamp(token, existing.object.sha, data.snapshot)
+    : null;
+  const files = checkpointFiles(data.snapshot, writtenAt ?? recipeWriteStamp());
   if (existing) {
     await Promise.all(
       files.map(async (file) => {

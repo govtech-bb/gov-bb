@@ -115,6 +115,17 @@ function renderPrBody({
 }
 
 /**
+ * The `updatedAt` a recipe write carries: now, whatever the payload said. The
+ * committed `updatedAt` is what the builder compares a draft row against to
+ * decide it is stale (#2878, ADR 0075), so every write — builder Deploy here,
+ * the services publication in services.ts — must move it. Date.now() is the
+ * clock deployBranchName already uses.
+ */
+export function recipeWriteStamp(): string {
+  return new Date(Date.now()).toISOString();
+}
+
+/**
  * Read the recipe file's blob sha (if it exists) from `branch` and build the
  * exact object a PUT to that branch should carry: the incoming recipe, plus
  * the committed file's `createdAt` (#1720), any top-level fields the
@@ -153,12 +164,9 @@ async function loadRecipeForWrite(
     ...recipe,
     ...carriedFields,
     ...(preservedCreatedAt ? { createdAt: preservedCreatedAt } : {}),
-    // Stamped here, at the write, whatever the payload carried: the committed
-    // `updatedAt` is what the builder compares a draft row against to decide
-    // it is stale (#2878, ADR 0075), so every Deploy — a fresh PR or a
-    // re-deploy onto an open one — must move it. Date.now() is the clock
-    // deployBranchName already uses.
-    updatedAt: new Date(Date.now()).toISOString(),
+    // Stamped at the write (recipeWriteStamp) for a fresh PR and a re-deploy
+    // onto an open one alike.
+    updatedAt: recipeWriteStamp(),
   } as ServiceContractRecipe;
   return { recipeToPublish, existingSha };
 }

@@ -111,8 +111,11 @@ is kept in line with the committed recipe (the second half of #2489):
 > committed copy that carries no usable `updatedAt`. The check no longer
 > depends on the recipe living in git (govtech-bb/projects#918 may move
 > recipes out of it), and the per-open Commits `GET` goes away except on that
-> fallback. In return every write must move `updatedAt`: the Deploy stamps it
-> at the write, and `pnpm validate-recipe-updated-at` (an always-run step in
+> fallback. In return every write must move `updatedAt`: the builder Deploy
+> and the services publication both stamp it at the write (a services
+> checkpoint keeps the stamp it was first written with, so a saved version
+> published later still matches its tag), and
+> `pnpm validate-recipe-updated-at` (an always-run step in
 > CI's Validate Recipes job and a lint-staged pre-commit task) fails a hand
 > edit that changes a recipe's content without moving it forward. Every
 > recipe whose `updatedAt` predated its last commit on `main` was backfilled
