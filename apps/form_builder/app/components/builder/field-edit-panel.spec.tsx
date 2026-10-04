@@ -8,7 +8,13 @@ import type { Mock } from "vitest";
  * unchecking a base-required field must write an explicit `value: false` so the
  * merge can override the base — otherwise the field is always required.
  */
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import {
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -1161,4 +1167,91 @@ it("opens an Environmental Health recipe's address lookup with its stored target
   expect(coordinatesPicker()).toHaveTextContent(
     nameOf(targets?.coordinatesFieldId),
   );
+});
+
+// --- Checkbox accordion categories (#2887) ---------------------------------
+// `groups` is the accordion's list of categories, each with its own options
+// and a Higher-risk flag. The panel edits it through OptionGroupsEditor under
+// Type-specific settings, with the Options editor's contract: rows come from
+// the override when set, else the registry default; Reset drops the key.
+
+const categoryLabelInputs = () =>
+  screen
+    .getAllByLabelText("Category label")
+    .map((el) => (el as HTMLInputElement).value);
+
+it("offers an empty categories editor for an untouched checkbox accordion", () => {
+  renderPanel(makeField("components/generic-checkbox-accordion"));
+  expect(typeSettingsHeading()).toBeInTheDocument();
+  expect(screen.getByRole("group", { name: "Categories" })).toBeInTheDocument();
+  expect(screen.queryAllByLabelText("Category label")).toHaveLength(0);
+  expect(screen.getByRole("button", { name: "Add category" })).toBeEnabled();
+});
+
+it("dispatches groups with a new category, its option and the Higher-risk flag", async () => {
+  const dispatch = renderPanel(
+    makeField("components/generic-checkbox-accordion"),
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Add category" }));
+  await userEvent.type(screen.getByLabelText("Category label"), "Dairy");
+  await userEvent.click(screen.getByRole("checkbox", { name: /higher-risk/i }));
+  await userEvent.click(screen.getByRole("button", { name: "Add option" }));
+  await userEvent.type(screen.getByLabelText("Option label"), "Cheese");
+  await userEvent.type(screen.getByLabelText("Option value"), "cheese");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({
+    groups: [
+      {
+        label: "Dairy",
+        higherRisk: true,
+        options: [{ label: "Cheese", value: "cheese" }],
+      },
+    ],
+  });
+});
+
+it("reopens with stored categories and drops groups on Reset to defaults", async () => {
+  const stored = [
+    {
+      label: "Meat and poultry",
+      higherRisk: true,
+      options: [{ label: "Chicken", value: "chicken" }],
+    },
+    { label: "Drinks", options: [{ label: "Juice", value: "juice" }] },
+  ];
+  const dispatch = renderPanel(
+    makeFieldWith("components/generic-checkbox-accordion", { groups: stored }),
+  );
+  expect(categoryLabelInputs()).toEqual(["Meat and poultry", "Drinks"]);
+  await userEvent.click(
+    screen.getByRole("button", { name: /reset to defaults/i }),
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({});
+});
+
+it.each([
+  "request-an-environmental-health-officer",
+  "apply-for-temporary-restaurant-permit",
+])("opens %s's checkbox accordion with its stored categories", (formId) => {
+  const { field } = openRecipeField(
+    formId,
+    "components/generic-checkbox-accordion",
+  );
+  const groups = field.overrides.groups;
+  if (!groups?.length) throw new Error(`${formId} stores no groups`);
+  expect(categoryLabelInputs()).toEqual(groups.map((g) => g.label));
+  expect(
+    screen
+      .getAllByRole("checkbox", { name: /higher-risk/i })
+      .map((el) => el.getAttribute("aria-checked") === "true"),
+  ).toEqual(groups.map((g) => g.higherRisk === true));
+  const firstRow = screen
+    .getByDisplayValue(groups[0].label)
+    .closest("fieldset");
+  expect(
+    within(firstRow!)
+      .getAllByLabelText("Option value")
+      .map((el) => (el as HTMLInputElement).value),
+  ).toEqual(groups[0].options.map((o) => o.value));
 });

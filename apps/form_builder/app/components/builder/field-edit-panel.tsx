@@ -38,6 +38,7 @@ import { ValidationRulesEditor } from "./validation-rules-editor";
 import { BehavioursEditor } from "./behaviours-editor";
 import { FieldRefPicker } from "./field-ref-picker";
 import { OptionsEditor } from "./options-editor";
+import { OptionGroupsEditor } from "./option-groups-editor";
 import { KEBAB_ID_PATTERN, kebabize } from "./id-validation";
 import {
   isFieldlessRequiredWording,
@@ -454,10 +455,10 @@ interface CustomAttributesEditorProps {
 
 // Descriptor-driven editor for the attributes only this htmlType's renderer
 // reads (a content block's style, markdown body and details summary; an
-// address lookup's geocode targets), one control per
-// CUSTOM_ATTRIBUTE_DESCRIPTORS entry (#2873). Same contract as the `ui`
-// editor: show the effective value (override ?? base primitive), and drop the
-// key when the author sets it back to the base value or clears it.
+// address lookup's geocode targets; a checkbox accordion's categories), one
+// control per CUSTOM_ATTRIBUTE_DESCRIPTORS entry (#2873). Same contract as
+// the `ui` editor: show the effective value (override ?? base primitive), and
+// drop the key when the author sets it back to the base value or clears it.
 function CustomAttributesEditor({
   descriptors,
   overrides,
@@ -531,6 +532,25 @@ function CustomAttributesEditor({
                   }
                 />
               ))}
+            </fieldset>
+          );
+        }
+
+        if (descriptor.kind === "optionGroups") {
+          return (
+            <fieldset key={descriptor.key} className={fg(isOverridden)}>
+              <legend className="text-sm font-medium">
+                {descriptor.label}
+              </legend>
+              {descriptor.hint && (
+                <p className="text-sm text-ui-subtle">{descriptor.hint}</p>
+              )}
+              <OptionGroupsEditor
+                value={overrides[descriptor.key] ?? []}
+                defaultValue={basePrimitive?.[descriptor.key] ?? []}
+                isOverridden={isOverridden}
+                onChange={(groups) => patch({ [descriptor.key]: groups })}
+              />
             </fieldset>
           );
         }

@@ -12,7 +12,7 @@ import type {
 // widens this with `step` and `multiple`.
 export type CustomAttributeKey = keyof Pick<
   FieldOverrides,
-  "content" | "variant" | "summary" | "geocodeTargets"
+  "content" | "variant" | "summary" | "geocodeTargets" | "groups"
 >;
 
 // The keys whose value is one string: what the enum / text / markdown kinds
@@ -60,6 +60,14 @@ export type CustomAttributeDescriptor =
       key: "geocodeTargets";
       kind: "fieldRef";
       fields: ReadonlyArray<{ key: keyof GeocodeTargets; label: string }>;
+    })
+  | (CustomAttributeDescriptorBase & {
+      // The categories of a checkbox accordion, each with its own options
+      // and Higher-risk flag: a nested groups → options editor with the
+      // Options editor's contract (rows from the override, else the base;
+      // Reset drops the key).
+      key: "groups";
+      kind: "optionGroups";
     });
 
 // Which override keys each htmlType's renderer honours beyond Label/Hint, and
@@ -80,7 +88,15 @@ export const CUSTOM_ATTRIBUTE_DESCRIPTORS: Record<
   tel: [], // nothing beyond Label/Hint
   email: [], // nothing beyond Label/Hint
   checkbox: [], // options have their own editor
-  "checkbox-accordion": [], // `groups` needs a nested groups→options editor — follow-up
+  "checkbox-accordion": [
+    // What checkbox-accordion-field.tsx renders; the registry default is [].
+    {
+      key: "groups",
+      label: "Categories",
+      kind: "optionGroups",
+      hint: "Each category is a collapsible set of items the applicant can tick. Higher-risk badges the category on the form.",
+    },
+  ],
   radio: [], // options have their own editor
   file: [], // Session 2: `multiple`
   select: [], // options have their own editor; `multiple` is fixed false

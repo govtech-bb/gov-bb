@@ -90,6 +90,12 @@ describe("CUSTOM_ATTRIBUTE_DESCRIPTORS (#2873)", () => {
     ]);
   });
 
+  it("offers a categories editor for a checkbox accordion's groups (#2887)", () => {
+    expect(CUSTOM_ATTRIBUTE_DESCRIPTORS["checkbox-accordion"]).toEqual([
+      expect.objectContaining({ key: "groups", kind: "optionGroups" }),
+    ]);
+  });
+
   it("names only geocodeTargets sub-keys the schema carries", () => {
     const allowed = Object.keys(geocodeTargetsSchema.shape);
     for (const descriptor of all) {
