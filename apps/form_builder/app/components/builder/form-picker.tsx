@@ -15,7 +15,7 @@ import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 import type { BuilderFormSummary } from "../../types/index";
 import { Dialog } from "../ui/dialog";
-import { loadFormDraft } from "./load-form-draft";
+import { loadFormWorkspace } from "./load-form-draft";
 import { FORM_STATUS_LABEL, formStatus } from "../../lib/form-status";
 
 interface FormPickerProps {
@@ -33,7 +33,14 @@ interface FormPickerProps {
    * haven't threaded it through yet.
    */
   openPRs?: Map<string, OpenDeployPR>;
-  onLoad: (draft: RecipeDraft, formId: string) => void;
+  /** `sourceSha` is the committed recipe's blob sha the draft was loaded
+   * against (null when none is committed) — Deploy sends it back so a fix
+   * that merged while the form was open cannot be overwritten (#2489). */
+  onLoad: (
+    draft: RecipeDraft,
+    formId: string,
+    sourceSha: string | null,
+  ) => void;
   onClose: () => void;
   /** Draft-only forms: hard-delete the draft rows (formId freed for reuse). */
   onRequestDelete: (form: BuilderFormSummary) => void;
@@ -113,8 +120,11 @@ export function FormPicker({
     setError(null);
     setLoadingId(form.formId);
     try {
-      const draft = await loadFormDraft(form.formId, catalog);
-      onLoad(draft, form.formId);
+      const { draft, sourceSha } = await loadFormWorkspace(
+        form.formId,
+        catalog,
+      );
+      onLoad(draft, form.formId, sourceSha);
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load recipe");

@@ -175,12 +175,38 @@ async function loadRecipeForWrite(
   return { recipeToPublish, existingSha };
 }
 
+/**
+ * The committed recipe file's blob sha on `branch`, or null when no file is
+ * committed there. The stale-base guard in `publishRecipe` compares this with
+ * the sha the builder captured when it loaded the form (#2489).
+ */
+async function committedRecipeSha(
+  token: string,
+  recipePath: string,
+  branch: string,
+): Promise<string | null> {
+  const res = await getContents(token, recipePath, branch);
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw await ghError("Could not check the current published source", res);
+  }
+  return ((await res.json()) as { sha: string }).sha;
+}
+
 export const publishRecipe = createServerFn({ method: "POST" })
   .middleware([requireSession])
   .inputValidator(
     z.object({
       recipe: z.unknown(),
       description: z.string().default(""),
+      // The committed recipe's blob sha on the base branch when the author
+      // loaded the form, or null when no committed copy existed then (#2489).
+      // Required, not optional: a Deploy that cannot say what it loaded
+      // cannot prove it isn't overwriting a fix that merged since.
+      expectedSourceSha: z
+        .string()
+        .regex(/^[0-9a-f]{40}$/)
+        .nullable(),
     }),
   )
   .handler(
@@ -227,11 +253,40 @@ export const publishRecipe = createServerFn({ method: "POST" })
         throw new Error(`Recipe validation failed: ${detail}`);
       }
 
+      // encodeURIComponent on the formId segment is defense-in-depth at the
+      // sink (#293) — a no-op for the kebab id the guard above already
+      // enforced. Derivable from formId alone, so it's the same path
+      // regardless of which branch (a fresh one or an existing PR's) it's
+      // read from below.
+      const recipePath = `apps/api/src/forms/form-definitions/recipes/${encodeURIComponent(
+        recipe.formId,
+      )}.json`;
+
+      // Stale-base guard (#2489): the author is deploying the revision they
+      // loaded. If the committed recipe on the base branch has moved since —
+      // a fix merged while the form was open — this Deploy would overwrite
+      // that fix with the older draft (#2477 → #2479/#2482). Compare the live
+      // blob sha with the one captured at load and refuse before anything is
+      // written: no row PUT, no branch, no PR. A null expectation with a
+      // committed file present is a mismatch too (a form the author believed
+      // was new now exists on the base branch). The services publish path has
+      // the same guard (publishServiceVersion's baseRecipeSha).
+      const currentSha = await committedRecipeSha(
+        token,
+        recipePath,
+        baseBranch,
+      );
+      if (currentSha !== data.expectedSourceSha) {
+        throw new Error(
+          `The published source for ${recipe.formId} changed after you opened it. Reload and compare before deploying.`,
+        );
+      }
+
       // Persist the current draft and enforce the read-only lock (#874) before
-      // touching GitHub: PUT /builder/forms/:formId runs through enforcePresence,
-      // so a non-holder is rejected (409) here. (#1196: recipe versioning is
-      // retired — there is no version reservation; publish overwrites the single
-      // canonical flat file.)
+      // writing to GitHub: PUT /builder/forms/:formId runs through
+      // enforcePresence, so a non-holder is rejected (409) here. (#1196: recipe
+      // versioning is retired — there is no version reservation; publish
+      // overwrites the single canonical flat file.)
       try {
         await api.put(`/builder/forms/${recipe.formId}`, {
           recipe,
@@ -246,15 +301,6 @@ export const publishRecipe = createServerFn({ method: "POST" })
         }
         throw err;
       }
-
-      // encodeURIComponent on the formId segment is defense-in-depth at the
-      // sink (#293) — a no-op for the kebab id the guard above already
-      // enforced. Derivable from formId alone, so it's the same path
-      // regardless of which branch (a fresh one or an existing PR's) it's
-      // read from below.
-      const recipePath = `apps/api/src/forms/form-definitions/recipes/${encodeURIComponent(
-        recipe.formId,
-      )}.json`;
 
       // Reuse an already-open Deploy PR for this form instead of opening a
       // duplicate that would conflict with it on the same recipe file (#2390).
