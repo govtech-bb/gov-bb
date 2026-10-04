@@ -29,6 +29,7 @@ import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { isDeepStrictEqual } from "node:util";
+import { isRecord, recipeContent } from "./recipe-content";
 
 export const RECIPES_DIR = "apps/api/src/forms/form-definitions/recipes";
 
@@ -47,13 +48,10 @@ function parseStamp(value: unknown): number | null {
   return Number.isNaN(t) ? null : t;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 /**
  * null when `after` may replace `before`; otherwise the error to report.
- * `before` is null for a file the base revision does not have.
+ * `before` is null for a file the base revision does not have. "Content" is
+ * recipeContent() — the same definition the archive job skips on.
  */
 export function checkUpdatedAtBumped(
   before: string | null,
@@ -72,9 +70,9 @@ export function checkUpdatedAtBumped(
   if (!isRecord(prev) || !isRecord(next)) {
     return `${where}: a recipe must be a JSON object`;
   }
-  const { updatedAt: prevStamp, ...prevContent } = prev;
-  const { updatedAt: nextStamp, ...nextContent } = next;
-  if (isDeepStrictEqual(prevContent, nextContent)) return null;
+  if (isDeepStrictEqual(recipeContent(prev), recipeContent(next))) return null;
+  const prevStamp = prev.updatedAt;
+  const nextStamp = next.updatedAt;
 
   const fix = `set it to the time of this edit, e.g. "${new Date().toISOString()}"`;
   const nextTime = parseStamp(nextStamp);

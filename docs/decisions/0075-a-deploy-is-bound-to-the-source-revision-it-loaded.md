@@ -121,7 +121,11 @@ is kept in line with the committed recipe (the second half of #2489):
 > recipe whose `updatedAt` predated its last commit on `main` was backfilled
 > to that commit's committer date in the same change (all 90 flat files), so
 > the switch alters no freshness decision: the stamp a draft row is compared
-> against is the date the git check was already using.
+> against is the date the git check was already using. The post-merge archive
+> job (`archive-merged-drafts`) keeps a form's draft when the merged change
+> only moved `updatedAt` — as the backfill and a page-only service
+> publication do — since nothing new was published over it; the guard and the
+> job share one definition of a stamp-only change (`scripts/recipe-content.ts`).
 
 ## Consequences
 
