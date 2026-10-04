@@ -25,12 +25,16 @@ describe("github-recipes", () => {
 
   beforeEach(() => {
     process.env.GITHUB_ORG = REPO_OWNER;
+    // Unset so the default base branch (`main`) applies; the "configured
+    // branch" tests below set it explicitly.
+    delete process.env.PUBLISH_BASE_BRANCH;
     fetchMock = vi.fn<typeof fetch>();
     globalThis.fetch = fetchMock;
   });
 
   afterEach(() => {
     vi.resetAllMocks();
+    delete process.env.PUBLISH_BASE_BRANCH;
   });
 
   describe("getRecipeCommittedAt (#2489)", () => {
@@ -53,13 +57,23 @@ describe("github-recipes", () => {
 
       expect(date).toBe("2026-09-15T10:00:00Z");
       const { url, init } = lastFetch(fetchMock);
-      // Same branch as getPublishedRecipe (the repo default), one commit.
+      // Same branch as getPublishedRecipe and the Deploy guard — the
+      // configured base branch, `main` by default (#2899) — one commit.
       expect(url).toBe(
-        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/commits?path=apps%2Fapi%2Fsrc%2Fforms%2Fform-definitions%2Frecipes%2Fpassport-renewal.json&per_page=1`,
+        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/commits?sha=main&path=apps%2Fapi%2Fsrc%2Fforms%2Fform-definitions%2Frecipes%2Fpassport-renewal.json&per_page=1`,
       );
       expect((init.headers as Record<string, string>).Authorization).toBe(
         `Bearer ${TOKEN}`,
       );
+    });
+
+    it("lists commits on the configured PUBLISH_BASE_BRANCH, not the repo default (#2899)", async () => {
+      process.env.PUBLISH_BASE_BRANCH = "sandbox";
+      fetchMock.mockResolvedValueOnce(makeJsonResponse(200, []));
+
+      await getRecipeCommittedAt(TOKEN, "passport-renewal");
+
+      expect(lastFetch(fetchMock).url).toContain("/commits?sha=sandbox&");
     });
 
     it("returns null when no commit touches the path (nothing committed)", async () => {
@@ -107,11 +121,30 @@ describe("github-recipes", () => {
 
       expect(recipe).toEqual(RECIPE);
       const { url, init } = lastFetch(fetchMock);
+      // Read off the configured base branch (`main` by default), the same
+      // branch the Deploy stale-base guard compares against (#2899).
       expect(url).toBe(
-        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal.json`,
+        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal.json?ref=main`,
       );
       const headers = init.headers as Record<string, string>;
       expect(headers.Authorization).toBe(`Bearer ${TOKEN}`);
+    });
+
+    it("reads the configured PUBLISH_BASE_BRANCH, not the repo default (#2899)", async () => {
+      process.env.PUBLISH_BASE_BRANCH = "sandbox";
+      fetchMock.mockResolvedValueOnce(
+        makeJsonResponse(200, {
+          name: "passport-renewal.json",
+          encoding: "base64",
+          content: Buffer.from(JSON.stringify(RECIPE), "utf8").toString(
+            "base64",
+          ),
+        }),
+      );
+
+      await getPublishedRecipe(TOKEN, { formId: "passport-renewal" });
+
+      expect(lastFetch(fetchMock).url).toMatch(/\?ref=sandbox$/);
     });
 
     it("throws when the file is missing (404)", async () => {

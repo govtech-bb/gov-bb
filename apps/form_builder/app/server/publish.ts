@@ -15,6 +15,7 @@ import {
 } from "@govtech-bb/form-types";
 import { api, ApiError } from "./api-client";
 import { listVersions, RECIPES_BASE } from "./github-recipes";
+import { resolveBaseBranch } from "./github-repo";
 import {
   repoUrl,
   authHeaders,
@@ -31,7 +32,10 @@ import {
   commentOnPR,
 } from "./github";
 
-const DEFAULT_BASE_BRANCH = "dev";
+// Re-exported for the content and services publish paths, which have always
+// read the base branch from here; the definition moved to github-repo.ts so
+// the recipe reads can share it without a circular import (#2899).
+export { resolveBaseBranch };
 
 /**
  * The top-level recipe fields the builder authors, and so the only ones a
@@ -78,29 +82,6 @@ export function carryUnauthoredFields(
         value !== undefined,
     ),
   );
-}
-
-/**
- * The branch the Deploy PR is opened against, from `PUBLISH_BASE_BRANCH`.
- * Resolution order:
- *   1. The LIVE runtime env var — wins wherever the platform exposes it
- *      (docker, ECS, local node), so changing it retargets deploys with no
- *      rebuild. Read via bracket access on purpose: Vite's `define` only
- *      rewrites the literal `process.env.PUBLISH_BASE_BRANCH`, so the bracket
- *      form survives the build as a real runtime read instead of being inlined.
- *   2. The build-time baked value (`process.env.PUBLISH_BASE_BRANCH_DEFAULT`,
- *      substituted by Vite — see vite.config.ts `define`). This is the fallback
- *      for Amplify Compute, whose SSR Lambda doesn't receive runtime env vars;
- *      set PUBLISH_BASE_BRANCH in the Amplify console and redeploy to change it.
- *   3. `dev`.
- * This is the single source of truth; both `publishRecipe` and
- * `getPublishBaseBranch` use it, so the value the modal shows can never diverge
- * from the PR's actual base.
- */
-export function resolveBaseBranch(): string {
-  const runtime = process.env["PUBLISH_BASE_BRANCH"]?.trim();
-  if (runtime) return runtime;
-  return process.env.PUBLISH_BASE_BRANCH_DEFAULT?.trim() || DEFAULT_BASE_BRANCH;
 }
 
 function renderPrBody({

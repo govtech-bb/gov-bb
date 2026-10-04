@@ -28,7 +28,7 @@ describe("parseEnv", () => {
     expect(env.AI_MODEL).toBe(
       "global.anthropic.claude-haiku-4-5-20251001-v1:0",
     );
-    expect(env.PUBLISH_BASE_BRANCH).toBe("dev");
+    expect(env.PUBLISH_BASE_BRANCH).toBe("main");
   });
 
   it("coerces numeric vars from strings", () => {

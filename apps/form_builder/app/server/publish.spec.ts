@@ -162,11 +162,11 @@ describe("publishRecipe", () => {
 
     // GET open PRs (#2390) — checked before any branch is created.
     expect(fetchMock.mock.calls[1][0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/pulls?state=open&base=dev&per_page=100&page=1",
+      "https://api.github.com/repos/govtech-bb/gov-bb/pulls?state=open&base=main&per_page=100&page=1",
     );
-    // GET base ref (dev)
+    // GET base ref (main, the default base branch)
     expect(fetchMock.mock.calls[2][0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/git/ref/heads/dev",
+      "https://api.github.com/repos/govtech-bb/gov-bb/git/ref/heads/main",
     );
     // POST create branch — versionless branch name
     const createBody = JSON.parse(
@@ -196,7 +196,7 @@ describe("publishRecipe", () => {
     const prBody = JSON.parse(
       (fetchMock.mock.calls[6][1] as RequestInit).body as string,
     );
-    expect(prBody.base).toBe("dev");
+    expect(prBody.base).toBe("main");
     expect(prBody.head).toBe("form-builder/passport-renewal-1700000000000");
     expect(prBody.title).toBe("Publish form: Passport Renewal");
     expect(prBody.body).toContain("Form ID: `passport-renewal`");
@@ -486,7 +486,7 @@ describe("publishRecipe", () => {
     // Only the guard's read happened — no branch, no file PUT, no PR.
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0][0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal.json?ref=dev",
+      "https://api.github.com/repos/govtech-bb/gov-bb/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal.json?ref=main",
     );
   });
 
@@ -1111,12 +1111,12 @@ describe("eraseRecipe", () => {
 
     // listVersions reads on the base branch.
     expect(fetchMock.mock.calls[0][0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal?ref=dev",
+      "https://api.github.com/repos/govtech-bb/gov-bb/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal?ref=main",
     );
 
     // Base ref read.
     expect(fetchMock.mock.calls[1][0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/git/ref/heads/dev",
+      "https://api.github.com/repos/govtech-bb/gov-bb/git/ref/heads/main",
     );
 
     // Branch is namespaced for erase and points at the base tip.
@@ -1185,7 +1185,7 @@ describe("eraseRecipe", () => {
       "https://api.github.com/repos/govtech-bb/gov-bb/pulls",
     );
     const prBody = JSON.parse((prCall[1] as RequestInit).body as string);
-    expect(prBody.base).toBe("dev");
+    expect(prBody.base).toBe("main");
     expect(prBody.head).toBe(
       "form-builder/erase-passport-renewal-1700000000000",
     );
