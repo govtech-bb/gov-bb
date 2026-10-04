@@ -53,19 +53,14 @@ export function ServiceSetup({
   const dirty = JSON.stringify(value) !== JSON.stringify(baseline);
   useBlocker({
     enableBeforeUnload: dirty,
-    shouldBlockFn: async () => {
-      if (!dirty) return false;
-      if (
-        !(await confirm({
-          title: "Save setup before leaving?",
-          description:
-            "Keep the contact details and delivery choices you entered.",
-          confirmLabel: "Save and leave",
-        }))
-      )
-        return true;
-      return !(await workspace.save(value));
-    },
+    shouldBlockFn: async () =>
+      dirty &&
+      !(await confirm({
+        title: "Discard unsaved changes?",
+        description: "Unsaved changes will be lost. Continue?",
+        confirmLabel: "Discard changes",
+        destructive: true,
+      })),
   });
   const manifest = value.manifest;
   const change = (patch: Partial<typeof manifest>) =>
@@ -128,6 +123,21 @@ export function ServiceSetup({
     } finally {
       setBusy(false);
     }
+  };
+  const discard = async () => {
+    if (
+      !(await confirm({
+        title: "Discard unsaved changes?",
+        description:
+          "Discard unsaved changes and revert to the last saved version?",
+        confirmLabel: "Discard changes",
+        destructive: true,
+      }))
+    )
+      return;
+    setValue(baseline);
+    setSaved(false);
+    setActionError(null);
   };
   const details = section === "details";
   return (
@@ -310,13 +320,18 @@ export function ServiceSetup({
                     ? "Save to update the service draft."
                     : "Save to apply these settings to the form."}
           </p>
-          <Button
-            variant="primary"
-            onClick={() => void save()}
-            disabled={busy || !manifest.title.trim()}
-          >
-            {busy ? "Saving…" : "Save changes"}
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => void discard()} disabled={!dirty || busy}>
+              Discard changes
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => void save()}
+              disabled={busy || !manifest.title.trim()}
+            >
+              {busy ? "Saving…" : "Save changes"}
+            </Button>
+          </div>
         </LayerCard.Secondary>
       </LayerCard>
     </section>
