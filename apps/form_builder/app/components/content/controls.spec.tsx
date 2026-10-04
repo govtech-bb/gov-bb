@@ -4,7 +4,9 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FormCombobox } from "./form-combobox";
 import { HeaderMenu } from "./header-menu";
-import { DeleteModal } from "./modals";
+import { DeleteModal, DeployModal } from "./modals";
+import { PAGE_VISIBILITY_HINT } from "../../lib/content";
+import type { EditorState } from "./use-editor-state";
 
 it("finds forms by title or ID and clears a selected link", async () => {
   function Picker() {
@@ -81,4 +83,25 @@ it("keeps an in-flight removal dialog open and allows Escape after it finishes",
   view.rerender(<DeleteModal open {...props} isDeleting={false} />);
   await user.keyboard("{Escape}");
   await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+});
+
+it("tells the author that Feature flagging decides whether the page is live", () => {
+  const ed = {
+    state: { title: "Apply for a licence", visibility: "draft" },
+    url: null,
+    fixedPath: null,
+    slug: "apply-for-a-licence",
+  } as unknown as EditorState;
+  render(
+    <DeployModal
+      open
+      onClose={() => {}}
+      ed={ed}
+      baseBranch="main"
+      openPR={undefined}
+      isPublishing={false}
+      onDeploy={() => {}}
+    />,
+  );
+  expect(screen.getByText(PAGE_VISIBILITY_HINT)).toBeInTheDocument();
 });
