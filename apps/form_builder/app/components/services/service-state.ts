@@ -223,7 +223,6 @@ export type ServiceState = ReturnType<typeof useServiceState>;
 export function emptyService(title: string): ServiceSnapshot {
   const manifest: ServiceManifest = {
     schemaVersion: 1,
-    visibility: "draft",
     serviceId: serviceIdFor(title) || `service-${crypto.randomUUID()}`,
     title,
     description: "",

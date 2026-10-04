@@ -11,6 +11,7 @@ import {
   draftRecipeSchema,
   servicePendingConfigSchema,
   serviceReadiness,
+  seedServiceManifest,
   type ServiceSnapshot,
   type ServiceManifest,
 } from "@govtech-bb/form-types";
@@ -146,42 +147,48 @@ export const loadServiceSource = createServerFn({
           >(`/builder/forms/${formId}/config`)
           .catch(() => ({ mdaContactId: null, processors: null }))
       : { mdaContactId: null, processors: null };
-    const manifest: ServiceManifest = savedManifest ?? {
-      schemaVersion: 1,
-      serviceId: data.serviceId,
-      title: data.title!,
-      description: recipe?.description ?? "",
-      visibility: "draft",
-      category: data.category ?? "",
-      subcategory: data.subcategory ?? "",
-      formId,
-      pages: pages.map((p, i) => ({
-        id: p.id,
-        path: p.path,
-        title: String(p.frontmatter.title ?? "Untitled page"),
-        kind:
-          i === 0
-            ? "main"
-            : p.path.endsWith("/start.md")
-              ? "start"
-              : "guidance",
-        publicPath: new URL(
-          startPageUrl(
-            String(p.frontmatter.category ?? data.category ?? ""),
-            contentSlug(p.path),
-            String(p.frontmatter.subcategory ?? ""),
-          ),
-          "https://service.invalid",
-        ).pathname,
-      })),
-      entryPoint: pages[0]?.id ?? (formId ? "form" : null),
-      contactDetails: recipe?.contactDetails,
-      setup: {
-        step: "about",
-        delivery: recipe?.processors?.length ? "configured" : "undecided",
-        applicantEmail: "undecided",
-      },
-    };
+    // A published manifest is authored fact; a new one is seeded with what the
+    // recipe already decides (#2683) so readiness only asks for what is missing.
+    const manifest: ServiceManifest =
+      savedManifest ??
+      seedServiceManifest(
+        {
+          schemaVersion: 1,
+          serviceId: data.serviceId,
+          title: data.title!,
+          description: recipe?.description ?? "",
+          category: data.category ?? "",
+          subcategory: data.subcategory ?? "",
+          formId,
+          pages: pages.map((p, i) => ({
+            id: p.id,
+            path: p.path,
+            title: String(p.frontmatter.title ?? "Untitled page"),
+            kind:
+              i === 0
+                ? "main"
+                : p.path.endsWith("/start.md")
+                  ? "start"
+                  : "guidance",
+            publicPath: new URL(
+              startPageUrl(
+                String(p.frontmatter.category ?? data.category ?? ""),
+                contentSlug(p.path),
+                String(p.frontmatter.subcategory ?? ""),
+              ),
+              "https://service.invalid",
+            ).pathname,
+          })),
+          entryPoint: pages[0]?.id ?? (formId ? "form" : null),
+          setup: {
+            step: "about",
+            delivery: "undecided",
+            applicantEmail: "undecided",
+          },
+        },
+        recipe,
+        pendingConfig,
+      );
     return serviceSnapshotSchema.parse({
       manifest,
       pages,
@@ -295,6 +302,8 @@ export function checkpointFiles(
   snapshot: ServiceSnapshot,
 ): { path: string; content: string }[] {
   const manifest = snapshot.manifest;
+  // Publication writes no visibility (#2683): a page's is its own frontmatter
+  // and a form's is the service_status row set in Feature flagging.
   const files = [
     {
       path: `services/${manifest.serviceId}.json`,
@@ -302,24 +311,14 @@ export function checkpointFiles(
     },
     ...snapshot.pages.map((page) => ({
       path: page.path,
-      content: matter.stringify(page.body + "\n", {
-        ...page.frontmatter,
-        visibility: manifest.visibility,
-      }),
+      content: matter.stringify(page.body + "\n", page.frontmatter),
     })),
   ];
   if (snapshot.recipe)
     files.push({
       path: `apps/api/src/forms/form-definitions/recipes/${snapshot.recipe.formId}.json`,
       content:
-        JSON.stringify(
-          redactRecipeSecrets({
-            ...snapshot.recipe,
-            meta: { ...snapshot.recipe.meta, visibility: manifest.visibility },
-          }),
-          null,
-          2,
-        ) + "\n",
+        JSON.stringify(redactRecipeSecrets(snapshot.recipe), null, 2) + "\n",
     });
   return files;
 }

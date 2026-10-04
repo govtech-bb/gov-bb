@@ -3,8 +3,9 @@ import { kebabIdSchema } from "./id-pattern";
 import {
   contactDetailsSchema,
   draftRecipeSchema,
+  type DraftRecipe,
 } from "./service-contract.type";
-import { processorSchema } from "./processor.type";
+import { processorSchema, type Processor } from "./processor.type";
 import { classifyRecipientField } from "./recipient-field";
 
 export const serviceIdSchema = kebabIdSchema.max(100);
@@ -30,10 +31,9 @@ export const serviceManifestSchema = z
   .object({
     schemaVersion: z.literal(1),
     serviceId: serviceIdSchema,
-    // Legacy seed. The builder no longer reads or offers it (#2875): a
-    // service's live status is the `service_status` row, set in Feature
-    // flagging. Kept only because `checkpointFiles` still writes it (#2683).
-    visibility: z.enum(["draft", "preview", "public"]).default("draft"),
+    // No `visibility` (#2875, #2683): a form's status is the `service_status`
+    // row set in Feature flagging and a page's is its own frontmatter. A saved
+    // manifest that still carries the retired field parses; the key is dropped.
     title: z.string().trim().min(1).max(250),
     description: z.string().max(5000).default(""),
     category: z.string().max(100).default(""),
@@ -182,6 +182,76 @@ export interface ServiceReadiness {
   }[];
 }
 
+/** An email action addressed to the applicant: its recipient is a submitted answer. */
+export function isApplicantEmailAction(
+  processor: Processor,
+): processor is Extract<Processor, { type: "email" }> {
+  return (
+    processor.type === "email" &&
+    typeof processor.config.recipientField === "string" &&
+    !!processor.config.recipientField.trim() &&
+    classifyRecipientField(processor.config.recipientField) === "submitted"
+  );
+}
+
+/**
+ * The After submission decisions a recipe already states — the rule the
+ * Details page applies on Save, shared so a seed never disagrees with it
+ * (#2683). The applicant confirmation email is not a delivery action.
+ */
+export function deriveServiceSetup(
+  recipe: Pick<DraftRecipe, "processors">,
+  pendingConfig: Pick<ServicePendingConfig, "processors">,
+): Pick<ServiceManifest["setup"], "delivery" | "applicantEmail"> {
+  const processors = recipe.processors ?? [];
+  return {
+    applicantEmail: processors.some(isApplicantEmailAction)
+      ? "configured"
+      : "none",
+    delivery:
+      processors.some((p) => !isApplicantEmailAction(p)) ||
+      pendingConfig.processors?.length
+        ? "configured"
+        : "none",
+  };
+}
+
+/**
+ * Seeds the manifest with what the recipe already decides, leaving an
+ * author's own choice alone (ADR 0073): a field is replaced while it still
+ * reads as the system default, `undecided`. The earlier seed decided
+ * `delivery` alone — `configured` for any action, including the applicant
+ * email, which readiness rejects as "Add a delivery action" — and never
+ * `applicantEmail`, while a Details save or this seed decides both; so an
+ * undecided `applicantEmail` marks a `delivery` that is that seed's output
+ * rather than an author's, and the pair is replaced together. The public
+ * contact is filled only when the manifest has none. No-op while the form
+ * cannot be fetched.
+ */
+export function seedServiceManifest(
+  manifest: ServiceManifest,
+  recipe: Pick<DraftRecipe, "processors" | "contactDetails"> | null,
+  pendingConfig: Pick<ServicePendingConfig, "processors">,
+): ServiceManifest {
+  if (!recipe) return manifest;
+  const derived = deriveServiceSetup(recipe, pendingConfig);
+  const { setup } = manifest;
+  const contactDetails = manifest.contactDetails ?? recipe.contactDetails;
+  const undecided = setup.applicantEmail === "undecided";
+  return {
+    ...manifest,
+    ...(contactDetails ? { contactDetails } : {}),
+    setup: {
+      ...setup,
+      applicantEmail: undecided ? derived.applicantEmail : setup.applicantEmail,
+      delivery:
+        undecided || setup.delivery === "undecided"
+          ? derived.delivery
+          : setup.delivery,
+    },
+  };
+}
+
 /** Reads existing authoring semantics; it does not invent a second form router. */
 export function serviceReadiness(snapshot: ServiceSnapshot): ServiceReadiness {
   const { manifest, recipe, pages, pendingConfig } = snapshot;
@@ -258,14 +328,10 @@ export function serviceReadiness(snapshot: ServiceSnapshot): ServiceReadiness {
         "Choose whether the applicant receives a confirmation email",
       );
     const applicantEmails = (recipe.processors ?? []).filter(
-      (p) =>
-        p.type === "email" &&
-        typeof p.config.recipientField === "string" &&
-        !!p.config.recipientField.trim() &&
-        classifyRecipientField(p.config.recipientField) === "submitted",
+      isApplicantEmailAction,
     );
     const deliveryActions = (recipe.processors ?? []).filter(
-      (p) => !applicantEmails.includes(p),
+      (p) => !isApplicantEmailAction(p),
     );
     if (
       manifest.setup.applicantEmail === "configured" &&

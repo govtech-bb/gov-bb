@@ -72,10 +72,10 @@ what is written is only safe once apps/api no longer falls back to the seed.
 - Deploy is no longer gated on status. A new form deploys hidden (`draft` seed,
   no row) until an admin enables it in Feature flagging; the builder cannot
   raise a form to public.
-- The manifest's `visibility` field remains in the schema only because
-  `checkpointFiles` still writes it; #2683 stops that write. Until then a
-  service Publish seeds `draft` into page frontmatter and the recipe, which the
-  service's status row overrides on the live site.
+- The manifest's `visibility` field remained in the schema only because
+  `checkpointFiles` still wrote it; #2683 stopped that write and removed the
+  field. A service Publish now writes each page's own frontmatter `visibility`
+  and the recipe's own `meta` unchanged.
 - Content-only services (no form) keep deriving their library badge from page
   frontmatter — that is the content editor's own field, outside this decision.
 - ADR 0059 is amended: its hydration is a *carry* mechanism for Deploy, no

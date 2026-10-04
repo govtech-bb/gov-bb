@@ -3,7 +3,8 @@ import { useBlocker } from "@tanstack/react-router";
 import { useConfirmation } from "../ui/dialog/confirmation";
 import { previewRecipe } from "../../server/registry";
 import {
-  classifyRecipientField,
+  deriveServiceSetup,
+  isApplicantEmailAction,
   type ServiceContract,
   type MdaContact,
   type ServiceSnapshot,
@@ -96,16 +97,7 @@ export function ServiceSetup({
         setup: {
           ...manifest.setup,
           ...(section === "delivery" && value.recipe
-            ? {
-                applicantEmail: value.recipe.processors?.some(isApplicantEmail)
-                  ? "configured"
-                  : "none",
-                delivery:
-                  value.recipe.processors?.some((p) => !isApplicantEmail(p)) ||
-                  value.pendingConfig.processors?.length
-                    ? "configured"
-                    : "none",
-              }
+            ? deriveServiceSetup(value.recipe, value.pendingConfig)
             : {}),
         },
       },
@@ -325,17 +317,6 @@ type SubmissionAction = NonNullable<
   NonNullable<ServiceSnapshot["recipe"]>["processors"]
 >[number];
 
-function isApplicantEmail(
-  p: SubmissionAction,
-): p is Extract<SubmissionAction, { type: "email" }> {
-  return (
-    p.type === "email" &&
-    typeof p.config.recipientField === "string" &&
-    !!p.config.recipientField.trim() &&
-    classifyRecipientField(p.config.recipientField) === "submitted"
-  );
-}
-
 function DeliverySettings({
   value,
   showActions,
@@ -412,14 +393,14 @@ function DeliverySettings({
       </div>
     );
   const processors = recipe.processors ?? [];
-  const applicantEmails = processors.filter(isApplicantEmail);
+  const applicantEmails = processors.filter(isApplicantEmailAction);
   const departmentEmails = processors.filter(
     (p) => p.type === "email" && p.config.recipientField === "config.mdaEmail",
   );
   const otherEmails = processors.filter(
     (p) =>
       p.type === "email" &&
-      !isApplicantEmail(p) &&
+      !isApplicantEmailAction(p) &&
       !departmentEmails.includes(p),
   );
   const integrations = [

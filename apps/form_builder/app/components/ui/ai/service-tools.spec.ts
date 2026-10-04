@@ -200,6 +200,50 @@ it("limits service details to valid draft fields and preserves unpatched setup v
   });
 });
 
+it("takes the After submission decisions as a pair, as the Details page does (#2683)", async () => {
+  await expect(
+    prepareServiceEdit("update_service_details", {
+      summary: "Use the actions",
+      target: { serviceId },
+      patch: { setup: { delivery: "configured" } },
+    }),
+  ).rejects.toThrow("together");
+  // The pair the earlier seed wrote: decided delivery, undecided applicant
+  // email. The seed would re-derive it, so the tool refuses it as a decision.
+  await expect(
+    prepareServiceEdit("update_service_details", {
+      summary: "Use the actions",
+      target: { serviceId },
+      patch: { setup: { delivery: "configured", applicantEmail: "undecided" } },
+    }),
+  ).rejects.toThrow("undecided for both or neither");
+  await expect(
+    prepareServiceEdit("update_service_details", {
+      summary: "Reopen the decision",
+      target: { serviceId },
+      patch: { setup: { delivery: "undecided", applicantEmail: "undecided" } },
+    }),
+  ).resolves.toMatchObject({
+    after: { setup: { delivery: "undecided", applicantEmail: "undecided" } },
+  });
+  const change = await prepareServiceEdit("update_service_details", {
+    summary: "Decide",
+    target: { serviceId },
+    patch: { setup: { delivery: "configured", applicantEmail: "none" } },
+  });
+  expect(change.after).toMatchObject({
+    setup: { delivery: "configured", applicantEmail: "none" },
+  });
+  await change.apply();
+  expect(
+    (await getServiceDraft({ data: { serviceId } })).manifest.setup,
+  ).toEqual({
+    step: "delivery",
+    delivery: "configured",
+    applicantEmail: "none",
+  });
+});
+
 it("refuses unknown services and pages without adopting them, redacts reads, and caps output size", async () => {
   await expect(readService({ serviceId: "unknown" })).rejects.toThrow(
     "Open this service",
