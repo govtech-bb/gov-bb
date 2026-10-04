@@ -895,6 +895,36 @@ it("shows no warning for block siblings with different ids", () => {
   expect(duplicateWarnings()).toHaveLength(0);
 });
 
+// The check runs against the modal's unsaved child overrides, not the saved
+// draft, so both siblings react to an edit at once. Override inputs render in
+// element order: email, telephone, mobile-telephone, home-telephone.
+const overrideInputs = () => screen.getAllByLabelText("Field ID Override");
+
+it("warns on both siblings as soon as one is renamed onto the other's id, before Save", async () => {
+  renderPanel({
+    id: "b1",
+    kind: "block",
+    ref: "blocks/contact-information",
+    overrides: {},
+  });
+  await userEvent.type(overrideInputs()[2], "telephone");
+  expect(flaggedFieldIds()).toEqual(["telephone", "telephone"]);
+});
+
+it("clears both warnings as soon as a saved collision is undone, before Save", async () => {
+  renderPanel({
+    id: "b1",
+    kind: "block",
+    ref: "blocks/contact-information",
+    overrides: {},
+    childOverrides: { "mobile-telephone": { fieldId: "telephone" } },
+  });
+  expect(flaggedFieldIds()).toEqual(["telephone", "telephone"]);
+  await userEvent.clear(overrideInputs()[2]);
+  expect(flaggedFieldIds()).toEqual([]);
+  expect(duplicateWarnings()).toHaveLength(0);
+});
+
 // --- Type-specific settings (#2873) ----------------------------------------
 // Attributes only one htmlType's renderer reads — a content block's style,
 // markdown body and details summary — come from CUSTOM_ATTRIBUTE_DESCRIPTORS

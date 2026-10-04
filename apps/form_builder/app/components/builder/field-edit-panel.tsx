@@ -968,6 +968,24 @@ function FieldEditForm({
     field.childOverrides ? { ...field.childOverrides } : {},
   );
 
+  // The saved draft with this field's unsaved overrides and childOverrides
+  // swapped into its slot. The block children's duplicate check runs against
+  // it, so renaming a child onto a sibling's id warns on both at once and
+  // undoing a saved collision clears both before Save (#2896). A standalone
+  // field's own entry is excluded from its check, so that path reads `draft`.
+  const liveDraft = useMemo<RecipeDraft>(
+    () => ({
+      ...draft,
+      steps: draft.steps.map((step) => ({
+        ...step,
+        fields: step.fields.map((f) =>
+          f.id === field.id ? { ...f, overrides, childOverrides } : f,
+        ),
+      })),
+    }),
+    [draft, field.id, overrides, childOverrides],
+  );
+
   const item = getRegistryItem(ref, catalog);
 
   // Determine htmlType for component/custom fields
@@ -1078,7 +1096,7 @@ function FieldEditForm({
                   }
                   checkDuplicateFieldId={(candidate) =>
                     fieldIdDuplicatesAnother(
-                      draft,
+                      liveDraft,
                       catalog,
                       field.id,
                       candidate,
