@@ -1284,4 +1284,6 @@ it.each([
       .getAllByLabelText("Option value")
       .map((el) => (el as HTMLInputElement).value),
   ).toEqual(groups[0].options.map((o) => o.value));
-});
+  // Rendering ten real categories (54 options) takes ~4s on a quiet machine,
+  // close to the 10s default under CI load.
+}, 20_000);
