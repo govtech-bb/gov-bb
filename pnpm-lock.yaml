@@ -890,6 +890,9 @@ importers:
       '@govtech-bb/form-types':
         specifier: workspace:*
         version: link:../../packages/form-types
+      '@govtech-bb/registry':
+        specifier: workspace:*
+        version: link:../../packages/registry
       '@tanstack/ai':
         specifier: ^0.53.0
         version: 0.53.0(@opentelemetry/api@1.9.1)(zod@4.4.3)

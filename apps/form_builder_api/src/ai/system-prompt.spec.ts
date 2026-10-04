@@ -1,5 +1,11 @@
 import { getSystemPrompt } from "./system-prompt.js";
 import { getCatalog, getRegistryItem } from "@govtech-bb/form-builder";
+import {
+  contentVariantSchema,
+  optionGroupSchema,
+  type GeocodeTargets,
+} from "@govtech-bb/form-types";
+import { REGISTRY_PRIMITIVES } from "@govtech-bb/registry";
 
 // Guards the embedded AI system prompt against drift from the registry.
 // Every component/block ref the prompt tells the model to emit must resolve
@@ -35,18 +41,11 @@ const MIGRATED_SLASH_REFS = [
   "components/generic/show-hide",
 ];
 
-const GENERIC_PRIMITIVES = [
-  "components/generic-text",
-  "components/generic-textarea",
-  "components/generic-date",
-  "components/generic-email",
-  "components/generic-tel",
-  "components/generic-checkbox",
-  "components/generic-file",
-  "components/generic-select",
-  "components/generic-radio",
-  "components/generic-number",
-];
+// Every `components/generic-*` primitive the registry exposes — derived, not
+// listed, so a primitive added to the registry but not to the prompt fails
+// the guard below (#2885: a hard-coded list of 10 let generic-time and
+// generic-checkbox-accordion go undocumented).
+const GENERIC_PRIMITIVES = Object.keys(REGISTRY_PRIMITIVES);
 
 // The 8 composite blocks the registry exposes (the UI block palette). Since
 // the vestigial builtin catalog was retired (#515), getCatalog().blocks is
@@ -87,10 +86,60 @@ describe("AI system prompt", () => {
   });
 
   it("surfaces every generic primitive plus show-hide", () => {
+    // An empty registry list would pass vacuously.
+    expect(GENERIC_PRIMITIVES).not.toEqual([]);
     const missing = [...GENERIC_PRIMITIVES, "components/show-hide"].filter(
       (ref) => !prompt.includes(ref),
     );
     expect(missing).toEqual([]);
+  });
+
+  // #2885: the five components the reference used to omit, each with the
+  // override keys its renderer honours. Key names and enum values are read
+  // from the form-types schemas so a rename there fails here, not in a form.
+  it("documents the content block with its variant, content and summary keys", () => {
+    expect(prompt).toContain("components/content");
+    for (const variant of contentVariantSchema.options) {
+      expect(prompt).toContain(`"${variant}"`);
+    }
+    expect(prompt).toContain('"content"');
+    // summary is the details disclosure's clickable line, falling back to label.
+    expect(prompt).toMatch(/"summary".*details/);
+    expect(prompt).toContain("falls back to `label`");
+  });
+
+  it("documents address-lookup with its same-step geocodeTargets", () => {
+    expect(prompt).toContain("components/address-lookup");
+    expect(prompt).toContain('"geocodeTargets"');
+    // geocodeTargetsSchema is not exported from the form-types barrel; the
+    // type is, so a renamed key fails here at type level.
+    const targetKeys: (keyof GeocodeTargets)[] = [
+      "line2FieldId",
+      "parishFieldId",
+      "coordinatesFieldId",
+    ];
+    for (const key of targetKeys) {
+      expect(prompt).toContain(`"${key}"`);
+    }
+    expect(prompt).toMatch(/same[- ]step/i);
+  });
+
+  it("documents the checkbox accordion's groups shape", () => {
+    expect(prompt).toContain("components/generic-checkbox-accordion");
+    expect(prompt).toContain('"groups"');
+    for (const key of Object.keys(optionGroupSchema.shape)) {
+      expect(prompt).toContain(`"${key}"`);
+    }
+  });
+
+  it("documents the step rule for generic-time and opening-hours", () => {
+    expect(prompt).toContain("components/generic-time");
+    expect(prompt).toContain("components/opening-hours");
+    expect(prompt).toContain('"step"');
+    // generic-time's registry default, so an override is only for a different increment.
+    expect(prompt).toContain("1800");
+    // opening-hours honours step only when it is a whole number of minutes.
+    expect(prompt).toContain("multiple of 60");
   });
 
   it("surfaces every registry block", () => {

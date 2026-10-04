@@ -15,6 +15,7 @@
     "@govtech-bb/database": "workspace:*",
     "@govtech-bb/form-builder": "workspace:*",
     "@govtech-bb/form-types": "workspace:*",
+    "@govtech-bb/registry": "workspace:*",
     "@tanstack/ai": "^0.53.0",
     "@tanstack/ai-bedrock": "0.3.7",
     "cors": "^2.8.5",
