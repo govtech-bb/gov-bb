@@ -4,6 +4,7 @@ import {
   serviceDraftSchema,
   serviceSnapshotSchema,
   serviceReadiness,
+  seedServiceManifest,
   type ServiceDraft,
   type ServiceSnapshot,
   type ServiceCheckpoint,
@@ -114,12 +115,21 @@ export async function getServiceDraft({
       if (latest && latest.revision !== draft.revision) return latest;
       const recipe = draftRecipeSchema.parse(loaded[0]);
       const pendingConfig = servicePendingConfigSchema.parse(loaded[1]);
+      // A never-published manifest keeps tracking what the recipe decides
+      // until the author decides otherwise (ADR 0073, #2683); a published one
+      // is authored fact.
+      const manifest =
+        draft.baseManifestSha === null
+          ? seedServiceManifest(draft.manifest, recipe, pendingConfig)
+          : draft.manifest;
       if (
         JSON.stringify(recipe) !== JSON.stringify(draft.recipe) ||
-        JSON.stringify(pendingConfig) !== JSON.stringify(draft.pendingConfig)
+        JSON.stringify(pendingConfig) !== JSON.stringify(draft.pendingConfig) ||
+        JSON.stringify(manifest) !== JSON.stringify(draft.manifest)
       ) {
         draft = {
           ...draft,
+          manifest,
           recipe,
           pendingConfig,
           revision: draft.revision + 1,
@@ -153,6 +163,15 @@ async function save(
   saveRecipe: boolean,
 ): Promise<ServiceDraft> {
   const snapshot = serviceSnapshotSchema.parse(snapshotInput);
+  // A never-published manifest is seeded on every write (ADR 0073, #2683) so
+  // the stored draft is always what a refresh would derive — a restored or
+  // patched manifest cannot bump the revision under an open screen.
+  if (snapshot.baseManifestSha === null)
+    snapshot.manifest = seedServiceManifest(
+      snapshot.manifest,
+      snapshot.recipe,
+      snapshot.pendingConfig,
+    );
   const owner = await getServiceUser();
   const key = `${prefix}${encodeURIComponent(owner)}:${snapshot.manifest.serviceId}`;
   const write = async () => {
@@ -322,12 +341,7 @@ export async function attachServiceForm({
       recipe,
       pendingConfig,
       baseRecipeSha,
-      manifest: {
-        ...current.manifest,
-        formId: data.formId,
-        contactDetails:
-          current.manifest.contactDetails ?? recipe.contactDetails,
-      },
+      manifest: { ...current.manifest, formId: data.formId },
     },
     data.expectedRevision,
     false,

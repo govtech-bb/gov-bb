@@ -142,6 +142,120 @@ it("connects one existing form, keeps repeated loads stable, and saves edits thr
     }),
   ).rejects.toThrow("already has an application");
 });
+const applicantEmailOnly = draftRecipeSchema.parse({
+  formId: "test-form",
+  title: "Application",
+  steps: [],
+  processors: [
+    { type: "email", config: { recipientField: "your-details.email" } },
+  ],
+});
+// What the earlier seed stored for a form whose only action is the applicant
+// confirmation email: readiness rejected it as "Add a delivery action".
+const staleSetup = {
+  step: "about",
+  delivery: "configured",
+  applicantEmail: "undecided",
+} as const;
+it("re-seeds a draft adopted before #2683 on refresh until the author decides", async () => {
+  // Stored by the earlier seed: the retired visibility key and a delivery it
+  // decided alone.
+  localStorage.setItem(
+    "service-workspace:v1:editor:test-service",
+    JSON.stringify({
+      ...snapshot,
+      recipe: applicantEmailOnly,
+      manifest: {
+        ...snapshot.manifest,
+        visibility: "draft",
+        formId: "test-form",
+        setup: staleSetup,
+      },
+      revision: 4,
+      updatedAt: "2026-09-14T00:00:00.000Z",
+      updatedBy: "editor",
+    }),
+  );
+  vi.mocked(getRecipe).mockResolvedValue(applicantEmailOnly as never);
+  const refreshed = await getServiceDraft({
+    data: { serviceId: "test-service" },
+  });
+  expect(refreshed.revision).toBe(5);
+  expect(refreshed.manifest).not.toHaveProperty("visibility");
+  expect(refreshed.manifest.setup).toEqual({
+    step: "about",
+    delivery: "none",
+    applicantEmail: "configured",
+  });
+  expect(
+    (await getServiceDraft({ data: { serviceId: "test-service" } })).revision,
+  ).toBe(5);
+  const decided = await saveServiceDraft({
+    data: {
+      snapshot: {
+        ...refreshed,
+        manifest: {
+          ...refreshed.manifest,
+          setup: { ...refreshed.manifest.setup, applicantEmail: "none" },
+        },
+      },
+      expectedRevision: 5,
+    },
+  });
+  const kept = await getServiceDraft({ data: { serviceId: "test-service" } });
+  expect(kept.revision).toBe(decided.revision);
+  expect(kept.manifest.setup.applicantEmail).toBe("none");
+});
+it("seeds a never-published manifest on save so a refresh never bumps the revision", async () => {
+  vi.mocked(getRecipe).mockResolvedValue(applicantEmailOnly as never);
+  const saved = await saveServiceDraft({
+    data: {
+      snapshot: {
+        ...snapshot,
+        recipe: applicantEmailOnly,
+        manifest: {
+          ...snapshot.manifest,
+          formId: "test-form",
+          setup: staleSetup,
+        },
+      },
+      expectedRevision: 0,
+    },
+  });
+  expect(saved.manifest.setup).toEqual({
+    step: "about",
+    delivery: "none",
+    applicantEmail: "configured",
+  });
+  const refreshed = await getServiceDraft({
+    data: { serviceId: "test-service" },
+  });
+  expect(refreshed.revision).toBe(saved.revision);
+});
+it("leaves a published manifest as the author saved it", async () => {
+  vi.mocked(getRecipe).mockResolvedValue(applicantEmailOnly as never);
+  const published = await saveServiceDraft({
+    data: {
+      snapshot: {
+        ...snapshot,
+        recipe: applicantEmailOnly,
+        baseManifestSha: "0123456789abcdef0123456789abcdef01234567",
+        manifest: {
+          ...snapshot.manifest,
+          formId: "test-form",
+          setup: staleSetup,
+        },
+      },
+      expectedRevision: 0,
+    },
+  });
+  expect(published.manifest.setup).toEqual(staleSetup);
+  const refreshed = await getServiceDraft({
+    data: { serviceId: "test-service" },
+  });
+  expect(refreshed.revision).toBe(published.revision);
+  expect(refreshed.manifest.setup).toEqual(staleSetup);
+});
 it("retains newer page edits when an older recipe refresh finishes", async () => {
   const recipe = draftRecipeSchema.parse({
     formId: "test-form",

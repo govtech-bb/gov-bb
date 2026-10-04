@@ -1,4 +1,7 @@
 import {
+  deriveServiceSetup,
+  isApplicantEmailAction,
+  seedServiceManifest,
   serviceDraftSchema,
   serviceManifestSchema,
   servicePagePathSchema,
@@ -7,6 +10,8 @@ import {
   serviceSnapshotSchema,
   type ServiceSnapshot,
 } from "./service-workspace.type";
+import { draftRecipeSchema } from "./service-contract.type";
+import { processorSchema } from "./processor.type";
 
 const main = "2f5c0b16-2c0f-4877-b611-69933c4df678";
 const help = "5dcbf56a-f1de-4d7b-9261-e27320612f55";
@@ -83,7 +88,6 @@ const payment = {
 const manifest = {
   schemaVersion: 1,
   serviceId: "test-service",
-  visibility: "preview",
   title: "Test service",
   category: "health",
   formId: null,
@@ -126,7 +130,6 @@ describe("serviceManifestSchema", () => {
     });
     expect(parsed).toMatchObject({
       title: "Minimal",
-      visibility: "draft",
       description: "",
       category: "",
       subcategory: "",
@@ -136,6 +139,14 @@ describe("serviceManifestSchema", () => {
         applicantEmail: "undecided",
       },
     });
+  });
+
+  it("drops the retired visibility seed from a saved manifest (#2683)", () => {
+    // A form's status is the service_status row set in Feature flagging and a
+    // page's is its own frontmatter; the manifest no longer carries one.
+    expect(
+      serviceManifestSchema.parse({ ...manifest, visibility: "preview" }),
+    ).not.toHaveProperty("visibility");
   });
 
   it("rejects pages sharing an id, path or public link", () => {
@@ -239,6 +250,171 @@ describe("serviceSnapshotSchema", () => {
       updatedBy: "editor",
       baseManifestSha: sha,
     });
+  });
+});
+
+describe("isApplicantEmailAction", () => {
+  it("recognises an email action addressed to a submitted answer", () => {
+    const action = (value: unknown) => processorSchema.parse(value);
+    expect(isApplicantEmailAction(action(applicantEmail))).toBe(true);
+    expect(isApplicantEmailAction(action(departmentEmail))).toBe(false);
+    expect(
+      isApplicantEmailAction(
+        action({
+          type: "email",
+          config: { recipientField: "contactDetails.email" },
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      isApplicantEmailAction(
+        action({ type: "email", config: { recipientField: "   " } }),
+      ),
+    ).toBe(false);
+    expect(
+      isApplicantEmailAction(
+        action({
+          type: "email",
+          config: { recipientField: { var: "your-details.email" } },
+        }),
+      ),
+    ).toBe(false);
+    expect(isApplicantEmailAction(action(payment))).toBe(false);
+  });
+});
+
+describe("deriveServiceSetup", () => {
+  const derive = (
+    processors: unknown[] | undefined,
+    pending: unknown[] | null = null,
+  ) =>
+    deriveServiceSetup(
+      draftRecipeSchema.parse({ ...recipe, processors }),
+      servicePendingConfigSchema.parse({
+        mdaContactId: null,
+        processors: pending,
+      }),
+    );
+
+  it("reads both After submission decisions from the actions and pending payments", () => {
+    expect(derive([applicantEmail, departmentEmail])).toEqual({
+      applicantEmail: "configured",
+      delivery: "configured",
+    });
+    expect(derive([applicantEmail])).toEqual({
+      applicantEmail: "configured",
+      delivery: "none",
+    });
+    expect(derive([applicantEmail], [payment])).toEqual({
+      applicantEmail: "configured",
+      delivery: "configured",
+    });
+    expect(derive([departmentEmail])).toEqual({
+      applicantEmail: "none",
+      delivery: "configured",
+    });
+    expect(derive(undefined)).toEqual({
+      applicantEmail: "none",
+      delivery: "none",
+    });
+  });
+});
+
+describe("seedServiceManifest", () => {
+  const seeded = (value: ServiceSnapshot) => ({
+    ...value,
+    manifest: seedServiceManifest(
+      value.manifest,
+      value.recipe,
+      value.pendingConfig,
+    ),
+  });
+  const seed = (
+    setup: Record<string, unknown>,
+    recipeOverrides: Record<string, unknown> = {},
+    pending: unknown[] | null = null,
+  ) =>
+    seeded(
+      withForm(
+        setup,
+        recipeOverrides,
+        pending
+          ? { pendingConfig: { mdaContactId: contactId, processors: pending } }
+          : {},
+      ),
+    ).manifest;
+
+  it("decides what the recipe already states and makes the service publishable", () => {
+    const value = seeded(withForm({}));
+    expect(value.manifest.setup).toEqual({
+      step: "about",
+      applicantEmail: "configured",
+      delivery: "configured",
+    });
+    expect(serviceReadiness(value)).toEqual({ ready: true, issues: [] });
+    expect(seed({}, { processors: [applicantEmail] }).setup).toMatchObject({
+      applicantEmail: "configured",
+      delivery: "none",
+    });
+    expect(seed({}, { processors: undefined }).setup).toMatchObject({
+      applicantEmail: "none",
+      delivery: "none",
+    });
+  });
+
+  it("leaves a decided value alone (ADR 0073)", () => {
+    expect(
+      seed({ applicantEmail: "none", delivery: "none" }).setup,
+    ).toMatchObject({ applicantEmail: "none", delivery: "none" });
+    // Decided, then the only delivery action was removed in the form editor:
+    // readiness asks for the action rather than the seed deciding "none".
+    expect(
+      seed(
+        { delivery: "configured", applicantEmail: "configured" },
+        { processors: [applicantEmail] },
+      ).setup.delivery,
+    ).toBe("configured");
+    expect(
+      seed(
+        { delivery: "undecided", applicantEmail: "configured" },
+        { processors: [departmentEmail] },
+      ).setup,
+    ).toMatchObject({ delivery: "configured", applicantEmail: "configured" });
+  });
+
+  it("replaces the delivery the earlier seed decided alone for an applicant-email-only form", () => {
+    expect(
+      seed({ delivery: "configured" }, { processors: [applicantEmail] }).setup,
+    ).toMatchObject({ delivery: "none", applicantEmail: "configured" });
+    expect(
+      seed({ delivery: "configured" }, { processors: [applicantEmail] }, [
+        payment,
+      ]).setup.delivery,
+    ).toBe("configured");
+  });
+
+  it("fills the public contact from the recipe only when the manifest has none", () => {
+    const value = withForm(
+      {},
+      { contactDetails: { telephoneNumber: "246 000 0000" } },
+    );
+    expect(seeded(value).manifest.contactDetails).toEqual({
+      email: "help@example.test",
+    });
+    value.manifest.contactDetails = undefined;
+    expect(seeded(value).manifest.contactDetails).toEqual({
+      telephoneNumber: "246 000 0000",
+    });
+    const none = withForm({}, { contactDetails: undefined });
+    none.manifest.contactDetails = undefined;
+    expect(seeded(none).manifest.contactDetails).toBeUndefined();
+  });
+
+  it("leaves the manifest unchanged while the form cannot be fetched", () => {
+    const value = snapshot({ formId: "test-service" });
+    expect(seedServiceManifest(value.manifest, null, value.pendingConfig)).toBe(
+      value.manifest,
+    );
   });
 });
 
