@@ -219,3 +219,49 @@ describe("updateFormHandler — published-only form (no draft row)", () => {
     expect(stmt(calls, /INSERT INTO form_definitions/i)).toBeUndefined();
   });
 });
+
+// #2489: `updated_at` must mean "last saved". The column defaults to NOW() on
+// insert and TypeORM's @UpdateDateColumn only fires through the ORM, so these
+// raw-SQL saves have to stamp it themselves — otherwise every row reads as
+// last-saved at creation and no freshness rule can be built on it.
+describe("updateFormHandler — updated_at records the last save (#2489)", () => {
+  it("stamps updated_at = NOW() on the in-place UPDATE", async () => {
+    const { ds, calls } = fakeDataSource({ putRows: [{ id: 7 }] });
+    getDataSourceMock.mockResolvedValue(ds);
+
+    await updateFormHandler(
+      mockReq(
+        { recipe: recipe() },
+        { formId: "sports-training-programme-form-schema" },
+      ),
+      mockRes(),
+    );
+
+    expect(stmt(calls, /UPDATE form_definitions SET/i)!.sql).toMatch(
+      /updated_at = NOW\(\)/i,
+    );
+  });
+
+  it("stamps updated_at = NOW() when the seed upsert hits an existing row", async () => {
+    const { ds, calls } = fakeDataSource({ putRows: [] });
+    getDataSourceMock.mockResolvedValue(ds);
+    mockPublishedForms([
+      {
+        formId: "sports-training-programme-form-schema",
+        title: "Register for Community Sports Training Programme",
+      },
+    ]);
+
+    await updateFormHandler(
+      mockReq(
+        { recipe: recipe() },
+        { formId: "sports-training-programme-form-schema" },
+      ),
+      mockRes(),
+    );
+
+    expect(stmt(calls, /INSERT INTO form_definitions/i)!.sql).toMatch(
+      /DO UPDATE SET schema = EXCLUDED\.schema, updated_at = NOW\(\)/i,
+    );
+  });
+});

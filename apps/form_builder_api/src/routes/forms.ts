@@ -688,15 +688,18 @@ export async function updateFormHandler(
       // the loser raising an unhandled 23505 and 500ing. Raw SQL, like the
       // UPDATE below: TypeORM's upsert() types the recipe through
       // QueryDeepPartialEntity, which can't express its nested element unions.
+      // Both writes stamp updated_at themselves (#2489): the column's NOW()
+      // default fires only on insert and @UpdateDateColumn only through the
+      // ORM, so without this a row would read as last-saved at creation.
       await manager.query(
         `INSERT INTO form_definitions (form_id, version, schema, published_at)
          VALUES ($1, NULL, $2, NULL)
-         ON CONFLICT (form_id) DO UPDATE SET schema = EXCLUDED.schema`,
+         ON CONFLICT (form_id) DO UPDATE SET schema = EXCLUDED.schema, updated_at = NOW()`,
         [req.params.formId, recipe],
       );
     } else {
       await manager.query(
-        `UPDATE form_definitions SET schema = $1 WHERE id = $2`,
+        `UPDATE form_definitions SET schema = $1, updated_at = NOW() WHERE id = $2`,
         [recipe, rows[0].id],
       );
     }
@@ -813,8 +816,11 @@ export async function rekeyFormHandler(
     // the builder picker, so it can be re-keyed while disabled. The leftover
     // old-ID tombstone then surfaces as an orphan-override row whose Enable
     // clears it, so the old ID isn't trapped.
+    // A re-key is a save of the author's draft (step 6 writes the edited
+    // content), so updated_at moves with it — raw SQL, hence stamped by hand
+    // (#2489; see updateFormHandler).
     await manager.query(
-      `UPDATE form_definitions SET form_id = $1 WHERE form_id = $2`,
+      `UPDATE form_definitions SET form_id = $1, updated_at = NOW() WHERE form_id = $2`,
       [newFormId, oldFormId],
     );
     // Move the per-form config (the MDA contact link) to the new ID too, so a
@@ -829,7 +835,7 @@ export async function rekeyFormHandler(
     // 6. Persist the edited content under the new ID. Step 5 already moved the
     // single row, so update its schema in place.
     await manager.query(
-      `UPDATE form_definitions SET schema = $1 WHERE form_id = $2`,
+      `UPDATE form_definitions SET schema = $1, updated_at = NOW() WHERE form_id = $2`,
       [recipe, newFormId],
     );
     return { status: 200, body: { ok: true } };
