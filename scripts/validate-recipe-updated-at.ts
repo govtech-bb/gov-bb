@@ -7,9 +7,12 @@
  * amended by #2878). That only holds if every change to a recipe's content
  * moves `updatedAt` forward: the builder's Deploy stamps it at the write, but
  * a hand edit in a PR can forget. This fails when a flat recipe file's content
- * changed against a base revision while `updatedAt` stayed put or moved back.
- * "Content" is everything but `updatedAt`, compared as parsed JSON — a change
- * that only reformats the file passes, as does a recipe the base lacks.
+ * changed against a base revision while `updatedAt` stayed put, moved back, or
+ * moved to before the recipe last changed on the base (a token bump of an old
+ * stamp). "Content" is everything but `updatedAt`, compared as parsed JSON — a
+ * change that only reformats the file passes, as does a recipe the base lacks.
+ * Any stamp more than a few minutes in the future fails, content change or
+ * not: it would re-sync a draft on every open and outrank every later Deploy.
  *
  * Two modes, both over the canonical flat `recipes/{formId}.json` files only:
  *   --base <ref>   (default origin/main) the merge base of <ref> and HEAD,
@@ -42,10 +45,24 @@ export function isFlatRecipeFile(relPath: string): boolean {
   return path.posix.dirname(posix) === RECIPES_DIR && posix.endsWith(".json");
 }
 
+/** How far ahead of the guard's clock a stamp may be — clock skew, no more. */
+const MAX_SKEW_MS = 5 * 60_000;
+
 function parseStamp(value: unknown): number | null {
   if (typeof value !== "string") return null;
   const t = Date.parse(value);
   return Number.isNaN(t) ? null : t;
+}
+
+export interface StampBounds {
+  /**
+   * When the recipe last changed on the base revision (ISO), or null when the
+   * base has no commit touching it. A content change stamped before it is a
+   * token bump of an old stamp, not the time of the edit.
+   */
+  floor: string | null;
+  /** The guard's clock. */
+  now: Date;
 }
 
 /**
@@ -57,25 +74,29 @@ export function checkUpdatedAtBumped(
   before: string | null,
   after: string,
   where: string,
+  { floor, now }: StampBounds,
 ): string | null {
-  if (before === null) return null;
   let prev: unknown;
   let next: unknown;
   try {
-    prev = JSON.parse(before);
+    prev = before === null ? null : JSON.parse(before);
     next = JSON.parse(after);
   } catch (err) {
     return `${where}: invalid JSON — ${(err as Error).message}`;
   }
-  if (!isRecord(prev) || !isRecord(next)) {
+  if ((before !== null && !isRecord(prev)) || !isRecord(next)) {
     return `${where}: a recipe must be a JSON object`;
   }
+  const fix = `set it to the time of this edit, e.g. "${now.toISOString()}"`;
+  const nextStamp = next.updatedAt;
+  const nextTime = parseStamp(nextStamp);
+  if (nextTime !== null && nextTime > now.getTime() + MAX_SKEW_MS) {
+    return `${where}: updatedAt ${JSON.stringify(nextStamp)} is in the future — ${fix}`;
+  }
+  if (!isRecord(prev)) return null;
   if (isDeepStrictEqual(recipeContent(prev), recipeContent(next))) return null;
   const prevStamp = prev.updatedAt;
-  const nextStamp = next.updatedAt;
 
-  const fix = `set it to the time of this edit, e.g. "${new Date().toISOString()}"`;
-  const nextTime = parseStamp(nextStamp);
   if (nextTime === null) {
     const what =
       nextStamp === undefined
@@ -91,33 +112,55 @@ export function checkUpdatedAtBumped(
         : `moved back (${JSON.stringify(prevStamp)} → ${JSON.stringify(nextStamp)})`;
     return `${where}: content changed but updatedAt ${what} — ${fix}`;
   }
+  if (floor !== null && nextTime < Date.parse(floor)) {
+    return `${where}: content changed but updatedAt ${JSON.stringify(nextStamp)} is earlier than ${floor}, when this recipe last changed on the base — ${fix}`;
+  }
   return null;
 }
 
-function git(args: string[]): string {
-  return execFileSync("git", args, { encoding: "utf8" });
+export interface RunResult {
+  checked: number;
+  errors: string[];
 }
 
-/** `git show <spec>`, or null when the object does not exist. */
-function gitShow(spec: string): string | null {
-  try {
-    return execFileSync("git", ["show", spec], {
+/**
+ * The guard over `argv` (the CLI's arguments) in the repository at `cwd`.
+ * Throws on a usage error or a base it cannot resolve.
+ */
+export function run(
+  argv: string[],
+  { cwd, now = new Date() }: { cwd: string; now?: Date },
+): RunResult {
+  const git = (args: string[]) =>
+    execFileSync("git", args, {
+      cwd,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     });
-  } catch {
-    return null;
-  }
-}
+  /** `git show <spec>`, or null when the object does not exist. */
+  const gitShow = (spec: string): string | null => {
+    try {
+      return git(["show", spec]);
+    } catch {
+      return null;
+    }
+  };
+  /**
+   * The committer date of the newest commit on `rev` touching `file` — the
+   * floor for a content change's stamp. Not `rev`'s own date: CI checks out
+   * the PR merged into main, so the merge base is main's tip, and every
+   * unrelated merge would then fail an open PR's earlier stamp.
+   */
+  const lastChanged = (rev: string, file: string): string | null => {
+    const date = git(["log", "-1", "--format=%cI", rev, "--", file]).trim();
+    return date ? new Date(date).toISOString() : null;
+  };
 
-function main(): void {
-  const argv = process.argv.slice(2);
   const staged = argv.includes("--staged");
   const baseIndex = argv.indexOf("--base");
   const baseRef = baseIndex === -1 ? "origin/main" : argv[baseIndex + 1];
   if (!baseRef || baseRef.startsWith("--")) {
-    console.error("--base needs a ref, e.g. --base origin/main");
-    process.exit(2);
+    throw new Error("--base needs a ref, e.g. --base origin/main");
   }
   const positional = argv.filter(
     (arg, i) => !arg.startsWith("--") && argv[i - 1] !== "--base",
@@ -125,10 +168,10 @@ function main(): void {
 
   const root = git(["rev-parse", "--show-toplevel"]).trim();
   const toRel = (file: string) =>
-    path.relative(root, path.resolve(file)).split(path.sep).join("/");
+    path.relative(root, path.resolve(cwd, file)).split(path.sep).join("/");
 
   let files: string[];
-  let before: (file: string) => string | null;
+  let baseRev: string;
   let after: (file: string) => string | null;
   if (staged) {
     files =
@@ -144,29 +187,26 @@ function main(): void {
           ])
             .split("\n")
             .filter(Boolean);
-    before = (file) => gitShow(`HEAD:${file}`);
+    baseRev = "HEAD";
     after = (file) => gitShow(`:${file}`);
   } else {
-    let mergeBase: string;
     try {
-      mergeBase = git(["merge-base", baseRef, "HEAD"]).trim();
+      baseRev = git(["merge-base", baseRef, "HEAD"]).trim();
     } catch {
-      console.error(
+      throw new Error(
         `Cannot find the merge base of ${baseRef} and HEAD — fetch the base first (git fetch origin main).`,
       );
-      process.exit(2);
     }
     files = git([
       "diff",
       "--name-only",
       "--diff-filter=AM",
-      mergeBase,
+      baseRev,
       "--",
       RECIPES_DIR,
     ])
       .split("\n")
       .filter(Boolean);
-    before = (file) => gitShow(`${mergeBase}:${file}`);
     after = (file) => {
       try {
         return fs.readFileSync(path.join(root, file), "utf8");
@@ -181,19 +221,37 @@ function main(): void {
   for (const file of recipes) {
     const next = after(file);
     if (next === null) continue; // removed since the diff was listed
-    const error = checkUpdatedAtBumped(before(file), next, file);
+    const error = checkUpdatedAtBumped(
+      gitShow(`${baseRev}:${file}`),
+      next,
+      file,
+      {
+        floor: lastChanged(baseRev, file),
+        now,
+      },
+    );
     if (error) errors.push(error);
   }
+  return { checked: recipes.length, errors };
+}
 
-  if (errors.length > 0) {
+function main(): void {
+  let result: RunResult;
+  try {
+    result = run(process.argv.slice(2), { cwd: process.cwd() });
+  } catch (err) {
+    console.error((err as Error).message);
+    process.exit(2);
+  }
+  if (result.errors.length > 0) {
     console.error(
-      `Found ${errors.length} recipe file(s) whose content changed without bumping updatedAt (#2878):`,
+      `Found ${result.errors.length} recipe file(s) whose updatedAt does not record this change (#2878):`,
     );
-    for (const error of errors) console.error(`  - ${error}`);
+    for (const error of result.errors) console.error(`  - ${error}`);
     process.exit(1);
   }
   console.log(
-    `Checked ${recipes.length} changed recipe file(s) for an updatedAt bump. OK.`,
+    `Checked ${result.checked} changed recipe file(s) for an updatedAt bump. OK.`,
   );
 }
 
