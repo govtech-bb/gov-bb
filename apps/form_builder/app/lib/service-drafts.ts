@@ -341,7 +341,15 @@ export async function attachServiceForm({
       recipe,
       pendingConfig,
       baseRecipeSha,
-      manifest: { ...current.manifest, formId: data.formId },
+      manifest: {
+        ...current.manifest,
+        formId: data.formId,
+        // A published manifest is not re-seeded by save() (#2683), so a
+        // service that went live with pages only inherits the recipe's contact
+        // details here (#2894).
+        contactDetails:
+          current.manifest.contactDetails ?? recipe.contactDetails,
+      },
     },
     data.expectedRevision,
     false,

@@ -142,6 +142,59 @@ it("connects one existing form, keeps repeated loads stable, and saves edits thr
     }),
   ).rejects.toThrow("already has an application");
 });
+// A service published with content pages only: `save()` seeds a manifest
+// while `baseManifestSha` is null, so attaching a form later must carry the
+// recipe's contact details over itself (#2894).
+const publishedPagesOnly = {
+  ...snapshot,
+  baseManifestSha: "0123456789abcdef0123456789abcdef01234567",
+};
+const withContact = draftRecipeSchema.parse({
+  title: "Application",
+  formId: "test-form",
+  steps: [],
+  contactDetails: { email: "health@gov.bb", telephoneNumber: "246-555-0100" },
+});
+it("attaching a form to a published service inherits the recipe's contact details (#2894)", async () => {
+  vi.mocked(getRecipe).mockResolvedValue(withContact as never);
+  const published = await saveServiceDraft({
+    data: { snapshot: publishedPagesOnly, expectedRevision: 0 },
+  });
+  expect(published.manifest.contactDetails).toBeUndefined();
+  const connected = await attachServiceForm({
+    data: {
+      serviceId: "test-service",
+      expectedRevision: published.revision,
+      formId: "test-form",
+    },
+  });
+  expect(connected.manifest.contactDetails).toEqual(withContact.contactDetails);
+  expect(
+    (await getServiceDraft({ data: { serviceId: "test-service" } })).manifest
+      .contactDetails,
+  ).toEqual(withContact.contactDetails);
+});
+it("keeps the manifest's own contact details when attaching a form that has its own", async () => {
+  vi.mocked(getRecipe).mockResolvedValue(withContact as never);
+  const own = { email: "registry@gov.bb" };
+  const published = await saveServiceDraft({
+    data: {
+      snapshot: {
+        ...publishedPagesOnly,
+        manifest: { ...publishedPagesOnly.manifest, contactDetails: own },
+      },
+      expectedRevision: 0,
+    },
+  });
+  const connected = await attachServiceForm({
+    data: {
+      serviceId: "test-service",
+      expectedRevision: published.revision,
+      formId: "test-form",
+    },
+  });
+  expect(connected.manifest.contactDetails).toEqual(own);
+});
 const applicantEmailOnly = draftRecipeSchema.parse({
   formId: "test-form",
   title: "Application",
