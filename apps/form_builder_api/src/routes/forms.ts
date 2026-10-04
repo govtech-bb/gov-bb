@@ -844,6 +844,66 @@ export async function rekeyFormHandler(
 }
 formsRouter.post("/:formId/rekey", rekeyFormHandler);
 
+// POST /builder/forms/:formId/resync — bring a stale draft row back in line
+// with the committed recipe (#2489). The builder calls this when it opens a
+// form whose draft row may predate a change that reached the committed recipe
+// (a hand-fix merged while the row sat idle), so a later Deploy republishes
+// the fix instead of reverting it. `committedAt` is the committer date of the
+// latest commit touching the recipe file; the row is overwritten only when it
+// was last saved before that, so a draft edited after the commit is never
+// replaced. The comparison lives in the UPDATE's WHERE so two tabs opening the
+// same form race safely: one wins, the other sees the same result.
+//
+// `updated_at > created_at` limits the re-sync to rows saved at least once
+// since updated_at began recording saves (the change that added this). Before
+// that nothing ever bumped updated_at, so every older row has updated_at equal
+// to created_at — both take the same NOW() on insert — and its timestamp says
+// nothing about when it was really last edited. Overwriting such a row could
+// discard un-deployed work, so it is left alone until its next save. The same
+// holds for a row inserted after that change and never saved again.
+//
+// Not an author edit, so no presence gate: the row is being set to what is
+// already live.
+const resyncBodySchema = z.object({ committedAt: z.string().datetime() });
+
+export async function resyncFormHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  // Same write-boundary gates as every other recipe write: structurally valid
+  // (#1499) and SSRF-safe processors (#281), even for a recipe that came from
+  // the repo.
+  const recipe = parseDraftRecipe(req.body?.recipe, res);
+  if (!recipe) return;
+  const processorError = validateRecipeProcessors(recipe);
+  if (processorError) {
+    res
+      .status(400)
+      .json({ error: `Invalid processor config: ${processorError}` });
+    return;
+  }
+  const body = resyncBodySchema.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: formatZodError(body.error, "committedAt") });
+    return;
+  }
+  const ds = await getDataSource();
+  // updated_at is `timestamp` and NOW() was stored through the session time
+  // zone, so compare against the timestamptz parameter the same way rather
+  // than assuming UTC. TypeORM's Postgres query() returns `[rows, rowCount]`
+  // for an UPDATE — the count is the answer, not the array's length.
+  const [, affected]: [unknown, number] = await ds.query(
+    `UPDATE form_definitions
+        SET schema = $1, updated_at = NOW()
+      WHERE form_id = $2
+        AND updated_at > created_at
+        AND updated_at < $3::timestamptz`,
+    [recipe, String(req.params.formId), body.data.committedAt],
+  );
+  res.json({ resynced: affected > 0 });
+}
+formsRouter.post("/:formId/resync", resyncFormHandler);
+
 // DELETE /builder/forms/:formId/versions/:version — surgically remove a single
 // draft version row. Unlike the form-level delete below, this writes NO
 // tombstone and never touches form_disabled_overrides: it's for pruning a

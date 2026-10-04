@@ -81,6 +81,35 @@ export async function listVersions(
     .map((e) => e.name.replace(/\.json$/, ""));
 }
 
+/**
+ * When the committed recipe for `formId` last changed: the committer date of
+ * the latest commit touching the flat file on the repo's default branch, or
+ * null when no commit touches it (nothing committed). Read off the same branch
+ * as getPublishedRecipe so the date and the content it describes agree.
+ * Committer date rather than author date: a rebased or cherry-picked fix lands
+ * later than it was written, and landing is what makes a draft stale (#2489).
+ */
+export async function getRecipeCommittedAt(
+  token: string,
+  formId: string,
+): Promise<string | null> {
+  const query = new URLSearchParams({
+    path: `${RECIPES_BASE}/${formId}.json`,
+    per_page: "1",
+  });
+  const res = await ghGet(
+    `${API_BASE}/repos/${repoOwner()}/${REPO_NAME}/commits?${query}`,
+    token,
+  );
+  if (res.status < 200 || res.status >= 300) {
+    throw new Error(
+      `GitHub Commits API returned ${res.status} for ${formId}.json: ${JSON.stringify(res.body)}`,
+    );
+  }
+  const commits = res.body as { commit: { committer: { date: string } } }[];
+  return commits[0]?.commit.committer.date ?? null;
+}
+
 async function fetchRecipeFile(
   token: string,
   formId: string,

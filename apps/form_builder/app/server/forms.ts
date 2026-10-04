@@ -8,7 +8,11 @@ import {
   type PublicFormSummary,
 } from "@govtech-bb/form-types";
 import { api, ApiError } from "./api-client";
-import { getPublishedRecipe, RECIPES_BASE } from "./github-recipes";
+import {
+  getPublishedRecipe,
+  getRecipeCommittedAt,
+  RECIPES_BASE,
+} from "./github-recipes";
 import type { BuilderFormSummary } from "../types/index";
 import { requireSession } from "./auth/require-session";
 import {
@@ -182,9 +186,22 @@ export async function resolveStoredRecipe(
   formId: string,
   token: string,
 ): Promise<ServiceContractRecipe | null> {
-  if (canReadLocalRecipes()) {
-    return (await readLocalRecipes(formId))[0] ?? null;
-  }
+  return (await resolveStoredRecipeSource(formId, token))?.recipe ?? null;
+}
+
+// resolveStoredRecipe plus where the recipe came from: `fromDraftRow` is true
+// only for the DB scratch row — the one copy that can go stale against the
+// committed recipe (#2489). getRecipe needs the distinction; the save paths
+// don't.
+async function resolveStoredRecipeSource(
+  formId: string,
+  token: string,
+): Promise<{ recipe: ServiceContractRecipe; fromDraftRow: boolean } | null> {
+  const local = async () => {
+    const recipe = (await readLocalRecipes(formId))[0];
+    return recipe ? { recipe, fromDraftRow: false } : null;
+  };
+  if (canReadLocalRecipes()) return local();
   // #1196: the DB scratch row is the current working draft — prefer it. Guard
   // on truthiness (not just a non-404 response) so a falsy body — a 204 or a
   // `200 null` for an empty draft row — falls through to the published copy
@@ -214,23 +231,54 @@ export async function resolveStoredRecipe(
           // No published flat file yet — leave meta absent (treated as public).
         }
       }
-      return draft;
+      return { recipe: draft, fromDraftRow: true };
     }
   } catch (err) {
-    if (canReadLocalRecipes(err))
-      return (await readLocalRecipes(formId))[0] ?? null;
+    if (canReadLocalRecipes(err)) return local();
     if (!(err instanceof ApiError) || err.status !== 404) throw err;
   }
 
-  if (import.meta.env.DEV && !token)
-    return (await readLocalRecipes(formId))[0] ?? null;
+  if (import.meta.env.DEV && !token) return local();
 
   // No draft row — seed from the published canonical flat file.
   try {
     const recipe = await getPublishedRecipe(token, { formId });
-    return serviceContractRecipeSchema.parse(recipe);
+    return {
+      recipe: serviceContractRecipeSchema.parse(recipe),
+      fromDraftRow: false,
+    };
   } catch {
     return null;
+  }
+}
+
+// #2489: a draft row that predates a change to the committed recipe — a
+// hand-fix merged while the row sat idle — is brought back in line with that
+// recipe when the form is opened, so a later Deploy republishes the fix rather
+// than reverting it. The API decides staleness from the row's own updated_at
+// in one compare-and-swap (form_builder_api resyncFormHandler); a draft saved
+// after the commit is kept, and with no committed copy the draft is left
+// alone. Any failure keeps the draft and never blocks opening the form — the
+// stale-base guard in publishRecipe is the backstop.
+async function resyncStaleDraft(
+  formId: string,
+  draft: ServiceContractRecipe,
+  token: string,
+): Promise<ServiceContractRecipe> {
+  try {
+    const committedAt = await getRecipeCommittedAt(token, formId);
+    if (!committedAt) return draft;
+    const committed = serviceContractRecipeSchema.parse(
+      await getPublishedRecipe(token, { formId }),
+    );
+    const { resynced } = await api.post<{ resynced: boolean }>(
+      `/builder/forms/${encodeURIComponent(formId)}/resync`,
+      { recipe: committed, committedAt },
+    );
+    return resynced ? committed : draft;
+  } catch (err) {
+    console.warn(`[forms] stale-draft re-sync skipped for ${formId}:`, err);
+    return draft;
   }
 }
 
@@ -256,11 +304,15 @@ export const getRecipe = createServerFn({ method: "GET", strict: false })
   .handler(async ({ data, context }): Promise<ServiceContractRecipe> => {
     // #1196 precedence (draft row, else published) lives in resolveStoredRecipe,
     // so getRecipe and the save path resolve from the same source.
-    const recipe = await resolveStoredRecipe(
-      data.formId,
-      context.session.accessToken,
-    );
-    if (!recipe) throw new Error(`No recipe found for formId: ${data.formId}`);
+    const token = context.session.accessToken;
+    const resolved = await resolveStoredRecipeSource(data.formId, token);
+    if (!resolved)
+      throw new Error(`No recipe found for formId: ${data.formId}`);
+    // Only the draft row can be stale against the committed recipe (#2489);
+    // the published fallback *is* the committed recipe.
+    const recipe = resolved.fromDraftRow
+      ? await resyncStaleDraft(data.formId, resolved.recipe, token)
+      : resolved.recipe;
     // Strip processor secrets before the recipe reaches the browser (#294).
     return redactRecipeSecrets(recipe);
   });

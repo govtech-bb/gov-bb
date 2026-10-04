@@ -66,6 +66,43 @@ revision.**
   never a silent overwrite. Opening a form does not depend on the read
   succeeding.
 
+### The draft row follows the committed recipe
+
+The guard above stops a deploy from *overwriting* a fix; it cannot stop the
+builder from *showing* a stale row after the author reloads. So the row itself
+is kept in line with the committed recipe (the second half of #2489):
+
+- **When a form is opened and a committed copy exists, a draft row saved
+  before the latest commit to that recipe is replaced by the committed recipe,
+  in place.** "Latest commit" is the committer date of the newest commit
+  touching the flat file on the branch the builder reads recipes from — the
+  committer date, not the author date, because a rebased fix lands later than
+  it was written and landing is what makes a draft stale. A row with no
+  committed copy is never touched.
+- **Staleness is decided by the database, in one statement**, from the row's
+  own `updated_at`: `UPDATE … WHERE updated_at < <committed at>` with
+  `RETURNING`. Two tabs opening the same form race safely — one replaces, the
+  other sees the result. The builder learns whether it should show the
+  committed copy or the row from that single answer.
+- **A row's `updated_at` is trusted only once a save has moved it**
+  (`updated_at > created_at`). Until #2489, nothing bumped `updated_at` after
+  insert — both stamps take the same `NOW()` default — so an older row's
+  timestamp says nothing about when it was last edited, and replacing it could
+  discard un-deployed work. Such a row is left alone until its next save,
+  which gives it a real timestamp. Rows created after #2489 and never saved
+  again share that shape and are left alone too; a Deploy is a save, so a
+  deployed row always qualifies.
+- **A draft saved between a Deploy and its merge is replaced by the merged
+  recipe on the next open.** This is intended, and the same rule the
+  post-merge archive job applies ("drafts expire on publish"): once a Deploy
+  merges, the committed recipe is the working copy, and anything the author
+  typed into the row while the PR was in review was never part of what they
+  deployed.
+- **Any failure keeps the draft and never blocks opening the form.** The
+  GitHub read, the committed-recipe fetch and the API call can each fail; the
+  builder logs and serves the row it has. The stale-base guard above is the
+  backstop for a stale row that could not be re-synced.
+
 ## Consequences
 
 - One extra Contents `GET` on the base branch per Deploy and per legacy form
@@ -74,12 +111,22 @@ revision.**
   Deploy from the same tab is refused until the author reloads. That is the
   intended friction: the reload is what lets them see what they are about to
   overwrite.
+- Opening a form that has a draft row costs one Commits `GET` and, when a
+  committed copy exists, one Contents `GET` plus one API call. The published
+  fallback (no row) pays nothing extra: it already *is* the committed recipe.
+- The pre-#2489 backlog of stale rows is not drained by this change. Each such
+  row is re-synced only after its next save gives it a trustworthy
+  `updated_at`, or when it is archived at the next merge. A row created after
+  #2489 and never saved again is likewise skipped; the "reload" guard still
+  protects a Deploy from it, but a reload then shows the stale row. Widening
+  the rule to rows created after the change shipped (a date cutoff) is a
+  one-line follow-up if that gap bites.
 - The services path's `baseRecipeSha` is captured once at adoption and never
   refreshed, and no UI discards a service draft, so its "Reload and compare"
-  message has no in-app action. A draft row that is re-synced from the
-  committed recipe (the #2489 follow-up) will therefore make that service's
-  publish refuse until the service is re-adopted. Known gap, tracked with the
-  services follow-ups from the #2489 plan; not changed here.
+  message has no in-app action. A draft row re-synced from the committed
+  recipe therefore makes that service's publish refuse until the service is
+  re-adopted. Known gap, tracked with the services follow-ups from the #2489
+  plan; not changed here.
 - The dormant `POST /builder/publish` in `form_builder_api` (#2391) does not
   carry a loaded revision and must adopt this before it is revived, or be
   removed — the same requirement ADR 0070 already places on it.
