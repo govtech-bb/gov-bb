@@ -167,7 +167,7 @@ export const proposeContentTool = {
 export const updateServiceDetailsTool = {
   name: "update_service_details" as const,
   description:
-    "Update a service draft's details after reading the service. Omit unchanged fields. This cannot publish, delete, attach, detach, or restore anything.",
+    "Update a service draft's details after reading the service. Omit unchanged fields. Set setup.delivery and setup.applicantEmail together: they are one After submission decision. This cannot publish, delete, attach, detach, or restore anything.",
   inputSchema: z.object({
     summary: shortText,
     target: serviceTargetSchema,
@@ -188,6 +188,15 @@ export const updateServiceDetailsTool = {
               .optional(),
           })
           .strict()
+          // The Details page decides both at once, and the manifest seed reads
+          // an undecided applicantEmail as "nobody has decided yet" (#2683):
+          // a lone delivery would be re-derived on the next save.
+          .refine(
+            (setup) =>
+              (setup.delivery === undefined) ===
+              (setup.applicantEmail === undefined),
+            "Set delivery and applicantEmail together: they are one After submission decision",
+          )
           .optional(),
       })
       .strict(),

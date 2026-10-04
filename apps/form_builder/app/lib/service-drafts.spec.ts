@@ -232,6 +232,36 @@ it("seeds a never-published manifest on save so a refresh never bumps the revisi
   });
   expect(refreshed.revision).toBe(saved.revision);
 });
+it("keeps a decided pair that disagrees with the recipe's actions (ADR 0073)", async () => {
+  // Decided through the Details page or the assistant; readiness, not the
+  // seed, is what asks the author to reconcile it with the actions.
+  const decided = {
+    step: "about",
+    delivery: "configured",
+    applicantEmail: "none",
+  } as const;
+  vi.mocked(getRecipe).mockResolvedValue(applicantEmailOnly as never);
+  const saved = await saveServiceDraft({
+    data: {
+      snapshot: {
+        ...snapshot,
+        recipe: applicantEmailOnly,
+        manifest: {
+          ...snapshot.manifest,
+          formId: "test-form",
+          setup: decided,
+        },
+      },
+      expectedRevision: 0,
+    },
+  });
+  expect(saved.manifest.setup).toEqual(decided);
+  const refreshed = await getServiceDraft({
+    data: { serviceId: "test-service" },
+  });
+  expect(refreshed.revision).toBe(saved.revision);
+  expect(refreshed.manifest.setup).toEqual(decided);
+});
 it("leaves a published manifest as the author saved it", async () => {
   vi.mocked(getRecipe).mockResolvedValue(applicantEmailOnly as never);
   const published = await saveServiceDraft({
