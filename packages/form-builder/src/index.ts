@@ -39,6 +39,7 @@ export { CUSTOM_ATTRIBUTE_DESCRIPTORS } from "./custom-attributes";
 export type {
   CustomAttributeDescriptor,
   CustomAttributeKey,
+  CustomAttributeStringKey,
 } from "./custom-attributes";
 
 // Processor authoring defaults

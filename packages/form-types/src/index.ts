@@ -4,6 +4,7 @@ export {
   optionSchema,
   optionGroupSchema,
   contentVariantSchema,
+  geocodeTargetsSchema,
   basePrimitiveSchema,
   textPrimitiveSchema,
   textAreaPrimitiveSchema,

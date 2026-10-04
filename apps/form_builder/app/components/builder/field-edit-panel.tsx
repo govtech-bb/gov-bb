@@ -19,11 +19,12 @@ import type {
   BlockDefinition,
   RecipeDraft,
   CustomAttributeDescriptor,
-  CustomAttributeKey,
+  CustomAttributeStringKey,
 } from "@govtech-bb/form-builder";
 import { primitiveUISchema } from "@govtech-bb/form-types";
 import type {
   FieldOverrides,
+  GeocodeTargets,
   HtmlTypes,
   Option,
   Primitive,
@@ -35,6 +36,7 @@ import { getFieldRefs, getStepRefs } from "./recipe-refs";
 import type { RecipeAction } from "./recipe-reducer";
 import { ValidationRulesEditor } from "./validation-rules-editor";
 import { BehavioursEditor } from "./behaviours-editor";
+import { FieldRefPicker } from "./field-ref-picker";
 import { OptionsEditor } from "./options-editor";
 import { KEBAB_ID_PATTERN, kebabize } from "./id-validation";
 import {
@@ -443,32 +445,55 @@ interface CustomAttributesEditorProps {
   descriptors: CustomAttributeDescriptor[];
   overrides: FieldOverrides;
   basePrimitive: Primitive | undefined;
+  // The fields on this field's own step — what a `fieldRef` descriptor's
+  // pickers offer (#2886).
+  stepFieldRefs: FieldRef[];
   patch: (partial: Partial<FieldOverrides>) => void;
   fg: (isOverridden: boolean) => string;
 }
 
 // Descriptor-driven editor for the attributes only this htmlType's renderer
-// reads (a content block's style, markdown body and details summary), one
-// control per CUSTOM_ATTRIBUTE_DESCRIPTORS entry (#2873). Same contract as
-// the `ui` editor: show the effective value (override ?? base primitive), and
-// drop the key when the author sets it back to the base value or clears it.
+// reads (a content block's style, markdown body and details summary; an
+// address lookup's geocode targets), one control per
+// CUSTOM_ATTRIBUTE_DESCRIPTORS entry (#2873). Same contract as the `ui`
+// editor: show the effective value (override ?? base primitive), and drop the
+// key when the author sets it back to the base value or clears it.
 function CustomAttributesEditor({
   descriptors,
   overrides,
   basePrimitive,
+  stepFieldRefs,
   patch,
   fg,
 }: CustomAttributesEditorProps) {
-  function effective(key: CustomAttributeKey | "label"): string | undefined {
+  function effective(
+    key: CustomAttributeStringKey | "label",
+  ): string | undefined {
     return overrides[key] ?? basePrimitive?.[key];
   }
 
-  function setKey(key: CustomAttributeKey, value: string) {
+  function setKey(key: CustomAttributeStringKey, value: string) {
     // An empty control, or one set back to the base value, drops the key so
     // the merge falls through to the base (the `ui` editor's contract).
     const next =
       value === "" || value === basePrimitive?.[key] ? undefined : value;
     patch({ [key]: next } as Partial<FieldOverrides>);
+  }
+
+  function setFieldRef(
+    key: "geocodeTargets",
+    target: keyof GeocodeTargets,
+    fieldId: string,
+  ) {
+    // An override replaces the object whole (the merge is a shallow spread),
+    // so edit the effective object; "" is the picker's cleared state. Once no
+    // target is left the key goes too, so the renderer never sees `{}`.
+    const next: GeocodeTargets = {
+      ...(overrides[key] ?? basePrimitive?.[key]),
+    };
+    if (fieldId === "") delete next[target];
+    else next[target] = fieldId;
+    patch({ [key]: Object.keys(next).length > 0 ? next : undefined });
   }
 
   return (
@@ -482,8 +507,35 @@ function CustomAttributesEditor({
           effective(descriptor.showWhen.key) !== descriptor.showWhen.equals
         )
           return null;
-        const value = effective(descriptor.key) ?? "";
         const isOverridden = overrides[descriptor.key] !== undefined;
+
+        if (descriptor.kind === "fieldRef") {
+          const targets =
+            overrides[descriptor.key] ?? basePrimitive?.[descriptor.key];
+          return (
+            <fieldset key={descriptor.key} className={fg(isOverridden)}>
+              <legend className="text-sm font-medium">
+                {descriptor.label}
+              </legend>
+              {descriptor.hint && (
+                <p className="text-sm text-ui-subtle">{descriptor.hint}</p>
+              )}
+              {descriptor.fields.map((target) => (
+                <FieldRefPicker
+                  key={target.key}
+                  label={target.label}
+                  value={targets?.[target.key] ?? ""}
+                  fieldRefs={stepFieldRefs}
+                  onChange={(fieldId) =>
+                    setFieldRef(descriptor.key, target.key, fieldId)
+                  }
+                />
+              ))}
+            </fieldset>
+          );
+        }
+
+        const value = effective(descriptor.key) ?? "";
 
         if (descriptor.kind === "enum") {
           return (
@@ -547,6 +599,7 @@ interface PlainOverrideFieldsProps {
   overrides: FieldOverrides;
   htmlType: HtmlTypes;
   basePrimitive: Primitive | undefined;
+  stepFieldRefs: FieldRef[];
   patch: (partial: Partial<FieldOverrides>) => void;
   fg: (isOverridden: boolean) => string;
   defaultLabel?: string;
@@ -564,6 +617,7 @@ function PlainOverrideFields({
   overrides,
   htmlType,
   basePrimitive,
+  stepFieldRefs,
   patch,
   fg,
   defaultLabel,
@@ -683,6 +737,7 @@ function PlainOverrideFields({
                 descriptors={customDescriptors}
                 overrides={overrides}
                 basePrimitive={basePrimitive}
+                stepFieldRefs={stepFieldRefs}
                 patch={patch}
                 fg={fg}
               />
@@ -755,6 +810,7 @@ function OverrideForm({
         overrides={overrides}
         htmlType={htmlType}
         basePrimitive={basePrimitive}
+        stepFieldRefs={fieldRefs.filter((f) => f.stepId === currentStepId)}
         patch={patch}
         fg={fg}
         defaultLabel={defaultLabel}

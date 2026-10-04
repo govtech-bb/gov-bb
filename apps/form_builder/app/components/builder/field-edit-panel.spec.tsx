@@ -10,12 +10,50 @@ import type { Mock } from "vitest";
  */
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { getCatalog } from "@govtech-bb/form-builder";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { getCatalog, deserializeRecipe } from "@govtech-bb/form-builder";
 import type { RecipeDraft, RecipeFieldDraft } from "@govtech-bb/form-builder";
 import { primitiveUISchema } from "@govtech-bb/form-types";
+import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 import { FieldEditPanel, humanize } from "./field-edit-panel";
+import { getFieldRefs } from "./recipe-refs";
 
 const catalog = getCatalog();
+
+// A committed recipe, as the builder opens it: proves the panel shows the
+// values authors already hand-edited into live forms.
+function loadRecipe(formId: string): ServiceContractRecipe {
+  return JSON.parse(
+    readFileSync(
+      join(
+        __dirname,
+        `../../../../api/src/forms/form-definitions/recipes/${formId}.json`,
+      ),
+      "utf8",
+    ),
+  );
+}
+
+// The step and field of the first element in `recipe` with this ref.
+function openRecipeField(formId: string, ref: string) {
+  const draft = deserializeRecipe(loadRecipe(formId), catalog);
+  const step = draft.steps.find((s) => s.fields.some((f) => f.ref === ref));
+  const field = step?.fields.find((f) => f.ref === ref);
+  if (!step || !field) throw new Error(`${formId} has no ${ref}`);
+  render(
+    <FieldEditPanel
+      open
+      field={field}
+      catalog={catalog}
+      draft={draft}
+      stepId={step.stepId}
+      dispatch={vi.fn()}
+      onClose={vi.fn()}
+    />,
+  );
+  return { draft, step, field };
+}
 
 function makeDraft(field: RecipeFieldDraft): RecipeDraft {
   return {
@@ -967,4 +1005,160 @@ it("leaves a stored summary alone when Style moves off details", async () => {
     variant: "warning",
     summary: "Keep me",
   });
+});
+
+// --- Address lookup geocode targets (#2886) --------------------------------
+// `geocodeTargets` names the same-step fields an address lookup fills when the
+// applicant picks a suggestion. It is one object, so the panel edits the
+// effective object through one picker per target and drops the key once every
+// target is cleared — the renderer never sees `{}`.
+
+const line2Picker = () =>
+  screen.getByRole("combobox", { name: "Address line 2 field" });
+const parishPicker = () =>
+  screen.getByRole("combobox", { name: "Parish field" });
+const coordinatesPicker = () =>
+  screen.getByRole("combobox", { name: "Coordinates field" });
+
+// Same-step siblings for the pickers, plus a field on another step that must
+// not be offered.
+function renderAddressPanel(field: RecipeFieldDraft, dispatch = vi.fn()) {
+  const draft: RecipeDraft = {
+    formId: "form-001",
+    title: "Test Form",
+    steps: [
+      {
+        stepId: "step-1",
+        title: "Step 1",
+        fields: [
+          field,
+          {
+            id: "f2",
+            kind: "component",
+            ref: "components/address",
+            overrides: { fieldId: "line-2", label: "Address line 2" },
+          },
+          {
+            id: "f3",
+            kind: "component",
+            ref: "components/parish",
+            overrides: {},
+          },
+          {
+            id: "f4",
+            kind: "component",
+            ref: "components/generic-text",
+            overrides: { fieldId: "coords", label: "Coordinates" },
+          },
+        ],
+        behaviours: [],
+      },
+      {
+        stepId: "step-2",
+        title: "Step 2",
+        fields: [
+          {
+            id: "f5",
+            kind: "component",
+            ref: "components/generic-text",
+            overrides: { fieldId: "elsewhere", label: "Elsewhere" },
+          },
+        ],
+        behaviours: [],
+      },
+    ],
+  };
+  render(
+    <FieldEditPanel
+      open
+      field={field}
+      catalog={catalog}
+      draft={draft}
+      stepId="step-1"
+      dispatch={dispatch}
+      onClose={vi.fn()}
+    />,
+  );
+  return dispatch;
+}
+
+it("offers one picker per geocode target, listing only this step's fields", async () => {
+  renderAddressPanel(makeField("components/address-lookup"));
+  expect(typeSettingsHeading()).toBeInTheDocument();
+  for (const picker of [line2Picker(), parishPicker(), coordinatesPicker()])
+    expect(picker).toHaveTextContent("— select field —");
+  const options = Array.from(
+    (await openSelect(line2Picker())).querySelectorAll('[role="option"]'),
+  ).map((o) => o.textContent);
+  expect(options).toEqual(
+    expect.arrayContaining(["Address line 2", "Parish", "Coordinates"]),
+  );
+  expect(options).not.toContain("Elsewhere");
+});
+
+it("dispatches geocodeTargets with the chosen fields", async () => {
+  const dispatch = renderAddressPanel(makeField("components/address-lookup"));
+  await chooseOption(line2Picker(), "Address line 2");
+  await chooseOption(parishPicker(), "Parish");
+  await chooseOption(coordinatesPicker(), "Coordinates");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({
+    geocodeTargets: {
+      line2FieldId: "line-2",
+      parishFieldId: "parish",
+      coordinatesFieldId: "coords",
+    },
+  });
+});
+
+it("clears one target and keeps the others", async () => {
+  const dispatch = renderAddressPanel(
+    makeFieldWith("components/address-lookup", {
+      geocodeTargets: { line2FieldId: "line-2", parishFieldId: "parish" },
+    }),
+  );
+  expect(line2Picker()).toHaveTextContent("Address line 2");
+  expect(parishPicker()).toHaveTextContent("Parish");
+  await chooseOption(parishPicker(), "— select field —");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({
+    geocodeTargets: { line2FieldId: "line-2" },
+  });
+});
+
+it("drops geocodeTargets rather than leaving {} once every target is cleared", async () => {
+  const dispatch = renderAddressPanel(
+    makeFieldWith("components/address-lookup", {
+      geocodeTargets: { line2FieldId: "line-2" },
+    }),
+  );
+  await chooseOption(line2Picker(), "— select field —");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({});
+});
+
+it("opens an Environmental Health recipe's address lookup with its stored targets", () => {
+  const { draft, step, field } = openRecipeField(
+    "apply-for-hair-salon-licence",
+    "components/address-lookup",
+  );
+  const targets = field.overrides.geocodeTargets;
+  expect(targets).toEqual({
+    line2FieldId: expect.any(String),
+    parishFieldId: expect.any(String),
+    coordinatesFieldId: expect.any(String),
+  });
+  // Each picker resolves its stored id to a field on the same step.
+  const nameOf = (fieldId: string | undefined) => {
+    const ref = getFieldRefs(draft, catalog).find(
+      (r) => r.stepId === step.stepId && r.fieldId === fieldId,
+    );
+    if (!ref) throw new Error(`${fieldId} is not on step ${step.stepId}`);
+    return ref.displayName;
+  };
+  expect(line2Picker()).toHaveTextContent(nameOf(targets?.line2FieldId));
+  expect(parishPicker()).toHaveTextContent(nameOf(targets?.parishFieldId));
+  expect(coordinatesPicker()).toHaveTextContent(
+    nameOf(targets?.coordinatesFieldId),
+  );
 });
