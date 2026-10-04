@@ -197,12 +197,6 @@ export function serviceReadiness(snapshot: ServiceSnapshot): ServiceReadiness {
   const contact = manifest.contactDetails ?? recipe?.contactDetails;
   if (contact?.email && !z.email().safeParse(contact.email).success)
     issue("contact-email", "contacts", "Enter a valid public email address");
-  if (!contact?.email && !contact?.telephoneNumber)
-    issue(
-      "contact",
-      "contacts",
-      "Add a public email address or telephone number",
-    );
   for (const page of pages) {
     if (!page.body.trim() || !String(page.frontmatter.title ?? "").trim())
       issue(
@@ -302,6 +296,20 @@ export function serviceReadiness(snapshot: ServiceSnapshot): ServiceReadiness {
       !pendingConfig.processors?.length
     )
       issue("delivery-action", "delivery", "Add a delivery action");
+    if (
+      !contact?.email &&
+      (recipe.processors ?? []).some(
+        (p) =>
+          p.type === "email" &&
+          typeof p.config.recipientField === "string" &&
+          classifyRecipientField(p.config.recipientField) === "contact",
+      )
+    )
+      issue(
+        "contact-recipient",
+        "delivery",
+        "Add a public email address or change the department email recipient",
+      );
     const ids = new Set(recipe.steps.map((s) => s.stepId));
     for (const step of recipe.steps)
       for (const behaviour of step.behaviours ?? []) {
