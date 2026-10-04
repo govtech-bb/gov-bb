@@ -389,14 +389,14 @@ it("shows the connected form's status from the API, never the manifest seed (#28
 
 it("badges a published form the API returned without a status as unavailable in the library (#2875)", async () => {
   // `alpha` is published but carries no `visibility` (the proxy fell back to
-  // the public-only list) — the row must not read "Published".
+  // the public-only list) — the row must not read "Public".
   renderServices();
   const list = await screen.findByRole("list", { name: "Services" });
   const row = within(list)
     .getByRole("heading", { name: "Alpha service" })
     .closest("li")!;
   expect(within(row).getByText("Status unavailable")).toBeInTheDocument();
-  expect(within(row).queryByText("Published")).not.toBeInTheDocument();
+  expect(within(row).queryByText("Public")).not.toBeInTheDocument();
 });
 
 it("adopts a legacy service onto the same overview even when its form cannot be loaded", async () => {
