@@ -190,12 +190,13 @@ export const updateServiceDetailsTool = {
           .strict()
           // The Details page decides both at once, and the manifest seed reads
           // an undecided applicantEmail as "nobody has decided yet" (#2683):
-          // a lone delivery would be re-derived on the next save.
+          // a delivery sent alone, or beside an undecided applicantEmail,
+          // would be re-derived on the next save.
           .refine(
-            (setup) =>
-              (setup.delivery === undefined) ===
-              (setup.applicantEmail === undefined),
-            "Set delivery and applicantEmail together: they are one After submission decision",
+            ({ delivery, applicantEmail }) =>
+              (delivery === undefined) === (applicantEmail === undefined) &&
+              (delivery === "undecided") === (applicantEmail === "undecided"),
+            "Set delivery and applicantEmail together, undecided for both or neither: they are one After submission decision",
           )
           .optional(),
       })
