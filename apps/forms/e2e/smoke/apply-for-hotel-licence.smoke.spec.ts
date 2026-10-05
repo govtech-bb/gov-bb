@@ -36,9 +36,8 @@
  *    new-licence only (stepConditionalOn), so a renewal goes straight from
  *    `amenities` to `check-your-answers`.
  *  - On `planning-and-site-plan`, `planning-applied` = "yes" reveals the
- *    application number and "no" reveals the site-plan upload, both inline
- *    under the radio. The upload revealed there once collapsed to a thin strip
- *    (#2915), so the new-licence test asserts it spans the radio's fieldset.
+ *    application number inline under the radio; "no" opens the separate
+ *    `upload-site-plan` step (stepConditionalOn), which asks for the upload.
  *  - `applying-for` = "someone-else" reveals `has-permission` (must be "yes" —
  *    a `^yes$` pattern) and the `applicant-hotel-relationship` select.
  *  - `hotel-operator-type` picks the next step: "i-do" skips both operator
@@ -499,26 +498,22 @@ test.describe("Hotel Licence Application — Live Smoke", () => {
     await fillStaff(page, data);
     await fillAmenities(page);
 
-    // ─── Planning — "no" reveals the site-plan upload under the radio ───────
+    // ─── Planning — "no" opens the site-plan upload step ────────────────────
     let step = expectStep(page, "planning-and-site-plan");
     await expect(page.locator("h1")).toContainText("Planning and site plan");
     await selectRadio(page, step, "planning-applied", "no");
     await expect(
       page.locator(`[id="${step}_planning-application-number"]`),
     ).toBeHidden();
+    await advance(page, step);
 
-    // #2915: the revealed upload must span the radio's fieldset, not collapse
-    // to a thin strip around its own (absent) intrinsic width.
-    const reveal = page
-      .locator(`fieldset[id="${step}_planning-applied"]`)
-      .locator(".govbb-radio-item__conditional");
-    await expect(reveal.locator(".govbb-file-upload__dropzone")).toBeVisible();
-    const [revealRight, fieldsetRight] = await reveal.evaluate((el) => [
-      el.getBoundingClientRect().right,
-      (el.closest("fieldset") as HTMLElement).getBoundingClientRect().right,
-    ]);
-    expect(revealRight).toBeCloseTo(fieldsetRight, 0);
-
+    step = expectStep(page, "upload-site-plan");
+    await expect(page.locator("h1")).toContainText(
+      "Upload the hotel site plan",
+    );
+    await expect(page.locator(`label[for="${step}_site-plan"]`)).toContainText(
+      "Hotel site plan",
+    );
     await uploadOne(page, step, "site-plan", {
       name: "site-plan.png",
       mimeType: TEST_PNG.mimeType,
@@ -563,12 +558,9 @@ test.describe("Hotel Licence Application — Live Smoke", () => {
     await fillStaff(page, data);
     await fillAmenities(page);
 
-    // ─── Planning — "yes" reveals the application number, not the upload ───
+    // ─── Planning — "yes" reveals the application number; no upload step ────
     let step = expectStep(page, "planning-and-site-plan");
     await selectRadio(page, step, "planning-applied", "yes");
-    await expect(
-      page.locator(`input[type=file][id="${step}_site-plan"]`),
-    ).toHaveCount(0);
     await fillField(
       page,
       step,

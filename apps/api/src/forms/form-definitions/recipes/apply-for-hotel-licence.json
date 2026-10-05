@@ -1434,7 +1434,22 @@
               }
             ]
           }
-        },
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "application-type",
+          "targetFieldId": "application-type",
+          "operator": "equal",
+          "value": "new-licence"
+        }
+      ]
+    },
+    {
+      "stepId": "upload-site-plan",
+      "title": "Upload the hotel site plan",
+      "elements": [
         {
           "ref": "components/upload-document",
           "overrides": {
@@ -1462,15 +1477,7 @@
                 "error": "Each file must be 5 MB or smaller.",
                 "value": 5242880
               }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "planning-applied",
-                "operator": "equal",
-                "value": "no"
-              }
-            ]
+            }
           }
         }
       ],
@@ -1481,6 +1488,13 @@
           "targetFieldId": "application-type",
           "operator": "equal",
           "value": "new-licence"
+        },
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "planning-and-site-plan",
+          "targetFieldId": "planning-applied",
+          "operator": "equal",
+          "value": "no"
         }
       ]
     },
@@ -1526,5 +1540,5 @@
     }
   ],
   "createdAt": "2026-08-18T17:01:58.317Z",
-  "updatedAt": "2026-09-24T20:19:18.000Z"
+  "updatedAt": "2026-10-05T14:00:00.000Z"
 }
