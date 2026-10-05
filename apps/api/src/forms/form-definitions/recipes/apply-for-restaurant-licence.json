@@ -39,7 +39,6 @@
           "ref": "components/telephone",
           "overrides": {
             "fieldId": "your-telephone",
-            "label": "Telephone number",
             "behaviours": [
               {
                 "type": "fieldArray",
@@ -770,7 +769,7 @@
     }
   ],
   "createdAt": "2026-08-18T19:36:35.003Z",
-  "updatedAt": "2026-09-18T18:21:48.000Z",
+  "updatedAt": "2026-10-05T17:20:45.000Z",
   "meta": {
     "visibility": "preview"
   },

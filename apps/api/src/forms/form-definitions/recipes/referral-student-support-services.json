@@ -169,7 +169,6 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Telephone number",
             "fieldId": "mother-telephone"
           }
         },
@@ -342,7 +341,6 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Telephone number",
             "fieldId": "father-telephone"
           }
         },
@@ -515,7 +513,6 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Telephone number",
             "fieldId": "guardian-telephone"
           }
         },
@@ -1005,5 +1002,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:34:16.771Z",
-  "updatedAt": "2026-09-17T13:49:39.000Z"
+  "updatedAt": "2026-10-05T17:20:45.000Z"
 }

@@ -384,8 +384,6 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "hint": "For example, 246-418-1234",
-            "label": "Phone number",
             "fieldId": "contact-phone",
             "validations": {
               "required": {
@@ -509,7 +507,7 @@
   "title": "Request a Presidential Visit for a Centenarian",
   "formId": "request-a-presidential-visit-for-a-centenarian",
   "createdAt": "2026-05-21T00:00:00Z",
-  "updatedAt": "2026-09-04T19:18:45.000Z",
+  "updatedAt": "2026-10-05T17:20:45.000Z",
   "processors": [
     {
       "type": "email",

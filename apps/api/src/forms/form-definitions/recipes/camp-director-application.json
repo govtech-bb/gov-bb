@@ -265,7 +265,6 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "hint": "For example, 421-1234 for Barbados or +1 876 123 4567 for numbers outside Barbados.",
             "label": "Mobile telephone",
             "fieldId": "mobile-telephone",
             "validations": {
@@ -279,7 +278,6 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "hint": "For example, 421-1234 for Barbados or +1 876 123 4567 for numbers outside Barbados.",
             "label": "Home telephone",
             "fieldId": "home-telephone",
             "validations": {
@@ -401,8 +399,7 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "hint": "For example, 421-1234 for Barbados or +1 876 123 4567 for numbers outside Barbados.",
-            "label": "Work phone number",
+            "label": "Work telephone",
             "fieldId": "work-phone",
             "behaviours": [
               {
@@ -532,8 +529,6 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "hint": "For example, 421-1234 for Barbados or +1 876 123 4567 for numbers outside Barbados.",
-            "label": "Phone number",
             "fieldId": "emergency-contact-phone",
             "validations": {
               "phone": {
@@ -1065,8 +1060,6 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "hint": "For example, 421-1234 for Barbados or +1 876 123 4567 for numbers outside Barbados.",
-            "label": "Contact number",
             "fieldId": "employer-contact-number",
             "validations": {
               "phone": {
@@ -1244,8 +1237,6 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "hint": "For example, 421-1234 for Barbados or +1 876 123 4567 for numbers outside Barbados.",
-            "label": "Contact number",
             "fieldId": "reference-contact-number",
             "validations": {
               "phone": {
@@ -2004,5 +1995,5 @@
     }
   ],
   "createdAt": "2026-06-11T15:00:03.273Z",
-  "updatedAt": "2026-09-18T18:21:48.000Z"
+  "updatedAt": "2026-10-05T17:20:45.000Z"
 }

@@ -160,7 +160,6 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Main Phone",
             "fieldId": "parent-main-phone",
             "validations": {
               "required": {
@@ -173,7 +172,6 @@
         {
           "ref": "components/mobile-telephone",
           "overrides": {
-            "label": "Cell Phone",
             "fieldId": "parent-cell-phone"
           }
         },
@@ -417,5 +415,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:17:17.379Z",
-  "updatedAt": "2026-09-17T13:49:39.000Z"
+  "updatedAt": "2026-10-05T17:20:45.000Z"
 }

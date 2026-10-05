@@ -1192,7 +1192,6 @@
         {
           "ref": "components/mobile-telephone",
           "overrides": {
-            "label": "Mobile phone number",
             "fieldId": "parent-mobile-phone",
             "validations": {
               "phone": {
@@ -1209,7 +1208,6 @@
         {
           "ref": "components/home-telephone",
           "overrides": {
-            "label": "Landline number",
             "fieldId": "parent-landline",
             "validations": {
               "phone": {
@@ -1222,7 +1220,6 @@
         {
           "ref": "components/work-telephone",
           "overrides": {
-            "label": "Work phone number",
             "fieldId": "parent-work-phone",
             "validations": {
               "phone": {
@@ -1712,7 +1709,6 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Phone number",
             "fieldId": "emergency-phone",
             "validations": {
               "phone": {
@@ -2010,5 +2006,5 @@
     }
   ],
   "createdAt": "2026-06-12T11:02:19.069Z",
-  "updatedAt": "2026-09-18T18:21:48.000Z"
+  "updatedAt": "2026-10-05T17:20:45.000Z"
 }

@@ -163,7 +163,6 @@
           "ref": "components/contact-telephone",
           "overrides": {
             "fieldId": "guardian-contact-number",
-            "label": "Contact Number",
             "validations": {
               "required": {
                 "value": true,
@@ -316,5 +315,5 @@
     }
   ],
   "createdAt": "2026-06-02T13:52:44.173Z",
-  "updatedAt": "2026-06-23T12:44:11.000Z"
+  "updatedAt": "2026-10-05T17:20:45.000Z"
 }

@@ -65,8 +65,6 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "hint": "A local Barbados number, for example 246-418-1234.",
-            "label": "Phone number",
             "fieldId": "applicant-phone",
             "validations": {
               "required": {
@@ -229,7 +227,7 @@
   "title": "Apply for Bright Sparks Educational Project 2.0",
   "formId": "youth-opportunity-bright-sparks-2",
   "createdAt": "2026-05-21T00:00:00Z",
-  "updatedAt": "2026-08-06T11:46:18.000Z",
+  "updatedAt": "2026-10-05T17:20:45.000Z",
   "processors": [
     {
       "type": "email",

@@ -189,8 +189,6 @@
           "ref": "components/telephone",
           "overrides": {
             "fieldId": "phone-number",
-            "label": "What is your phone number?",
-            "hint": "You can enter a Barbados or international number.",
             "validations": {
               "required": {
                 "error": "Enter your phone number",
@@ -551,7 +549,7 @@
     }
   ],
   "createdAt": "2026-08-25T14:05:00.922Z",
-  "updatedAt": "2026-09-22T21:52:00.000Z",
+  "updatedAt": "2026-10-05T17:20:45.000Z",
   "meta": {
     "visibility": "preview"
   },

@@ -111,7 +111,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Telephone (Home)",
+            "label": "Home telephone",
             "fieldId": "telephone-home",
             "validations": {
               "required": {
@@ -124,7 +124,6 @@
         {
           "ref": "components/mobile-telephone",
           "overrides": {
-            "label": "Cell Phone Number",
             "fieldId": "telephone-cell",
             "validations": {
               "required": {
@@ -998,7 +997,7 @@
               }
             },
             "telephone": {
-              "label": "Emergency Contact Cell Phone"
+              "label": "Emergency contact cell phone"
             },
             "first-name": {
               "label": "Emergency Contact First Name",
@@ -1010,7 +1009,7 @@
               }
             },
             "home-telephone": {
-              "label": "Emergency Contact Home Telephone",
+              "label": "Emergency contact home telephone",
               "validations": {
                 "required": {
                   "error": "Please enter the emergency contact's home telephone",
@@ -1076,7 +1075,7 @@
   "title": "Project Dawn – Block Transformation Unit Application",
   "formId": "project-dawn-application",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-09-17T13:49:39.000Z",
+  "updatedAt": "2026-10-05T17:20:45.000Z",
   "processors": [
     {
       "type": "email",

@@ -299,8 +299,6 @@
           "ref": "components/generic-tel",
           "overrides": {
             "fieldId": "contact-number",
-            "label": "Telephone number",
-            "hint": "Enter a Barbados or international number.",
             "validations": {
               "required": {
                 "error": "Enter a telephone number.",
@@ -491,8 +489,6 @@
           "ref": "components/generic-tel",
           "overrides": {
             "fieldId": "operator-contact-number",
-            "label": "Telephone number",
-            "hint": "Enter a Barbados or international number.",
             "validations": {
               "required": {
                 "error": "Enter a telephone number for the operator.",
@@ -592,8 +588,6 @@
           "ref": "components/generic-tel",
           "overrides": {
             "fieldId": "operator-business-contact-number",
-            "label": "Telephone number",
-            "hint": "Enter a Barbados or international number.",
             "validations": {
               "required": {
                 "error": "Enter a telephone number for the business or organisation.",
@@ -1526,5 +1520,5 @@
     }
   ],
   "createdAt": "2026-08-18T17:01:58.317Z",
-  "updatedAt": "2026-09-24T20:19:18.000Z"
+  "updatedAt": "2026-10-05T17:20:45.000Z"
 }

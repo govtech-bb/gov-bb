@@ -324,7 +324,6 @@
         {
           "ref": "components/mobile-telephone",
           "overrides": {
-            "label": "Mobile phone number",
             "fieldId": "parent-mobile-phone",
             "validations": {
               "required": {
@@ -361,14 +360,12 @@
         {
           "ref": "components/home-telephone",
           "overrides": {
-            "label": "Landline number",
             "fieldId": "parent-landline"
           }
         },
         {
           "ref": "components/work-telephone",
           "overrides": {
-            "label": "Work phone number",
             "fieldId": "parent-work-phone"
           }
         }
@@ -887,7 +884,6 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "hint": "For example, 421-1234 or +1 876 123 4567.",
             "label": "Main phone number",
             "fieldId": "emergency-phone-number",
             "validations": {
@@ -1269,8 +1265,6 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "hint": "For example, 421-1234 or +1 876 123 4567.",
-            "label": "Phone number",
             "fieldId": "collection-person-phone",
             "validations": {
               "phone": {
@@ -1343,7 +1337,7 @@
     }
   ],
   "createdAt": "2026-06-17T17:53:52.346Z",
-  "updatedAt": "2026-09-18T18:21:48.000Z",
+  "updatedAt": "2026-10-05T17:20:45.000Z",
   "meta": {
     "visibility": "public",
     "closingDateTime": "2026-07-09T23:59:00-04:00"

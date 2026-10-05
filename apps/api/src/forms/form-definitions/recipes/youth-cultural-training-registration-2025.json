@@ -103,7 +103,7 @@
               }
             },
             "telephone": {
-              "label": "Work Number"
+              "label": "Work telephone"
             },
             "home-telephone": {
               "validations": {
@@ -112,9 +112,6 @@
                   "value": true
                 }
               }
-            },
-            "mobile-telephone": {
-              "label": "Cell Number"
             }
           }
         },
@@ -674,7 +671,7 @@
               }
             },
             "telephone": {
-              "label": "Emergency Contact Work Number"
+              "label": "Emergency contact work number"
             },
             "first-name": {
               "label": "Emergency Contact First Name",
@@ -686,7 +683,7 @@
               }
             },
             "home-telephone": {
-              "label": "Emergency Contact Home Number",
+              "label": "Emergency contact home number",
               "validations": {
                 "required": {
                   "error": "Please enter the emergency contact's home telephone number",
@@ -713,7 +710,7 @@
         {
           "ref": "components/mobile-telephone",
           "overrides": {
-            "label": "Emergency Contact Cell Number",
+            "label": "Emergency contact cell number",
             "fieldId": "emergency-contact-cell"
           }
         }
@@ -759,7 +756,7 @@
   "title": "National Community Cultural Training Programme Registration 2025–2026",
   "formId": "youth-cultural-training-registration-2025",
   "createdAt": "2025-01-01T00:00:00Z",
-  "updatedAt": "2026-09-17T13:49:39.000Z",
+  "updatedAt": "2026-10-05T17:20:45.000Z",
   "processors": [
     {
       "type": "email",
