@@ -55,15 +55,40 @@ export async function createScratchDatabase(): Promise<string> {
   return name;
 }
 
-export async function dropScratchDatabase(name: string): Promise<void> {
+/**
+ * Kills every client connection to a database, as a restart, failover or idle
+ * reap would, and says how many it killed so a test can wait for that many
+ * reactions.
+ */
+export async function terminateBackends(database: string): Promise<number> {
   const client = admin();
   await client.connect();
+  const result = await client.query(
+    `select pg_terminate_backend(pid) from pg_stat_activity
+     where datname = $1 and backend_type = 'client backend'`,
+    [database],
+  );
+  await client.end();
+  return result.rowCount ?? 0;
+}
+
+/** Closed to new connections, a database refuses the pool's reconnect too. */
+export async function allowConnections(
+  database: string,
+  allowed: boolean,
+): Promise<void> {
+  const client = admin();
+  await client.connect();
+  await client.query(`alter database ${database} allow_connections ${allowed}`);
+  await client.end();
+}
+
+export async function dropScratchDatabase(name: string): Promise<void> {
   // Terminate anything still holding it, or the drop blocks on the pool the
   // server left behind and the suite hangs on teardown rather than failing.
-  await client.query(
-    `select pg_terminate_backend(pid) from pg_stat_activity where datname = $1`,
-    [name],
-  );
+  await terminateBackends(name);
+  const client = admin();
+  await client.connect();
   await client.query(`drop database if exists ${name}`);
   await client.end();
 }
