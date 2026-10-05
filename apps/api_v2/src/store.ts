@@ -258,6 +258,7 @@ export class ApiStore {
    * The category crumb links `/<category>`, which v1 landing serves as the
    * category's index page. landing_v2 has no category page yet, so until it
    * does that crumb 404s there; it is kept for the site this API serves.
+   * Serving the category index is #2928.
    */
   private async breadcrumbs(
     prefixes: string[],
