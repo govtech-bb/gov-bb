@@ -358,7 +358,7 @@ it("offers the generic swap peers in the Field type picker", async () => {
     expect.arrayContaining([
       "Text",
       "Long text",
-      "Telephone",
+      "Telephone number",
       "Number",
       "Email",
     ]),
