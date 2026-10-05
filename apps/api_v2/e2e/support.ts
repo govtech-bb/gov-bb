@@ -101,6 +101,8 @@ export async function startServer(
       DB_USERNAME: DB.user,
       DB_PASSWORD: DB.password,
       PORT: port,
+      // The suite writes without a token, as a laptop does.
+      API_V2_OPEN_WRITES: "true",
       ...env,
     },
     stdio: ["ignore", "pipe", "pipe"],

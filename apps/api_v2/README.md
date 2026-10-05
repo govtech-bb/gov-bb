@@ -17,23 +17,24 @@ from the same `DB_*` variables every other service here reads — the Drizzle
 spelling of `packages/database/src/data-source-env.ts`, not a bespoke config.
 `SEED=false` skips the seed.
 
-| Variable                                           | Default                                           |
-| -------------------------------------------------- | ------------------------------------------------- |
-| `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD` | local Postgres                                    |
-| `DB_NAME`                                          | `gov_bb_v2`                                       |
-| `DB_SSL_CA`                                        | Node's trust store, in production only            |
-| `PORT`                                             | `3020`                                            |
-| `HOST`                                             | `localhost` (set `0.0.0.0` to expose)             |
-| `API_V2_WRITE_TOKEN`                               | unset: writes open locally, refused in production |
-| `CORS_ORIGINS`                                     | the dev servers                                   |
+| Variable                                           | Default                                         |
+| -------------------------------------------------- | ----------------------------------------------- |
+| `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD` | local Postgres                                  |
+| `DB_NAME`                                          | `gov_bb_v2`                                     |
+| `DB_SSL_CA`                                        | Node's trust store, in production only          |
+| `PORT`                                             | `3020`                                          |
+| `HOST`                                             | `localhost` (set `0.0.0.0` to expose)           |
+| `API_V2_WRITE_TOKEN`                               | unset: writes refused                           |
+| `API_V2_OPEN_WRITES`                               | `true` in `dev` only: writes open with no token |
+| `CORS_ORIGINS`                                     | the dev servers                                 |
 
 ## Endpoints
 
 Reads are public. Until #2701's real auth lands, writes and the two
 editor-only reads (`?drafts=true`, `?keys=true`) sit behind an interim bearer
-token: send `Authorization: Bearer $API_V2_WRITE_TOKEN`. With no token set they
-stay open for local development, and are refused when `NODE_ENV=production`, so a
-deploy that forgets the token fails closed. The server listens on `localhost`
+token: send `Authorization: Bearer $API_V2_WRITE_TOKEN`. With no token set
+they are refused, whatever `NODE_ENV` says, unless `API_V2_OPEN_WRITES=true`
+opts a laptop out (the `dev` script sets it). The server listens on `localhost`
 unless `HOST` says otherwise.
 
 | Method   | Path                                   | What it is                                 |
@@ -51,7 +52,7 @@ unless `HOST` says otherwise.
 | `PUT`    | `/collections/:key/records/:recordKey` | write a record                             |
 | `DELETE` | `/collections/:key/records/:recordKey` | delete a record                            |
 
-Because writes are open on a laptop with no token set, the CORS origin
+Because writes are open on a laptop that opts in, the CORS origin
 allow-list is load-bearing rather than hygiene: it is what stops any page a developer has open from preflighting
 a `DELETE` at their instance. `CORS_ORIGINS` is a comma-separated list,
 defaulting to the dev servers' origins.

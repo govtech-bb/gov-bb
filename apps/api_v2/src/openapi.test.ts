@@ -33,7 +33,7 @@ describe("openapi.json", () => {
 
   it("documents every route the app serves", async () => {
     const { db, close } = await createTestDb();
-    const app = await buildApp({ db });
+    const app = await buildApp({ db, openWrites: true });
     await app.ready();
 
     const documented = new Set(
@@ -60,7 +60,7 @@ describe("openapi.json", () => {
 
   it("is served by the app itself", async () => {
     const { db, close } = await createTestDb();
-    const app = await buildApp({ db });
+    const app = await buildApp({ db, openWrites: true });
     const response = await app.inject({ url: "/openapi.json" });
 
     expect(response.statusCode).toBe(200);
@@ -81,7 +81,7 @@ describe("response schemas", () => {
    */
   it("does not strip a block document on the way out", async () => {
     const { db, close } = await createTestDb();
-    const app = await buildApp({ db });
+    const app = await buildApp({ db, openWrites: true });
     const { aDocument } = await import("./test-db");
 
     const created = await app.inject({
@@ -99,7 +99,7 @@ describe("response schemas", () => {
 
   it("keeps a null description null rather than dropping it", async () => {
     const { db, close } = await createTestDb();
-    const app = await buildApp({ db });
+    const app = await buildApp({ db, openWrites: true });
     const { aDocument } = await import("./test-db");
 
     const created = await app.inject({

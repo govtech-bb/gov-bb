@@ -22,7 +22,7 @@ let store: ApiStore;
 beforeEach(async () => {
   ({ db, close } = await createTestDb());
   store = new ApiStore(db);
-  app = await buildApp({ db });
+  app = await buildApp({ db, openWrites: true });
   await app.ready();
 });
 
@@ -475,7 +475,7 @@ describe("write auth", () => {
 
   const build = async (options: {
     writeToken?: string;
-    production?: boolean;
+    openWrites?: boolean;
   }) => {
     gated = await buildApp({ db, ...options });
     await gated.ready();
@@ -549,8 +549,8 @@ describe("write auth", () => {
     ).toBe(200);
   });
 
-  it("fails closed in production when no token is configured", async () => {
-    const api = await build({ production: true });
+  it("fails closed when no token is configured", async () => {
+    const api = await build({ openWrites: false });
     const response = await api.inject({
       method: "POST",
       url: "/pages",
@@ -560,8 +560,8 @@ describe("write auth", () => {
     expect(response.statusCode).toBe(401);
   });
 
-  it("stays open for local development when no token is configured", async () => {
-    const api = await build({ production: false });
+  it("stays open when local development opts in", async () => {
+    const api = await build({ openWrites: true });
     const response = await api.inject({
       method: "POST",
       url: "/pages",
@@ -569,6 +569,17 @@ describe("write auth", () => {
     });
 
     expect(response.statusCode).toBe(201);
+  });
+
+  it("ignores the open-writes opt-in once a token is set", async () => {
+    const api = await build({ writeToken: TOKEN, openWrites: true });
+    const response = await api.inject({
+      method: "POST",
+      url: "/pages",
+      payload: aDocument(),
+    });
+
+    expect(response.statusCode).toBe(401);
   });
 
   it("lets the editor send the token cross-origin", async () => {

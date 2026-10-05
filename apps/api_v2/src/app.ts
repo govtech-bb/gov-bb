@@ -54,8 +54,11 @@ export interface AppOptions {
   logger?: boolean;
   /** Bearer token writes require. Defaults to `API_V2_WRITE_TOKEN`. */
   writeToken?: string;
-  /** Without a token, refuse writes. Defaults to `NODE_ENV === "production"`. */
-  production?: boolean;
+  /**
+   * With no token, leave writes open — a local-development opt-in only.
+   * Defaults to `API_V2_OPEN_WRITES === "true"`; anything else fails closed.
+   */
+  openWrites?: boolean;
 }
 
 /**
@@ -84,7 +87,7 @@ export async function buildApp({
   db,
   logger = false,
   writeToken = process.env.API_V2_WRITE_TOKEN || undefined,
-  production = process.env.NODE_ENV === "production",
+  openWrites = process.env.API_V2_OPEN_WRITES === "true",
 }: AppOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger });
   const store = new ApiStore(db);
@@ -142,16 +145,20 @@ export async function buildApp({
   /*
    * The interim write gate, until #2701's real auth lands. With
    * `API_V2_WRITE_TOKEN` set, writes and editor-only reads need it as a bearer
-   * token. Without one they stay open on a laptop, as before — but in
-   * production they are refused outright, so a deploy that forgets the token
-   * fails closed rather than serving an open write API.
+   * token. Without one they are refused, unless `API_V2_OPEN_WRITES=true`
+   * opts a laptop out. Failing closed by default is the point: it does not
+   * depend on `NODE_ENV`, which a container can easily leave unset.
    */
-  if (!writeToken && production) {
-    app.log.warn("API_V2_WRITE_TOKEN is not set: refusing every write");
+  if (!writeToken) {
+    app.log.warn(
+      openWrites
+        ? "API_V2_OPEN_WRITES is set: writes are unauthenticated"
+        : "API_V2_WRITE_TOKEN is not set: refusing every write",
+    );
   }
   app.addHook("onRequest", async (request, reply) => {
     if (!needsWriteToken(request.method, request.query)) return;
-    if (!writeToken && !production) return;
+    if (!writeToken && openWrites) return;
     if (
       writeToken &&
       bearerMatches(request.headers.authorization, writeToken)
