@@ -104,6 +104,37 @@ is kept in line with the committed recipe (the second half of #2489):
   builder logs and serves the row it has. The stale-base guard above is the
   backstop for a stale row that could not be re-synced.
 
+> **Amended 2026-10-04 ([#2878](https://github.com/govtech-bb/gov-bb/issues/2878)).**
+> "Newer" is decided from the committed recipe's own `updatedAt`, not the
+> commit date: the builder sends that stamp as the value the `UPDATE`
+> compares `updated_at` against, and reads the committer date only for a
+> committed copy whose `updatedAt` is absent (a stamp that is not a datetime
+> fails the recipe's schema parse, so the draft is kept). The check no longer
+> depends on the recipe living in git (govtech-bb/projects#918 may move
+> recipes out of it), and the per-open Commits `GET` goes away except on that
+> fallback. In return every write must move `updatedAt`: the builder Deploy
+> and the services publication both stamp it at the write — the services
+> publication only when the recipe's content (`updatedAt` aside) differs from
+> the recipe in the checkpoint's parent commit. A pages-only publication
+> writes the committed recipe back byte for byte, so its stamp does not move
+> and the next open does not re-sync a draft row over unsaved builder edits.
+> A saved version published later is matched against its checkpoint tag by
+> recipe content and by blob sha for every other file, so the stamp it was
+> written with does not matter; a failed GitHub read is reported as such, not
+> as a mismatch. `pnpm validate-recipe-updated-at` (an always-run step in
+> CI's Validate Recipes job and a lint-staged pre-commit task) fails a hand
+> edit that changes a recipe's content without moving it forward to at least
+> the recipe's last change on the base, and any stamp more than five minutes
+> in the future. Every
+> recipe whose `updatedAt` predated its last commit on `main` was backfilled
+> to that commit's committer date in the same change (all 90 flat files), so
+> the switch alters no freshness decision: the stamp a draft row is compared
+> against is the date the git check was already using. The post-merge archive
+> job (`archive-merged-drafts`) keeps a form's draft when the merged change
+> only moved `updatedAt` — as the backfill does — since nothing new was
+> published over it; the guard and the
+> job share one definition of a stamp-only change (`scripts/recipe-content.ts`).
+
 ## Consequences
 
 - One extra Contents `GET` on the base branch per Deploy and per legacy form

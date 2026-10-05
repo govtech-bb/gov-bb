@@ -43,6 +43,10 @@ const RECIPE: ServiceContractRecipe = {
   updatedAt: "2026-05-22T00:00:00.000Z",
   steps: [],
 };
+// Every Deploy stamps `updatedAt` at the write from the frozen clock below
+// (#2878), whatever the payload carried.
+const STAMPED_AT = new Date(1_700_000_000_000).toISOString();
+const STAMPED_RECIPE = { ...RECIPE, updatedAt: STAMPED_AT };
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -162,11 +166,11 @@ describe("publishRecipe", () => {
 
     // GET open PRs (#2390) — checked before any branch is created.
     expect(fetchMock.mock.calls[1][0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/pulls?state=open&base=dev&per_page=100&page=1",
+      "https://api.github.com/repos/govtech-bb/gov-bb/pulls?state=open&base=main&per_page=100&page=1",
     );
-    // GET base ref (dev)
+    // GET base ref (main, the default base branch)
     expect(fetchMock.mock.calls[2][0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/git/ref/heads/dev",
+      "https://api.github.com/repos/govtech-bb/gov-bb/git/ref/heads/main",
     );
     // POST create branch — versionless branch name
     const createBody = JSON.parse(
@@ -190,13 +194,13 @@ describe("publishRecipe", () => {
     expect(putBody.message).toBe("Publish passport-renewal");
     expect(putBody.sha).toBe("existing-blob-sha");
     expect(Buffer.from(putBody.content, "base64").toString("utf8")).toBe(
-      serializeRecipe(RECIPE),
+      serializeRecipe(STAMPED_RECIPE),
     );
     // POST PR
     const prBody = JSON.parse(
       (fetchMock.mock.calls[6][1] as RequestInit).body as string,
     );
-    expect(prBody.base).toBe("dev");
+    expect(prBody.base).toBe("main");
     expect(prBody.head).toBe("form-builder/passport-renewal-1700000000000");
     expect(prBody.title).toBe("Publish form: Passport Renewal");
     expect(prBody.body).toContain("Form ID: `passport-renewal`");
@@ -251,7 +255,8 @@ describe("publishRecipe", () => {
       Buffer.from(putBody.content, "base64").toString("utf8"),
     );
     expect(written.createdAt).toBe(committedCreatedAt);
-    expect(written.updatedAt).toBe(RECIPE.updatedAt);
+    // #2878: stamped at the write, not carried from the payload.
+    expect(written.updatedAt).toBe(STAMPED_AT);
   });
 
   it("carries a committed field the builder cannot author through a publish that omits it", async () => {
@@ -395,10 +400,11 @@ describe("publishRecipe", () => {
     const putBody = JSON.parse(
       (fetchMock.mock.calls[5][1] as RequestInit).body as string,
     );
-    // No existing file → no sha, recipe written verbatim with its minted stamps.
+    // No existing file → no sha; the recipe is written with its minted
+    // createdAt and `updatedAt` stamped at the write (#2878).
     expect(putBody.sha).toBeUndefined();
     expect(Buffer.from(putBody.content, "base64").toString("utf8")).toBe(
-      serializeRecipe(RECIPE),
+      serializeRecipe(STAMPED_RECIPE),
     );
   });
 
@@ -437,7 +443,7 @@ describe("publishRecipe", () => {
   "description": "Renew your passport",
   "steps": [],
   "createdAt": "2026-01-01T00:00:00.000Z",
-  "updatedAt": "2026-05-22T00:00:00.000Z",
+  "updatedAt": "${STAMPED_AT}",
   "version": "1.2.0"
 }
 `,
@@ -486,7 +492,7 @@ describe("publishRecipe", () => {
     // Only the guard's read happened — no branch, no file PUT, no PR.
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0][0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal.json?ref=dev",
+      "https://api.github.com/repos/govtech-bb/gov-bb/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal.json?ref=main",
     );
   });
 
@@ -1111,12 +1117,12 @@ describe("eraseRecipe", () => {
 
     // listVersions reads on the base branch.
     expect(fetchMock.mock.calls[0][0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal?ref=dev",
+      "https://api.github.com/repos/govtech-bb/gov-bb/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal?ref=main",
     );
 
     // Base ref read.
     expect(fetchMock.mock.calls[1][0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/git/ref/heads/dev",
+      "https://api.github.com/repos/govtech-bb/gov-bb/git/ref/heads/main",
     );
 
     // Branch is namespaced for erase and points at the base tip.
@@ -1185,7 +1191,7 @@ describe("eraseRecipe", () => {
       "https://api.github.com/repos/govtech-bb/gov-bb/pulls",
     );
     const prBody = JSON.parse((prCall[1] as RequestInit).body as string);
-    expect(prBody.base).toBe("dev");
+    expect(prBody.base).toBe("main");
     expect(prBody.head).toBe(
       "form-builder/erase-passport-renewal-1700000000000",
     );

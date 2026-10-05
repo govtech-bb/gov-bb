@@ -1,10 +1,82 @@
 import {
   parseAddedRecipePaths,
+  selectDraftsToArchive,
   archiveDrafts,
   resolveArchiveConfig,
 } from "./archive-merged-drafts";
 
 const RECIPES = "apps/api/src/forms/form-definitions/recipes";
+
+// #2878: a recipe change that only moved `updatedAt` — the stamp backfill, a
+// page-only service publication — must not expire the form's builder draft.
+describe("selectDraftsToArchive", () => {
+  const BEFORE = "a".repeat(40);
+  const AFTER = "b".repeat(40);
+  const recipe = {
+    formId: "passport-renewal",
+    title: "Passport Renewal",
+    steps: [],
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-05-22T00:00:00.000Z",
+  };
+  const json = (value: unknown) => JSON.stringify(value, null, 2) + "\n";
+  const path = `${RECIPES}/passport-renewal.json`;
+
+  function select(blobs: Record<string, string | null>) {
+    const log: string[] = [];
+    const readBlob = vi.fn(
+      (sha: string, p: string) => blobs[`${sha}:${p}`] ?? null,
+    );
+    const kept = selectDraftsToArchive([{ formId: "passport-renewal" }], {
+      before: BEFORE,
+      after: AFTER,
+      readBlob,
+      log: (msg) => log.push(msg),
+    });
+    return { kept, log, readBlob };
+  }
+
+  it("skips a modification that only moved updatedAt, and says so", () => {
+    const { kept, log, readBlob } = select({
+      [`${BEFORE}:${path}`]: json(recipe),
+      [`${AFTER}:${path}`]: json({
+        ...recipe,
+        updatedAt: "2026-09-18T18:21:48.000Z",
+      }),
+    });
+    expect(kept).toEqual([]);
+    expect(
+      log.some((m) => /passport-renewal/.test(m) && /updatedAt/.test(m)),
+    ).toBe(true);
+    expect(readBlob).toHaveBeenCalledWith(BEFORE, path);
+    expect(readBlob).toHaveBeenCalledWith(AFTER, path);
+  });
+
+  it("archives a modification that changed the recipe's content", () => {
+    const { kept } = select({
+      [`${BEFORE}:${path}`]: json(recipe),
+      [`${AFTER}:${path}`]: json({
+        ...recipe,
+        title: "Renew a passport",
+        updatedAt: "2026-09-18T18:21:48.000Z",
+      }),
+    });
+    expect(kept).toEqual([{ formId: "passport-renewal" }]);
+  });
+
+  it("archives an added recipe (no blob before the push)", () => {
+    const { kept } = select({ [`${AFTER}:${path}`]: json(recipe) });
+    expect(kept).toEqual([{ formId: "passport-renewal" }]);
+  });
+
+  it("archives when a blob does not parse, as before", () => {
+    const { kept } = select({
+      [`${BEFORE}:${path}`]: "{ not json",
+      [`${AFTER}:${path}`]: json(recipe),
+    });
+    expect(kept).toEqual([{ formId: "passport-renewal" }]);
+  });
+});
 
 describe("parseAddedRecipePaths", () => {
   it("extracts {formId} from flat canonical recipe paths", () => {

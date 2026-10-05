@@ -1,4 +1,4 @@
-import { REPO_NAME, repoOwner } from "./github-repo";
+import { REPO_NAME, repoOwner, resolveBaseBranch } from "./github-repo";
 
 const API_BASE = "https://api.github.com";
 
@@ -17,6 +17,13 @@ interface ContentsFile {
   encoding: string;
   content: string | null;
 }
+
+/**
+ * The flat recipe file is not committed on the base branch. Typed so the
+ * #2489 re-sync can tell "nothing committed yet" — the normal state of a
+ * never-deployed draft — from a read that failed (#2878).
+ */
+export class RecipeNotFoundError extends Error {}
 
 function ghHeaders(token: string): Record<string, string> {
   return {
@@ -42,7 +49,14 @@ async function ghGet(
   return { status: res.status, body };
 }
 
-/** Fetch a form's canonical published recipe (#1196: the flat `{formId}.json`). */
+/**
+ * Fetch a form's canonical published recipe (#1196: the flat `{formId}.json`)
+ * as committed on the configured base branch (`resolveBaseBranch()`) — the
+ * same branch the Deploy stale-base guard compares against, so the recipe the
+ * builder opens and the revision it refuses to overwrite are one thing
+ * (#2899). Every caller wants that branch: the no-row fallback, the `meta`
+ * hydration and the #2489 re-sync all read "what a Deploy would overwrite".
+ */
 export async function getPublishedRecipe(
   token: string,
   args: { formId: string },
@@ -83,9 +97,10 @@ export async function listVersions(
 
 /**
  * When the committed recipe for `formId` last changed: the committer date of
- * the latest commit touching the flat file on the repo's default branch, or
+ * the latest commit touching the flat file on the configured base branch, or
  * null when no commit touches it (nothing committed). Read off the same branch
- * as getPublishedRecipe so the date and the content it describes agree.
+ * as getPublishedRecipe so the date and the content it describes agree (the
+ * Commits API names the branch `sha`, where Contents says `ref`).
  * Committer date rather than author date: a rebased or cherry-picked fix lands
  * later than it was written, and landing is what makes a draft stale (#2489).
  */
@@ -94,6 +109,7 @@ export async function getRecipeCommittedAt(
   formId: string,
 ): Promise<string | null> {
   const query = new URLSearchParams({
+    sha: resolveBaseBranch(),
     path: `${RECIPES_BASE}/${formId}.json`,
     per_page: "1",
   });
@@ -115,11 +131,13 @@ async function fetchRecipeFile(
   formId: string,
 ): Promise<Record<string, unknown>> {
   const res = await ghGet(
-    `${API_BASE}/repos/${repoOwner()}/${REPO_NAME}/contents/${RECIPES_BASE}/${encodeURIComponent(formId)}.json`,
+    `${API_BASE}/repos/${repoOwner()}/${REPO_NAME}/contents/${RECIPES_BASE}/${encodeURIComponent(formId)}.json?ref=${encodeURIComponent(resolveBaseBranch())}`,
     token,
   );
   if (res.status === 404) {
-    throw new Error(`Recipe not found: ${RECIPES_BASE}/${formId}.json`);
+    throw new RecipeNotFoundError(
+      `Recipe not found: ${RECIPES_BASE}/${formId}.json`,
+    );
   }
   if (res.status < 200 || res.status >= 300) {
     throw new Error(

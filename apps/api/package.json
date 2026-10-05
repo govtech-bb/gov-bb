@@ -76,6 +76,7 @@
     "unplugin-swc": "^1.5.9"
   },
   "lint-staged": {
-    "*.{json,ts}": "npx prettier --write"
+    "*.{json,ts}": "npx prettier --write",
+    "src/forms/form-definitions/recipes/*.json": "pnpm -w exec tsx scripts/validate-recipe-updated-at.ts --staged"
   }
 }
