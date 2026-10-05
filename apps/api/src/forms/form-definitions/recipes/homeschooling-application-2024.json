@@ -73,14 +73,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Contact number(s)",
-            "fieldId": "contact-numbers",
-            "validations": {
-              "required": {
-                "error": "Contact Number(s) is required",
-                "value": true
-              }
-            }
+            "fieldId": "contact-numbers"
           }
         },
         {
@@ -456,5 +449,5 @@
     }
   ],
   "createdAt": "2026-06-03T00:00:00.000Z",
-  "updatedAt": "2026-10-05T17:20:45.000Z"
+  "updatedAt": "2026-10-05T18:32:56.000Z"
 }

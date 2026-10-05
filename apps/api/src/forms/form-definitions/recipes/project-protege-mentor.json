@@ -389,13 +389,7 @@
                 "operator": "equal",
                 "targetFieldId": "share-phone-number"
               }
-            ],
-            "validations": {
-              "required": {
-                "error": "Enter your phone number",
-                "value": true
-              }
-            }
+            ]
           }
         },
         {
@@ -575,13 +569,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "prof-ref-phone",
-            "validations": {
-              "required": {
-                "error": "Enter the referee phone number",
-                "value": true
-              }
-            }
+            "fieldId": "prof-ref-phone"
           }
         }
       ],
@@ -651,13 +639,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "pers-ref-phone",
-            "validations": {
-              "required": {
-                "error": "Enter the referee phone number",
-                "value": true
-              }
-            }
+            "fieldId": "pers-ref-phone"
           }
         }
       ],
@@ -705,5 +687,5 @@
     }
   ],
   "createdAt": "2026-06-12T19:15:51.819Z",
-  "updatedAt": "2026-10-05T17:20:45.000Z"
+  "updatedAt": "2026-10-05T18:32:56.000Z"
 }

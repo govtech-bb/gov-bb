@@ -536,7 +536,7 @@
                 "value": true
               },
               "required": {
-                "error": "Enter a phone number",
+                "error": "Telephone number is required",
                 "value": true
               }
             }
@@ -1067,7 +1067,7 @@
                 "value": true
               },
               "required": {
-                "error": "Enter contact number",
+                "error": "Telephone number is required",
                 "value": true
               }
             }
@@ -1244,7 +1244,7 @@
                 "value": true
               },
               "required": {
-                "error": "Enter contact number",
+                "error": "Telephone number is required",
                 "value": true
               }
             }
@@ -1995,5 +1995,5 @@
     }
   ],
   "createdAt": "2026-06-11T15:00:03.273Z",
-  "updatedAt": "2026-10-05T17:20:45.000Z"
+  "updatedAt": "2026-10-05T18:32:56.000Z"
 }

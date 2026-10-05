@@ -188,13 +188,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "phone-number",
-            "validations": {
-              "required": {
-                "error": "Enter your phone number",
-                "value": true
-              }
-            }
+            "fieldId": "phone-number"
           }
         }
       ]
@@ -554,7 +548,7 @@
     }
   ],
   "createdAt": "2026-08-25T14:05:29.888Z",
-  "updatedAt": "2026-10-05T17:20:45.000Z",
+  "updatedAt": "2026-10-05T18:32:56.000Z",
   "meta": {
     "visibility": "preview"
   },

@@ -116,13 +116,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "applicant-phone",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Phone number is required"
-              }
-            }
+            "fieldId": "applicant-phone"
           }
         },
         {
@@ -285,5 +279,5 @@
     }
   ],
   "createdAt": "2026-06-02T15:31:18.304Z",
-  "updatedAt": "2026-10-05T17:20:45.000Z"
+  "updatedAt": "2026-10-05T18:32:56.000Z"
 }

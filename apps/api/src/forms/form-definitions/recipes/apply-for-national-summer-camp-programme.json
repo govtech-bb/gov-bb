@@ -1199,7 +1199,7 @@
                 "value": true
               },
               "required": {
-                "error": "Enter a mobile phone number",
+                "error": "Mobile telephone is required",
                 "value": true
               }
             }
@@ -1714,10 +1714,6 @@
               "phone": {
                 "error": "Enter a phone number in the correct format",
                 "value": true
-              },
-              "required": {
-                "error": "Enter a phone number",
-                "value": true
               }
             }
           }
@@ -2006,5 +2002,5 @@
     }
   ],
   "createdAt": "2026-06-12T11:02:19.069Z",
-  "updatedAt": "2026-10-05T17:20:45.000Z"
+  "updatedAt": "2026-10-05T18:32:56.000Z"
 }

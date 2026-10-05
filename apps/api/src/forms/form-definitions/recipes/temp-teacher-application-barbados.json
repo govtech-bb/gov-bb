@@ -249,12 +249,8 @@
             "label": "Mobile telephone",
             "validations": {
               "required": {
-                "error": "Tel Cell is required",
+                "error": "Mobile telephone is required",
                 "value": true
-              },
-              "minLength": {
-                "error": "Tel Cell must be at least 2 characters",
-                "value": 2
               }
             }
           }
@@ -712,13 +708,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "ref1-contact",
-            "validations": {
-              "required": {
-                "error": "Contact No is required",
-                "value": true
-              }
-            }
+            "fieldId": "ref1-contact"
           }
         },
         {
@@ -794,13 +784,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "ref2-contact",
-            "validations": {
-              "required": {
-                "error": "Contact No is required",
-                "value": true
-              }
-            }
+            "fieldId": "ref2-contact"
           }
         },
         {
@@ -935,5 +919,5 @@
     }
   ],
   "createdAt": "2026-06-02T14:40:22.941Z",
-  "updatedAt": "2026-10-05T17:20:45.000Z"
+  "updatedAt": "2026-10-05T18:32:56.000Z"
 }

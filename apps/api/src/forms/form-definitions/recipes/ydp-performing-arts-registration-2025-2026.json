@@ -131,7 +131,7 @@
             "fieldId": "mobile-telephone",
             "validations": {
               "required": {
-                "error": "Please enter a mobile number",
+                "error": "Mobile telephone is required",
                 "value": true
               }
             }
@@ -589,7 +589,7 @@
               "label": "Emergency contact home telephone",
               "validations": {
                 "required": {
-                  "error": "Please enter the emergency contact's home telephone number",
+                  "error": "Emergency contact home telephone is required",
                   "value": true
                 }
               }
@@ -658,7 +658,7 @@
   "title": "Youth Development Programme – Performing Arts Registration 2025–2026",
   "formId": "ydp-performing-arts-registration-2025-2026",
   "createdAt": "2025-01-01T00:00:00Z",
-  "updatedAt": "2026-10-05T17:20:45.000Z",
+  "updatedAt": "2026-10-05T18:32:56.000Z",
   "processors": [
     {
       "type": "email",

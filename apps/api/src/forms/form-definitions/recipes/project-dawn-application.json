@@ -115,7 +115,7 @@
             "fieldId": "telephone-home",
             "validations": {
               "required": {
-                "error": "Please enter your telephone number",
+                "error": "Home telephone is required",
                 "value": true
               }
             }
@@ -127,7 +127,7 @@
             "fieldId": "telephone-cell",
             "validations": {
               "required": {
-                "error": "Please enter your cell phone number",
+                "error": "Mobile telephone is required",
                 "value": true
               }
             }
@@ -1012,7 +1012,7 @@
               "label": "Emergency contact home telephone",
               "validations": {
                 "required": {
-                  "error": "Please enter the emergency contact's home telephone",
+                  "error": "Emergency contact home telephone is required",
                   "value": true
                 }
               }
@@ -1075,7 +1075,7 @@
   "title": "Project Dawn – Block Transformation Unit Application",
   "formId": "project-dawn-application",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-10-05T17:20:45.000Z",
+  "updatedAt": "2026-10-05T18:32:56.000Z",
   "processors": [
     {
       "type": "email",

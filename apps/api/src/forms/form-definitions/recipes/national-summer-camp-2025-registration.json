@@ -234,7 +234,7 @@
             "fieldId": "guardian-home-telephone",
             "validations": {
               "required": {
-                "error": "Please enter at least one telephone number",
+                "error": "Home telephone is required",
                 "value": true
               }
             }
@@ -691,12 +691,11 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "hint": "Enter one or more emergency contact numbers",
-            "label": "Emergency telephone number(s)",
+            "label": "Emergency telephone number",
             "fieldId": "emergency-telephone",
             "validations": {
               "required": {
-                "error": "Please enter an emergency telephone number",
+                "error": "Emergency telephone number is required",
                 "value": true
               }
             }
@@ -893,7 +892,7 @@
   "title": "National Summer Camp Programme 2025: Camper Registration Form",
   "formId": "national-summer-camp-2025-registration",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-10-05T17:20:45.000Z",
+  "updatedAt": "2026-10-05T18:32:56.000Z",
   "processors": [
     {
       "type": "email",

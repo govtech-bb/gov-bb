@@ -161,7 +161,7 @@
             "validations": {
               "required": {
                 "value": true,
-                "error": "Please enter a contact number"
+                "error": "Telephone number is required"
               }
             }
           }
@@ -389,5 +389,5 @@
     }
   ],
   "createdAt": "2026-06-02T15:33:27.264Z",
-  "updatedAt": "2026-10-05T17:20:45.000Z"
+  "updatedAt": "2026-10-05T18:32:56.000Z"
 }
