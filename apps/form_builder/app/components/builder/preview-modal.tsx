@@ -6,6 +6,14 @@ import type {
 
 import { Dialog } from "../ui/dialog";
 
+// The opening line of a content block's markdown body, as the applicant reads
+// it (#2873). Raw markdown is fine here: this is the structural preview. The
+// hydrated contract is cast, not parsed, so a DB custom definition may arrive
+// without a body — same guard as the forms renderer.
+function firstLine(markdown: string | undefined): string {
+  return (markdown ?? "").trim().split("\n")[0];
+}
+
 interface PreviewModalProps {
   open: boolean;
   contract: ServiceContract | null;
@@ -128,25 +136,51 @@ export function PreviewModal({
                   </p>
                 )}
                 <ol className="mt-4 divide-y divide-ui-hairline">
-                  {step.elements.map((field) => (
-                    <li key={field.fieldId} className="py-3">
-                      <div className="flex flex-wrap justify-between gap-2 text-sm">
-                        <span className="font-medium">
-                          {field.label || field.fieldId}
-                        </span>
-                        <span className="text-xs text-ui-subtle">
-                          {field.validations?.required?.value
-                            ? "Required"
-                            : "Optional"}
-                        </span>
-                      </div>
-                      {field.hint && (
-                        <p className="mt-1 text-sm text-ui-subtle">
-                          {field.hint}
-                        </p>
-                      )}
-                    </li>
-                  ))}
+                  {step.elements.map((field) =>
+                    field.htmlType === "content" ? (
+                      // A content block holds no value, so Required/Optional
+                      // would be noise. Show what the applicant reads — the
+                      // details summary, else the opening line of the body —
+                      // tagged with its style, so an edit shows here before
+                      // the draft is saved (#2873).
+                      <li key={field.fieldId} className="py-3">
+                        <div className="flex flex-wrap justify-between gap-2 text-sm">
+                          <span className="font-medium">
+                            {field.variant === "details"
+                              ? (field.summary ?? field.label)
+                              : firstLine(field.content) || field.label}
+                          </span>
+                          <span className="text-xs text-ui-subtle capitalize">
+                            {field.variant}
+                          </span>
+                        </div>
+                        {field.variant === "details" &&
+                          firstLine(field.content) && (
+                            <p className="mt-1 text-sm text-ui-subtle">
+                              {firstLine(field.content)}
+                            </p>
+                          )}
+                      </li>
+                    ) : (
+                      <li key={field.fieldId} className="py-3">
+                        <div className="flex flex-wrap justify-between gap-2 text-sm">
+                          <span className="font-medium">
+                            {field.label || field.fieldId}
+                          </span>
+                          <span className="text-xs text-ui-subtle">
+                            {field.validations?.required?.value
+                              ? "Required"
+                              : "Optional"}
+                          </span>
+                        </div>
+                        {field.hint && (
+                          <p className="mt-1 text-sm text-ui-subtle">
+                            {field.hint}
+                          </p>
+                        )}
+                      </li>
+                    ),
+                  )}
                 </ol>
               </section>
             ))}

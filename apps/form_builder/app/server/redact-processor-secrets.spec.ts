@@ -34,7 +34,7 @@ describe("redactRecipeSecrets", () => {
   it("replaces webhook secret, webhook auth.secret, and opencrvs token", () => {
     const out = redactRecipeSecrets(recipeWithSecrets());
     expect(out.processors[1].config.secret).toBe(REDACTED_SECRET);
-    expect(out.processors[1].config.auth.secret).toBe(REDACTED_SECRET);
+    expect(out.processors[1].config.auth?.secret).toBe(REDACTED_SECRET);
     expect(out.processors[2].config.token).toBe(REDACTED_SECRET);
   });
 
@@ -67,7 +67,7 @@ describe("restoreRecipeSecrets", () => {
     expect(restored.processors[1].config.secret).toBe(
       "super-secret-hmac-key-1234",
     );
-    expect(restored.processors[1].config.auth.secret).toBe(
+    expect(restored.processors[1].config.auth?.secret).toBe(
       "auth-secret-key-abcdefgh",
     );
     expect(restored.processors[2].config.token).toBe("opencrvs-token-xyz");

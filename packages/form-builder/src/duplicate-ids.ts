@@ -149,18 +149,27 @@ export function formatCollisionIssues(collisions: {
   ];
 }
 
+// `childFieldId` names the block child being edited: every child of one block
+// resolves with the block's editorFieldId, so excluding by that alone would
+// hide a clash between two siblings of the same instance (#2896). Omit it for
+// a component field, whose single entry carries no childFieldId.
 export function fieldIdDuplicatesAnother(
   draft: RecipeDraft,
   catalog: RegistryCatalog,
   editorFieldId: string,
   candidateId: string,
+  childFieldId?: string,
 ): boolean {
   const candidate = candidateId.trim();
   if (!candidate) return false; // blank never duplicates
 
   return resolveFieldIds(draft, catalog).some(
     (entry) =>
-      entry.editorFieldId !== editorFieldId && entry.fieldId === candidate,
+      entry.fieldId === candidate &&
+      !(
+        entry.editorFieldId === editorFieldId &&
+        entry.childFieldId === childFieldId
+      ),
   );
 }
 

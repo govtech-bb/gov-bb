@@ -59,6 +59,9 @@ jobs:
       - name: Type check landing
         run: pnpm exec nx run landing:typecheck
 
+      - name: Type check form builder
+        run: pnpm exec nx run form-builder-app:typecheck
+
       - name: Report type check results
         if: steps.typecheck.outcome == 'failure'
         run: |
@@ -615,6 +618,9 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
+          # Full history so the updatedAt guard below can diff the PR against
+          # its merge base with the target branch.
+          fetch-depth: 0
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
@@ -624,6 +630,17 @@ jobs:
 
       - name: Validate recipe files
         run: pnpm validate-recipes
+
+      # A recipe whose content changed must move its `updatedAt` (#2878): the
+      # builder decides a draft row's staleness from that stamp (ADR 0075).
+      # An always-run step, not an nx target — nx inputs skip content-only
+      # changes, so a cached target would replay a stale green. Diffs the PR
+      # against its merge base with the target branch; on a push to `main`
+      # there is nothing to diff and the step passes.
+      - name: Recipe content changes bump updatedAt
+        env:
+          BASE_REF: ${{ github.base_ref || github.ref_name }}
+        run: pnpm validate-recipe-updated-at --base "origin/$BASE_REF"
 
   validate-content:
     name: Validate Content

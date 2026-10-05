@@ -216,6 +216,110 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
     });
   });
 
+  it("content block overrides (variant, content, summary) survive round-trip (#2873)", () => {
+    // The edit panel writes these three keys; both directions copy overrides
+    // wholesale, so what the panel saved is what reopening the builder shows.
+    const overrides = {
+      fieldId: "before-you-start",
+      variant: "details" as const,
+      summary: "What you will need",
+      content: "Bring your **National ID** and proof of address.",
+    };
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          fields: [
+            f({ kind: "component", ref: "components/content", overrides }),
+          ],
+          behaviours: [],
+        },
+      ],
+    });
+
+    const recipe = serializeRecipeDraft(draft);
+    expect(recipe.steps[0].elements[0].overrides).toEqual(overrides);
+    expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(true);
+
+    const result = deserializeRecipe(recipe);
+    expect(result.steps[0].fields[0].overrides).toEqual(overrides);
+  });
+
+  it("address-lookup geocodeTargets survive round-trip (#2886)", () => {
+    const overrides = {
+      fieldId: "business-address-line-1",
+      geocodeTargets: {
+        line2FieldId: "business-address-line-2",
+        parishFieldId: "business-address-parish",
+        coordinatesFieldId: "business-address-coordinates",
+      },
+    };
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          fields: [
+            f({
+              kind: "component",
+              ref: "components/address-lookup",
+              overrides,
+            }),
+          ],
+          behaviours: [],
+        },
+      ],
+    });
+
+    const recipe = serializeRecipeDraft(draft);
+    expect(recipe.steps[0].elements[0].overrides).toEqual(overrides);
+    expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(true);
+
+    const result = deserializeRecipe(recipe);
+    expect(result.steps[0].fields[0].overrides).toEqual(overrides);
+  });
+
+  it("checkbox-accordion groups survive round-trip (#2887)", () => {
+    const overrides = {
+      fieldId: "food-served",
+      groups: [
+        {
+          label: "Meat and poultry",
+          higherRisk: true,
+          options: [{ label: "Chicken", value: "chicken" }],
+        },
+        {
+          label: "Drinks",
+          options: [{ label: "Juice", value: "juice", disabled: true }],
+        },
+      ],
+    };
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          fields: [
+            f({
+              kind: "component",
+              ref: "components/generic-checkbox-accordion",
+              overrides,
+            }),
+          ],
+          behaviours: [],
+        },
+      ],
+    });
+
+    const recipe = serializeRecipeDraft(draft);
+    expect(recipe.steps[0].elements[0].overrides).toEqual(overrides);
+    expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(true);
+
+    const result = deserializeRecipe(recipe);
+    expect(result.steps[0].fields[0].overrides).toEqual(overrides);
+  });
+
   it("block field (kind: 'block') survives round-trip without child overrides", () => {
     const draft = makeBaseDraft({
       steps: [

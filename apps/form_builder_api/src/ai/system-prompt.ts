@@ -174,7 +174,7 @@ To hide specific elements within a block, use field-keyed overrides:
 
 #### The \`ui\` Object (per-field presentation hints)
 
-Every element's overrides may carry a \`ui\` object with two optional keys:
+Every element's overrides may carry a \`ui\` object with these optional keys:
 
 \`\`\`json
 {"ref": "components/generic-text", "overrides": {"fieldId": "permit-number", "label": "Permit number", "validations": {"required": {"value": true, "error": "Permit number is required"}}, "ui": {"width": "short", "hideLabel": false}}}
@@ -182,6 +182,7 @@ Every element's overrides may carry a \`ui\` object with two optional keys:
 
 - \`"width"\` — \`"short"\`, \`"medium"\` or \`"long"\`. Controls the rendered input width on desktop (\`short\` ≈ 24 characters, \`medium\` ≈ 38 characters, \`long\`/unset = full width); on mobile every field is full width. Match the width to the expected answer length: \`short\` for codes, IDs, postcodes and other brief identifiers; \`medium\` for single words or short phrases (e.g. a town, a first name); \`long\` for sentences and textareas.
 - \`"hideLabel"\` — when \`true\`, the field's label is visually hidden but kept in the DOM, so screen readers still announce it (the accessible name is preserved). Use sparingly — e.g. a second address line whose purpose is obvious from the line above it. A \`label\` override is still REQUIRED even when hidden: it is what assistive technology reads.
+- \`"hidden"\` — when \`true\`, the field renders as a hidden input: no visible UI and left off check-your-answers, but still in the submitted payload (unlike \`isHidden\`, which strips the field). Only for a value another field computes — the \`coordinatesFieldId\` target of \`components/address-lookup\`. Never use it to hide a question from the applicant.
 
 \`ui\` merges key-by-key with the component's registry defaults: overriding only \`hideLabel\` keeps a baked-in width (e.g. National ID's \`width: "short"\`), and vice versa. Only set the keys you mean to change.
 
@@ -345,6 +346,7 @@ Every generated recipe MUST include a top-level \`"meta": {"visibility": "draft"
 - components/middle-name — text (middle name)
 - components/name — text (use for EVERY human name field — "full name", "name of applicant", "father's name", "witness name", etc. — with a fieldId + label override; never build a person name from \`components/generic-text\`. Carries a person-name pattern that rejects digits and most symbols, which is correct for any person's name; for NON-person names like a business name or school name use \`components/generic-text\` instead, per CATEGORY 0; for relationship fields use \`components/relationship\`, per Rule 4)
 - components/address — text (single address line, use twice with different fieldIds for line 1 + 2; the base ships \`required: true\`, so line 2 MUST override \`"required": {"value": false}\` explicitly, per CATEGORY 2)
+- components/address-lookup — text with a Barbados address lookup: suggests matching addresses as the applicant types, and picking one stores its street line as plain text (so a lookup outage degrades to an ordinary text field). Use it for address line 1 when the form also collects the parish or needs the location; ships \`required\` + \`minLength\` — do not restate. Optional \`"geocodeTargets"\` names SAME-STEP fieldIds the picked suggestion fills in — omit any you do not need: \`"line2FieldId"\` (the address line 2 text field), \`"parishFieldId"\` (the \`components/parish\` select — only set when the geocoder resolves a parish, so a manual choice is never overwritten) and \`"coordinatesFieldId"\` (only when the service routes by location: a \`components/generic-text\` with \`"ui": {"hidden": true}\` and \`"required": {"value": false}\` that receives \`"lat,lon"\`). Every target must be a field on the same step
 - components/town — text
 - components/postcode — text (width: short)
 - components/national-id-number — text
@@ -354,6 +356,16 @@ Every generated recipe MUST include a top-level \`"meta": {"visibility": "draft"
 - components/account-name — text
 - components/account-number — text
 - components/bank — text (free-text bank NAME — NOT a select; it ships no option list, so reference it bare and never emit \`options\`)
+
+#### Address Lookup Targets
+
+The lookup field and every field it fills live on the same step; the line 2 and parish fields are ordinary components the applicant can still edit by hand:
+
+\`\`\`json
+{"ref": "components/address-lookup", "overrides": {"fieldId": "business-address-line-1", "label": "Address line 1", "geocodeTargets": {"line2FieldId": "business-address-line-2", "parishFieldId": "parish"}}}
+{"ref": "components/address", "overrides": {"fieldId": "business-address-line-2", "label": "Address line 2", "validations": {"required": {"value": false}}}}
+{"ref": "components/parish"}
+\`\`\`
 
 ### Contact Components
 - components/email — email
@@ -386,6 +398,19 @@ Telephone fields render as a \`tel\` input with \`autocomplete="tel"\` — never
 - components/confirmation — checkbox (declaration/confirmation)
 - components/upload-document — file upload
 - components/additional-details — textarea (multi-line text)
+- components/opening-hours — weekly opening-hours grid: seven day rows (Monday first), up to three sets of hours per day picked with native time pickers, "Not open" for days left empty. Submits one \`"Monday 09:00 - 17:00"\` string per set of hours. Ships \`required\` (hours for at least one day) and a format \`pattern\` that rejects an equal open and close — do not restate either. Use it for a business's regular weekly hours; override \`fieldId\`, \`label\` and \`hint\` only when the wording differs. Optional \`"step"\` is the time-picker increment in SECONDS and MUST be a multiple of 60 (e.g. 900 = 15 minutes) — any other value falls back to 60
+
+### Content Block (non-field guidance)
+- components/content — static guidance placed between fields: renders markdown, holds no value and is never validated, shown on check-your-answers or submitted. It is positioned like a field, so it ALWAYS needs a unique kebab-case \`fieldId\` (Rule 1 applies) plus:
+  - \`"variant"\` — \`"inset"\` (inset callout for a note the applicant should read), \`"text"\` (plain paragraph), \`"details"\` (collapsed disclosure the applicant can open — for a long "why we ask" explanation) or \`"warning"\` (amber "!" callout for a risk, deadline or legal duty).
+  - \`"content"\` — the markdown body (paragraphs, **bold**, links and lists; raw HTML stays escaped).
+  - \`"summary"\` — \`"details"\` only: the clickable line that opens the disclosure. It falls back to \`label\` when unset; the other variants ignore it.
+  Never add \`label\` (inset, text and warning do not render it), \`hint\`, \`options\` or \`validations\`. A content block may carry \`behaviours\` (\`fieldConditionalOn\`) so a notice appears only after a given answer. Rule B still applies: the body states what the source form states, never an invented fee or timeline.
+
+\`\`\`json
+{"ref": "components/content", "overrides": {"fieldId": "supplier-licence-warning", "variant": "warning", "content": "It is your responsibility to make sure your suppliers have a valid food licence."}}
+{"ref": "components/content", "overrides": {"fieldId": "officer-times-note", "variant": "details", "summary": "Why you do not choose officer times", "content": "Officers are assigned based on your event's dates and times."}}
+\`\`\`
 
 ### Generic Primitive Components
 Clean-slate building blocks with no purpose-specific validations baked in. Use a semantic component above only when the field genuinely IS that thing and its built-in validations are correct as-is; the moment you would have to override a semantic component's identity (fieldId + label) to repurpose it, use the matching generic primitive here instead and add the validations you actually want (per CATEGORY 0). Overriding a generic is the preferred path, not a last resort. All \`generic-*\` refs (and \`show-hide\`) resolve from the builtin registry.
@@ -395,11 +420,19 @@ Clean-slate building blocks with no purpose-specific validations baked in. Use a
 - components/generic-email — email input
 - components/generic-tel — telephone input
 - components/generic-date — date input
+- components/generic-time — time input (native time picker). \`"step"\` is the picker increment in SECONDS; the registry default is 1800 (30 minutes), so override it only for a different increment (e.g. 900 = 15 minutes) — a value typed off the step is still accepted
 - components/generic-select — dropdown (EMPTY — MUST provide options)
 - components/generic-radio — radio group (exactly 2 options — MUST provide options)
 - components/generic-checkbox — checkbox / multi-select
+- components/generic-checkbox-accordion — collapsible multi-select (EMPTY — MUST provide \`"groups"\`): each group is \`{"label": "...", "higherRisk": true, "options": [{"label": "...", "value": "..."}]}\` (\`"higherRisk"\` is optional and adds a "Higher-risk" badge) and renders as a category checkbox that expands to its item checkboxes (a one-item group renders as a single checkbox). The value is ONE flat array of ticked option values across every group, so \`required\` means "tick at least one item". Use it for a long list that falls naturally into categories (foods served, equipment types); for a short flat list use \`components/generic-checkbox\`
 - components/generic-file — file upload
 - components/show-hide — conditional show/hide wrapper primitive
+
+A checkbox accordion carries its categories in \`groups\`, with the required rule stated like any other generic:
+
+\`\`\`json
+{"ref": "components/generic-checkbox-accordion", "overrides": {"fieldId": "food-served", "label": "Food and drink you will serve", "hint": "Open each category that applies and tick the items you will serve.", "groups": [{"label": "Meat and poultry", "higherRisk": true, "options": [{"label": "Chicken", "value": "chicken"}, {"label": "Beef", "value": "beef"}]}, {"label": "Drinks", "options": [{"label": "Juice", "value": "juice"}, {"label": "Water", "value": "water"}]}], "validations": {"required": {"value": true, "error": "Tick at least one item you will serve"}}}}
+\`\`\`
 
 ### Block References
 - blocks/personal-information — title, first-name, middle-name, last-name, date-of-birth, sex, nationality, national-id-number

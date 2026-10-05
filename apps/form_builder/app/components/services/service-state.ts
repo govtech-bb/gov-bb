@@ -22,8 +22,8 @@ export const serviceTabs = [
   ["form", "Application form"],
   ["journey", "Journey map"],
   ["delivery", "After submission"],
-  ["publish", "Publish"],
   ["details", "Details"],
+  ["publish", "Publish"],
 ] as const;
 export type ServiceTab = (typeof serviceTabs)[number][0];
 
@@ -223,7 +223,6 @@ export type ServiceState = ReturnType<typeof useServiceState>;
 export function emptyService(title: string): ServiceSnapshot {
   const manifest: ServiceManifest = {
     schemaVersion: 1,
-    visibility: "draft",
     serviceId: serviceIdFor(title) || `service-${crypto.randomUUID()}`,
     title,
     description: "",

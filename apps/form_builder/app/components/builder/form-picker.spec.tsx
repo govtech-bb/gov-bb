@@ -1,7 +1,6 @@
 /**
  * @vitest-environment jsdom
  */
-import "@testing-library/jest-dom";
 import { render, screen } from "../../test/ui";
 import userEvent from "@testing-library/user-event";
 import type { Mock } from "vitest";
@@ -207,7 +206,7 @@ describe("FormPicker", () => {
     expect(onEnable).toHaveBeenCalledWith(DISABLED_PUBLISHED);
   });
 
-  it("renders a visibility badge for a non-public form (#1835)", () => {
+  it("badges a non-public published form with the status apps/api reports (#1835, #2875)", () => {
     // Title deliberately free of the word "maintenance" so the assertion below
     // matches the badge, never the title text.
     const MAINTENANCE: BuilderFormSummary = {
@@ -219,10 +218,10 @@ describe("FormPicker", () => {
       visibility: "maintenance",
     };
     renderPicker({ forms: [MAINTENANCE] });
-    expect(screen.getByText(/maintenance/i)).toBeInTheDocument();
+    expect(screen.getByText("Maintenance")).toBeInTheDocument();
   });
 
-  it("shows no visibility badge for a public form (#1835)", () => {
+  it("shows no status badge for a public form (#1835)", () => {
     const PUBLIC: BuilderFormSummary = {
       id: "p",
       formId: "p",
@@ -232,14 +231,26 @@ describe("FormPicker", () => {
       visibility: "public",
     };
     renderPicker({ forms: [PUBLIC] });
-    // The visibility badge appears only for non-public forms.
+    // The status badge appears only when the form is not plainly public.
     expect(
-      screen.queryByText(/^(preview|draft|maintenance)$/i),
+      screen.queryByText(/^(preview|draft|maintenance|status unavailable)$/i),
     ).not.toBeInTheDocument();
   });
 
+  it("badges a published form with no status as unavailable, never as public (#2875)", () => {
+    // `visibility` is absent when the proxy fell back to apps/api's
+    // public-only list (no RECIPE_PREVIEW_TOKEN). The builder must not guess.
+    renderPicker({ forms: [LIVE_PUBLISHED] });
+    expect(screen.getByText("Status unavailable")).toBeInTheDocument();
+  });
+
+  it("shows no status badge for an unpublished form — it has no live status yet (#2875)", () => {
+    renderPicker({ forms: [DRAFT] });
+    expect(screen.queryByText("Status unavailable")).not.toBeInTheDocument();
+  });
+
   it("duplicating a public form starts the copy hidden (visibility: draft, #1682)", async () => {
-    (getRecipe as Mock).mockResolvedValue({
+    (getRecipe as unknown as Mock).mockResolvedValue({
       formId: "passport",
       title: "Passport Application",
       steps: [],
@@ -263,8 +274,8 @@ describe("FormPicker", () => {
   it("renders Enable (not Delete) for a disabled draft-only form and keeps the row clickable", async () => {
     // Pending promises so handleSelect records the open attempt without running
     // the downstream deserialize/onLoad in this render-focused test.
-    (getRecipe as Mock).mockReturnValue(new Promise(() => {}));
-    (getFormConfig as Mock).mockReturnValue(new Promise(() => {}));
+    (getRecipe as unknown as Mock).mockReturnValue(new Promise(() => {}));
+    (getFormConfig as unknown as Mock).mockReturnValue(new Promise(() => {}));
     const onEnable = vi.fn();
     renderPicker({ forms: [DISABLED_DRAFT], onEnable });
 

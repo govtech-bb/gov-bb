@@ -77,6 +77,25 @@ it("allows a form without forced page slots and derives status from actual state
       buildServiceRows([{ ...form, visibility: "preview" }], [page])[0],
     ),
   ).toBe("Preview");
+  // #2875: `visibility` is the status apps/api reports for the form; a
+  // published form the index returned without one is unknown, never assumed
+  // Public — and the page frontmatter beside it is not consulted. The label
+  // is FORM_STATUS_LABEL's, the same word the picker and toolbar use (#2898).
+  expect(
+    serviceStatus(
+      buildServiceRows([{ ...form, visibility: "public" }], [page])[0],
+    ),
+  ).toBe("Public");
+  expect(
+    serviceStatus(
+      buildServiceRows([{ ...form, visibility: "maintenance" }], [page])[0],
+    ),
+  ).toBe("Maintenance");
+  expect(
+    serviceStatus(
+      buildServiceRows([form], [{ ...page, visibility: "public" }])[0],
+    ),
+  ).toBe("Status unavailable");
   expect(
     serviceStatus(
       buildServiceRows([], [{ ...page, formId: "", visibility: "draft" }])[0],
@@ -84,7 +103,7 @@ it("allows a form without forced page slots and derives status from actual state
   ).toBe("Draft");
   expect(
     serviceStatus(buildServiceRows([], [{ ...page, formId: "" }])[0]),
-  ).toBe("Published");
+  ).toBe("Public");
 });
 
 it("groups a main page, legacy start and multiple guidance pages under one form", () => {
