@@ -9,7 +9,7 @@ import {
   List,
   Notice,
   Paragraph,
-  StartLink,
+  StartButton,
 } from "./prose";
 import type { RenderContext } from "./spans";
 import { Heading as DsHeading, Text } from "@govtech-bb/react";
@@ -35,7 +35,7 @@ export function RenderBlock({
     case "notice":
       return <Notice block={block} ctx={ctx} />;
     case "start_link":
-      return <StartLink block={block} ctx={ctx} />;
+      return <StartButton link={block} ctx={ctx} />;
     case "image_placeholder":
       return <ImagePlaceholder block={block} />;
     case "data_table":

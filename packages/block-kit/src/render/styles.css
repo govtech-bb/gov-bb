@@ -88,6 +88,12 @@
   margin: 1.75rem 0;
 }
 
+/* Inside a list item the button belongs to the step's text, so it sits
+   closer than a block-level one does. */
+.bk-list .bk-start {
+  margin: 0.75rem 0 0;
+}
+
 .bk-start-button {
   display: inline-flex;
   align-items: center;

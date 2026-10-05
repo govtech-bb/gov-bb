@@ -128,6 +128,53 @@ describe("prose blocks", () => {
     expect(html).toContain("Start your estimate now");
   });
 
+  it("renders a list item's start_link inside its <li>", () => {
+    const html = renderToStaticMarkup(
+      <RenderDocument
+        doc={doc([
+          {
+            id: "b1",
+            type: "list",
+            ordered: true,
+            items: [
+              {
+                id: "i1",
+                content: [{ text: "Apply online" }],
+                start_link: {
+                  label: "Start now",
+                  target_kind: "form",
+                  target: "apply-for-hair-salon-licence",
+                },
+              },
+              { id: "i2", content: [{ text: "Apply by post" }] },
+            ],
+          },
+        ])}
+        data={{}}
+        resolveHref={(_kind, target) => `https://forms.example/forms/${target}`}
+      />,
+    );
+    const firstItem = html.slice(html.indexOf("<li"), html.indexOf("</li>"));
+    expect(firstItem).toContain('class="bk-start-button"');
+    expect(firstItem).toContain('data-kind="form"');
+    expect(firstItem).toContain(
+      'href="https://forms.example/forms/apply-for-hair-salon-licence"',
+    );
+    expect(html.match(/bk-start-button/g)).toHaveLength(1);
+  });
+
+  it("renders no button for a list without a start_link", () => {
+    const html = render([
+      {
+        id: "b1",
+        type: "list",
+        ordered: false,
+        items: [{ id: "i1", content: [{ text: "one" }] }],
+      },
+    ]);
+    expect(html).not.toContain("bk-start-button");
+  });
+
   it("renders ordered and unordered lists differently", () => {
     const items = [{ id: "i1", content: [{ text: "one" }] }];
     expect(
