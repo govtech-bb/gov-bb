@@ -13,20 +13,30 @@
  *   - Filters to the flat `…/recipes/{formId}.json` canonical files (#1196).
  *     Re-publishing a form *modifies* its flat file rather than adding a new
  *     versioned one, so we match both Added and Modified (AM).
+ *   - Skips a modified recipe whose content did not change — only its
+ *     `updatedAt` moved (#2878: e.g. the stamp backfill). "Content" is
+ *     recipe-content.ts's definition, shared with the updatedAt guard. An
+ *     added recipe, or a blob that does not parse, is archived as before.
  *   - POSTs to /admin/drafts/{formId}/archive for each.
- *   - 204 / 404 = success. Other statuses logged but non-fatal.
+ *   - 204 / 404 = success. Any other status, or a failed request, is logged,
+ *     the remaining forms are still attempted, and the run then exits 1.
  *
  * Best-effort by design: spec says archival must not block PR merge. So when a
  * required secret is absent (e.g. ARCHIVE_DRAFTS_API_URL not provisioned) the
  * run *skips* with a loud warning rather than failing the workflow red — a
  * missing infra secret is an ops gap, not a per-push error (#2350).
+ *
+ * Once the secrets are set, a draft the API did not archive fails the run
+ * (#2304). It runs after the merge, so red blocks nothing.
  */
 import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
+import { sameRecipeContent } from "./recipe-content";
 
 // Recipes are colocated with the API module. `git diff` yields repo-root-relative
 // paths, so match the full path (not a bare `recipes/` prefix, which never
 // matched and left this archival a silent no-op).
+const RECIPES_DIR = "apps/api/src/forms/form-definitions/recipes";
 const RECIPE_PATH_PATTERN =
   /(?:^|\/)apps\/api\/src\/forms\/form-definitions\/recipes\/([a-z0-9][a-z0-9-]*)\.json$/;
 
@@ -39,6 +49,38 @@ export function parseAddedRecipePaths(paths: string[]): { formId: string }[] {
   return out;
 }
 
+export interface SelectDraftsDeps {
+  /** The push's before/after SHAs. */
+  before: string;
+  after: string;
+  /** `git show <sha>:<path>`, or null when that revision has no such file. */
+  readBlob: (sha: string, path: string) => string | null;
+  log: (msg: string) => void;
+}
+
+/**
+ * Drop the recipes whose change only moved `updatedAt` (#2878): a draft
+ * expires on publish because the published content supersedes it, and a
+ * stamp-only commit — the backfill, say — published nothing new. A recipe the `before` revision does not have was
+ * added, and a blob that does not parse cannot be judged; both are archived
+ * as before. Pure apart from the injected reads.
+ */
+export function selectDraftsToArchive(
+  entries: { formId: string }[],
+  { before, after, readBlob, log }: SelectDraftsDeps,
+): { formId: string }[] {
+  return entries.filter(({ formId }) => {
+    const path = `${RECIPES_DIR}/${formId}.json`;
+    const prev = readBlob(before, path);
+    if (prev === null) return true;
+    const next = readBlob(after, path);
+    if (next === null) return true;
+    if (!sameRecipeContent(prev, next)) return true;
+    log(`SKIP ${formId} — only updatedAt moved; the draft is kept`);
+    return false;
+  });
+}
+
 export interface ArchiveDriverDeps {
   apiUrl: string;
   token: string;
@@ -46,10 +88,21 @@ export interface ArchiveDriverDeps {
   log: (msg: string) => void;
 }
 
+/** A draft the API did not archive, and the status or error that said so. */
+export interface ArchiveFailure {
+  formId: string;
+  reason: string;
+}
+
+/**
+ * Never throws and never stops early: every entry is attempted, and the ones
+ * the API did not archive are returned so the caller decides what to do.
+ */
 export async function archiveDrafts(
   entries: { formId: string }[],
   { apiUrl, token, fetch: fetchFn, log }: ArchiveDriverDeps,
-): Promise<void> {
+): Promise<ArchiveFailure[]> {
+  const failures: ArchiveFailure[] = [];
   for (const { formId } of entries) {
     const url = `${apiUrl.replace(/\/+$/, "")}/admin/drafts/${formId}/archive`;
     try {
@@ -66,9 +119,43 @@ export async function archiveDrafts(
         log(
           `WARN [${res.status}] ${formId} — draft not archived; clean up manually`,
         );
+        failures.push({ formId, reason: `HTTP ${res.status}` });
       }
     } catch (err) {
-      log(`WARN ${formId} — request failed: ${(err as Error).message}`);
+      const message = (err as Error).message;
+      log(`WARN ${formId} — request failed: ${message}`);
+      failures.push({ formId, reason: `request failed: ${message}` });
+    }
+  }
+  return failures;
+}
+
+/**
+ * Fail the job loudly when any draft was left behind. This workflow runs on
+ * push to `main`, after the merge, so a red run blocks nothing. What it must
+ * not do is pass green while archiving nothing: a wrong host, a rejected token
+ * (401) or an API with no token configured (500) all looked like success
+ * before (#2304), and a draft left live is what #2409 published over a
+ * committed recipe.
+ */
+function emitArchiveFailures(failures: ArchiveFailure[]): void {
+  for (const { formId, reason } of failures) {
+    console.log(
+      `::error title=Draft not archived::${formId}: ${reason}. Archive it by hand.`,
+    );
+  }
+  const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+  if (summaryPath) {
+    const rows = failures
+      .map(({ formId, reason }) => `| ${formId} | ${reason} |`)
+      .join("\n");
+    try {
+      fs.appendFileSync(
+        summaryPath,
+        `### Archive merged drafts: ${failures.length} not archived\n\n| Form | Reason |\n| --- | --- |\n${rows}\n`,
+      );
+    } catch {
+      // Non-fatal: the ::error:: annotations above are the primary signal.
     }
   }
 }
@@ -161,19 +248,37 @@ async function main(): Promise<void> {
     process.exit(1);
   }
   const paths = raw.split("\n").filter(Boolean);
-  const entries = parseAddedRecipePaths(paths);
+  const entries = selectDraftsToArchive(parseAddedRecipePaths(paths), {
+    before,
+    after,
+    readBlob: (sha, path) => {
+      try {
+        return execFileSync("git", ["show", `${sha}:${path}`], {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "ignore"],
+        });
+      } catch {
+        return null;
+      }
+    },
+    log: console.log,
+  });
   if (entries.length === 0) {
-    console.log("No newly-added recipe files; nothing to archive.");
+    console.log("No recipe files with changed content; nothing to archive.");
     return;
   }
-  console.log(`Found ${entries.length} new recipe file(s) to archive.`);
+  console.log(`Found ${entries.length} changed recipe file(s) to archive.`);
 
-  await archiveDrafts(entries, {
+  const failures = await archiveDrafts(entries, {
     apiUrl,
     token,
     fetch: globalThis.fetch,
     log: console.log,
   });
+  if (failures.length > 0) {
+    emitArchiveFailures(failures);
+    process.exit(1);
+  }
 }
 
 // Only run main() when executed directly, not when imported by tests.

@@ -31,7 +31,7 @@
  *   FAKER_SEED       fix faker's RNG for a reproducible data set.
  *
  * Form-specific notes:
- *  - The form is FIVE authored steps: `about-application`, `your-details`,
+ *  - The form is FIVE authored steps: `your-details`, `about-application`,
  *    `pool-location`, `pool-details` and `supporting-documents`. This is the
  *    #2451 rebuild's shape, re-integrated in #2507 — an earlier recipe spread
  *    the pool across six separately-repeatable steps plus a hand-rolled
@@ -77,11 +77,11 @@
  *    overwrite it with faker data so the submitted record is deterministic;
  *    `pool-parish` is asserted rather than overwritten, since that value is the
  *    catchment router's fallback.
- *  - The applicant phone is `components/mobile-telephone` — `mobile-telephone`,
- *    not `phone-number`. It is what the webhook maps applicant phone from
- *    (`your-details.mobile-telephone`). It validates with libphonenumber-js, so
- *    the number needs a real Barbados exchange. `work-telephone` sits beside it
- *    and is optional; we leave it empty.
+ *  - The applicant phone is a single required `telephone` — the earlier
+ *    `mobile-telephone` / `work-telephone` pair was collapsed into one field, so
+ *    it is `telephone`, not `mobile-telephone` or `phone-number`. It is what the
+ *    webhook maps applicant phone from (`your-details.telephone`). It validates
+ *    with libphonenumber-js, so the number needs a real Barbados exchange.
  *  - `pool-location` exists so the catchment can route on the POOL, which is
  *    what the landing page promises citizens ("the Environmental Health
  *    Department associated with the location of the swimming pool"). Up to #2405
@@ -101,10 +101,13 @@
  *    it — is deliberately NOT carried, so the copy rendered nothing until #2507
  *    moved it back. NOTE the ordering: this assertion only passes once that
  *    recipe has deployed to the target environment.
- *    There is still no `{polyclinic}` placeholder in the copy, so the resolved
- *    catchment name is not on the screen to assert. Catchment routing does run
- *    — it drives the MDA email. `markdownContent` supports a `{polyclinic}`
- *    token if that is ever wanted here.
+ *    The copy now opens with the `{polyclinic}` placeholder, substituted with
+ *    the catchment resolved from the geocoded POOL address, so the resolved
+ *    name IS on the screen to assert. We assert the Environmental Health copy
+ *    plus a real polyclinic name rather than a specific one — which polyclinic
+ *    depends on the address faker picked — and assert the generic "your local
+ *    polyclinic" fallback is absent, because that fallback means resolution
+ *    failed and the MDA's copy of the application went nowhere.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect, type Page } from "@playwright/test";
@@ -214,7 +217,7 @@ export async function openForm(page: Page): Promise<void> {
   });
 }
 
-/** Step 1 — application type. Gates the supporting-documents branch. */
+/** Step 2 — application type. Gates the supporting-documents branch. */
 export async function fillAboutApplication(
   page: Page,
   applicationType: "new" | "renewal",
@@ -225,7 +228,7 @@ export async function fillAboutApplication(
   await advance(page, step);
 }
 
-/** Step 2 — the applicant. Name / parish / email keep component-default ids. */
+/** Step 1 — the applicant. Name / parish / email keep component-default ids. */
 export async function fillYourDetails(
   page: Page,
   data: ReturnType<typeof buildData>,
@@ -241,9 +244,8 @@ export async function fillYourDetails(
   await fillField(page, step, "your-address-line-2", data.addressLine2);
   await selectDropdown(page, step, "parish", data.applicantParish);
   await fillField(page, step, "email", data.email);
-  // `mobile-telephone`, not `phone-number` — this is what the webhook maps
-  // applicant phone from. `work-telephone` beside it is optional; left empty.
-  await fillField(page, step, "mobile-telephone", data.phone);
+  // A single `telephone` — this is what the webhook maps applicant phone from.
+  await fillField(page, step, "telephone", data.phone);
   await advance(page, step);
 }
 
@@ -409,7 +411,13 @@ async function confirmAndSubmit(page: Page): Promise<void> {
   await expect(
     page.getByRole("heading", { name: "What happens next" }),
   ).toBeVisible();
-  await expect(page.getByText(/sent to Environmental Health/)).toBeVisible();
+  // `{polyclinic}` is substituted with the catchment resolved from the geocoded
+  // pool address. The generic "your local polyclinic" fallback means resolution
+  // failed, which would also mean the polyclinic never got its copy of the
+  // application — so assert a real name rather than just the copy.
+  await expect(page.getByText(/Environmental Health/).first()).toBeVisible();
+  await expect(page.getByText(/Polyclinic|Complex/).first()).toBeVisible();
+  await expect(page.getByText("your local polyclinic")).toHaveCount(0);
 }
 
 test.describe("Swimming Pool Licence — Live Smoke", () => {
@@ -421,8 +429,8 @@ test.describe("Swimming Pool Licence — Live Smoke", () => {
       console.log("[smoke-data]", JSON.stringify(data, null, 2));
 
     await openForm(page);
-    await fillAboutApplication(page, "new");
     await fillYourDetails(page, data);
+    await fillAboutApplication(page, "new");
     const coordinates = await fillPoolLocation(page, data);
     await fillPoolDetails(page, data, {
       ownerType: "business-owner",
@@ -459,10 +467,10 @@ test.describe("Swimming Pool Licence — Live Smoke", () => {
       console.log("[smoke-data]", JSON.stringify(data, null, 2));
 
     await openForm(page);
-    await fillAboutApplication(page, "renewal");
     // A free-text applicant address that would geocode to nothing — proof the
     // catchment is resolved from the pool's location and not from this one.
     await fillYourDetails(page, data);
+    await fillAboutApplication(page, "renewal");
     const coordinates = await fillPoolLocation(page, data);
     // "manager" reveals the connection question and "other" the usage
     // description — both inline on the one pool step.
@@ -480,7 +488,11 @@ test.describe("Swimming Pool Licence — Live Smoke", () => {
     await expect(
       page.getByText(data.poolUsageDescription).first(),
     ).toBeVisible();
-    await expect(page.getByText(data.poolAddress).first()).toBeVisible();
+    // NOT asserted against `data.poolAddress`: the geocoder normalises the
+    // query and splits it across line 1 / line 2 ("Broad Street, Bridgetown"
+    // becomes "Broad Street" + "Bridgetown"), so the raw query never appears
+    // verbatim. `fillPoolLocation` already asserted the resolved coordinates
+    // and parish, which is what routing actually reads.
     if (process.env.SMOKE_LOG_DATA)
       console.log("[smoke-data] pool coordinates:", coordinates);
     if (process.env.SMOKE_HOLD_CYA) await page.pause();

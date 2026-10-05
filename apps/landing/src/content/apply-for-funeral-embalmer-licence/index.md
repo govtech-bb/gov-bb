@@ -1,5 +1,5 @@
 ---
-title: Apply for an embalmer licence
+title: Apply for an embalmers licence
 category: business-trade
 stage: alpha
 publish_date: '2026-09-02'
@@ -14,9 +14,9 @@ You need a licence if you conduct embalming services in Barbados.
 
 ## Before you start
 
-You must:
+You will need:
 
--   your current embalmer licence number (if renewing)
+-   your current embalmers licence number (if renewing)
 -   a photo or scanned copy of your Barbados National Identification card
 -   a passport sized photograph
 -   your qualification in embalming from an institution of embalming approved by the chief medical officer; or
@@ -24,18 +24,13 @@ You must:
 
 Read the [Health Services (Embalmers and Funeral Directors) Regulations 1984](https://oag.gov.bb/attachments/Health%20Services%20(Embalmers%20and%20Funeral%20Directors)%20Regulations,%201984%20Cap44'L.PDF) for the full legal requirements.
 
-You may need to provide:
-
--   your current embalmer’s licence number (if renewing)
--   letter evidencing your engagement in the practice of embalming for a period of more than five (5) years, or having worked under the direct supervision of an approved embalmer for more than three (3) years, if you were engaged in the business prior to the regulations coming into operation in 1984
-
 ## When to apply
 
 Your licence expires on December 31st each year. You need to renew it by the first business day in January each year. It is suggested that you submit your application by December 1st.
 
 ## Complete the form
 
-There are 2 ways to apply for a funeral directors licence. You can:
+There are 2 ways to apply for an embalmers licence. You can:
 
 1.  **Apply for a licence online.**
 
@@ -68,4 +63,4 @@ If you need help, contact the relevant Environmental Health Service office.
 -   Maurice Byer Polyclinic - [(246) 536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)
 -   Randal Phillips Polyclinic - [(246) 536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)
 -   Sir Winston Scott Polyclinic - [(246) 536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)
--   St. Philip Polyclinic - [(246) 536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)
+-   St. Philip Polyclinic - [(246) 536-4240](tel:+12465364240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)

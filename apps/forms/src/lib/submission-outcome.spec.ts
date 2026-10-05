@@ -94,11 +94,11 @@ describe("resolveSubmissionOutcome", () => {
     const outcome = resolveSubmissionOutcome(
       response("submitted", {
         resolvedPolyclinicContact:
-          "St. Philip Polyclinic - [(246) 536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)",
+          "St. Philip Polyclinic - [(246) 536-4240](tel:+12465364240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)",
       }),
     );
     expect(outcome.subState?.polyclinicContact).toBe(
-      "St. Philip Polyclinic - [(246) 536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)",
+      "St. Philip Polyclinic - [(246) 536-4240](tel:+12465364240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)",
     );
   });
 
@@ -137,6 +137,42 @@ describe("resolveSubmissionOutcome", () => {
   it("leaves resolvedMarkdown undefined when the caller resolves none", () => {
     const outcome = resolveSubmissionOutcome(response("submitted"));
     expect(outcome.subState?.resolvedMarkdown).toBeUndefined();
+  });
+
+  it("commits the answers the caller built for printing (#2587)", () => {
+    // Same reason as the markdown above: the draft is gone by the time the
+    // confirmation step renders, so the printed copy has to be captured now.
+    const sections = [
+      {
+        stepId: "about-you",
+        title: "Tell us about yourself",
+        fields: [
+          { fieldId: "first-name", label: "First name", value: "Addie" },
+        ],
+      },
+    ];
+    const outcome = resolveSubmissionOutcome(
+      response("submitted"),
+      undefined,
+      sections,
+    );
+    expect(outcome.subState?.sections).toEqual(sections);
+  });
+
+  it("commits the printed answers on the payment path too", () => {
+    const outcome = resolveSubmissionOutcome(
+      response("pending_payment", {
+        deferred: {
+          amount: 100,
+          paymentUrl: "https://pay.example.com",
+          paymentId: "pay-001",
+          description: "Application fee",
+        },
+      }),
+      undefined,
+      [{ stepId: "s", title: "S", fields: [] }],
+    );
+    expect(outcome.subState?.sections).toHaveLength(1);
   });
 
   it("maps 'pending_payment' with deferred meta to a payment state and success event", () => {

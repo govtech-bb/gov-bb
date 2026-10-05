@@ -1,5 +1,4 @@
 /** @vitest-environment jsdom */
-import "@testing-library/jest-dom";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -299,7 +298,12 @@ it("shows the journey checklist and opens the next unfinished step", async () =>
   expect(within(journey).getAllByRole("listitem")).toHaveLength(4);
   expect(within(journey).getByText("No content yet")).toBeInTheDocument();
   const details = screen.getByRole("list", { name: "Service details" });
-  expect(within(details).getByText("Draft, hidden from the public")).toBeInTheDocument();
+  // #2875: no "Release" row — the manifest's visibility seed is not a status
+  // the author can see or choose here.
+  expect(within(details).getAllByRole("listitem")).toHaveLength(2);
+  expect(
+    within(details).queryByRole("heading", { name: "Release" }),
+  ).not.toBeInTheDocument();
   await user.click(
     screen.getByRole("button", { name: "Continue: write the entry page" }),
   );
@@ -328,21 +332,101 @@ it("adds a start page and points the entry page's Start button at it", async () 
   expect(entry.body).toContain('href="/education/pension-advice/start"');
 });
 
-it("offers Publish once every step is done", async () => {
+it("offers Publish once every step is done, without requiring contact details or a release choice", async () => {
   const ready = pensionAdvice();
-  ready.manifest.visibility = "preview";
-  ready.manifest.contactDetails = { email: "help@example.test" };
+  // #2875: the manifest's `visibility` seed stays at its `draft` default —
+  // readiness no longer asks the author to choose a release; status is set in
+  // Feature flagging.
   ready.pages[0] = {
     ...ready.pages[0]!,
     body: "## Overview\n\nWhat this service does.",
   };
   seedService(ready);
   renderServices("/services?service=pension-advice");
+  // The button appears only after the router resolves, the workspace mounts
+  // and its effect loads the draft; under CI load that outlasts findBy's 1s
+  // default.
   expect(
-    await screen.findByRole("button", { name: "Publish" }),
+    await screen.findByRole("button", { name: "Publish" }, { timeout: 5000 }),
   ).toBeInTheDocument();
   expect(
     screen.queryByRole("button", { name: /^Continue:/ }),
+  ).not.toBeInTheDocument();
+  const contact = screen
+    .getByRole("heading", { name: "Contact details" })
+    .closest("li")!;
+  expect(
+    within(contact).getByText(
+      "Optional. Add a public email address or telephone number so applicants can reach the department.",
+    ),
+  ).toBeInTheDocument();
+  expect(within(contact).getByText("Optional")).toBeInTheDocument();
+});
+
+it("shows the connected form's status from the API, never the manifest seed (#2875)", async () => {
+  // The forms list carries apps/api's effective visibility; the manifest's
+  // `visibility` stays at its `draft` seed and must not surface anywhere.
+  forms.forms = [{ ...alpha, visibility: "maintenance" }];
+  const base = emptyService("Alpha service");
+  vi.mocked(
+    loadServiceSource as unknown as (arg: unknown) => Promise<ServiceSnapshot>,
+  ).mockResolvedValueOnce({
+    ...base,
+    manifest: {
+      ...base.manifest,
+      serviceId: "alpha",
+      formId: "alpha",
+      entryPoint: "form",
+    },
+  });
+  renderServices("/services?service=form%3Aalpha");
+  await screen.findByRole("list", { name: "Journey" });
+  expect(screen.getByTestId("service-form-status")).toHaveTextContent(
+    "Maintenance",
+  );
+  expect(
+    screen.getByText("Set in the Feature flagging tool."),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/hidden from the public/)).not.toBeInTheDocument();
+});
+
+it("badges a published form the API returned without a status as unavailable in the library (#2875)", async () => {
+  // `alpha` is published but carries no `visibility` (the proxy fell back to
+  // the public-only list) — the row must not read "Public".
+  renderServices();
+  const list = await screen.findByRole("list", { name: "Services" });
+  const row = within(list)
+    .getByRole("heading", { name: "Alpha service" })
+    .closest("li")!;
+  expect(within(row).getByText("Status unavailable")).toBeInTheDocument();
+  expect(within(row).queryByText("Public")).not.toBeInTheDocument();
+});
+
+it("keeps only public services listed under the Public filter tab (#2898)", async () => {
+  // The tab's value is matched against serviceStatus() lower-cased, so the
+  // tab and FORM_STATUS_LABEL.public must stay the same word. Beta remains an
+  // unpublished draft and must drop out.
+  const user = userEvent.setup();
+  forms.forms = [
+    { ...alpha, visibility: "public" },
+    {
+      ...alpha,
+      id: "beta",
+      formId: "beta",
+      title: "Beta service",
+      isPublished: false,
+    },
+  ];
+  renderServices();
+  const list = await screen.findByRole("list", { name: "Services" });
+  expect(within(list).getAllByRole("link")).toHaveLength(2);
+  await user.click(screen.getByRole("tab", { name: "Public" }));
+  expect(within(list).getAllByRole("link")).toHaveLength(1);
+  expect(
+    within(list).getByRole("heading", { name: "Alpha service" }),
+  ).toBeInTheDocument();
+  expect(
+    within(list).queryByRole("heading", { name: "Beta service" }),
   ).not.toBeInTheDocument();
 });
 

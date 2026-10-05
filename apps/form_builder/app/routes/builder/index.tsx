@@ -28,10 +28,9 @@ import {
 import type {
   ServiceContract,
   ServiceContractRecipe,
-  RecipeVisibility,
 } from "@govtech-bb/form-types";
-import { getRecipeVisibility } from "@govtech-bb/form-types";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
+import { loadedFormStatus } from "../../lib/form-status";
 
 import { Sidebar } from "../../components/ui/sidebar";
 
@@ -169,6 +168,7 @@ export const Route = createFileRoute("/builder/")({
       initialDraft: loaded?.draft ?? null,
       initialService,
       initialFormId: formId,
+      initialSourceSha: loaded?.sourceSha ?? null,
     };
   },
   ssr: false,
@@ -189,8 +189,14 @@ function BuilderPage() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const { user } = Route.useRouteContext();
-  const { catalog, baseBranch, initialDraft, initialFormId, initialService } =
-    Route.useLoaderData();
+  const {
+    catalog,
+    baseBranch,
+    initialDraft,
+    initialFormId,
+    initialService,
+    initialSourceSha,
+  } = Route.useLoaderData();
   const {
     forms,
     loadError: formsLoadError,
@@ -291,6 +297,13 @@ function BuilderPage() {
   }, [search.step, search.view]);
   const [loadedFromId, setLoadedFromId] = useState<string | null>(
     initialFormId ?? null,
+  );
+  // The committed recipe sha the loaded draft came from (#2489). Set with the
+  // draft on load and cleared with loadedFromId on New/Duplicate — never
+  // refreshed on its own, so Deploy always vouches for the revision the
+  // author actually saw.
+  const [loadedSourceSha, setLoadedSourceSha] = useState<string | null>(
+    initialSourceSha,
   );
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
@@ -398,7 +411,6 @@ function BuilderPage() {
     runValidation,
     blockedByUniqueness,
     blockedByIncompletePayment,
-    blockedByDraftVisibility,
     dismiss,
   } = useRecipeValidation({
     draft,
@@ -435,6 +447,7 @@ function BuilderPage() {
       }),
     draft,
     loadedFromId,
+    loadedSourceSha,
     forms,
     hasUnsavedChanges,
     setSavedDraft,
@@ -460,6 +473,7 @@ function BuilderPage() {
     dispatch,
     setSavedDraft,
     setLoadedFromId,
+    setLoadedSourceSha,
     setSelectedStepId,
     setMainView,
     setValidateResult,
@@ -475,19 +489,24 @@ function BuilderPage() {
   });
 
   // Search navigation can load a different service while this route stays mounted.
-  // Background revalidation of the same form must never replace unsaved edits.
+  // Background revalidation of the same form must never replace unsaved edits
+  // — nor the source sha they were loaded against (#2489).
   const applyLinkedDraft = useEffectEvent(
-    (incoming: RecipeDraft, formId: string) => {
-      if (formId !== loadedFromId) loadDraft(incoming, formId);
+    (incoming: RecipeDraft, formId: string, sourceSha: string | null) => {
+      if (formId !== loadedFromId) loadDraft(incoming, formId, sourceSha);
     },
   );
   useEffect(() => {
     if (initialDraft && initialFormId)
-      applyLinkedDraft(initialDraft, initialFormId);
-  }, [initialDraft, initialFormId]);
+      applyLinkedDraft(initialDraft, initialFormId, initialSourceSha);
+  }, [initialDraft, initialFormId, initialSourceSha]);
 
-  function handleLoad(incoming: RecipeDraft, formId: string) {
-    loadDraft(incoming, formId);
+  function handleLoad(
+    incoming: RecipeDraft,
+    formId: string,
+    sourceSha: string | null,
+  ) {
+    loadDraft(incoming, formId, sourceSha);
     void navigate({
       to: "/builder",
       search: { formId, service: serviceKey },
@@ -579,7 +598,6 @@ function BuilderPage() {
   };
 
   const handleDeployClick = async () => {
-    if (blockedByDraftVisibility()) return;
     if (blockedByUniqueness()) return;
     if (blockedByIncompletePayment()) return;
     const result = await runValidation();
@@ -642,10 +660,6 @@ function BuilderPage() {
       title,
       description: draft.description,
     });
-  };
-
-  const handleVisibilityChange = (visibility: RecipeVisibility) => {
-    dispatch({ type: "SET_VISIBILITY", visibility });
   };
 
   // Create an MDA contact via the API, patch it into the local directory so the
@@ -802,8 +816,12 @@ function BuilderPage() {
           isPublishing={isPublishing}
           isReadOnly={isReadOnly}
           lastSaveStatus={lastSaveStatus}
-          visibility={getRecipeVisibility(draft)}
-          onVisibilityChange={handleVisibilityChange}
+          // The live status apps/api reports for this form (#2875), read from
+          // the forms list the picker already fetches — never from `draft.meta`.
+          status={loadedFormStatus(draft.formId, {
+            forms,
+            loadError: formsLoadError,
+          })}
           onFormIdChange={handleFormIdChange}
           onTitleChange={handleTitleChange}
           onNew={handleNew}

@@ -80,6 +80,28 @@ export default defineConfig([
     files: ["**/*.spec.{ts,tsx}", "**/*.test.{ts,tsx}"],
     rules: { "@typescript-eslint/no-explicit-any": "off" },
   },
+  {
+    // jest-dom's matchers are registered once, via the `/vitest` entry, in
+    // apps/form_builder/vitest.setup.ts. The bare entry references
+    // `@types/jest`, whose global `expect` silently shadows Vitest's for the
+    // whole app — and tsc cannot see that happen (skipLibCheck hides the
+    // duplicate declaration), so the type gate alone would not catch it.
+    files: ["apps/form_builder/app/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@testing-library/jest-dom",
+              message:
+                "Matchers are registered in vitest.setup.ts; this entry pulls in @types/jest and shadows Vitest's expect.",
+            },
+          ],
+        },
+      ],
+    },
+  },
   { files: ["**/*.json"], plugins: { json }, language: "json/json", extends: ["json/recommended"] },
   {
     files: ["**/*.css"],

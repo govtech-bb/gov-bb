@@ -91,7 +91,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-for-funeral-embalmer-licence",
-    title: "Apply for an embalmer licence",
+    title: "Apply for an embalmers licence",
     category: "business-trade",
     formId: "apply-for-funeral-embalmer-licence",
     visibility: "preview",
@@ -126,14 +126,14 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-for-hotel-licence",
-    title: "Apply for a hotel licence",
+    title: "Apply to Environmental Health for a hotel licence",
     category: "business-trade",
     formId: "apply-for-hotel-licence",
     visibility: "preview",
   },
   {
     slug: "apply-for-lodging-barracks-licence",
-    title: "Apply for a barracks or lodging licence with Environmental Health",
+    title: "Apply for a lodging house or barracks licence",
     category: "business-trade",
     formId: "apply-for-lodging-barracks-licence",
     visibility: "preview",

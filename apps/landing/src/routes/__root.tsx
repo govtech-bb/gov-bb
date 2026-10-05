@@ -139,6 +139,30 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     links: [
       { rel: 'stylesheet', href: appCss },
       { rel: 'manifest', href: '/manifest.json' },
+      { rel: 'icon', href: '/favicon.ico', sizes: '16x16 32x32 48x48' },
+      {
+        rel: 'icon',
+        type: 'image/svg+xml',
+        sizes: 'any',
+        href: '/favicon.svg',
+      },
+      {
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '192x192',
+        href: '/icon-192.png',
+      },
+      {
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '512x512',
+        href: '/icon-512.png',
+      },
+      {
+        rel: 'apple-touch-icon',
+        sizes: '180x180',
+        href: '/apple-touch-icon.png',
+      },
     ],
     scripts: [
       // Site-wide structured data — present on every page (#1643).
@@ -234,7 +258,7 @@ function RootLayout() {
       </BreadcrumbRegion>
       <Footer
         className="print:hidden"
-        coatSrc="/images/coat-of-arms.png"
+        coatSrc="/images/govbb-crest.svg"
         copy={`© ${new Date().getFullYear()} Government of Barbados`}
       >
         {FOOTER_LINKS.map(({ label, ...link }) => (

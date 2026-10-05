@@ -37,6 +37,11 @@ import { ServicePreview } from "./service-preview";
 import type { ContentListState } from "../content/use-content-list";
 import { CreatePageDialog } from "./create-page-dialog";
 import { ServiceWorkspace } from "./service-workspace";
+import {
+  FORM_STATUS_HINT,
+  FORM_STATUS_LABEL,
+  formStatus,
+} from "../../lib/form-status";
 
 type Row = {
   id: string;
@@ -296,6 +301,7 @@ export function ServiceWorkbench({
         ] satisfies Row[])
       : []),
   ];
+  const contact = manifest.contactDetails ?? draft.recipe?.contactDetails;
   const details: Row[] = [
     {
       id: "about",
@@ -313,31 +319,28 @@ export function ServiceWorkbench({
       id: "contact",
       title: "Contact details",
       detail:
-        issueFor("contact") ??
         issueFor("contact-email") ??
-        manifest.contactDetails?.email ??
-        manifest.contactDetails?.telephoneNumber ??
-        "",
-      done: !issueFor("contact") && !issueFor("contact-email"),
+        contact?.email ??
+        contact?.telephoneNumber ??
+        "Optional. Add a public email address or telephone number so applicants can reach the department.",
+      done:
+        !!(contact?.email || contact?.telephoneNumber) &&
+        !issueFor("contact-email"),
+      optional: !contact?.email && !contact?.telephoneNumber,
       cta: "add contact details",
       label: "Edit",
       run: () => void go("details"),
     },
-    {
-      id: "release",
-      title: "Release",
-      detail:
-        manifest.visibility === "public"
-          ? "Everyone can use this service"
-          : manifest.visibility === "preview"
-            ? "People with preview access"
-            : "Draft, hidden from the public",
-      done: !issueFor("visibility"),
-      cta: "choose who can use the service",
-      label: manifest.visibility === "draft" ? "Choose" : "Edit",
-      run: () => void go("details"),
-    },
   ];
+  // The form's live status as apps/api reports it (#2875) — read-only here;
+  // the manifest's `visibility` seed is no longer shown or offered. Null when
+  // the service has no form (nothing to report a status for).
+  const liveStatus = formStatus(service.form);
+  const formStatusLabel = !service.form
+    ? null
+    : liveStatus
+      ? FORM_STATUS_LABEL[liveStatus]
+      : "Form not published";
   const next = [...journey, ...details].find(
     (row) => !row.done && !row.optional,
   );
@@ -361,6 +364,15 @@ export function ServiceWorkbench({
               ? "Saving draft…"
               : `Service draft on this browser · ${new Date(draft.updatedAt).toLocaleString()}`}
           </p>
+          {formStatusLabel && (
+            <p
+              className="mt-2 flex flex-wrap items-center gap-2 text-xs text-ui-subtle"
+              data-testid="service-form-status"
+            >
+              <Badge variant="secondary">{formStatusLabel}</Badge>
+              <span>{FORM_STATUS_HINT}</span>
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button icon={<EyeIcon />} onClick={() => setPreview(true)}>

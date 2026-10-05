@@ -46,7 +46,7 @@ export default defineConfig(({ mode }) => {
       // Build-time FALLBACK for the Deploy PR's base branch, used only where the
       // platform can't expose env vars to the SSR runtime (Amplify Compute). The
       // LIVE `process.env.PUBLISH_BASE_BRANCH` still wins at runtime wherever it's
-      // available — see resolveBaseBranch() in app/server/publish.ts, which reads
+      // available — see resolveBaseBranch() in app/server/github-repo.ts, which reads
       // it via bracket access so this `define` doesn't statically replace it.
       // Operators only ever set PUBLISH_BASE_BRANCH; we bake it under a distinct
       // key so the runtime read survives the build.

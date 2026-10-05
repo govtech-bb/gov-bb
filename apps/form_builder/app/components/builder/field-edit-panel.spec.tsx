@@ -8,15 +8,58 @@ import type { Mock } from "vitest";
  * unchecking a base-required field must write an explicit `value: false` so the
  * merge can override the base — otherwise the field is always required.
  */
-import "@testing-library/jest-dom";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import {
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { getCatalog } from "@govtech-bb/form-builder";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { getCatalog, deserializeRecipe } from "@govtech-bb/form-builder";
 import type { RecipeDraft, RecipeFieldDraft } from "@govtech-bb/form-builder";
 import { primitiveUISchema } from "@govtech-bb/form-types";
+import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 import { FieldEditPanel, humanize } from "./field-edit-panel";
+import { getFieldRefs } from "./recipe-refs";
 
 const catalog = getCatalog();
+
+// A committed recipe, as the builder opens it: proves the panel shows the
+// values authors already hand-edited into live forms.
+function loadRecipe(formId: string): ServiceContractRecipe {
+  return JSON.parse(
+    readFileSync(
+      join(
+        __dirname,
+        `../../../../api/src/forms/form-definitions/recipes/${formId}.json`,
+      ),
+      "utf8",
+    ),
+  );
+}
+
+// The step and field of the first element in `recipe` with this ref.
+function openRecipeField(formId: string, ref: string) {
+  const draft = deserializeRecipe(loadRecipe(formId), catalog);
+  const step = draft.steps.find((s) => s.fields.some((f) => f.ref === ref));
+  const field = step?.fields.find((f) => f.ref === ref);
+  if (!step || !field) throw new Error(`${formId} has no ${ref}`);
+  render(
+    <FieldEditPanel
+      open
+      field={field}
+      catalog={catalog}
+      draft={draft}
+      stepId={step.stepId}
+      dispatch={vi.fn()}
+      onClose={vi.fn()}
+    />,
+  );
+  return { draft, step, field };
+}
 
 function makeDraft(field: RecipeFieldDraft): RecipeDraft {
   return {
@@ -664,3 +707,583 @@ it("does not derive a message from the registry's placeholder label", async () =
 
   expect(requiredErrorInput()).not.toHaveValue("Text is required");
 });
+
+// --- Effective Field ID (#2685) -------------------------------------------
+// A field's id is the registry default until the Field ID Override replaces it
+// (ADR 0010) — never a kebab of the label. The read-only "Field ID" input under
+// Label shows that effective id, live from the panel's unsaved overrides, and
+// persists nothing. Queries stay on the exact string: "Field ID Override" is a
+// second input in the same dialog.
+
+const fieldIdDisplay = () => screen.getByLabelText("Field ID");
+
+it("shows the registry default fieldId read-only for an untouched component", () => {
+  renderPanel(makeField("components/generic-text"));
+  expect(fieldIdDisplay()).toHaveValue("generic-text");
+  expect(fieldIdDisplay()).toHaveAttribute("readonly");
+});
+
+it("shows the override when a fieldId override is set", () => {
+  renderPanel(
+    makeFieldWith("components/generic-text", { fieldId: "my-custom-id" }),
+  );
+  expect(fieldIdDisplay()).toHaveValue("my-custom-id");
+});
+
+it("tracks the Field ID Override as it is typed, before Save, and falls back when cleared", async () => {
+  renderPanel(makeField("components/generic-text"));
+  openAdvancedSettings();
+  const override = screen.getByLabelText("Field ID Override");
+
+  await userEvent.type(override, "applicant-surname");
+  expect(fieldIdDisplay()).toHaveValue("applicant-surname");
+
+  await userEvent.clear(override);
+  expect(fieldIdDisplay()).toHaveValue("generic-text");
+});
+
+it("shows one Field ID per block child, valued from the element", () => {
+  renderPanel({
+    id: "b1",
+    kind: "block",
+    ref: "blocks/additional-information",
+    overrides: {},
+  });
+  const ids = screen.getAllByLabelText("Field ID");
+  expect(ids).toHaveLength(1);
+  expect(ids[0]).toHaveValue("additional-details");
+});
+
+it("shows a block child's childOverrides fieldId over the element default", () => {
+  renderPanel({
+    id: "b1",
+    kind: "block",
+    ref: "blocks/additional-information",
+    overrides: {},
+    childOverrides: { "additional-details": { fieldId: "extra-notes" } },
+  });
+  expect(fieldIdDisplay()).toHaveValue("extra-notes");
+});
+
+it("shows a dash for a custom component whose definition has no fieldId", () => {
+  const field: RecipeFieldDraft = {
+    id: "f1",
+    kind: "custom",
+    ref: "components/custom-widget",
+    overrides: {},
+  };
+  render(
+    <FieldEditPanel
+      open
+      field={field}
+      catalog={{
+        ...catalog,
+        custom: [
+          {
+            ref: "components/custom-widget",
+            displayName: "Widget",
+            namespace: "custom",
+            type: "widget",
+            definition: { htmlType: "text", label: "Widget" },
+          },
+        ],
+      }}
+      draft={makeDraft(field)}
+      stepId="step-1"
+      dispatch={vi.fn()}
+      onClose={vi.fn()}
+    />,
+  );
+  expect(fieldIdDisplay()).toHaveValue("—");
+});
+
+it("adds no override key when saved with the Field ID display untouched", async () => {
+  const dispatch = renderPanel(makeField("components/generic-text"));
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({});
+});
+
+it("warns that the effective id is shared without any override typed", () => {
+  // Two untouched Text fields both resolve to `generic-text`. The duplicate
+  // check runs on the effective id, and the warning repeats under the
+  // read-only Field ID because the override input sits in the collapsed
+  // Advanced settings.
+  const field = makeField("components/generic-text");
+  const twin: RecipeFieldDraft = { ...field, id: "f2" };
+  const draft = makeDraft(field);
+  draft.steps[0].fields.push(twin);
+  render(
+    <FieldEditPanel
+      open
+      field={field}
+      catalog={catalog}
+      draft={draft}
+      stepId="step-1"
+      dispatch={vi.fn()}
+      onClose={vi.fn()}
+    />,
+  );
+
+  expect(fieldIdDisplay()).toHaveAttribute("aria-invalid", "true");
+  // Once under Field ID, once under the (keepMounted) Field ID Override.
+  expect(screen.getAllByText(/already used by another field/)).toHaveLength(2);
+});
+
+// --- Duplicate Field ID warning for block children (#2896) -----------------
+// Every child of one block shares the block's editor id, so the per-child
+// check has to exclude the child being edited rather than the whole block —
+// otherwise a clash between two siblings would never warn.
+
+const duplicateWarnings = () =>
+  screen.queryAllByText(/already used by another field/);
+const flaggedFieldIds = () =>
+  screen
+    .getAllByLabelText("Field ID")
+    .filter((el) => el.getAttribute("aria-invalid") === "true")
+    .map((el) => (el as HTMLInputElement).value);
+
+it("warns on both block children that resolve to the same effective id", () => {
+  renderPanel({
+    id: "b1",
+    kind: "block",
+    ref: "blocks/contact-information",
+    overrides: {},
+    childOverrides: { "mobile-telephone": { fieldId: "telephone" } },
+  });
+  expect(flaggedFieldIds()).toEqual(["telephone", "telephone"]);
+  // Field ID plus the keepMounted Field ID Override, for each of the two.
+  expect(duplicateWarnings()).toHaveLength(4);
+});
+
+it("warns on a block child whose id a standalone field already uses, without typing", () => {
+  const block: RecipeFieldDraft = {
+    id: "b1",
+    kind: "block",
+    ref: "blocks/additional-information",
+    overrides: {},
+  };
+  const draft = makeDraft(block);
+  draft.steps[0].fields.push({
+    id: "f2",
+    kind: "component",
+    ref: "components/additional-details",
+    overrides: {},
+  });
+  render(
+    <FieldEditPanel
+      open
+      field={block}
+      catalog={catalog}
+      draft={draft}
+      stepId="step-1"
+      dispatch={vi.fn()}
+      onClose={vi.fn()}
+    />,
+  );
+  expect(flaggedFieldIds()).toEqual(["additional-details"]);
+  expect(duplicateWarnings()).toHaveLength(2);
+});
+
+it("shows no warning for block siblings with different ids", () => {
+  renderPanel({
+    id: "b1",
+    kind: "block",
+    ref: "blocks/contact-information",
+    overrides: {},
+  });
+  expect(flaggedFieldIds()).toEqual([]);
+  expect(duplicateWarnings()).toHaveLength(0);
+});
+
+// The check runs against the modal's unsaved child overrides, not the saved
+// draft, so both siblings react to an edit at once. Override inputs render in
+// element order: email, telephone, mobile-telephone, home-telephone.
+const overrideInputs = () => screen.getAllByLabelText("Field ID Override");
+
+it("warns on both siblings as soon as one is renamed onto the other's id, before Save", async () => {
+  renderPanel({
+    id: "b1",
+    kind: "block",
+    ref: "blocks/contact-information",
+    overrides: {},
+  });
+  await userEvent.type(overrideInputs()[2], "telephone");
+  expect(flaggedFieldIds()).toEqual(["telephone", "telephone"]);
+});
+
+it("clears both warnings as soon as a saved collision is undone, before Save", async () => {
+  renderPanel({
+    id: "b1",
+    kind: "block",
+    ref: "blocks/contact-information",
+    overrides: {},
+    childOverrides: { "mobile-telephone": { fieldId: "telephone" } },
+  });
+  expect(flaggedFieldIds()).toEqual(["telephone", "telephone"]);
+  await userEvent.clear(overrideInputs()[2]);
+  expect(flaggedFieldIds()).toEqual([]);
+  expect(duplicateWarnings()).toHaveLength(0);
+});
+
+// --- Type-specific settings (#2873) ----------------------------------------
+// Attributes only one htmlType's renderer reads — a content block's style,
+// markdown body and details summary — come from CUSTOM_ATTRIBUTE_DESCRIPTORS
+// and are edited under "Type-specific settings" inside Availability, which
+// opens by default when the type has any. Values follow the ui-editor
+// contract: show the effective value (override ?? registry default), drop the
+// key when it is set back to that default or cleared.
+
+const typeSettingsHeading = () => screen.queryByText("Type-specific settings");
+const availabilityTrigger = () =>
+  screen.getByRole("button", { name: "Availability" });
+const styleSelect = () => screen.getByRole("combobox", { name: /^style$/i });
+const contentInput = () => screen.getByLabelText("Content");
+const summaryInput = () => screen.queryByLabelText("Summary");
+
+it("offers no type-specific settings for a plain field and leaves Availability collapsed", () => {
+  renderPanel(makeField("components/last-name"));
+  expect(typeSettingsHeading()).not.toBeInTheDocument();
+  expect(availabilityTrigger()).toHaveAttribute("aria-expanded", "false");
+});
+
+it("opens Availability on an Information block with Style and Content, and hides the valueless controls", () => {
+  renderPanel(makeField("components/content"));
+  expect(typeSettingsHeading()).toBeInTheDocument();
+  expect(availabilityTrigger()).toHaveAttribute("aria-expanded", "true");
+  expect(styleSelect()).toHaveTextContent("Text"); // registry default
+  expect(contentInput()).toHaveValue("");
+  expect(summaryInput()).not.toBeInTheDocument();
+  // A content block holds no value: Required, validation rules and Hint
+  // would all be authored no-ops.
+  expect(
+    screen.queryByRole("checkbox", { name: /^required$/i }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Validation rules" }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Hint")).not.toBeInTheDocument();
+});
+
+it("dispatches variant and content, and no summary, for an inset block", async () => {
+  const dispatch = renderPanel(makeField("components/content"));
+  await chooseOption(styleSelect(), "Inset");
+  await userEvent.type(contentInput(), "Bring your **National ID**.");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({
+    variant: "inset",
+    content: "Bring your **National ID**.",
+  });
+});
+
+it("shows Summary only once the effective Style is details, and saves all three keys", async () => {
+  const dispatch = renderPanel(makeField("components/content"));
+  expect(summaryInput()).not.toBeInTheDocument();
+  await chooseOption(styleSelect(), "Details");
+  expect(summaryInput()).toBeInTheDocument();
+  await userEvent.type(summaryInput()!, "What you will need");
+  await userEvent.type(contentInput(), "Two recent photos.");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({
+    variant: "details",
+    summary: "What you will need",
+    content: "Two recent photos.",
+  });
+});
+
+it("drops variant when Style returns to the registry default, and content when cleared", async () => {
+  const dispatch = renderPanel(
+    makeFieldWith("components/content", {
+      variant: "inset",
+      content: "Old body",
+    }),
+  );
+  expect(styleSelect()).toHaveTextContent("Inset");
+  await chooseOption(styleSelect(), "Text");
+  await userEvent.clear(contentInput());
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({});
+});
+
+it("reopens with the stored style, summary and content (round-trip, panel half)", () => {
+  renderPanel(
+    makeFieldWith("components/content", {
+      variant: "details",
+      summary: "More about fees",
+      content: "Fees are **non-refundable**.",
+    }),
+  );
+  expect(styleSelect()).toHaveTextContent("Details");
+  expect(summaryInput()).toHaveValue("More about fees");
+  expect(contentInput()).toHaveValue("Fees are **non-refundable**.");
+});
+
+it("shows the effective label as the Summary placeholder — the renderer's fallback", () => {
+  renderPanel(
+    makeFieldWith("components/content", {
+      variant: "details",
+      label: "Opening hours",
+    }),
+  );
+  expect(summaryInput()).toHaveAttribute("placeholder", "Opening hours");
+});
+
+it("leaves a stored summary alone when Style moves off details", async () => {
+  const dispatch = renderPanel(
+    makeFieldWith("components/content", {
+      variant: "details",
+      summary: "Keep me",
+    }),
+  );
+  await chooseOption(styleSelect(), "Warning");
+  expect(summaryInput()).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({
+    variant: "warning",
+    summary: "Keep me",
+  });
+});
+
+// --- Address lookup geocode targets (#2886) --------------------------------
+// `geocodeTargets` names the same-step fields an address lookup fills when the
+// applicant picks a suggestion. It is one object, so the panel edits the
+// effective object through one picker per target and drops the key once every
+// target is cleared — the renderer never sees `{}`.
+
+const line2Picker = () =>
+  screen.getByRole("combobox", { name: "Address line 2 field" });
+const parishPicker = () =>
+  screen.getByRole("combobox", { name: "Parish field" });
+const coordinatesPicker = () =>
+  screen.getByRole("combobox", { name: "Coordinates field" });
+
+// Same-step siblings for the pickers, plus a field on another step that must
+// not be offered.
+function renderAddressPanel(field: RecipeFieldDraft, dispatch = vi.fn()) {
+  const draft: RecipeDraft = {
+    formId: "form-001",
+    title: "Test Form",
+    steps: [
+      {
+        stepId: "step-1",
+        title: "Step 1",
+        fields: [
+          field,
+          {
+            id: "f2",
+            kind: "component",
+            ref: "components/address",
+            overrides: { fieldId: "line-2", label: "Address line 2" },
+          },
+          {
+            id: "f3",
+            kind: "component",
+            ref: "components/parish",
+            overrides: {},
+          },
+          {
+            id: "f4",
+            kind: "component",
+            ref: "components/generic-text",
+            overrides: { fieldId: "coords", label: "Coordinates" },
+          },
+        ],
+        behaviours: [],
+      },
+      {
+        stepId: "step-2",
+        title: "Step 2",
+        fields: [
+          {
+            id: "f5",
+            kind: "component",
+            ref: "components/generic-text",
+            overrides: { fieldId: "elsewhere", label: "Elsewhere" },
+          },
+        ],
+        behaviours: [],
+      },
+    ],
+  };
+  render(
+    <FieldEditPanel
+      open
+      field={field}
+      catalog={catalog}
+      draft={draft}
+      stepId="step-1"
+      dispatch={dispatch}
+      onClose={vi.fn()}
+    />,
+  );
+  return dispatch;
+}
+
+it("offers one picker per geocode target, listing only this step's fields", async () => {
+  renderAddressPanel(makeField("components/address-lookup"));
+  expect(typeSettingsHeading()).toBeInTheDocument();
+  for (const picker of [line2Picker(), parishPicker(), coordinatesPicker()])
+    expect(picker).toHaveTextContent("— select field —");
+  const options = Array.from(
+    (await openSelect(line2Picker())).querySelectorAll('[role="option"]'),
+  ).map((o) => o.textContent);
+  expect(options).toEqual(
+    expect.arrayContaining(["Address line 2", "Parish", "Coordinates"]),
+  );
+  expect(options).not.toContain("Elsewhere");
+});
+
+it("dispatches geocodeTargets with the chosen fields", async () => {
+  const dispatch = renderAddressPanel(makeField("components/address-lookup"));
+  await chooseOption(line2Picker(), "Address line 2");
+  await chooseOption(parishPicker(), "Parish");
+  await chooseOption(coordinatesPicker(), "Coordinates");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({
+    geocodeTargets: {
+      line2FieldId: "line-2",
+      parishFieldId: "parish",
+      coordinatesFieldId: "coords",
+    },
+  });
+});
+
+it("clears one target and keeps the others", async () => {
+  const dispatch = renderAddressPanel(
+    makeFieldWith("components/address-lookup", {
+      geocodeTargets: { line2FieldId: "line-2", parishFieldId: "parish" },
+    }),
+  );
+  expect(line2Picker()).toHaveTextContent("Address line 2");
+  expect(parishPicker()).toHaveTextContent("Parish");
+  await chooseOption(parishPicker(), "— select field —");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({
+    geocodeTargets: { line2FieldId: "line-2" },
+  });
+});
+
+it("drops geocodeTargets rather than leaving {} once every target is cleared", async () => {
+  const dispatch = renderAddressPanel(
+    makeFieldWith("components/address-lookup", {
+      geocodeTargets: { line2FieldId: "line-2" },
+    }),
+  );
+  await chooseOption(line2Picker(), "— select field —");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({});
+});
+
+it("opens an Environmental Health recipe's address lookup with its stored targets", () => {
+  const { draft, step, field } = openRecipeField(
+    "apply-for-hair-salon-licence",
+    "components/address-lookup",
+  );
+  // Whichever targets the recipe stores, each picker resolves its id to a
+  // field on the same step. The recipe decides which are set, not the spec.
+  const stored = Object.entries(field.overrides.geocodeTargets ?? {}).filter(
+    (entry): entry is [string, string] => typeof entry[1] === "string",
+  );
+  if (stored.length === 0)
+    throw new Error("apply-for-hair-salon-licence stores no geocode targets");
+  const pickerFor: Record<string, () => HTMLElement> = {
+    line2FieldId: line2Picker,
+    parishFieldId: parishPicker,
+    coordinatesFieldId: coordinatesPicker,
+  };
+  for (const [target, fieldId] of stored) {
+    const ref = getFieldRefs(draft, catalog).find(
+      (r) => r.stepId === step.stepId && r.fieldId === fieldId,
+    );
+    if (!ref) throw new Error(`${fieldId} is not on step ${step.stepId}`);
+    expect(pickerFor[target]()).toHaveTextContent(ref.displayName);
+  }
+});
+
+// --- Checkbox accordion categories (#2887) ---------------------------------
+// `groups` is the accordion's list of categories, each with its own options
+// and a Higher-risk flag. The panel edits it through OptionGroupsEditor under
+// Type-specific settings, with the Options editor's contract: rows come from
+// the override when set, else the registry default; Reset drops the key.
+
+const categoryLabelInputs = () =>
+  screen
+    .getAllByLabelText("Category label")
+    .map((el) => (el as HTMLInputElement).value);
+
+it("offers an empty categories editor for an untouched checkbox accordion", () => {
+  renderPanel(makeField("components/generic-checkbox-accordion"));
+  expect(typeSettingsHeading()).toBeInTheDocument();
+  expect(screen.getByRole("group", { name: "Categories" })).toBeInTheDocument();
+  expect(screen.queryAllByLabelText("Category label")).toHaveLength(0);
+  expect(screen.getByRole("button", { name: "Add category" })).toBeEnabled();
+});
+
+it("dispatches groups with a new category, its option and the Higher-risk flag", async () => {
+  const dispatch = renderPanel(
+    makeField("components/generic-checkbox-accordion"),
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Add category" }));
+  await userEvent.type(screen.getByLabelText("Category label"), "Dairy");
+  await userEvent.click(screen.getByRole("checkbox", { name: /higher-risk/i }));
+  await userEvent.click(screen.getByRole("button", { name: "Add option" }));
+  await userEvent.type(screen.getByLabelText("Option label"), "Cheese");
+  await userEvent.type(screen.getByLabelText("Option value"), "cheese");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({
+    groups: [
+      {
+        label: "Dairy",
+        higherRisk: true,
+        options: [{ label: "Cheese", value: "cheese" }],
+      },
+    ],
+  });
+});
+
+it("reopens with stored categories and drops groups on Reset to defaults", async () => {
+  const stored = [
+    {
+      label: "Meat and poultry",
+      higherRisk: true,
+      options: [{ label: "Chicken", value: "chicken" }],
+    },
+    { label: "Drinks", options: [{ label: "Juice", value: "juice" }] },
+  ];
+  const dispatch = renderPanel(
+    makeFieldWith("components/generic-checkbox-accordion", { groups: stored }),
+  );
+  expect(categoryLabelInputs()).toEqual(["Meat and poultry", "Drinks"]);
+  await userEvent.click(
+    screen.getByRole("button", { name: /reset to defaults/i }),
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(lastOverrides(dispatch)).toEqual({});
+});
+
+it.each([
+  "request-an-environmental-health-officer",
+  "apply-for-temporary-restaurant-permit",
+])("opens %s's checkbox accordion with its stored categories", (formId) => {
+  const { field } = openRecipeField(
+    formId,
+    "components/generic-checkbox-accordion",
+  );
+  const groups = field.overrides.groups;
+  if (!groups?.length) throw new Error(`${formId} stores no groups`);
+  expect(categoryLabelInputs()).toEqual(groups.map((g) => g.label));
+  expect(
+    screen
+      .getAllByRole("checkbox", { name: /higher-risk/i })
+      .map((el) => el.getAttribute("aria-checked") === "true"),
+  ).toEqual(groups.map((g) => g.higherRisk === true));
+  const firstRow = screen
+    .getByDisplayValue(groups[0].label)
+    .closest("fieldset");
+  expect(
+    within(firstRow!)
+      .getAllByLabelText("Option value")
+      .map((el) => (el as HTMLInputElement).value),
+  ).toEqual(groups[0].options.map((o) => o.value));
+  // Rendering ten real categories (54 options) takes ~4s on a quiet machine,
+  // close to the 10s default under CI load.
+}, 20_000);

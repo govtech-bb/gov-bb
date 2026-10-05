@@ -13,6 +13,83 @@ const baseState: SubmissionState = {
   date: "19/05/2026",
 };
 
+describe("SubmissionConfirmation — printed answers (#2587)", () => {
+  const sections = [
+    {
+      stepId: "about-you",
+      title: "Tell us about yourself",
+      fields: [
+        { fieldId: "first-name", label: "First name", value: "Addie" },
+        { fieldId: "dob", label: "Date of birth", value: "5 June 1994" },
+      ],
+    },
+  ];
+
+  it("prints the answers under the question they were given for", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={{ ...baseState, sections }}
+      />,
+    );
+    expect(screen.getByText("First name")).toBeInTheDocument();
+    expect(screen.getByText("Addie")).toBeInTheDocument();
+    // The email renders the same date this way — the page must not drift.
+    expect(screen.getByText("5 June 1994")).toBeInTheDocument();
+  });
+
+  it("heads each section with the step title the applicant saw", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={{ ...baseState, sections }}
+      />,
+    );
+    expect(screen.getByText("Tell us about yourself")).toBeInTheDocument();
+  });
+
+  it("shows nothing on screen — the answers are for the printed copy only", () => {
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={{ ...baseState, sections }}
+      />,
+    );
+    expect(container.querySelector(".form-page__printed-answers")).toHaveClass(
+      "hidden",
+    );
+  });
+
+  it("adds no answers block to an outcome that carries none", () => {
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={baseState}
+      />,
+    );
+    expect(
+      container.querySelector(".form-page__printed-answers"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("adds no answers block when the list came back empty", () => {
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={{ ...baseState, sections: [] }}
+      />,
+    );
+    expect(
+      container.querySelector(".form-page__printed-answers"),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe("SubmissionConfirmation", () => {
   it("renders reference number when provided", () => {
     render(

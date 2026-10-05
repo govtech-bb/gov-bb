@@ -51,7 +51,7 @@ There are 2 ways to register for the Primary School Textbook Grant. You can:
 
         Elsie Payne Complex  
         Constitution Road  
-        St.Michael
+        St. Michael
 
 ## After you’ve registered
 

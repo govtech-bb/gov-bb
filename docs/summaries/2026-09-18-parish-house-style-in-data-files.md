@@ -42,11 +42,11 @@ untouched as a result. It is internally inconsistent and looks like a bug, but
 it is a street and a district, not a parish, and widening the rule to cover it
 would have quietly overturned the precedent this change is meant to follow.
 
-**`pharmacies.json` was left alone on scope, not on principle.** It holds the
-one remaining unpunctuated parish token in `apps/landing`
-(`"… White Main Road St Michael Tel/Fax"`). It is a different dataset behind a
-different feature that #2144 never scoped in, so it belongs in its own ticket
-rather than inflating a content PR.
+**`pharmacies.json` was left alone on scope, not on principle.** It holds an
+unpunctuated parish token (`"… White Main Road St Michael Tel/Fax"`) in a
+different dataset behind a different feature that #2144 never scoped in, so
+it belongs in its own ticket rather than inflating a content PR. That ticket
+is **#2716**.
 
 **No enforcement exists, and we chose not to add any.** A data-consistency
 test was offered and declined, so the convention rests on review alone. Worth
@@ -85,9 +85,13 @@ directions link, search, sort and distance ordering all key off `parish` or
   this change sharpens it: `Saint Peter` read as raw geocoder output, whereas
   `St. Peter` now reads as a deliberate house-style label. Needs the DEM
   booklet checked rather than a guess — Westmoreland is a St. James district,
-  so it looks like a Nominatim border misattribution. Split into its own issue.
-- **`pharmacies.json:4914`** is the last unpunctuated parish token in
-  `apps/landing`. Not scoped here.
+  so it looks like a Nominatim border misattribution. Split out as **#2722**.
+- **`pharmacies.json:4914`** is not scoped here — **#2716**. It was described
+  as the *last* unpunctuated token in `apps/landing`, which was true only of
+  the `St X` / `Saint X` shapes this sweep matched:
+  `get-a-primary-school-textbook-grant/index.md:54` carried `St.Michael` with
+  no space, which neither pattern caught. Fixed here; it was tracked as
+  **#2733**.
 - **Content fixes on CMS-owned pages are not durable.** The temporary
   restaurant page's parish spelling has been rewritten several times by
   "Update landing page…" commits, and a correct `St. Michael` that once existed

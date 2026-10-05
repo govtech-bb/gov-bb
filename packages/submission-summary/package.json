@@ -1,0 +1,18 @@
+{
+  "name": "@govtech-bb/submission-summary",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "lint-staged": {
+    "*.ts": "npx prettier --write"
+  },
+  "dependencies": {
+    "@govtech-bb/form-conditions": "workspace:*",
+    "@govtech-bb/form-types": "workspace:*",
+    "@govtech-bb/form-validation": "workspace:*"
+  }
+}

@@ -236,6 +236,11 @@ in a PR. After merge and restart, the loader won't surface it.
 Editing the flat file by hand (via PR) is fine — the file *is* the canonical
 recipe and the PR diff is the audit trail. Restart the API on merge.
 
+Set `updatedAt` to the time of the edit. The form builder uses it to tell a
+stale draft row from a fresh one (ADR 0075, #2878), so
+`pnpm validate-recipe-updated-at` fails in CI and in the pre-commit hook when
+a recipe's content changes without that stamp moving forward.
+
 ### Recover from a malformed recipe at boot
 
 The loader is strict: a recipe that fails schema validation throws at

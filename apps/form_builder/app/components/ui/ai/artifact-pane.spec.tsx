@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import "@testing-library/jest-dom/vitest";
 import { expect } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { serviceSnapshotSchema } from "@govtech-bb/form-types";

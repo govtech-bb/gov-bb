@@ -266,7 +266,7 @@ describe("CatchmentRoutingService", () => {
     });
     expect(r?.polyclinic).toBe("St. Philip Polyclinic");
     expect(r?.polyclinicContact).toBe(
-      "St. Philip Polyclinic - [(246) 536-1240](tel:+12465361240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)",
+      "St. Philip Polyclinic - [(246) 536-4240](tel:+12465364240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)",
     );
   });
 });

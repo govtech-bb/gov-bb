@@ -4,6 +4,60 @@
   "description": "Use this service to apply for a funeral directors licence.",
   "steps": [
     {
+      "stepId": "application-type",
+      "title": "Tell us about your application",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "application-type",
+            "label": "Are you applying for a new licence, or renewing an existing one?",
+            "validations": {
+              "required": {
+                "error": "Select whether you are applying for a new licence or renewing an existing one",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Applying for a new licence",
+                "value": "new"
+              },
+              {
+                "label": "Renewing an existing licence",
+                "value": "renewal"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "funeral-director-licence-number",
+            "label": "Your current licence number",
+            "validations": {
+              "required": {
+                "error": "Enter your current licence number",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "operator": "equal",
+                "value": "renewal"
+              }
+            ],
+            "ui": {
+              "width": "short"
+            }
+          }
+        }
+      ]
+    },
+    {
       "stepId": "personal-details",
       "title": "Tell us about yourself",
       "behaviours": [],
@@ -355,13 +409,22 @@
                 "value": true
               }
             },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "targetStepId": "application-type",
+                "operator": "equal",
+                "value": "new"
+              }
+            ],
             "options": [
               {
-                "label": "Supervised by a licensed funeral director for more than 2 years",
+                "label": "Supervised by a licensed funeral director for at least 2 years",
                 "value": "supervised-two-years"
               },
               {
-                "label": "Worked in a funeral director's office for more than 3 years before the 1984 regulations",
+                "label": "Engaged in the business of funeral directing for at least 3 years before the 1984 regulations",
                 "value": "office-three-years"
               }
             ]
@@ -390,7 +453,16 @@
                 "error": "File must be 5 MB or smaller",
                 "value": 5242880
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "targetStepId": "application-type",
+                "operator": "equal",
+                "value": "new"
+              }
+            ]
           }
         }
       ]
@@ -479,7 +551,7 @@
     }
   ],
   "createdAt": "2026-08-25T14:05:00.922Z",
-  "updatedAt": "2026-09-18T00:00:00.000Z",
+  "updatedAt": "2026-09-22T21:52:00.000Z",
   "meta": {
     "visibility": "preview"
   },
