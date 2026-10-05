@@ -8,29 +8,41 @@ import { createApiClient, createCachingDispatcher } from "./api";
 const PUBLIC_READ =
   "public, max-age=60, stale-while-revalidate=300, stale-if-error=86400";
 
+/** The policy api_v2 sends on the public by-url 404 (#2835). */
+const NOT_FOUND_READ = "public, max-age=10";
+
+/** MemoryCacheStore's default maxCount: the most entries the cache holds. */
+const UNDICI_MAX_COUNT = 1024;
+
 type Respond = (req: IncomingMessage) => {
   status: number;
   body?: unknown;
   cacheControl?: string;
   hold?: Promise<void>;
+  holdBody?: Promise<void>;
 };
 
 /**
  * A throwaway api_v2: every request is recorded, and `respond` decides the
  * answer. No `Date` header, so the cache's idea of a response's age comes
- * from the (faked) clock alone and not from the real one.
+ * from the (faked) clock alone and not from the real one. `hold` delays the
+ * whole response; `holdBody` sends the headers first and delays the body.
  */
 async function startApi(initial: Respond) {
   const requests: IncomingMessage[] = [];
   const state = { respond: initial };
   const server: Server = createServer(async (req, res) => {
     requests.push(req);
-    const { status, body, cacheControl, hold } = state.respond(req);
+    const { status, body, cacheControl, hold, holdBody } = state.respond(req);
     await hold;
     res.sendDate = false;
     res.statusCode = status;
     if (cacheControl) res.setHeader("cache-control", cacheControl);
     res.setHeader("content-type", "application/json");
+    if (holdBody) {
+      res.flushHeaders();
+      await holdBody;
+    }
     res.end(JSON.stringify(body ?? { error: status }));
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -174,6 +186,64 @@ describe("apiGet", () => {
       kind: "server_error",
       status: 502,
     });
+  });
+
+  it("makes one request for two lookups of a missing page within ten seconds", async () => {
+    api = await startApi(() => ({ status: 404, cacheControl: NOT_FOUND_READ }));
+    const client = createApiClient(api.baseUrl, dispatcher);
+
+    const first = await client.apiGet("/pages/by-url?url=/nope");
+    advanceClock(9);
+    const second = await client.apiGet("/pages/by-url?url=/nope");
+
+    expect(first).toEqual({ kind: "not_found" });
+    expect(second).toEqual({ kind: "not_found" });
+    expect(api.requests).toHaveLength(1);
+
+    // Past max-age: the next lookup goes back to api_v2.
+    advanceClock(2);
+    expect(await client.apiGet("/pages/by-url?url=/nope")).toEqual({
+      kind: "not_found",
+    });
+    expect(api.requests).toHaveLength(2);
+  });
+
+  // The only guard on `apiGet` reading the body: the test above passes even
+  // with `cancel()`, because its body lands in the same packet as the headers.
+  it("caches the 404 even when its body arrives after the headers", async () => {
+    api = await startApi(() => ({
+      status: 404,
+      cacheControl: NOT_FOUND_READ,
+      holdBody: new Promise((resolve) => setTimeout(resolve, 50)),
+    }));
+    const client = createApiClient(api.baseUrl, dispatcher);
+
+    const first = await client.apiGet("/pages/by-url?url=/nope");
+    advanceClock(9);
+    const second = await client.apiGet("/pages/by-url?url=/nope");
+
+    expect(first).toEqual({ kind: "not_found" });
+    expect(second).toEqual({ kind: "not_found" });
+    expect(api.requests).toHaveLength(1);
+  });
+
+  // #2835: undici 7 never evicted a url holding one entry, so every unknown
+  // url a visitor asked for stayed in memory for the life of the process.
+  it("evicts a cached 404 once the cache passes its entry cap", async () => {
+    api = await startApi(() => ({ status: 404, cacheControl: NOT_FOUND_READ }));
+    const client = createApiClient(api.baseUrl, dispatcher);
+
+    await client.apiGet("/pages/by-url?url=/first");
+    for (let i = 0; i < UNDICI_MAX_COUNT + 1; i++) {
+      await client.apiGet(`/pages/by-url?url=/other-${i}`);
+    }
+    // No clock advance: were it still cached, this would be a fresh hit.
+    await client.apiGet("/pages/by-url?url=/first");
+
+    const firstRequests = api.requests.filter(
+      (req) => req.url === "/pages/by-url?url=/first",
+    );
+    expect(firstRequests).toHaveLength(2);
   });
 
   it("returns unreachable with the undici timeout code when api_v2 hangs", async () => {

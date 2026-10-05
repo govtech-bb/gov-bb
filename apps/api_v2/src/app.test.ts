@@ -473,6 +473,24 @@ describe("Cache-Control", () => {
     expect(second.headers["cache-control"]).toBe(PUBLIC_READ);
   });
 
+  // #2835: without a policy every hit for an unknown url reached Postgres.
+  it("sends a ten-second policy on the public by-url 404", async () => {
+    const response = await app.inject({ url: "/pages?url=/nope" });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.headers["cache-control"]).toBe("public, max-age=10");
+    expect(response.headers.etag).toBeUndefined();
+  });
+
+  it("sends no Cache-Control on the /pages/:id 404", async () => {
+    const byId = await app.inject({
+      url: "/pages/22222222-2222-4222-8222-222222222222",
+    });
+
+    expect(byId.statusCode).toBe(404);
+    expect(byId.headers["cache-control"]).toBeUndefined();
+  });
+
   // A route must only advertise a policy for the response it actually sent —
   // a 500 must not carry PUBLIC_READ just because the handler set it before
   // the store call that then failed.

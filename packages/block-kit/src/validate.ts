@@ -297,13 +297,21 @@ export function validateDocument(
       }
     }
 
-    // Rule 8 — an internal start_link points at a page that exists.
-    if (block.type === "start_link" && block.target_kind === "page") {
-      if (!ctx.pageUrls.includes(block.target)) {
+    // Rule 8 — an internal start_link points at a page that exists, whether
+    // it is a block of its own or carried by a list item (reported against
+    // the list block, since items are not addressable by the editor).
+    const startLinks =
+      block.type === "start_link"
+        ? [block]
+        : block.type === "list"
+          ? block.items.flatMap((item) => item.start_link ?? [])
+          : [];
+    for (const link of startLinks) {
+      if (link.target_kind === "page" && !ctx.pageUrls.includes(link.target)) {
         errors.push({
           blockId: block.id,
           rule: 8,
-          message: `start_link targets "${block.target}", which is not a url in content_pages`,
+          message: `start_link targets "${link.target}", which is not a url in content_pages`,
         });
       }
     }

@@ -10,7 +10,11 @@
  */
 
 import { createHash } from "node:crypto";
-import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
+import Fastify, {
+  type FastifyBaseLogger,
+  type FastifyError,
+  type FastifyInstance,
+} from "fastify";
 import cors from "@fastify/cors";
 import swagger from "@fastify/swagger";
 import { OPENAPI_DOCUMENT, SCHEMAS } from "./openapi";
@@ -34,7 +38,7 @@ import {
 export const IF_UPDATED_AT = "if-updated-at";
 
 /**
- * The two Cache-Control policies a read route sends.
+ * The two Cache-Control policies a successful read sends.
  *
  * `PUBLIC_READ` is what a shared cache (undici in `landing_v2`, later a CDN)
  * may hold and serve to anyone. `EDITOR_READ` is `no-cache` — revalidate on
@@ -48,16 +52,30 @@ export const PUBLIC_READ =
   "public, max-age=60, stale-while-revalidate=300, stale-if-error=86400";
 export const EDITOR_READ = "no-cache";
 
+/**
+ * The policy on `GET /pages?url=`'s 404 (#2835).
+ *
+ * Ten seconds turns an unknown url from one Postgres query per hit into one
+ * per ten seconds per `landing_v2` instance, at the price of a brand-new url
+ * taking up to ten seconds to appear; edits to existing pages are 200s under
+ * `PUBLIC_READ` and are unaffected. No `stale-while-revalidate` or
+ * `stale-if-error`: a cached "no page here" must never be served stale
+ * through an `api_v2` outage. Every other error response — the `/pages/:id`
+ * 404, the error handler's, every 500 — stays header-less.
+ */
+export const NOT_FOUND_READ = "public, max-age=10";
+
 export interface AppOptions {
   db: Database;
-  logger?: boolean;
+  /** `main.ts`'s logger, shared with the pool. Unset, the app logs nothing. */
+  logger?: FastifyBaseLogger;
 }
 
 export async function buildApp({
   db,
-  logger = false,
+  logger,
 }: AppOptions): Promise<FastifyInstance> {
-  const app = Fastify({ logger });
+  const app = Fastify({ loggerInstance: logger });
   const store = new ApiStore(db);
 
   /*
@@ -215,6 +233,7 @@ export async function buildApp({
       const { url } = request.query;
       const resolved = await store.resolve(url);
       if (resolved.kind === "not_found") {
+        reply.header("Cache-Control", NOT_FOUND_READ);
         return reply
           .status(404)
           .send({ error: "not_found", message: `No page at ${url}` });

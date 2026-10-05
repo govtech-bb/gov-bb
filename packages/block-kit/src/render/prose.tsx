@@ -4,7 +4,7 @@ import type {
   ListBlock,
   NoticeBlock,
   ParagraphBlock,
-  StartLinkBlock,
+  StartLink,
 } from "../types";
 import { Heading as DsHeading, List as DsList, Text } from "@govtech-bb/react";
 import { Spans, type RenderContext } from "./spans";
@@ -56,6 +56,9 @@ export function List({ block, ctx }: { block: ListBlock; ctx: RenderContext }) {
       {block.items.map((item) => (
         <li key={item.id}>
           <Spans content={item.content} ctx={ctx} />
+          {item.start_link ? (
+            <StartButton link={item.start_link} ctx={ctx} />
+          ) : null}
         </li>
       ))}
     </DsList>
@@ -76,27 +79,29 @@ export function Notice({
   );
 }
 
-export function StartLink({
-  block,
+// Named for the button, not the data: the barrel also exports the `StartLink`
+// type, and a function and an interface of one name cannot share it.
+export function StartButton({
+  link,
   ctx,
 }: {
-  block: StartLinkBlock;
+  link: StartLink;
   ctx: RenderContext;
 }) {
   // An unsafe target renders the button with no href at all rather than a
   // working `javascript:` link. It is inert and obviously broken, which is
   // the right failure for something a citizen is invited to click.
   const href = safeHref(
-    ctx.resolveHref?.(block.target_kind, block.target) ?? block.target,
+    ctx.resolveHref?.(link.target_kind, link.target) ?? link.target,
   );
   return (
     <p className="bk-start">
       <a
         className="bk-start-button"
         {...(href ? { href } : {})}
-        data-kind={block.target_kind}
+        data-kind={link.target_kind}
       >
-        {block.label}
+        {link.label}
         <svg
           className="bk-start-arrow"
           width="18"

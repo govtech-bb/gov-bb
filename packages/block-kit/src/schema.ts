@@ -73,11 +73,38 @@ const headingSchema = z.object({
   content: contentSchema,
 });
 
+// Declared before the list schema because a list item may carry one. Kept
+// un-refined so the block form can `.extend` it: Zod refuses to extend a
+// refined object.
+const startLinkFields = z.object({
+  label: z.string().min(1),
+  target_kind: z.enum(["form", "page", "external"]),
+  // A form target is an id the host resolves, not a url, so only the two
+  // kinds that become an href directly are scheme-checked.
+  target: z.string().min(1),
+});
+
+const refineStartLink = (link: z.infer<typeof startLinkFields>) =>
+  link.target_kind === "form" || isSafeHref(link.target);
+
+const startLinkRefinement = {
+  message: "start_link target is not a safe url",
+  path: ["target"],
+};
+
 const listSchema = z.object({
   id: blockId,
   type: z.literal("list"),
   ordered: z.boolean(),
-  items: z.array(z.object({ id: blockId, content: contentSchema })),
+  items: z.array(
+    z.object({
+      id: blockId,
+      content: contentSchema,
+      start_link: startLinkFields
+        .refine(refineStartLink, startLinkRefinement)
+        .optional(),
+    }),
+  ),
 });
 
 const noticeSchema = z.object({
@@ -87,20 +114,9 @@ const noticeSchema = z.object({
   content: contentSchema,
 });
 
-const startLinkSchema = z
-  .object({
-    id: blockId,
-    type: z.literal("start_link"),
-    label: z.string().min(1),
-    target_kind: z.enum(["form", "page", "external"]),
-    // A form target is an id the host resolves, not a url, so only the two
-    // kinds that become an href directly are scheme-checked.
-    target: z.string().min(1),
-  })
-  .refine((block) => block.target_kind === "form" || isSafeHref(block.target), {
-    message: "start_link target is not a safe url",
-    path: ["target"],
-  });
+const startLinkSchema = startLinkFields
+  .extend({ id: blockId, type: z.literal("start_link") })
+  .refine(refineStartLink, startLinkRefinement);
 
 export const facetSchema = z.object({
   key: z.string().min(1),

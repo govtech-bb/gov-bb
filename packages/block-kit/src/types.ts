@@ -92,6 +92,8 @@ export interface HeadingBlock {
 export interface ListItem {
   id: string;
   content: Span[];
+  /** A Start button inside the item, as the "ways to apply" lists carry. */
+  start_link?: StartLink;
 }
 
 export interface ListBlock {
@@ -108,12 +110,17 @@ export interface NoticeBlock {
   content: Span[];
 }
 
-export interface StartLinkBlock {
-  id: string;
-  type: "start_link";
+/** The fields of a Start button, without a block envelope: shared by the
+ *  start_link block and a list item that carries one. */
+export interface StartLink {
   label: string;
   target_kind: "form" | "page" | "external";
   target: string;
+}
+
+export interface StartLinkBlock extends StartLink {
+  id: string;
+  type: "start_link";
 }
 
 /* -------------------------------------------------- configuration blocks */
