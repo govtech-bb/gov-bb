@@ -317,7 +317,7 @@ export async function fillPropertyOwnerDetails(
   },
 ): Promise<void> {
   const step = expectStep(page, "property-owner-details");
-  await expect(page.locator("h1")).toContainText("Property ownership");
+  await expect(page.locator("h1")).toHaveText("Property ownership");
 
   // `applicant-role-owner` is a SELECT now (3 options, Rule 8), so it is a
   // <select> element rather than a <fieldset> of radios.
@@ -378,7 +378,7 @@ async function fillOwnerDetails(
   data: ReturnType<typeof buildData>,
   ownerType: "person" | "business",
 ): Promise<void> {
-  const step = expectStep(page, "owner-details");
+  const step = expectStep(page, "owner-details", { exact: true });
   await expect(page.locator("h1")).toContainText("Property owner's details");
 
   const ownerFirstName = page.locator(`[id="${step}_owner-first-name"]`);
@@ -758,7 +758,7 @@ test.describe("Lodging House / Barracks Licence — Live Smoke", () => {
     // A new licence — no licence number asked, Planning evidence required later.
     await fillApplicationType(page, data, "new-licence");
     await fillYourDetails(page, data);
-    // "yes" — the owner block and the applicant's role stay hidden.
+    // "yes" — the role and owner-type stay hidden and `owner-details` is skipped.
     await fillPropertyOwnerDetails(page, data, { isOwner: "yes" });
     const coordinates = await fillPropertyDetails(page, data);
 
@@ -800,21 +800,30 @@ test.describe("Lodging House / Barracks Licence — Live Smoke", () => {
     if (process.env.SMOKE_HOLD) await page.pause();
   });
 
-  test("renews as a caretaker for a business owner, with two units, and is never asked for Planning evidence", async ({
+  test("renews as a caretaker for another owner, with two units, and is never asked for Planning evidence", async ({
     page,
   }) => {
     const data = buildData();
+    // Person or business, faker-picked (FAKER_SEED reproduces it), so both
+    // branches of `owner-details` get walked across runs.
+    const ownerType = faker.helpers.arrayElement([
+      "person",
+      "business",
+    ] as const);
     if (process.env.SMOKE_LOG_DATA)
-      console.log("[smoke-data]", JSON.stringify(data, null, 2));
+      console.log(
+        "[smoke-data]",
+        JSON.stringify({ ...data, ownerType }, null, 2),
+      );
 
     await openForm(page);
     // A renewal — the current licence number is asked for here.
     await fillApplicationType(page, data, "renew-licence");
     await fillYourDetails(page, data);
-    // "no" + "other-role" + a business owner takes every reveal on the step.
+    // "no" + "other-role" takes every reveal on the step.
     await fillPropertyOwnerDetails(page, data, {
       isOwner: "no",
-      ownerType: "business",
+      ownerType,
       role: "other-role",
     });
     const coordinates = await fillPropertyDetails(page, data);
@@ -855,10 +864,14 @@ test.describe("Lodging House / Barracks Licence — Live Smoke", () => {
     await expect(page.locator("h1")).toContainText("Check your answers");
     // Everything the renewal and non-owner routes revealed made it into review.
     await expect(page.getByText(data.licenceNumber).first()).toBeVisible();
-    await expect(page.getByText(data.ownerBusinessName).first()).toBeVisible();
     await expect(page.getByText(data.applicantRoleOther).first()).toBeVisible();
-    // A business owner is never asked for a person's name, so it cannot appear.
-    await expect(page.getByText(data.ownerFirstName)).toHaveCount(0);
+    // Only the chosen kind of owner's name was asked for, so only it appears.
+    const [askedName, skippedName] =
+      ownerType === "person"
+        ? [data.ownerFirstName, data.ownerBusinessName]
+        : [data.ownerBusinessName, data.ownerFirstName];
+    await expect(page.getByText(askedName).first()).toBeVisible();
+    await expect(page.getByText(skippedName)).toHaveCount(0);
     // Both units are on the review, and unit 1's "other" free-text with them.
     await expect(page.getByText(data.unitOne.name).first()).toBeVisible();
     await expect(page.getByText(data.unitTwo.name).first()).toBeVisible();
