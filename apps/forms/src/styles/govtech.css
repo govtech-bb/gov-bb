@@ -21,6 +21,14 @@
   gap: var(--govbb-space-s);
 }
 
+/* The package's radio fieldset is a flex column with `align-items:
+   flex-start`, which shrink-wraps a revealed option to its content. A field
+   with no intrinsic width — the file upload — collapsed to a thin strip
+   (#2915). Stretch the reveal to the fieldset's width instead. */
+.govbb-radio-item__conditional {
+  align-self: stretch;
+}
+
 /* Space multiple fields within a revealed checkbox option. */
 .govbb-checkbox-item:has(> .govbb-checkbox:checked)
   + .govbb-checkbox-item__conditional {
