@@ -76,6 +76,25 @@ the other synonyms.
 - **Drift guard.** `recipe-invariants.spec.ts` fails if a telephone hint
   override contains a digit.
 
+## Review follow-up (sajclarke)
+
+- **Uniform errors on every telephone field, not just relabelled ones.**
+  The registry `phone` message is now "Enter a valid telephone number". It
+  replaces 4 different wordings, including a hotel-licence bug where the
+  "required" text also showed for an invalid number. Every recipe `phone`
+  override is gone. Every required error reads "{label} is required";
+  `generic-tel`'s default became "Telephone number is required". The two
+  caterer fields became "Caterer or cook telephone number", because "Their
+  phone number is required" doesn't stand alone.
+- **Blocks count.** sajclarke's list missed telephone children inside
+  `blocks/*` whose label was overridden but whose error came from the
+  registry. The new invariant walks block overrides too, which caught 5 more.
+- **We left redundant overrides alone.** About 20 recipes restate
+  "Telephone number is required" word for word. They're correct, and
+  removing them would only archive more builder drafts.
+- **The AI prompt had to change too.** It told the model to restate `phone`
+  on `generic-tel`, which the new "no phone override" invariant would reject.
+
 ## What we almost got wrong
 
 The first pass rewrote each recipe with `JSON.stringify` and ran prettier
