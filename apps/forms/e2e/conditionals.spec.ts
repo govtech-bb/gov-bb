@@ -340,6 +340,30 @@ test.describe("Step 5 — fund-source radio conditional reveal", () => {
     await expect(inset).toBeVisible();
   });
 
+  test("the inset spans the fieldset rather than shrink-wrapping its field", async ({
+    page,
+  }) => {
+    // #2915: a shrink-wrapped reveal collapsed a file upload to a thin strip.
+    const form = new FormPage(page);
+    await form.clickRadio(
+      "step-5-financial-information~1_fund-source",
+      "Other",
+    );
+    const fieldset = page.locator(
+      'fieldset[id="step-5-financial-information~1_fund-source"]',
+    );
+    const inset = fieldset.locator(".govbb-radio-item__conditional");
+    await expect(inset).toBeVisible();
+
+    // The inset carries a left margin, so compare right edges: a stretched
+    // inset ends where the fieldset does.
+    const [insetRight, fieldsetRight] = await inset.evaluate((el) => [
+      el.getBoundingClientRect().right,
+      (el.closest("fieldset") as HTMLElement).getBoundingClientRect().right,
+    ]);
+    expect(insetRight).toBeCloseTo(fieldsetRight, 0);
+  });
+
   test("fund-source-other hides when switching back to non-other", async ({
     page,
   }) => {
