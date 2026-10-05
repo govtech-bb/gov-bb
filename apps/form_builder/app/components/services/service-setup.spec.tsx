@@ -408,6 +408,15 @@ it("keeps incomplete payments in the editor and explains what prevents saving", 
   ).toBeInTheDocument();
 });
 
+it("explains that the public contact details are optional (#2874)", () => {
+  render(<Harness section="details" />);
+  expect(
+    screen.getByText(
+      "Optional. These details help applicants contact the department. Department notifications use the department email chosen in After submission.",
+    ),
+  ).toBeInTheDocument();
+});
+
 describe("discarding unsaved changes (#2687)", () => {
   const navigation = {
     current: {

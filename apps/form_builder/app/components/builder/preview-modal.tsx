@@ -11,7 +11,7 @@ import { Dialog } from "../ui/dialog";
 // hydrated contract is cast, not parsed, so a DB custom definition may arrive
 // without a body — same guard as the forms renderer.
 function firstLine(markdown: string | undefined): string {
-  return (markdown ?? "").trim().split("\n")[0] ?? "";
+  return (markdown ?? "").trim().split("\n")[0];
 }
 
 interface PreviewModalProps {
