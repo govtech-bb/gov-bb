@@ -18,12 +18,13 @@ describe("telephone pattern", () => {
     expect(REGISTRY_COMPONENTS[ref]).toMatchObject({ hint: TELEPHONE_HINT });
   });
 
-  it.each(["components/telephone", "components/generic-tel"] as const)(
-    '%s defaults to the label "Telephone number"',
-    (ref) => {
-      expect(REGISTRY_COMPONENTS[ref]).toMatchObject({
-        label: "Telephone number",
-      });
-    },
-  );
+  it.each([
+    "components/telephone",
+    "components/generic-tel",
+    "components/contact-telephone",
+  ] as const)('%s defaults to the label "Telephone number"', (ref) => {
+    expect(REGISTRY_COMPONENTS[ref]).toMatchObject({
+      label: "Telephone number",
+    });
+  });
 });
