@@ -223,6 +223,36 @@ it("catchment-routed recipes use {polyclinicContact}, never hardcoded contact de
   expect(problems).toEqual([]);
 });
 
+// Telephone questions share one hint, set in the registry (#2917). A recipe may
+// override it only to add context the service needs — never to restate a
+// different example number, which is how the hints drifted apart before.
+it("telephone hint overrides add context, never a different example number", async () => {
+  const TEL =
+    /^(telephone|generic-tel|mobile-telephone|home-telephone|work-telephone|contact-telephone)$/;
+  const problems: string[] = [];
+  const recipes = await readRecipeFiles();
+
+  for (const { file, raw } of recipes) {
+    for (const step of (raw as { steps: Step[] }).steps) {
+      for (const el of step.elements ?? []) {
+        // A component carries its hint in `overrides`; a block carries one
+        // override object per child, keyed by the child's fieldId.
+        const overrides = el.ref.startsWith("blocks/")
+          ? Object.entries(el.overrides ?? {})
+          : [[el.ref.replace(/^components\//, ""), el.overrides]];
+        for (const [component, override] of overrides) {
+          const hint = (override as { hint?: unknown } | undefined)?.hint;
+          if (TEL.test(component as string) && /\d/.test(String(hint ?? ""))) {
+            problems.push(`${file}: step "${step.stepId}" hint "${hint}"`);
+          }
+        }
+      }
+    }
+  }
+
+  expect(problems).toEqual([]);
+});
+
 // Proves the net actually catches malformed recipes (#2075 acceptance criteria)
 // without polluting the real recipes/ set: each synthetic recipe is a mutation
 // of a real, valid one, and asserts the *specific* problem is reported so a
