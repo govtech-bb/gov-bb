@@ -19,11 +19,12 @@ import type {
   BlockDefinition,
   RecipeDraft,
   CustomAttributeDescriptor,
-  CustomAttributeKey,
+  CustomAttributeStringKey,
 } from "@govtech-bb/form-builder";
 import { primitiveUISchema } from "@govtech-bb/form-types";
 import type {
   FieldOverrides,
+  GeocodeTargets,
   HtmlTypes,
   Option,
   Primitive,
@@ -35,7 +36,9 @@ import { getFieldRefs, getStepRefs } from "./recipe-refs";
 import type { RecipeAction } from "./recipe-reducer";
 import { ValidationRulesEditor } from "./validation-rules-editor";
 import { BehavioursEditor } from "./behaviours-editor";
+import { FieldRefPicker } from "./field-ref-picker";
 import { OptionsEditor } from "./options-editor";
+import { OptionGroupsEditor } from "./option-groups-editor";
 import { KEBAB_ID_PATTERN, kebabize } from "./id-validation";
 import {
   isFieldlessRequiredWording,
@@ -72,7 +75,7 @@ interface OverrideFormProps {
   currentStepId: string;
   onChange: (overrides: FieldOverrides) => void;
   // Returns true when the candidate Field ID Override duplicates another field's
-  // resolved id. Omitted for block-child forms (deferred to the recipe-wide gate).
+  // resolved id — another component, or another child of the same block (#2896).
   checkDuplicateFieldId?: (candidateId: string) => boolean;
   defaultOptions?: Option[];
   defaultRequired?: boolean;
@@ -443,12 +446,16 @@ interface CustomAttributesEditorProps {
   descriptors: CustomAttributeDescriptor[];
   overrides: FieldOverrides;
   basePrimitive: Primitive | undefined;
+  // The fields on this field's own step — what a `fieldRef` descriptor's
+  // pickers offer (#2886).
+  stepFieldRefs: FieldRef[];
   patch: (partial: Partial<FieldOverrides>) => void;
   fg: (isOverridden: boolean) => string;
 }
 
 // Descriptor-driven editor for the attributes only this htmlType's renderer
-// reads (a content block's style, markdown body and details summary), one
+// reads (a content block's style, markdown body and details summary; an
+// address lookup's geocode targets; a checkbox accordion's categories), one
 // control per CUSTOM_ATTRIBUTE_DESCRIPTORS entry (#2873). Same contract as
 // the `ui` editor: show the effective value (override ?? base primitive), and
 // drop the key when the author sets it back to the base value or clears it.
@@ -456,19 +463,38 @@ function CustomAttributesEditor({
   descriptors,
   overrides,
   basePrimitive,
+  stepFieldRefs,
   patch,
   fg,
 }: CustomAttributesEditorProps) {
-  function effective(key: CustomAttributeKey | "label"): string | undefined {
+  function effective(
+    key: CustomAttributeStringKey | "label",
+  ): string | undefined {
     return overrides[key] ?? basePrimitive?.[key];
   }
 
-  function setKey(key: CustomAttributeKey, value: string) {
+  function setKey(key: CustomAttributeStringKey, value: string) {
     // An empty control, or one set back to the base value, drops the key so
     // the merge falls through to the base (the `ui` editor's contract).
     const next =
       value === "" || value === basePrimitive?.[key] ? undefined : value;
     patch({ [key]: next } as Partial<FieldOverrides>);
+  }
+
+  function setFieldRef(
+    key: "geocodeTargets",
+    target: keyof GeocodeTargets,
+    fieldId: string,
+  ) {
+    // An override replaces the object whole (the merge is a shallow spread),
+    // so edit the effective object; "" is the picker's cleared state. Once no
+    // target is left the key goes too, so the renderer never sees `{}`.
+    const next: GeocodeTargets = {
+      ...(overrides[key] ?? basePrimitive?.[key]),
+    };
+    if (fieldId === "") delete next[target];
+    else next[target] = fieldId;
+    patch({ [key]: Object.keys(next).length > 0 ? next : undefined });
   }
 
   return (
@@ -482,8 +508,54 @@ function CustomAttributesEditor({
           effective(descriptor.showWhen.key) !== descriptor.showWhen.equals
         )
           return null;
-        const value = effective(descriptor.key) ?? "";
         const isOverridden = overrides[descriptor.key] !== undefined;
+
+        if (descriptor.kind === "fieldRef") {
+          const targets =
+            overrides[descriptor.key] ?? basePrimitive?.[descriptor.key];
+          return (
+            <fieldset key={descriptor.key} className={fg(isOverridden)}>
+              <legend className="text-sm font-medium">
+                {descriptor.label}
+              </legend>
+              {descriptor.hint && (
+                <p className="text-sm text-ui-subtle">{descriptor.hint}</p>
+              )}
+              {descriptor.fields.map((target) => (
+                <FieldRefPicker
+                  key={target.key}
+                  label={target.label}
+                  value={targets?.[target.key] ?? ""}
+                  fieldRefs={stepFieldRefs}
+                  onChange={(fieldId) =>
+                    setFieldRef(descriptor.key, target.key, fieldId)
+                  }
+                />
+              ))}
+            </fieldset>
+          );
+        }
+
+        if (descriptor.kind === "optionGroups") {
+          return (
+            <fieldset key={descriptor.key} className={fg(isOverridden)}>
+              <legend className="text-sm font-medium">
+                {descriptor.label}
+              </legend>
+              {descriptor.hint && (
+                <p className="text-sm text-ui-subtle">{descriptor.hint}</p>
+              )}
+              <OptionGroupsEditor
+                value={overrides[descriptor.key] ?? []}
+                defaultValue={basePrimitive?.[descriptor.key] ?? []}
+                isOverridden={isOverridden}
+                onChange={(groups) => patch({ [descriptor.key]: groups })}
+              />
+            </fieldset>
+          );
+        }
+
+        const value = effective(descriptor.key) ?? "";
 
         if (descriptor.kind === "enum") {
           return (
@@ -547,6 +619,7 @@ interface PlainOverrideFieldsProps {
   overrides: FieldOverrides;
   htmlType: HtmlTypes;
   basePrimitive: Primitive | undefined;
+  stepFieldRefs: FieldRef[];
   patch: (partial: Partial<FieldOverrides>) => void;
   fg: (isOverridden: boolean) => string;
   defaultLabel?: string;
@@ -564,6 +637,7 @@ function PlainOverrideFields({
   overrides,
   htmlType,
   basePrimitive,
+  stepFieldRefs,
   patch,
   fg,
   defaultLabel,
@@ -683,6 +757,7 @@ function PlainOverrideFields({
                 descriptors={customDescriptors}
                 overrides={overrides}
                 basePrimitive={basePrimitive}
+                stepFieldRefs={stepFieldRefs}
                 patch={patch}
                 fg={fg}
               />
@@ -755,6 +830,7 @@ function OverrideForm({
         overrides={overrides}
         htmlType={htmlType}
         basePrimitive={basePrimitive}
+        stepFieldRefs={fieldRefs.filter((f) => f.stepId === currentStepId)}
         patch={patch}
         fg={fg}
         defaultLabel={defaultLabel}
@@ -892,6 +968,24 @@ function FieldEditForm({
     field.childOverrides ? { ...field.childOverrides } : {},
   );
 
+  // The saved draft with this field's unsaved overrides and childOverrides
+  // swapped into its slot. The block children's duplicate check runs against
+  // it, so renaming a child onto a sibling's id warns on both at once and
+  // undoing a saved collision clears both before Save (#2896). A standalone
+  // field's own entry is excluded from its check, so that path reads `draft`.
+  const liveDraft = useMemo<RecipeDraft>(
+    () => ({
+      ...draft,
+      steps: draft.steps.map((step) => ({
+        ...step,
+        fields: step.fields.map((f) =>
+          f.id === field.id ? { ...f, overrides, childOverrides } : f,
+        ),
+      })),
+    }),
+    [draft, field.id, overrides, childOverrides],
+  );
+
   const item = getRegistryItem(ref, catalog);
 
   // Determine htmlType for component/custom fields
@@ -999,6 +1093,15 @@ function FieldEditForm({
                   currentStepId={stepId}
                   onChange={(updated) =>
                     handleChildOverrideChange(element.fieldId, updated)
+                  }
+                  checkDuplicateFieldId={(candidate) =>
+                    fieldIdDuplicatesAnother(
+                      liveDraft,
+                      catalog,
+                      field.id,
+                      candidate,
+                      element.fieldId,
+                    )
                   }
                   defaultOptions={element.options}
                   defaultRequired={isRequiredRule(

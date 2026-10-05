@@ -2,6 +2,7 @@ import { CUSTOM_ATTRIBUTE_DESCRIPTORS } from "./custom-attributes";
 import {
   contentVariantSchema,
   fieldOverridesSchema,
+  geocodeTargetsSchema,
   htmlTypesSchema,
 } from "@govtech-bb/form-types";
 
@@ -73,5 +74,34 @@ describe("CUSTOM_ATTRIBUTE_DESCRIPTORS (#2873)", () => {
 
   it("records no type-specific settings for a plain text field", () => {
     expect(CUSTOM_ATTRIBUTE_DESCRIPTORS.text).toEqual([]);
+  });
+
+  it("offers one field picker per geocode target for an address lookup (#2886)", () => {
+    expect(CUSTOM_ATTRIBUTE_DESCRIPTORS["address-lookup"]).toEqual([
+      expect.objectContaining({
+        key: "geocodeTargets",
+        kind: "fieldRef",
+        fields: [
+          expect.objectContaining({ key: "line2FieldId" }),
+          expect.objectContaining({ key: "parishFieldId" }),
+          expect.objectContaining({ key: "coordinatesFieldId" }),
+        ],
+      }),
+    ]);
+  });
+
+  it("offers a categories editor for a checkbox accordion's groups (#2887)", () => {
+    expect(CUSTOM_ATTRIBUTE_DESCRIPTORS["checkbox-accordion"]).toEqual([
+      expect.objectContaining({ key: "groups", kind: "optionGroups" }),
+    ]);
+  });
+
+  it("names only geocodeTargets sub-keys the schema carries", () => {
+    const allowed = Object.keys(geocodeTargetsSchema.shape);
+    for (const descriptor of all) {
+      if (descriptor.kind !== "fieldRef") continue;
+      for (const target of descriptor.fields)
+        expect(allowed).toContain(target.key);
+    }
   });
 });

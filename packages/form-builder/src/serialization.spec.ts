@@ -246,6 +246,80 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
     expect(result.steps[0].fields[0].overrides).toEqual(overrides);
   });
 
+  it("address-lookup geocodeTargets survive round-trip (#2886)", () => {
+    const overrides = {
+      fieldId: "business-address-line-1",
+      geocodeTargets: {
+        line2FieldId: "business-address-line-2",
+        parishFieldId: "business-address-parish",
+        coordinatesFieldId: "business-address-coordinates",
+      },
+    };
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          fields: [
+            f({
+              kind: "component",
+              ref: "components/address-lookup",
+              overrides,
+            }),
+          ],
+          behaviours: [],
+        },
+      ],
+    });
+
+    const recipe = serializeRecipeDraft(draft);
+    expect(recipe.steps[0].elements[0].overrides).toEqual(overrides);
+    expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(true);
+
+    const result = deserializeRecipe(recipe);
+    expect(result.steps[0].fields[0].overrides).toEqual(overrides);
+  });
+
+  it("checkbox-accordion groups survive round-trip (#2887)", () => {
+    const overrides = {
+      fieldId: "food-served",
+      groups: [
+        {
+          label: "Meat and poultry",
+          higherRisk: true,
+          options: [{ label: "Chicken", value: "chicken" }],
+        },
+        {
+          label: "Drinks",
+          options: [{ label: "Juice", value: "juice", disabled: true }],
+        },
+      ],
+    };
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          fields: [
+            f({
+              kind: "component",
+              ref: "components/generic-checkbox-accordion",
+              overrides,
+            }),
+          ],
+          behaviours: [],
+        },
+      ],
+    });
+
+    const recipe = serializeRecipeDraft(draft);
+    expect(recipe.steps[0].elements[0].overrides).toEqual(overrides);
+    expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(true);
+
+    const result = deserializeRecipe(recipe);
+    expect(result.steps[0].fields[0].overrides).toEqual(overrides);
+  });
+
   it("block field (kind: 'block') survives round-trip without child overrides", () => {
     const draft = makeBaseDraft({
       steps: [
