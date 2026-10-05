@@ -31,8 +31,8 @@
  *   FAKER_SEED       fix faker's RNG for a reproducible data set.
  *
  * Form-specific notes:
- *  - Eight authored steps: `application-type`, `your-details`,
- *    `property-owner-details`, `property-details`,
+ *  - Nine authored steps: `application-type`, `your-details`,
+ *    `property-owner-details`, `owner-details`, `property-details`,
  *    `unit-details-and-facilities`, `kitchen-facilities`, `amenities-other`
  *    and `supporting-documents`, then the platform's `check-your-answers` /
  *    `declaration` / `submission-confirmation`.
@@ -49,12 +49,14 @@
  *    change per instance; only the step id gains the `~1`. So unit 2's name
  *    field is `unit-details-and-facilities~1_barracks-name-1`.
  *  - Conditional reveals, all `fieldConditionalOn` unless noted:
- *      · `is-property-owner` = "no" reveals the applicant's role AND the whole
- *        owner block (`owner-type`, the person or business fields, the owner's
- *        address and parish). Every owner field carries BOTH its own condition
- *        and the `is-property-owner` one, because form state is keep-but-hide:
- *        without the second condition `owner-type`'s retained value would keep
- *        the person fields on screen after a flip back to "yes";
+ *      · `is-property-owner` = "no" reveals the applicant's role and
+ *        `owner-type`, and opens the `owner-details` step (`stepConditionalOn`)
+ *        for the owner's name and address. That step is its own page because
+ *        the renderer nests same-step reveals inside the chosen radio option:
+ *        on one step, the person's name fields split "A person" from "A
+ *        business or organisation" (#2921). On `owner-details`, `owner-type`
+ *        picks the person fields or the business name. It sits on an earlier
+ *        step, so those fields render as plain fields, not nested ones;
  *      · `applicant-role-owner` is a SELECT — 3 options, so Rule 8 forbids a
  *        radio — and "other-role" reveals `applicant-role-other`;
  *      · `property-number-of-bunk-beds-1` >= 1 (numeric `gte`) reveals
@@ -69,7 +71,7 @@
  *        (`other-lighting`) reveals `lighting-type-other-1` via the `in`
  *        operator (a checkbox submits a list);
  *      · each service ticked on `amenities-other` reveals its own "have you
- *        applied" radio, and answering "no" reveals an inset notice telling the
+ *        applied" radio, and answering "no" reveals a warning notice telling the
  *        applicant they can continue but must apply before the licence is
  *        granted;
  *      · `site-plan-toggle` is a `components/show-hide` (a native
@@ -299,11 +301,11 @@ export async function fillYourDetails(
 }
 
 /**
- * Step 3 — ownership. "yes" asks nothing further; "no" reveals the applicant's
- * role AND the owner block, which forks again on `owner-type`: a person gives a
- * name, a business gives an organisation name, and both give an address. Role
- * "other-role" reveals the free-text role. The owner branch asserts the reveals
- * stay hidden — that gate is the whole point of the step.
+ * Step 3 — ownership. "yes" asks nothing further and skips the owner's details
+ * step entirely; "no" reveals the applicant's role and `owner-type`, then opens
+ * `owner-details` (step 3b). Role "other-role" reveals the free-text role. The
+ * owner branch asserts the reveals stay hidden — that gate is the whole point
+ * of the step.
  */
 export async function fillPropertyOwnerDetails(
   page: Page,
@@ -315,18 +317,13 @@ export async function fillPropertyOwnerDetails(
   },
 ): Promise<void> {
   const step = expectStep(page, "property-owner-details");
-  await expect(page.locator("h1")).toContainText(
-    "Property ownership and owner details",
-  );
+  await expect(page.locator("h1")).toContainText("Property ownership");
 
   // `applicant-role-owner` is a SELECT now (3 options, Rule 8), so it is a
   // <select> element rather than a <fieldset> of radios.
   const roleSelect = page.locator(`select[id="${step}_applicant-role-owner"]`);
   const roleOther = page.locator(`[id="${step}_applicant-role-other"]`);
   const ownerTypeFieldset = page.locator(`fieldset[id="${step}_owner-type"]`);
-  const ownerFirstName = page.locator(`[id="${step}_owner-first-name"]`);
-  const ownerBusinessName = page.locator(`[id="${step}_owner-business-name"]`);
-  const ownerAddress = page.locator(`[id="${step}_owner-address-line-1"]`);
 
   await expect(roleSelect).toBeHidden();
   await expect(ownerTypeFieldset).toBeHidden();
@@ -347,41 +344,62 @@ export async function fillPropertyOwnerDetails(
       await expect(roleOther).toBeHidden();
     }
 
-    // Neither owner branch is open until owner-type is answered.
-    await expect(ownerFirstName).toBeHidden();
-    await expect(ownerBusinessName).toBeHidden();
-
     const ownerType = branch.ownerType ?? "person";
     await selectRadio(page, step, "owner-type", ownerType);
+    // #2921 — the owner's details live on the next step, so nothing opens
+    // between "A person" and "A business or organisation" here.
+    await expect(
+      ownerTypeFieldset.locator('input[type="text"], select'),
+    ).toHaveCount(0);
+    await advance(page, step);
 
-    if (ownerType === "person") {
-      await expect(ownerFirstName).toBeVisible({ timeout: STEP_TIMEOUT });
-      await expect(ownerBusinessName).toBeHidden();
-      await ownerFirstName.fill(data.ownerFirstName);
-      await fillField(page, step, "owner-middle-name", data.ownerMiddleName);
-      await fillField(page, step, "owner-last-name", data.ownerLastName);
-    } else {
-      await expect(ownerBusinessName).toBeVisible({ timeout: STEP_TIMEOUT });
-      await expect(ownerFirstName).toBeHidden();
-      await ownerBusinessName.fill(data.ownerBusinessName);
-    }
-
-    // The owner's address is asked for either kind of owner.
-    await expect(ownerAddress).toBeVisible({ timeout: STEP_TIMEOUT });
-    await ownerAddress.fill(data.ownerAddress);
-    await fillField(page, step, "owner-address-line-2", data.ownerAddressLine2);
-    await selectDropdown(page, step, "owner-parish", data.ownerParish);
-  } else {
-    // The gate's whole purpose: an owner is not asked who the owner is, what
-    // kind of owner they are, where the owner lives, nor what their role at
-    // their own property is.
-    await expect(roleSelect).toBeHidden();
-    await expect(roleOther).toBeHidden();
-    await expect(ownerTypeFieldset).toBeHidden();
-    await expect(ownerFirstName).toBeHidden();
-    await expect(ownerBusinessName).toBeHidden();
-    await expect(ownerAddress).toBeHidden();
+    await fillOwnerDetails(page, data, ownerType);
+    return;
   }
+
+  // The gate's whole purpose: an owner is not asked who the owner is, what
+  // kind of owner they are, nor what their role at their own property is —
+  // and `owner-details` is skipped (`fillPropertyDetails` asserts the next
+  // step is `property-details`).
+  await expect(roleSelect).toBeHidden();
+  await expect(roleOther).toBeHidden();
+  await expect(ownerTypeFieldset).toBeHidden();
+
+  await advance(page, step);
+}
+
+/**
+ * Step 3b — the owner's details, shown only when the applicant is not the
+ * owner. `owner-type` on the previous step picks a person's name or a business
+ * name; both give an address.
+ */
+async function fillOwnerDetails(
+  page: Page,
+  data: ReturnType<typeof buildData>,
+  ownerType: "person" | "business",
+): Promise<void> {
+  const step = expectStep(page, "owner-details");
+  await expect(page.locator("h1")).toContainText("Property owner's details");
+
+  const ownerFirstName = page.locator(`[id="${step}_owner-first-name"]`);
+  const ownerBusinessName = page.locator(`[id="${step}_owner-business-name"]`);
+
+  if (ownerType === "person") {
+    await expect(ownerFirstName).toBeVisible({ timeout: STEP_TIMEOUT });
+    await expect(ownerBusinessName).toBeHidden();
+    await ownerFirstName.fill(data.ownerFirstName);
+    await fillField(page, step, "owner-middle-name", data.ownerMiddleName);
+    await fillField(page, step, "owner-last-name", data.ownerLastName);
+  } else {
+    await expect(ownerBusinessName).toBeVisible({ timeout: STEP_TIMEOUT });
+    await expect(ownerFirstName).toBeHidden();
+    await ownerBusinessName.fill(data.ownerBusinessName);
+  }
+
+  // The owner's address is asked for either kind of owner.
+  await fillField(page, step, "owner-address-line-1", data.ownerAddress);
+  await fillField(page, step, "owner-address-line-2", data.ownerAddressLine2);
+  await selectDropdown(page, step, "owner-parish", data.ownerParish);
 
   await advance(page, step);
 }
@@ -576,7 +594,7 @@ type ServiceValue = keyof typeof SERVICE_FOLLOW_UPS;
  * Step 7 — other services at the property. The whole checkbox group is optional
  * ("leave blank if none apply" — there is no exclusive "none of these" option),
  * so the step advances with nothing ticked. Ticking a service reveals its own
- * "have you applied" radio, and answering "no" draws an inset notice saying the
+ * "have you applied" radio, and answering "no" draws a warning notice saying the
  * applicant can continue but must apply before the licence is granted — an
  * advisory, never a block.
  */
@@ -611,13 +629,15 @@ export async function fillAmenities(
   }
 
   // A "no" anywhere draws its advisory notice; it must not stop the journey.
-  const insets = page.locator(".govbb-inset-text");
+  const notices = page.locator(".govbb-warning-text");
   const expectedNotices = Object.values(services).filter(
     (answer) => answer === "no",
   ).length;
-  await expect(insets).toHaveCount(expectedNotices);
+  await expect(notices).toHaveCount(expectedNotices);
   if (expectedNotices > 0) {
-    await expect(insets.first()).toContainText("You can continue now");
+    await expect(notices.first()).toContainText(
+      "You can continue with this application",
+    );
   }
 
   await advance(page, step);
@@ -700,7 +720,9 @@ export async function fillSupportingDocuments(
 /** Tick the single declaration checkbox and submit for real. */
 async function confirmAndSubmit(page: Page): Promise<void> {
   const step = expectStep(page, "declaration");
-  await expect(page.locator("h1")).toContainText("Declaration");
+  await expect(page.locator("h1")).toContainText(
+    "Confirm and submit your application",
+  );
   await page
     .locator(`fieldset[id="${step}_declaration-confirmed"]`)
     .getByRole("checkbox")

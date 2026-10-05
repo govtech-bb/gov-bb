@@ -1480,13 +1480,13 @@
             "label": "Declaration",
             "validations": {
               "required": {
-                "error": "You must confirm the declaration to continue",
+                "error": "You must confirm the declaration to continue.",
                 "value": true
               }
             },
             "options": [
               {
-                "label": "I confirm that the information provided is true and correct.",
+                "label": "I confirm that the information I have provided is true and correct to the best of my knowledge.",
                 "value": "confirmed"
               }
             ]
@@ -1504,5 +1504,5 @@
     }
   ],
   "createdAt": "2026-08-18T17:01:58.317Z",
-  "updatedAt": "2026-10-05T22:10:00.000Z"
+  "updatedAt": "2026-10-05T22:33:00.000Z"
 }
