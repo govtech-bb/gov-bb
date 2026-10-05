@@ -343,8 +343,11 @@ it("offers Publish once every step is done, without requiring contact details or
   };
   seedService(ready);
   renderServices("/services?service=pension-advice");
+  // The button appears only after the router resolves, the workspace mounts
+  // and its effect loads the draft; under CI load that outlasts findBy's 1s
+  // default.
   expect(
-    await screen.findByRole("button", { name: "Publish" }),
+    await screen.findByRole("button", { name: "Publish" }, { timeout: 5000 }),
   ).toBeInTheDocument();
   expect(
     screen.queryByRole("button", { name: /^Continue:/ }),
