@@ -259,20 +259,17 @@
  * fields still shrink inside containers narrower than the cap.
  * `long` (or no hint) stays unstyled: full width of the form column.
  * The cap sits on the control, not the form group, so the label, hint and
- * error message keep the full column width (#2923). Fields revealed inside a
- * select's inset are excluded: they carry their own width. */
+ * error message keep the full column width (#2923). Only text, textarea and
+ * address-lookup groups carry a width hint, and none contains a select inset,
+ * so a revealed field is capped only by its own hint. */
 @media (min-width: 768px) {
   .govbb-form-group[data-field-width="short"]
-    :is(.govbb-input, .govbb-select, .govbb-textarea, .govbb-combobox):not(
-      .govbb-select__conditional *
-    ) {
+    :is(.govbb-input, .govbb-select, .govbb-textarea, .govbb-combobox) {
     max-width: 24ch;
   }
 
   .govbb-form-group[data-field-width="medium"]
-    :is(.govbb-input, .govbb-select, .govbb-textarea, .govbb-combobox):not(
-      .govbb-select__conditional *
-    ) {
+    :is(.govbb-input, .govbb-select, .govbb-textarea, .govbb-combobox) {
     max-width: 38ch;
   }
 }
