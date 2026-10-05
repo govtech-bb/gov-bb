@@ -1,0 +1,341 @@
+{
+  "schemaVersion": 2,
+  "id": "identity-registry-example",
+  "title": "Identity details example",
+  "mode": "application",
+  "locale": "en-BB",
+  "timeZone": "America/Barbados",
+  "settings": {
+    "visibility": "preview",
+    "hiddenAnswers": "retain"
+  },
+  "blocks": [
+    {
+      "id": "details-page",
+      "type": "page",
+      "role": "questions",
+      "title": "Your details"
+    },
+    {
+      "id": "applicant-name",
+      "type": "question",
+      "kind": "text",
+      "key": "applicant_name",
+      "label": "Your full name",
+      "visible": true,
+      "required": {
+        "value": true,
+        "message": "Enter the full name"
+      },
+      "validation": [
+        {
+          "id": "applicant-name-length",
+          "type": "minLength",
+          "value": 2,
+          "message": "Enter at least 2 characters"
+        }
+      ]
+    },
+    {
+      "id": "applicant-national-id",
+      "type": "question",
+      "kind": "text",
+      "key": "applicant_national_id",
+      "label": "Your national ID number",
+      "visible": true,
+      "required": {
+        "value": true,
+        "message": "Enter the national ID number"
+      },
+      "validation": [
+        {
+          "id": "applicant-national-id-format",
+          "type": "pattern",
+          "pattern": "^[0-9]{6}-[0-9]{4}$",
+          "flags": "",
+          "message": "Enter the national ID number in the format 123456-1234"
+        }
+      ]
+    },
+    {
+      "id": "applicant-no-national-id",
+      "type": "question",
+      "kind": "boolean",
+      "key": "applicant_no_national_id",
+      "label": "I do not have this national ID number",
+      "default": false,
+      "visible": true,
+      "submit": false,
+      "review": false
+    },
+    {
+      "id": "applicant-passport",
+      "type": "question",
+      "kind": "text",
+      "key": "applicant_passport",
+      "label": "Your passport number",
+      "visible": false,
+      "required": {
+        "value": false,
+        "message": "Enter the passport number"
+      },
+      "validation": [
+        {
+          "id": "applicant-passport-length",
+          "type": "maxLength",
+          "value": 30,
+          "message": "Enter a passport number using 30 characters or fewer"
+        }
+      ]
+    },
+    {
+      "id": "applicant-identity-logic",
+      "type": "logic",
+      "rules": [
+        {
+          "id": "applicant-active",
+          "when": true,
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "applicant-name",
+                "applicant-national-id",
+                "applicant-no-national-id"
+              ],
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "applicant-use-passport",
+          "when": {
+            "op": "all",
+            "conditions": [
+              true,
+              {
+                "op": "eq",
+                "left": {
+                  "answer": "applicant-no-national-id"
+                },
+                "right": true
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "applicant-national-id"
+              ],
+              "value": false
+            },
+            {
+              "type": "setRequired",
+              "target": "applicant-national-id",
+              "value": false
+            },
+            {
+              "type": "setVisible",
+              "targets": [
+                "applicant-passport"
+              ],
+              "value": true
+            },
+            {
+              "type": "setRequired",
+              "target": "applicant-passport",
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "include-spouse",
+      "type": "question",
+      "kind": "boolean",
+      "key": "include_spouse",
+      "label": "Include your spouse’s details",
+      "default": false,
+      "submit": false,
+      "review": false
+    },
+    {
+      "id": "spouse-name",
+      "type": "question",
+      "kind": "text",
+      "key": "spouse_name",
+      "label": "Your spouse’s full name",
+      "visible": false,
+      "required": {
+        "value": true,
+        "message": "Enter the full name"
+      },
+      "validation": [
+        {
+          "id": "spouse-name-length",
+          "type": "minLength",
+          "value": 2,
+          "message": "Enter at least 2 characters"
+        }
+      ]
+    },
+    {
+      "id": "spouse-national-id",
+      "type": "question",
+      "kind": "text",
+      "key": "spouse_national_id",
+      "label": "Your spouse’s national ID number",
+      "visible": false,
+      "required": {
+        "value": true,
+        "message": "Enter the national ID number"
+      },
+      "validation": [
+        {
+          "id": "spouse-national-id-format",
+          "type": "pattern",
+          "pattern": "^[0-9]{6}-[0-9]{4}$",
+          "flags": "",
+          "message": "Enter the national ID number in the format 123456-1234"
+        }
+      ]
+    },
+    {
+      "id": "spouse-no-national-id",
+      "type": "question",
+      "kind": "boolean",
+      "key": "spouse_no_national_id",
+      "label": "I do not have this national ID number",
+      "default": false,
+      "visible": false,
+      "submit": false,
+      "review": false
+    },
+    {
+      "id": "spouse-passport",
+      "type": "question",
+      "kind": "text",
+      "key": "spouse_passport",
+      "label": "Your spouse’s passport number",
+      "visible": false,
+      "required": {
+        "value": false,
+        "message": "Enter the passport number"
+      },
+      "validation": [
+        {
+          "id": "spouse-passport-length",
+          "type": "maxLength",
+          "value": 30,
+          "message": "Enter a passport number using 30 characters or fewer"
+        }
+      ]
+    },
+    {
+      "id": "spouse-identity-logic",
+      "type": "logic",
+      "rules": [
+        {
+          "id": "spouse-active",
+          "when": {
+            "op": "eq",
+            "left": {
+              "answer": "include-spouse"
+            },
+            "right": true
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "spouse-name",
+                "spouse-national-id",
+                "spouse-no-national-id"
+              ],
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "spouse-use-passport",
+          "when": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "eq",
+                "left": {
+                  "answer": "include-spouse"
+                },
+                "right": true
+              },
+              {
+                "op": "eq",
+                "left": {
+                  "answer": "spouse-no-national-id"
+                },
+                "right": true
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "spouse-national-id"
+              ],
+              "value": false
+            },
+            {
+              "type": "setRequired",
+              "target": "spouse-national-id",
+              "value": false
+            },
+            {
+              "type": "setVisible",
+              "targets": [
+                "spouse-passport"
+              ],
+              "value": true
+            },
+            {
+              "type": "setRequired",
+              "target": "spouse-passport",
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "review-page",
+      "type": "page",
+      "role": "review",
+      "title": "Check your answers",
+      "review": {
+        "questions": "preceding",
+        "emptyAnswers": "omit",
+        "changeLinks": true
+      }
+    },
+    {
+      "id": "confirmation-page",
+      "type": "page",
+      "role": "confirmation",
+      "title": "Details received"
+    },
+    {
+      "id": "confirmation-copy",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Thank you, ",
+        {
+          "answer": "applicant-name"
+        },
+        "."
+      ]
+    }
+  ]
+}

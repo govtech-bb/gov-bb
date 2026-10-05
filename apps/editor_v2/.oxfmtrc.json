@@ -1,0 +1,30 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "tabWidth": 2,
+  "useTabs": false,
+  "sortImports": false,
+  "ignorePatterns": [
+    ".agent/**",
+    ".agents/**",
+    ".claude/**",
+    ".codex/**",
+    ".continue/**",
+    ".cursor/**",
+    ".gemini/**",
+    ".opencode/**",
+    ".pi/**",
+    ".roo/**",
+    ".windsurf/**",
+    ".impeccable/**",
+    "tools/oxlint/anti-slop/**",
+    "reference/**",
+    "plans/**",
+    "tests/fixtures/**",
+    "scripts/browser/fixtures/**",
+    "dist/**",
+    "out/**",
+    "src/routeTree.gen.ts",
+    ".tanstack/**"
+  ]
+}

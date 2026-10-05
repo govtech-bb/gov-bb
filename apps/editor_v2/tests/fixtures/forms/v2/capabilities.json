@@ -1,0 +1,1629 @@
+{
+  "version": 1,
+  "capabilities": [
+    {
+      "category": "field",
+      "name": "text",
+      "native": {
+        "kind": "text",
+        "valueType": "string"
+      },
+      "owner": "src/forms/features/short-answer/definition.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json",
+        "tests/fixtures/forms/v2/features.json",
+        "tests/fixtures/forms/v2/reserve-society-name.json",
+        "tests/fixtures/forms/v2/get-birth-certificate.json",
+        "tests/fixtures/forms/v2/get-marriage-certificate.json",
+        "tests/fixtures/forms/v2/get-death-certificate.json",
+        "tests/fixtures/forms/v2/severance.json",
+        "tests/fixtures/forms/v2/pension.json",
+        "tests/fixtures/forms/v2/nis.json"
+      ]
+    },
+    {
+      "category": "field",
+      "name": "long-answer",
+      "native": {
+        "kind": "long-text",
+        "valueType": "string"
+      },
+      "owner": "src/forms/features/long-answer/definition.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "field",
+      "name": "number",
+      "native": {
+        "kind": "number",
+        "valueType": "number"
+      },
+      "owner": "src/forms/features/number/definition.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "field",
+      "name": "email",
+      "native": {
+        "kind": "email",
+        "valueType": "string"
+      },
+      "owner": "src/forms/features/email/definition.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "field",
+      "name": "phone",
+      "native": {
+        "kind": "phone",
+        "valueType": "string"
+      },
+      "owner": "src/forms/features/phone/definition.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "field",
+      "name": "date",
+      "native": {
+        "kind": "date",
+        "valueType": "date"
+      },
+      "owner": "src/forms/features/date/definition.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "field",
+      "name": "time",
+      "native": {
+        "kind": "time",
+        "valueType": "time"
+      },
+      "owner": "src/forms/features/time/definition.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "field",
+      "name": "file-upload",
+      "native": {
+        "kind": "file",
+        "valueType": "file[]"
+      },
+      "owner": "src/forms/features/file-upload/definition.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "field",
+      "name": "address-lookup",
+      "native": {
+        "kind": "address-lookup",
+        "valueType": "string"
+      },
+      "owner": "src/forms/features/address-lookup/definition.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "field",
+      "name": "opening-hours",
+      "native": {
+        "kind": "opening-hours",
+        "valueType": "string[]"
+      },
+      "owner": "src/forms/features/opening-hours/definition.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "field",
+      "name": "multiple-choice",
+      "native": {
+        "kind": "choice",
+        "config": {
+          "selection": "single",
+          "presentation": "radio"
+        },
+        "valueType": "string"
+      },
+      "owner": "src/forms/features/multiple-choice/definition.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "field",
+      "name": "checkboxes",
+      "native": {
+        "kind": "choice",
+        "config": {
+          "selection": "multiple",
+          "presentation": "checkboxes"
+        },
+        "valueType": "string[]"
+      },
+      "owner": "src/forms/features/checkboxes/definition.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "field",
+      "name": "dropdown",
+      "native": {
+        "kind": "choice",
+        "config": {
+          "selection": "single",
+          "presentation": "dropdown"
+        },
+        "valueType": "string"
+      },
+      "owner": "src/forms/features/dropdown/definition.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "field",
+      "name": "checkbox-accordion",
+      "native": {
+        "kind": "choice",
+        "config": {
+          "selection": "multiple",
+          "presentation": "accordion"
+        },
+        "valueType": "string[]"
+      },
+      "owner": "src/forms/features/checkbox-accordion/definition.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "field",
+      "name": "boolean",
+      "native": {
+        "kind": "boolean",
+        "valueType": "boolean"
+      },
+      "owner": "src/forms/features/boolean/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "content",
+      "name": "paragraph",
+      "native": {
+        "blockType": "content",
+        "kind": "paragraph"
+      },
+      "owner": "src/forms/editor/content-adapters.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "content",
+      "name": "h1",
+      "native": {
+        "blockType": "content",
+        "kind": "heading",
+        "config": {
+          "level": 1
+        }
+      },
+      "owner": "src/forms/editor/content-adapters.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "content",
+      "name": "h2",
+      "native": {
+        "blockType": "content",
+        "kind": "heading",
+        "config": {
+          "level": 2
+        }
+      },
+      "owner": "src/forms/editor/content-adapters.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "content",
+      "name": "h3",
+      "native": {
+        "blockType": "content",
+        "kind": "heading",
+        "config": {
+          "level": 3
+        }
+      },
+      "owner": "src/forms/editor/content-adapters.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "content",
+      "name": "bullet",
+      "native": {
+        "blockType": "content",
+        "kind": "list",
+        "config": {
+          "ordered": false
+        }
+      },
+      "owner": "src/forms/editor/content-adapters.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "content",
+      "name": "number",
+      "native": {
+        "blockType": "content",
+        "kind": "list",
+        "config": {
+          "ordered": true
+        }
+      },
+      "owner": "src/forms/editor/content-adapters.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "content",
+      "name": "inset",
+      "native": {
+        "blockType": "content",
+        "kind": "callout",
+        "config": {
+          "tone": "inset"
+        }
+      },
+      "owner": "src/forms/editor/content-adapters.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "content",
+      "name": "warning",
+      "native": {
+        "blockType": "content",
+        "kind": "callout",
+        "config": {
+          "tone": "warning"
+        }
+      },
+      "owner": "src/forms/editor/content-adapters.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "content",
+      "name": "show-hide",
+      "native": {
+        "blockType": "content",
+        "kind": "expandable"
+      },
+      "owner": "src/forms/editor/content-adapters.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "content",
+      "name": "title",
+      "native": {
+        "blockType": "content",
+        "kind": "question-label"
+      },
+      "owner": "src/forms/editor/structure/insertion.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "content",
+      "name": "logic",
+      "native": {
+        "blockType": "logic",
+        "kind": "logic"
+      },
+      "owner": "src/forms/features/logic/definition.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/features.json"
+      ]
+    },
+    {
+      "category": "content",
+      "name": "calculated-fields",
+      "native": {
+        "blockType": "calculated",
+        "kind": "calculated"
+      },
+      "owner": "src/forms/features/calculations/definition.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-bindings.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/features.json"
+      ]
+    },
+    {
+      "category": "page",
+      "name": "questions",
+      "native": {
+        "role": "questions"
+      },
+      "owner": "src/forms/features/pages/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "page",
+      "name": "review",
+      "native": {
+        "role": "review"
+      },
+      "owner": "src/forms/features/pages/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "page",
+      "name": "declaration",
+      "native": {
+        "role": "declaration"
+      },
+      "owner": "src/forms/features/pages/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "page",
+      "name": "confirmation",
+      "native": {
+        "role": "confirmation"
+      },
+      "owner": "src/forms/features/pages/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/bindings.json"
+      ]
+    },
+    {
+      "category": "page",
+      "name": "result",
+      "native": {
+        "role": "result"
+      },
+      "owner": "src/forms/features/pages/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/features.json"
+      ]
+    },
+    {
+      "category": "action",
+      "name": "setVisible",
+      "native": {
+        "type": "setVisible"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "action",
+      "name": "setRequired",
+      "native": {
+        "type": "setRequired"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/get-birth-certificate.json"
+      ]
+    },
+    {
+      "category": "action",
+      "name": "setLabel",
+      "native": {
+        "type": "setLabel"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/features.json"
+      ]
+    },
+    {
+      "category": "action",
+      "name": "setTitle",
+      "native": {
+        "type": "setTitle"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/get-birth-certificate.json"
+      ]
+    },
+    {
+      "category": "action",
+      "name": "error",
+      "native": {
+        "type": "error"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/severance.json"
+      ]
+    },
+    {
+      "category": "action",
+      "name": "goTo",
+      "native": {
+        "type": "goTo"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/features.json"
+      ]
+    },
+    {
+      "category": "action",
+      "name": "setCompletionEnabled",
+      "native": {
+        "type": "setCompletionEnabled"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/features.json"
+      ]
+    },
+    {
+      "category": "action",
+      "name": "setValue",
+      "native": {
+        "type": "setValue"
+      },
+      "owner": "src/forms/features/calculations/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/severance.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "add",
+      "native": {
+        "op": "add"
+      },
+      "owner": "src/forms/features/calculations/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/severance.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "subtract",
+      "native": {
+        "op": "subtract"
+      },
+      "owner": "src/forms/features/calculations/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/severance.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "multiply",
+      "native": {
+        "op": "multiply"
+      },
+      "owner": "src/forms/features/calculations/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/severance.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "divide",
+      "native": {
+        "op": "divide"
+      },
+      "owner": "src/forms/features/calculations/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/severance.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "min",
+      "native": {
+        "op": "min"
+      },
+      "owner": "src/forms/features/calculations/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/severance.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "max",
+      "native": {
+        "op": "max"
+      },
+      "owner": "src/forms/features/calculations/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/severance.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "round",
+      "native": {
+        "op": "round"
+      },
+      "owner": "src/forms/features/calculations/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/nis.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "coalesce",
+      "native": {
+        "op": "coalesce"
+      },
+      "owner": "src/forms/features/calculations/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/pension.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "year",
+      "native": {
+        "op": "year"
+      },
+      "owner": "src/forms/features/calculations/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/severance.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "monthsBetween",
+      "native": {
+        "op": "monthsBetween"
+      },
+      "owner": "src/forms/features/calculations/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/features.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "wholeYearsBetween",
+      "native": {
+        "op": "wholeYearsBetween"
+      },
+      "owner": "src/forms/features/calculations/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/severance.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "daysBetween",
+      "native": {
+        "op": "daysBetween"
+      },
+      "owner": "src/forms/features/calculations/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/features.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "concat",
+      "native": {
+        "op": "concat"
+      },
+      "owner": "src/forms/features/calculations/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/features.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "toText",
+      "native": {
+        "op": "toText"
+      },
+      "owner": "src/forms/features/calculations/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/features.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "lookup",
+      "native": {
+        "op": "lookup"
+      },
+      "owner": "src/forms/features/calculations/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/severance.json"
+      ]
+    },
+    {
+      "category": "format",
+      "name": "number",
+      "native": {
+        "type": "number"
+      },
+      "owner": "src/forms/features/mentions/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/features.json"
+      ]
+    },
+    {
+      "category": "format",
+      "name": "currency",
+      "native": {
+        "type": "currency"
+      },
+      "owner": "src/forms/features/mentions/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/severance.json"
+      ]
+    },
+    {
+      "category": "format",
+      "name": "date",
+      "native": {
+        "type": "date"
+      },
+      "owner": "src/forms/features/mentions/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/reserve-society-name.json"
+      ]
+    },
+    {
+      "category": "format",
+      "name": "choice-label",
+      "native": {
+        "type": "choice-label"
+      },
+      "owner": "src/forms/features/mentions/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/features.json"
+      ]
+    },
+    {
+      "category": "format",
+      "name": "boolean-label",
+      "native": {
+        "type": "boolean-label"
+      },
+      "owner": "src/forms/features/mentions/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/features.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_NATIONAL_ID",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_ADDRESS_COUNTRY",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_ADDRESS_LOOKUP",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_OPENING_HOURS",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_NAME",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_FULL_NAME",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_TITLE",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_DATE_OF_BIRTH",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_SEX",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_NATIONAL_INSURANCE",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_PASSPORT",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_TAMIS",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_ADDRESS",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_PARISH",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_POSTCODE",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_COUNTRY",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_NATIONALITY",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_RELATIONSHIP",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_MARITAL_STATUS",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_PRIMARY_SCHOOL",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_SECONDARY_SCHOOL",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_ACCOUNT_TYPE",
+      "native": {
+        "scope": "fragment"
+      },
+      "owner": "src/presets/form-registry/entries.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "all",
+      "native": {
+        "op": "all"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/severance.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "any",
+      "native": {
+        "op": "any"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/features.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "not",
+      "native": {
+        "op": "not"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/severance.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "eq",
+      "native": {
+        "op": "eq"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/reserve-society-name.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "ne",
+      "native": {
+        "op": "ne"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/features.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "gt",
+      "native": {
+        "op": "gt"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/severance.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "gte",
+      "native": {
+        "op": "gte"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/severance.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "lt",
+      "native": {
+        "op": "lt"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/severance.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "lte",
+      "native": {
+        "op": "lte"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/severance.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "contains",
+      "native": {
+        "op": "contains"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/features.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "startsWith",
+      "native": {
+        "op": "startsWith"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/features.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "endsWith",
+      "native": {
+        "op": "endsWith"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/features.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "empty",
+      "native": {
+        "op": "empty"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/severance.json"
+      ]
+    },
+    {
+      "category": "operator",
+      "name": "selected",
+      "native": {
+        "op": "selected"
+      },
+      "owner": "src/forms/features/logic/module.tsx",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-form-fixtures.test.ts",
+        "tests/forms/native-capability-fixtures.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    },
+    {
+      "category": "registry",
+      "name": "GOVBB_LOUD_MUSIC_PERMIT",
+      "native": {
+        "scope": "form"
+      },
+      "owner": "src/presets/form-registry/demo.ts",
+      "status": "complete",
+      "tests": [
+        "tests/forms/native-registry.test.ts",
+        "tests/forms/registry-entries.test.ts"
+      ],
+      "fixtures": [
+        "tests/fixtures/forms/v2/registry.json"
+      ]
+    }
+  ]
+}

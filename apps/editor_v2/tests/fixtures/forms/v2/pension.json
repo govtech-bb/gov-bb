@@ -1,0 +1,638 @@
+{
+  "schemaVersion": 2,
+  "id": "pension-calculator",
+  "title": "Calculate your government pension",
+  "mode": "calculator",
+  "locale": "en-BB",
+  "timeZone": "America/Barbados",
+  "settings": {
+    "visibility": "preview",
+    "hiddenAnswers": "retain"
+  },
+  "blocks": [
+    {
+      "id": "service",
+      "type": "page",
+      "role": "questions",
+      "title": "Your pensionable service"
+    },
+    {
+      "id": "pension-estimate-notice",
+      "type": "content",
+      "kind": "callout",
+      "content": "This is an estimate of your government pension. Confirm your entitlement with the relevant pension office."
+    },
+    {
+      "id": "startMonth",
+      "type": "question",
+      "kind": "choice",
+      "key": "startMonth",
+      "label": "Month you started pensionable service",
+      "required": {
+        "value": true,
+        "message": "Select the month you started"
+      },
+      "config": {
+        "selection": "single"
+      },
+      "options": [
+        {
+          "id": "month-1",
+          "label": "January",
+          "value": 1
+        },
+        {
+          "id": "month-2",
+          "label": "February",
+          "value": 2
+        },
+        {
+          "id": "month-3",
+          "label": "March",
+          "value": 3
+        },
+        {
+          "id": "month-4",
+          "label": "April",
+          "value": 4
+        },
+        {
+          "id": "month-5",
+          "label": "May",
+          "value": 5
+        },
+        {
+          "id": "month-6",
+          "label": "June",
+          "value": 6
+        },
+        {
+          "id": "month-7",
+          "label": "July",
+          "value": 7
+        },
+        {
+          "id": "month-8",
+          "label": "August",
+          "value": 8
+        },
+        {
+          "id": "month-9",
+          "label": "September",
+          "value": 9
+        },
+        {
+          "id": "month-10",
+          "label": "October",
+          "value": 10
+        },
+        {
+          "id": "month-11",
+          "label": "November",
+          "value": 11
+        },
+        {
+          "id": "month-12",
+          "label": "December",
+          "value": 12
+        }
+      ]
+    },
+    {
+      "id": "startYear",
+      "type": "question",
+      "kind": "number",
+      "key": "startYear",
+      "label": "Year you started pensionable service",
+      "required": {
+        "value": true,
+        "message": "Enter the year you started pensionable service"
+      },
+      "validation": [
+        {
+          "id": "minimum",
+          "type": "minimum",
+          "value": 1900,
+          "inclusive": true,
+          "message": "Enter a year from 1900 to 2100"
+        },
+        {
+          "id": "maximum",
+          "type": "maximum",
+          "value": 2100,
+          "message": "Enter a year from 1900 to 2100"
+        },
+        {
+          "id": "whole-number",
+          "type": "integer",
+          "message": "Enter a whole year"
+        }
+      ]
+    },
+    {
+      "id": "endMonth",
+      "type": "question",
+      "kind": "choice",
+      "key": "endMonth",
+      "label": "Month you stopped or will retire",
+      "required": {
+        "value": true,
+        "message": "Select the month you stopped or will retire"
+      },
+      "config": {
+        "selection": "single"
+      },
+      "options": [
+        {
+          "id": "month-1",
+          "label": "January",
+          "value": 1
+        },
+        {
+          "id": "month-2",
+          "label": "February",
+          "value": 2
+        },
+        {
+          "id": "month-3",
+          "label": "March",
+          "value": 3
+        },
+        {
+          "id": "month-4",
+          "label": "April",
+          "value": 4
+        },
+        {
+          "id": "month-5",
+          "label": "May",
+          "value": 5
+        },
+        {
+          "id": "month-6",
+          "label": "June",
+          "value": 6
+        },
+        {
+          "id": "month-7",
+          "label": "July",
+          "value": 7
+        },
+        {
+          "id": "month-8",
+          "label": "August",
+          "value": 8
+        },
+        {
+          "id": "month-9",
+          "label": "September",
+          "value": 9
+        },
+        {
+          "id": "month-10",
+          "label": "October",
+          "value": 10
+        },
+        {
+          "id": "month-11",
+          "label": "November",
+          "value": 11
+        },
+        {
+          "id": "month-12",
+          "label": "December",
+          "value": 12
+        }
+      ]
+    },
+    {
+      "id": "endYear",
+      "type": "question",
+      "kind": "number",
+      "key": "endYear",
+      "label": "Year you stopped or will retire",
+      "required": {
+        "value": true,
+        "message": "Enter the year you stopped or will retire"
+      },
+      "validation": [
+        {
+          "id": "minimum",
+          "type": "minimum",
+          "value": 1900,
+          "inclusive": true,
+          "message": "Enter a year from 1900 to 2100"
+        },
+        {
+          "id": "maximum",
+          "type": "maximum",
+          "value": 2100,
+          "message": "Enter a year from 1900 to 2100"
+        },
+        {
+          "id": "whole-number",
+          "type": "integer",
+          "message": "Enter a whole year"
+        }
+      ]
+    },
+    {
+      "id": "nopayMonths",
+      "type": "question",
+      "kind": "number",
+      "key": "nopayMonths",
+      "label": "Months of no-pay leave (optional)",
+      "required": {
+        "value": false,
+        "message": ""
+      },
+      "validation": [
+        {
+          "id": "minimum",
+          "type": "minimum",
+          "value": 0,
+          "inclusive": true,
+          "message": "No-pay leave cannot be negative"
+        },
+        {
+          "id": "whole-number",
+          "type": "integer",
+          "message": "Enter the months of no-pay leave as a whole number, for example 6, or leave it blank"
+        }
+      ]
+    },
+    {
+      "id": "salary",
+      "type": "question",
+      "kind": "number",
+      "key": "salary",
+      "label": "Last annual salary (BDS$)",
+      "required": {
+        "value": true,
+        "message": "Enter your last annual salary"
+      },
+      "validation": [
+        {
+          "id": "minimum",
+          "type": "minimum",
+          "value": 0,
+          "inclusive": false,
+          "message": "Enter your last annual salary as an amount greater than 0, for example 60000"
+        }
+      ]
+    },
+    {
+      "id": "elapsed",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "subtract",
+        "args": [
+          {
+            "op": "add",
+            "args": [
+              {
+                "op": "multiply",
+                "args": [
+                  {
+                    "answer": "endYear"
+                  },
+                  12
+                ]
+              },
+              {
+                "answer": "endMonth"
+              }
+            ]
+          },
+          {
+            "op": "add",
+            "args": [
+              {
+                "op": "multiply",
+                "args": [
+                  {
+                    "answer": "startYear"
+                  },
+                  12
+                ]
+              },
+              {
+                "answer": "startMonth"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "noPay",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "coalesce",
+        "args": [
+          {
+            "answer": "nopayMonths"
+          },
+          0
+        ]
+      }
+    },
+    {
+      "id": "netService",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "subtract",
+        "args": [
+          {
+            "value": "elapsed"
+          },
+          {
+            "value": "noPay"
+          }
+        ]
+      }
+    },
+    {
+      "id": "months",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "max",
+        "args": [
+          0,
+          {
+            "op": "min",
+            "args": [
+              {
+                "value": "netService"
+              },
+              600
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "fullAnnual",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "multiply",
+        "args": [
+          {
+            "op": "divide",
+            "args": [
+              {
+                "value": "months"
+              },
+              600
+            ]
+          },
+          {
+            "answer": "salary"
+          }
+        ]
+      }
+    },
+    {
+      "id": "fullMonthly",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "divide",
+        "args": [
+          {
+            "value": "fullAnnual"
+          },
+          12
+        ]
+      }
+    },
+    {
+      "id": "reducedAnnual",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "multiply",
+        "args": [
+          {
+            "value": "fullAnnual"
+          },
+          0.75
+        ]
+      }
+    },
+    {
+      "id": "reducedMonthly",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "divide",
+        "args": [
+          {
+            "value": "reducedAnnual"
+          },
+          12
+        ]
+      }
+    },
+    {
+      "id": "gratuity",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "multiply",
+        "args": [
+          {
+            "op": "divide",
+            "args": [
+              {
+                "value": "fullAnnual"
+              },
+              4
+            ]
+          },
+          12.5
+        ]
+      }
+    },
+    {
+      "id": "pension-rules",
+      "type": "logic",
+      "rules": [
+        {
+          "id": "end-after-start",
+          "when": {
+            "op": "lte",
+            "left": {
+              "value": "elapsed"
+            },
+            "right": 0
+          },
+          "actions": [
+            {
+              "type": "error",
+              "target": "endYear",
+              "message": "The date you stopped must be after the date you started"
+            }
+          ]
+        },
+        {
+          "id": "leave-less-than-service",
+          "when": {
+            "op": "gte",
+            "left": {
+              "value": "noPay"
+            },
+            "right": {
+              "value": "elapsed"
+            }
+          },
+          "actions": [
+            {
+              "type": "error",
+              "target": "nopayMonths",
+              "message": "Your no-pay leave must be less than your total months of service"
+            }
+          ]
+        },
+        {
+          "id": "short-service",
+          "when": {
+            "op": "lt",
+            "left": {
+              "value": "months"
+            },
+            "right": 120
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "short-service-warning"
+              ],
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "service-cap",
+          "when": {
+            "op": "gt",
+            "left": {
+              "value": "netService"
+            },
+            "right": 600
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "service-cap-notice"
+              ],
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pension-result",
+      "type": "page",
+      "role": "result",
+      "title": "Your pension estimate"
+    },
+    {
+      "id": "short-service-warning",
+      "type": "content",
+      "kind": "callout",
+      "content": "You have less than 10 years of pensionable service. Check your entitlement before relying on this estimate.",
+      "visible": false
+    },
+    {
+      "id": "service-cap-notice",
+      "type": "content",
+      "kind": "paragraph",
+      "content": "Pensionable service is capped at 600 months (50 years).",
+      "visible": false
+    },
+    {
+      "id": "full-pension",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Full pension: ",
+        {
+          "value": "fullAnnual",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        " a year, or ",
+        {
+          "value": "fullMonthly",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        " a month."
+      ]
+    },
+    {
+      "id": "reduced-pension",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Reduced pension: ",
+        {
+          "value": "reducedAnnual",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        " a year, or ",
+        {
+          "value": "reducedMonthly",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        " a month."
+      ]
+    },
+    {
+      "id": "pension-gratuity",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Gratuity estimate: ",
+        {
+          "value": "gratuity",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        "."
+      ]
+    },
+    {
+      "id": "pension-next-steps",
+      "type": "content",
+      "kind": "paragraph",
+      "content": "Use these figures as a guide and confirm which pension and gratuity arrangement applies to you. Calculate again to change your answers."
+    }
+  ]
+}

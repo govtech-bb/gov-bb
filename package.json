@@ -12,7 +12,7 @@
   "scripts": {
     "build": "nx run-many -t build",
     "lint": "nx run-many -t lint",
-    "lint:deps": "sherif -i @tanstack/ai-client -i express -i @types/express -i eslint -i @eslint/js -i react-markdown -i @govtech-bb/react -r root-package-dependencies",
+    "lint:deps": "sherif -p @govtech-bb/editor-v2 -i @tanstack/ai-client -i express -i @types/express -i eslint -i @eslint/js -i react-markdown -i @govtech-bb/react -r root-package-dependencies",
     "test:all": "nx run-many -t test",
     "dev:forms": "nx dev forms",
     "dev:api": "ln -sfn ../dist/src apps/api/node_modules/@ && nx dev api",
@@ -35,7 +35,8 @@
     "migration:run": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:run -d apps/api/typeorm.config.ts",
     "migration:revert": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:revert -d apps/api/typeorm.config.ts",
     "migration:show": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:show -d apps/api/typeorm.config.ts",
-    "prepare": "husky"
+    "prepare": "husky",
+    "dev:editor_v2": "nx dev editor_v2"
   },
   "devDependencies": {
     "@eslint/css": "^1.1.0",
