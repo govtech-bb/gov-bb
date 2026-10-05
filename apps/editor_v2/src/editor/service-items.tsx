@@ -16,6 +16,10 @@ import { useMemo } from "react";
 import { CATEGORY_SLUGS } from "./page-properties";
 import { splitUrl } from "./page-url";
 import { NO_CATEGORY } from "./service-list";
+import { BackLink } from "./back-link";
+import { DataTable } from "../ui/DataTable";
+import { EmptyState } from "../ui/EmptyState";
+import { PageHeader } from "../ui/PageHeader";
 
 const CATEGORY_TITLES = new Map(
   CATEGORY_TAXONOMY.map((category) => [category.slug, category.title]),
@@ -29,6 +33,23 @@ const TYPE_LABELS: Record<string, string> = {
   bank_holidays: "Calendar",
   pharmacy_finder: "Finder",
 };
+
+/**
+ * Where a service has both, the entry page at its root and the start page
+ * under `/start` are both `service_start` documents — and on the live estate
+ * they carry the same title. Naming the root one for what it is keeps the
+ * pair from reading as a duplicate.
+ */
+function kindOf(
+  doc: { url: string; document_type: string },
+  hasStartPage: boolean,
+): string {
+  const { path } = splitUrl(doc.url, CATEGORY_SLUGS);
+  if (hasStartPage && path === "" && doc.document_type === "service_start") {
+    return "Entry page";
+  }
+  return TYPE_LABELS[doc.document_type] ?? doc.document_type;
+}
 
 export function ServiceItems() {
   const { category, service } = useParams({
@@ -46,56 +67,66 @@ export function ServiceItems() {
     [documents, category, service],
   );
 
+  const hasStartPage = items.some(
+    (doc) => splitUrl(doc.url, CATEGORY_SLUGS).path === "start",
+  );
+
   const categoryTitle =
     CATEGORY_TITLES.get(category) ?? "Island-wide (no category)";
 
   return (
-    <div className="ed-page">
-      <p className="ed-breadcrumb">
-        <Link to="/editor">← Services</Link>
-        <span className="ed-count">{categoryTitle}</span>
-      </p>
-
-      <h1>{service}</h1>
+    <div>
+      <BackLink />
+      <PageHeader eyebrow={categoryTitle} title={service} />
 
       {documents === undefined ? (
-        <p>Loading…</p>
-      ) : items.length === 0 ? (
-        <p>Nothing belongs to this service.</p>
+        <p className="text-caption text-mid-grey-00">Loading…</p>
       ) : (
-        <table className="ed-table" data-testid="service-items">
-          <thead>
-            <tr>
-              <th scope="col">Title</th>
-              <th scope="col">Kind</th>
-              <th scope="col">Path</th>
-              <th scope="col">Last saved</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((doc) => {
-              const { path } = splitUrl(doc.url, CATEGORY_SLUGS);
-              return (
-                <tr key={doc.id}>
-                  <td>
-                    <Link
-                      to="/editor/$id"
-                      params={{ id: doc.id }}
-                      data-testid={`item-${doc.id}`}
-                    >
-                      {doc.title}
-                    </Link>
-                  </td>
-                  <td>{TYPE_LABELS[doc.document_type] ?? doc.document_type}</td>
-                  <td>
-                    <code>{path === "" ? "(service root)" : path}</code>
-                  </td>
-                  <td>{new Date(doc.updated_at).toLocaleTimeString()}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <DataTable
+          data-testid="service-items"
+          rows={items}
+          rowKey={(doc) => doc.id}
+          empty={<EmptyState title="Nothing belongs to this service." />}
+          columns={[
+            {
+              key: "title",
+              header: "Title",
+              cell: (doc) => (
+                <Link
+                  to="/editor/$id"
+                  params={{ id: doc.id }}
+                  data-testid={`item-${doc.id}`}
+                  className="font-bold text-blue-100 hover:text-blue-00 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-100"
+                >
+                  {doc.title}
+                </Link>
+              ),
+            },
+            {
+              key: "kind",
+              header: "Kind",
+              cell: (doc) => kindOf(doc, hasStartPage),
+            },
+            {
+              key: "path",
+              header: "Path",
+              cell: (doc) => {
+                const { path } = splitUrl(doc.url, CATEGORY_SLUGS);
+                return (
+                  <code className="font-mono text-caption-sm text-mid-grey-00">
+                    {path === "" ? "(service root)" : path}
+                  </code>
+                );
+              },
+            },
+            {
+              key: "saved",
+              header: "Last saved",
+              numeric: true,
+              cell: (doc) => new Date(doc.updated_at).toLocaleTimeString(),
+            },
+          ]}
+        />
       )}
     </div>
   );

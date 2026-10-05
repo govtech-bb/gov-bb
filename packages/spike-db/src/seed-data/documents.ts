@@ -1294,9 +1294,564 @@ const hairSalonLicence: SeedDocument = {
   },
 };
 
+/* ------------------------------ the two pages the pharmacy entry links to */
+
+/**
+ * Taken from the live estate's free-or-subsidised-medication.md. The Drug
+ * Service's details are the `ministries` record the pharmacy entry already
+ * shows, not prose, so they cannot drift between the two pages.
+ */
+const subsidisedMedication: SeedDocument = {
+  url: "/health-and-emergency-services/free-or-subsidised-medication",
+  slug: "free-or-subsidised-medication",
+  schema_name: "guide",
+  document_type: "information",
+  title: "Get free or subsidised medication",
+  description:
+    "Check who can get free or cheaper medication through the Barbados Drug Service, what to bring to the pharmacy, and what it costs.",
+  is_draft: false,
+  body: {
+    version: 1,
+    blocks: [
+      {
+        id: "b_sm01",
+        type: "paragraph",
+        content: [
+          {
+            text: "The Barbados Drug Service can make some prescription medications free or cheaper through the government subsidy (officially the Special Benefit Service). This page explains who can get help, what to bring, and what it costs.",
+          },
+        ],
+      },
+      {
+        id: "b_sm02",
+        type: "list",
+        ordered: false,
+        items: [
+          {
+            id: "i_sm02a",
+            content: [{ text: "free at government (polyclinic) pharmacies" }],
+          },
+          {
+            id: "i_sm02b",
+            content: [
+              {
+                text: "at a lower cost at private pharmacies that work with the Drug Service",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "b_sm03",
+        type: "heading",
+        level: 2,
+        anchor: "who-can-get-help",
+        content: [{ text: "Who can get help with medication costs" }],
+      },
+      {
+        id: "b_sm04",
+        type: "paragraph",
+        content: [
+          {
+            text: "You can get help if you are a Barbadian citizen or permanent resident.",
+          },
+        ],
+      },
+      {
+        id: "b_sm05",
+        type: "paragraph",
+        content: [{ text: "One of these must also apply:" }],
+      },
+      {
+        id: "b_sm06",
+        type: "list",
+        ordered: false,
+        items: [
+          {
+            id: "i_sm06a",
+            content: [
+              {
+                text: "you need medication for diabetes, asthma, high blood pressure, cancer, epilepsy or glaucoma (any age)",
+              },
+            ],
+          },
+          { id: "i_sm06b", content: [{ text: "you are under 16" }] },
+          { id: "i_sm06c", content: [{ text: "you are 65 or over" }] },
+        ],
+      },
+      {
+        id: "b_sm07",
+        type: "paragraph",
+        content: [{ text: "You will also need:" }],
+      },
+      {
+        id: "b_sm08",
+        type: "list",
+        ordered: false,
+        items: [
+          {
+            id: "i_sm08a",
+            content: [
+              {
+                text: "a prescription from a doctor registered with the Medical Council of Barbados. The doctor can work in the public or private health service",
+              },
+            ],
+          },
+          {
+            id: "i_sm08b",
+            content: [
+              {
+                text: "a prescription for a medication on the Barbados National Drug Formulary",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "b_sm09",
+        type: "paragraph",
+        content: [
+          {
+            text: "Not all medication is free, even where a patient is eligible for benefits.",
+          },
+        ],
+      },
+      {
+        id: "b_sm10",
+        type: "paragraph",
+        content: [
+          {
+            text: "Some medicines or repeat items may still have a cost, including certain antihistamines.",
+          },
+        ],
+      },
+      {
+        id: "b_sm11",
+        type: "paragraph",
+        content: [
+          {
+            text: "If you are travelling, you can only get up to two months' supply of medication.",
+          },
+        ],
+      },
+      {
+        id: "b_sm12",
+        type: "paragraph",
+        content: [
+          {
+            text: "You will need to pay for any medication not covered by the Special Benefit Service (SBS).",
+          },
+        ],
+      },
+      {
+        id: "b_sm13",
+        type: "paragraph",
+        content: [
+          {
+            text: "The Barbados National Drug Formulary is the list of medications covered by the Drug Service.",
+          },
+        ],
+      },
+      {
+        id: "b_sm14",
+        type: "paragraph",
+        content: [
+          { text: "Check if your medication is listed", ref: "r_formulary" },
+        ],
+      },
+      {
+        id: "b_sm15",
+        type: "paragraph",
+        content: [
+          { text: "What if my medication is not listed?", marks: ["strong"] },
+        ],
+      },
+      {
+        id: "b_sm16",
+        type: "paragraph",
+        content: [{ text: "Ask your doctor:" }],
+      },
+      {
+        id: "b_sm17",
+        type: "list",
+        ordered: false,
+        items: [
+          {
+            id: "i_sm17a",
+            content: [
+              { text: "if there is another listed medication you can use" },
+            ],
+          },
+          {
+            id: "i_sm17b",
+            content: [{ text: "if they can ask for special approval" }],
+          },
+        ],
+      },
+      {
+        id: "b_sm18",
+        type: "paragraph",
+        content: [
+          { text: "Special approval is only for government pharmacy use." },
+        ],
+      },
+      {
+        id: "b_sm19",
+        type: "heading",
+        level: 2,
+        anchor: "what-to-take",
+        content: [{ text: "What to take to the pharmacy" }],
+      },
+      {
+        id: "b_sm20",
+        type: "list",
+        ordered: false,
+        items: [
+          { id: "i_sm20a", content: [{ text: "your prescription" }] },
+          {
+            id: "i_sm20b",
+            content: [
+              {
+                text: "original accepted ID for the person the medication is for: a Barbados National Identification (ID) card, passport or child health book. A child health book is only accepted for children up to 6 weeks old. After 6 weeks, an ID card is required.",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "b_sm21",
+        type: "paragraph",
+        content: [{ text: "Photocopies are not accepted." }],
+      },
+      {
+        id: "b_sm22",
+        type: "start_link",
+        label: "Find an open pharmacy",
+        target_kind: "page",
+        target: "/health-and-emergency-services/find-an-open-pharmacy/find",
+      },
+      {
+        id: "b_sm23",
+        type: "heading",
+        level: 2,
+        anchor: "what-you-may-pay",
+        content: [{ text: "What you may pay" }],
+      },
+      {
+        id: "b_sm24",
+        type: "list",
+        ordered: false,
+        items: [
+          {
+            id: "i_sm24a",
+            content: [
+              {
+                text: "At a government pharmacy, there is no fee to prepare your medication.",
+              },
+            ],
+          },
+          {
+            id: "i_sm24b",
+            content: [
+              {
+                text: "At a private pharmacy that works with the Drug Service, you pay a fee to prepare your medication. This is called a dispensing fee. The amount depends on the medication.",
+              },
+            ],
+          },
+          {
+            id: "i_sm24c",
+            content: [
+              {
+                text: "At a private pharmacy that is not part of the Drug Service, you pay the full price.",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "b_sm25",
+        type: "heading",
+        level: 2,
+        anchor: "prescription-colour",
+        content: [{ text: "Prescription colour" }],
+      },
+      {
+        id: "b_sm26",
+        type: "paragraph",
+        content: [
+          {
+            text: "The colour of your prescription can affect which pharmacies can fill it.",
+          },
+        ],
+      },
+      {
+        id: "b_sm27",
+        type: "paragraph",
+        content: [
+          {
+            text: "Check what the prescription colours mean",
+            ref: "r_colours",
+          },
+        ],
+      },
+      {
+        id: "b_sm28",
+        type: "heading",
+        level: 2,
+        anchor: "need-help",
+        content: [{ text: "Need help at the pharmacy?" }],
+      },
+      {
+        id: "b_sm29",
+        type: "paragraph",
+        content: [{ text: "You may need help if:" }],
+      },
+      {
+        id: "b_sm30",
+        type: "list",
+        ordered: false,
+        items: [
+          { id: "i_sm30a", content: [{ text: "your ID is not accepted" }] },
+          {
+            id: "i_sm30b",
+            content: [
+              { text: "the pharmacy asks you to pay more than expected" },
+            ],
+          },
+          {
+            id: "i_sm30c",
+            content: [{ text: "the pharmacy is out of stock" }],
+          },
+        ],
+      },
+      {
+        id: "b_sm31",
+        type: "contact",
+        title: "Contact the Drug Service",
+        description: [],
+        collection: "ministries",
+        record: "barbados-drug-service",
+        fields: [
+          { field: "phone", label: "Telephone" },
+          { field: "email", label: "Email" },
+          { field: "website", label: "Website" },
+          { field: "address", label: "Address" },
+        ],
+      },
+    ],
+    refs: {
+      r_formulary: {
+        kind: "external",
+        href: "https://formulary.drugservice.gov.bb/bndf2022/menu.php",
+      },
+      r_colours: {
+        kind: "page",
+        url: "/health-and-emergency-services/prescription-colours",
+      },
+    },
+  },
+};
+
+/** Taken from the live alpha.gov.bb page; it has no markdown in this repo. */
+const prescriptionColours: SeedDocument = {
+  url: "/health-and-emergency-services/prescription-colours",
+  slug: "prescription-colours",
+  schema_name: "guide",
+  document_type: "information",
+  title: "What prescription colours mean",
+  description:
+    "Prescriptions in Barbados come in different colours. Check which pharmacies can fill yours.",
+  is_draft: false,
+  body: {
+    version: 1,
+    blocks: [
+      {
+        id: "b_pc01",
+        type: "paragraph",
+        content: [
+          {
+            text: "Prescriptions in Barbados come in different colours. The colour of your prescription can affect which pharmacy can fill it. Where you can use your prescription also depends on where it came from.",
+          },
+        ],
+      },
+      {
+        id: "b_pc02",
+        type: "heading",
+        level: 2,
+        anchor: "blue",
+        content: [{ text: "Blue prescription" }],
+      },
+      {
+        id: "b_pc03",
+        type: "paragraph",
+        content: [
+          {
+            text: "This is usually from a public polyclinic or outpatient clinic.",
+          },
+        ],
+      },
+      {
+        id: "b_pc04",
+        type: "paragraph",
+        content: [{ text: "You can take it to:" }],
+      },
+      {
+        id: "b_pc05",
+        type: "list",
+        ordered: false,
+        items: [
+          { id: "i_pc05a", content: [{ text: "a government pharmacy" }] },
+          {
+            id: "i_pc05b",
+            content: [{ text: "a participating private pharmacy" }],
+          },
+        ],
+      },
+      {
+        id: "b_pc06",
+        type: "paragraph",
+        content: [
+          {
+            text: "At a participating private pharmacy, you pay a fee to prepare your medication. This is called a dispensing fee.",
+          },
+        ],
+      },
+      {
+        id: "b_pc07",
+        type: "heading",
+        level: 2,
+        anchor: "yellow-or-green",
+        content: [{ text: "Yellow or green prescription" }],
+      },
+      {
+        id: "b_pc08",
+        type: "paragraph",
+        content: [
+          { text: "This is usually from the Queen Elizabeth Hospital." },
+        ],
+      },
+      {
+        id: "b_pc09",
+        type: "paragraph",
+        content: [{ text: "You can take it to:" }],
+      },
+      {
+        id: "b_pc10",
+        type: "list",
+        ordered: false,
+        items: [
+          {
+            id: "i_pc10a",
+            content: [{ text: "the Queen Elizabeth Hospital pharmacy" }],
+          },
+          {
+            id: "i_pc10b",
+            content: [
+              {
+                text: "some government pharmacies, for selected medications",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "b_pc11",
+        type: "paragraph",
+        content: [
+          {
+            text: "If you take it to a participating private pharmacy, you may have to pay the full cost.",
+          },
+        ],
+      },
+      {
+        id: "b_pc12",
+        type: "heading",
+        level: 2,
+        anchor: "pink",
+        content: [{ text: "Pink prescription" }],
+      },
+      {
+        id: "b_pc13",
+        type: "paragraph",
+        content: [{ text: "This is usually from a private doctor." }],
+      },
+      {
+        id: "b_pc14",
+        type: "paragraph",
+        content: [{ text: "You can take it to:" }],
+      },
+      {
+        id: "b_pc15",
+        type: "list",
+        ordered: false,
+        items: [
+          { id: "i_pc15a", content: [{ text: "a government pharmacy" }] },
+          {
+            id: "i_pc15b",
+            content: [{ text: "a participating private pharmacy" }],
+          },
+        ],
+      },
+      {
+        id: "b_pc16",
+        type: "paragraph",
+        content: [
+          {
+            text: "At a participating private pharmacy, you pay a fee to prepare your medication. This is called a dispensing fee. Some medications may still cost money.",
+          },
+        ],
+      },
+      {
+        id: "b_pc17",
+        type: "heading",
+        level: 2,
+        anchor: "white",
+        content: [{ text: "White prescription" }],
+      },
+      {
+        id: "b_pc18",
+        type: "paragraph",
+        content: [
+          {
+            text: "White prescriptions can only be taken to a private pharmacy.",
+          },
+        ],
+      },
+      {
+        id: "b_pc19",
+        type: "heading",
+        level: 2,
+        anchor: "not-sure",
+        content: [{ text: "If you are not sure" }],
+      },
+      {
+        id: "b_pc20",
+        type: "contact",
+        title: "Contact the Drug Service",
+        description: [
+          {
+            text: "Ask the pharmacist to check before you pay. You can also contact the Barbados Drug Service.",
+          },
+        ],
+        collection: "ministries",
+        record: "barbados-drug-service",
+        fields: [
+          { field: "phone", label: "Telephone" },
+          { field: "email", label: "Email" },
+          { field: "website", label: "Website" },
+          { field: "address", label: "Address" },
+        ],
+      },
+    ],
+    refs: {},
+  },
+};
+
 export const DOCUMENTS: SeedDocument[] = [
   pharmacyEntry,
   pharmacyFinder,
+  subsidisedMedication,
+  prescriptionColours,
   severanceEntry,
   bankHolidays,
   severanceStart,

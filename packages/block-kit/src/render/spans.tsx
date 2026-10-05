@@ -1,3 +1,4 @@
+import { Link } from "@govtech-bb/react";
 import type { ReactNode } from "react";
 import { safeHref } from "../href";
 import type { Ref, Span } from "../types";
@@ -68,13 +69,13 @@ function markUp(
   if (href) {
     const external = href.startsWith("http");
     node = (
-      <a
+      <Link
         className="bk-link"
         href={href}
         {...(external ? { rel: "noreferrer noopener" } : {})}
       >
         {node}
-      </a>
+      </Link>
     );
   }
 

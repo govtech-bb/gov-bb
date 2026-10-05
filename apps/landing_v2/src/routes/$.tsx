@@ -1,6 +1,11 @@
 import { RenderDocument } from "@govtech-bb/block-kit";
 import { CATEGORY_TAXONOMY } from "@govtech-bb/content/categories";
-import { Breadcrumbs } from "@govtech-bb/react";
+import {
+  Breadcrumbs,
+  Feedback,
+  Link as GovLink,
+  Text,
+} from "@govtech-bb/react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { forwardRef, type ComponentPropsWithoutRef } from "react";
 import { loadPage } from "../site-data";
@@ -24,6 +29,16 @@ export const Route = createFileRoute("/$")({
     if (!doc) throw notFound();
     return { doc, data };
   },
+  head: ({ loaderData }) => ({
+    meta: loaderData
+      ? [
+          { title: loaderData.doc.title },
+          ...(loaderData.doc.description
+            ? [{ name: "description", content: loaderData.doc.description }]
+            : []),
+        ]
+      : [],
+  }),
   component: SitePage,
   notFoundComponent: NotFound,
 });
@@ -76,29 +91,58 @@ function SitePage() {
 
   // A finder page is one wide block; prose pages keep the reading measure.
   const wide = doc.body.blocks.some((block) => block.type === "finder");
+  // The calendar takes the full grid too, and sets its own 55rem column.
+  const fullWidth = wide || doc.schema_name === "calendar";
 
+  // The live site's containers: breadcrumbs above <main> so the skip link
+  // passes them, then the body in two of three columns on a wide screen.
   return (
-    <div className={wide ? "bk-scope site-page site-wide" : "bk-scope site-page"}>
-      <div className="site-crumbs">
+    <>
+      <div className="govbb-width-container pt-4 lg:pt-6">
         <Breadcrumbs
           items={crumbsFor(doc.url)}
           collapseOnMobile
           linkComponent={CrumbLink}
         />
       </div>
-      {/*
-        `loading` is gone from the call entirely. It existed to tell an island
-        "the records are not here yet", which was only ever true because the
-        page rendered before its data arrived. Server-side it cannot happen.
-      */}
-      <RenderDocument doc={doc} data={data} />
-    </div>
+      <main id="main-content" tabIndex={-1}>
+        <div
+          className={
+            wide
+              ? "govbb-width-container govbb-main-wrapper bk-scope site-wide"
+              : "govbb-width-container govbb-main-wrapper bk-scope"
+          }
+        >
+          <div className="mb-xm lg:grid lg:grid-cols-3 lg:gap-16">
+            <div className={fullWidth ? "lg:col-span-3" : "lg:col-span-2"}>
+              {/*
+                `loading` is gone from the call entirely. It existed to tell an
+                island "the records are not here yet", which was only ever true
+                because the page rendered before its data arrived. Server-side
+                it cannot happen.
+              */}
+              <RenderDocument doc={doc} data={data} />
+            </div>
+          </div>
+        </div>
+        <div className="govbb-width-container">
+          <Feedback className="mb-4 lg:mb-16" heading="Was this helpful?">
+            <Text as="p">Give us your feedback about this page.</Text>
+            <GovLink href="/feedback">Help us improve alpha.gov.bb</GovLink>
+          </Feedback>
+        </div>
+      </main>
+    </>
   );
 }
 
 function NotFound() {
   return (
-    <div className="bk-document">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="govbb-width-container site-main bk-document"
+    >
       <h1 className="bk-title">Page not found</h1>
       <p className="bk-paragraph">
         Nothing in <code>content_pages</code> has that url.
@@ -106,6 +150,6 @@ function NotFound() {
       <p className="bk-paragraph">
         <Link to="/">Back to the index</Link>
       </p>
-    </div>
+    </main>
   );
 }

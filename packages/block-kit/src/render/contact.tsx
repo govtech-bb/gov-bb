@@ -13,6 +13,7 @@
  * loose list.
  */
 
+import { Heading as DsHeading, Link, Text } from "@govtech-bb/react";
 import type { ContactBlock } from "../types";
 import { hrefAttr } from "../href";
 import { Spans, type RenderContext } from "./spans";
@@ -51,12 +52,14 @@ export function Contact({
 
   return (
     <section className="bk-contact" aria-label={block.title}>
-      <h2 className="bk-contact-title">{block.title}</h2>
+      <DsHeading as="h2" className="bk-contact-title">
+        {block.title}
+      </DsHeading>
 
       {block.description.length > 0 ? (
-        <p className="bk-contact-lede">
+        <Text as="p" className="bk-contact-lede">
           <Spans content={block.description} ctx={ctx} />
-        </p>
+        </Text>
       ) : null}
 
       {ctx.loading ? (
@@ -84,7 +87,7 @@ export function Contact({
               <div className="bk-contact-row" key={field}>
                 <dt>{label}</dt>
                 <dd>
-                  {href ? <a {...hrefAttr(href)}>{text}</a> : text}
+                  {href ? <Link {...hrefAttr(href)}>{text}</Link> : text}
                 </dd>
               </div>
             );

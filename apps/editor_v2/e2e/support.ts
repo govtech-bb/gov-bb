@@ -266,14 +266,50 @@ export async function moveBlockUp(page: Page, blockId: string): Promise<void> {
  * tall, and hovering its centre scrolls it out from under the pointer.
  */
 export async function hoverBlock(page: Page, blockId: string): Promise<void> {
-  const box = await block(page, blockId).boundingBox();
-  await page.mouse.move((box?.x ?? 0) + 40, (box?.y ?? 0) + 8);
+  // `hover` rather than a raw mouse move: it scrolls the block into view —
+  // one far down a long page starts below the fold — and retries while the
+  // editor re-renders it.
+  await block(page, blockId).hover({ position: { x: 40, y: 8 } });
   await expect(page.getByTestId(`block-controls-${blockId}`)).toBeVisible();
 }
 
 export async function deleteBlock(page: Page, blockId: string): Promise<void> {
   await hoverBlock(page, blockId);
   await page.getByTestId(`block-delete-${blockId}`).click();
+}
+
+/* ---------------------------------------------------------- records */
+
+/**
+ * Change a collection record through its edit dialog. The table itself is
+ * read-only: Edit opens a form per row, and the dialog closes once the save
+ * has landed.
+ */
+export async function editRecord(
+  page: Page,
+  recordKey: string,
+  values: Record<string, string>,
+): Promise<void> {
+  await page.getByTestId(`edit-record-${recordKey}`).click();
+  const dialog = page.getByTestId("record-dialog");
+  await expect(dialog).toBeVisible();
+  for (const [field, value] of Object.entries(values)) {
+    await dialog.getByTestId(`record-field-${field}`).fill(value);
+  }
+  await dialog.getByTestId("record-save").click();
+  await expect(dialog).toHaveCount(0);
+}
+
+/** Delete a record, confirming in the dialog that asks first. */
+export async function deleteRecord(
+  page: Page,
+  recordKey: string,
+): Promise<void> {
+  await page.getByTestId(`delete-record-${recordKey}`).click();
+  const dialog = page.getByTestId("delete-dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByTestId("delete-confirm").click();
+  await expect(page.getByTestId(`record-${recordKey}`)).toHaveCount(0);
 }
 
 /* --------------------------------------------------------------- saving */

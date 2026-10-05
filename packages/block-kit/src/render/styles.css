@@ -25,52 +25,18 @@
   --bk-yellow: #ffdd00;
 }
 
+/*
+ * Type, colour, spacing, links and buttons are the design system's: the
+ * blocks render its components inside `govbb-prose`, and nothing here
+ * restates a size or a margin it already sets. An unlayered rule here would
+ * beat the layered design system regardless of specificity.
+ */
 .bk-document {
   max-width: 44rem;
-  color: var(--bk-ink);
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Arial,
-    sans-serif;
-  line-height: 1.5;
 }
 
 .bk-document.bk-wide {
   max-width: none;
-}
-
-.bk-title {
-  font-size: 2.25rem;
-  line-height: 1.1;
-  font-weight: 700;
-  margin: 0 0 1rem;
-}
-
-.bk-description {
-  font-size: 1.125rem;
-  color: var(--bk-muted);
-  margin: 0 0 1.5rem;
-}
-
-.bk-paragraph {
-  margin: 0 0 1.25rem;
-  font-size: 1.125rem;
-}
-
-.bk-heading {
-  font-weight: 700;
-  margin: 2rem 0 1rem;
-  scroll-margin-top: 1rem;
-}
-.bk-list {
-  margin: 0 0 1.25rem;
-  padding-left: 1.25rem;
-  font-size: 1.125rem;
-}
-.bk-list li {
-  margin-bottom: 0.5rem;
 }
 
 .bk-notice {
@@ -82,35 +48,6 @@
 }
 .bk-notice-warning {
   border-left-color: var(--bk-ink);
-}
-
-.bk-start {
-  margin: 1.75rem 0;
-}
-
-.bk-start-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--bk-green);
-  box-shadow: 0 2px 0 var(--bk-green-dark);
-  color: #fff;
-  font-size: 1.375rem;
-  font-weight: 700;
-  padding: 0.625rem 1.25rem;
-  text-decoration: none;
-  border-radius: 2px;
-}
-.bk-start-button:hover {
-  background: var(--bk-green-dark);
-}
-.bk-start-button:focus-visible {
-  background: var(--bk-yellow);
-  color: var(--bk-ink);
-  outline: 3px solid transparent;
-  box-shadow:
-    0 -2px var(--bk-yellow),
-    0 4px var(--bk-ink);
 }
 
 .bk-image-placeholder {
@@ -291,15 +228,6 @@
   cursor: not-allowed;
 }
 
-.bk-link {
-  color: var(--bk-blue);
-  text-underline-offset: 0.1em;
-}
-
-.bk-link:hover {
-  color: var(--bk-ink);
-}
-
 /* ---------------------------------------------------- bank holidays
  *
  * Matched to the live page. The colours are the GOV.BB tokens by value,
@@ -362,6 +290,9 @@
   transition:
     border-color 120ms ease,
     background 120ms ease;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4286;
 }
 
 .bk-year:hover:not(:disabled) {
@@ -387,18 +318,20 @@
 .bk-year-label {
   display: block;
   color: var(--cal-grey-70);
-  font-size: 0.6875rem;
+  font-size: 1rem;
   font-weight: 500;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  line-height: 1.5;
 }
 
 .bk-year-value {
   display: block;
-  margin-top: 0.1875rem;
+  margin-top: 0;
   color: var(--cal-blue);
   font-size: 0.875rem;
   font-weight: 700;
+  line-height: 1.4286;
 }
 
 /* ---- hero ---- */
@@ -423,24 +356,28 @@
   border-radius: 8px;
   background: var(--cal-yellow);
   color: var(--cal-blue);
-  font-size: 0.6875rem;
+  font-size: 1rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  line-height: 1.5;
 }
 
 .bk-hero-name {
   margin: 0 0 0.625rem;
-  font-size: 2rem;
+  font-size: 2.25rem;
   font-weight: 700;
-  line-height: 1.15;
+  line-height: 1.25;
   letter-spacing: -0.01em;
+  color: inherit;
 }
 
 .bk-hero-date {
   margin: 0 0 1.5rem;
   color: var(--cal-yellow-80);
   font-weight: 700;
+  font-size: 1.25rem;
+  line-height: 1.5;
 }
 
 .bk-hero-quiet .bk-hero-date {
@@ -483,9 +420,10 @@
 .bk-section-title {
   margin: 0;
   color: var(--cal-blue);
-  font-size: 1.0625rem;
+  font-size: 1.5rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.025em;
+  line-height: 1.5;
 }
 
 .bk-chip {
@@ -493,8 +431,9 @@
   border-radius: 8px;
   background: var(--cal-grey-20);
   color: var(--cal-grey-70);
-  font-size: 0.8125rem;
+  font-size: 1rem;
   font-weight: 500;
+  line-height: 1.5;
 }
 
 /* ---- rows ---- */
@@ -520,10 +459,11 @@
   padding: 0.5rem 1rem 0.625rem;
   border-bottom: 2px solid var(--cal-grey-20);
   color: var(--cal-grey-70);
-  font-size: 0.6875rem;
+  font-size: 1rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  line-height: 1.5;
 }
 
 .bk-rows-head > span:last-child {
@@ -541,7 +481,7 @@
 }
 
 .bk-row {
-  padding: 1rem;
+  padding: 1.125rem 1rem;
   border-bottom: 1px solid var(--cal-grey-20);
 }
 
@@ -570,24 +510,26 @@
 .bk-tile-month {
   display: block;
   padding: 0.5rem 0.25rem 0.25rem;
-  font-size: 0.6875rem;
-  letter-spacing: 0.08em;
+  font-size: 1rem;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  line-height: 1.5;
 }
 
 .bk-tile-day {
   display: block;
   padding: 0 0.25rem 0.625rem;
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   letter-spacing: -0.01em;
+  line-height: 1.5;
 }
 
 .bk-row-name {
   display: block;
   color: var(--cal-blue);
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 700;
-  line-height: 1.35;
+  line-height: 1.375;
 }
 
 .bk-row-muted .bk-row-name {
@@ -598,8 +540,8 @@
   display: block;
   margin-top: 0.125rem;
   color: var(--cal-grey-70);
-  font-size: 0.8125rem;
-  line-height: 1.35;
+  font-size: 0.875rem;
+  line-height: 1.375;
 }
 
 .bk-observed {
@@ -632,13 +574,17 @@
   background: var(--cal-blue-10);
   color: var(--cal-grey-70);
   font-size: 0.9375rem;
+  /* The prose notice block above is semi-bold; this one is not. */
+  font-weight: 400;
 }
 
 .bk-notice-title {
   display: block;
   margin-bottom: 0.25rem;
   color: var(--cal-blue);
-  font-size: 0.875rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  font-weight: 700;
 }
 
 .bk-notice-details {
@@ -654,6 +600,7 @@
 .bk-notice-details p {
   margin: 0.625rem 0 0;
   font-size: 0.875rem;
+  line-height: 1.4286;
 }
 
 @media (width <= 40rem) {
@@ -674,71 +621,134 @@
 }
 
 /*
- * The last-updated line and its rule, as the live content pages have them:
- * small, grey, and separated from the body by a heavier line than the one
- * between sections.
+ * The live content page's header: title, then the last-updated line on a
+ * heavy pale rule, then the body.
  */
-.bk-updated {
-  margin: 0 0 1.25rem;
-  color: var(--bk-muted);
-  font-size: 0.9375rem;
+.bk-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
 }
-
-.bk-document > .bk-updated {
-  padding-bottom: 1.25rem;
-  border-bottom: 2px solid #b1b4b6;
+.bk-updated {
+  padding-bottom: 1rem;
+  border-bottom: 4px solid var(--govbb-blue-10);
+  color: var(--govbb-grey-70);
+}
+@media (min-width: 64rem) {
+  .bk-header {
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
 }
 
 /*
  * The contact block.
  *
  * A description list, so the label and its value are marked up as what they
- * are. The rule above it separates it from the prose without needing a
- * heading level to do that job — this is the end of the page, not another
- * section of the argument.
+ * are — but set as the live pages set them, "Telephone: (246) …" one per
+ * line, with the prose rhythm between lines. It opens a section, so it
+ * takes the space the prose gives an h2.
  */
 .bk-contact {
-  margin: 2rem 0 1.25rem;
-  padding-top: 1.5rem;
-  border-top: 2px solid var(--bk-line);
+  margin-block-start: var(--govbb-space-ml);
 }
-.bk-contact-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0 0 0.75rem;
-}
-.bk-contact-lede {
-  margin: 0 0 1rem;
-  font-size: 1.125rem;
-}
+.bk-contact-lede,
 .bk-contact-details {
-  margin: 0;
-  display: grid;
-  gap: 0.5rem 1rem;
+  margin: var(--govbb-space-s) 0 0;
 }
-/*
- * The label column sizes to its longest label rather than to a guess, so
- * "Telephone" and "Address" line up without a hardcoded width that a longer
- * label would break out of.
- */
-.bk-contact-row {
-  display: grid;
-  grid-template-columns: minmax(6rem, max-content) 1fr;
-  gap: 0 1rem;
+.bk-contact-row + .bk-contact-row {
+  margin-top: var(--govbb-space-xm);
 }
-.bk-contact-row dt {
-  font-weight: 700;
-}
+.bk-contact-row dt,
 .bk-contact-row dd {
+  display: inline;
   margin: 0;
+}
+.bk-contact-row dt::after {
+  content: ": ";
 }
 
-@media (max-width: 30rem) {
-  .bk-contact-row {
-    grid-template-columns: 1fr;
-    gap: 0;
+/*
+ * The bank holiday page's own layout, as the live site has it: a 55rem
+ * column, the year switcher beside the title rather than above the hero,
+ * and the date with no rule under it.
+ */
+.bk-document.bk-document-calendar {
+  position: relative;
+  max-width: 55rem;
+}
+.bk-document-calendar .bk-header {
+  gap: 0.5rem;
+  margin-bottom: 2.5rem;
+}
+.bk-document-calendar .bk-updated {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+@media (min-width: 40rem) {
+  .bk-document-calendar .bk-header {
+    padding-right: 18rem;
   }
-  .bk-contact-row dd {
-    margin-bottom: 0.25rem;
+  .bk-document-calendar .bk-cal-switch:not(.bk-cal-switch-end) {
+    position: absolute;
+    top: 2rem;
+    right: 0;
+    margin: 0;
+  }
+}
+
+/*
+ * The prose after a calendar — "About this list" and its source — is a
+ * footnote to the tool there, not body copy: small, grey, under a rule.
+ * Unlayered, so it outranks the design system's text classes.
+ */
+.bk-aside {
+  margin-top: 4rem;
+  padding-top: 2rem;
+  border-top: 2px solid #e0e4e9;
+}
+.bk-aside > * + * {
+  margin-top: 0.75rem;
+}
+.bk-aside h2,
+.bk-aside h3 {
+  color: #00267f;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: normal;
+}
+.bk-aside p {
+  max-width: 40rem;
+  color: #595959;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+.bk-aside strong {
+  color: #00267f;
+}
+
+/*
+ * A list renders the design system's <List>, whose own `margin: 0` and
+ * indent are a class and so outrank the prose rhythm's zero-specificity
+ * rules. Inside prose, give a list the rhythm and indent a markdown list
+ * gets on the live site.
+ */
+.govbb-prose > .govbb-list {
+  padding-inline-start: var(--govbb-space-xm);
+}
+.govbb-prose > * + .govbb-list {
+  margin-block-start: var(--govbb-space-s);
+}
+.govbb-prose > :is(h2, h3, h4) + .govbb-list {
+  margin-block-start: var(--govbb-space-xs);
+}
+@media (width >= 50rem) {
+  .govbb-prose > * + .govbb-list {
+    margin-block-start: var(--govbb-space-xm);
+  }
+  .govbb-prose > :is(h2, h3, h4) + .govbb-list {
+    margin-block-start: var(--govbb-space-s);
   }
 }

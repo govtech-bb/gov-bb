@@ -174,17 +174,18 @@ which is what makes the data/code seam testable at all.
 The editor's front door is a hierarchy, not a flat list: category → service
 → page → editor. `doc-list` is gone with the flat list it named.
 
-| Handle                                     | Meaning                                                                                                                                                            |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `service-list`                             | Services grouped under their category titles, with a page count each. A page with no category files under "Island-wide (no category)" rather than an invented one. |
-| `service-<slug>`                           | A service. Opens its items.                                                                                                                                        |
-| `service-items`                            | One service's pages, with a Kind column distinguishing a start page from a form — the reason to group them at all.                                                 |
-| `item-<documentId>`                        | One page. Opens the editor.                                                                                                                                        |
-| `collection-list` / `collection-<key>`     | The collections behind finders, calendars and tables.                                                                                                              |
-| `record-table`                             | One collection's records.                                                                                                                                          |
-| `record-<recordKey>`                       | One record row.                                                                                                                                                    |
-| `field-<recordKey>-<fieldKey>`             | One editable cell. Commits on blur. Editing the collection's `record_key` field renames the row.                                                                   |
-| `add-record` / `remove-record-<recordKey>` | Add and remove.                                                                                                                                                    |
+| Handle                                                                        | Meaning                                                                                                                                                            |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `service-list`                                                                | Services grouped under their category titles, with a page count each. A page with no category files under "Island-wide (no category)" rather than an invented one. |
+| `service-<slug>`                                                              | A service. Opens its items.                                                                                                                                        |
+| `service-items`                                                               | One service's pages, with a Kind column distinguishing a start page from a form — the reason to group them at all.                                                 |
+| `item-<documentId>`                                                           | One page. Opens the editor.                                                                                                                                        |
+| `collection-list` / `collection-<key>`                                        | The collections behind finders, calendars and tables.                                                                                                              |
+| `record-table`                                                                | One collection's records.                                                                                                                                          |
+| `record-<recordKey>`                                                          | One record row.                                                                                                                                                    |
+| `edit-record-<recordKey>` / `delete-record-<recordKey>`                       | A row's Edit and Delete buttons. The table is read-only; changes go through a dialog.                                                                              |
+| `record-dialog` / `record-field-<fieldKey>` / `record-save` / `record-cancel` | The edit form, also opened empty by `add-record`. Editing the collection's `record_key` field renames the row.                                                     |
+| `add-record` / `delete-dialog` / `delete-confirm` / `delete-cancel`           | Add opens an empty form; Delete asks before it removes.                                                                                                            |
 
 Fields come from the collection's own `schema`, the same list validation
 rules 6 and 7 resolve names against, so what is editable here and what a

@@ -30,10 +30,18 @@ export class HttpStore {
      * write went out with no Content-Type. Fastify then declined to parse the
      * body, and the request arrived with `body` undefined, which surfaced as
      * rule 1 rejecting a perfectly good document for having no body at all.
+     *
+     * Only when there is a body, though: Fastify refuses a JSON content type
+     * with an empty one, so a DELETE that declared it never deleted anything.
      */
     const response = await fetch(`${this.baseUrl}${path}`, {
       ...init,
-      headers: { "Content-Type": "application/json", ...init?.headers },
+      headers: {
+        ...(init?.body === undefined
+          ? {}
+          : { "Content-Type": "application/json" }),
+        ...init?.headers,
+      },
     });
 
     if (response.status === 409) {

@@ -30,6 +30,8 @@ import {
   openBlockData,
   openDocument,
   saveAndExpectSuccess,
+  deleteRecord,
+  editRecord,
 } from "./support";
 
 test.describe("browsing category to service to page", () => {
@@ -93,9 +95,9 @@ test.describe("editing a collection", () => {
     await page.getByTestId("collection-environmental-health-offices").click();
     await expect(page.getByTestId("record-table")).toBeVisible();
 
-    const phone = page.getByTestId("field-branford-taitt-polyclinic-phone");
-    await phone.fill("(246) 111-2222");
-    await phone.blur();
+    await editRecord(page, "branford-taitt-polyclinic", {
+      phone: "(246) 111-2222",
+    });
 
     await gotoSite(page, HAIR_SALON_URL);
     await expect(
@@ -107,14 +109,12 @@ test.describe("editing a collection", () => {
     await gotoEditor(page);
     await page.getByTestId("collection-environmental-health-offices").click();
 
-    const phone = page.getByTestId("field-st-philip-polyclinic-phone");
-    await phone.fill("(246) 999-0000");
-    await phone.blur();
+    await editRecord(page, "st-philip-polyclinic", { phone: "(246) 999-0000" });
 
     await page.reload();
-    await expect(
-      page.getByTestId("field-st-philip-polyclinic-phone"),
-    ).toHaveValue("(246) 999-0000");
+    await expect(page.getByTestId("record-st-philip-polyclinic")).toContainText(
+      "(246) 999-0000",
+    );
   });
 
   test("adding a holiday rule reaches the calendar", async ({ page }) => {
@@ -130,6 +130,9 @@ test.describe("editing a collection", () => {
       .getByRole("row")
       .count();
     await page.getByTestId("add-record").click();
+    await page.getByTestId("record-field-key").fill("emancipation-eve");
+    await page.getByTestId("record-field-name").fill("Emancipation Eve");
+    await page.getByTestId("record-save").click();
     await expect(page.getByTestId("record-table").getByRole("row")).toHaveCount(
       before + 1,
     );
@@ -140,7 +143,7 @@ test.describe("editing a collection", () => {
   }) => {
     await gotoEditor(page);
     await page.getByTestId("collection-environmental-health-offices").click();
-    await page.getByTestId("remove-record-st-philip-polyclinic").click();
+    await deleteRecord(page, "st-philip-polyclinic");
 
     await gotoSite(page, HAIR_SALON_URL);
     await expect(
@@ -165,7 +168,7 @@ test.describe("editing a collection", () => {
   }) => {
     await gotoEditor(page);
     await page.getByTestId("collection-bank-holiday-rules").click();
-    await page.getByTestId("remove-record-kadooment-day").click();
+    await deleteRecord(page, "kadooment-day");
 
     await gotoSite(page, CALENDAR_URL);
     await expect(holidayRow(page, "Good Friday")).toBeVisible();

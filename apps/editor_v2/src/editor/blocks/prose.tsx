@@ -10,7 +10,7 @@ import type {
 import { CheckField, SelectField, TextField } from "../fields";
 import { newId } from "../new-block";
 import { SpanEditor } from "../span-editor";
-import { Button } from "@govtech-bb/react";
+import { Button } from "../../ui/Button";
 
 export function ParagraphEditor({
   block,

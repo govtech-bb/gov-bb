@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Button } from "@govtech-bb/react";
+import { Button } from "../ui/Button";
 
 export function Modal({
   title,
@@ -50,6 +50,9 @@ export function Modal({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      // A native <dialog> opened over this one (a record's edit form, a
+      // delete confirmation) closes itself on Escape; this modal stays.
+      if (document.querySelector("dialog[open]")) return;
       event.stopPropagation();
       onClose();
     };
@@ -76,14 +79,26 @@ export function Modal({
         <header className="ed-modal-head">
           <h2 className="ed-modal-title">{title}</h2>
           {actions}
-          <Button
+          <button
             type="button"
-            variant="secondary"
             data-testid="modal-close"
+            aria-label="Close"
             onClick={onClose}
+            className="inline-flex h-7 w-7 items-center justify-center text-mid-grey-00 hover:text-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-100"
           >
-            Close
-          </Button>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="square"
+              aria-hidden="true"
+            >
+              <path d="M3 3l8 8M11 3l-8 8" />
+            </svg>
+          </button>
         </header>
 
         {description ? (
@@ -122,6 +137,7 @@ export function CopyButton({
     <Button
       type="button"
       variant="secondary"
+      size="sm"
       data-testid="copy-json"
       onClick={async () => {
         try {

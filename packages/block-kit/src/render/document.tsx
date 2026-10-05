@@ -66,30 +66,84 @@ export function RenderDocument({
     loading,
     resolveHref,
   };
+  // The bank holiday page is its own layout on the live site: a wider
+  // column, the year switcher beside the title, the date unadorned and no
+  // rule beneath it, and the prose after the calendar set as a quiet
+  // "about this list" footnote rather than as body copy.
+  const calendar = doc.schema_name === "calendar";
+
   return (
-    <article className="bk-document">
-      <DsHeading as="h1" className="bk-title">
-        {doc.title}
-      </DsHeading>
-      {doc.description ? (
-        <Text as="p" className="bk-description">
-          {doc.description}
-        </Text>
-      ) : null}
+    <article
+      className={calendar ? "bk-document bk-document-calendar" : "bk-document"}
+    >
       {/*
-        Every content page on the live site says when it was last changed.
-        It comes from `updated_at` rather than a field an author maintains,
-        so it cannot drift from the truth — the cost being that it moves
-        on any save, including one that changed nothing a reader sees.
+        The live content page's header: the title, then the last-updated
+        line on its rule. The description is the page's meta description
+        there, not a lede, so it is not rendered into the body.
       */}
-      <p className="bk-updated">
-        Last updated on {formatUpdated(doc.updated_at)}
-      </p>
-      {doc.body.blocks.map((block) => (
-        <RenderBlock key={block.id} block={block} ctx={ctx} />
-      ))}
+      <header className="bk-header">
+        <DsHeading as="h1" className="bk-title">
+          {doc.title}
+        </DsHeading>
+        {/*
+          It comes from `updated_at` rather than a field an author maintains,
+          so it cannot drift from the truth — the cost being that it moves
+          on any save, including one that changed nothing a reader sees.
+        */}
+        <div className="bk-updated">
+          <Text as="p" size={calendar ? "body" : "body-sm"}>
+            Last updated on{" "}
+            {calendar
+              ? formatUpdatedPlain(doc.updated_at)
+              : formatUpdated(doc.updated_at)}
+          </Text>
+        </div>
+      </header>
+      {runs(doc.body.blocks).map((run, index, all) =>
+        run.island ? (
+          <RenderBlock
+            key={run.blocks[0]!.id}
+            block={run.blocks[0]!}
+            ctx={ctx}
+          />
+        ) : (
+          /*
+            The design system's prose rhythm spaces the blocks, as it does a
+            markdown body on the live site. Only prose, though: its rules
+            reach every descendant — list spacing, heading colour — and would
+            restyle a calendar's rows and hero as if they were copy.
+          */
+          <div
+            key={run.blocks[0]!.id}
+            className={
+              calendar && all.slice(0, index).some((prior) => prior.island)
+                ? "govbb-prose bk-aside"
+                : "govbb-prose"
+            }
+          >
+            {run.blocks.map((block) => (
+              <RenderBlock key={block.id} block={block} ctx={ctx} />
+            ))}
+          </div>
+        ),
+      )}
     </article>
   );
+}
+
+/** Blocks that are whole components of their own, not copy. */
+const ISLANDS = new Set<Block["type"]>(["finder", "calendar"]);
+
+/** Consecutive prose blocks grouped together; each island on its own. */
+function runs(blocks: Block[]): Array<{ island: boolean; blocks: Block[] }> {
+  const out: Array<{ island: boolean; blocks: Block[] }> = [];
+  for (const block of blocks) {
+    const island = ISLANDS.has(block.type);
+    const last = out.at(-1);
+    if (!island && last && !last.island) last.blocks.push(block);
+    else out.push({ island, blocks: [block] });
+  }
+  return out;
 }
 
 const MONTHS = [
@@ -106,6 +160,13 @@ const MONTHS = [
   "November",
   "December",
 ];
+
+/** "5 May 2026" — the bank holiday page's format. */
+function formatUpdatedPlain(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+}
 
 /** "September 2nd, 2026" — the format the live content pages use. */
 export function formatUpdated(value: string): string {

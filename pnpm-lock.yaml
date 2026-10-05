@@ -688,6 +688,9 @@ importers:
       '@govtech-bb/content':
         specifier: workspace:*
         version: link:../../packages/content
+      '@govtech-bb/design':
+        specifier: 1.0.0-alpha.17
+        version: 1.0.0-alpha.17
       '@govtech-bb/frontend':
         specifier: 1.0.0-alpha.29
         version: 1.0.0-alpha.29

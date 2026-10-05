@@ -12,7 +12,11 @@ function SiteIndex() {
   const { pages } = Route.useLoaderData();
 
   return (
-    <div className="site-index-page">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="govbb-width-container site-main site-index-page"
+    >
       <h1>Pages</h1>
       <p className="site-lede">
         Every page here is stored as a block document and rendered from the
@@ -30,6 +34,6 @@ function SiteIndex() {
           </li>
         ))}
       </ul>
-    </div>
+    </main>
   );
 }

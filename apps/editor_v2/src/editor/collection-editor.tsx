@@ -8,37 +8,37 @@
  */
 
 import { useCollections } from "@govtech-bb/spike-db/react";
-import { Link, useParams } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
 import { RecordTable } from "./record-table";
+import { BackLink } from "./back-link";
+import { PageHeader } from "../ui/PageHeader";
 
 export function CollectionEditor() {
   const { key } = useParams({ from: "/editor/collections/$key" });
   const collections = useCollections();
 
-  if (collections === undefined) return <p className="ed-page">Loading…</p>;
+  if (collections === undefined) {
+    return <p className="text-caption text-mid-grey-00">Loading…</p>;
+  }
 
   const collection = collections.find((entry) => entry.key === key);
   if (!collection) {
     return (
-      <div className="ed-page">
-        <h1>No such collection</h1>
-        <Link to="/editor">Back to services</Link>
+      <div>
+        <BackLink />
+        <PageHeader title="No such collection" />
       </div>
     );
   }
 
   return (
-    <div className="ed-page">
-      <p className="ed-breadcrumb">
-        <Link to="/editor">← Services</Link>
-        <span className="ed-count">Collection</span>
-      </p>
-
-      <h1>{collection.title}</h1>
-      <p className="ed-lede">
-        <code>{collection.key}</code>
-      </p>
-
+    <div>
+      <BackLink />
+      <PageHeader
+        eyebrow="Collection"
+        title={collection.title}
+        description={<code className="font-mono">{collection.key}</code>}
+      />
       <RecordTable collection={collection} />
     </div>
   );

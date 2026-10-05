@@ -23,13 +23,14 @@ import {
   useRef,
   useState,
 } from "react";
+import { SITE_URL } from "../chrome";
 import { DocumentEditor } from "./blocknote/document-editor";
 import { EditorBlockProvider } from "./blocknote/context";
 import { clearDraft, readDraft, writeDraft } from "./drafts";
 import { CopyButton, Modal } from "./modal";
 import { CATEGORY_SLUGS, PageProperties } from "./page-properties";
 import { servicesInUse } from "./page-url";
-import { Button } from "@govtech-bb/react";
+import { Button, buttonClasses } from "../ui/Button";
 
 /**
  * How long typing must pause before the draft is cached locally.
@@ -226,7 +227,7 @@ export function EditorPage() {
       <div className="ed-doc">
         <header className="ed-toolbar">
           <Link to="/editor" className="ed-back">
-            ← Pages
+            ← Services
           </Link>
           <span className="ed-status" data-testid="save-status">
             {status}
@@ -249,8 +250,8 @@ export function EditorPage() {
             View schema
           </Button>
           <a
-            className="ed-secondary"
-            href={draft.url}
+            className={buttonClasses({ variant: "secondary" })}
+            href={`${SITE_URL}${draft.url}`}
             target="_blank"
             rel="noreferrer"
           >
