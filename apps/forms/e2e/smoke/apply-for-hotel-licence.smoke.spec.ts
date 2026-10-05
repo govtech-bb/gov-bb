@@ -30,35 +30,33 @@
  *   SMOKE_HOLD       pause a headed run on the confirmation screen.
  *   FAKER_SEED       fix faker's RNG for a reproducible data set.
  *
- * Form-specific notes:
- *  - `application-type` = "renew-licence" reveals the inline `hotel-licence-number`
- *    field. The `documents` step now shows on BOTH branches (the old
- *    stepConditionalOn was removed): the site plan is always required, and the
- *    Town and Country Planning number is a fieldConditionalOn "new-licence"
- *    element on that step. The two tests below cover both answers.
- *  - `amenities` is a step after `staff-details`: a checkbox group, then one
- *    "has the licence been applied for?" radio per selected amenity
- *    (fieldConditionalOn `operator: "in"` against the checkbox group).
- *  - `is-operator` = "no" reveals the operator's name / phone / email inline
- *    (fieldConditionalOn, not a separate step); `your-role` = "another-role"
- *    likewise reveals `describe-your-role`.
+ * Form-specific notes (recipe as of the #2813 content review):
+ *  - `application-type` = "renew-licence" reveals the inline
+ *    `hotel-licence-number` field. The `planning-and-site-plan` step is
+ *    new-licence only (stepConditionalOn), so a renewal goes straight from
+ *    `amenities` to `check-your-answers`.
+ *  - On `planning-and-site-plan`, `planning-applied` = "yes" reveals the
+ *    application number and "no" reveals the site-plan upload, both inline
+ *    under the radio. The upload revealed there once collapsed to a thin strip
+ *    (#2915), so the new-licence test asserts it spans the radio's fieldset.
+ *  - `applying-for` = "someone-else" reveals `has-permission` (must be "yes" —
+ *    a `^yes$` pattern) and the `applicant-hotel-relationship` select.
+ *  - `hotel-operator-type` picks the next step: "i-do" skips both operator
+ *    steps, "another-person" opens `hotel-operator-details` (and reveals
+ *    `operator-hotel-relationship` inline), "business" opens
+ *    `hotel-operator-business`.
  *  - The hotel address is an address-lookup (geocoder) field, so it cannot take
  *    a free-text faker address — the geocoder must return a real Barbados match
  *    to populate the hidden coordinates the catchment router reads. We
- *    faker-pick from a pool of known-geocodable locations, select the first
- *    suggestion, then assert `hotel-address-coordinates` filled.
- *  - `hotel-address-line-2` is optional since #2791 set
- *    `validations.required.value: false`. `minLength: 5` is still inherited
- *    from components/address — `validations` merge per rule key, so the
- *    override replaced only `required` — but the runner skips every rule on an
- *    empty optional field, so a blank line 2 has to advance the step. Test 1
- *    proves that; test 2 fills it, the side where minLength still runs. The
- *    geocoder writes this field (`geocodeTargets.line2FieldId`), so the blank
- *    walk CLEARS it after the pick rather than assume the suggestion carried
- *    nothing.
+ *    faker-pick from a pool of known-geocodable locations.
+ *  - `hotel-address-line-2` is optional (#2791) and the geocoder writes it, so
+ *    the blank walk CLEARS it after the pick rather than assume the suggestion
+ *    carried nothing.
  *  - `floor-details` is a repeatable step (min 1, max 10) with no sharedFields,
  *    so the base step IS floor 1 and carries the injected `addAnother` radio;
  *    floor 2 lands on `floor-details~1`. The renewal test adds a second floor.
+ *  - `amenities` is optional; each ticked amenity reveals a "have you applied
+ *    for its licence?" radio (fieldConditionalOn `operator: "in"`).
  *  - There is no National Registration Number on this form, so no Maskito-masked
  *    field to type digit-by-digit.
  */
@@ -70,6 +68,7 @@ import {
   advance,
   expectStep,
   fillField,
+  fillGeocodedAddress,
   selectDropdown,
   selectRadio,
   submitAndConfirm,
@@ -150,7 +149,7 @@ function buildFloor(name: string) {
   };
 }
 
-/** Build a complete, valid set of answers for either branch. */
+/** Build a complete, valid set of answers for any branch. */
 export function buildData() {
   if (process.env.FAKER_SEED) faker.seed(Number(process.env.FAKER_SEED));
 
@@ -163,23 +162,25 @@ export function buildData() {
     mobile: bbMobileNumber(),
     // Goes to the monitored test inbox so a real run is verifiable end-to-end.
     applicantEmail: "testing@govtech.bb",
-    describeYourRole: "Consultant acting for the owner (smoke test)",
 
     // Timestamped so the resulting submission is easy to find in the target env.
     hotelName: `Smoke Test Hotel ${new Date().toISOString()}`,
     hotelAddress: faker.helpers.arrayElement(GEOCODABLE_ADDRESSES),
     hotelAddressLine2: faker.location.street(),
-    maximumGuests: String(faker.number.int({ min: 10, max: 400 })),
 
     licenceNumber: `HTL-${faker.string.numeric(5)}`,
     planningApplicationNumber: `TCP-${faker.string.numeric(6)}`,
 
-    operatorName: faker.company.name(),
+    operatorFirstName: faker.person.firstName(),
+    operatorLastName: faker.person.lastName(),
+    operatorAddressLine1: faker.location.streetAddress(),
+    operatorParish: faker.helpers.arrayElement(PARISH_VALUES),
     operatorPhone: bbMobileNumber(),
     operatorEmail: "testing@govtech.bb",
+    operatorBusinessName: `${faker.company.name()} Hotels Ltd`,
 
-    groundFloor: buildFloor("Ground"),
-    firstFloor: buildFloor("1"),
+    groundFloor: buildFloor("Ground floor"),
+    firstFloor: buildFloor("First floor"),
 
     staffMales: String(faker.number.int({ min: 0, max: 20 })),
     staffFemales: String(faker.number.int({ min: 1, max: 20 })),
@@ -190,6 +191,8 @@ export function buildData() {
   };
 }
 
+type Data = ReturnType<typeof buildData>;
+
 /** Open the form at its first step, carrying the preview token when supplied. */
 export async function openForm(page: Page): Promise<void> {
   await openSmokeForm(page, FORM_ID);
@@ -198,51 +201,49 @@ export async function openForm(page: Page): Promise<void> {
   });
 }
 
-/**
- * Fill the address-lookup (geocoder) field: type the query, wait for the
- * suggestion list, pick the first match, then assert the hidden coordinates
- * field filled — that value is what the catchment router resolves the serving
- * polyclinic from, so an empty one is a real failure, not a soft skip.
- *
- * Addressed by id rather than accessible name: the combobox's label is the
- * generic "Address line 1", which the applicant's own address on `your-details`
- * also uses.
- */
-export async function fillGeocodedHotelAddress(
+/** Step 1 — new licence, or a renewal with its inline licence number. */
+async function fillApplicationType(
   page: Page,
-  stepId: string,
-  query: string,
-): Promise<string> {
-  const combo = page.locator(`input[id="${stepId}_hotel-address-line-1"]`);
-  await combo.click();
-  // pressSequentially (not fill) so the debounced autocomplete actually fires.
-  await combo.pressSequentially(query, { delay: 20 });
-
-  const firstSuggestion = page.getByRole("option").first();
-  await expect(
-    firstSuggestion,
-    `geocoder returned no suggestion for "${query}"`,
-  ).toBeVisible({ timeout: STEP_TIMEOUT });
-  await firstSuggestion.click();
-
-  const coordinates = page.locator(
-    `input[id="${stepId}_hotel-address-coordinates"]`,
-  );
-  await expect(
-    coordinates,
-    "geocoder did not populate the hidden hotel coordinates",
-  ).toHaveValue(/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/, { timeout: STEP_TIMEOUT });
-  return (await coordinates.inputValue()).trim();
+  data: Data,
+  type: "new-licence" | "renew-licence",
+): Promise<void> {
+  const step = expectStep(page, "application-type");
+  const licenceNumber = page.locator(`[id="${step}_hotel-licence-number"]`);
+  await expect(licenceNumber).toBeHidden();
+  await selectRadio(page, step, "application-type", type);
+  if (type === "renew-licence") {
+    await expect(licenceNumber).toBeVisible({ timeout: STEP_TIMEOUT });
+    await licenceNumber.fill(data.licenceNumber);
+  } else {
+    await expect(licenceNumber).toBeHidden();
+  }
+  await advance(page, step);
 }
 
-/** Step 3 — the applicant, identical on both branches apart from the role. */
-export async function fillYourDetails(
+/** Step 2 — applying for yourself, or for someone else with permission. */
+async function fillApplyingFor(
   page: Page,
-  data: ReturnType<typeof buildData>,
-  role: "owner" | "another-role",
+  applyingFor: "yourself" | "someone-else",
 ): Promise<void> {
+  const step = expectStep(page, "applying-for");
+  await expect(page.locator("h1")).toContainText("Who are you applying for?");
+  await selectRadio(page, step, "applying-for", applyingFor);
+  if (applyingFor === "someone-else") {
+    await selectRadio(page, step, "has-permission", "yes");
+    await selectDropdown(
+      page,
+      step,
+      "applicant-hotel-relationship",
+      "representative",
+    );
+  }
+  await advance(page, step);
+}
+
+/** Step 3 — the applicant, identical on every branch. */
+async function fillYourDetails(page: Page, data: Data): Promise<void> {
   const step = expectStep(page, "your-details");
-  await expect(page.locator("h1")).toContainText("Your details");
+  await expect(page.locator("h1")).toContainText("Tell us about yourself");
   await fillField(page, step, "first-name", data.firstName);
   await fillField(page, step, "middle-name", data.middleName);
   await fillField(page, step, "last-name", data.lastName);
@@ -250,54 +251,123 @@ export async function fillYourDetails(
   await selectDropdown(page, step, "your-parish", data.applicantParish);
   await fillField(page, step, "contact-number", data.mobile);
   await fillField(page, step, "email", data.applicantEmail);
-
-  const describeRole = page.locator(`[id="${step}_describe-your-role"]`);
-  await expect(describeRole).toBeHidden();
-  await selectRadio(page, step, "your-role", role);
-  if (role === "another-role") {
-    await expect(describeRole).toBeVisible({ timeout: STEP_TIMEOUT });
-    await describeRole.fill(data.describeYourRole);
-  } else {
-    await expect(describeRole).toBeHidden();
-  }
   await advance(page, step);
 }
 
 /**
- * Step 4 — the hotel itself, identical on both branches apart from line 2.
- * `addressLine2: "blank"` is the walk that proves #2791's `required: false`
- * holds; `"filled"` is the one where the inherited `minLength: 5` still runs.
+ * Step 4 — who operates the hotel, plus the operator step that choice opens:
+ * none for "i-do", `hotel-operator-details` for "another-person",
+ * `hotel-operator-business` for "business".
  */
-export async function fillHotelDetails(
+async function fillOperator(
   page: Page,
-  data: ReturnType<typeof buildData>,
+  data: Data,
+  operator: "i-do" | "another-person" | "business",
+): Promise<void> {
+  let step = expectStep(page, "hotel-operator");
+  await expect(page.locator("h1")).toContainText("Who operates the hotel?");
+  const relationship = page.locator(
+    `[id="${step}_operator-hotel-relationship"]`,
+  );
+  await selectDropdown(page, step, "hotel-operator-type", operator);
+  if (operator === "another-person") {
+    await expect(relationship).toBeVisible({ timeout: STEP_TIMEOUT });
+    await selectDropdown(page, step, "operator-hotel-relationship", "director");
+  } else {
+    await expect(relationship).toBeHidden();
+  }
+  await advance(page, step);
+
+  if (operator === "another-person") {
+    step = expectStep(page, "hotel-operator-details");
+    await expect(page.locator("h1")).toContainText(
+      "Tell us about the hotel operator",
+    );
+    await fillField(page, step, "operator-first-name", data.operatorFirstName);
+    await fillField(page, step, "operator-last-name", data.operatorLastName);
+    await fillField(
+      page,
+      step,
+      "operator-address-line-1",
+      data.operatorAddressLine1,
+    );
+    await selectDropdown(page, step, "operator-parish", data.operatorParish);
+    await fillField(page, step, "operator-contact-number", data.operatorPhone);
+    await fillField(page, step, "operator-email", data.operatorEmail);
+    await advance(page, step);
+  } else if (operator === "business") {
+    step = expectStep(page, "hotel-operator-business");
+    await expect(page.locator("h1")).toContainText(
+      "Tell us about the business or organisation",
+    );
+    await fillField(
+      page,
+      step,
+      "operator-business-name",
+      data.operatorBusinessName,
+    );
+    await fillField(
+      page,
+      step,
+      "operator-business-address-line-1",
+      data.operatorAddressLine1,
+    );
+    await selectDropdown(
+      page,
+      step,
+      "operator-business-parish",
+      data.operatorParish,
+    );
+    await fillField(
+      page,
+      step,
+      "operator-business-contact-number",
+      data.operatorPhone,
+    );
+    await fillField(page, step, "operator-business-email", data.operatorEmail);
+    await advance(page, step);
+  }
+}
+
+/**
+ * The hotel itself. `addressLine2: "blank"` is the walk that proves #2791's
+ * `required: false` holds; `"filled"` covers the populated side.
+ */
+async function fillHotelDetails(
+  page: Page,
+  data: Data,
   addressLine2: "blank" | "filled",
 ): Promise<void> {
   const step = expectStep(page, "hotel-details");
   await expect(page.locator("h1")).toContainText("Tell us about the hotel");
   await fillField(page, step, "hotel-name", data.hotelName);
-  await fillGeocodedHotelAddress(page, step, data.hotelAddress);
+  await fillGeocodedAddress(
+    page,
+    step,
+    {
+      lineFieldId: "hotel-address-line-1",
+      coordinatesFieldId: "hotel-address-coordinates",
+    },
+    data.hotelAddress,
+  );
 
   // The geocoder writes line 2 from the picked suggestion, so the blank walk
   // has to clear what it wrote — leaving the field alone would test whatever
-  // the faker-picked address happened to carry, not an empty value. This step
-  // advancing is the proof that the optional rule holds.
+  // the faker-picked address happened to carry, not an empty value.
   const hotelAddressLine2 = page.locator(`[id="${step}_hotel-address-line-2"]`);
   await hotelAddressLine2.fill(
     addressLine2 === "blank" ? "" : data.hotelAddressLine2,
   );
-  if (addressLine2 === "blank") await expect(hotelAddressLine2).toHaveValue("");
   // The geocoder fills parish from the picked suggestion; assert rather than
   // overwrite, since that value is the catchment router's fallback.
   await expect(
     page.locator(`select[id="${step}_hotel-parish"]`),
   ).not.toHaveValue("");
-  await fillField(page, step, "maximum-number-of-guests", data.maximumGuests);
   await advance(page, step);
 }
 
 /** Fill one instance of the repeatable `floor-details` step. */
-export async function fillFloor(
+async function fillFloor(
   page: Page,
   stepId: string,
   floor: ReturnType<typeof buildFloor>,
@@ -331,15 +401,41 @@ export async function fillFloor(
   await advance(page, stepId);
 }
 
+/** Staff numbers, then the staff facilities step that follows it. */
+async function fillStaff(page: Page, data: Data): Promise<void> {
+  let step = expectStep(page, "staff-details");
+  await expect(page.locator("h1")).toContainText(
+    "Tell us about the hotel staff",
+  );
+  await fillField(page, step, "staff-number-of-males", data.staffMales);
+  await fillField(page, step, "staff-number-of-females", data.staffFemales);
+  await advance(page, step);
+
+  step = expectStep(page, "staff-facilities");
+  await expect(page.locator("h1")).toContainText(
+    "Tell us about staff facilities",
+  );
+  await fillField(page, step, "staff-changing-rooms", data.staffChangingRooms);
+  await fillField(page, step, "staff-lockers", data.staffLockers);
+  await fillField(
+    page,
+    step,
+    "staff-hand-wash-basins",
+    data.staffHandWashBasins,
+  );
+  await fillField(page, step, "staff-water-closets", data.staffWaterClosets);
+  await advance(page, step);
+}
+
 /**
  * Amenities step — tick two amenities, then answer the per-amenity
- * "has the licence been applied for?" radio each one reveals. The other four
- * radios stay hidden (fieldConditionalOn `operator: "in"`), so they impose no
- * required validation.
+ * "have you applied?" radio each one reveals. The other four radios stay
+ * hidden (fieldConditionalOn `operator: "in"`), so they impose no required
+ * validation.
  */
-export async function fillAmenities(page: Page): Promise<void> {
+async function fillAmenities(page: Page): Promise<void> {
   const step = expectStep(page, "amenities");
-  await expect(page.locator("h1")).toContainText("Amenities at the hotel");
+  await expect(page.locator("h1")).toContainText("Other services at the hotel");
 
   const restaurantLicence = page.locator(
     `fieldset[id="${step}_restaurant-licence-applied"] input[type=radio][value="yes"]`,
@@ -352,27 +448,6 @@ export async function fillAmenities(page: Page): Promise<void> {
   await expect(restaurantLicence).toBeVisible({ timeout: STEP_TIMEOUT });
   await selectRadio(page, step, "swimming-pool-licence-applied", "yes");
   await selectRadio(page, step, "restaurant-licence-applied", "no");
-  await advance(page, step);
-}
-
-/** Step 6 — staff facilities, identical on both branches. */
-export async function fillStaffDetails(
-  page: Page,
-  data: ReturnType<typeof buildData>,
-): Promise<void> {
-  const step = expectStep(page, "staff-details");
-  await expect(page.locator("h1")).toContainText("Staff details");
-  await fillField(page, step, "staff-number-of-males", data.staffMales);
-  await fillField(page, step, "staff-number-of-females", data.staffFemales);
-  await fillField(page, step, "staff-changing-rooms", data.staffChangingRooms);
-  await fillField(page, step, "staff-lockers", data.staffLockers);
-  await fillField(
-    page,
-    step,
-    "staff-hand-wash-basins",
-    data.staffHandWashBasins,
-  );
-  await fillField(page, step, "staff-water-closets", data.staffWaterClosets);
   await advance(page, step);
 }
 
@@ -390,8 +465,19 @@ async function confirmAndSubmit(page: Page): Promise<void> {
   });
 }
 
+/**
+ * The confirmation copy substitutes {polyclinic} with the catchment the router
+ * resolved from the geocoded address. The generic "your local polyclinic"
+ * fallback means resolution failed, which would also break the polyclinic's
+ * copy of the application — so assert a real name.
+ */
+async function expectRoutedPolyclinic(page: Page): Promise<void> {
+  await expect(page.getByText(/Polyclinic|Complex/).first()).toBeVisible();
+  await expect(page.getByText("your local polyclinic")).toHaveCount(0);
+}
+
 test.describe("Hotel Licence Application — Live Smoke", () => {
-  test("submits a new licence, as the operator, with the required site plan", async ({
+  test("submits a new licence, as the operator, with a site plan instead of a planning number", async ({
     page,
   }) => {
     const data = buildData();
@@ -399,54 +485,45 @@ test.describe("Hotel Licence Application — Live Smoke", () => {
       console.log("[smoke-data]", JSON.stringify(data, null, 2));
 
     await openForm(page);
-
-    // ─── Application type — "new" hides the licence-number field ─────────────
-    let step = expectStep(page, "application-type");
-    await expect(
-      page.locator(`[id="${step}_hotel-licence-number"]`),
-    ).toBeHidden();
-    await selectRadio(page, step, "application-type", "new-licence");
-    await expect(
-      page.locator(`[id="${step}_hotel-licence-number"]`),
-    ).toBeHidden();
-    await advance(page, step);
-
-    // ─── Operator — "yes" keeps the three operator fields hidden ─────────────
-    step = expectStep(page, "hotel-operator");
-    await selectRadio(page, step, "is-operator", "yes");
-    await expect(page.locator(`[id="${step}_operator-name"]`)).toBeHidden();
-    await expect(
-      page.locator(`[id="${step}_operator-contact-number"]`),
-    ).toBeHidden();
-    await advance(page, step);
-
-    await fillYourDetails(page, data, "owner");
+    await fillApplicationType(page, data, "new-licence");
+    await fillApplyingFor(page, "yourself");
+    await fillYourDetails(page, data);
+    await fillOperator(page, data, "i-do");
     // Address line 2 left blank — optional since #2791.
     await fillHotelDetails(page, data, "blank");
 
-    // ─── Floors (repeatable, min 1) — one floor on this branch ───────────────
-    step = expectStep(page, "floor-details");
-    await expect(page.locator("h1")).toContainText("each floor of the hotel");
-    await fillFloor(page, step, data.groundFloor, "no");
+    const floorStep = expectStep(page, "floor-details");
+    await expect(page.locator("h1")).toContainText("Tell us about this floor");
+    await fillFloor(page, floorStep, data.groundFloor, "no");
 
-    await fillStaffDetails(page, data);
+    await fillStaff(page, data);
     await fillAmenities(page);
 
-    // ─── Supporting documents — always in the journey; the Town and Country
-    //     Planning number is revealed only on the new-licence branch ──────────
-    step = expectStep(page, "documents");
-    await expect(page.locator("h1")).toContainText("Supporting documents");
+    // ─── Planning — "no" reveals the site-plan upload under the radio ───────
+    let step = expectStep(page, "planning-and-site-plan");
+    await expect(page.locator("h1")).toContainText("Planning and site plan");
+    await selectRadio(page, step, "planning-applied", "no");
+    await expect(
+      page.locator(`[id="${step}_planning-application-number"]`),
+    ).toBeHidden();
+
+    // #2915: the revealed upload must span the radio's fieldset, not collapse
+    // to a thin strip around its own (absent) intrinsic width.
+    const reveal = page
+      .locator(`fieldset[id="${step}_planning-applied"]`)
+      .locator(".govbb-radio-item__conditional");
+    await expect(reveal.locator(".govbb-file-upload__dropzone")).toBeVisible();
+    const [revealRight, fieldsetRight] = await reveal.evaluate((el) => [
+      el.getBoundingClientRect().right,
+      (el.closest("fieldset") as HTMLElement).getBoundingClientRect().right,
+    ]);
+    expect(revealRight).toBeCloseTo(fieldsetRight, 0);
+
     await uploadOne(page, step, "site-plan", {
       name: "site-plan.png",
       mimeType: TEST_PNG.mimeType,
       buffer: TEST_PNG.buffer,
     });
-    await fillField(
-      page,
-      step,
-      "planning-application-number",
-      data.planningApplicationNumber,
-    );
     await advance(page, step);
 
     // ─── Check your answers ─────────────────────────────────────────────────
@@ -459,19 +536,12 @@ test.describe("Hotel Licence Application — Live Smoke", () => {
     await advance(page, step);
 
     await confirmAndSubmit(page);
-
-    // The confirmation copy substitutes {polyclinic} with the catchment the
-    // router resolved from the geocoded address. The generic "your local
-    // polyclinic" fallback means resolution failed (e.g. the recipe's
-    // programme code not composing), which would also break the polyclinic's
-    // copy of the application — so assert a real name.
-    await expect(page.getByText(/Polyclinic|Complex/).first()).toBeVisible();
-    await expect(page.getByText("your local polyclinic")).toHaveCount(0);
+    await expectRoutedPolyclinic(page);
 
     if (process.env.SMOKE_HOLD) await page.pause();
   });
 
-  test("submits a renewal with a separate operator and two floors, with the site plan but no planning number", async ({
+  test("submits a new licence, for a business operator, with a planning number instead of a site plan", async ({
     page,
   }) => {
     const data = buildData();
@@ -479,26 +549,62 @@ test.describe("Hotel Licence Application — Live Smoke", () => {
       console.log("[smoke-data]", JSON.stringify(data, null, 2));
 
     await openForm(page);
+    await fillApplicationType(page, data, "new-licence");
+    await fillApplyingFor(page, "yourself");
+    await fillYourDetails(page, data);
+    await fillOperator(page, data, "business");
+    await fillHotelDetails(page, data, "filled");
+    await fillFloor(
+      page,
+      expectStep(page, "floor-details"),
+      data.groundFloor,
+      "no",
+    );
+    await fillStaff(page, data);
+    await fillAmenities(page);
 
-    // ─── Application type — "renew" reveals the licence number inline ────────
-    let step = expectStep(page, "application-type");
-    await selectRadio(page, step, "application-type", "renew-licence");
-    const licenceNumber = page.locator(`[id="${step}_hotel-licence-number"]`);
-    await expect(licenceNumber).toBeVisible({ timeout: STEP_TIMEOUT });
-    await licenceNumber.fill(data.licenceNumber);
+    // ─── Planning — "yes" reveals the application number, not the upload ───
+    let step = expectStep(page, "planning-and-site-plan");
+    await selectRadio(page, step, "planning-applied", "yes");
+    await expect(
+      page.locator(`input[type=file][id="${step}_site-plan"]`),
+    ).toHaveCount(0);
+    await fillField(
+      page,
+      step,
+      "planning-application-number",
+      data.planningApplicationNumber,
+    );
     await advance(page, step);
 
-    // ─── Operator — "no" reveals name, phone and email ───────────────────────
-    step = expectStep(page, "hotel-operator");
-    await selectRadio(page, step, "is-operator", "no");
-    const operatorName = page.locator(`[id="${step}_operator-name"]`);
-    await expect(operatorName).toBeVisible({ timeout: STEP_TIMEOUT });
-    await operatorName.fill(data.operatorName);
-    await fillField(page, step, "operator-contact-number", data.operatorPhone);
-    await fillField(page, step, "operator-email", data.operatorEmail);
+    step = expectStep(page, "check-your-answers");
+    await expect(
+      page.getByText(data.planningApplicationNumber).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByText(data.operatorBusinessName).first(),
+    ).toBeVisible();
+    if (process.env.SMOKE_HOLD_CYA) await page.pause();
     await advance(page, step);
 
-    await fillYourDetails(page, data, "another-role");
+    await confirmAndSubmit(page);
+    await expectRoutedPolyclinic(page);
+
+    if (process.env.SMOKE_HOLD) await page.pause();
+  });
+
+  test("submits a renewal for someone else, with a separate operator and two floors, skipping planning", async ({
+    page,
+  }) => {
+    const data = buildData();
+    if (process.env.SMOKE_LOG_DATA)
+      console.log("[smoke-data]", JSON.stringify(data, null, 2));
+
+    await openForm(page);
+    await fillApplicationType(page, data, "renew-licence");
+    await fillApplyingFor(page, "someone-else");
+    await fillYourDetails(page, data);
+    await fillOperator(page, data, "another-person");
     await fillHotelDetails(page, data, "filled");
 
     // ─── Floors — "yes" to addAnother materialises a second instance ─────────
@@ -512,33 +618,21 @@ test.describe("Hotel Licence Application — Live Smoke", () => {
     ).not.toBe(firstFloorStep);
     await fillFloor(page, secondFloorStep, data.firstFloor, "no");
 
-    await fillStaffDetails(page, data);
+    await fillStaff(page, data);
     await fillAmenities(page);
 
-    // ─── Supporting documents — the site plan is asked for on both branches;
-    //     the Town and Country Planning number is new-licence only, so it must
-    //     be absent here ─────────────────────────────────────────────────────
-    step = expectStep(page, "documents");
-    await expect(
-      page.locator(`[id="${step}_planning-application-number"]`),
-    ).toBeHidden();
-    await uploadOne(page, step, "site-plan", {
-      name: "site-plan.png",
-      mimeType: TEST_PNG.mimeType,
-      buffer: TEST_PNG.buffer,
-    });
-    await advance(page, step);
-
-    // ─── Check your answers ─────────────────────────────────────────────────
-    step = expectStep(page, "check-your-answers");
+    // ─── Planning is new-licence only, so a renewal skips straight to review ─
+    const step = expectStep(page, "check-your-answers");
     await expect(page.getByText(data.licenceNumber).first()).toBeVisible();
-    await expect(page.getByText(data.operatorName).first()).toBeVisible();
-    // Both floors made it into the review.
-    await expect(page.getByText("Floor").first()).toBeVisible();
+    await expect(
+      page.getByText(data.operatorFirstName, { exact: false }).first(),
+    ).toBeVisible();
+    await expect(page.getByText(data.firstFloor.name).first()).toBeVisible();
     if (process.env.SMOKE_HOLD_CYA) await page.pause();
     await advance(page, step);
 
     await confirmAndSubmit(page);
+    await expectRoutedPolyclinic(page);
 
     if (process.env.SMOKE_HOLD) await page.pause();
   });
