@@ -574,7 +574,13 @@
               }
             },
             "telephone": {
-              "label": "Emergency contact work telephone"
+              "label": "Emergency contact work telephone",
+              "validations": {
+                "required": {
+                  "value": true,
+                  "error": "Emergency contact work telephone is required"
+                }
+              }
             },
             "first-name": {
               "label": "Emergency Contact First Name",
@@ -658,7 +664,7 @@
   "title": "Youth Development Programme – Performing Arts Registration 2025–2026",
   "formId": "ydp-performing-arts-registration-2025-2026",
   "createdAt": "2025-01-01T00:00:00Z",
-  "updatedAt": "2026-10-05T18:32:56.000Z",
+  "updatedAt": "2026-10-05T22:01:06.000Z",
   "processors": [
     {
       "type": "email",

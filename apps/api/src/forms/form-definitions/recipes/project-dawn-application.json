@@ -997,7 +997,13 @@
               }
             },
             "telephone": {
-              "label": "Emergency contact cell phone"
+              "label": "Emergency contact cell phone",
+              "validations": {
+                "required": {
+                  "value": true,
+                  "error": "Emergency contact cell phone is required"
+                }
+              }
             },
             "first-name": {
               "label": "Emergency Contact First Name",
@@ -1075,7 +1081,7 @@
   "title": "Project Dawn – Block Transformation Unit Application",
   "formId": "project-dawn-application",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-10-05T18:32:56.000Z",
+  "updatedAt": "2026-10-05T22:01:06.000Z",
   "processors": [
     {
       "type": "email",

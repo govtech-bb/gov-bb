@@ -1194,10 +1194,6 @@
           "overrides": {
             "fieldId": "parent-mobile-phone",
             "validations": {
-              "phone": {
-                "error": "Enter a phone number in the correct format",
-                "value": true
-              },
               "required": {
                 "error": "Mobile telephone is required",
                 "value": true
@@ -1208,25 +1204,13 @@
         {
           "ref": "components/home-telephone",
           "overrides": {
-            "fieldId": "parent-landline",
-            "validations": {
-              "phone": {
-                "error": "Enter a phone number in the correct format",
-                "value": true
-              }
-            }
+            "fieldId": "parent-landline"
           }
         },
         {
           "ref": "components/work-telephone",
           "overrides": {
-            "fieldId": "parent-work-phone",
-            "validations": {
-              "phone": {
-                "error": "Enter a phone number in the correct format",
-                "value": true
-              }
-            }
+            "fieldId": "parent-work-phone"
           }
         },
         {
@@ -1709,13 +1693,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "emergency-phone",
-            "validations": {
-              "phone": {
-                "error": "Enter a phone number in the correct format",
-                "value": true
-              }
-            }
+            "fieldId": "emergency-phone"
           }
         }
       ],
@@ -1790,9 +1768,9 @@
               }
             ],
             "validations": {
-              "phone": {
-                "error": "Enter a phone number in the correct format",
-                "value": true
+              "required": {
+                "value": true,
+                "error": "Phone number for doctor or polyclinic is required"
               }
             }
           }
@@ -2002,5 +1980,5 @@
     }
   ],
   "createdAt": "2026-06-12T11:02:19.069Z",
-  "updatedAt": "2026-10-05T18:32:56.000Z"
+  "updatedAt": "2026-10-05T22:01:06.000Z"
 }

@@ -3,7 +3,7 @@
   "title": "Apply for a permit to operate a temporary restaurant",
   "description": "Apply for a permit to serve food or drink at a temporary event, such as a stall, booth or bar operating for up to 30 days.",
   "createdAt": "2026-07-23T00:00:00Z",
-  "updatedAt": "2026-10-05T17:20:45.000Z",
+  "updatedAt": "2026-10-05T22:01:06.000Z",
   "processors": [
     {
       "type": "email",
@@ -231,10 +231,6 @@
             "validations": {
               "required": {
                 "value": false
-              },
-              "phone": {
-                "value": true,
-                "error": "Please enter a valid phone number"
               }
             }
           }
@@ -886,7 +882,7 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "label": "Their phone number",
+            "label": "Caterer or cook telephone number",
             "fieldId": "caterer-phone",
             "behaviours": [
               {
@@ -899,11 +895,7 @@
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter the phone number of the caterer or cook"
-              },
-              "phone": {
-                "value": true,
-                "error": "Please enter a valid phone number"
+                "error": "Caterer or cook telephone number is required"
               }
             }
           }

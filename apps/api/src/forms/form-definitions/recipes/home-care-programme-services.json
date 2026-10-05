@@ -234,13 +234,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "applicant-telephone",
-            "validations": {
-              "required": {
-                "error": "Enter a telephone number",
-                "value": true
-              }
-            }
+            "fieldId": "applicant-telephone"
           }
         },
         {
@@ -375,13 +369,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "emergency-contact-telephone",
-            "validations": {
-              "required": {
-                "error": "Enter a telephone number",
-                "value": true
-              }
-            }
+            "fieldId": "emergency-contact-telephone"
           }
         },
         {
@@ -1224,5 +1212,5 @@
     }
   ],
   "createdAt": "2026-06-17T12:49:57.495Z",
-  "updatedAt": "2026-09-17T13:49:39.000Z"
+  "updatedAt": "2026-10-05T22:01:06.000Z"
 }

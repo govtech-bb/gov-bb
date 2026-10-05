@@ -103,12 +103,18 @@
               }
             },
             "telephone": {
-              "label": "Work telephone"
+              "label": "Work telephone",
+              "validations": {
+                "required": {
+                  "value": true,
+                  "error": "Work telephone is required"
+                }
+              }
             },
             "home-telephone": {
               "validations": {
                 "required": {
-                  "error": "Please enter your home telephone number",
+                  "error": "Home telephone is required",
                   "value": true
                 }
               }
@@ -671,7 +677,13 @@
               }
             },
             "telephone": {
-              "label": "Emergency contact work number"
+              "label": "Emergency contact work number",
+              "validations": {
+                "required": {
+                  "value": true,
+                  "error": "Emergency contact work number is required"
+                }
+              }
             },
             "first-name": {
               "label": "Emergency Contact First Name",
@@ -756,7 +768,7 @@
   "title": "National Community Cultural Training Programme Registration 2025–2026",
   "formId": "youth-cultural-training-registration-2025",
   "createdAt": "2025-01-01T00:00:00Z",
-  "updatedAt": "2026-10-05T18:32:56.000Z",
+  "updatedAt": "2026-10-05T22:01:06.000Z",
   "processors": [
     {
       "type": "email",
