@@ -9,7 +9,7 @@
  * they are registered together at the bottom rather than scattered.
  */
 
-import { createHash } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import swagger from "@fastify/swagger";
@@ -52,11 +52,39 @@ export const EDITOR_READ = "no-cache";
 export interface AppOptions {
   db: Database;
   logger?: boolean;
+  /** Bearer token writes require. Defaults to `API_V2_WRITE_TOKEN`. */
+  writeToken?: string;
+  /** Without a token, refuse writes. Defaults to `NODE_ENV === "production"`. */
+  production?: boolean;
+}
+
+/**
+ * Does this request need the write token? Every write, plus the two reads
+ * that expose editor-only data: drafts, and a collection's record keys.
+ */
+function needsWriteToken(method: string, query: unknown): boolean {
+  if (!["GET", "HEAD", "OPTIONS"].includes(method)) return true;
+  const { drafts, keys } = (query ?? {}) as Record<string, unknown>;
+  return drafts === "true" || keys === "true";
+}
+
+/**
+ * Compare the presented bearer token in constant time. Both sides are hashed
+ * first so `timingSafeEqual` always sees equal lengths and the comparison
+ * leaks nothing about the token's length either.
+ */
+function bearerMatches(header: string | undefined, token: string): boolean {
+  const presented = header?.match(/^Bearer (.+)$/)?.[1];
+  if (!presented) return false;
+  const digest = (value: string) => createHash("sha256").update(value).digest();
+  return timingSafeEqual(digest(presented), digest(token));
 }
 
 export async function buildApp({
   db,
   logger = false,
+  writeToken = process.env.API_V2_WRITE_TOKEN || undefined,
+  production = process.env.NODE_ENV === "production",
 }: AppOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger });
   const store = new ApiStore(db);
@@ -102,8 +130,38 @@ export async function buildApp({
     origin: (origin, callback) =>
       callback(null, !origin || allowedOrigins.includes(origin)),
     methods: ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", IF_UPDATED_AT, "If-None-Match"],
+    allowedHeaders: [
+      "Authorization",
+      "Content-Type",
+      IF_UPDATED_AT,
+      "If-None-Match",
+    ],
     exposedHeaders: [IF_UPDATED_AT, "ETag"],
+  });
+
+  /*
+   * The interim write gate, until #2701's real auth lands. With
+   * `API_V2_WRITE_TOKEN` set, writes and editor-only reads need it as a bearer
+   * token. Without one they stay open on a laptop, as before — but in
+   * production they are refused outright, so a deploy that forgets the token
+   * fails closed rather than serving an open write API.
+   */
+  if (!writeToken && production) {
+    app.log.warn("API_V2_WRITE_TOKEN is not set: refusing every write");
+  }
+  app.addHook("onRequest", async (request, reply) => {
+    if (!needsWriteToken(request.method, request.query)) return;
+    if (!writeToken && !production) return;
+    if (
+      writeToken &&
+      bearerMatches(request.headers.authorization, writeToken)
+    ) {
+      return;
+    }
+    return reply.status(401).send({
+      error: "unauthorized",
+      message: "This request needs a valid write token.",
+    });
   });
 
   /*
