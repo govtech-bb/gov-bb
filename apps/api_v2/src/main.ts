@@ -10,6 +10,9 @@ import { migrate } from "./migrate";
 import { seed } from "./seed";
 
 const PORT = Number(process.env.PORT ?? "3020");
+// Loopback unless a deployment opts in (e.g. `HOST=0.0.0.0` in a container),
+// so a dev instance is never reachable from the rest of the network.
+const HOST = process.env.HOST ?? "localhost";
 
 async function main() {
   const pool = createPool();
@@ -32,8 +35,8 @@ async function main() {
   }
 
   const app = await buildApp({ db, logger: true });
-  await app.listen({ port: PORT, host: "0.0.0.0" });
-  console.log(`api_v2 listening on ${PORT}`);
+  await app.listen({ port: PORT, host: HOST });
+  console.log(`api_v2 listening on ${HOST}:${PORT}`);
 }
 
 main().catch((error) => {

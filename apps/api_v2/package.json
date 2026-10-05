@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "tsx watch src/main.ts",
+    "dev": "API_V2_OPEN_WRITES=true tsx watch src/main.ts",
     "build": "tsc -b",
     "start": "node dist/src/main.js",
     "test": "vitest run",

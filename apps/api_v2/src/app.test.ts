@@ -22,7 +22,7 @@ let store: ApiStore;
 beforeEach(async () => {
   ({ db, close } = await createTestDb());
   store = new ApiStore(db);
-  app = await buildApp({ db });
+  app = await buildApp({ db, openWrites: true });
   await app.ready();
 });
 
@@ -489,5 +489,136 @@ describe("CORS", () => {
     const created = await seedPage();
     const response = await app.inject({ url: `/pages/${created.id}` });
     expect(response.statusCode).toBe(200);
+  });
+});
+
+describe("write auth", () => {
+  const TOKEN = "s3cret-write-token";
+  let gated: FastifyInstance;
+
+  const build = async (options: {
+    writeToken?: string;
+    openWrites?: boolean;
+  }) => {
+    gated = await buildApp({ db, ...options });
+    await gated.ready();
+    return gated;
+  };
+
+  afterEach(async () => {
+    await gated?.close();
+  });
+
+  it("refuses a write without the token", async () => {
+    const api = await build({ writeToken: TOKEN });
+    const response = await api.inject({
+      method: "POST",
+      url: "/pages",
+      payload: aDocument(),
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({ error: "unauthorized" });
+  });
+
+  it("refuses a write with the wrong token", async () => {
+    const api = await build({ writeToken: TOKEN });
+    const created = await seedPage();
+    const response = await api.inject({
+      method: "DELETE",
+      url: `/pages/${created.id}`,
+      headers: { authorization: "Bearer not-the-token" },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(await store.get(created.id)).not.toBeNull();
+  });
+
+  it("accepts a write with the token", async () => {
+    const api = await build({ writeToken: TOKEN });
+    const created = await seedPage();
+    const response = await api.inject({
+      method: "DELETE",
+      url: `/pages/${created.id}`,
+      headers: { authorization: `Bearer ${TOKEN}` },
+    });
+
+    expect(response.statusCode).toBe(204);
+  });
+
+  it("gates draft and record-key reads but leaves public reads open", async () => {
+    const api = await build({ writeToken: TOKEN });
+    await seedPage();
+
+    expect((await api.inject({ url: "/pages" })).statusCode).toBe(200);
+    expect((await api.inject({ url: "/pages?drafts=true" })).statusCode).toBe(
+      401,
+    );
+    expect(
+      (await api.inject({ url: "/pages/by-url?url=/x&drafts=true" }))
+        .statusCode,
+    ).toBe(401);
+    expect(
+      (await api.inject({ url: "/collections/pharmacies/records?keys=true" }))
+        .statusCode,
+    ).toBe(401);
+    expect(
+      (
+        await api.inject({
+          url: "/pages?drafts=true",
+          headers: { authorization: `Bearer ${TOKEN}` },
+        })
+      ).statusCode,
+    ).toBe(200);
+  });
+
+  it("fails closed when no token is configured", async () => {
+    const api = await build({ openWrites: false });
+    const response = await api.inject({
+      method: "POST",
+      url: "/pages",
+      payload: aDocument(),
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("stays open when local development opts in", async () => {
+    const api = await build({ openWrites: true });
+    const response = await api.inject({
+      method: "POST",
+      url: "/pages",
+      payload: aDocument(),
+    });
+
+    expect(response.statusCode).toBe(201);
+  });
+
+  it("ignores the open-writes opt-in once a token is set", async () => {
+    const api = await build({ writeToken: TOKEN, openWrites: true });
+    const response = await api.inject({
+      method: "POST",
+      url: "/pages",
+      payload: aDocument(),
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("lets the editor send the token cross-origin", async () => {
+    const api = await build({ writeToken: TOKEN });
+    const response = await api.inject({
+      method: "OPTIONS",
+      url: "/pages/x",
+      headers: {
+        origin: "http://localhost:3010",
+        "access-control-request-method": "DELETE",
+        "access-control-request-headers": "authorization",
+      },
+    });
+
+    expect(
+      String(response.headers["access-control-allow-headers"]).toLowerCase(),
+    ).toContain("authorization");
   });
 });
