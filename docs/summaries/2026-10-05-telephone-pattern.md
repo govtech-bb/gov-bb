@@ -58,6 +58,24 @@ uses were three "Contact Number" overrides. Rather than rewrite those overrides
 to "Telephone number", we changed the default and removed them, the same as
 the other synonyms.
 
+## Review follow-up (Zainab)
+
+- **Errors have to follow labels.** A relabel isn't done until the field's
+  required error matches it. The error summary uses that message as its link
+  text, and the builder's `syncRequiredMessageToLabel` would have rewritten it.
+  Editing the JSON by hand skipped that step, so this PR fixes 54 errors.
+  `components/telephone` fields labelled "Telephone number" drop the override
+  completely. A bare `{ value: true }` would replace the whole rule (validations
+  merge one rule at a time in `applyFieldOverrides`) and fall back to "This
+  field is required".
+- **One number per box.** The `phone` rule accepts exactly one number, so the
+  7 labels and hints asking for "(landline and cell)", "(s)", "one or more" or
+  "at least one" were a trap. They now ask for one number, and only 2 hint
+  overrides are kept. An "add another" option is a separate follow-up because
+  it changes the submitted data.
+- **Drift guard.** `recipe-invariants.spec.ts` fails if a telephone hint
+  override contains a digit.
+
 ## What we almost got wrong
 
 The first pass rewrote each recipe with `JSON.stringify` and ran prettier
