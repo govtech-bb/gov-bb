@@ -8,7 +8,7 @@ export const ContactTelephone: TelPrimitive = {
   validations: {
     phone: {
       value: true,
-      error: "Please enter a valid phone number",
+      error: "Enter a valid telephone number",
     },
   },
 };

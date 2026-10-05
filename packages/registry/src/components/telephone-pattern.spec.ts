@@ -27,4 +27,20 @@ describe("telephone pattern", () => {
       label: "Telephone number",
     });
   });
+
+  it.each(TELEPHONE_REFS)('%s says "Enter a valid telephone number"', (ref) => {
+    expect(REGISTRY_COMPONENTS[ref]).toMatchObject({
+      validations: { phone: { error: "Enter a valid telephone number" } },
+    });
+  });
+
+  it.each(TELEPHONE_REFS)("%s names its label in any required error", (ref) => {
+    const { label, validations } = REGISTRY_COMPONENTS[ref] as {
+      label: string;
+      validations?: { required?: { error?: string } };
+    };
+    if (validations?.required) {
+      expect(validations.required.error).toBe(`${label} is required`);
+    }
+  });
 });
