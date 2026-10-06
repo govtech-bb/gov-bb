@@ -33,10 +33,11 @@ URL, Continue goes to `getReviewReturnStep`
 check-your-answers that is not completed, or whose visible fields no longer
 pass validation; otherwise check-your-answers itself.
 
-- **Validity is re-evaluated, not trusted from completion records.** The
-  renderer judges a step with `collectStepErrorCodes(getVisibleFields(step,
-  form), values)`, which is the same pure validator the analytics path uses,
-  filtered by evaluated visibility (ADR 0040). `form.validateField` can't be
+- **Validity is re-evaluated, not trusted from completion records.**
+  `stepPassesValidation` (`validation-builder.ts`) judges a step with
+  `collectStepErrorCodes(getVisibleFields(step, form), values)`, which is the
+  same pure validator the analytics path uses, filtered by evaluated
+  visibility (ADR 0040). `form.validateField` can't be
   used: TanStack only runs field validators for mounted fields.
 - **Repeatable steps are trusted on completion alone.** `getVisibleFields`
   can't evaluate a repeat instance's conditions off-screen; it reads a render
@@ -51,9 +52,13 @@ pass validation; otherwise check-your-answers itself.
   declaration, Continue carries on as normal even if a stray `returnTo` is
   in the URL. Otherwise a submit, which clears completion records first,
   would send the applicant to an empty step 1.
-- **The step just completed isn't re-judged.** It has just passed the
-  on-screen validators. A second opinion that disagreed would bounce the
-  applicant back onto it every time they pressed Continue.
+- **Validity is only judged ahead of the step just completed.** The steps up
+  to it have passed the on-screen validators. Re-judging them could bounce the
+  applicant between two steps forever if the off-screen check ever disagreed.
+  Every validity stop moves forward, and every completion stop is completed on
+  Continue, so the journey always ends at the review. Completion is still
+  checked everywhere. The cost is that an earlier step made invalid by a later
+  answer (a backward cross-step condition) is left to the API's 422.
 - **Removing a repeat instance forgets its completion.** Instance ids are
   reused by count, so a stale record would make a re-added, empty instance
   look done.
