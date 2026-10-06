@@ -123,7 +123,7 @@ vi.mock("@forms/lib", () => ({
     onBlur: vi.fn(),
   })),
   collectStepErrorCodes: vi.fn(() => []),
-  getVisibleFields: vi.fn(() => []),
+  stepPassesValidation: vi.fn(() => true),
 }));
 
 import FormRenderer from "./form-renderer";
@@ -1640,42 +1640,14 @@ describe("FormRenderer — returning from a Change (#2812)", () => {
     expect(renderAt(undefined).returnToReview).toBeFalsy();
   });
 
-  it("judges a step by its visible fields against the live answers", () => {
-    const { getVisibleFields, collectStepErrorCodes } = vi.mocked(formsLibMock);
-    const visible = [makePlainField("s2_name", "name", "s2")];
-    getVisibleFields.mockReturnValue(visible as any);
-    collectStepErrorCodes.mockReturnValue([]);
-    mockForm.state.values = { s2_name: "Ada" };
+  it("judges a step with stepPassesValidation against the live form", () => {
+    // The visibility and repeatable rules are tested against the real
+    // library in validation-builder.spec.ts; here, only the wiring.
+    const { stepPassesValidation } = vi.mocked(formsLibMock);
+    stepPassesValidation.mockReturnValue(false);
     const target = makeStep("s2");
 
-    expect(renderAt(true).isStepValid(target)).toBe(true);
-    // Hidden fields are filtered out first: a hidden required field must not
-    // make its step look unfinished.
-    expect(getVisibleFields).toHaveBeenCalledWith(target, mockForm);
-    expect(collectStepErrorCodes).toHaveBeenCalledWith(visible, {
-      s2_name: "Ada",
-    });
-  });
-
-  it("reports a step with a failing visible field as not valid", () => {
-    const { collectStepErrorCodes } = vi.mocked(formsLibMock);
-    collectStepErrorCodes.mockReturnValue([
-      { fieldId: "name", codes: ["required"] },
-    ]);
-    expect(renderAt(true).isStepValid(makeStep("s2"))).toBe(false);
-  });
-
-  it("trusts a repeatable step's completion instead of re-validating it", () => {
-    // getVisibleFields can't evaluate a repeat instance's conditions (it reads
-    // render flags, stale off-screen), so a hidden required field would look
-    // empty and wrongly pull the applicant back to a finished step.
-    const { getVisibleFields, collectStepErrorCodes } = vi.mocked(formsLibMock);
-    collectStepErrorCodes.mockReturnValue([
-      { fieldId: "fund-source-other", codes: ["required"] },
-    ]);
-    const repeatInstance = makeStep("s5~1", [], [{ type: "repeatable" }]);
-
-    expect(renderAt(true).isStepValid(repeatInstance)).toBe(true);
-    expect(getVisibleFields).not.toHaveBeenCalled();
+    expect(renderAt(true).isStepValid(target)).toBe(false);
+    expect(stepPassesValidation).toHaveBeenCalledWith(target, mockForm);
   });
 });

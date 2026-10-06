@@ -30,7 +30,7 @@ import {
   getInstanceMarker,
   buildFieldValidationProperties,
   collectStepErrorCodes,
-  getVisibleFields,
+  stepPassesValidation,
 } from "@forms/lib";
 import { trackEvent } from "../lib/analytics";
 import { formCategory } from "../lib/form-category";
@@ -274,20 +274,9 @@ export default function FormRenderer({
   draftToken,
   returnToReview,
 }: FormRendererProps) {
-  // Whether a step the applicant is NOT on still passes validation, for the
-  // return-from-Change path (#2812). form.validateField only runs validators on
-  // mounted fields, so this checks the step's visible fields directly — the
-  // visibility filter matters: a hidden required field must not count.
-  // Repeatable steps are trusted on completion alone: getVisibleFields can't
-  // evaluate their per-instance conditions off-screen, so a hidden required
-  // field would look empty and bounce the applicant to a finished step.
+  // Judges steps the applicant isn't on, for the return from a Change (#2812).
   const isStepValid = React.useCallback(
-    (step: ClientFormStep) =>
-      step.behaviours?.some((b) => b.type === "repeatable") ||
-      collectStepErrorCodes(
-        getVisibleFields(step, form),
-        form.state.values as Record<string, unknown>,
-      ).length === 0,
+    (step: ClientFormStep) => stepPassesValidation(step, form),
     [form],
   );
 

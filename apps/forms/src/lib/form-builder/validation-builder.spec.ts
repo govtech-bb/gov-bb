@@ -10,14 +10,20 @@
  *  - buildFieldValidationProperties: show-hide / no-validation pass-through,
  *    onDynamic delegating to the shared validator (structured date errors),
  *    onChangeListenTo from behaviours, and cross-field rule resolution.
+ *  - stepPassesValidation: off-screen step check for the return from a Change
  */
 
 import {
   buildValidation,
   buildFieldValidationProperties,
+  stepPassesValidation,
 } from "./validation-builder";
-import type { ClientServiceContract, ClientPrimitive } from "@forms/types";
-import type { AnyFieldApi } from "@tanstack/react-form";
+import type {
+  ClientFormStep,
+  ClientServiceContract,
+  ClientPrimitive,
+} from "@forms/types";
+import type { AnyFieldApi, AnyFormApi } from "@tanstack/react-form";
 
 // ---------------------------------------------------------------------------
 // Minimal fixture helpers
@@ -839,5 +845,75 @@ describe("buildFieldValidationProperties", () => {
       // independently of instance 1's value.
       expect(onDynamic!({ value: "", fieldApi })).toBeUndefined();
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// stepPassesValidation (#2812) — real visibility + validation, no mocks
+// ---------------------------------------------------------------------------
+
+describe("stepPassesValidation", () => {
+  const required = { required: { value: true, error: "This is required" } };
+  const shownWhenStep1HasJob = {
+    type: "fieldConditionalOn" as const,
+    targetStepId: "step1",
+    targetFieldId: "hasJob",
+    operator: "equal" as const,
+    value: "yes",
+  };
+
+  function makeFormApi(values: Record<string, unknown>): AnyFormApi {
+    return {
+      state: { values },
+      getFieldValue: (id: string) => values[id],
+    } as unknown as AnyFormApi;
+  }
+
+  function step2(
+    behaviours: ClientFormStep["behaviours"] = [],
+  ): ClientFormStep {
+    return {
+      stepId: "step2",
+      title: "Step 2",
+      behaviours,
+      fields: [
+        makeField("employer", "step2", {
+          validations: required,
+          behaviours: [shownWhenStep1HasJob],
+        }),
+      ],
+    };
+  }
+
+  it("passes when a visible required field is answered", () => {
+    expect(
+      stepPassesValidation(
+        step2(),
+        makeFormApi({ step1_hasJob: "yes", step2_employer: "Acme" }),
+      ),
+    ).toBe(true);
+  });
+
+  it("fails when a cross-step condition makes an empty field required", () => {
+    // The case completion records can't see: step2 was completed while
+    // hasJob was "no", then a Change on step1 switched it to "yes".
+    expect(
+      stepPassesValidation(step2(), makeFormApi({ step1_hasJob: "yes" })),
+    ).toBe(false);
+  });
+
+  it("ignores a required field its condition hides", () => {
+    expect(
+      stepPassesValidation(step2(), makeFormApi({ step1_hasJob: "no" })),
+    ).toBe(true);
+  });
+
+  it("trusts a repeatable step without judging it", () => {
+    // Off-screen, a repeat instance's visibility can't be evaluated
+    // (getVisibleFields reads render flags for repeatables) — see #2932.
+    const repeatable = step2([{ type: "repeatable" } as never]);
+    expect(
+      stepPassesValidation(repeatable, makeFormApi({ step1_hasJob: "yes" })),
+    ).toBe(true);
   });
 });
