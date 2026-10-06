@@ -1,80 +1,80 @@
 ---
-title: "Apply to use state land"
-description: "Use this service to apply for permission to use land owned by the Government of Barbados for a specific purpose over a set period, such as an event, a project, or a community use."
+title: "Apply to use land owned by the Government of Barbados"
+description: "Use this service to ask to use land owned by the Government of Barbados, managed by the Ministry of Housing, Lands and Maintenance."
 stage: "alpha"
 featured: false
 publish_date: 2026-06-04
 category: housing
 visibility: preview
 form_id: mohlm-application-use-state-land
+keywords:
+  - state land
 ---
 
-Use this service to apply for permission to use land owned by the Government of Barbados for a specific purpose over a set period, such as an event, a project, or a community use.
+Use this service to ask to use land owned by the Government of Barbados.
+
+This land is managed by the Ministry of Housing, Lands and Maintenance.
 
 ## Who can apply
 
-You can apply as an individual, a business, or on behalf of an organisation.
+You can apply for yourself or for an organisation.
 
-<!-- MDA NOTE: FAQ confirms individuals, businesses and organisations can apply. Confirm what types of use are normally approved (e.g. events, community use, farming, grazing, commercial activity) and what is normally refused. Confirm whether non-Barbadians or overseas organisations can apply. -->
+You can apply to use government land for things like:
+
+- fairs and expos
+- garage sales
+- food trucks
+
+The Ministry decides if you can use the land and for how long.
 
 ## Before you start
 
 You will need:
 
-- your National Registration Number (NRN)
-- the name of the organisation, if you are applying for one
-- your contact details: phone, email, and address
-- the **location of the land** you want to use, including the parish
-- the GPS coordinates of the land, if you have them, or a clear description of where it is
-- a **photo of the land**, if you have one
-- a clear description of **what you want to do** on the land, including the purpose and any structures or installations you plan to put there
-- the **start and end dates** you need the land for, and how long that is in days, months, or years
+- the location of the land you want to use
+- details of what you want to use the land for
+- when and for how long you plan to use the land
+- GPS coordinates for the land, if you have them
 
-You can upload the photo of the land as part of the form.
-
-<!-- MDA NOTE: FAQ confirms GPS coordinates and a property photo are optional ("if available"). Confirm whether any other supporting documents (site plans, public liability insurance, organisation registration) are required. -->
-
-## When to apply
-
-Apply well in advance of the date you need the land.
-
-How long it takes to get a decision depends on how complex your request is and the checks the Ministry needs to do.
-
-<!-- MDA NOTE: FAQ confirms processing time varies with complexity. Confirm a typical range if one exists, and any minimum notice period before the requested start date. -->
+GPS coordinates are numbers that show the exact location of a place. You can usually find them using a maps app on your phone.
 
 ## Complete the form
 
-There are 2 ways to apply to use state land. You can:
+There are 2 ways to apply. You can:
 
-1. ### Apply online
+1. **Apply online**
 
-   <!-- MDA NOTE: Confirm how long the form takes to complete, then state it here as "Allow about X minutes to complete the form." -->
-
-   You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.
+   Allow about 5 minutes to complete the form.
 
    <a data-start-link>Start now</a>
 
-2. ### Apply by email or by hand
+2. **Apply using a paper form**
 
-   Contact the Ministry of Housing, Lands and Maintenance for the email address and office location.
+   You can get a paper form from:
+
+   National Housing Corporation  
+   "The Garden"  
+   Country Road  
+   St. Michael
+
+   Complete the form by hand and return it to the National Housing Corporation at the address above.
 
 ## Cost
 
-There is no fee to apply.
+There is no cost to apply.
 
-<!-- MDA NOTE: FAQ confirms no application fee currently applies. Confirm whether there is any fee to use the land, or a security deposit, once permission is granted. -->
+If your application is approved, you may have to pay to use the land. The Ministry will tell you if there is a fee and how much it is.
 
 ## What happens after you apply
 
-You will get a confirmation email at the address you gave us.
+After you submit your application:
 
-The Ministry of Housing, Lands and Maintenance will review your application and contact you using the details you gave.
+- you will get a reference number and confirmation by email
+- the Ministry will review your application and may contact you if they need more information
+- how long it takes depends on what you want to use the land for
+- some requests may need approval from other government departments before the Ministry can decide
 
-Your application may be turned down if your information is incomplete, the use you asked for is not approved, or the land is not available.
-
-If you are given permission and later need more time, you can ask the Ministry to extend your usage period.
-
-<!-- MDA NOTE: FAQ confirms the Ministry contacts applicants and that applications can be denied (incomplete info, use not approved, land unavailable) and extended on request. Confirm what an approved applicant receives — a permission letter, a permit, conditions of use, a site visit, or an insurance requirement. -->
+Submitting an application does not mean you have been given permission to use the land.
 
 ## Contact
 
