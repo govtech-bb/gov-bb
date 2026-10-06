@@ -1,6 +1,7 @@
 import {
   columnFilteringFeature,
   columnVisibilityFeature,
+  constructFilterFn,
   createFilteredRowModel,
   createPaginatedRowModel,
   createSortedRowModel,
@@ -15,7 +16,23 @@ import {
 } from "@tanstack/react-table";
 import { DateCell, TextCell } from "./cell-components";
 import { SortButton } from "./header-components";
-import { DataTable, Pagination, Toolbar } from "./table-components";
+import {
+  ColumnsMenu,
+  DataTable,
+  FilterMenu,
+  FilterTabs,
+  Pagination,
+  Search,
+} from "./table-components";
+
+/** Per-column presentation. A secondary column folds away when the table is narrow. */
+export type ColumnMeta = { secondary?: boolean };
+
+/** Keeps rows whose value is one of the chosen values; FilterTabs and FilterMenu set it. */
+const oneOf = constructFilterFn({
+  filter: (value: string, chosen: string[]) => chosen.includes(value),
+  autoRemove: (chosen?: string[]) => !chosen?.length,
+});
 
 /**
  * Every list in the editor shares these features and components, after TanStack's composable-tables example.
@@ -35,13 +52,15 @@ export const {
     columnFilteringFeature,
     globalFilteringFeature,
     filteredRowModel: createFilteredRowModel(),
-    filterFns: { includesString: filterFn_includesString },
+    filterFns: { includesString: filterFn_includesString, oneOf },
     rowPaginationFeature,
     paginatedRowModel: createPaginatedRowModel(),
     columnVisibilityFeature,
+    // SAFETY: A type-only slot; TanStack reads its type, never its value.
+    columnMeta: {} as ColumnMeta,
   }),
   globalFilterFn: "includesString",
-  tableComponents: { Toolbar, DataTable, Pagination },
+  tableComponents: { Search, FilterTabs, FilterMenu, ColumnsMenu, DataTable, Pagination },
   cellComponents: { TextCell, DateCell },
   headerComponents: { SortButton },
 });

@@ -37,6 +37,7 @@ test("lists API services sorted by title, a page at a time, linked to landing", 
   expect(html).toContain("30 services");
   expect(html).toContain('href="https://alpha.gov.bb/business-trade/service-1"');
   expect(html).toContain("Preview link only");
-  expect(html).toContain("Has start page");
+  expect(html).toContain("with start");
+  expect(html).toContain("Draft link only");
   expect(html).toContain('aria-sort="ascending"');
 });

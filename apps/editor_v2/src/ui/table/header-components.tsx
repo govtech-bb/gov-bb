@@ -2,6 +2,7 @@ import { CaretDown, CaretUp, CaretUpDown } from "@phosphor-icons/react";
 import { cn } from "../../cn";
 import { useHeaderContext } from "./hook";
 
+/** The column's label as a sort toggle; the unsorted arrows stay faint so the sorted column leads. */
 export function SortButton() {
   const header = useHeaderContext();
   const sorted = header.column.getIsSorted();
@@ -12,11 +13,17 @@ export function SortButton() {
   return (
     <button
       type="button"
-      className="-mx-1 inline-flex cursor-pointer items-center gap-1 rounded-sm px-1 py-0.5 font-semibold hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+      className={cn(
+        "group/sort -mx-1.5 inline-flex min-h-8 cursor-pointer items-center gap-1 rounded-sm px-1.5 transition-colors duration-150 hover:bg-tint hover:text-ink",
+        sorted && "text-ink",
+      )}
       onClick={header.column.getToggleSortingHandler()}
     >
       <header.FlexRender />
-      <Icon aria-hidden="true" className={cn("size-3.5", !sorted && "text-subtle")} />
+      <Icon
+        aria-hidden="true"
+        className={cn("size-3.5", !sorted && "text-grey-60 group-hover/sort:text-ink")}
+      />
     </button>
   );
 }
