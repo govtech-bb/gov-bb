@@ -1,0 +1,1306 @@
+{
+  "schemaVersion": 2,
+  "id": "get-birth-certificate",
+  "title": "Get a copy of a birth certificate",
+  "description": "Apply for a certified copy of a birth certificate.",
+  "mode": "application",
+  "locale": "en-BB",
+  "timeZone": "America/Barbados",
+  "settings": {
+    "visibility": "draft",
+    "hiddenAnswers": "retain",
+    "notifications": {
+      "department": {
+        "enabled": true,
+        "recipient": {
+          "context": "departmentEmail"
+        }
+      }
+    }
+  },
+  "blocks": [
+    {
+      "id": "page-applicant-details",
+      "type": "page",
+      "role": "questions",
+      "title": "Tell us about yourself"
+    },
+    {
+      "id": "applicant-title",
+      "type": "question",
+      "kind": "choice",
+      "key": "applicant-title",
+      "label": "Title",
+      "options": [
+        {
+          "id": "option-1",
+          "label": "Mr",
+          "value": "mr"
+        },
+        {
+          "id": "option-2",
+          "label": "Miss",
+          "value": "miss"
+        },
+        {
+          "id": "option-3",
+          "label": "Ms",
+          "value": "ms"
+        },
+        {
+          "id": "option-4",
+          "label": "Mrs",
+          "value": "mrs"
+        },
+        {
+          "id": "option-5",
+          "label": "Dr",
+          "value": "dr"
+        }
+      ],
+      "config": {
+        "selection": "single",
+        "presentation": "dropdown",
+        "width": "short"
+      },
+      "required": {
+        "value": true,
+        "message": "Title is required"
+      }
+    },
+    {
+      "id": "applicant-first-name",
+      "type": "question",
+      "kind": "text",
+      "key": "applicant-first-name",
+      "label": "First name",
+      "required": {
+        "value": true,
+        "message": "First name is required"
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "First name must be at least 2 characters",
+          "value": 2
+        },
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "First name must contain only letters, spaces, hyphens, apostrophes, or periods",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u"
+        }
+      ]
+    },
+    {
+      "id": "applicant-middle-name",
+      "type": "question",
+      "kind": "text",
+      "key": "applicant-middle-name",
+      "label": "Middle name",
+      "hint": "Provide only if known",
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Middle name must be at least 2 characters",
+          "value": 2
+        },
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "Middle name must contain only letters, spaces, hyphens, apostrophes, or periods",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u"
+        }
+      ]
+    },
+    {
+      "id": "applicant-last-name",
+      "type": "question",
+      "kind": "text",
+      "key": "applicant-last-name",
+      "label": "Last name",
+      "required": {
+        "value": true,
+        "message": "Last name is required"
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Last name must be at least 2 characters",
+          "value": 2
+        },
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "Last name must contain only letters, spaces, hyphens, apostrophes, or periods",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u"
+        }
+      ]
+    },
+    {
+      "id": "applicant-address-1",
+      "type": "question",
+      "kind": "text",
+      "key": "applicant-address-1",
+      "label": "Address Line 1",
+      "required": {
+        "value": true,
+        "message": "Address line 1 is required"
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Address must be at least 5 characters",
+          "value": 5
+        }
+      ]
+    },
+    {
+      "id": "applicant-address-2",
+      "type": "question",
+      "kind": "text",
+      "key": "applicant-address-2",
+      "label": "Address Line 2",
+      "required": {
+        "value": false,
+        "message": ""
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Address must be at least 5 characters",
+          "value": 5
+        }
+      ]
+    },
+    {
+      "id": "applicant-parish",
+      "type": "question",
+      "kind": "choice",
+      "key": "applicant-parish",
+      "label": "Parish",
+      "options": [
+        {
+          "id": "option-1",
+          "label": "Christ Church",
+          "value": "christ-church"
+        },
+        {
+          "id": "option-2",
+          "label": "St. Andrew",
+          "value": "st-andrew"
+        },
+        {
+          "id": "option-3",
+          "label": "St. George",
+          "value": "st-george"
+        },
+        {
+          "id": "option-4",
+          "label": "St. James",
+          "value": "st-james"
+        },
+        {
+          "id": "option-5",
+          "label": "St. John",
+          "value": "st-john"
+        },
+        {
+          "id": "option-6",
+          "label": "St. Joseph",
+          "value": "st-joseph"
+        },
+        {
+          "id": "option-7",
+          "label": "St. Lucy",
+          "value": "st-lucy"
+        },
+        {
+          "id": "option-8",
+          "label": "St. Michael",
+          "value": "st-michael"
+        },
+        {
+          "id": "option-9",
+          "label": "St. Peter",
+          "value": "st-peter"
+        },
+        {
+          "id": "option-10",
+          "label": "St. Philip",
+          "value": "st-philip"
+        },
+        {
+          "id": "option-11",
+          "label": "St. Thomas",
+          "value": "st-thomas"
+        }
+      ],
+      "config": {
+        "selection": "single",
+        "presentation": "dropdown",
+        "width": "long"
+      },
+      "required": {
+        "value": true,
+        "message": "Parish is required"
+      }
+    },
+    {
+      "id": "applicant-postcode",
+      "type": "question",
+      "kind": "text",
+      "key": "applicant-postcode",
+      "label": "Postcode",
+      "hint": "For example, BB17004",
+      "config": {
+        "width": "short"
+      },
+      "validation": [
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "Enter a valid postcode (for example, BB17004)",
+          "pattern": "^[Bb]{2} ?\\d{5}$",
+          "flags": ""
+        }
+      ]
+    },
+    {
+      "id": "applicant-nid",
+      "type": "question",
+      "kind": "text",
+      "key": "applicant-nid",
+      "label": "National Identification (ID) Number",
+      "config": {
+        "mask": "999999-9999",
+        "width": "medium"
+      },
+      "required": {
+        "value": true,
+        "message": "ID Number is required"
+      },
+      "validation": [
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "Enter a valid National ID number (for example, 850101-0001)",
+          "pattern": "^\\d{6}-\\d{4}$",
+          "flags": ""
+        }
+      ]
+    },
+    {
+      "id": "passport-toggle",
+      "type": "question",
+      "kind": "boolean",
+      "key": "passport-toggle",
+      "label": "Use passport number instead",
+      "hint": "If you don't have a National ID number, you can use your passport number instead.",
+      "default": false,
+      "submit": false,
+      "review": false
+    },
+    {
+      "id": "applicant-passport-number",
+      "type": "question",
+      "kind": "text",
+      "key": "applicant-passport-number",
+      "label": "Passport Number",
+      "config": {
+        "width": "short"
+      },
+      "required": {
+        "value": true,
+        "message": "Passport number is required"
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Passport number must be at least 6 characters",
+          "value": 6
+        }
+      ],
+      "visible": false
+    },
+    {
+      "id": "applicant-email",
+      "type": "question",
+      "kind": "email",
+      "key": "applicant-email",
+      "label": "Email address",
+      "required": {
+        "value": true,
+        "message": "Email address is required"
+      },
+      "validation": [
+        {
+          "id": "email",
+          "type": "email",
+          "message": "Please enter a valid email address"
+        }
+      ]
+    },
+    {
+      "id": "applicant-telephone",
+      "type": "question",
+      "kind": "phone",
+      "key": "applicant-telephone",
+      "label": "Telephone number",
+      "hint": "For example, 421-1234 for Barbados or +1 876 210 1234 for numbers outside Barbados",
+      "required": {
+        "value": true,
+        "message": "Telephone number is required"
+      },
+      "validation": [
+        {
+          "id": "phone",
+          "type": "phone",
+          "message": "Please enter a valid phone number"
+        }
+      ]
+    },
+    {
+      "id": "applicant-details-logic",
+      "type": "logic",
+      "rules": [
+        {
+          "id": "applicant-nid-optionalIf-1",
+          "when": {
+            "op": "eq",
+            "left": {
+              "answer": "passport-toggle"
+            },
+            "right": true
+          },
+          "actions": [
+            {
+              "type": "setRequired",
+              "target": "applicant-nid",
+              "value": false
+            }
+          ]
+        },
+        {
+          "id": "applicant-passport-number-fieldConditionalOn-1",
+          "when": {
+            "op": "eq",
+            "left": {
+              "answer": "passport-toggle"
+            },
+            "right": true
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "applicant-passport-number"
+              ],
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "page-applying-for-yourself",
+      "type": "page",
+      "role": "questions",
+      "title": "Are you applying for your own birth certificate?"
+    },
+    {
+      "id": "applying-for-yourself",
+      "type": "question",
+      "kind": "choice",
+      "key": "applying-for-yourself",
+      "label": "Are you applying for your own birth certificate?",
+      "options": [
+        {
+          "id": "option-1",
+          "label": "Yes - the certificate is for me",
+          "value": "yes"
+        },
+        {
+          "id": "option-2",
+          "label": "No - the certificate is for someone else",
+          "value": "no"
+        }
+      ],
+      "parts": {
+        "label": {
+          "visible": false
+        }
+      },
+      "config": {
+        "selection": "single",
+        "presentation": "radio"
+      },
+      "required": {
+        "value": true,
+        "message": "Select whether you are applying for your own birth certificate"
+      }
+    },
+    {
+      "id": "page-relationship-to-person",
+      "type": "page",
+      "role": "questions",
+      "title": "What is your relationship to the person?",
+      "visible": false
+    },
+    {
+      "id": "relationship-to-person",
+      "type": "question",
+      "kind": "choice",
+      "key": "relationship-to-person",
+      "label": "What is your relationship to the person?",
+      "options": [
+        {
+          "id": "option-1",
+          "label": "Spouse",
+          "value": "spouse"
+        },
+        {
+          "id": "option-2",
+          "label": "Parent",
+          "value": "parent"
+        },
+        {
+          "id": "option-3",
+          "label": "Child",
+          "value": "child"
+        },
+        {
+          "id": "option-4",
+          "label": "Sibling",
+          "value": "sibling"
+        },
+        {
+          "id": "option-5",
+          "label": "Grandparent",
+          "value": "grandparent"
+        },
+        {
+          "id": "option-6",
+          "label": "Grandchild",
+          "value": "grandchild"
+        },
+        {
+          "id": "option-7",
+          "label": "Friend",
+          "value": "friend"
+        },
+        {
+          "id": "option-8",
+          "label": "Colleague",
+          "value": "colleague"
+        },
+        {
+          "id": "option-9",
+          "label": "Other",
+          "value": "other"
+        }
+      ],
+      "config": {
+        "selection": "single",
+        "presentation": "dropdown"
+      },
+      "required": {
+        "value": true,
+        "message": "Relationship is required"
+      }
+    },
+    {
+      "id": "relationship-other-description",
+      "type": "question",
+      "kind": "text",
+      "key": "relationship-other-description",
+      "label": "Please describe your relationship",
+      "hint": "For example, nephew, researcher, historian, or authorised representative.",
+      "required": {
+        "value": true,
+        "message": "Please describe your relationship"
+      },
+      "visible": false
+    },
+    {
+      "id": "relationship-to-person-logic",
+      "type": "logic",
+      "rules": [
+        {
+          "id": "show-page",
+          "when": {
+            "op": "eq",
+            "left": {
+              "answer": "applying-for-yourself"
+            },
+            "right": "no"
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "page-relationship-to-person"
+              ],
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "relationship-other-description-fieldConditionalOn-1",
+          "when": {
+            "op": "eq",
+            "left": {
+              "answer": "relationship-to-person"
+            },
+            "right": "other"
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "relationship-other-description"
+              ],
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "page-reason-for-certificate",
+      "type": "page",
+      "role": "questions",
+      "title": "Tell us why you are ordering a birth certificate"
+    },
+    {
+      "id": "reason-for-ordering",
+      "type": "question",
+      "kind": "long-text",
+      "key": "reason-for-ordering",
+      "label": "Reason",
+      "required": {
+        "value": true,
+        "message": "Reason is required"
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Please provide at least 5 characters",
+          "value": 5
+        }
+      ]
+    },
+    {
+      "id": "page-person-deceased",
+      "type": "page",
+      "role": "questions",
+      "title": "Is the person deceased?",
+      "visible": false
+    },
+    {
+      "id": "person-is-deceased",
+      "type": "question",
+      "kind": "choice",
+      "key": "person-is-deceased",
+      "label": "Is the person deceased?",
+      "options": [
+        {
+          "id": "option-1",
+          "label": "Yes",
+          "value": "yes"
+        },
+        {
+          "id": "option-2",
+          "label": "No",
+          "value": "no"
+        }
+      ],
+      "parts": {
+        "label": {
+          "visible": false
+        }
+      },
+      "config": {
+        "selection": "single",
+        "presentation": "radio"
+      },
+      "required": {
+        "value": true,
+        "message": "Select whether the person is deceased"
+      }
+    },
+    {
+      "id": "person-death-date",
+      "type": "question",
+      "kind": "date",
+      "key": "person-death-date",
+      "label": "Date of death",
+      "hint": "For example, 15 3 2023",
+      "validation": [
+        {
+          "id": "pastOrToday",
+          "type": "dateBefore",
+          "message": "Enter a date on or before today",
+          "value": {
+            "context": "today"
+          },
+          "inclusive": true
+        }
+      ],
+      "visible": false
+    },
+    {
+      "id": "person-deceased-logic",
+      "type": "logic",
+      "rules": [
+        {
+          "id": "show-page",
+          "when": {
+            "op": "eq",
+            "left": {
+              "answer": "applying-for-yourself"
+            },
+            "right": "no"
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "page-person-deceased"
+              ],
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "person-death-date-fieldConditionalOn-1",
+          "when": {
+            "op": "eq",
+            "left": {
+              "answer": "person-is-deceased"
+            },
+            "right": "yes"
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "person-death-date"
+              ],
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "page-person-details",
+      "type": "page",
+      "role": "questions",
+      "title": "Tell us about the person you are applying for",
+      "visible": false
+    },
+    {
+      "id": "person-first-name",
+      "type": "question",
+      "kind": "text",
+      "key": "person-first-name",
+      "label": "First name",
+      "required": {
+        "value": true,
+        "message": "First name is required"
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "First name must be at least 2 characters",
+          "value": 2
+        },
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "First name must contain only letters, spaces, hyphens, apostrophes, or periods",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u"
+        }
+      ]
+    },
+    {
+      "id": "person-middle-name",
+      "type": "question",
+      "kind": "text",
+      "key": "person-middle-name",
+      "label": "Middle name",
+      "hint": "Provide only if known",
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Middle name must be at least 2 characters",
+          "value": 2
+        },
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "Middle name must contain only letters, spaces, hyphens, apostrophes, or periods",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u"
+        }
+      ]
+    },
+    {
+      "id": "person-last-name",
+      "type": "question",
+      "kind": "text",
+      "key": "person-last-name",
+      "label": "Last name",
+      "required": {
+        "value": true,
+        "message": "Last name is required"
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Last name must be at least 2 characters",
+          "value": 2
+        },
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "Last name must contain only letters, spaces, hyphens, apostrophes, or periods",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u"
+        }
+      ]
+    },
+    {
+      "id": "person-has-nis",
+      "type": "question",
+      "kind": "choice",
+      "key": "person-has-nis",
+      "label": "Do they have a National Insurance (NIS) number?",
+      "options": [
+        {
+          "id": "option-1",
+          "label": "Yes",
+          "value": "yes"
+        },
+        {
+          "id": "option-2",
+          "label": "No",
+          "value": "no"
+        }
+      ],
+      "config": {
+        "selection": "single",
+        "presentation": "radio"
+      },
+      "required": {
+        "value": true,
+        "message": "Select whether they have a National Insurance (NIS) number"
+      }
+    },
+    {
+      "id": "person-nis-number",
+      "type": "question",
+      "kind": "text",
+      "key": "person-nis-number",
+      "label": "National Insurance number",
+      "config": {
+        "mask": "999999",
+        "width": "short"
+      },
+      "required": {
+        "value": true,
+        "message": "NIS number is required"
+      },
+      "validation": [
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "Enter a valid National Insurance number (for example, 123456)",
+          "pattern": "^\\d{6}$",
+          "flags": ""
+        }
+      ],
+      "visible": false
+    },
+    {
+      "id": "person-details-logic",
+      "type": "logic",
+      "rules": [
+        {
+          "id": "show-page",
+          "when": {
+            "op": "eq",
+            "left": {
+              "answer": "applying-for-yourself"
+            },
+            "right": "no"
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "page-person-details"
+              ],
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "person-nis-number-fieldConditionalOn-1",
+          "when": {
+            "op": "eq",
+            "left": {
+              "answer": "person-has-nis"
+            },
+            "right": "yes"
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "person-nis-number"
+              ],
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "page-birth-details",
+      "type": "page",
+      "role": "questions",
+      "title": "Provide the person's birth details",
+      "description": "Answer as accurately as possible"
+    },
+    {
+      "id": "birth-date-of-birth",
+      "type": "question",
+      "kind": "date",
+      "key": "birth-date-of-birth",
+      "label": "Date of birth",
+      "hint": "For example, 30 12 1986",
+      "required": {
+        "value": true,
+        "message": "Date of birth is required"
+      },
+      "validation": [
+        {
+          "id": "past",
+          "type": "dateBefore",
+          "message": "Date of birth must be in the past",
+          "value": {
+            "context": "today"
+          },
+          "inclusive": false
+        }
+      ]
+    },
+    {
+      "id": "place-of-birth",
+      "type": "question",
+      "kind": "text",
+      "key": "place-of-birth",
+      "label": "Place of birth",
+      "required": {
+        "value": true,
+        "message": "Place of birth is required"
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Must be at least 2 characters",
+          "value": 2
+        }
+      ]
+    },
+    {
+      "id": "place-of-baptism",
+      "type": "question",
+      "kind": "text",
+      "key": "place-of-baptism",
+      "label": "Place of baptism",
+      "required": {
+        "value": false,
+        "message": ""
+      }
+    },
+    {
+      "id": "birth-details-logic",
+      "type": "logic",
+      "rules": [
+        {
+          "id": "title-1",
+          "when": {
+            "op": "eq",
+            "left": {
+              "answer": "applying-for-yourself"
+            },
+            "right": "yes"
+          },
+          "actions": [
+            {
+              "type": "setTitle",
+              "target": "page-birth-details",
+              "value": "Provide your birth details"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "page-parents",
+      "type": "page",
+      "role": "questions",
+      "title": "Tell us their parents' names"
+    },
+    {
+      "id": "father-first-name",
+      "type": "question",
+      "kind": "text",
+      "key": "father-first-name",
+      "label": "Father's first name",
+      "required": {
+        "value": true,
+        "message": "First name is required"
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "First name must be at least 2 characters",
+          "value": 2
+        },
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "First name must contain only letters, spaces, hyphens, apostrophes, or periods",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u"
+        }
+      ]
+    },
+    {
+      "id": "father-middle-name",
+      "type": "question",
+      "kind": "text",
+      "key": "father-middle-name",
+      "label": "Father's middle name",
+      "hint": "Provide only if known",
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Middle name must be at least 2 characters",
+          "value": 2
+        },
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "Middle name must contain only letters, spaces, hyphens, apostrophes, or periods",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u"
+        }
+      ]
+    },
+    {
+      "id": "father-last-name",
+      "type": "question",
+      "kind": "text",
+      "key": "father-last-name",
+      "label": "Father's last name",
+      "required": {
+        "value": true,
+        "message": "Last name is required"
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Last name must be at least 2 characters",
+          "value": 2
+        },
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "Last name must contain only letters, spaces, hyphens, apostrophes, or periods",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u"
+        }
+      ]
+    },
+    {
+      "id": "mother-first-name",
+      "type": "question",
+      "kind": "text",
+      "key": "mother-first-name",
+      "label": "Mother's first name",
+      "required": {
+        "value": true,
+        "message": "First name is required"
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "First name must be at least 2 characters",
+          "value": 2
+        },
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "First name must contain only letters, spaces, hyphens, apostrophes, or periods",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u"
+        }
+      ]
+    },
+    {
+      "id": "mother-other-names",
+      "type": "question",
+      "kind": "text",
+      "key": "mother-other-names",
+      "label": "Mother's other names",
+      "required": {
+        "value": false,
+        "message": ""
+      }
+    },
+    {
+      "id": "mother-last-name",
+      "type": "question",
+      "kind": "text",
+      "key": "mother-last-name",
+      "label": "Mother's last name",
+      "required": {
+        "value": true,
+        "message": "Last name is required"
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Last name must be at least 2 characters",
+          "value": 2
+        },
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "Last name must contain only letters, spaces, hyphens, apostrophes, or periods",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u"
+        }
+      ]
+    },
+    {
+      "id": "mother-maiden-name",
+      "type": "question",
+      "kind": "text",
+      "key": "mother-maiden-name",
+      "label": "Mother's maiden name",
+      "required": {
+        "value": false,
+        "message": ""
+      }
+    },
+    {
+      "id": "parents-logic",
+      "type": "logic",
+      "rules": [
+        {
+          "id": "title-1",
+          "when": {
+            "op": "eq",
+            "left": {
+              "answer": "applying-for-yourself"
+            },
+            "right": "yes"
+          },
+          "actions": [
+            {
+              "type": "setTitle",
+              "target": "page-parents",
+              "value": "Tell us your parents' names"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "page-order-details",
+      "type": "page",
+      "role": "questions",
+      "title": "How many copies will you be ordering?"
+    },
+    {
+      "id": "number-of-copies",
+      "type": "question",
+      "kind": "number",
+      "key": "number-of-copies",
+      "label": "Number of copies",
+      "default": 1,
+      "config": {
+        "width": "short"
+      },
+      "required": {
+        "value": true,
+        "message": "Number of copies is required"
+      },
+      "validation": [
+        {
+          "id": "min",
+          "type": "minimum",
+          "message": "This field must be greater than or equal to 0",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "id": "page-check-your-answers",
+      "type": "page",
+      "role": "review",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "review": {
+        "questions": "preceding",
+        "emptyAnswers": "omit",
+        "changeLinks": true
+      }
+    },
+    {
+      "id": "page-declaration",
+      "type": "page",
+      "role": "declaration",
+      "title": "Declaration"
+    },
+    {
+      "id": "declaration-applicant",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Applicant: ",
+        {
+          "answer": "applicant-first-name"
+        },
+        " ",
+        {
+          "answer": "applicant-middle-name",
+          "fallback": ""
+        },
+        " ",
+        {
+          "answer": "applicant-last-name"
+        }
+      ]
+    },
+    {
+      "id": "declaration-date",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Date: ",
+        {
+          "context": "today",
+          "format": {
+            "type": "date",
+            "style": "short"
+          }
+        }
+      ]
+    },
+    {
+      "id": "declaration-confirmed",
+      "type": "question",
+      "kind": "choice",
+      "key": "declaration-confirmed",
+      "label": "Declaration",
+      "review": false,
+      "options": [
+        {
+          "id": "option-1",
+          "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+          "value": "confirmed"
+        }
+      ],
+      "config": {
+        "selection": "single",
+        "presentation": "radio"
+      },
+      "required": {
+        "value": true,
+        "message": "You must confirm the declaration to continue"
+      }
+    },
+    {
+      "id": "page-submission-confirmation",
+      "type": "page",
+      "role": "confirmation",
+      "title": "Application submitted"
+    },
+    {
+      "id": "confirmation-receipt",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Your reference: ",
+        {
+          "context": "submissionReference"
+        }
+      ]
+    },
+    {
+      "id": "confirmation-next-heading",
+      "type": "content",
+      "kind": "heading",
+      "content": "What happens next",
+      "config": {
+        "level": 2
+      }
+    },
+    {
+      "id": "confirmation-next-copy",
+      "type": "content",
+      "kind": "paragraph",
+      "content": "You will receive a confirmation email with:"
+    },
+    {
+      "id": "confirmation-next-items",
+      "type": "content",
+      "kind": "list",
+      "content": "",
+      "config": {
+        "ordered": false,
+        "items": [
+          {
+            "id": "reference",
+            "content": "your application reference number"
+          },
+          {
+            "id": "cost",
+            "content": "the cost of the certificate(s)"
+          },
+          {
+            "id": "completion",
+            "content": "the expected completion date"
+          }
+        ]
+      }
+    }
+  ]
+}

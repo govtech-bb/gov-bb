@@ -59,6 +59,9 @@ jobs:
       - name: Type check landing
         run: pnpm exec nx run landing:typecheck
 
+      - name: Type check editor v2
+        run: pnpm exec nx run editor_v2:typecheck
+
       - name: Report type check results
         if: steps.typecheck.outcome == 'failure'
         run: |

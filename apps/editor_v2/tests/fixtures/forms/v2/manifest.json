@@ -1,0 +1,1345 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Complete native form fixtures with independently captured source controls, branch cases and calculator expectations.",
+  "fixtures": [
+    {
+      "name": "reserve-society-name",
+      "file": "reserve-society-name.json",
+      "sourceControlCount": 22,
+      "nativeQuestionCount": 22,
+      "pageCount": 7,
+      "logicRuleCount": 1,
+      "provenance": [
+        {
+          "path": "tests/fixtures/forms/v2/reserve-society-name.json",
+          "sha256": "a584252f5af9ca84ae93f80fd0a992650fa55ecefb5f8e3ebf1ae574da446ed8"
+        },
+        {
+          "path": "tests/fixtures/forms/source/reserve-society-name.expanded.json",
+          "sha256": "e2e027eab35263114078b14236bfdbef4de0009bf0f4fdcde1fd2119d5faf5ab"
+        }
+      ],
+      "mapping": {
+        "pages": {
+          "request-details": "page-request-details",
+          "proposed-names": "page-proposed-names",
+          "society-activities": "page-society-activities",
+          "applicant-details": "page-applicant-details",
+          "check-your-answers": "page-check-your-answers",
+          "declaration": "page-declaration",
+          "submission-confirmation": "page-submission-confirmation"
+        },
+        "questions": {
+          "request-purpose": {
+            "id": "request-purpose",
+            "key": "request-purpose",
+            "page": "page-request-details"
+          },
+          "current-society-name": {
+            "id": "current-society-name",
+            "key": "current-society-name",
+            "page": "page-request-details"
+          },
+          "society-name-1": {
+            "id": "society-name-1",
+            "key": "society-name-1",
+            "page": "page-proposed-names"
+          },
+          "society-name-1-explanation": {
+            "id": "society-name-1-explanation",
+            "key": "society-name-1-explanation",
+            "page": "page-proposed-names"
+          },
+          "society-name-2": {
+            "id": "society-name-2",
+            "key": "society-name-2",
+            "page": "page-proposed-names"
+          },
+          "society-name-2-explanation": {
+            "id": "society-name-2-explanation",
+            "key": "society-name-2-explanation",
+            "page": "page-proposed-names"
+          },
+          "society-name-3": {
+            "id": "society-name-3",
+            "key": "society-name-3",
+            "page": "page-proposed-names"
+          },
+          "society-name-3-explanation": {
+            "id": "society-name-3-explanation",
+            "key": "society-name-3-explanation",
+            "page": "page-proposed-names"
+          },
+          "activity-1": {
+            "id": "activity-1",
+            "key": "activity-1",
+            "page": "page-society-activities"
+          },
+          "activity-2": {
+            "id": "activity-2",
+            "key": "activity-2",
+            "page": "page-society-activities"
+          },
+          "activity-3": {
+            "id": "activity-3",
+            "key": "activity-3",
+            "page": "page-society-activities"
+          },
+          "applicant-title": {
+            "id": "applicant-title",
+            "key": "applicant-title",
+            "page": "page-applicant-details"
+          },
+          "applicant-first-name": {
+            "id": "applicant-first-name",
+            "key": "applicant-first-name",
+            "page": "page-applicant-details"
+          },
+          "applicant-middle-name": {
+            "id": "applicant-middle-name",
+            "key": "applicant-middle-name",
+            "page": "page-applicant-details"
+          },
+          "applicant-last-name": {
+            "id": "applicant-last-name",
+            "key": "applicant-last-name",
+            "page": "page-applicant-details"
+          },
+          "address-line-1": {
+            "id": "address-line-1",
+            "key": "address-line-1",
+            "page": "page-applicant-details"
+          },
+          "address-line-2": {
+            "id": "address-line-2",
+            "key": "address-line-2",
+            "page": "page-applicant-details"
+          },
+          "applicant-parish": {
+            "id": "applicant-parish",
+            "key": "applicant-parish",
+            "page": "page-applicant-details"
+          },
+          "applicant-postcode": {
+            "id": "applicant-postcode",
+            "key": "applicant-postcode",
+            "page": "page-applicant-details"
+          },
+          "applicant-email": {
+            "id": "applicant-email",
+            "key": "applicant-email",
+            "page": "page-applicant-details"
+          },
+          "applicant-telephone": {
+            "id": "applicant-telephone",
+            "key": "applicant-telephone",
+            "page": "page-applicant-details"
+          },
+          "declaration-confirmed": {
+            "id": "declaration-confirmed",
+            "key": "declaration-confirmed",
+            "page": "page-declaration"
+          }
+        },
+        "options": {
+          "request-purpose": [
+            {
+              "id": "option-1",
+              "value": "request-search"
+            },
+            {
+              "id": "option-2",
+              "value": "reserve-name"
+            },
+            {
+              "id": "option-3",
+              "value": "change-name"
+            }
+          ],
+          "applicant-title": [
+            {
+              "id": "option-1",
+              "value": "mr"
+            },
+            {
+              "id": "option-2",
+              "value": "miss"
+            },
+            {
+              "id": "option-3",
+              "value": "ms"
+            },
+            {
+              "id": "option-4",
+              "value": "mrs"
+            },
+            {
+              "id": "option-5",
+              "value": "dr"
+            }
+          ],
+          "applicant-parish": [
+            {
+              "id": "option-1",
+              "value": "christ-church"
+            },
+            {
+              "id": "option-2",
+              "value": "st-andrew"
+            },
+            {
+              "id": "option-3",
+              "value": "st-george"
+            },
+            {
+              "id": "option-4",
+              "value": "st-james"
+            },
+            {
+              "id": "option-5",
+              "value": "st-john"
+            },
+            {
+              "id": "option-6",
+              "value": "st-joseph"
+            },
+            {
+              "id": "option-7",
+              "value": "st-lucy"
+            },
+            {
+              "id": "option-8",
+              "value": "st-michael"
+            },
+            {
+              "id": "option-9",
+              "value": "st-peter"
+            },
+            {
+              "id": "option-10",
+              "value": "st-philip"
+            },
+            {
+              "id": "option-11",
+              "value": "st-thomas"
+            }
+          ],
+          "declaration-confirmed": [
+            {
+              "id": "option-1",
+              "value": "confirmed"
+            }
+          ]
+        }
+      },
+      "differences": [
+        "Native pages use page- prefixed IDs because source page and question IDs can coincide.",
+        "Single-valued confirmation checkbox becomes a one-option single-choice question, preserving the confirmed submitted value.",
+        "Show/hide controls are native boolean questions excluded from submission and review.",
+        "Department notification enabled records intent only; no delivery is performed.",
+        "Declaration date and receipt use runtime context references; no fabricated frozen date or reference.",
+        "Source runtime-added check-your-answers materialized once as native review page."
+      ],
+      "defaultErrorMessages": []
+    },
+    {
+      "name": "get-birth-certificate",
+      "file": "get-birth-certificate.json",
+      "sourceControlCount": 36,
+      "nativeQuestionCount": 36,
+      "pageCount": 12,
+      "logicRuleCount": 10,
+      "provenance": [
+        {
+          "path": "tests/fixtures/forms/v2/get-birth-certificate.json",
+          "sha256": "71aafd1be46a43244a8c8e7ac175b373148912ee401e842ab1d5786675032076"
+        },
+        {
+          "path": "tests/fixtures/forms/source/get-birth-certificate.expanded.json",
+          "sha256": "3f661d8b264a3bda6814bbd4bfb299c7a446ea1795c19d02eebf62607609857f"
+        },
+        {
+          "path": "tests/fixtures/forms/source/get-birth-certificate.cases.json",
+          "sha256": "15ff72a1ffb73251fdc9115f6ea10bed980d01d752d326308cc8354f759f19e1"
+        }
+      ],
+      "mapping": {
+        "pages": {
+          "applicant-details": "page-applicant-details",
+          "applying-for-yourself": "page-applying-for-yourself",
+          "relationship-to-person": "page-relationship-to-person",
+          "reason-for-certificate": "page-reason-for-certificate",
+          "person-deceased": "page-person-deceased",
+          "person-details": "page-person-details",
+          "birth-details": "page-birth-details",
+          "parents": "page-parents",
+          "order-details": "page-order-details",
+          "check-your-answers": "page-check-your-answers",
+          "declaration": "page-declaration",
+          "submission-confirmation": "page-submission-confirmation"
+        },
+        "questions": {
+          "applicant-title": {
+            "id": "applicant-title",
+            "key": "applicant-title",
+            "page": "page-applicant-details"
+          },
+          "applicant-first-name": {
+            "id": "applicant-first-name",
+            "key": "applicant-first-name",
+            "page": "page-applicant-details"
+          },
+          "applicant-middle-name": {
+            "id": "applicant-middle-name",
+            "key": "applicant-middle-name",
+            "page": "page-applicant-details"
+          },
+          "applicant-last-name": {
+            "id": "applicant-last-name",
+            "key": "applicant-last-name",
+            "page": "page-applicant-details"
+          },
+          "applicant-address-1": {
+            "id": "applicant-address-1",
+            "key": "applicant-address-1",
+            "page": "page-applicant-details"
+          },
+          "applicant-address-2": {
+            "id": "applicant-address-2",
+            "key": "applicant-address-2",
+            "page": "page-applicant-details"
+          },
+          "applicant-parish": {
+            "id": "applicant-parish",
+            "key": "applicant-parish",
+            "page": "page-applicant-details"
+          },
+          "applicant-postcode": {
+            "id": "applicant-postcode",
+            "key": "applicant-postcode",
+            "page": "page-applicant-details"
+          },
+          "applicant-nid": {
+            "id": "applicant-nid",
+            "key": "applicant-nid",
+            "page": "page-applicant-details"
+          },
+          "passport-toggle": {
+            "id": "passport-toggle",
+            "key": "passport-toggle",
+            "page": "page-applicant-details"
+          },
+          "applicant-passport-number": {
+            "id": "applicant-passport-number",
+            "key": "applicant-passport-number",
+            "page": "page-applicant-details"
+          },
+          "applicant-email": {
+            "id": "applicant-email",
+            "key": "applicant-email",
+            "page": "page-applicant-details"
+          },
+          "applicant-telephone": {
+            "id": "applicant-telephone",
+            "key": "applicant-telephone",
+            "page": "page-applicant-details"
+          },
+          "applying-for-yourself": {
+            "id": "applying-for-yourself",
+            "key": "applying-for-yourself",
+            "page": "page-applying-for-yourself"
+          },
+          "relationship-to-person": {
+            "id": "relationship-to-person",
+            "key": "relationship-to-person",
+            "page": "page-relationship-to-person"
+          },
+          "relationship-other-description": {
+            "id": "relationship-other-description",
+            "key": "relationship-other-description",
+            "page": "page-relationship-to-person"
+          },
+          "reason-for-ordering": {
+            "id": "reason-for-ordering",
+            "key": "reason-for-ordering",
+            "page": "page-reason-for-certificate"
+          },
+          "person-is-deceased": {
+            "id": "person-is-deceased",
+            "key": "person-is-deceased",
+            "page": "page-person-deceased"
+          },
+          "person-death-date": {
+            "id": "person-death-date",
+            "key": "person-death-date",
+            "page": "page-person-deceased"
+          },
+          "person-first-name": {
+            "id": "person-first-name",
+            "key": "person-first-name",
+            "page": "page-person-details"
+          },
+          "person-middle-name": {
+            "id": "person-middle-name",
+            "key": "person-middle-name",
+            "page": "page-person-details"
+          },
+          "person-last-name": {
+            "id": "person-last-name",
+            "key": "person-last-name",
+            "page": "page-person-details"
+          },
+          "person-has-nis": {
+            "id": "person-has-nis",
+            "key": "person-has-nis",
+            "page": "page-person-details"
+          },
+          "person-nis-number": {
+            "id": "person-nis-number",
+            "key": "person-nis-number",
+            "page": "page-person-details"
+          },
+          "birth-date-of-birth": {
+            "id": "birth-date-of-birth",
+            "key": "birth-date-of-birth",
+            "page": "page-birth-details"
+          },
+          "place-of-birth": {
+            "id": "place-of-birth",
+            "key": "place-of-birth",
+            "page": "page-birth-details"
+          },
+          "place-of-baptism": {
+            "id": "place-of-baptism",
+            "key": "place-of-baptism",
+            "page": "page-birth-details"
+          },
+          "father-first-name": {
+            "id": "father-first-name",
+            "key": "father-first-name",
+            "page": "page-parents"
+          },
+          "father-middle-name": {
+            "id": "father-middle-name",
+            "key": "father-middle-name",
+            "page": "page-parents"
+          },
+          "father-last-name": {
+            "id": "father-last-name",
+            "key": "father-last-name",
+            "page": "page-parents"
+          },
+          "mother-first-name": {
+            "id": "mother-first-name",
+            "key": "mother-first-name",
+            "page": "page-parents"
+          },
+          "mother-other-names": {
+            "id": "mother-other-names",
+            "key": "mother-other-names",
+            "page": "page-parents"
+          },
+          "mother-last-name": {
+            "id": "mother-last-name",
+            "key": "mother-last-name",
+            "page": "page-parents"
+          },
+          "mother-maiden-name": {
+            "id": "mother-maiden-name",
+            "key": "mother-maiden-name",
+            "page": "page-parents"
+          },
+          "number-of-copies": {
+            "id": "number-of-copies",
+            "key": "number-of-copies",
+            "page": "page-order-details"
+          },
+          "declaration-confirmed": {
+            "id": "declaration-confirmed",
+            "key": "declaration-confirmed",
+            "page": "page-declaration"
+          }
+        },
+        "options": {
+          "applicant-title": [
+            {
+              "id": "option-1",
+              "value": "mr"
+            },
+            {
+              "id": "option-2",
+              "value": "miss"
+            },
+            {
+              "id": "option-3",
+              "value": "ms"
+            },
+            {
+              "id": "option-4",
+              "value": "mrs"
+            },
+            {
+              "id": "option-5",
+              "value": "dr"
+            }
+          ],
+          "applicant-parish": [
+            {
+              "id": "option-1",
+              "value": "christ-church"
+            },
+            {
+              "id": "option-2",
+              "value": "st-andrew"
+            },
+            {
+              "id": "option-3",
+              "value": "st-george"
+            },
+            {
+              "id": "option-4",
+              "value": "st-james"
+            },
+            {
+              "id": "option-5",
+              "value": "st-john"
+            },
+            {
+              "id": "option-6",
+              "value": "st-joseph"
+            },
+            {
+              "id": "option-7",
+              "value": "st-lucy"
+            },
+            {
+              "id": "option-8",
+              "value": "st-michael"
+            },
+            {
+              "id": "option-9",
+              "value": "st-peter"
+            },
+            {
+              "id": "option-10",
+              "value": "st-philip"
+            },
+            {
+              "id": "option-11",
+              "value": "st-thomas"
+            }
+          ],
+          "applying-for-yourself": [
+            {
+              "id": "option-1",
+              "value": "yes"
+            },
+            {
+              "id": "option-2",
+              "value": "no"
+            }
+          ],
+          "relationship-to-person": [
+            {
+              "id": "option-1",
+              "value": "spouse"
+            },
+            {
+              "id": "option-2",
+              "value": "parent"
+            },
+            {
+              "id": "option-3",
+              "value": "child"
+            },
+            {
+              "id": "option-4",
+              "value": "sibling"
+            },
+            {
+              "id": "option-5",
+              "value": "grandparent"
+            },
+            {
+              "id": "option-6",
+              "value": "grandchild"
+            },
+            {
+              "id": "option-7",
+              "value": "friend"
+            },
+            {
+              "id": "option-8",
+              "value": "colleague"
+            },
+            {
+              "id": "option-9",
+              "value": "other"
+            }
+          ],
+          "person-is-deceased": [
+            {
+              "id": "option-1",
+              "value": "yes"
+            },
+            {
+              "id": "option-2",
+              "value": "no"
+            }
+          ],
+          "person-has-nis": [
+            {
+              "id": "option-1",
+              "value": "yes"
+            },
+            {
+              "id": "option-2",
+              "value": "no"
+            }
+          ],
+          "declaration-confirmed": [
+            {
+              "id": "option-1",
+              "value": "confirmed"
+            }
+          ]
+        }
+      },
+      "differences": [
+        "Native pages use page- prefixed IDs because source page and question IDs can coincide.",
+        "Single-valued confirmation checkbox becomes a one-option single-choice question, preserving the confirmed submitted value.",
+        "Show/hide controls are native boolean questions excluded from submission and review.",
+        "Department notification enabled records intent only; no delivery is performed.",
+        "Declaration date and receipt use runtime context references; no fabricated frozen date or reference."
+      ],
+      "defaultErrorMessages": [
+        {
+          "question": "person-death-date",
+          "rule": "pastOrToday",
+          "message": "Enter a date on or before today",
+          "reason": "Source has no explicit error text; native rules require a message."
+        }
+      ]
+    },
+    {
+      "name": "get-marriage-certificate",
+      "file": "get-marriage-certificate.json",
+      "sourceControlCount": 34,
+      "nativeQuestionCount": 34,
+      "pageCount": 10,
+      "logicRuleCount": 8,
+      "provenance": [
+        {
+          "path": "tests/fixtures/forms/v2/get-marriage-certificate.json",
+          "sha256": "66727f6ec2e7e6761f8418f65bbdf31333d5a9c1b11c77ce93a72cecbc41fe88"
+        },
+        {
+          "path": "tests/fixtures/forms/source/get-marriage-certificate.expanded.json",
+          "sha256": "722ed36c114a0d1397f5c616daa45aa84f675561a0ee560a5343be376380ebac"
+        }
+      ],
+      "mapping": {
+        "pages": {
+          "applicant-details": "page-applicant-details",
+          "applying-for-yourself": "page-applying-for-yourself",
+          "husband-details": "page-husband-details",
+          "wife-details": "page-wife-details",
+          "marriage-details": "page-marriage-details",
+          "reason-for-requesting": "page-reason-for-requesting",
+          "order-details": "page-order-details",
+          "check-your-answers": "page-check-your-answers",
+          "declaration": "page-declaration",
+          "submission-confirmation": "page-submission-confirmation"
+        },
+        "questions": {
+          "applicant-title": {
+            "id": "applicant-title",
+            "key": "applicant-title",
+            "page": "page-applicant-details"
+          },
+          "applicant-first-name": {
+            "id": "applicant-first-name",
+            "key": "applicant-first-name",
+            "page": "page-applicant-details"
+          },
+          "applicant-middle-name": {
+            "id": "applicant-middle-name",
+            "key": "applicant-middle-name",
+            "page": "page-applicant-details"
+          },
+          "applicant-last-name": {
+            "id": "applicant-last-name",
+            "key": "applicant-last-name",
+            "page": "page-applicant-details"
+          },
+          "applicant-address-line-1": {
+            "id": "applicant-address-line-1",
+            "key": "applicant-address-line-1",
+            "page": "page-applicant-details"
+          },
+          "applicant-address-line-2": {
+            "id": "applicant-address-line-2",
+            "key": "applicant-address-line-2",
+            "page": "page-applicant-details"
+          },
+          "applicant-parish": {
+            "id": "applicant-parish",
+            "key": "applicant-parish",
+            "page": "page-applicant-details"
+          },
+          "applicant-postcode": {
+            "id": "applicant-postcode",
+            "key": "applicant-postcode",
+            "page": "page-applicant-details"
+          },
+          "applicant-id-number": {
+            "id": "applicant-id-number",
+            "key": "applicant-id-number",
+            "page": "page-applicant-details"
+          },
+          "passport-toggle": {
+            "id": "passport-toggle",
+            "key": "passport-toggle",
+            "page": "page-applicant-details"
+          },
+          "applicant-passport-number": {
+            "id": "applicant-passport-number",
+            "key": "applicant-passport-number",
+            "page": "page-applicant-details"
+          },
+          "applicant-email": {
+            "id": "applicant-email",
+            "key": "applicant-email",
+            "page": "page-applicant-details"
+          },
+          "applicant-telephone": {
+            "id": "applicant-telephone",
+            "key": "applicant-telephone",
+            "page": "page-applicant-details"
+          },
+          "applicant-is-barbados-national": {
+            "id": "applicant-is-barbados-national",
+            "key": "applicant-is-barbados-national",
+            "page": "page-applicant-details"
+          },
+          "applying-for-yourself": {
+            "id": "applying-for-yourself",
+            "key": "applying-for-yourself",
+            "page": "page-applying-for-yourself"
+          },
+          "husband-first-name": {
+            "id": "husband-first-name",
+            "key": "husband-first-name",
+            "page": "page-husband-details"
+          },
+          "husband-middle-name": {
+            "id": "husband-middle-name",
+            "key": "husband-middle-name",
+            "page": "page-husband-details"
+          },
+          "husband-last-name": {
+            "id": "husband-last-name",
+            "key": "husband-last-name",
+            "page": "page-husband-details"
+          },
+          "husband-id-number": {
+            "id": "husband-id-number",
+            "key": "husband-id-number",
+            "page": "page-husband-details"
+          },
+          "husband-passport-toggle": {
+            "id": "husband-passport-toggle",
+            "key": "husband-passport-toggle",
+            "page": "page-husband-details"
+          },
+          "husband-passport-number": {
+            "id": "husband-passport-number",
+            "key": "husband-passport-number",
+            "page": "page-husband-details"
+          },
+          "wife-first-name": {
+            "id": "wife-first-name",
+            "key": "wife-first-name",
+            "page": "page-wife-details"
+          },
+          "wife-middle-name": {
+            "id": "wife-middle-name",
+            "key": "wife-middle-name",
+            "page": "page-wife-details"
+          },
+          "wife-maiden-name": {
+            "id": "wife-maiden-name",
+            "key": "wife-maiden-name",
+            "page": "page-wife-details"
+          },
+          "wife-id-number": {
+            "id": "wife-id-number",
+            "key": "wife-id-number",
+            "page": "page-wife-details"
+          },
+          "wife-passport-toggle": {
+            "id": "wife-passport-toggle",
+            "key": "wife-passport-toggle",
+            "page": "page-wife-details"
+          },
+          "wife-passport-number": {
+            "id": "wife-passport-number",
+            "key": "wife-passport-number",
+            "page": "page-wife-details"
+          },
+          "date-of-marriage": {
+            "id": "date-of-marriage",
+            "key": "date-of-marriage",
+            "page": "page-marriage-details"
+          },
+          "place-of-marriage": {
+            "id": "place-of-marriage",
+            "key": "place-of-marriage",
+            "page": "page-marriage-details"
+          },
+          "relationship-to-married-persons": {
+            "id": "relationship-to-married-persons",
+            "key": "relationship-to-married-persons",
+            "page": "page-reason-for-requesting"
+          },
+          "relationship-other-description": {
+            "id": "relationship-other-description",
+            "key": "relationship-other-description",
+            "page": "page-reason-for-requesting"
+          },
+          "explanation-for-requesting": {
+            "id": "explanation-for-requesting",
+            "key": "explanation-for-requesting",
+            "page": "page-reason-for-requesting"
+          },
+          "number-of-copies-national": {
+            "id": "number-of-copies-national",
+            "key": "number-of-copies-national",
+            "page": "page-order-details"
+          },
+          "declaration-confirmed": {
+            "id": "declaration-confirmed",
+            "key": "declaration-confirmed",
+            "page": "page-declaration"
+          }
+        },
+        "options": {
+          "applicant-title": [
+            {
+              "id": "option-1",
+              "value": "mr"
+            },
+            {
+              "id": "option-2",
+              "value": "miss"
+            },
+            {
+              "id": "option-3",
+              "value": "ms"
+            },
+            {
+              "id": "option-4",
+              "value": "mrs"
+            },
+            {
+              "id": "option-5",
+              "value": "dr"
+            }
+          ],
+          "applicant-parish": [
+            {
+              "id": "option-1",
+              "value": "christ-church"
+            },
+            {
+              "id": "option-2",
+              "value": "st-andrew"
+            },
+            {
+              "id": "option-3",
+              "value": "st-george"
+            },
+            {
+              "id": "option-4",
+              "value": "st-james"
+            },
+            {
+              "id": "option-5",
+              "value": "st-john"
+            },
+            {
+              "id": "option-6",
+              "value": "st-joseph"
+            },
+            {
+              "id": "option-7",
+              "value": "st-lucy"
+            },
+            {
+              "id": "option-8",
+              "value": "st-michael"
+            },
+            {
+              "id": "option-9",
+              "value": "st-peter"
+            },
+            {
+              "id": "option-10",
+              "value": "st-philip"
+            },
+            {
+              "id": "option-11",
+              "value": "st-thomas"
+            }
+          ],
+          "applicant-is-barbados-national": [
+            {
+              "id": "option-1",
+              "value": "yes"
+            },
+            {
+              "id": "option-2",
+              "value": "no"
+            }
+          ],
+          "applying-for-yourself": [
+            {
+              "id": "option-1",
+              "value": "yes"
+            },
+            {
+              "id": "option-2",
+              "value": "no"
+            }
+          ],
+          "relationship-to-married-persons": [
+            {
+              "id": "option-1",
+              "value": "parent"
+            },
+            {
+              "id": "option-2",
+              "value": "spouse"
+            },
+            {
+              "id": "option-3",
+              "value": "child"
+            },
+            {
+              "id": "option-4",
+              "value": "sibling"
+            },
+            {
+              "id": "option-5",
+              "value": "grandparent"
+            },
+            {
+              "id": "option-6",
+              "value": "legal-guardian"
+            },
+            {
+              "id": "option-7",
+              "value": "legal-representative"
+            },
+            {
+              "id": "option-8",
+              "value": "other"
+            }
+          ],
+          "declaration-confirmed": [
+            {
+              "id": "option-1",
+              "value": "confirmed"
+            }
+          ]
+        }
+      },
+      "differences": [
+        "Native pages use page- prefixed IDs because source page and question IDs can coincide.",
+        "Single-valued confirmation checkbox becomes a one-option single-choice question, preserving the confirmed submitted value.",
+        "Show/hide controls are native boolean questions excluded from submission and review.",
+        "Department notification enabled records intent only; no delivery is performed.",
+        "Declaration date and receipt use runtime context references; no fabricated frozen date or reference."
+      ],
+      "defaultErrorMessages": [
+        {
+          "question": "date-of-marriage",
+          "rule": "required",
+          "message": "Enter date of marriage",
+          "reason": "Source has no explicit error text; native rules require a message."
+        }
+      ]
+    },
+    {
+      "name": "get-death-certificate",
+      "file": "get-death-certificate.json",
+      "sourceControlCount": 26,
+      "nativeQuestionCount": 26,
+      "pageCount": 8,
+      "logicRuleCount": 5,
+      "provenance": [
+        {
+          "path": "tests/fixtures/forms/v2/get-death-certificate.json",
+          "sha256": "3f27dd98b5cb41ea255f68600382094e522c7e483b8067b62a81ff0f2c5742dd"
+        },
+        {
+          "path": "tests/fixtures/forms/source/get-death-certificate.expanded.json",
+          "sha256": "7b9251680a8dd9b77ab3317a60b63b1b38c953ab2bd1b59997a7f11c92719edf"
+        },
+        {
+          "path": "tests/fixtures/forms/source/get-death-certificate.source-cases.json",
+          "sha256": "d0cd6f76fb46f6b2b53fa78e01089137b43945e084820be34da7c3eaf0727c82"
+        }
+      ],
+      "mapping": {
+        "pages": {
+          "applicant-details": "page-applicant-details",
+          "relationship-to-person": "page-relationship-to-person",
+          "reason-for-certificate": "page-reason-for-certificate",
+          "deceased-details": "page-deceased-details",
+          "order-details": "page-order-details",
+          "check-your-answers": "page-check-your-answers",
+          "declaration": "page-declaration",
+          "submission-confirmation": "page-submission-confirmation"
+        },
+        "questions": {
+          "applicant-title": {
+            "id": "applicant-title",
+            "key": "applicant-title",
+            "page": "page-applicant-details"
+          },
+          "applicant-first-name": {
+            "id": "applicant-first-name",
+            "key": "applicant-first-name",
+            "page": "page-applicant-details"
+          },
+          "applicant-middle-name": {
+            "id": "applicant-middle-name",
+            "key": "applicant-middle-name",
+            "page": "page-applicant-details"
+          },
+          "applicant-last-name": {
+            "id": "applicant-last-name",
+            "key": "applicant-last-name",
+            "page": "page-applicant-details"
+          },
+          "applicant-address-line-1": {
+            "id": "applicant-address-line-1",
+            "key": "applicant-address-line-1",
+            "page": "page-applicant-details"
+          },
+          "applicant-address-line-2": {
+            "id": "applicant-address-line-2",
+            "key": "applicant-address-line-2",
+            "page": "page-applicant-details"
+          },
+          "applicant-parish": {
+            "id": "applicant-parish",
+            "key": "applicant-parish",
+            "page": "page-applicant-details"
+          },
+          "applicant-postcode": {
+            "id": "applicant-postcode",
+            "key": "applicant-postcode",
+            "page": "page-applicant-details"
+          },
+          "applicant-id-number": {
+            "id": "applicant-id-number",
+            "key": "applicant-id-number",
+            "page": "page-applicant-details"
+          },
+          "passport-toggle": {
+            "id": "passport-toggle",
+            "key": "passport-toggle",
+            "page": "page-applicant-details"
+          },
+          "applicant-passport-number": {
+            "id": "applicant-passport-number",
+            "key": "applicant-passport-number",
+            "page": "page-applicant-details"
+          },
+          "applicant-email": {
+            "id": "applicant-email",
+            "key": "applicant-email",
+            "page": "page-applicant-details"
+          },
+          "applicant-telephone": {
+            "id": "applicant-telephone",
+            "key": "applicant-telephone",
+            "page": "page-applicant-details"
+          },
+          "relationship": {
+            "id": "relationship",
+            "key": "relationship",
+            "page": "page-relationship-to-person"
+          },
+          "relationship-other-description": {
+            "id": "relationship-other-description",
+            "key": "relationship-other-description",
+            "page": "page-relationship-to-person"
+          },
+          "reason-for-certificate": {
+            "id": "reason-for-certificate",
+            "key": "reason-for-certificate",
+            "page": "page-reason-for-certificate"
+          },
+          "deceased-first-name": {
+            "id": "deceased-first-name",
+            "key": "deceased-first-name",
+            "page": "page-deceased-details"
+          },
+          "deceased-middle-name": {
+            "id": "deceased-middle-name",
+            "key": "deceased-middle-name",
+            "page": "page-deceased-details"
+          },
+          "deceased-last-name": {
+            "id": "deceased-last-name",
+            "key": "deceased-last-name",
+            "page": "page-deceased-details"
+          },
+          "deceased-known-date-of-death": {
+            "id": "deceased-known-date-of-death",
+            "key": "deceased-known-date-of-death",
+            "page": "page-deceased-details"
+          },
+          "deceased-date-of-death": {
+            "id": "deceased-date-of-death",
+            "key": "deceased-date-of-death",
+            "page": "page-deceased-details"
+          },
+          "deceased-estimated-date-of-death": {
+            "id": "deceased-estimated-date-of-death",
+            "key": "deceased-estimated-date-of-death",
+            "page": "page-deceased-details"
+          },
+          "deceased-id-number": {
+            "id": "deceased-id-number",
+            "key": "deceased-id-number",
+            "page": "page-deceased-details"
+          },
+          "deceased-place-of-death": {
+            "id": "deceased-place-of-death",
+            "key": "deceased-place-of-death",
+            "page": "page-deceased-details"
+          },
+          "number-of-copies": {
+            "id": "number-of-copies",
+            "key": "number-of-copies",
+            "page": "page-order-details"
+          },
+          "declaration-confirmed": {
+            "id": "declaration-confirmed",
+            "key": "declaration-confirmed",
+            "page": "page-declaration"
+          }
+        },
+        "options": {
+          "applicant-title": [
+            {
+              "id": "option-1",
+              "value": "mr"
+            },
+            {
+              "id": "option-2",
+              "value": "miss"
+            },
+            {
+              "id": "option-3",
+              "value": "ms"
+            },
+            {
+              "id": "option-4",
+              "value": "mrs"
+            },
+            {
+              "id": "option-5",
+              "value": "dr"
+            }
+          ],
+          "applicant-parish": [
+            {
+              "id": "option-1",
+              "value": "christ-church"
+            },
+            {
+              "id": "option-2",
+              "value": "st-andrew"
+            },
+            {
+              "id": "option-3",
+              "value": "st-george"
+            },
+            {
+              "id": "option-4",
+              "value": "st-james"
+            },
+            {
+              "id": "option-5",
+              "value": "st-john"
+            },
+            {
+              "id": "option-6",
+              "value": "st-joseph"
+            },
+            {
+              "id": "option-7",
+              "value": "st-lucy"
+            },
+            {
+              "id": "option-8",
+              "value": "st-michael"
+            },
+            {
+              "id": "option-9",
+              "value": "st-peter"
+            },
+            {
+              "id": "option-10",
+              "value": "st-philip"
+            },
+            {
+              "id": "option-11",
+              "value": "st-thomas"
+            }
+          ],
+          "relationship": [
+            {
+              "id": "option-1",
+              "value": "spouse"
+            },
+            {
+              "id": "option-2",
+              "value": "parent"
+            },
+            {
+              "id": "option-3",
+              "value": "child"
+            },
+            {
+              "id": "option-4",
+              "value": "sibling"
+            },
+            {
+              "id": "option-5",
+              "value": "grandparent"
+            },
+            {
+              "id": "option-6",
+              "value": "grandchild"
+            },
+            {
+              "id": "option-7",
+              "value": "friend"
+            },
+            {
+              "id": "option-8",
+              "value": "legal-guardian"
+            },
+            {
+              "id": "option-9",
+              "value": "legal-representive"
+            },
+            {
+              "id": "option-10",
+              "value": "colleague"
+            },
+            {
+              "id": "option-11",
+              "value": "other"
+            }
+          ],
+          "deceased-known-date-of-death": [
+            {
+              "id": "option-1",
+              "value": "yes"
+            },
+            {
+              "id": "option-2",
+              "value": "no"
+            }
+          ],
+          "declaration-confirmed": [
+            {
+              "id": "option-1",
+              "value": "confirmed"
+            }
+          ]
+        }
+      },
+      "differences": [
+        "Native pages use page- prefixed IDs because source page and question IDs can coincide.",
+        "Single-valued confirmation checkbox becomes a one-option single-choice question, preserving the confirmed submitted value.",
+        "Show/hide controls are native boolean questions excluded from submission and review.",
+        "Department notification enabled records intent only; no delivery is performed.",
+        "Declaration date and receipt use runtime context references; no fabricated frozen date or reference."
+      ],
+      "defaultErrorMessages": [
+        {
+          "question": "deceased-date-of-death",
+          "rule": "required",
+          "message": "Enter date of death",
+          "reason": "Source has no explicit error text; native rules require a message."
+        }
+      ]
+    },
+    {
+      "name": "severance",
+      "file": "severance.json",
+      "nativeQuestionCount": 6,
+      "pageCount": 5,
+      "logicRuleCount": 11,
+      "provenance": [
+        {
+          "path": "tests/fixtures/forms/v2/severance.json",
+          "sha256": "19e53304e03b7816bba565bd5266d8943e743cc30d1df6e63c6799d8fa04f94f"
+        },
+        {
+          "path": "tests/fixtures/forms/source/severance-vectors-utc.json",
+          "sha256": "4e66fdf9682c39e9b7a2ca96b7c5e1f16b49139f6bad5213c933300e83f00750"
+        }
+      ],
+      "differences": [
+        "Date-only calendar anniversaries intentionally correct source timezone drift."
+      ]
+    },
+    {
+      "name": "pension",
+      "file": "pension.json",
+      "nativeQuestionCount": 6,
+      "pageCount": 2,
+      "logicRuleCount": 4,
+      "provenance": [
+        {
+          "path": "tests/fixtures/forms/v2/pension.json",
+          "sha256": "8974ae455bd5c0be661c18cfa4a78962431bdea9ba2e46962e9759faed5891d6"
+        },
+        {
+          "path": "tests/fixtures/forms/source/pension-nis-vectors.json",
+          "sha256": "788fe88c0278dd1b5888da8c57ce8b4cb99c116a6a730af991543adccdf8822d"
+        }
+      ],
+      "differences": []
+    },
+    {
+      "name": "nis",
+      "file": "nis.json",
+      "nativeQuestionCount": 6,
+      "pageCount": 3,
+      "logicRuleCount": 7,
+      "provenance": [
+        {
+          "path": "tests/fixtures/forms/v2/nis.json",
+          "sha256": "ca3b4462ca4eca9635bec1b797c419fcce271d8edbe95520c10778213c6663e0"
+        },
+        {
+          "path": "tests/fixtures/forms/source/pension-nis-vectors.json",
+          "sha256": "788fe88c0278dd1b5888da8c57ce8b4cb99c116a6a730af991543adccdf8822d"
+        }
+      ],
+      "differences": [
+        "NIS values remain unverified prototype placeholders."
+      ]
+    }
+  ]
+}

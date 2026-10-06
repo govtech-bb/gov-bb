@@ -1,0 +1,47 @@
+# Product scope
+
+The GovBB editor is an internal web tool for the GovTech Barbados service team and ministry content authors. It supports long authoring sessions with keyboard access, contextual controls and the GovBB visual identity. Page and form editors can also be embedded in another host.
+
+## Scope
+
+Authors can write service pages, build application forms and calculators, save local drafts, import and export files, and preview supported page content. The workspace groups an entry page, an optional start page, supporting pages and at most one form or calculator per service. Content-only services are supported.
+
+The editor owns content authoring and conversion. Form-wide settings panels, page metadata panels, form-check dashboards, submissions, publishing, CMS integration and respondent execution are outside its scope. Hosts choose an editor preset and supply persistence.
+
+## Page authoring
+
+Pages support headings, paragraphs, inline formatting, links, hard breaks, blockquotes, separators, nested lists, tables, notices, details and action buttons. Authors arrange the body freely. The title is edited above the body and stored in YAML frontmatter; descriptions and introductions remain separate metadata.
+
+Original Markdown is retained exactly until a visual edit. Edits preserve unknown metadata, intentionally absent fields, content structure and destinations. Unsupported HTML and specialist content remain editable in source mode. Invalid YAML keeps the working source and last committed document intact.
+
+Page-to-form associations are explicit. Import preserves `form_id` and button URLs. Details is a reader-operated disclosure.
+
+## Form authoring
+
+Forms support text, numbers, email, phone, dates, times, choices, boolean answers and file uploads, plus address lookup, opening hours and grouped checkbox categories. Validation, repetition, disabled fields and number/time increments are block settings. Visible Conditional logic blocks and calculated values support application and calculator definitions.
+
+- Question wording and hints are edited on the canvas. Logic selectors use that wording; internal aliases are an advanced setting.
+- Insertion menus offer complete questions. Beneath a label with no answer, they offer answer inputs to complete it. A question label can serve as the page heading on a [single-question page](https://design-system.service.gov.uk/patterns/question-pages/).
+- Conditional logic blocks own answer-dependent visibility, required state and wording. They can target questions, content and pages. Follow-up insertion creates these same rules; indentation controls layout.
+- Selecting a new Show target also hides it initially, in one undo step. Existing visible targets can be hidden from the logic block. Hidden question parts without a Show rule have a Make visible action. Removing a rule preserves the target's visibility state, and recovery respects remaining rules.
+- [Confirmation pages](https://design-system.service.gov.uk/patterns/confirmation-pages/) confirm completion and explain what happens next. They retain their purpose during conversion. Calculator result pages have a separate role and remain editable.
+- The Form registry supplies developer-defined questions, groups, pages and complete forms in native JSON. Insertions become independent editable copies. Complete forms create separate documents; authors do not add registry definitions through the UI. “Team blocks” and “GovBB fields” remain search aliases.
+- Duplicating a question gives it independent field and block identities while retaining its answer values. Copying an option into an existing question allocates a distinct submitted value.
+
+## Drafts and conversion
+
+Pages use Markdown with YAML frontmatter. Forms use native v2 JSON for exchange and versioned form Markdown for editable drafts. Installed modules own their fields, controls and conversion behavior.
+
+Each document has its own local draft and undo history. Unapplied Markdown survives navigation. Failed saves and unresolved conflicts must be addressed before leaving a document. Existing saved forms can be attached without rewriting their source.
+
+JSON import validates the candidate and checks preservation before Apply. Failed imports retain the input; replacement recovery retains the previous draft and candidate. Unapplied Markdown and conflicting tabs must be resolved before import or export.
+
+Incomplete form content remains editable and saveable; JSON export reports what needs repair. Legacy SSB export uses a separate compatibility adapter. Converter changes must preserve authored values, references, unknown data and recovery paths.
+
+## Interface
+
+Use [GOV.UK form patterns](https://design-system.service.gov.uk/patterns/) with GovBB tokens, Figtree and branding from `@govtech-bb/frontend`. Follow the [terminology guide](docs/TERMINOLOGY.md): sentence case, hints below labels, “(optional)” for optional questions, no required-field asterisks, and “Continue” between pages.
+
+WCAG 2.2 AA is the accessibility target. Provide keyboard access, visible focus and meaning that does not depend on colour alone.
+
+The app uses TanStack Start in SPA mode, React 19, Lexical 0.51, Base UI and Tailwind 4, with Phosphor icons. Development and builds run on Node 24 with pnpm. See [Development](docs/DEVELOPMENT.md) for checks and known issues.
