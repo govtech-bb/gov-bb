@@ -53,6 +53,8 @@ export default defineConfig({
         // secrets above: the SSR Lambda never sees Console env vars, so we
         // snapshot VITE_FORMS_API_URL here and read it via useRuntimeConfig().
         formsApiUrl: process.env.VITE_FORMS_API_URL ?? '',
+        // Optional api_v2 base for pages (src/lib/api-v2-page.ts, #2944); empty → static only.
+        apiV2Url: process.env.VITE_API_V2_URL ?? '',
       },
     }),
     tanstackStart(),
