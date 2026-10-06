@@ -5,13 +5,8 @@
   "projectType": "application",
   "targets": {
     "build": {
-      "executor": "nx:run-commands",
       "outputs": ["{projectRoot}/dist"],
-      "options": {
-        "command": "npm run build",
-        "cwd": "apps/forms"
-      },
-      "dependsOn": ["^build"],
+      "dependsOn": [],
       "inputs": [
         "production",
         "^production",
@@ -32,19 +27,7 @@
         }
       ]
     },
-    "dev": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npm run dev",
-        "cwd": "apps/forms"
-      }
-    },
     "start": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npm run preview",
-        "cwd": "apps/forms"
-      },
       "dependsOn": ["build"]
     },
     "lint": {
@@ -52,29 +35,6 @@
       "options": {
         "lintFilePatterns": ["apps/forms/**/*.{ts,tsx}"]
       }
-    },
-    "test": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npm test",
-        "cwd": "apps/forms"
-      }
-    },
-    "e2e": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npm run test:e2e",
-        "cwd": "apps/forms"
-      },
-      "dependsOn": []
-    },
-    "smoke": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npm run test:smoke",
-        "cwd": "apps/forms"
-      },
-      "dependsOn": []
     }
   },
   "tags": []
