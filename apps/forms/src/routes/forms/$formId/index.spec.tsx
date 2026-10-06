@@ -261,12 +261,21 @@ describe("RouteComponent", () => {
     );
 
     const { rerender } = render(<Route.component />);
-    const callsBefore = mockGetVisibleSteps.mock.calls.length;
 
-    values = { ...values, step1_hasPermission: "no" };
-    rerender(<Route.component />);
-
-    expect(mockGetVisibleSteps.mock.calls.length).toBeGreaterThan(callsBefore);
+    // Change each watched field in turn, so keeping only the first or only the
+    // last field per step fails one of the two.
+    for (const [key, value] of [
+      ["step1_applyingFor", "organisation"],
+      ["step1_hasPermission", "no"],
+    ] as const) {
+      const callsBefore = mockGetVisibleSteps.mock.calls.length;
+      values = { ...values, [key]: value };
+      rerender(<Route.component />);
+      expect(
+        mockGetVisibleSteps.mock.calls.length,
+        `changing ${key} did not recompute visible steps`,
+      ).toBeGreaterThan(callsBefore);
+    }
   });
 
   it("passes step from useSearch to FormRenderer as stepId", () => {
