@@ -255,6 +255,101 @@ describe("useStepGuard", () => {
     });
   });
 
+  describe("completeAndContinue — returning from a Change (#2812)", () => {
+    const formSteps = [
+      step("step-1"),
+      step("step-2"),
+      step("step-3"),
+      step("check-your-answers"),
+      step("declaration"),
+    ];
+
+    function lastSearch(prev: Record<string, unknown> = {}) {
+      const call = mockNavigate.mock.calls.at(-1)?.[0] as {
+        search: (p: Record<string, unknown>) => Record<string, unknown>;
+      };
+      return call.search(prev);
+    }
+
+    function renderReturning(isStepValid?: (s: ClientFormStep) => boolean) {
+      const { result } = renderHook(() =>
+        useStepGuard({
+          formId: FORM_ID,
+          activeSteps: formSteps,
+          currentStepId: "step-1",
+          returnToReview: true,
+          isStepValid,
+        }),
+      );
+      mockNavigate.mockClear();
+      return result;
+    }
+
+    it("goes straight back to check-your-answers and ends the change journey", () => {
+      markComplete(FORM_ID, "step-1", "step-2", "step-3", "check-your-answers");
+      const result = renderReturning();
+      act(() => result.current.completeAndContinue("step-1"));
+      expect(
+        lastSearch({ step: "step-1", returnTo: "check-your-answers" }),
+      ).toEqual({ step: "check-your-answers", returnTo: undefined });
+    });
+
+    it("stops at a step the change revealed, keeping the return flag", () => {
+      // step-3 is the revealed one; sequential Continue would go to step-2.
+      markComplete(FORM_ID, "step-1", "step-2", "check-your-answers");
+      const result = renderReturning();
+      act(() => result.current.completeAndContinue("step-1"));
+      expect(
+        lastSearch({ step: "step-1", returnTo: "check-your-answers" }),
+      ).toEqual({ step: "step-3", returnTo: "check-your-answers" });
+    });
+
+    it("stops at a completed step that is no longer valid", () => {
+      markComplete(FORM_ID, "step-1", "step-2", "step-3", "check-your-answers");
+      const result = renderReturning((s) => s.stepId !== "step-3");
+      act(() => result.current.completeAndContinue("step-1"));
+      expect(lastSearch()).toEqual(expect.objectContaining({ step: "step-3" }));
+    });
+
+    it("judges the stepsOverride list (repeatable add another)", () => {
+      markComplete(FORM_ID, "step-1", "step-2", "step-3", "check-your-answers");
+      const result = renderReturning();
+      const withInstance = [
+        step("step-1"),
+        step("step-1~1"),
+        ...formSteps.slice(1),
+      ];
+      act(() => result.current.completeAndContinue("step-1", withInstance));
+      expect(lastSearch()).toEqual(
+        expect.objectContaining({ step: "step-1~1" }),
+      );
+    });
+
+    it("without the flag, still advances to the next step", () => {
+      markComplete(FORM_ID, "step-2", "step-3", "check-your-answers");
+      const { result } = renderHook(() =>
+        useStepGuard({
+          formId: FORM_ID,
+          activeSteps: formSteps,
+          currentStepId: "step-1",
+        }),
+      );
+      mockNavigate.mockClear();
+      act(() => result.current.completeAndContinue("step-1"));
+      expect(lastSearch()).toEqual(expect.objectContaining({ step: "step-2" }));
+    });
+
+    it("navigating to check-your-answers by any route drops the flag", () => {
+      markComplete(FORM_ID, "step-1", "step-2", "step-3", "check-your-answers");
+      const result = renderReturning();
+      act(() => result.current.navigateToStep("check-your-answers"));
+      expect(lastSearch({ returnTo: "check-your-answers" })).toEqual({
+        step: "check-your-answers",
+        returnTo: undefined,
+      });
+    });
+  });
+
   describe("guard effect — rule 1 (no step in URL)", () => {
     it("navigates to the first incomplete step when currentStepId is empty", () => {
       renderHook(() =>
