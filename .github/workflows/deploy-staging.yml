@@ -615,9 +615,8 @@ jobs:
 
       - name: Trigger and monitor Amplify build
         env:
-          # TODO before merge: the app ID alpha-infra#700's apply creates
-          # (gov-bb-feature-flagging-staging).
-          AMPLIFY_APP_ID: REPLACE_WITH_STAGING_APP_ID
+          # gov-bb-feature-flagging-staging, created by alpha-infra#700.
+          AMPLIFY_APP_ID: d15rkwf3l5cmbx
           AMPLIFY_BRANCH: staging
           APP_LABEL: feature-flagging
         run: |
