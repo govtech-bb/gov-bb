@@ -50,9 +50,18 @@ newly revealed incomplete step".
   This was a regression on this branch, not a pre-existing bug.
 - **A stray `returnTo` past the review.** A hand-edited `?step=declaration&returnTo=…`
   would, after submit (completion already cleared), send the applicant to an
-  empty step 1. Now only steps before the review take the return path, and the
-  step just completed isn't re-judged, so the two validators can't bounce the
-  applicant in a loop.
+  empty step 1. Now only steps before the review take the return path.
+- **A loop between two steps.** The first guard only exempted the step just
+  completed. The ship-gate review showed that two steps the off-screen check
+  rejected (but the on-screen validators accepted) would bounce the applicant
+  between them forever. Validity is now judged only ahead of the current step,
+  which makes the loop impossible by construction rather than relying on the
+  two validators always agreeing. We gave up backward cross-step conditions
+  (left to the API's 422).
+- **Untested core rule.** The ship-gate test review pointed out that the
+  visibility filter had only ever run against mocks. The check moved into
+  `@forms/lib` as `stepPassesValidation` and is now tested against the real
+  evaluator.
 
 ## Open questions
 
