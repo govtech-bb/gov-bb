@@ -2,7 +2,6 @@ import { createServerFn } from '@tanstack/react-start'
 import { useRuntimeConfig } from 'nitro/runtime-config'
 import { findPage } from '../content/registry'
 import type { ContentPage } from '../content/registry'
-import { processMarkdown } from '../utils/markdown'
 import { bakeStartLinkFormId } from '../utils/markdown/plugins'
 import type { Frontmatter } from './frontmatter'
 
@@ -66,7 +65,8 @@ function isPageResponse(body: unknown): body is PageResponse {
   return (
     typeof page?.url === 'string' &&
     typeof page.frontmatter?.title === 'string' &&
-    typeof page.body_markdown === 'string'
+    typeof page.body_markdown === 'string' &&
+    typeof page.hide_start_links === 'boolean'
   )
 }
 
@@ -91,7 +91,11 @@ export async function fetchApiV2Page(
       `${base}/pages?url=${encodeURIComponent(url)}`,
       { redirect: 'manual', signal: controller.signal },
     )
-    if (response.status === 404) return { kind: 'miss' }
+    if (response.status === 404) {
+      // Release the socket: an unread body pins a keep-alive connection.
+      await response.body?.cancel()
+      return { kind: 'miss' }
+    }
     if (response.status === 301) {
       const body = (await response.json().catch(() => null)) as {
         redirect?: unknown
@@ -106,6 +110,7 @@ export async function fetchApiV2Page(
     }
     if (response.status !== 200) {
       console.warn(`[api-v2] ${response.status} for ${url}`)
+      await response.body?.cancel()
       return { kind: 'miss' }
     }
     const body: unknown = await response.json()
@@ -133,7 +138,7 @@ export async function fromApiV2(
   const segments = url.split('/')
   const leaf = segments[segments.length - 1]
   const slug = leaf === 'start' ? segments.slice(-2).join('/') : leaf
-  const { stage, service_type, ...rest } = body.frontmatter
+  const { stage, service_type, source_url, ...rest } = body.frontmatter
   const publishDate = staticPage?.frontmatter.publish_date
   const frontmatter: Frontmatter = {
     ...rest,
@@ -141,11 +146,16 @@ export async function fromApiV2(
     ...((service_type === 'digital' || service_type === 'information') && {
       service_type,
     }),
+    // Rendered as a link, and DB content is unreviewed: http(s) only.
+    ...(source_url && /^https?:\/\//i.test(source_url) && { source_url }),
     categories: [segments[0]],
     visibility: 'public',
     ...(body.form_id && { form_id: body.form_id }),
     ...(publishDate && { publish_date: publishDate }),
   }
+  // Dynamic so the parser stays out of the client entry: a static import
+  // survives the server-fn split and ships ~340 KB of remark/rehype.
+  const { processMarkdown } = await import('../utils/markdown')
   const { hast } = await processMarkdown(body.body_markdown)
   bakeStartLinkFormId(hast, body.form_id ?? undefined)
   return {
@@ -158,21 +168,33 @@ export async function fromApiV2(
   }
 }
 
-/** Server function: the api_v2 page at `url`, or a miss when api_v2 is unset. */
+export type ApiV2Result =
+  | { kind: 'page'; page: ApiV2Page }
+  | { kind: 'redirect'; to: string }
+  | { kind: 'miss' }
+
+/**
+ * The api_v2 page at `url`. A miss when api_v2 is unset, or when its markdown
+ * fails to compile (an editor typo must not take the page down — the static
+ * twin, if any, renders instead).
+ */
+export async function resolveApiV2Page(
+  base: string | null,
+  url: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ApiV2Result> {
+  if (!base) return { kind: 'miss' }
+  const result = await fetchApiV2Page(base, url, fetchImpl)
+  if (result.kind !== 'page') return result
+  try {
+    return { kind: 'page', page: await fromApiV2(result.body, findPage(url)) }
+  } catch (error) {
+    console.warn(`[api-v2] compile failed for ${url}:`, error)
+    return { kind: 'miss' }
+  }
+}
+
+/** Server function: `resolveApiV2Page` against the configured api_v2. */
 export const getApiV2Page = createServerFn()
   .validator((url: string) => url)
-  .handler(
-    async ({
-      data: url,
-    }): Promise<
-      | { kind: 'page'; page: ApiV2Page }
-      | { kind: 'redirect'; to: string }
-      | { kind: 'miss' }
-    > => {
-      const base = apiV2Base()
-      if (!base) return { kind: 'miss' }
-      const result = await fetchApiV2Page(base, url)
-      if (result.kind !== 'page') return result
-      return { kind: 'page', page: await fromApiV2(result.body, findPage(url)) }
-    },
-  )
+  .handler(({ data: url }) => resolveApiV2Page(apiV2Base(), url))

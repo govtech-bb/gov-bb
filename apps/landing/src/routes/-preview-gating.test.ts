@@ -39,6 +39,13 @@ const accessMocks = vi.hoisted(() => ({
 }))
 vi.mock('../lib/preview-form-access', () => accessMocks)
 
+// api_v2 is asked first (#2944); a miss falls back to the registry, so the
+// static-page tests above keep their behaviour.
+const v2Mocks = vi.hoisted(() => ({
+  getApiV2Page: vi.fn(async (): Promise<unknown> => ({ kind: 'miss' })),
+}))
+vi.mock('../lib/api-v2-page', () => v2Mocks)
+
 const fakePage: ContentPage = {
   slug: 'secret-service',
   url: 'secret-service',
@@ -66,6 +73,7 @@ beforeEach(() => {
   mocks.isUrlVisible.mockReturnValue(true)
   mocks.urlLevel.mockReturnValue('public')
   mocks.resolveBareSlugRedirect.mockReturnValue(undefined)
+  v2Mocks.getApiV2Page.mockResolvedValue({ kind: 'miss' })
 })
 
 // Load the route once. Pulling the route + content graph through Vite's
@@ -217,6 +225,7 @@ describe('$ route loader gating', () => {
       level: 'public',
       startSubPageVisible: true,
     })
+    expect((data as { page?: unknown }).page).toBeUndefined()
     expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'draft', new Map())
   })
 
@@ -334,6 +343,87 @@ describe('$ route loader gating', () => {
     // The form is dropped from the public available list (Start hidden) and the
     // maintenance notice is flagged.
     expect(data.availableForms).toEqual([])
+    expect(data.underMaintenance).toBe(true)
+  })
+})
+
+describe('$ route api_v2 pages (#2944)', () => {
+  const v2Page = {
+    ...fakePage,
+    slug: 'v2-service',
+    url: 'work-employment/v2-service',
+    frontmatter: {
+      ...fakePage.frontmatter,
+      visibility: 'public' as const,
+      form_id: 'get-birth-certificate',
+    },
+    hideStartLinks: false,
+  }
+  const load = (page: typeof v2Page, level = 'public') => {
+    v2Mocks.getApiV2Page.mockResolvedValue({ kind: 'page', page })
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    return loader({
+      params: { _splat: page.url },
+      context: { level, serviceStatuses: [] },
+    }).catch((e: unknown) => e) as Promise<Record<string, unknown>>
+  }
+
+  it('serves the api_v2 page over the registry, as public', async () => {
+    mocks.findPage.mockReturnValue(fakePage)
+    const data = await load(v2Page)
+    expect(v2Mocks.getApiV2Page).toHaveBeenCalledWith({
+      data: '/work-employment/v2-service',
+    })
+    expect(data).toMatchObject({
+      kind: 'page',
+      url: v2Page.url,
+      page: v2Page,
+      level: 'public',
+      startSubPageVisible: true,
+    })
+    // api_v2 already enforced visibility.
+    expect(mocks.isVisible).not.toHaveBeenCalled()
+  })
+
+  it('301-redirects to the api_v2 redirect target', async () => {
+    v2Mocks.getApiV2Page.mockResolvedValue({
+      kind: 'redirect',
+      to: '/work-employment/new-service',
+    })
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const err = await loader({
+      params: { _splat: 'work-employment/old-service' },
+      context: { level: 'public', serviceStatuses: [] },
+    }).catch((e: unknown) => e)
+    const opts = (err as { options?: { href?: string; statusCode?: number } })
+      .options
+    expect(opts?.href).toBe('/work-employment/new-service')
+    expect(opts?.statusCode).toBe(301)
+  })
+
+  it('hides the /start step when api_v2 says so', async () => {
+    const data = await load({ ...v2Page, hideStartLinks: true })
+    expect(data.startSubPageVisible).toBe(false)
+  })
+
+  it('applies the closed-form state to an api_v2 page', async () => {
+    formMocks.getClosedForms.mockResolvedValueOnce(['get-birth-certificate'])
+    const data = await load(v2Page)
+    expect(data.applicationClosed).toBe(true)
+    expect(data.availableForms).not.toContain('get-birth-certificate')
+  })
+
+  it('throws notFound for an api_v2 /start step whose form is not available', async () => {
+    formMocks.getClosedForms.mockResolvedValueOnce(['get-birth-certificate'])
+    const err = await load({ ...v2Page, slug: 'v2-service/start' })
+    expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
+  })
+
+  it('flags an api_v2 page whose form is under maintenance', async () => {
+    formMocks.getMaintenanceForms.mockResolvedValueOnce([
+      'get-birth-certificate',
+    ])
+    const data = await load(v2Page)
     expect(data.underMaintenance).toBe(true)
   })
 })

@@ -6,6 +6,7 @@ import {
   fetchApiV2Page,
   fromApiV2,
   resolveApiV2Base,
+  resolveApiV2Page,
 } from './api-v2-page'
 import type { PageResponse } from './api-v2-page'
 
@@ -107,6 +108,13 @@ describe('fetchApiV2Page', () => {
     expect(warn).not.toHaveBeenCalled()
   })
 
+  it('cancels the unread body of a miss so the socket is released', async () => {
+    const response = jsonResponse(404, { error: 'not found' })
+    const cancel = vi.spyOn(response.body!, 'cancel')
+    await fetchApiV2Page(BASE, '/x', stubFetch(response))
+    expect(cancel).toHaveBeenCalled()
+  })
+
   it('treats a 500 as a miss and warns', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const result = await fetchApiV2Page(
@@ -162,6 +170,17 @@ describe('fetchApiV2Page', () => {
       BASE,
       '/x',
       stubFetch(jsonResponse(200, { url: '/x', frontmatter: {} })),
+    )
+    expect(result).toEqual({ kind: 'miss' })
+  })
+
+  it('treats a 200 without a boolean hide_start_links as a miss', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { hide_start_links: _, ...body } = pageBody()
+    const result = await fetchApiV2Page(
+      BASE,
+      '/x',
+      stubFetch(jsonResponse(200, body)),
     )
     expect(result).toEqual({ kind: 'miss' })
   })
@@ -285,5 +304,48 @@ describe('fromApiV2', () => {
     expect((await fromApiV2(pageBody())).frontmatter).not.toHaveProperty(
       'publish_date',
     )
+  })
+
+  it('keeps an http(s) source_url and drops any other scheme', async () => {
+    const withSource = (source_url: string) =>
+      fromApiV2(pageBody({ frontmatter: { title: 'T', source_url } }))
+    expect(
+      (await withSource('https://gov.bb/old')).frontmatter.source_url,
+    ).toBe('https://gov.bb/old')
+    expect(
+      (await withSource('javascript:alert(1)')).frontmatter,
+    ).not.toHaveProperty('source_url')
+  })
+})
+
+describe('resolveApiV2Page', () => {
+  it('is a miss without fetching when api_v2 is not configured', async () => {
+    const fetchImpl = stubFetch(jsonResponse(200, pageBody()))
+    expect(await resolveApiV2Page(null, '/x', fetchImpl)).toEqual({
+      kind: 'miss',
+    })
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('compiles a hit into a page', async () => {
+    const result = await resolveApiV2Page(
+      BASE,
+      '/x',
+      stubFetch(jsonResponse(200, pageBody())),
+    )
+    expect(result.kind).toBe('page')
+  })
+
+  it('falls back (miss) when the markdown fails to compile', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const result = await resolveApiV2Page(
+      BASE,
+      '/x',
+      stubFetch(
+        jsonResponse(200, pageBody({ body_markdown: '::not-a-directive' })),
+      ),
+    )
+    expect(result).toEqual({ kind: 'miss' })
+    expect(warn).toHaveBeenCalled()
   })
 })
