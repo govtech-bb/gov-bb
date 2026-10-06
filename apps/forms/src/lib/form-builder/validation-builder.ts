@@ -1,11 +1,13 @@
 import {
+  ClientFormStep,
   ClientServiceContract,
   ClientPrimitive,
   FieldValidationProperties,
   FormValidation,
 } from "@forms/types";
-import type { AnyFieldApi } from "@tanstack/react-form";
+import type { AnyFieldApi, AnyFormApi } from "@tanstack/react-form";
 import { valueIsEmpty } from "./validation-methods";
+import { getVisibleFields } from "./helpers/behavior-helper";
 import { buildStepScopedValues } from "./helpers/value-tree";
 import {
   validate,
@@ -309,4 +311,24 @@ export const collectStepErrorCodes = (
     }
   }
   return out;
+};
+
+// Whether a step the applicant is NOT on still passes validation, for the
+// return from a Change on check-your-answers (#2812, ADR 0076).
+// form.validateField only runs validators on mounted fields, so this judges
+// the step's visible fields directly — the visibility filter matters: a hidden
+// required field must not count. Repeatable steps are trusted on completion
+// alone: getVisibleFields can't evaluate their per-instance conditions
+// off-screen, so a hidden required field would look empty (#2932).
+export const stepPassesValidation = (
+  step: ClientFormStep,
+  formApi: AnyFormApi,
+): boolean => {
+  if (step.behaviours?.some((b) => b.type === "repeatable")) return true;
+  return (
+    collectStepErrorCodes(
+      getVisibleFields(step, formApi),
+      formApi.state.values as Record<string, unknown>,
+    ).length === 0
+  );
 };
