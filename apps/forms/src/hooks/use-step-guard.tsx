@@ -99,8 +99,11 @@ export function useStepGuard({
       // Came from a Change link: skip the steps already answered and go back
       // to the review, stopping first anywhere the change left a gap (#2812).
       // Only a step before the review returns — the review and declaration
-      // carry on as normal even if a stray `returnTo` is in the URL. The step
-      // just completed passed the on-screen validators, so it isn't re-judged.
+      // carry on as normal even if a stray `returnTo` is in the URL.
+      // Validity is only judged ahead of the step just completed: the steps
+      // up to it have passed the on-screen validators, and re-judging them
+      // could bounce the applicant between two steps forever if the two
+      // checks ever disagreed. Completion is still checked everywhere.
       const reviewIdx = steps.findIndex(
         (s) => s.stepId === "check-your-answers",
       );
@@ -110,7 +113,7 @@ export function useStepGuard({
         getReviewReturnStep(
           formId,
           steps,
-          (s) => s.stepId === completedStepId || isStepValid(s),
+          (s) => steps.indexOf(s) <= currentIdx || isStepValid(s),
         );
       if (returnStep) {
         navigateToStepId(returnStep.stepId);
