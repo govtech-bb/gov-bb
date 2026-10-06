@@ -1,191 +1,181 @@
 {
   "formId": "mohlm-application-use-state-land",
-  "title": "Application to use state land",
-  "description": "Ministry of Housing, Lands and Maintenance application form for using state land",
+  "title": "Apply to use land owned by the Government of Barbados",
+  "description": "Ask the Ministry of Housing, Lands and Maintenance to use land owned by the Government of Barbados",
   "processors": [
     {
       "type": "email",
       "config": {
-        "subject": "Your application to use state land has been received",
-        "recipientField": "contact-information.email"
+        "subject": "Application received: use government land",
+        "recipientField": "how-should-we-contact-you.email"
       }
     }
   ],
   "steps": [
     {
-      "stepId": "applicant-details",
-      "title": "Tell us about yourself",
-      "elements": [
-        {
-          "ref": "components/title"
-        },
-        {
-          "ref": "components/first-name"
-        },
-        {
-          "ref": "components/middle-name",
-          "overrides": {}
-        },
-        {
-          "ref": "components/last-name"
-        },
-        {
-          "ref": "components/national-id-number",
-          "overrides": {
-            "ui": {
-              "width": "medium"
-            },
-            "hint": "Enter your valid National ID Number (for example, 450702-0130)",
-            "label": "National Identification (ID) Number",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "National Identification (ID) Number is required"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/sex",
-          "overrides": {}
-        }
-      ],
-      "behaviours": []
-    },
-    {
-      "stepId": "contact-information",
-      "title": "How do we contact you?",
-      "elements": [
-        {
-          "ref": "components/address",
-          "overrides": {
-            "fieldId": "address-line1",
-            "label": "Address Line 1"
-          }
-        },
-        {
-          "ref": "components/address",
-          "overrides": {
-            "label": "Address line 2",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            },
-            "fieldId": "address-line2"
-          }
-        },
-        {
-          "ref": "components/parish"
-        },
-        {
-          "ref": "components/postcode"
-        },
-        {
-          "ref": "components/telephone"
-        },
-        {
-          "ref": "components/email",
-          "overrides": {
-            "validations": {
-              "required": {
-                "value": false
-              }
-            }
-          }
-        }
-      ],
-      "behaviours": []
-    },
-    {
-      "stepId": "applicant-type",
-      "title": "Who is applying?",
+      "stepId": "who-are-you-applying-for",
+      "title": "Who are you applying for?",
       "elements": [
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "Are you applying as an individual or organisation?",
-            "fieldId": "applying-as",
+            "fieldId": "applying-for",
+            "label": "Who are you applying for?",
+            "ui": {
+              "hideLabel": true
+            },
             "options": [
               {
-                "label": "Individual",
-                "value": "individual"
+                "label": "Yourself",
+                "value": "yourself"
               },
               {
-                "label": "Business",
-                "value": "business"
-              },
-              {
-                "label": "Organisation",
+                "label": "An organisation",
                 "value": "organisation"
               }
             ],
             "validations": {
               "required": {
-                "error": "Select whether you are applying as an individual or organisation",
-                "value": true
+                "value": true,
+                "error": "Select who you are applying for"
               }
             }
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-radio",
           "overrides": {
-            "label": "Business name",
-            "fieldId": "business",
-            "behaviours": [
+            "fieldId": "has-permission",
+            "label": "Do you have permission to apply for the organisation?",
+            "options": [
               {
-                "type": "fieldConditionalOn",
-                "value": "business",
-                "operator": "equal",
-                "targetFieldId": "applying-as"
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
               }
             ],
             "validations": {
               "required": {
-                "error": "Business name is required",
-                "value": true
+                "value": true,
+                "error": "Select whether you have permission to apply for the organisation"
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-for",
+                "operator": "equal",
+                "value": "organisation"
+              }
+            ]
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "label": "Organisation name",
-            "fieldId": "organisation-name",
+            "fieldId": "relationship-to-organisation",
+            "label": "What is your relationship to the organisation?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your relationship to the organisation"
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "value": "organisation",
+                "targetFieldId": "applying-for",
                 "operator": "equal",
-                "targetFieldId": "applying-as"
+                "value": "organisation"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "has-permission",
+                "operator": "equal",
+                "value": "yes"
               }
-            ],
-            "validations": {
-              "required": {
-                "error": "Enter the organisation name",
-                "value": true
-              }
-            }
+            ]
           }
         }
       ],
       "behaviours": []
     },
     {
-      "stepId": "property-details",
-      "title": "Give the property details of the land",
+      "stepId": "no-permission",
+      "title": "You need permission to apply for this organisation",
       "elements": [
         {
-          "ref": "components/address",
+          "ref": "components/generic-text",
           "overrides": {
-            "label": "Address line 1",
-            "fieldId": "property-address-line-1",
+            "fieldId": "permission-needed",
+            "label": "You need permission from the organisation to continue",
+            "isDisabled": true,
+            "ui": {
+              "hideLabel": true
+            },
             "validations": {
               "required": {
-                "error": "Enter the property address",
-                "value": true
+                "value": true,
+                "error": "You need permission from the organisation to continue"
+              },
+              "equal": {
+                "error": "You need permission from the organisation to continue"
+              }
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "who-are-you-applying-for",
+          "targetFieldId": "applying-for",
+          "operator": "equal",
+          "value": "organisation"
+        },
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "who-are-you-applying-for",
+          "targetFieldId": "has-permission",
+          "operator": "equal",
+          "value": "no"
+        }
+      ],
+      "markdownContent": "You can only apply for an organisation if it has given you permission.\n\nIf you get permission, you can come back and apply.\n\nYou can also go back and apply for yourself instead."
+    },
+    {
+      "stepId": "your-details",
+      "title": "Your details",
+      "elements": [
+        {
+          "ref": "components/title",
+          "overrides": {
+            "fieldId": "applicant-title"
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "applicant-first-name"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "applicant-last-name"
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "label": "National Registration Number",
+            "hint": "You can find this on your Barbados national ID card. For example, 870315-1234.",
+            "validations": {
+              "required": {
+                "value": false
               }
             }
           }
@@ -193,42 +183,263 @@
         {
           "ref": "components/address",
           "overrides": {
-            "ui": {
-              "hideLabel": true
-            },
-            "label": "Address line 2",
-            "fieldId": "property-address-line-2",
+            "fieldId": "applicant-address-line-1",
+            "label": "Street address line 1",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Street address line 1 is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "applicant-address-line-2",
+            "label": "Street address line 2",
             "validations": {
               "required": {
                 "value": false
               }
             }
+          }
+        },
+        {
+          "ref": "components/country",
+          "overrides": {
+            "fieldId": "applicant-country"
           }
         },
         {
           "ref": "components/parish",
           "overrides": {
-            "fieldId": "property-parish",
-            "validations": {
-              "required": {
-                "error": "Select the parish",
-                "value": true
+            "fieldId": "applicant-parish",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "your-details",
+                "targetFieldId": "applicant-country",
+                "operator": "equal",
+                "value": "barbados"
               }
-            }
+            ]
           }
         },
         {
-          "ref": "components/postcode",
+          "ref": "components/town",
           "overrides": {
-            "fieldId": "property-postcode"
+            "fieldId": "applicant-town",
+            "label": "State or region",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "State or region is required"
+              },
+              "minLength": {
+                "value": 2,
+                "error": "State or region must be at least 2 characters"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "your-details",
+                "targetFieldId": "applicant-country",
+                "operator": "notEqual",
+                "value": "barbados"
+              }
+            ]
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
-            "hint": "Enter the GPS coordinates of the property if available",
-            "label": "GPS coordinates",
-            "fieldId": "gps-coordinates",
+            "fieldId": "applicant-postal-code",
+            "label": "Postal code",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "who-are-you-applying-for",
+          "targetFieldId": "applying-for",
+          "operator": "equal",
+          "value": "yourself"
+        }
+      ]
+    },
+    {
+      "stepId": "organisation-details",
+      "title": "Organisation details",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "organisation-name",
+            "label": "Organisation name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Organisation name is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "organisation-address-line-1",
+            "label": "Street address line 1",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Street address line 1 is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "organisation-address-line-2",
+            "label": "Street address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/country",
+          "overrides": {
+            "fieldId": "organisation-country"
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "organisation-parish",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "organisation-details",
+                "targetFieldId": "organisation-country",
+                "operator": "equal",
+                "value": "barbados"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/town",
+          "overrides": {
+            "fieldId": "organisation-town",
+            "label": "State or region",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "State or region is required"
+              },
+              "minLength": {
+                "value": 2,
+                "error": "State or region must be at least 2 characters"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "organisation-details",
+                "targetFieldId": "organisation-country",
+                "operator": "notEqual",
+                "value": "barbados"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "organisation-postal-code",
+            "label": "Postal code",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "who-are-you-applying-for",
+          "targetFieldId": "applying-for",
+          "operator": "equal",
+          "value": "organisation"
+        }
+      ]
+    },
+    {
+      "stepId": "contact-person",
+      "title": "Contact person",
+      "elements": [
+        {
+          "ref": "components/title",
+          "overrides": {
+            "fieldId": "contact-title"
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "contact-first-name"
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "contact-last-name"
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "who-are-you-applying-for",
+          "targetFieldId": "applying-for",
+          "operator": "equal",
+          "value": "organisation"
+        }
+      ]
+    },
+    {
+      "stepId": "how-should-we-contact-you",
+      "title": "How should we contact you?",
+      "elements": [
+        {
+          "ref": "components/email"
+        },
+        {
+          "ref": "components/telephone"
+        },
+        {
+          "ref": "components/mobile-telephone",
+          "overrides": {
+            "label": "Mobile number",
             "validations": {
               "required": {
                 "value": false
@@ -240,21 +451,168 @@
       "behaviours": []
     },
     {
-      "stepId": "proposed-use",
-      "title": "Proposed use of the land",
+      "stepId": "tell-us-about-the-land",
+      "title": "Tell us about the land",
       "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "land-has-address",
+            "label": "Does the land have an address?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select whether the land has an address"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "land-address-line-1",
+            "label": "Street address line 1",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Street address line 1 is required"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "land-has-address",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "land-address-line-2",
+            "label": "Street address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "land-has-address",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "land-parish",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "land-has-address",
+                "operator": "in",
+                "value": [
+                  "yes",
+                  "no"
+                ]
+              }
+            ]
+          }
+        },
         {
           "ref": "components/generic-textarea",
           "overrides": {
+            "fieldId": "more-location-details",
+            "label": "Give more details about the location",
+            "hint": "You can give directions, nearby roads or landmarks, or add a Google Maps link.",
             "ui": {
               "width": "long"
             },
-            "label": "What activities will be carried out on the land?",
-            "fieldId": "activities-to-be-carried-out",
             "validations": {
               "required": {
-                "error": "Describe the activities to be carried out",
-                "value": true
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "land-has-address",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "district",
+            "label": "District",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "land-has-address",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "location-description",
+            "label": "Describe where the land is",
+            "hint": "Give directions, nearby roads or landmarks. You can also add a Google Maps link.",
+            "ui": {
+              "width": "long"
+            },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Describe where the land is"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "land-has-address",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "gps-coordinates",
+            "label": "GPS coordinates",
+            "hint": "For example, 13.1132, -59.5988.",
+            "validations": {
+              "required": {
+                "value": false
               }
             }
           }
@@ -263,21 +621,21 @@
       "behaviours": []
     },
     {
-      "stepId": "usage-period",
-      "title": "Usage period",
+      "stepId": "how-do-you-want-to-use-the-land",
+      "title": "How do you want to use the land?",
       "elements": [
         {
-          "ref": "components/generic-date",
+          "ref": "components/generic-textarea",
           "overrides": {
-            "label": "Start date",
-            "fieldId": "start-date",
+            "fieldId": "land-use",
+            "label": "What do you want to use the land for?",
+            "ui": {
+              "width": "long"
+            },
             "validations": {
               "required": {
-                "error": "Enter the start date of the usage period",
-                "value": true
-              },
-              "futureOrToday": {
-                "error": "Start date must be in the current year or later"
+                "value": true,
+                "error": "Enter what you want to use the land for"
               }
             }
           }
@@ -285,19 +643,63 @@
         {
           "ref": "components/generic-date",
           "overrides": {
-            "label": "End date",
-            "fieldId": "end-date",
+            "fieldId": "start-date",
+            "label": "When do you want to start using the land?",
             "validations": {
               "required": {
-                "error": "Enter the end date of the usage period",
-                "value": true
-              },
-              "onOrAfter": {
-                "error": "End date must be after the start date",
-                "targetStepId": "usage-period",
-                "referenceFieldId": "start-date"
+                "value": true,
+                "error": "Enter when you want to start using the land"
               }
             }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "knows-duration",
+            "label": "Do you know how long you want to use the land for?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No, not yet",
+                "value": "no-not-yet"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select whether you know how long you want to use the land for"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "fieldId": "end-date",
+            "label": "When do you expect to stop using the land?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter when you expect to stop using the land"
+              },
+              "onOrAfter": {
+                "error": "The date you expect to stop using the land must be the same as or after the start date",
+                "targetStepId": "how-do-you-want-to-use-the-land",
+                "referenceFieldId": "start-date"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "knows-duration",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
           }
         }
       ],
@@ -343,7 +745,7 @@
     },
     {
       "stepId": "declaration",
-      "title": "Declaration",
+      "title": "Confirm and submit your application",
       "elements": [
         {
           "ref": "components/confirmation",
@@ -352,7 +754,7 @@
             "fieldId": "declaration-confirmed",
             "options": [
               {
-                "label": "I confirm that the information provided in this application is true and correct to the best of my knowledge.",
+                "label": "I confirm that the information I have provided is true and correct to the best of my knowledge.",
                 "value": "confirmed"
               }
             ],
@@ -372,14 +774,9 @@
       "title": "Application submitted",
       "elements": [],
       "behaviours": [],
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "We have received your submission. You will receive a confirmation email at the address you provided."
-        }
-      ]
+      "markdownContent": "## What happens next\n\nThe Ministry will review your application and may contact you if they need more information.\n\nHow long it takes depends on what you want to use the land for.\n\nSome requests may need approval from other government departments before the Ministry can decide."
     }
   ],
   "createdAt": "2026-06-16T15:46:40.151Z",
-  "updatedAt": "2026-09-17T13:49:39.000Z"
+  "updatedAt": "2026-10-06T18:18:50.000Z"
 }
