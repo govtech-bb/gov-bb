@@ -1,4 +1,5 @@
 import {
+  ClientFormStep,
   ClientPrimitive,
   FieldValidationErrors,
   FieldValidationProperties,
@@ -28,6 +29,7 @@ import {
   getInstanceMarker,
   buildFieldValidationProperties,
   collectStepErrorCodes,
+  getVisibleFields,
 } from "@forms/lib";
 import { trackEvent } from "../lib/analytics";
 import { formCategory } from "../lib/form-category";
@@ -269,11 +271,27 @@ export default function FormRenderer({
   isDraft = false,
   previewToken,
   draftToken,
+  returnToReview,
 }: FormRendererProps) {
+  // Whether a step the applicant is NOT on still passes validation, for the
+  // return-from-Change path (#2812). form.validateField only runs validators on
+  // mounted fields, so this checks the step's visible fields directly — the
+  // visibility filter matters: a hidden required field must not count.
+  const isStepValid = React.useCallback(
+    (step: ClientFormStep) =>
+      collectStepErrorCodes(
+        getVisibleFields(step, form),
+        form.state.values as Record<string, unknown>,
+      ).length === 0,
+    [form],
+  );
+
   const { navigateToStep, completeAndContinue, currentIndex } = useStepGuard({
     formId: formMeta.formId,
     activeSteps: visibleSteps,
     currentStepId: stepId,
+    returnToReview,
+    isStepValid,
   });
 
   // currentIndex is -1 for the brief moment the guard effect is redirecting

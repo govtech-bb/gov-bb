@@ -29,6 +29,14 @@ export const formSearchParamSchema = z.object({
    * Absent on the normal in-app flow.
    */
   payment: z.enum(["success", "failed"]).optional(),
+  /**
+   * Set by a Change link on check-your-answers. While present, Continue goes
+   * back to the review (or the first step before it that still needs the
+   * applicant) instead of walking the rest of the form (#2812). The only
+   * accepted value is the review step; anything else is dropped rather than
+   * thrown, so a stale or hand-edited link just becomes a normal journey.
+   */
+  returnTo: z.literal("check-your-answers").optional().catch(undefined),
 });
 
 export type FormSearchParams = z.infer<typeof formSearchParamSchema>;
