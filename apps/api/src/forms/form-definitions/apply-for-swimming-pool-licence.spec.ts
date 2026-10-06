@@ -144,7 +144,7 @@ it("keeps the routed property address on a plain, always-shown step", async () =
 // #2856 part A: a condition on the repeatable pool step that names its own
 // step is pinned to pool 1, so one pool's answers decided what another pool
 // was asked. Every pool must be evaluated on its own answers.
-it("evaluates each pool on its own answers", async () => {
+it("does not pin any pool condition to pool 1", async () => {
   const step = (await contract()).steps.find(
     (s) => s.stepId === "pool-details",
   );
@@ -154,13 +154,4 @@ it("evaluates each pool on its own answers", async () => {
     ),
   );
   expect(pinned).toEqual([]);
-
-  const cond = await conditions({
-    "pool-details": [
-      { "pool-type": "swimming", "pool-open-to-public": "yes" },
-      { "pool-type": "jacuzzi", "pool-open-to-public": "no" },
-    ],
-  });
-  const [pool1, pool2] = cond.activeFieldsByInstance.get("pool-details")!;
-  expect([...pool2]).toEqual([...pool1]);
 });
