@@ -47,6 +47,16 @@ pass validation; otherwise check-your-answers itself.
 - **The scan stops at the review.** Continue on the review marks it
   completed, so "first incomplete step" would carry an applicant who came back
   from the declaration on to the declaration.
+- **Only a step before the review returns.** On the review or the
+  declaration, Continue carries on as normal even if a stray `returnTo` is
+  in the URL. Otherwise a submit, which clears completion records first,
+  would send the applicant to an empty step 1.
+- **The step just completed isn't re-judged.** It has just passed the
+  on-screen validators. A second opinion that disagreed would bounce the
+  applicant back onto it every time they pressed Continue.
+- **Removing a repeat instance forgets its completion.** Instance ids are
+  reused by count, so a stale record would make a re-added, empty instance
+  look done.
 - **The flag lasts until the review.** It rides along through each step that
   needs the applicant, including Previous and guard redirects, and is dropped
   whenever any navigation lands on check-your-answers.
