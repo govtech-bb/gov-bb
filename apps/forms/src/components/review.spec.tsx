@@ -987,9 +987,11 @@ describe("Review", () => {
     );
 
     const changeLink = screen.getByRole("link", { name: /Change/ });
+    // returnTo is in the href too, so open-in-new-tab and a refresh still
+    // bring the applicant back to the review after the change (#2812).
     expect(changeLink).toHaveAttribute(
       "href",
-      "/forms/my-form?step=step-personal",
+      "/forms/my-form?step=step-personal&returnTo=check-your-answers",
     );
   });
 
@@ -1093,12 +1095,17 @@ describe("Review", () => {
       }),
     );
 
-    // Invoke the search callback and verify it sets the correct step
+    // Invoke the search callback and verify it sets the correct step, plus
+    // the flag that brings Continue back to the review (#2812)
     const callArgs = mockNavigate.mock.calls[0][0] as {
       search: (prev: Record<string, unknown>) => Record<string, unknown>;
     };
     const result = callArgs.search({ existing: "value" });
-    expect(result).toEqual({ existing: "value", step: "step-personal" });
+    expect(result).toEqual({
+      existing: "value",
+      step: "step-personal",
+      returnTo: "check-your-answers",
+    });
   });
 
   // -------------------------------------------------------------------------
