@@ -350,6 +350,57 @@ describe("useStepGuard", () => {
       );
     });
 
+    it("never loops between two steps the validity check rejects", () => {
+      // If the off-screen check disagrees with the on-screen validators for
+      // two steps, re-judging earlier ones would bounce step-2 ↔ step-3
+      // forever. Validity is only judged ahead of the step just completed.
+      markComplete(FORM_ID, "step-1", "step-2", "step-3", "check-your-answers");
+      const result = renderReturning(
+        (s) => s.stepId !== "step-2" && s.stepId !== "step-3",
+      );
+      act(() => result.current.completeAndContinue("step-1"));
+      expect(lastSearch()).toEqual(expect.objectContaining({ step: "step-2" }));
+      act(() => result.current.completeAndContinue("step-2"));
+      expect(lastSearch()).toEqual(expect.objectContaining({ step: "step-3" }));
+      act(() => result.current.completeAndContinue("step-3"));
+      expect(lastSearch()).toEqual(
+        expect.objectContaining({ step: "check-your-answers" }),
+      );
+    });
+
+    it("still stops at an incomplete step behind the one just completed", () => {
+      // Completion is checked everywhere; only validity is forward-only.
+      markComplete(FORM_ID, "step-2", "step-3", "check-your-answers");
+      const result = renderReturning();
+      act(() => result.current.completeAndContinue("step-3"));
+      expect(lastSearch()).toEqual(expect.objectContaining({ step: "step-1" }));
+    });
+
+    it("advances normally on a form with no check-your-answers step", () => {
+      const noReview = [step("step-1"), step("step-2")];
+      const { result } = renderHook(() =>
+        useStepGuard({
+          formId: FORM_ID,
+          activeSteps: noReview,
+          currentStepId: "step-1",
+          returnToReview: true,
+        }),
+      );
+      mockNavigate.mockClear();
+      act(() => result.current.completeAndContinue("step-1"));
+      expect(lastSearch()).toEqual(expect.objectContaining({ step: "step-2" }));
+    });
+
+    it("keeps the flag when going Previous mid-change, so Continue still returns", () => {
+      markComplete(FORM_ID, "step-1", "step-2", "step-3", "check-your-answers");
+      const result = renderReturning();
+      act(() => result.current.navigateToStep("step-1"));
+      expect(lastSearch({ returnTo: "check-your-answers" })).toEqual({
+        step: "step-1",
+        returnTo: "check-your-answers",
+      });
+    });
+
     it.each(["check-your-answers", "declaration"])(
       "ignores the flag when completing %s (only steps before the review return)",
       (stepId) => {
