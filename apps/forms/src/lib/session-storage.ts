@@ -106,6 +106,34 @@ export function getFirstIncompleteActiveStep(
   return activeSteps.find((s) => !completedSteps.includes(s.stepId)) ?? null;
 }
 
+/**
+ * Where Continue goes when the applicant arrived from a Change link on
+ * check-your-answers (#2812): the first step before the review that still
+ * needs them, otherwise the review itself.
+ *
+ * A step needs them when it is not completed (newly revealed by the change)
+ * or when `isStepValid` rejects it — a cross-step condition can make a field
+ * on an already-completed step required, which completion records can't see.
+ *
+ * The scan stops at the review: Continue on the review marks it completed, so
+ * `getFirstIncompleteActiveStep` would carry on to the declaration.
+ * Returns null only if there is no check-your-answers step.
+ */
+export function getReviewReturnStep<T extends { stepId: string }>(
+  formId: string,
+  activeSteps: T[],
+  isStepValid: (step: T) => boolean,
+): T | null {
+  const completedSteps = getCompletedSteps(formId);
+  for (const step of activeSteps) {
+    if (step.stepId === "check-your-answers") return step;
+    if (!completedSteps.includes(step.stepId) || !isStepValid(step)) {
+      return step;
+    }
+  }
+  return null;
+}
+
 // Duration tracking: stamp the start at form-start so form-submit can report
 // elapsed seconds (legacy-parity duration_seconds).
 export function persistFormStartTime(formId: string) {
