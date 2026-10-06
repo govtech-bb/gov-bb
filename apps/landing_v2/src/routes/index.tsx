@@ -21,8 +21,8 @@ function SiteIndex() {
     <div className="site-index-page">
       <h1>Pages</h1>
       <p className="site-lede">
-        Every page here is markdown stored in the database, compiled to hast and
-        rendered by api_v2's response. Any path is resolved against{" "}
+        Every page here is markdown stored in the database, served by api_v2 and
+        compiled to hast on this site's server. Any path is resolved against{" "}
         <code>content_pages.url</code>.
       </p>
       <ul className="site-index">

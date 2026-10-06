@@ -54,15 +54,16 @@ here should be reachable from anywhere but a laptop until it does.
 | `PUT`    | `/pages/:id`    | save; `if-updated-at` header, 409 / 422    |
 | `DELETE` | `/pages/:id`    | delete                                     |
 
-`GET /pages?url=` answers `{url, frontmatter, hast, breadcrumbs}`:
+`GET /pages?url=` answers
+`{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs}`:
 
-| Status | When                                                                                   |
-| ------ | -------------------------------------------------------------------------------------- |
-| 400    | `url` missing or empty                                                                 |
-| 301    | a bare `/<slug>` with no page of its own, naming exactly one public page               |
-| 404    | no page at `url`, or it or a page above it is not `public`                             |
-| 404    | a `/start` page whose form is not `public`                                             |
-| 200    | the page; its Start link is removed when its `/start` sub-page or form is not `public` |
+| Status | When                                                                                    |
+| ------ | --------------------------------------------------------------------------------------- |
+| 400    | `url` missing or empty                                                                  |
+| 301    | a bare `/<slug>` with no page of its own, naming exactly one public page                |
+| 404    | no page at `url`, or it or a page above it is not `public`                              |
+| 404    | a `/start` page whose form is not `public`                                              |
+| 200    | the page; `hide_start_links` is true when its `/start` sub-page or form is not `public` |
 
 `forms.visibility` is read on every request, and a form with no row counts as
 hidden. `frontmatter` is the stored frontmatter with the title and description
@@ -90,10 +91,11 @@ disagree, and again when the app serves a route the document does not carry.
 
 ## What a page is
 
-`content_pages.body_markdown` is the source, and `hast` is the sanitised tree
-compiled from it **here**, inside the same request as the write
-(`src/markdown.ts`), so a read never parses markdown and nothing the sanitiser
-refused is ever stored. The block document of
+`content_pages.body_markdown` is the page body, stored and served as written.
+This API serves the content and decides what may be seen; the site owns how
+it renders. landing_v2 sanitises and compiles the markdown on its server
+(`apps/landing_v2/src/server/markdown.ts`), so a change to the rendering never
+means recompiling stored pages. The block document of
 [ADR 0074](../../docs/decisions/0074-content-pages-store-a-block-document-not-markdown.md)
 returns later, as a change of its own.
 

@@ -8,20 +8,19 @@ import { ApiUnavailableError, loadPage } from "./pages";
 const aPage = (overrides: Record<string, unknown> = {}) => ({
   url: "/test",
   frontmatter: { title: "A test page" },
-  hast: {
-    type: "root",
-    children: [
-      {
-        type: "element",
-        tagName: "p",
-        properties: {},
-        children: [{ type: "text", value: "Hello" }],
-      },
-    ],
-  },
+  body_markdown: "Hello",
+  form_id: null,
+  hide_start_links: false,
   breadcrumbs: [{ name: "A test page", url: "/test" }],
   ...overrides,
 });
+
+const ENTRY_MARKDOWN = [
+  "There are 2 ways to apply. You can:",
+  "",
+  "- apply online: <a data-start-link>Start now</a>",
+  "- apply by post",
+].join("\n");
 
 type Route = {
   status: number;
@@ -75,8 +74,73 @@ describe("loadPage", () => {
 
     expect(await loadPage("/test", client)).toEqual({
       kind: "page",
-      page: aPage(),
+      page: {
+        url: "/test",
+        frontmatter: { title: "A test page" },
+        hast: {
+          type: "root",
+          children: [
+            {
+              type: "element",
+              tagName: "p",
+              properties: {},
+              children: [{ type: "text", value: "Hello" }],
+            },
+          ],
+        },
+        breadcrumbs: [{ name: "A test page", url: "/test" }],
+      },
     });
+  });
+
+  it("sanitises the markdown's raw HTML before it renders", async () => {
+    const api = await startApi(() => ({
+      status: 200,
+      body: aPage({
+        body_markdown: '<script>alert(1)</script>\n\n<p onclick="x()">Hi</p>',
+      }),
+    }));
+    close = api.close;
+    const client = createApiClient(api.baseUrl, dispatcher);
+
+    const tree = JSON.stringify(await loadPage("/test", client));
+
+    expect(tree).not.toContain("script");
+    expect(tree).not.toContain("onclick");
+    expect(tree).toContain("Hi");
+  });
+
+  it("stamps the Start link with the form api_v2 names", async () => {
+    const api = await startApi(() => ({
+      status: 200,
+      body: aPage({ body_markdown: ENTRY_MARKDOWN, form_id: "severance" }),
+    }));
+    close = api.close;
+    const client = createApiClient(api.baseUrl, dispatcher);
+
+    const tree = JSON.stringify(await loadPage("/test", client));
+
+    expect(tree).toContain('"dataFormId":"severance"');
+    expect(tree).toContain("There are 2 ways to apply.");
+  });
+
+  it("removes the Start link, and counts the ways down, when api_v2 says to", async () => {
+    const api = await startApi(() => ({
+      status: 200,
+      body: aPage({
+        body_markdown: ENTRY_MARKDOWN,
+        form_id: "severance",
+        hide_start_links: true,
+      }),
+    }));
+    close = api.close;
+    const client = createApiClient(api.baseUrl, dispatcher);
+
+    const tree = JSON.stringify(await loadPage("/test", client));
+
+    expect(tree).not.toContain("dataStartLink");
+    expect(tree).toContain("There is 1 way to apply.");
+    expect(tree).toContain("apply by post");
   });
 
   it("hands back a redirect to the canonical url rather than following it", async () => {
@@ -98,13 +162,15 @@ describe("loadPage", () => {
   it("throws an error naming the url and the field when a page is malformed", async () => {
     const api = await startApi((path) =>
       path === byUrl("/test")
-        ? { status: 200, body: aPage({ hast: "<p>oops</p>" }) }
+        ? { status: 200, body: aPage({ body_markdown: 42 }) }
         : undefined,
     );
     close = api.close;
     const client = createApiClient(api.baseUrl, dispatcher);
 
-    await expect(loadPage("/test", client)).rejects.toThrow(/"\/test".*hast/);
+    await expect(loadPage("/test", client)).rejects.toThrow(
+      /"\/test".*body_markdown/,
+    );
   });
 
   it("returns null for a url api_v2 has no page at", async () => {

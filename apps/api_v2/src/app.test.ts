@@ -1,7 +1,7 @@
 /**
  * GET /pages?url= row by row against the table it is specified by — 400,
- * 301, the two 404s, and the 200 with its Start link removed when it leads
- * nowhere public — plus the editor's writes and the behaviours it depends
+ * 301, the two 404s, and the 200 with its Start link flagged hidden when it
+ * leads nowhere public — plus the editor's writes and the behaviours it depends
  * on: optimistic concurrency, a 422 per field, and published_at.
  *
  * `app.inject` rather than a live socket: Fastify dispatches the real router,
@@ -11,7 +11,6 @@
 import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
-import type { Element, Root } from "hast";
 import { buildApp, IF_UPDATED_AT, PUBLIC_READ } from "./app";
 import { categories, forms, type Visibility } from "./schema";
 import { aPage, createTestDb } from "./test-db";
@@ -54,22 +53,6 @@ const seedCategory = async () =>
 const read = (url: string) =>
   app.inject({ url: `/pages?url=${encodeURIComponent(url)}` });
 
-/** Every start link left in a tree. */
-const startLinks = (tree: Root): Element[] => {
-  const found: Element[] = [];
-  const walk = (nodes: Root["children"]) => {
-    for (const node of nodes) {
-      if (node.type !== "element") continue;
-      if (node.tagName === "a" && node.properties.dataStartLink !== undefined) {
-        found.push(node);
-      }
-      walk(node.children as Root["children"]);
-    }
-  };
-  walk(tree.children);
-  return found;
-};
-
 const ENTRY = "/money-financial-support/calculate-severance-pay";
 const START = `${ENTRY}/start`;
 
@@ -92,7 +75,7 @@ describe("GET /pages?url=", () => {
     expect(response.statusCode).toBe(400);
   });
 
-  it("serves the page as url, frontmatter, hast and breadcrumbs", async () => {
+  it("serves the page as url, frontmatter, markdown and breadcrumbs", async () => {
     const category = await seedCategory();
     await seedPage({
       category_id: category.id,
@@ -112,24 +95,9 @@ describe("GET /pages?url=", () => {
         stage: "alpha",
         keywords: ["redundancy pay"],
       },
-      hast: {
-        type: "root",
-        children: [
-          {
-            type: "element",
-            tagName: "h2",
-            properties: { id: "how-long-does-it-take" },
-            children: [{ type: "text", value: "How long does it take?" }],
-          },
-          { type: "text", value: "\n" },
-          {
-            type: "element",
-            tagName: "p",
-            properties: {},
-            children: [{ type: "text", value: "About 3 minutes." }],
-          },
-        ],
-      },
+      body_markdown: "## How long does it take?\n\nAbout 3 minutes.",
+      form_id: null,
+      hide_start_links: false,
       breadcrumbs: [
         {
           name: "Money and financial support",
@@ -155,18 +123,6 @@ describe("GET /pages?url=", () => {
       { name: "Find out how much severance payment you are owed", url: ENTRY },
       { name: "Before you start", url: START },
     ]);
-  });
-
-  it("sanitises the markdown's raw HTML on the way in", async () => {
-    await seedPage({
-      body_markdown: '<script>alert(1)</script>\n\n<p onclick="x()">Hi</p>',
-    });
-
-    const hast = JSON.stringify((await read(ENTRY)).json().hast);
-
-    expect(hast).not.toContain("script");
-    expect(hast).not.toContain("onclick");
-    expect(hast).toContain("Hi");
   });
 
   it("301s a bare slug to the one public page it names", async () => {
@@ -221,7 +177,7 @@ describe("GET /pages?url=", () => {
     },
   );
 
-  it("serves a /start page whose form is public, its button stamped with the form", async () => {
+  it("serves a /start page whose form is public, naming the form", async () => {
     await seedForm("severance", "public");
     await seedPage({
       url: START,
@@ -232,8 +188,9 @@ describe("GET /pages?url=", () => {
     const response = await read(START);
 
     expect(response.statusCode).toBe(200);
-    expect(startLinks(response.json().hast)[0]?.properties).toMatchObject({
-      dataFormId: "severance",
+    expect(response.json()).toMatchObject({
+      form_id: "severance",
+      hide_start_links: false,
     });
   });
 
@@ -242,30 +199,23 @@ describe("GET /pages?url=", () => {
     await seedPage({ form_id: "severance", body_markdown: ENTRY_MARKDOWN });
     await seedPage({ url: START, form_id: "severance" });
 
-    const hast = (await read(ENTRY)).json().hast;
-
-    expect(startLinks(hast)).toHaveLength(1);
-    expect(JSON.stringify(hast)).toContain("There are 2 ways to apply.");
+    expect((await read(ENTRY)).json().hide_start_links).toBe(false);
   });
 
-  it("removes the Start link, and counts the ways down, when the /start page is hidden", async () => {
+  it("hides the Start link when the /start page is hidden", async () => {
     await seedForm("severance", "public");
     await seedPage({ form_id: "severance", body_markdown: ENTRY_MARKDOWN });
     await seedPage({ url: START, form_id: "severance", visibility: "preview" });
 
-    const hast = (await read(ENTRY)).json().hast;
-
-    expect(startLinks(hast)).toHaveLength(0);
-    expect(JSON.stringify(hast)).toContain("There is 1 way to apply.");
-    expect(JSON.stringify(hast)).toContain("apply by post");
+    expect((await read(ENTRY)).json().hide_start_links).toBe(true);
   });
 
-  it("removes the Start link when the form is hidden", async () => {
+  it("hides the Start link when the form is hidden", async () => {
     await seedForm("severance", "preview");
     await seedPage({ form_id: "severance", body_markdown: ENTRY_MARKDOWN });
     await seedPage({ url: START, form_id: "severance" });
 
-    expect(startLinks((await read(ENTRY)).json().hast)).toHaveLength(0);
+    expect((await read(ENTRY)).json().hide_start_links).toBe(true);
   });
 
   it("sends PUBLIC_READ, on a redirect as on a page", async () => {
@@ -305,7 +255,7 @@ describe("GET /pages/:id", () => {
 });
 
 describe("POST /pages", () => {
-  it("creates the page and compiles its markdown", async () => {
+  it("creates the page", async () => {
     const response = await app.inject({
       method: "POST",
       url: "/pages",
@@ -314,7 +264,7 @@ describe("POST /pages", () => {
 
     expect(response.statusCode).toBe(201);
     expect(response.json().published_at).not.toBeNull();
-    expect(JSON.stringify((await read(ENTRY)).json().hast)).toContain("strong");
+    expect((await read(ENTRY)).json().body_markdown).toBe("Hello **there**");
   });
 
   it("422s an unknown form id, naming the field", async () => {

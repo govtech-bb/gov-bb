@@ -1,13 +1,14 @@
 /**
- * `body_markdown` to the sanitised hast stored beside it, and the one change
- * a read makes to that hast: removing a Start link that leads nowhere public.
+ * A page's `body_markdown` to the sanitised hast the page component renders,
+ * and the one change api_v2's verdict makes to it: removing a Start link that
+ * leads nowhere public.
  *
- * Compiling on write rather than on read means a page view never parses
- * markdown, and the sanitiser runs where the data lands — the same reason
- * `block-kit`'s rules ran here before. Raw HTML is allowed in because the
- * estate uses it (`<a data-start-link>`, `<details>`, `<highlight>`, …), and
- * is then cut back to the schema below, so a `<script>` or an `onclick`
- * never reaches the table.
+ * This runs in `getPage`, on landing_v2's server: api_v2 serves the content
+ * and decides what may be seen, and the site owns how it renders. Server-only,
+ * so the parser never reaches the client bundle. Raw HTML is allowed in
+ * because the estate uses it (`<a data-start-link>`, `<details>`,
+ * `<highlight>`, …), and is then cut back to the schema below, so a `<script>`
+ * or an `onclick` in a stored page never reaches the browser.
  */
 
 import type { Element, ElementContent, Root, RootContent } from "hast";
@@ -23,7 +24,7 @@ import { unified } from "unified";
  * GitHub's schema, plus the custom elements the estate's markdown uses and
  * `tel:` links, which every phone number in the content is.
  */
-const SCHEMA = {
+const schema = () => ({
   ...defaultSchema,
   // Heading ids are linked to across pages; prefixing them breaks those.
   clobberPrefix: "",
@@ -53,23 +54,27 @@ const SCHEMA = {
     ...defaultSchema.protocols,
     href: [...(defaultSchema.protocols?.href ?? []), "tel"],
   },
-};
+});
 
-const processor = unified()
-  .use(remarkParse)
-  .use(remarkGfm)
-  .use(remarkRehype, { allowDangerousHtml: true })
-  .use(rehypeRaw)
-  .use(rehypeSanitize, SCHEMA)
-  // After the sanitiser, so the ids are v1's (landing ran rehype-slug too):
-  // the estate's `#fragment` links between pages were written against them.
-  // A heading with an authored id keeps it.
-  .use(rehypeSlug);
+// Built on use, not at import, like `schema`: a top-level `unified()` call or
+// a spread of `defaultSchema` is code the bundler must keep, and it dragged
+// the parser into the client bundle though only the server compiles.
+const processor = () =>
+  unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkRehype, { allowDangerousHtml: true })
+    .use(rehypeRaw)
+    .use(rehypeSanitize, schema())
+    // After the sanitiser, so the ids are v1's (landing ran rehype-slug too):
+    // the estate's `#fragment` links between pages were written against them.
+    // A heading with an authored id keeps it.
+    .use(rehypeSlug);
 
 const isStartLink = (node: Element) =>
   node.tagName === "a" && node.properties.dataStartLink !== undefined;
 
-/** Source positions are dead weight in a stored tree; drop them. */
+/** Source positions are dead weight in the loader's payload; drop them. */
 function withoutPositions<T extends Root | RootContent>(node: T): T {
   delete node.position;
   if ("children" in node) node.children.forEach(withoutPositions);
@@ -85,7 +90,8 @@ export async function compileMarkdown(
   markdown: string,
   formId: string | null,
 ): Promise<Root> {
-  const hast = await processor.run(processor.parse(markdown));
+  const pipeline = processor();
+  const hast = await pipeline.run(pipeline.parse(markdown));
   const stamp = (nodes: RootContent[]) => {
     for (const node of nodes) {
       if (node.type !== "element") continue;

@@ -2,9 +2,9 @@
  * Pages as markdown, with a taxonomy and a form gate.
  *
  * The revision of `001_init` drawn in the proposed ERD: `categories` and
- * `forms` are added, and `content_pages` stores `body_markdown` plus the hast
- * compiled from it in place of the block document (ADR 0074's block document
- * comes back later, as a change of its own). `visibility` replaces `is_draft`,
+ * `forms` are added, and `content_pages` stores `body_markdown` in place of
+ * the block document (ADR 0074's block document comes back later, as a change
+ * of its own). The site renders the markdown; nothing compiled is stored. `visibility` replaces `is_draft`,
  * and the collection tables go, with `record_status` and `page_schema_name`.
  *
  * Idempotent like `001_init`, for the same reason: every statement tolerates
@@ -62,7 +62,6 @@ alter table content_pages
   add column if not exists form_id varchar(100)
     references forms(form_id) on delete restrict,
   add column if not exists body_markdown text not null,
-  add column if not exists hast jsonb not null,
   add column if not exists frontmatter jsonb not null default '{}'::jsonb,
   add column if not exists published_at timestamptz(3);
 

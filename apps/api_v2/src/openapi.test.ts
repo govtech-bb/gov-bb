@@ -72,43 +72,6 @@ describe("openapi.json", () => {
 });
 
 describe("response schemas", () => {
-  /**
-   * Fastify serialises through the response schema, so a property the schema
-   * does not know about is dropped from the wire. That is a feature for
-   * hygiene and a trap for a hast tree, whose shape is open — this asserts
-   * that the tree survives the round trip intact rather than arriving
-   * stripped of the nodes that make it a page.
-   */
-  it("does not strip a hast tree on the way out", async () => {
-    const { db, close } = await createTestDb();
-    const app = await buildApp({ db });
-    await app.inject({
-      method: "POST",
-      url: "/pages",
-      payload: aPage({ body_markdown: "A [link](https://example.com)." }),
-    });
-
-    const response = await app.inject({
-      url: `/pages?url=${encodeURIComponent(aPage().url)}`,
-    });
-
-    expect(response.json().hast.children[0]).toMatchObject({
-      tagName: "p",
-      children: [
-        { type: "text", value: "A " },
-        {
-          tagName: "a",
-          properties: { href: "https://example.com" },
-          children: [{ type: "text", value: "link" }],
-        },
-        { type: "text", value: "." },
-      ],
-    });
-
-    await app.close();
-    await close();
-  });
-
   it("keeps a null description null rather than dropping it", async () => {
     const { db, close } = await createTestDb();
     const app = await buildApp({ db });

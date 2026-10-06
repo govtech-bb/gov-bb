@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { setResponseStatus } from "@tanstack/react-start/server";
 import { createApiClient, type ApiClient, type ApiResult } from "./api";
 import { apiV2Url, formsUrl } from "./config";
+import { compileMarkdown, hideStartLinks } from "./markdown";
 
 /**
  * A page, fetched from api_v2 on the server.
@@ -11,7 +12,8 @@ import { apiV2Url, formsUrl } from "./config";
  * first request it runs in-process during SSR, and on a client-side
  * navigation the browser calls landing_v2's own server, which calls api_v2.
  * The browser never calls api_v2, and the Start compiler strips the handler —
- * and with it api.ts, config.ts and undici — from the client build.
+ * and with it api.ts, config.ts, undici and the markdown pipeline — from the
+ * client build.
  *
  * `loadPage` holds the logic as a plain function of an `ApiClient`, so the
  * tests can run it against a throwaway server.
@@ -21,13 +23,25 @@ import { apiV2Url, formsUrl } from "./config";
 export interface PageResponse {
   url: string;
   frontmatter: { title: string; description?: string; lede?: string };
-  hast: Root;
+  body_markdown: string;
+  /** The form a href-less Start link opens. */
+  form_id: string | null;
+  /** api_v2's verdict that the Start link leads nowhere public. */
+  hide_start_links: boolean;
   /** The full trail, current page included, Home not. */
   breadcrumbs: Array<{ name: string; url: string }>;
 }
 
+/** A page ready to render: the response with its markdown compiled. */
+export interface Page {
+  url: string;
+  frontmatter: PageResponse["frontmatter"];
+  hast: Root;
+  breadcrumbs: PageResponse["breadcrumbs"];
+}
+
 export type LoadedPage =
-  | { kind: "page"; page: PageResponse }
+  | { kind: "page"; page: Page }
   | { kind: "redirect"; url: string };
 
 /**
@@ -72,9 +86,11 @@ function malformedField(body: unknown): string | null {
   const page = body as Partial<PageResponse> | null;
   if (typeof page?.url !== "string") return "url";
   if (typeof page.frontmatter?.title !== "string") return "frontmatter.title";
-  if (page.hast?.type !== "root" || !Array.isArray(page.hast.children)) {
-    return "hast";
+  if (typeof page.body_markdown !== "string") return "body_markdown";
+  if (page.form_id !== null && typeof page.form_id !== "string") {
+    return "form_id";
   }
+  if (typeof page.hide_start_links !== "boolean") return "hide_start_links";
   if (!Array.isArray(page.breadcrumbs)) return "breadcrumbs";
   return null;
 }
@@ -83,8 +99,9 @@ function malformedField(body: unknown): string | null {
  * The page at `url`, a redirect to its canonical url, or null when api_v2
  * has no public page there.
  *
- * The response is checked before anything renders it; api_v2 has already
- * sanitised the hast and removed any Start link that leads nowhere public.
+ * The response is checked, then its markdown is sanitised and compiled here,
+ * on landing_v2's server, with the Start link removed when api_v2 says it
+ * leads nowhere public.
  */
 export async function loadPage(
   url: string,
@@ -105,7 +122,17 @@ export async function loadPage(
       `Page "${url}" from api_v2 is not a valid page response — ${field}`,
     );
   }
-  return { kind: "page", page: body as PageResponse };
+  const response = body as PageResponse;
+  const hast = await compileMarkdown(response.body_markdown, response.form_id);
+  return {
+    kind: "page",
+    page: {
+      url: response.url,
+      frontmatter: response.frontmatter,
+      hast: response.hide_start_links ? hideStartLinks(hast) : hast,
+      breadcrumbs: response.breadcrumbs,
+    },
+  };
 }
 
 /** Runs a load, answering 503 when api_v2 could not serve it. */

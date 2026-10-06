@@ -72,7 +72,7 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
     const { status, body } = await byUrl(SEEDED);
 
     expect(status).toBe(200);
-    expect(body.hast.children.length).toBeGreaterThan(0);
+    expect(body.body_markdown.length).toBeGreaterThan(0);
     expect(body.breadcrumbs[0]).toEqual({
       name: "Money and financial support",
       url: "/money-financial-support",

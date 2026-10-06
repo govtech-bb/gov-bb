@@ -93,7 +93,7 @@ describe("the Drizzle schema and the migration", () => {
     await close();
   });
 
-  it("stores the markdown as text and its compiled hast as jsonb", async () => {
+  it("stores the markdown as text, and nothing compiled from it", async () => {
     const { db, close } = await createTestDb();
     const columns = (await rowsOf(db)).filter(
       (row) => row.table_name === "content_pages",
@@ -102,7 +102,7 @@ describe("the Drizzle schema and the migration", () => {
       columns.find((row) => row.column_name === name)?.data_type;
 
     expect(typeOf("body_markdown")).toBe("text");
-    expect(typeOf("hast")).toBe("jsonb");
+    expect(typeOf("hast")).toBeUndefined();
     expect(typeOf("frontmatter")).toBe("jsonb");
 
     await close();
@@ -115,8 +115,8 @@ describe("the Drizzle schema and the migration", () => {
 
     const refused = await db
       .execute(
-        sql`insert into content_pages (url, slug, title, form_id, body_markdown, hast)
-            values ('/x', 'x', 'X', 'no-such-form', '', '{"type":"root","children":[]}'::jsonb)`,
+        sql`insert into content_pages (url, slug, title, form_id, body_markdown)
+            values ('/x', 'x', 'X', 'no-such-form', '')`,
       )
       .then(
         () => null,
@@ -135,9 +135,8 @@ describe("the Drizzle schema and the migration", () => {
           values ('33333333-3333-4333-8333-333333333333', 'c', 'C')`,
     );
     await db.execute(
-      sql`insert into content_pages (url, slug, title, category_id, body_markdown, hast)
-          values ('/c/x', 'x', 'X', '33333333-3333-4333-8333-333333333333', '',
-                  '{"type":"root","children":[]}'::jsonb)`,
+      sql`insert into content_pages (url, slug, title, category_id, body_markdown)
+          values ('/c/x', 'x', 'X', '33333333-3333-4333-8333-333333333333', '')`,
     );
 
     const refused = await db

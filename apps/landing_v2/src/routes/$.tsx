@@ -22,8 +22,8 @@ import { startLinkHref } from "../start-link";
  * and through landing_v2's own server on a client-side navigation, so the
  * browser never calls api_v2. api_v2 has already decided everything about
  * visibility — a hidden page is a 404, a bare slug a redirect, and a Start
- * link that leads nowhere public is gone from the hast — so this renders
- * whatever comes back.
+ * link that leads nowhere public is flagged, and `getPage` removed it while
+ * compiling the markdown — so this renders whatever comes back.
  */
 export const Route = createFileRoute("/$")({
   loader: async ({ params }) => {

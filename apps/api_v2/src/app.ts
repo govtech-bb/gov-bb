@@ -148,10 +148,10 @@ export async function buildApp({
    * ETags on every read.
    *
    * The client caches what it has and revalidates; with an ETag that
-   * revalidation is a 304 with no body rather than the page's whole hast
-   * again. It also means a page that already has data can render it
-   * immediately and check freshness afterwards, which is what removes the
-   * "Loading…" state from a revisit.
+   * revalidation is a 304 with no body rather than the whole page again. It
+   * also means a page that already has data can render it immediately and
+   * check freshness afterwards, which is what removes the "Loading…" state
+   * from a revisit.
    */
   app.addHook("onSend", async (request, reply, payload) => {
     if (request.method !== "GET" || typeof payload !== "string") return payload;

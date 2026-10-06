@@ -6,13 +6,9 @@
  * idempotent: it inserts what is missing and never overwrites what an author
  * has since changed. An early-return guard ("already seeded") would instead
  * mean a newly added page never reached a database seeded before it, silently.
- *
- * Pages go in through the same `compileMarkdown` as an editor's save, so a
- * seeded page's hast is exactly what a save of the same markdown would store.
  */
 
 import { sql } from "drizzle-orm";
-import { compileMarkdown } from "./markdown";
 import { categories, contentPages, forms } from "./schema";
 import { ESTATE } from "./seed-data";
 import type { Database } from "./store";
@@ -68,7 +64,6 @@ export async function seed(db: Database): Promise<{
         visibility: page.visibility,
         formId: page.form_id,
         bodyMarkdown: page.body_markdown,
-        hast: await compileMarkdown(page.body_markdown, page.form_id),
         frontmatter: page.frontmatter,
         publishedAt: published,
       })

@@ -503,27 +503,6 @@ importers:
       pino:
         specifier: ^10.3.1
         version: 10.3.1
-      rehype-raw:
-        specifier: ^7.0.0
-        version: 7.0.0
-      rehype-sanitize:
-        specifier: ^6.0.0
-        version: 6.0.0
-      rehype-slug:
-        specifier: ^6.0.0
-        version: 6.0.0
-      remark-gfm:
-        specifier: ^4.0.1
-        version: 4.0.1
-      remark-parse:
-        specifier: ^11.0.0
-        version: 11.0.0
-      remark-rehype:
-        specifier: ^11.1.1
-        version: 11.1.2
-      unified:
-        specifier: ^11.0.5
-        version: 11.0.5
     devDependencies:
       '@electric-sql/pglite':
         specifier: ^0.3.11
@@ -531,9 +510,6 @@ importers:
       '@govtech-bb/content':
         specifier: workspace:*
         version: link:../../packages/content
-      '@types/hast':
-        specifier: ^3.0.4
-        version: 3.0.5
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.6
@@ -1332,12 +1308,33 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.2.7(react@19.2.7)
+      rehype-raw:
+        specifier: ^7.0.0
+        version: 7.0.0
+      rehype-sanitize:
+        specifier: ^6.0.0
+        version: 6.0.0
+      rehype-slug:
+        specifier: ^6.0.0
+        version: 6.0.0
+      remark-gfm:
+        specifier: ^4.0.1
+        version: 4.0.1
+      remark-parse:
+        specifier: ^11.0.0
+        version: 11.0.0
+      remark-rehype:
+        specifier: ^11.1.1
+        version: 11.1.2
       tailwindcss:
         specifier: ^4.3.0
         version: 4.3.1
       undici:
         specifier: ^8.11.2
         version: 8.11.2
+      unified:
+        specifier: ^11.0.5
+        version: 11.0.5
     devDependencies:
       '@types/hast':
         specifier: ^3.0.4

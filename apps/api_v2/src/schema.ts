@@ -6,9 +6,9 @@
  * typed view of it that queries are written against. `schema.test.ts` asserts
  * the two agree.
  *
- * `content_pages.body_markdown` is the source; `hast` is compiled from it on
- * every write (see `markdown.ts`), so a read never parses markdown. The block
- * document of ADR 0074 returns as a later change.
+ * `content_pages.body_markdown` is the page body, stored as written; the site
+ * renders it (landing_v2 sanitises and compiles it). The block document of
+ * ADR 0074 returns as a later change.
  */
 
 import {
@@ -23,7 +23,6 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import type { Root } from "hast";
 
 export const pageVisibility = pgEnum("page_visibility", [
   "public",
@@ -104,7 +103,6 @@ export const contentPages = pgTable("content_pages", {
     onDelete: "restrict",
   }),
   bodyMarkdown: text("body_markdown").notNull(),
-  hast: jsonb("hast").$type<Root>().notNull(),
   frontmatter: jsonb("frontmatter")
     .$type<Frontmatter>()
     .notNull()

@@ -2,18 +2,17 @@
  * Every query lives here.
  *
  * Two audiences, two shapes. The site reads a `PageResponse` by url: public
- * pages only, the hast ready to render, the Start link already removed when
- * it leads nowhere public, and the breadcrumb trail resolved. The editor
- * reads and writes a `PageDocument` by id: every column, markdown and all.
+ * pages only, the markdown, whether its Start link leads anywhere public, and
+ * the breadcrumb trail resolved. The editor reads and writes a `PageDocument`
+ * by id: every column.
  *
- * The markdown is compiled to hast HERE, inside the write, so what is stored
- * is always what the sanitiser let through.
+ * The API serves the content and decides what may be seen; rendering the
+ * markdown is the site's job (landing_v2 sanitises and compiles it on its
+ * server).
  */
 
-import type { Root } from "hast";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
-import { compileMarkdown, hideStartLinks } from "./markdown";
 import {
   categories,
   changeEvents,
@@ -69,7 +68,11 @@ export interface Breadcrumb {
 export interface PageResponse {
   url: string;
   frontmatter: Frontmatter & { title: string; description?: string };
-  hast: Root;
+  body_markdown: string;
+  /** The form a href-less Start link in the markdown opens. */
+  form_id: string | null;
+  /** True when the `/start` sub-page or the form is not public. */
+  hide_start_links: boolean;
   breadcrumbs: Breadcrumb[];
 }
 
@@ -162,7 +165,7 @@ export class ApiStore {
 
   /**
    * The site's read: the page at `url` if it and every page above it are
-   * public, with its Start link removed when the `/start` sub-page or its
+   * public, flagged to hide its Start link when the `/start` sub-page or its
    * form is not.
    */
   async resolve(url: string): Promise<Resolution> {
@@ -175,7 +178,7 @@ export class ApiStore {
         description: contentPages.description,
         visibility: contentPages.visibility,
         formId: contentPages.formId,
-        hast: contentPages.hast,
+        bodyMarkdown: contentPages.bodyMarkdown,
         frontmatter: contentPages.frontmatter,
       })
       .from(contentPages)
@@ -212,7 +215,9 @@ export class ApiStore {
           title: page.title,
           ...(page.description ? { description: page.description } : {}),
         },
-        hast: hideStart ? hideStartLinks(page.hast) : page.hast,
+        body_markdown: page.bodyMarkdown,
+        form_id: page.formId,
+        hide_start_links: hideStart,
         breadcrumbs: await this.breadcrumbs(prefixes, byUrl),
       },
     };
@@ -285,8 +290,7 @@ export class ApiStore {
     return rows[0] ? toDocument(rows[0]) : null;
   }
 
-  private async valuesOf(input: PageInput) {
-    const formId = input.form_id ?? null;
+  private valuesOf(input: PageInput) {
     return {
       url: input.url,
       slug: segmentsOf(input.url).at(-1) ?? "",
@@ -294,15 +298,14 @@ export class ApiStore {
       title: input.title,
       description: input.description ?? null,
       visibility: input.visibility ?? "draft",
-      formId,
+      formId: input.form_id ?? null,
       bodyMarkdown: input.body_markdown,
-      hast: await compileMarkdown(input.body_markdown, formId),
       frontmatter: input.frontmatter ?? {},
     };
   }
 
   async create(input: PageInput): Promise<PageDocument> {
-    const values = await this.valuesOf(input);
+    const values = this.valuesOf(input);
     const inserted = await this.db
       .insert(contentPages)
       .values({
@@ -325,7 +328,7 @@ export class ApiStore {
     input: PageInput,
     ifUpdatedAt: string | null,
   ): Promise<PageDocument> {
-    const values = await this.valuesOf(input);
+    const values = this.valuesOf(input);
     const now = new Date();
 
     // Zero rows affected means someone else changed the row first. Expressed

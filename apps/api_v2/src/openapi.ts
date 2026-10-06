@@ -43,23 +43,6 @@ const frontmatter = {
   additionalProperties: false,
 } as const;
 
-/** A hast root. Deliberately open: the tree's shape is hast's, not ours. */
-const hast = {
-  type: "object",
-  description:
-    "The page body as a sanitised hast tree, compiled from `body_markdown` " +
-    "on write.",
-  properties: {
-    type: { type: "string", enum: ["root"] },
-    children: {
-      type: "array",
-      items: { type: "object", additionalProperties: true },
-    },
-  },
-  required: ["type", "children"],
-  additionalProperties: true,
-} as const;
-
 const pageResponse = {
   type: "object",
   properties: {
@@ -77,7 +60,23 @@ const pageResponse = {
       required: ["title"],
       additionalProperties: false,
     },
-    hast,
+    body_markdown: {
+      type: "string",
+      description:
+        "The page body as written. The site sanitises and renders it.",
+    },
+    form_id: {
+      type: "string",
+      nullable: true,
+      description:
+        "The form a Start link with no href of its own opens, or null.",
+    },
+    hide_start_links: {
+      type: "boolean",
+      description:
+        "True when the page's `/start` sub-page or form is not public: the " +
+        'site removes the Start link and counts "There are N ways…" down.',
+    },
     breadcrumbs: {
       type: "array",
       description:
@@ -91,7 +90,14 @@ const pageResponse = {
       },
     },
   },
-  required: ["url", "frontmatter", "hast", "breadcrumbs"],
+  required: [
+    "url",
+    "frontmatter",
+    "body_markdown",
+    "form_id",
+    "hide_start_links",
+    "breadcrumbs",
+  ],
   additionalProperties: false,
 } as const;
 
@@ -141,7 +147,7 @@ const pageDocument = {
   additionalProperties: false,
 } as const;
 
-/** What a write sends. The slug comes from the url; the hast is compiled. */
+/** What a write sends. The slug comes from the url. */
 const pageInput = {
   type: "object",
   properties: {
@@ -214,8 +220,8 @@ export const SCHEMAS = {
     description:
       "The site's read. A page is served only when it and every page above " +
       "it in the url are public; a `/start` page also needs its form to be " +
-      "public. The Start link is removed from the hast when the page's " +
-      "`/start` sub-page or form is not public. A bare `/<slug>` with no " +
+      "public. `hide_start_links` is set when the page's `/start` sub-page " +
+      "or form is not public. A bare `/<slug>` with no " +
       "page of its own redirects (301) to the one public page with that " +
       "slug.",
     tags: ["pages"],

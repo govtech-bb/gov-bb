@@ -67,7 +67,7 @@ describe("compileMarkdown", () => {
     expect(links.match(/dataFormId/g)).toHaveLength(1);
   });
 
-  it("stores no source positions", async () => {
+  it("keeps no source positions", async () => {
     expect(await html("# Title")).not.toContain("position");
   });
 });
