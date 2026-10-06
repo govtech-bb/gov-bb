@@ -1,4 +1,4 @@
-import { JSX, useEffect, useRef, useState } from "react";
+import { JSX, lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Autocomplete, FormGroup, Hint, Label } from "@govtech-bb/react";
 import ErrorMessage from "../error-message";
 import {
@@ -7,6 +7,10 @@ import {
   searchAddresses,
 } from "../../lib/api/geocode";
 import { FieldRenderContext } from "./render-context";
+
+// Leaflet is only needed when address suggestions are down, so it stays out of
+// the main bundle.
+const LocationPinMap = lazy(() => import("./location-pin-map"));
 
 // Wait for a typing pause before querying — keeps request volume within the
 // /geocode throttle and eases load on the upstream Nominatim rate limit.
@@ -17,8 +21,9 @@ const DEBOUNCE_MS = 400;
  * As the applicant types (past {@link MIN_QUERY_LENGTH}), it offers matching
  * Barbados addresses in an ARIA combobox listbox; picking one stores its
  * formatted-address string. The value is always the string in the box, so free
- * typing works and a lookup outage degrades to a plain text field (with a
- * non-blocking notice) rather than blocking the form.
+ * typing works and a lookup outage never blocks the form: the field degrades to
+ * plain text entry, and — when it writes a routing coordinate — offers a map
+ * the applicant places a pin on instead.
  */
 export function AddressLookupField({
   ctx,
@@ -47,6 +52,13 @@ export function AddressLookupField({
   const [query, setQuery] = useState(initial);
   const [suggestions, setSuggestions] = useState<GeocodeResult[]>([]);
   const [lookupFailed, setLookupFailed] = useState(false);
+  // The pin the applicant placed on the fallback map. While set, the routing
+  // coordinate belongs to the pin, not to the address text.
+  const [pin, setPin] = useState<[number, number] | null>(null);
+  const coordinatesFieldId = field.geocodeTargets?.coordinatesFieldId;
+  // Once suggestions have failed, keep the map up even if a later lookup
+  // succeeds, so it does not vanish while the applicant is placing the pin.
+  const [showPinMap, setShowPinMap] = useState(false);
 
   // The last committed selection — suppresses the lookup that a select would
   // otherwise trigger by changing the input's text.
@@ -75,6 +87,7 @@ export function AddressLookupField({
             return;
           setSuggestions([]);
           setLookupFailed(true);
+          if (coordinatesFieldId) setShowPinMap(true);
         });
     }, DEBOUNCE_MS);
 
@@ -82,7 +95,7 @@ export function AddressLookupField({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [query]);
+  }, [query, coordinatesFieldId]);
 
   const update = (next: string) => {
     setQuery(next);
@@ -93,9 +106,9 @@ export function AddressLookupField({
     // address that is no longer on screen — and route the application to the
     // polyclinic serving the OLD one. Drop it and let the server fill the
     // coordinate from the parish instead. The parish and line 2 stay: both are
-    // visible fields the applicant can correct themselves.
-    const coordinatesFieldId = field.geocodeTargets?.coordinatesFieldId;
-    if (coordinatesFieldId) {
+    // visible fields the applicant can correct themselves. A placed pin is the
+    // applicant's own answer for the location, so it survives the edit.
+    if (coordinatesFieldId && !pin) {
       form.setFieldValue(siblingId(coordinatesFieldId), "");
     }
   };
@@ -121,9 +134,21 @@ export function AddressLookupField({
         `${result.lat},${result.lon}`,
       );
     }
+    setPin(null);
 
     setSuggestions([]);
   };
+
+  const placePin = (lat: number, lon: number) => {
+    if (!coordinatesFieldId) return;
+    setPin([lat, lon]);
+    form.setFieldValue(
+      siblingId(coordinatesFieldId),
+      `${lat.toFixed(6)},${lon.toFixed(6)}`,
+    );
+  };
+
+  const pinHintId = `${field.id}-pin-hint`;
 
   return (
     <FormGroup data-field-width={field.ui?.width}>
@@ -153,11 +178,27 @@ export function AddressLookupField({
         }))}
         onSuggestionSelect={(_, index) => select(suggestions[index])}
       />
-      {lookupFailed && (
-        <Hint role="status">
-          Address suggestions are unavailable right now — you can type the
-          address yourself.
-        </Hint>
+      {showPinMap ? (
+        <>
+          <Hint id={pinHintId} role="status">
+            We cannot suggest addresses at the moment. Type your address, then
+            move the pin on the map to where it is.
+          </Hint>
+          <Suspense fallback={null}>
+            <LocationPinMap
+              value={pin}
+              onChange={placePin}
+              describedBy={pinHintId}
+            />
+          </Suspense>
+        </>
+      ) : (
+        lookupFailed && (
+          <Hint role="status">
+            Address suggestions are unavailable right now — you can type the
+            address yourself.
+          </Hint>
+        )
       )}
     </FormGroup>
   );

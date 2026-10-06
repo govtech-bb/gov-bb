@@ -93,6 +93,7 @@ import {
   selectDropdown,
   selectRadio,
   submitAndConfirm,
+  mockGeocoder,
 } from "../helpers/smoke";
 
 export const FORM_ID = "apply-for-offensive-matter-licence";
@@ -359,6 +360,8 @@ async function confirmAndSubmit(page: Page): Promise<void> {
   await expect(page.getByText(/Polyclinic|Complex/).first()).toBeVisible();
   await expect(page.getByText("your local polyclinic")).toHaveCount(0);
 }
+
+test.beforeEach(({ page }) => mockGeocoder(page));
 
 test.describe("Offensive Matter Carriage Licence — Live Smoke", () => {
   test("submits a new licence for one vehicle on one telephone number", async ({

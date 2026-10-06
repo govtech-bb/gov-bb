@@ -374,3 +374,31 @@
     break-inside: avoid;
   }
 }
+
+/* Fallback map an applicant places their address pin on when address
+   suggestions are unavailable (#2679). */
+/* Stretched like the radio reveal above: the form group would otherwise
+   shrink-wrap the map to zero width. */
+.address-pin-map {
+  align-self: stretch;
+  height: 20rem;
+  margin-top: var(--govbb-space-xs);
+}
+
+/* The shape sits on an inner span: Leaflet positions the marker element itself
+   with an inline transform. */
+.address-pin span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 3px solid var(--govbb-color-surface);
+  border-radius: 50% 50% 50% 0;
+  background: var(--govbb-color-interactive);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.5);
+  transform: rotate(-45deg);
+}
+
+.address-pin:focus-visible {
+  outline: 3px solid var(--govbb-color-focus);
+  outline-offset: 2px;
+}
