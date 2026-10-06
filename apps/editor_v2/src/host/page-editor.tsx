@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { Eye, FileText, PencilSimple } from "@phosphor-icons/react";
 import { EditorComposer } from "../editor";
-import { PageEditor, PageHistoryControls, PageTitleField, PagePreview } from "../pages";
+import {
+  PageDetailsFields,
+  PageEditor,
+  PageHistoryControls,
+  PageTitleField,
+  PagePreview,
+} from "../pages";
 import { govbbPageEditor } from "../presets/govbb-page";
 import type { DraftStore } from "../persistence/draft-store";
 import { Button } from "../ui/button";
@@ -90,6 +96,7 @@ function PageDraft({ active }: { active: boolean }) {
         <div className="page-document-canvas">
           <div hidden={preview} inert={paused || preview} className="page-document-writing">
             <PageTitleField />
+            <PageDetailsFields />
             <PageEditor label="Page content" />
           </div>
           {preview && <PagePreviewSurface source={draft.committed} />}

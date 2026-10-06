@@ -40,7 +40,28 @@ const insertion = page.getByRole("listbox", { name: "Insert page content" });
 
 const title = page.getByRole("textbox", { name: "Page title", exact: true });
 
+const details = page.locator(".page-metadata-details:visible");
+
+const description = details.getByLabel("Description", { exact: true });
+
+const introduction = page.getByRole("textbox", { name: "Introduction", exact: true });
+
+const addCategory = details.getByLabel("Add category", { exact: true });
+
+const visibility = details.getByLabel("Visibility", { exact: true });
+
+const publicationDate = details.getByLabel("Publication date", { exact: true });
+
+const formId = details.getByLabel("Form ID", { exact: true });
+
+const pageDetails = details.locator("summary");
+
 const navigation = page.getByRole("navigation", { name: "Service documents" });
+
+async function setPageDetailsOpen(open) {
+  if ((await pageDetails.evaluate((element) => element.parentElement.open)) !== open)
+    await pageDetails.click();
+}
 
 async function reset(content) {
   await page.getByRole("button", { name: /^Markdown/ }).click();
@@ -48,6 +69,7 @@ async function reset(content) {
   await button("Apply changes").click();
   await button("Close source").click();
   await body.waitFor();
+  await setPageDetailsOpen(false);
 }
 
 async function menuAt(locator) {
@@ -199,6 +221,7 @@ try {
     .getByRole("button", { name: "Create service", exact: true })
     .click();
   await body.waitFor();
+  await setPageDetailsOpen(false);
 
   await body.click();
   await page.keyboard.type("New text");
@@ -508,6 +531,7 @@ try {
     await page.locator('[role="status"][title="Saved"]:visible').waitFor();
     await page.reload();
     await body.waitFor();
+    await setPageDetailsOpen(false);
     await menuAt(body.getByText("Two", { exact: true }));
     await button("Outdent list").click();
     assert.deepEqual(await body.locator(":scope > :is(ul, ol) > li").allTextContents(), [
@@ -572,6 +596,7 @@ try {
   await page.locator('[role="status"][title="Saved"]:visible').waitFor();
   await page.reload();
   await body.waitFor();
+  await setPageDetailsOpen(false);
   assert.equal(
     await actionButton.evaluate((element) => getComputedStyle(element).backgroundColor),
     secondaryBackground,
@@ -602,6 +627,7 @@ try {
   await page.locator('[role="status"][title="Saved"]:visible').waitFor();
   await page.reload();
   await startButton.locator("strong").waitFor();
+  await setPageDetailsOpen(false);
   assert.equal(await markdown(), formattedStart);
   await button("Preview page").click();
   await page.locator(".page-document-preview a[data-start-link] strong").waitFor();
@@ -630,20 +656,167 @@ try {
   assert.equal(await source.getAttribute("aria-invalid"), "true");
   await button("Discard changes").click();
 
+  await source.fill(
+    currentSource.replace(
+      "title: Writer interactions",
+      "title: Writer interactions\npublish_date: 2026-99-99\ncategories: [housing, 7]",
+    ),
+  );
+  await button("Apply changes").click();
+  await button("Close source").click();
+  await setPageDetailsOpen(true);
+  assert.equal(await publicationDate.inputValue(), "2026-99-99");
+  assert.equal(await publicationDate.getAttribute("readonly"), "");
+  assert.equal(await addCategory.count(), 0);
+  await description.fill("An unrelated metadata edit.");
+  const unusualSource = await markdown();
+  assert.match(unusualSource, /publish_date: ["']?2026-99-99/);
+  assert.match(unusualSource, /categories: \[\s*housing,\s*7\s*\]/);
+
   const withMetadata = currentSource.replace(
     "title: Writer interactions",
-    "title: Writer interactions\nlede: A short introduction.\ndescription: A page description.\ncustom_note: Keep this metadata",
+    "title: Writer interactions\nlede: A short introduction.\ndescription: A page description.\ncategories:\n  - family-birth-relationships\n  - youth-and-community\nsubcategory: youth-development-leadership\n# Keep this comment\ncustom_note: Keep this metadata",
   );
 
+  await page.getByRole("button", { name: /^Markdown/ }).click();
   await source.fill(withMetadata);
   await button("Apply changes").click();
   await button("Close source").click();
-  await page.getByText("A short introduction.", { exact: true }).waitFor();
+  await setPageDetailsOpen(true);
+  assert.equal(await introduction.inputValue(), "A short introduction.");
+  assert.equal(await description.inputValue(), "A page description.");
+  assert.equal(await visibility.inputValue(), "");
+  assert.equal(await addCategory.isDisabled(), true);
+  await button("Remove family-birth-relationships").waitFor();
+  await button("Remove youth-and-community").waitFor();
+  const beforeMetadataHistory = await markdown();
+
+  for (const field of [description, introduction, formId]) {
+    const original = await field.inputValue();
+    await field.fill(`${original} First edit`);
+    await button("Undo").click();
+    assert.equal(await field.inputValue(), original);
+    await focused(field);
+    await page.keyboard.press("End");
+    await page.keyboard.type(" Replacement");
+    assert.equal(await field.inputValue(), `${original} Replacement`);
+    assert.equal(await button("Redo").isDisabled(), true, "typing clears stale redo history");
+    assert.equal(await button("Undo").isEnabled(), true, "replacement typing remains undoable");
+    await button("Undo").click();
+    assert.equal(await field.inputValue(), original);
+    await button("Redo").click();
+    assert.equal(await field.inputValue(), `${original} Replacement`);
+    await button("Undo").click();
+    assert.equal(await field.inputValue(), original);
+  }
+
+  assert.equal(await markdown(), beforeMetadataHistory);
+  await description.focus();
+  await description.press("End");
+  await description.pressSequentially(" Extra.");
+  assert.equal(await description.inputValue(), "A page description. Extra.");
+  await description.press("ControlOrMeta+z");
+  assert.equal(await description.inputValue(), "A page description.");
+  await description.press("ControlOrMeta+Shift+z");
+  assert.equal(await description.inputValue(), "A page description. Extra.");
   await title.fill("Edited writer title");
+  await description.fill("Updated page description.");
+  await introduction.fill("Updated introduction.");
+  await visibility.selectOption("preview");
+  await publicationDate.fill("2026-10-06");
+  const beforeFormId = await markdown();
+  await formId.fill("writer-form");
   const editedSource = await markdown();
   assert.match(editedSource, /title: Edited writer title/);
-  assert.match(editedSource, /description: A page description/);
+  assert.match(editedSource, /description: ["']?Updated page description\./);
+  assert.match(editedSource, /lede: ["']?Updated introduction\./);
+  assert.match(
+    editedSource,
+    /categories:\n\s+- family-birth-relationships\n\s+- youth-and-community/,
+  );
+  assert.match(editedSource, /subcategory: youth-development-leadership/);
+  assert.match(editedSource, /visibility: preview/);
+  assert.match(editedSource, /publish_date: ["']?2026-10-06/);
+  assert.match(editedSource, /form_id: writer-form/);
+  assert.match(editedSource, /# Keep this comment/);
   assert.match(editedSource, /custom_note: Keep this metadata/);
+  await button("Undo").click();
+  assert.equal(await formId.inputValue(), "");
+  assert.equal(await markdown(), beforeFormId);
+  await button("Redo").click();
+  assert.equal(await formId.inputValue(), "writer-form");
+  assert.equal(await markdown(), editedSource);
+  await page.locator('[role="status"][title="Saved"]:visible').waitFor();
+  await page.reload();
+  await body.waitFor();
+  await setPageDetailsOpen(true);
+  assert.equal(await description.inputValue(), "Updated page description.");
+  assert.equal(await introduction.inputValue(), "Updated introduction.");
+  assert.equal(await visibility.inputValue(), "preview");
+  assert.equal(await publicationDate.inputValue(), "2026-10-06");
+  assert.equal(await formId.inputValue(), "writer-form");
+  assert.equal(await markdown(), editedSource);
+
+  await button("Remove youth-and-community").click();
+  assert.equal(
+    await page.getByLabel("Subcategory", { exact: true }).inputValue(),
+    "youth-development-leadership",
+  );
+  const singleCategorySource = await markdown();
+  assert.match(singleCategorySource, /category: family-birth-relationships/);
+  assert.doesNotMatch(singleCategorySource, /^categories:/m);
+  assert.match(singleCategorySource, /subcategory: youth-development-leadership/);
+  await button("Undo").click();
+  assert.equal(await markdown(), editedSource);
+  await button("Redo").click();
+  assert.equal(await markdown(), singleCategorySource);
+  await visibility.selectOption("");
+  await publicationDate.fill("");
+  const clearedSource = await markdown();
+  assert.doesNotMatch(clearedSource, /^(visibility|publish_date):/m);
+
+  await pageDetails.focus();
+  await pageDetails.press("Enter");
+  await description.waitFor({ state: "hidden" });
+  await focused(pageDetails);
+  await pageDetails.press("Space");
+  await description.waitFor();
+  await pageDetails.press("Tab");
+  await focused(description);
+  await button("Preview page").click();
+  const metadataPreview = page.getByRole("article", { name: "Page preview" });
+  await metadataPreview.getByText("Updated introduction.", { exact: true }).waitFor();
+  assert.equal(await description.isVisible(), false);
+  const disclosure = metadataPreview.locator("details");
+  const disclosureSummary = disclosure.locator("summary");
+  const disclosureContent = disclosure.getByText("Supporting information.", { exact: true });
+  assert.equal(
+    await disclosure.evaluate(
+      (element) =>
+        getComputedStyle(element).fontSize === getComputedStyle(element.parentElement).fontSize,
+    ),
+    true,
+    "reader disclosures inherit the page's text size",
+  );
+  assert.equal(
+    await disclosureSummary.evaluate((element) => getComputedStyle(element).display),
+    "list-item",
+    "reader disclosures retain the native summary marker",
+  );
+  assert.notEqual(
+    await disclosureSummary.evaluate((element) => getComputedStyle(element).listStyleType),
+    "none",
+  );
+  await disclosureContent.waitFor({ state: "hidden" });
+  await disclosureSummary.click();
+  await disclosureContent.waitFor();
+  await disclosureSummary.press("Enter");
+  await disclosureContent.waitFor({ state: "hidden" });
+  await focused(disclosureSummary);
+  await disclosureSummary.press("Space");
+  await disclosureContent.waitFor();
+  await button("Back to editing").click();
+  assert.equal(await introduction.inputValue(), "Updated introduction.");
 
   await button("Add document").click();
   const documentDialog = page.getByRole("dialog");
@@ -664,6 +837,7 @@ try {
   await page.getByRole("article", { name: "Page preview" }).waitFor();
   assert.equal(await body.isVisible(), false);
   await button("Back to editing").click();
+  await setPageDetailsOpen(true);
 
   await title.fill(
     "A very long service page title that must wrap without hiding any words on a narrow screen",
@@ -681,6 +855,16 @@ try {
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
       true,
     );
+
+    for (const field of [description, addCategory, visibility, publicationDate, formId]) {
+      await insideViewport(field);
+      assert.ok((await field.boundingBox()).height >= 44);
+      assert.ok(
+        await field.evaluate((element) => parseFloat(getComputedStyle(element).fontSize) >= 16),
+      );
+    }
+
+    await insideViewport(button("Remove family-birth-relationships"));
     await button("Add content").click();
     await search.waitFor();
     await insideViewport(page.locator(".page-insert-menu"));
@@ -692,7 +876,7 @@ try {
 
   assert.deepEqual(errors, []);
   console.log(
-    "PASS page writer: hover-only gutter targeting/alignment, insertion keyboard/focus, nested slash, selected table row, native drag preview/destination, grouped drag undo/redo, cancellation/read-only isolation, move/delete undo, component settings and styles, Start label formatting/undo/reload/preview, list hierarchy after reload/outdent, table preview alignment, metadata source validation and preservation, hidden/preview portals and narrow layouts",
+    "PASS page writer: hover-only gutter targeting/alignment, insertion keyboard/focus, nested slash, selected table row, native drag preview/destination, grouped drag undo/redo, cancellation/read-only isolation, move/delete undo, component settings and styles, Start label formatting/undo/reload/preview, list hierarchy after reload/outdent, table preview alignment, metadata source validation/preservation, page details editing/undo/reload/preview/keyboard/collapse, toolbar undo typing branches, native reader disclosure styles/keyboard, hidden/preview portals and narrow layouts",
   );
 } catch (error) {
   await page.screenshot({ path: "/tmp/page-writer-failure.png", fullPage: true });
