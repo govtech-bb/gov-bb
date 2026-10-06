@@ -27,6 +27,8 @@ You can apply to use government land for things like:
 
 The Ministry decides if you can use the land and for how long.
 
+<!-- MDA NOTE: Confirm what types of use are normally refused. -->
+
 ## Before you start
 
 You will need:
@@ -37,6 +39,8 @@ You will need:
 - GPS coordinates for the land, if you have them
 
 GPS coordinates are numbers that show the exact location of a place. You can usually find them using a maps app on your phone.
+
+<!-- MDA NOTE: Confirm whether any supporting documents are required (for example site plans, public liability insurance, organisation registration), and whether the photo of the land is still needed. Confirm any minimum notice period before the requested start date. -->
 
 ## Complete the form
 
@@ -65,6 +69,8 @@ There is no cost to apply.
 
 If your application is approved, you may have to pay to use the land. The Ministry will tell you if there is a fee and how much it is.
 
+<!-- MDA NOTE: Confirm whether a security deposit is required once permission is granted. -->
+
 ## What happens after you apply
 
 After you submit your application:
@@ -75,6 +81,8 @@ After you submit your application:
 - some requests may need approval from other government departments before the Ministry can decide
 
 Submitting an application does not mean you have been given permission to use the land.
+
+<!-- MDA NOTE: Confirm what an approved applicant receives (for example a permission letter, a permit, or conditions of use). -->
 
 ## Contact
 
