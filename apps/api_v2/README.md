@@ -21,7 +21,9 @@ http://localhost:3020/api/auth/callback/github
 
 Use `http://localhost:3000` for the editor and set its public `VITE_API_ORIGIN` to `http://localhost:3020`. Use `localhost` consistently; mixing it with `127.0.0.1` changes the browser's cookie context. The editor automatically redirects unauthenticated visitors to GitHub and returns them to their original editor URL. Authentication does not move or clear existing browser drafts.
 
-Generate `BETTER_AUTH_SECRET` with `openssl rand -base64 32` and keep it stable. Set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` from the GitHub OAuth App. The provider requests `read:user`, `user:email`, and `read:org`; grant the app access to `govtech-bb` if the organization restricts OAuth apps. Missing credentials prevent startup in every environment; there is no development authentication bypass.
+Generate `BETTER_AUTH_SECRET` with `openssl rand -base64 32` and keep it stable. Set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` from the GitHub OAuth App. The provider requests `read:user`, `user:email`, and `read:org`; grant the app access to `govtech-bb` if the organization restricts OAuth apps. Missing credentials prevent startup in every environment.
+
+For local development only, `AUTH_BYPASS=true` skips sign-in. BetterAuth is not started, so the credentials above are unused and placeholders will do, and every editor request runs as a fixed local developer. Pair it with the editor's `VITE_AUTH_BYPASS=true`. Because a bypassed API admits any caller, startup refuses it in production and whenever `EDITOR_ORIGIN` is not `localhost` or `127.0.0.1`.
 
 | Variable                                           | Purpose/default                                                                |
 | -------------------------------------------------- | ------------------------------------------------------------------------------ |
@@ -34,6 +36,7 @@ Generate `BETTER_AUTH_SECRET` with `openssl rand -base64 32` and keep it stable.
 | `EDITOR_ORIGIN`                                    | Required editor origin; the exact credentialed CORS and write-origin allowlist |
 | `BETTER_AUTH_SECRET`                               | Required secret of at least 32 characters                                      |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`         | Required server-side GitHub OAuth credentials                                  |
+| `AUTH_BYPASS`                                      | Local development only: `true` skips sign-in (see above)                       |
 
 Production requires HTTPS API/editor origins on the same site, such as separate subdomains of the same organizational domain. Cookies are host-only, HttpOnly, Secure on HTTPS, and SameSite=Lax; API requests from the editor include credentials. Do not enable broad cookie domains or permissive CORS. Register the production API's exact `/api/auth/callback/github` URI in GitHub. Forwarded Host headers do not determine callback URLs; the configured origin does. This change does not configure hosting, DNS, or a reverse proxy.
 

@@ -19,7 +19,7 @@ export const NOT_FOUND_READ = "public, max-age=10";
 export async function registerPageRoutes(
   app: FastifyInstance,
   store: ApiStore,
-  access: EditorAccess,
+  access: Pick<EditorAccess, "requireEmployee">,
   editorOrigin: string,
 ): Promise<void> {
   app.route<{ Querystring: { url: string } }>({

@@ -58,3 +58,47 @@ describe("auth configuration", () => {
     }
   });
 });
+
+describe("auth bypass", () => {
+  const bypassed = (input: Record<string, string>) => {
+    const parsed = parseConfig({ ...required, ...input });
+    return parsed.ok ? parsed.value.authBypass : "refused";
+  };
+
+  it("is off unless asked for", () => {
+    expect(bypassed({})).toBe(false);
+    expect(bypassed({ AUTH_BYPASS: "false" })).toBe(false);
+  });
+
+  it("is allowed only for a local editor outside production", () => {
+    expect(bypassed({ AUTH_BYPASS: "true" })).toBe(true);
+    expect(
+      bypassed({
+        AUTH_BYPASS: "true",
+        EDITOR_ORIGIN: "http://127.0.0.1:3000",
+      }),
+    ).toBe(true);
+    expect(
+      bypassed({
+        AUTH_BYPASS: "true",
+        EDITOR_ORIGIN: "https://editor.example",
+      }),
+    ).toBe("refused");
+    expect(
+      bypassed({
+        AUTH_BYPASS: "true",
+        NODE_ENV: "production",
+        EDITOR_ORIGIN: "https://editor.example",
+        BETTER_AUTH_URL: "https://api.example",
+      }),
+    ).toBe("refused");
+    expect(
+      bypassed({
+        AUTH_BYPASS: "true",
+        NODE_ENV: "production",
+        EDITOR_ORIGIN: "http://localhost:3000",
+        BETTER_AUTH_URL: "https://api.example",
+      }),
+    ).toBe("refused");
+  });
+});
