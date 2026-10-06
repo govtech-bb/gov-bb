@@ -3,9 +3,13 @@ import { useNavigate } from "@tanstack/react-router";
 import { ClientFormStep, UseStepGuardProps } from "@forms/types";
 import {
   getFirstIncompleteActiveStep,
+  getReviewReturnStep,
   isStepAccessible,
   markStepCompleted,
 } from "../lib/session-storage";
+
+// Module-level so the default keeps a stable identity across renders.
+const everyStepValid = () => true;
 
 /**
  * Condition-aware step guard for multi-step form navigation.
@@ -27,14 +31,22 @@ export function useStepGuard({
   formId,
   activeSteps,
   currentStepId,
+  returnToReview = false,
+  isStepValid = everyStepValid,
 }: UseStepGuardProps) {
   const navigate = useNavigate({ from: "/forms/$formId/" });
 
   // ─── Internal primitive: write the step ID into the URL ──────────────────
+  // Arriving at the review, by any route, ends a change journey: dropping
+  // `returnTo` here stops it riding along to the declaration (#2812).
   const navigateToStepId = useCallback(
     (stepId: string) => {
       void navigate({
-        search: (prev: Record<string, unknown>) => ({ ...prev, step: stepId }),
+        search: (prev: Record<string, unknown>) => ({
+          ...prev,
+          step: stepId,
+          ...(stepId === "check-your-answers" && { returnTo: undefined }),
+        }),
       });
     },
     [navigate],
@@ -83,11 +95,19 @@ export function useStepGuard({
       // TODO: Validate current step before marking as completed and navigating to the next step
       markStepCompleted(formId, completedStepId);
       const steps = stepsOverride ?? activeSteps;
+      // Came from a Change link: skip the steps already answered and go back
+      // to the review, stopping first anywhere the change left a gap (#2812).
+      const returnStep =
+        returnToReview && getReviewReturnStep(formId, steps, isStepValid);
+      if (returnStep) {
+        navigateToStepId(returnStep.stepId);
+        return;
+      }
       const currentIdx = steps.findIndex((s) => s.stepId === completedStepId);
       const nextStep = steps[currentIdx + 1];
       if (nextStep) navigateToStepId(nextStep.stepId);
     },
-    [formId, activeSteps, navigateToStepId],
+    [formId, activeSteps, returnToReview, isStepValid, navigateToStepId],
   );
 
   // ─── Guard effect: enforce access rules on every relevant change ─────────
