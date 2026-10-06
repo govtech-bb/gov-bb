@@ -95,15 +95,27 @@ export function useStepGuard({
       // TODO: Validate current step before marking as completed and navigating to the next step
       markStepCompleted(formId, completedStepId);
       const steps = stepsOverride ?? activeSteps;
+      const currentIdx = steps.findIndex((s) => s.stepId === completedStepId);
       // Came from a Change link: skip the steps already answered and go back
       // to the review, stopping first anywhere the change left a gap (#2812).
+      // Only a step before the review returns — the review and declaration
+      // carry on as normal even if a stray `returnTo` is in the URL. The step
+      // just completed passed the on-screen validators, so it isn't re-judged.
+      const reviewIdx = steps.findIndex(
+        (s) => s.stepId === "check-your-answers",
+      );
       const returnStep =
-        returnToReview && getReviewReturnStep(formId, steps, isStepValid);
+        returnToReview &&
+        currentIdx < reviewIdx &&
+        getReviewReturnStep(
+          formId,
+          steps,
+          (s) => s.stepId === completedStepId || isStepValid(s),
+        );
       if (returnStep) {
         navigateToStepId(returnStep.stepId);
         return;
       }
-      const currentIdx = steps.findIndex((s) => s.stepId === completedStepId);
       const nextStep = steps[currentIdx + 1];
       if (nextStep) navigateToStepId(nextStep.stepId);
     },
