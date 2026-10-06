@@ -238,13 +238,35 @@ describe("RouteComponent", () => {
     const metaWithTargets = {
       ...mockFormMeta,
       stepConditionalTargets: {
-        step1: "field1",
-        step2: "field2",
+        step1: ["field1"],
+        step2: ["field2"],
       },
     };
     vi.spyOn(Route, "useLoaderData").mockReturnValue(metaWithTargets);
     render(<Route.component />);
     expect(screen.getByTestId("form-renderer")).toBeInTheDocument();
+  });
+
+  it("recomputes visible steps when any targeted field on a step changes", () => {
+    vi.spyOn(Route, "useLoaderData").mockReturnValue({
+      ...mockFormMeta,
+      stepConditionalTargets: { step1: ["applyingFor", "hasPermission"] },
+    });
+    let values: Record<string, unknown> = {
+      step1_applyingFor: "individual",
+      step1_hasPermission: "yes",
+    };
+    mockUseStore.mockImplementation((_store: any, selector: any) =>
+      selector ? selector({ values }) : {},
+    );
+
+    const { rerender } = render(<Route.component />);
+    const callsBefore = mockGetVisibleSteps.mock.calls.length;
+
+    values = { ...values, step1_hasPermission: "no" };
+    rerender(<Route.component />);
+
+    expect(mockGetVisibleSteps.mock.calls.length).toBeGreaterThan(callsBefore);
   });
 
   it("passes step from useSearch to FormRenderer as stepId", () => {

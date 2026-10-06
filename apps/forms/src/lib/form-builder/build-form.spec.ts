@@ -321,7 +321,7 @@ describe("buildForm", () => {
 
       const result = buildForm(contract);
 
-      expect(result.stepConditionalTargets["step1"]).toBe("hasVisit");
+      expect(result.stepConditionalTargets["step1"]).toEqual(["hasVisit"]);
     });
 
     it("is an empty object when no steps have stepConditionalOn behaviours", () => {
