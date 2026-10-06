@@ -1,6 +1,9 @@
 import { renderHook, act } from "@testing-library/react";
+import type { AnyFormApi } from "@tanstack/react-form";
 import { useStepGuard } from "./use-step-guard";
-import type { ClientFormStep } from "@forms/types";
+import { getVisibleSteps } from "../lib/form-builder/helpers/behavior-helper";
+import { stepPassesValidation } from "../lib/form-builder/validation-builder";
+import type { ClientFormStep, ClientPrimitive } from "@forms/types";
 
 const mockNavigate = vi.fn();
 
@@ -465,6 +468,166 @@ describe("useStepGuard", () => {
         }),
       );
       expect(mockNavigate).not.toHaveBeenCalled();
+    });
+  });
+});
+
+// The issue's own example, end to end through the real visibility and
+// validation code (only the router is mocked): switching "Are you the
+// property owner?" from Yes to No reveals a separate owner-details step via
+// stepConditionalOn, and the return from Change must stop there first.
+describe("issue #2812 scenario — a Change reveals a step via stepConditionalOn", () => {
+  const field = (stepId: string, fieldId: string): ClientPrimitive => ({
+    id: `${stepId}_${fieldId}`,
+    fieldId,
+    stepId,
+    name: fieldId,
+    label: fieldId,
+    htmlType: "text",
+    disabled: false,
+    hidden: false,
+    conditionallyHidden: false,
+    validations: { required: { value: true, error: `${fieldId} is required` } },
+  });
+  const allSteps: ClientFormStep[] = [
+    {
+      stepId: "application",
+      title: "Application",
+      fields: [field("application", "type")],
+    },
+    {
+      stepId: "property-owner",
+      title: "Owner",
+      fields: [field("property-owner", "is-owner")],
+    },
+    {
+      stepId: "owner-details",
+      title: "Owner details",
+      fields: [field("owner-details", "owner-name")],
+      behaviours: [
+        {
+          type: "stepConditionalOn",
+          targetStepId: "property-owner",
+          targetFieldId: "is-owner",
+          operator: "equal",
+          value: "no",
+        },
+      ],
+    },
+    {
+      stepId: "property-details",
+      title: "Property",
+      fields: [field("property-details", "address")],
+    },
+    { stepId: "check-your-answers", title: "Check your answers", fields: [] },
+    { stepId: "declaration", title: "Declaration", fields: [] },
+  ];
+  const formApiWith = (values: Record<string, unknown>) =>
+    ({
+      state: { values },
+      getFieldValue: (id: string) => values[id],
+    }) as unknown as AnyFormApi;
+
+  function changeOwnerAnswerTo(isOwner: "yes" | "no") {
+    // First pass answered Yes: owner-details was hidden and never completed.
+    markComplete(
+      FORM_ID,
+      "application",
+      "property-owner",
+      "property-details",
+      "check-your-answers",
+    );
+    const formApi = formApiWith({
+      application_type: "new",
+      "property-owner_is-owner": isOwner,
+      "property-details_address": "1 Bay Street",
+    });
+    const activeSteps = getVisibleSteps(allSteps, formApi);
+    const { result } = renderHook(() =>
+      useStepGuard({
+        formId: FORM_ID,
+        activeSteps,
+        currentStepId: "property-owner",
+        returnToReview: true,
+        isStepValid: (s) => stepPassesValidation(s, formApi),
+      }),
+    );
+    mockNavigate.mockClear();
+    return { result, activeSteps };
+  }
+  const search = () =>
+    (
+      mockNavigate.mock.calls.at(-1)?.[0] as {
+        search: (p: Record<string, unknown>) => Record<string, unknown>;
+      }
+    ).search({ returnTo: "check-your-answers" });
+
+  it("Yes → No: stops on the newly revealed owner-details step, then returns to the review", () => {
+    const { result, activeSteps } = changeOwnerAnswerTo("no");
+    expect(activeSteps.map((s) => s.stepId)).toContain("owner-details");
+
+    act(() => result.current.completeAndContinue("property-owner"));
+    expect(search()).toEqual({
+      step: "owner-details",
+      returnTo: "check-your-answers",
+    });
+
+    act(() => result.current.completeAndContinue("owner-details"));
+    expect(search()).toEqual({
+      step: "check-your-answers",
+      returnTo: undefined,
+    });
+  });
+
+  it("stops on a revealed step even when it has no required questions", () => {
+    // Validity can't catch this one, so it isolates the issue's rule: the
+    // first newly revealed *incomplete* step comes before the review.
+    const optionalOnly = allSteps.map((s) =>
+      s.stepId === "owner-details"
+        ? {
+            ...s,
+            fields: s.fields.map((f) => ({ ...f, validations: undefined })),
+          }
+        : s,
+    );
+    markComplete(
+      FORM_ID,
+      "application",
+      "property-owner",
+      "property-details",
+      "check-your-answers",
+    );
+    const formApi = formApiWith({
+      application_type: "new",
+      "property-owner_is-owner": "no",
+      "property-details_address": "1 Bay Street",
+    });
+    const activeSteps = getVisibleSteps(optionalOnly, formApi);
+    const { result } = renderHook(() =>
+      useStepGuard({
+        formId: FORM_ID,
+        activeSteps,
+        currentStepId: "property-owner",
+        returnToReview: true,
+        isStepValid: (s) => stepPassesValidation(s, formApi),
+      }),
+    );
+    mockNavigate.mockClear();
+    act(() => result.current.completeAndContinue("property-owner"));
+    expect(search()).toEqual({
+      step: "owner-details",
+      returnTo: "check-your-answers",
+    });
+  });
+
+  it("an unchanged Yes reveals nothing and goes straight back to the review", () => {
+    const { result, activeSteps } = changeOwnerAnswerTo("yes");
+    expect(activeSteps.map((s) => s.stepId)).not.toContain("owner-details");
+
+    act(() => result.current.completeAndContinue("property-owner"));
+    expect(search()).toEqual({
+      step: "check-your-answers",
+      returnTo: undefined,
     });
   });
 });
