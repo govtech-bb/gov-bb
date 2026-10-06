@@ -11,3 +11,6 @@ yarn.lock
 # change (#1196). Prettier reformatting them via the lint-staged hook would create
 # spurious diffs on any commit that happens to stage one. Leave them untouched.
 apps/api/src/forms/form-definitions/recipes/
+
+# The editor uses Oxfmt and byte-preserved regression fixtures.
+apps/editor_v2/

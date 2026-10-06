@@ -1,0 +1,104 @@
+{
+  "name": "@govtech-bb/editor-v2",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@oxlint/plugins": "1.87.0",
+    "@phosphor-icons/core": "2.1.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "oxfmt": "0.72.0",
+    "oxlint": "1.87.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "catalog:",
+    "@types/mdast": "4.0.4",
+    "@types/node": "^24.0.0",
+    "@vitejs/plugin-react": "^6.0.2",
+    "@tailwindcss/vite": "4.3.3",
+    "vite": "catalog:",
+    "vitest": "^4.1.11"
+  },
+  "scripts": {
+    "dev": "vite dev",
+    "test": "vitest run",
+    "lint": "oxlint vite.config.ts vitest.config.ts src tests scripts docs/examples",
+    "lint:fix": "oxlint --fix vite.config.ts vitest.config.ts src tests scripts docs/examples",
+    "format": "oxfmt --write vite.config.ts vitest.config.ts \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"scripts/**/*.{ts,mjs}\" \"docs/examples/**/*.{ts,tsx}\"",
+    "format:check": "oxfmt --check vite.config.ts vitest.config.ts \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"scripts/**/*.{ts,mjs}\" \"docs/examples/**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit",
+    "build": "vite build",
+    "check:boundaries": "node scripts/check-boundaries.ts",
+    "check:coverage": "vitest run scripts/check-native-form-coverage.test.ts tests/forms/native-capability-fixtures.test.ts",
+    "generate:demo": "EDITOR_GENERATE_DEMO=1 vitest run docs/examples/editor-system.test.ts"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.8.0",
+    "@govtech-bb/frontend": "1.0.0-alpha.29",
+    "@lexical/clipboard": "0.51.0",
+    "@lexical/extension": "0.51.0",
+    "@lexical/link": "0.51.0",
+    "@lexical/list": "0.51.0",
+    "@lexical/react": "^0.51.0",
+    "@lexical/rich-text": "^0.51.0",
+    "@lexical/table": "0.51.0",
+    "@phosphor-icons/react": "2.1.10",
+    "cn": "^0.4.0",
+    "date-fns": "^4",
+    "entities": "^8.1.0",
+    "lexical": "^0.51.0",
+    "mdast-util-to-markdown": "2.2.0",
+    "react": "^19.3.0",
+    "react-day-picker": "^9.14.0",
+    "react-dom": "^19.3.0",
+    "remark-directive": "^4.0.0",
+    "remark-frontmatter": "^5.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "selecto": "^1.26.3",
+    "unified": "^11.0.5",
+    "yaml": "^2.9.1",
+    "@tanstack/react-start": "1.168.60",
+    "@tanstack/react-router": "1.170.41"
+  },
+  "version": "0.0.0",
+  "nx": {
+    "name": "editor_v2",
+    "projectType": "application",
+    "sourceRoot": "apps/editor_v2/src",
+    "namedInputs": {
+      "default": [
+        "{projectRoot}/**/*",
+        "sharedGlobals"
+      ]
+    },
+    "targets": {
+      "dev": {
+        "continuous": true
+      },
+      "build": {
+        "outputs": [
+          "{projectRoot}/dist"
+        ]
+      },
+      "test": {
+        "inputs": [
+          "default",
+          "^production",
+          "{workspaceRoot}/apps/landing/src/content/**/*.md"
+        ]
+      },
+      "typecheck": {
+        "cache": true
+      },
+      "format:check": {
+        "cache": true
+      },
+      "check:boundaries": {
+        "cache": true
+      },
+      "check:coverage": {
+        "cache": true
+      }
+    }
+  }
+}

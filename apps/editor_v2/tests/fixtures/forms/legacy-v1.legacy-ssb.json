@@ -1,0 +1,554 @@
+{
+  "schema": {
+    "formId": "apply-for-a-permit-to-play-loud-music",
+    "title": "Apply for a permit to play loud music",
+    "description": "Apply for a permit to play amplified music at an event.",
+    "contactDetails": {
+      "title": "Permits Office",
+      "telephoneNumber": "+1 (246) 555-0100",
+      "email": "permits@example.gov.bb"
+    },
+    "processors": [
+      {
+        "type": "email",
+        "config": {
+          "recipientField": "config.mdaEmail",
+          "label": "Department notification"
+        }
+      }
+    ],
+    "meta": {
+      "visibility": "preview"
+    },
+    "pages": [
+      {
+        "id": "start",
+        "stepId": "tell-us-about-the-event",
+        "pageType": "questions",
+        "confirmation": false,
+        "blocks": [
+          {
+            "type": "text",
+            "id": "page-1/1",
+            "style": "paragraph",
+            "markdown": "Use this form to apply for a permit for an event with amplified music."
+          },
+          {
+            "type": "text",
+            "id": "page-1/2",
+            "style": "paragraph",
+            "markdown": "You will need:"
+          },
+          {
+            "type": "list",
+            "id": "page-1/3",
+            "ordered": false,
+            "items": [
+              {
+                "id": "page-1/3",
+                "markdown": "the date and address of the event"
+              },
+              {
+                "id": "page-1/4",
+                "markdown": "a site plan if you need to close a road"
+              }
+            ]
+          },
+          {
+            "type": "question",
+            "id": "event-name",
+            "fieldId": "event-name",
+            "ref": "components/generic-text",
+            "kind": "text",
+            "title": "Event name",
+            "titleId": "event-name:label",
+            "description": [],
+            "placeholder": "",
+            "options": [],
+            "settings": {
+              "required": true,
+              "field": "event-name"
+            },
+            "errors": {
+              "required": "Enter event name"
+            }
+          },
+          {
+            "type": "question",
+            "id": "event-parish",
+            "fieldId": "which-parish-is-the-event-in",
+            "ref": "components/generic-select",
+            "kind": "dropdown",
+            "title": "Which parish is the event in?",
+            "titleId": "event-parish:label",
+            "description": [],
+            "placeholder": "",
+            "options": [
+              {
+                "id": "event-parish:option-1",
+                "label": "Christ Church",
+                "value": "christ-church"
+              },
+              {
+                "id": "event-parish:option-2",
+                "label": "Saint Michael",
+                "value": "saint-michael"
+              }
+            ],
+            "settings": {
+              "required": true,
+              "field": "event-parish"
+            },
+            "errors": {
+              "required": "Answer “Which parish is the event in?”"
+            }
+          },
+          {
+            "type": "question",
+            "id": "event-date",
+            "fieldId": "event-date",
+            "ref": "components/generic-date",
+            "kind": "date",
+            "title": "Event date",
+            "titleId": "event-date:label",
+            "description": [
+              {
+                "type": "text",
+                "id": "event-date:hint-1",
+                "style": "paragraph",
+                "markdown": "For example, 27 3 2026"
+              }
+            ],
+            "placeholder": "",
+            "options": [],
+            "settings": {
+              "required": true,
+              "relativeDate": "futureOrToday",
+              "field": "event-date"
+            },
+            "errors": {
+              "required": "Enter event date",
+              "futureOrToday": "Event date must be today or in the future"
+            }
+          },
+          {
+            "type": "question",
+            "id": "national-id",
+            "fieldId": "national-id-number",
+            "ref": "components/national-id-number",
+            "kind": "text",
+            "title": "National Identification (ID) number",
+            "titleId": "national-id:label",
+            "description": [
+              {
+                "type": "text",
+                "id": "national-id:hint-1",
+                "style": "paragraph",
+                "markdown": "This is on your National Registration card. For example, 900314-0052"
+              }
+            ],
+            "placeholder": "",
+            "options": [],
+            "settings": {
+              "width": "medium",
+              "pattern": "^\\d{6}-\\d{4}$",
+              "mask": "999999-9999",
+              "errors": {
+                "required": "Enter your National ID number"
+              },
+              "required": true,
+              "field": "national-id"
+            },
+            "errors": {
+              "required": "Enter your National ID number",
+              "pattern": "Enter a valid National ID number (for example, 900314-0052)"
+            }
+          },
+          {
+            "type": "section",
+            "id": "page-1/9",
+            "fieldId": "use-passport-number-instead",
+            "summary": "Use passport number instead",
+            "ssb": "show-hide"
+          },
+          {
+            "type": "text",
+            "id": "page-1/9/1",
+            "style": "paragraph",
+            "markdown": "If you don’t have a National ID number, you can use your passport number instead.",
+            "depth": 1,
+            "under": "page-1/9",
+            "shownWhen": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "use-passport-number-instead",
+                "operator": "equal",
+                "value": true
+              }
+            ]
+          },
+          {
+            "type": "question",
+            "id": "passport-number",
+            "fieldId": "passport-number",
+            "ref": "components/passport-number",
+            "kind": "text",
+            "title": "Passport number",
+            "titleId": "passport-number:label",
+            "description": [],
+            "placeholder": "",
+            "options": [],
+            "settings": {
+              "width": "short",
+              "hasMinCharacters": true,
+              "minCharacters": 6,
+              "required": true,
+              "field": "passport-number"
+            },
+            "errors": {
+              "required": "Enter passport number",
+              "minLength": "Passport number must be 6 characters or more"
+            },
+            "depth": 1,
+            "under": "page-1/9",
+            "shownWhen": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "use-passport-number-instead",
+                "operator": "equal",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "title": "Tell us about the event",
+        "description": "We use this to check that amplified music is allowed where and when you plan it."
+      },
+      {
+        "id": "page-2",
+        "stepId": "road-closure",
+        "pageType": "questions",
+        "confirmation": false,
+        "blocks": [
+          {
+            "type": "question",
+            "id": "road-closure-needed",
+            "fieldId": "do-you-need-to-close-a-road",
+            "ref": "components/generic-radio",
+            "kind": "multiple-choice",
+            "title": "Do you need to close a road?",
+            "titleId": "road-closure-needed:label",
+            "description": [],
+            "placeholder": "",
+            "options": [
+              {
+                "id": "yes",
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "id": "road-closure-needed:option-2",
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "settings": {
+              "required": true,
+              "field": "road-closure-needed"
+            },
+            "errors": {
+              "required": "Answer “Do you need to close a road?”"
+            }
+          },
+          {
+            "type": "question",
+            "id": "closure-duration",
+            "fieldId": "how-long-will-the-road-be-closed",
+            "ref": "components/generic-text",
+            "kind": "text",
+            "title": "How long will the road be closed?",
+            "titleId": "closure-duration:label",
+            "description": [],
+            "placeholder": "",
+            "options": [],
+            "settings": {
+              "required": true,
+              "field": "closure-duration"
+            },
+            "errors": {
+              "required": "Answer “How long will the road be closed?”"
+            },
+            "depth": 1,
+            "under": "yes",
+            "shownWhen": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "do-you-need-to-close-a-road",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          },
+          {
+            "type": "callout",
+            "id": "apply-at-least-14-days-before-the-event-if-you-need-to-close",
+            "fieldId": "apply-at-least-14-warning",
+            "variant": "warning",
+            "markdown": "Apply at least 14 days before the event if you need to close a road.",
+            "depth": 1,
+            "under": "yes",
+            "shownWhen": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "do-you-need-to-close-a-road",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          },
+          {
+            "type": "logic",
+            "id": "conditional-logic",
+            "logicalOperator": "AND",
+            "conditionals": [
+              {
+                "id": "migration-condition-1",
+                "type": "SINGLE",
+                "field": "road-closure-needed",
+                "comparison": "IS",
+                "value": "yes"
+              }
+            ],
+            "actions": [
+              {
+                "id": "migration-action-1",
+                "type": "SHOW_BLOCKS",
+                "showBlocks": [
+                  "closure-duration",
+                  "apply-at-least-14-days-before-the-event-if-you-need-to-close"
+                ]
+              }
+            ]
+          },
+          {
+            "type": "question",
+            "id": "roads",
+            "fieldId": "which-roads",
+            "ref": "components/generic-textarea",
+            "kind": "long-answer",
+            "title": "Which roads?",
+            "titleId": "roads:label",
+            "description": [],
+            "placeholder": "",
+            "options": [],
+            "settings": {
+              "field": "roads"
+            },
+            "errors": {}
+          },
+          {
+            "type": "question",
+            "id": "site-plan",
+            "fieldId": "upload-a-site-plan",
+            "ref": "components/generic-file",
+            "kind": "file-upload",
+            "title": "Upload a site plan",
+            "titleId": "site-plan:label",
+            "description": [],
+            "placeholder": "",
+            "options": [],
+            "settings": {
+              "required": true,
+              "field": "site-plan",
+              "allowedFiles": [
+                "application/pdf",
+                "image/jpeg",
+                "image/png"
+              ]
+            },
+            "errors": {
+              "required": "Upload upload a site plan",
+              "fileTypes": "The file must be a .pdf, .jpg or .png"
+            }
+          }
+        ],
+        "title": "Road closure"
+      },
+      {
+        "id": "page-3",
+        "stepId": "sound-systems",
+        "pageType": "questions",
+        "confirmation": false,
+        "blocks": [
+          {
+            "type": "question",
+            "id": "sound-system-type",
+            "fieldId": "type-of-sound-system",
+            "ref": "components/generic-text",
+            "kind": "text",
+            "title": "Type of sound system",
+            "titleId": "sound-system-type:label",
+            "description": [],
+            "placeholder": "",
+            "options": [],
+            "settings": {
+              "required": true,
+              "field": "sound-system-type"
+            },
+            "errors": {
+              "required": "Enter type of sound system"
+            }
+          },
+          {
+            "type": "question",
+            "id": "speaker-count",
+            "fieldId": "number-of-speakers",
+            "ref": "components/generic-number",
+            "kind": "number",
+            "title": "Number of speakers",
+            "titleId": "speaker-count:label",
+            "description": [],
+            "placeholder": "",
+            "options": [],
+            "settings": {
+              "required": true,
+              "field": "speaker-count"
+            },
+            "errors": {
+              "required": "Enter number of speakers"
+            }
+          },
+          {
+            "type": "question",
+            "id": "speaker-brand",
+            "fieldId": "speaker-brand",
+            "ref": "components/generic-text",
+            "kind": "text",
+            "title": "Speaker brand",
+            "titleId": "speaker-brand:label",
+            "description": [],
+            "placeholder": "",
+            "options": [],
+            "settings": {
+              "required": true,
+              "fieldArray": {
+                "min": 1,
+                "max": 4
+              },
+              "field": "speaker-brand"
+            },
+            "errors": {
+              "required": "Enter speaker brand"
+            },
+            "behaviours": [
+              {
+                "type": "fieldArray",
+                "min": 1,
+                "max": 4,
+                "addAnotherLabel": "Add another speaker brand"
+              }
+            ]
+          }
+        ],
+        "behaviours": [
+          {
+            "type": "repeatable",
+            "min": 1,
+            "max": 5,
+            "addAnotherLabel": "Do you need to add another sound system?",
+            "instanceLabel": "Sound system"
+          }
+        ],
+        "title": "Sound systems"
+      },
+      {
+        "id": "page-4",
+        "stepId": "check-your-answers",
+        "pageType": "check-answers",
+        "name": "Check your answers",
+        "confirmation": false,
+        "blocks": [],
+        "title": "Check your answers",
+        "description": "Review all the information you have provided before submitting your application."
+      },
+      {
+        "id": "page-5",
+        "stepId": "declaration",
+        "pageType": "declaration",
+        "name": "Declaration",
+        "confirmation": false,
+        "blocks": [
+          {
+            "type": "question",
+            "id": "declaration",
+            "fieldId": "declaration-confirmed",
+            "ref": "components/confirmation",
+            "kind": "checkboxes",
+            "title": "Declaration",
+            "titleId": "declaration:label",
+            "description": [],
+            "placeholder": "",
+            "options": [
+              {
+                "id": "declaration:option-1",
+                "label": "I confirm the information I have given is correct",
+                "value": "i-confirm-the-information-i-have-given-is"
+              }
+            ],
+            "settings": {
+              "required": true,
+              "field": "declaration"
+            },
+            "errors": {
+              "required": "You must confirm the declaration to continue"
+            }
+          }
+        ],
+        "title": "Declaration"
+      },
+      {
+        "id": "page-6",
+        "stepId": "submission-confirmation",
+        "pageType": "confirmation",
+        "confirmation": true,
+        "blocks": [
+          {
+            "type": "text",
+            "id": "page-6/1",
+            "style": "paragraph",
+            "markdown": "We will email you within 5 working days."
+          },
+          {
+            "type": "text",
+            "id": "page-6/2",
+            "style": "h2",
+            "markdown": "What happens next"
+          },
+          {
+            "type": "list",
+            "id": "page-6/3",
+            "ordered": true,
+            "items": [
+              {
+                "id": "page-6/3",
+                "markdown": "We check your application."
+              },
+              {
+                "id": "page-6/4",
+                "markdown": "We may call you to ask about the event."
+              },
+              {
+                "id": "page-6/5",
+                "markdown": "We email you your permit."
+              }
+            ]
+          }
+        ],
+        "title": "Application sent"
+      }
+    ]
+  },
+  "readiness": [],
+  "logic": [],
+  "compatibility": []
+}

@@ -1,0 +1,1020 @@
+{
+  "schemaVersion": 2,
+  "id": "severance-calculator",
+  "title": "Calculate your severance pay",
+  "mode": "calculator",
+  "locale": "en-BB",
+  "timeZone": "America/Barbados",
+  "settings": {
+    "visibility": "preview",
+    "hiddenAnswers": "retain"
+  },
+  "blocks": [
+    {
+      "id": "employment-page",
+      "type": "page",
+      "role": "questions",
+      "title": "Are you self-employed?"
+    },
+    {
+      "id": "severance-estimate-notice",
+      "type": "content",
+      "kind": "callout",
+      "content": "This is an estimate, not a decision about your entitlement. The calendar calculation uses complete years of service."
+    },
+    {
+      "id": "employment",
+      "type": "question",
+      "kind": "boolean",
+      "key": "employment",
+      "label": "Are you self-employed?",
+      "required": {
+        "value": true,
+        "message": "Select yes or no"
+      }
+    },
+    {
+      "id": "reason-page",
+      "type": "page",
+      "role": "questions",
+      "title": "Why were you sent home?",
+      "visible": false
+    },
+    {
+      "id": "reason",
+      "type": "question",
+      "kind": "choice",
+      "key": "reason",
+      "label": "Why were you sent home?",
+      "required": {
+        "value": true,
+        "message": "Select why you were sent home"
+      },
+      "config": {
+        "selection": "single"
+      },
+      "options": [
+        {
+          "id": "redundancy",
+          "label": "My job was cut or made redundant",
+          "value": "redundancy"
+        },
+        {
+          "id": "disaster",
+          "label": "A fire, flood, hurricane, or other disaster damaged the workplace",
+          "value": "disaster"
+        },
+        {
+          "id": "layoff",
+          "label": "I was laid off (period of 6 months)",
+          "value": "layoff"
+        },
+        {
+          "id": "death",
+          "label": "Death of employer",
+          "value": "death"
+        },
+        {
+          "id": "closure",
+          "label": "Business closure or reconstruction",
+          "value": "closure"
+        },
+        {
+          "id": "other",
+          "label": "None of these",
+          "value": "other"
+        }
+      ]
+    },
+    {
+      "id": "dates-page",
+      "type": "page",
+      "role": "questions",
+      "title": "When did you work for this employer?",
+      "visible": false
+    },
+    {
+      "id": "startIso",
+      "type": "question",
+      "kind": "date",
+      "key": "startIso",
+      "label": "Start date",
+      "required": {
+        "value": true,
+        "message": "Enter your start date including day, month and year"
+      }
+    },
+    {
+      "id": "endIso",
+      "type": "question",
+      "kind": "date",
+      "key": "endIso",
+      "label": "End date",
+      "required": {
+        "value": true,
+        "message": "Enter your last day at work including day, month and year"
+      }
+    },
+    {
+      "id": "years",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "wholeYearsBetween",
+        "args": [
+          {
+            "answer": "startIso"
+          },
+          {
+            "answer": "endIso"
+          }
+        ]
+      }
+    },
+    {
+      "id": "endYear",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "year",
+        "args": [
+          {
+            "answer": "endIso"
+          }
+        ]
+      }
+    },
+    {
+      "id": "pay-page",
+      "type": "page",
+      "role": "questions",
+      "title": "Your average gross pay",
+      "visible": false
+    },
+    {
+      "id": "period",
+      "type": "question",
+      "kind": "choice",
+      "key": "period",
+      "label": "How are you paid?",
+      "required": {
+        "value": true,
+        "message": "Select how you are paid"
+      },
+      "config": {
+        "selection": "single"
+      },
+      "options": [
+        {
+          "id": "weekly",
+          "label": "Weekly",
+          "value": "weekly"
+        },
+        {
+          "id": "monthly",
+          "label": "Monthly",
+          "value": "monthly"
+        }
+      ],
+      "default": "weekly"
+    },
+    {
+      "id": "simpleAvg",
+      "type": "question",
+      "kind": "number",
+      "key": "simpleAvg",
+      "label": "Average gross pay, including overtime and bonuses",
+      "required": {
+        "value": true,
+        "message": "Enter your average pay"
+      },
+      "validation": [
+        {
+          "id": "minimum",
+          "type": "minimum",
+          "value": 0,
+          "inclusive": false,
+          "message": "Enter your average pay as an amount greater than 0"
+        }
+      ]
+    },
+    {
+      "id": "pay-average-help",
+      "type": "content",
+      "kind": "paragraph",
+      "content": "Use your average gross pay over the last 104 weeks."
+    },
+    {
+      "id": "rawWeekly",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "answer": "simpleAvg"
+      }
+    },
+    {
+      "id": "weeklyCap",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "lookup",
+        "args": [
+          {
+            "value": "endYear"
+          }
+        ],
+        "entries": [
+          {
+            "key": 2015,
+            "value": 1060
+          },
+          {
+            "key": 2016,
+            "value": 1060
+          },
+          {
+            "key": 2017,
+            "value": 1073
+          },
+          {
+            "key": 2018,
+            "value": 1073
+          },
+          {
+            "key": 2019,
+            "value": 1112
+          },
+          {
+            "key": 2020,
+            "value": 1128
+          },
+          {
+            "key": 2021,
+            "value": 1128
+          },
+          {
+            "key": 2022,
+            "value": 1126
+          },
+          {
+            "key": 2023,
+            "value": 1182
+          },
+          {
+            "key": 2024,
+            "value": 1201
+          },
+          {
+            "key": 2025,
+            "value": 1219
+          },
+          {
+            "key": 2026,
+            "value": 1238
+          }
+        ],
+        "fallback": {
+          "value": "rawWeekly"
+        }
+      }
+    },
+    {
+      "id": "avgWeekly",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "min",
+        "args": [
+          {
+            "value": "rawWeekly"
+          },
+          {
+            "value": "weeklyCap"
+          }
+        ]
+      }
+    },
+    {
+      "id": "tier1Years",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "min",
+        "args": [
+          {
+            "value": "years"
+          },
+          10
+        ]
+      }
+    },
+    {
+      "id": "tier2Years",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "max",
+        "args": [
+          0,
+          {
+            "op": "min",
+            "args": [
+              {
+                "op": "subtract",
+                "args": [
+                  {
+                    "value": "years"
+                  },
+                  10
+                ]
+              },
+              10
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "tier3Years",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "max",
+        "args": [
+          0,
+          {
+            "op": "min",
+            "args": [
+              {
+                "op": "subtract",
+                "args": [
+                  {
+                    "value": "years"
+                  },
+                  20
+                ]
+              },
+              13
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "tier1Weeks",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "multiply",
+        "args": [
+          {
+            "value": "tier1Years"
+          },
+          2.5
+        ]
+      }
+    },
+    {
+      "id": "tier2Weeks",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "multiply",
+        "args": [
+          {
+            "value": "tier2Years"
+          },
+          3
+        ]
+      }
+    },
+    {
+      "id": "tier3Weeks",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "multiply",
+        "args": [
+          {
+            "value": "tier3Years"
+          },
+          3.5
+        ]
+      }
+    },
+    {
+      "id": "entitledWeeks",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "add",
+        "args": [
+          {
+            "value": "tier1Weeks"
+          },
+          {
+            "value": "tier2Weeks"
+          },
+          {
+            "value": "tier3Weeks"
+          }
+        ]
+      }
+    },
+    {
+      "id": "tier1Pay",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "multiply",
+        "args": [
+          {
+            "value": "tier1Weeks"
+          },
+          {
+            "value": "avgWeekly"
+          }
+        ]
+      }
+    },
+    {
+      "id": "tier2Pay",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "multiply",
+        "args": [
+          {
+            "value": "tier2Weeks"
+          },
+          {
+            "value": "avgWeekly"
+          }
+        ]
+      }
+    },
+    {
+      "id": "tier3Pay",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "multiply",
+        "args": [
+          {
+            "value": "tier3Weeks"
+          },
+          {
+            "value": "avgWeekly"
+          }
+        ]
+      }
+    },
+    {
+      "id": "severance",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "multiply",
+        "args": [
+          {
+            "value": "entitledWeeks"
+          },
+          {
+            "value": "avgWeekly"
+          }
+        ]
+      }
+    },
+    {
+      "id": "gapIllustration",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "multiply",
+        "args": [
+          {
+            "op": "divide",
+            "args": [
+              {
+                "op": "multiply",
+                "args": [
+                  {
+                    "value": "rawWeekly"
+                  },
+                  96
+                ]
+              },
+              104
+            ]
+          },
+          {
+            "value": "entitledWeeks"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ceilingApplied",
+      "type": "calculated",
+      "valueType": "boolean",
+      "expression": false
+    },
+    {
+      "id": "severance-rules",
+      "type": "logic",
+      "rules": [
+        {
+          "id": "ask-reason",
+          "when": {
+            "op": "eq",
+            "left": {
+              "answer": "employment"
+            },
+            "right": false
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "reason-page"
+              ],
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "ask-dates",
+          "when": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "eq",
+                "left": {
+                  "answer": "employment"
+                },
+                "right": false
+              },
+              {
+                "op": "not",
+                "condition": {
+                  "op": "empty",
+                  "value": {
+                    "answer": "reason"
+                  }
+                }
+              },
+              {
+                "op": "not",
+                "condition": {
+                  "op": "selected",
+                  "question": "reason",
+                  "option": "other"
+                }
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "dates-page"
+              ],
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "ask-pay",
+          "when": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "all",
+                "conditions": [
+                  {
+                    "op": "eq",
+                    "left": {
+                      "answer": "employment"
+                    },
+                    "right": false
+                  },
+                  {
+                    "op": "not",
+                    "condition": {
+                      "op": "empty",
+                      "value": {
+                        "answer": "reason"
+                      }
+                    }
+                  },
+                  {
+                    "op": "not",
+                    "condition": {
+                      "op": "selected",
+                      "question": "reason",
+                      "option": "other"
+                    }
+                  }
+                ]
+              },
+              {
+                "op": "gte",
+                "left": {
+                  "value": "years"
+                },
+                "right": 2
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "pay-page"
+              ],
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "start-not-future",
+          "when": {
+            "op": "gt",
+            "left": {
+              "answer": "startIso"
+            },
+            "right": {
+              "context": "today"
+            }
+          },
+          "actions": [
+            {
+              "type": "error",
+              "target": "startIso",
+              "message": "Start date cannot be in the future"
+            }
+          ]
+        },
+        {
+          "id": "end-after-start",
+          "when": {
+            "op": "lte",
+            "left": {
+              "answer": "endIso"
+            },
+            "right": {
+              "answer": "startIso"
+            }
+          },
+          "actions": [
+            {
+              "type": "error",
+              "target": "endIso",
+              "message": "End date must be after start date"
+            }
+          ]
+        },
+        {
+          "id": "monthly-to-weekly",
+          "when": {
+            "op": "selected",
+            "question": "period",
+            "option": "monthly"
+          },
+          "actions": [
+            {
+              "type": "setValue",
+              "target": "rawWeekly",
+              "value": {
+                "op": "divide",
+                "args": [
+                  {
+                    "op": "multiply",
+                    "args": [
+                      {
+                        "answer": "simpleAvg"
+                      },
+                      12
+                    ]
+                  },
+                  52
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "apply-ceiling-notice",
+          "when": {
+            "op": "gt",
+            "left": {
+              "value": "rawWeekly"
+            },
+            "right": {
+              "value": "weeklyCap"
+            }
+          },
+          "actions": [
+            {
+              "type": "setValue",
+              "target": "ceilingApplied",
+              "value": true
+            },
+            {
+              "type": "setVisible",
+              "targets": [
+                "ceiling-notice"
+              ],
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "self-employed-result",
+          "when": {
+            "op": "eq",
+            "left": {
+              "answer": "employment"
+            },
+            "right": true
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "self-employed-result"
+              ],
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "uncovered-result",
+          "when": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "eq",
+                "left": {
+                  "answer": "employment"
+                },
+                "right": false
+              },
+              {
+                "op": "selected",
+                "question": "reason",
+                "option": "other"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "uncovered-result"
+              ],
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "short-service-result",
+          "when": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "all",
+                "conditions": [
+                  {
+                    "op": "eq",
+                    "left": {
+                      "answer": "employment"
+                    },
+                    "right": false
+                  },
+                  {
+                    "op": "not",
+                    "condition": {
+                      "op": "empty",
+                      "value": {
+                        "answer": "reason"
+                      }
+                    }
+                  },
+                  {
+                    "op": "not",
+                    "condition": {
+                      "op": "selected",
+                      "question": "reason",
+                      "option": "other"
+                    }
+                  }
+                ]
+              },
+              {
+                "op": "lt",
+                "left": {
+                  "value": "years"
+                },
+                "right": 2
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "under-two-years-result"
+              ],
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "estimate-result",
+          "when": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "all",
+                "conditions": [
+                  {
+                    "op": "eq",
+                    "left": {
+                      "answer": "employment"
+                    },
+                    "right": false
+                  },
+                  {
+                    "op": "not",
+                    "condition": {
+                      "op": "empty",
+                      "value": {
+                        "answer": "reason"
+                      }
+                    }
+                  },
+                  {
+                    "op": "not",
+                    "condition": {
+                      "op": "selected",
+                      "question": "reason",
+                      "option": "other"
+                    }
+                  }
+                ]
+              },
+              {
+                "op": "gte",
+                "left": {
+                  "value": "years"
+                },
+                "right": 2
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "severance-estimate",
+                "tier-breakdown",
+                "gap-illustration"
+              ],
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "severance-result",
+      "type": "page",
+      "role": "result",
+      "title": "Your severance result"
+    },
+    {
+      "id": "self-employed-result",
+      "type": "content",
+      "kind": "callout",
+      "content": "This severance calculation does not cover self-employment.",
+      "visible": false
+    },
+    {
+      "id": "uncovered-result",
+      "type": "content",
+      "kind": "callout",
+      "content": "This calculator does not cover the reason you selected. Contact the Labour Department for advice.",
+      "visible": false
+    },
+    {
+      "id": "under-two-years-result",
+      "type": "content",
+      "kind": "callout",
+      "content": "You need at least 2 complete years of service for this calculation.",
+      "visible": false
+    },
+    {
+      "id": "severance-estimate",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Estimated severance: ",
+        {
+          "value": "severance",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        ". Complete years: ",
+        {
+          "value": "years"
+        },
+        ". Entitled weeks: ",
+        {
+          "value": "entitledWeeks"
+        },
+        ". Weekly pay used: ",
+        {
+          "value": "avgWeekly",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        "."
+      ],
+      "visible": false
+    },
+    {
+      "id": "tier-breakdown",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "First 10 years: ",
+        {
+          "value": "tier1Pay",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        "; years 11–20: ",
+        {
+          "value": "tier2Pay",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        "; years 21–33: ",
+        {
+          "value": "tier3Pay",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        "."
+      ],
+      "visible": false
+    },
+    {
+      "id": "ceiling-notice",
+      "type": "content",
+      "kind": "callout",
+      "content": "Your converted weekly pay exceeds the recorded ceiling for your end year. The estimate uses that weekly ceiling.",
+      "visible": false
+    },
+    {
+      "id": "gap-illustration",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Source illustration for an 8-week unpaid gap: ",
+        {
+          "value": "gapIllustration",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        ". This separate illustration does not reapply the pay ceiling and is not the main entitlement estimate."
+      ],
+      "visible": false
+    },
+    {
+      "id": "severance-next-steps",
+      "type": "content",
+      "kind": "paragraph",
+      "content": "Confirm your entitlement and the applicable insurable earnings ceiling with the Labour Department. Unknown end years remain uncapped in this source reference."
+    }
+  ]
+}

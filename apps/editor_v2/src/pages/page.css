@@ -1,0 +1,461 @@
+.page-editor,
+.page-preview {
+  --page-line: var(--color-line, #b1b4b6);
+  --page-blue: var(--color-interactive, #1d70b8);
+}
+.page-body {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.page-editable {
+  min-block-size: 10rem;
+  outline: none;
+  padding-block: 0;
+}
+.page-body :is(p, .page-paragraph) {
+  margin-block: 0 1rem;
+}
+.page-body :is(h1, h2, h3, h4, h5, h6) {
+  font-weight: 700;
+  line-height: 1.25;
+  margin-block: 1.75rem 1rem;
+  text-wrap: balance;
+}
+.page-body h1 {
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+}
+.page-body h2 {
+  font-size: 1.625rem;
+}
+.page-body h3 {
+  font-size: 1.375rem;
+}
+.page-body :is(h4, h5, h6) {
+  font-size: 1.125rem;
+}
+.page-body a {
+  color: var(--page-blue);
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+.page-body :is(ul, ol) {
+  margin-block: 0 1.25rem;
+  padding-inline-start: 1.6rem;
+}
+.page-body ul {
+  list-style: disc;
+}
+.page-body ol {
+  list-style: decimal;
+}
+.page-body li {
+  padding-inline-start: 0.25rem;
+  margin-block: 0.25rem;
+}
+.page-body li > :first-child {
+  margin-block-start: 0;
+}
+.page-editable li:has(> :is(ul, ol):only-child) {
+  list-style-type: none;
+}
+.page-body blockquote {
+  border-inline-start: 0.3rem solid var(--page-line);
+  margin-block: 1.5rem;
+  padding-inline-start: 1rem;
+}
+.page-body hr {
+  border: 0;
+  border-block-start: 1px solid var(--page-line);
+  margin-block: 1.5rem;
+}
+.page-table-scroll {
+  overflow-x: auto;
+  max-inline-size: 100%;
+  margin-block: 1.5rem;
+}
+.page-body table {
+  border-collapse: collapse;
+  inline-size: 100%;
+  table-layout: fixed;
+}
+.page-body :is(th, td) {
+  border: 1px solid var(--page-line);
+  min-inline-size: 6rem;
+  padding: 0.6rem;
+  vertical-align: top;
+  text-align: start;
+}
+.page-body th {
+  background: color-mix(in srgb, var(--page-line) 18%, white);
+  font-weight: 700;
+}
+.page-table-cell-selected {
+  background: color-mix(in srgb, var(--page-blue) 15%, white);
+}
+.page-body :is(.page-notice, [data-page-component="notice"]) {
+  border-inline-start: 0.35rem solid var(--page-blue);
+  padding: 1rem;
+  margin-block: 1rem;
+  background: color-mix(in srgb, var(--page-blue) 5%, white);
+}
+.page-body [data-page-component="details"] {
+  border: 1px solid var(--page-line);
+  padding: 1rem;
+  margin-block: 1rem;
+}
+.page-body [data-page-component="details"]::before {
+  content: attr(data-summary);
+  display: block;
+  font-weight: 700;
+  margin-block-end: 1rem;
+  color: var(--page-blue);
+}
+.page-body :is(.page-actions, [data-page-component="actions"]) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 0.75rem;
+  margin-block: 1rem;
+}
+.page-body :is(.page-action, [data-page-component="start"], [data-page-component="action"]) {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  color: white;
+  background: var(--page-blue);
+  text-decoration: none;
+  box-shadow: 0 0.15rem 0 color-mix(in srgb, var(--page-blue) 70%, black);
+  margin-block-end: 0.35rem;
+}
+.page-body .page-action-secondary {
+  background: #f3f2f1;
+  color: #0b0c0c;
+  box-shadow: 0 0.15rem 0 #929191;
+}
+.page-body .page-details {
+  margin-block: 1rem;
+}
+.page-body .page-details summary {
+  color: var(--page-blue);
+  text-decoration: underline;
+  cursor: pointer;
+  margin-block-end: 0.75rem;
+}
+.page-lede {
+  font-size: 1.375rem;
+}
+
+.page-document-shell {
+  min-block-size: calc(100dvh - 3.5rem);
+  background: var(--color-white);
+}
+.page-document-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  min-block-size: 3.5rem;
+  padding: 0.625rem clamp(1rem, 2vw, 1.75rem);
+  border-block-end: 1px solid var(--color-line);
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.page-tool-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-ink);
+  font-weight: 600;
+}
+.page-tool-label > svg {
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+  color: var(--color-muted);
+}
+.page-save-status {
+  margin-inline-end: auto;
+  font-size: 0.8125rem;
+}
+.page-save-status [title="Saved"],
+.page-save-status [title="Saving…"] {
+  color: var(--color-muted);
+}
+.page-document-actions,
+.page-history-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.page-tools-divider {
+  block-size: 1.125rem;
+  border-inline-start: 1px solid var(--color-line);
+  margin-inline: 0.5rem;
+}
+.page-source-control > button {
+  color: var(--color-muted);
+  font-weight: 600;
+}
+.page-document-canvas {
+  inline-size: min(100%, 59rem);
+  margin-inline: auto;
+  padding-block: clamp(2.5rem, 5vw, 4.5rem) 7rem;
+  padding-inline: clamp(4.75rem, 7vw, 6.5rem) clamp(2rem, 4vw, 4rem);
+}
+.page-document-heading {
+  margin-block-end: 2.25rem;
+}
+.page-title-label {
+  display: block;
+}
+.page-title-input {
+  display: block;
+  inline-size: 100%;
+  min-block-size: 1.2em;
+  padding: 0;
+  overflow: hidden;
+  resize: none;
+  background: transparent;
+  color: var(--color-ink);
+  font-size: clamp(1.875rem, 3vw, 2.5rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  text-wrap: balance;
+  border-radius: var(--radius-sm);
+}
+.page-title-input::placeholder {
+  color: var(--color-subtle);
+}
+.page-title-input:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 0.4rem;
+}
+.page-document-lede {
+  margin-block-start: 1.25rem;
+  color: var(--color-muted);
+  font-size: 1.25rem;
+  line-height: 1.6;
+}
+.page-document-paused {
+  padding: 1rem 1.5rem;
+  border-block-end: 1px solid var(--color-line);
+  background: var(--color-yellow-20);
+  font-size: 0.875rem;
+}
+.page-document-preview > .page-preview > h1:first-child {
+  margin-block-start: 0;
+}
+.page-source-document {
+  max-inline-size: 68rem;
+  margin-inline: auto;
+  padding: 2rem clamp(1rem, 4vw, 3rem);
+}
+.page-source-document > h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+.page-source-document > p {
+  color: var(--color-muted);
+  margin-block: 0.75rem 1rem;
+  max-inline-size: 65ch;
+}
+
+.page-editor {
+  --page-gutter: 4.5rem;
+  position: relative;
+  margin-inline-start: calc(-1 * var(--page-gutter));
+  padding-inline-start: var(--page-gutter);
+}
+.page-editable > [hidden] + :is(h1, h2, h3, h4, h5, h6) {
+  margin-block-start: 0;
+}
+.page-empty-prompt {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: var(--page-gutter);
+  color: var(--color-subtle);
+  font-size: 1.125rem;
+  line-height: 1.6;
+  pointer-events: none;
+}
+.page-empty-prompt kbd {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 1.25rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.875rem;
+}
+.page-block-rail {
+  position: absolute;
+  inset-inline-start: 0;
+  inline-size: var(--page-gutter);
+  padding-inline-end: 0.5rem;
+  translate: 0 -50%;
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: 0.125rem;
+  opacity: 0;
+}
+.page-editor:is(:hover, :focus-within) .page-block-rail {
+  opacity: 1;
+}
+.page-drag-handle {
+  cursor: grab;
+}
+.page-drag-handle:active {
+  cursor: grabbing;
+}
+.page-editable > [data-page-dragging] {
+  opacity: 0.4;
+}
+.page-drop-line {
+  position: absolute;
+  z-index: 4;
+  block-size: 3px;
+  border-radius: 999px;
+  background: var(--color-focus);
+  pointer-events: none;
+}
+@media (forced-colors: active) {
+  .page-drop-line {
+    background: Highlight;
+    forced-color-adjust: none;
+  }
+}
+.page-add-content {
+  display: inline-flex;
+  margin-block-start: 1.5rem;
+  color: var(--color-muted);
+  font-weight: 400;
+}
+.page-insert-menu,
+.page-slash-menu,
+.page-block-menu {
+  inline-size: min(21rem, calc(100vw - 2rem));
+  color: var(--color-ink);
+  background: var(--color-white);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+}
+.page-slash-menu {
+  box-shadow: var(--shadow-popup);
+  padding: 0.375rem;
+}
+.page-menu-search {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin: 0.375rem 0.375rem 0;
+  padding: 0.625rem 0.5rem 0.875rem;
+  border-block-end: 1px solid var(--color-line);
+  color: var(--color-muted);
+}
+.page-menu-search > svg {
+  inline-size: 1rem;
+  block-size: 1rem;
+  flex: none;
+}
+.page-menu-search input {
+  min-inline-size: 0;
+  inline-size: 100%;
+  font-size: 1rem;
+  color: var(--color-ink);
+  outline-offset: 0.25rem;
+}
+.page-action-list {
+  max-block-size: min(24rem, 55dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.25rem;
+  scrollbar-width: thin;
+}
+.page-action-group + .page-action-group {
+  margin-block-start: 0.375rem;
+}
+.page-menu-empty {
+  padding: 1rem;
+  color: var(--color-muted);
+}
+.page-menu-error {
+  margin: 0.5rem;
+  color: var(--color-error);
+}
+.page-block-menu {
+  max-block-size: min(38rem, 80dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.page-block-menu-title {
+  padding: 0.625rem 0.75rem;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.page-menu-section + .page-menu-section {
+  margin-block-start: 0.25rem;
+  padding-block-start: 0.25rem;
+  border-block-start: 1px solid var(--color-line);
+}
+.page-component-settings {
+  display: grid;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem 1rem;
+  border-block-end: 1px solid var(--color-line);
+}
+.page-component-settings label {
+  display: grid;
+  gap: 0.375rem;
+  font-weight: 600;
+}
+.page-component-settings :is(input, select) {
+  inline-size: 100%;
+  min-inline-size: 0;
+  font-weight: 400;
+}
+.page-component-settings button {
+  justify-self: start;
+}
+@media (hover: hover) {
+  .page-source-control > button:hover {
+    background: var(--color-tint);
+    color: var(--color-ink);
+  }
+}
+@media (pointer: coarse) {
+  .page-block-rail {
+    opacity: 1;
+  }
+  .page-rail-button {
+    min-block-size: 2.75rem;
+  }
+}
+@media (max-width: 47.5rem) {
+  .page-document-tools {
+    gap: 0.5rem;
+  }
+  .page-document-actions {
+    inline-size: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  .page-tools-divider {
+    display: none;
+  }
+  .page-document-canvas {
+    padding-inline: 4.5rem 1.25rem;
+    padding-block-start: 2rem;
+  }
+  .page-block-rail {
+    padding-inline-end: 0.25rem;
+  }
+  .page-body {
+    font-size: 1rem;
+  }
+}
+
+.page-editor:has(.page-empty-prompt) .page-editable {
+  min-block-size: 3.25rem;
+}

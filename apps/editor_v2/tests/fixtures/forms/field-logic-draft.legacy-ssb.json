@@ -1,0 +1,434 @@
+{
+  "schema": {
+    "formId": "business-application",
+    "title": "Business application",
+    "description": "Compatibility fixture with draft content",
+    "contactDetails": {
+      "title": "Business team",
+      "email": "business@example.gov.bb"
+    },
+    "processors": [
+      {
+        "type": "email",
+        "config": {
+          "recipientField": "about-the-business.email-address",
+          "subject": "Your application",
+          "label": "Applicant confirmation"
+        }
+      },
+      {
+        "type": "email",
+        "config": {
+          "recipientField": "config.mdaEmail",
+          "label": "Department notification"
+        }
+      }
+    ],
+    "meta": {
+      "visibility": "preview"
+    },
+    "pages": [
+      {
+        "id": "start",
+        "stepId": "about-the-business",
+        "pageType": "questions",
+        "confirmation": false,
+        "blocks": [
+          {
+            "type": "question",
+            "id": "email",
+            "fieldId": "email-address",
+            "ref": "components/generic-email",
+            "kind": "email",
+            "title": "Email address",
+            "titleId": "email:label",
+            "description": [],
+            "placeholder": "",
+            "options": [],
+            "settings": {
+              "required": true,
+              "field": "email"
+            },
+            "errors": {
+              "required": "Enter email address",
+              "email": "Enter an email address in the correct format, like name@example.com"
+            }
+          },
+          {
+            "type": "question",
+            "id": "applicant",
+            "fieldId": "applicant-type",
+            "ref": "components/generic-radio",
+            "kind": "multiple-choice",
+            "title": "Applicant type",
+            "titleId": "applicant:label",
+            "description": [],
+            "placeholder": "",
+            "options": [
+              {
+                "id": "business",
+                "label": "A business",
+                "value": "registered-business"
+              },
+              {
+                "id": "person",
+                "label": "A person",
+                "value": "individual"
+              }
+            ],
+            "settings": {
+              "required": true,
+              "field": "applicant"
+            },
+            "errors": {
+              "required": "Select applicant type"
+            }
+          },
+          {
+            "type": "question",
+            "id": "trading-name",
+            "fieldId": "trading-name",
+            "ref": "components/generic-text",
+            "kind": "text",
+            "title": "Trading name",
+            "titleId": "trading-name:label",
+            "description": [
+              {
+                "type": "text",
+                "id": "trading-name:hint-1",
+                "style": "paragraph",
+                "markdown": "Use the name on your registration."
+              }
+            ],
+            "placeholder": "",
+            "options": [],
+            "settings": {
+              "field": "trading-name"
+            },
+            "errors": {},
+            "hidden": true,
+            "titleHidden": true,
+            "conditionalLabel": [
+              {
+                "targetFieldId": "applicant-type",
+                "targetStepId": "about-the-business",
+                "operator": "equal",
+                "value": "registered-business",
+                "label": "Registered trading name"
+              }
+            ]
+          },
+          {
+            "type": "question",
+            "id": "birth-date",
+            "fieldId": "date-of-birth",
+            "ref": "components/generic-date",
+            "kind": "date",
+            "title": "Date of birth",
+            "titleId": "birth-date:label",
+            "description": [],
+            "placeholder": "",
+            "options": [],
+            "settings": {
+              "field": "birth-date"
+            },
+            "errors": {}
+          },
+          {
+            "type": "question",
+            "id": "closing-time",
+            "fieldId": "closing-time",
+            "ref": "components/generic-time",
+            "kind": "time",
+            "title": "Closing time",
+            "titleId": "closing-time:label",
+            "description": [],
+            "placeholder": "",
+            "options": [],
+            "settings": {
+              "step": 90,
+              "isDisabled": true,
+              "field": "closing-time"
+            },
+            "errors": {}
+          },
+          {
+            "type": "question",
+            "id": "employees",
+            "fieldId": "employees",
+            "ref": "components/generic-number",
+            "kind": "number",
+            "title": "Employees",
+            "titleId": "employees:label",
+            "description": [],
+            "placeholder": "",
+            "options": [],
+            "settings": {
+              "hasMinNumber": true,
+              "minNumber": 1,
+              "hasMaxNumber": true,
+              "maxNumber": 20,
+              "future": {
+                "zero": 0,
+                "no": false,
+                "empty": ""
+              },
+              "field": "employees"
+            },
+            "errors": {
+              "min": "Employees must be 1 or more",
+              "max": "Employees must be 20 or less"
+            }
+          },
+          {
+            "type": "question",
+            "id": "activities",
+            "fieldId": "business-activities",
+            "ref": "components/generic-checkbox-accordion",
+            "kind": "checkbox-accordion",
+            "title": "Business activities",
+            "titleId": "activities:label",
+            "description": [],
+            "placeholder": "",
+            "groups": [
+              {
+                "id": "food-group",
+                "label": "Food businesses",
+                "higherRisk": true,
+                "optionIds": [
+                  "catering-option",
+                  "retail-option"
+                ]
+              }
+            ],
+            "options": [
+              {
+                "id": "catering-option",
+                "label": "Catering",
+                "value": "food-catering"
+              },
+              {
+                "id": "retail-option",
+                "label": "Food retail",
+                "value": "food-retail"
+              }
+            ],
+            "settings": {
+              "required": true,
+              "field": "activities"
+            },
+            "errors": {
+              "required": "Select business activities"
+            }
+          },
+          {
+            "type": "text",
+            "id": "contact-note",
+            "style": "paragraph",
+            "markdown": "Your contact email is {{email|not%20supplied}}."
+          },
+          {
+            "type": "logic",
+            "id": "business-rule",
+            "logicalOperator": "AND",
+            "conditionals": [
+              {
+                "id": "business-condition",
+                "type": "SINGLE",
+                "field": "applicant",
+                "comparison": "IS",
+                "value": "business"
+              }
+            ],
+            "actions": [
+              {
+                "id": "show-trading-name",
+                "type": "SHOW_BLOCKS",
+                "showBlocks": [
+                  "trading-name"
+                ]
+              },
+              {
+                "id": "label-trading-name",
+                "type": "CHANGE_LABEL",
+                "changeLabel": {
+                  "target": "trading-name",
+                  "text": "Registered trading name"
+                }
+              },
+              {
+                "id": "title-business",
+                "type": "CHANGE_PAGE_TITLE",
+                "changePageTitle": {
+                  "target": "supporting",
+                  "text": "Supporting business details"
+                }
+              }
+            ]
+          },
+          {
+            "type": "logic",
+            "id": "adult-rule",
+            "logicalOperator": "AND",
+            "conditionals": [
+              {
+                "id": "age-condition",
+                "type": "SINGLE",
+                "field": "birth-date",
+                "comparison": "GREATER_OR_EQUAL_THAN",
+                "transform": "yearsSince",
+                "value": 18
+              }
+            ],
+            "actions": [
+              {
+                "id": "require-time",
+                "type": "REQUIRE_ANSWER",
+                "requireAnswer": "closing-time"
+              }
+            ]
+          },
+          {
+            "type": "calculated-fields",
+            "id": "totals",
+            "fields": [
+              {
+                "key": "totals:staff",
+                "name": "Staff total",
+                "type": "NUMBER",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "type": "logic",
+            "id": "draft-rule",
+            "logicalOperator": "AND",
+            "conditionals": [
+              {
+                "id": "unfinished-condition",
+                "type": "SINGLE"
+              }
+            ],
+            "actions": [
+              {
+                "id": "unfinished-action"
+              },
+              {
+                "id": "calculate-staff",
+                "type": "CALCULATE",
+                "calculate": {
+                  "field": "totals:staff",
+                  "operator": "FORMULA",
+                  "expression": "{{employees}} + ("
+                }
+              }
+            ]
+          }
+        ],
+        "title": "About the business"
+      },
+      {
+        "id": "supporting",
+        "stepId": "supporting-details",
+        "pageType": "questions",
+        "confirmation": false,
+        "blocks": [
+          {
+            "type": "question",
+            "id": "reference",
+            "fieldId": "reference",
+            "ref": "components/generic-text",
+            "kind": "text",
+            "title": "Reference",
+            "titleId": "reference:label",
+            "description": [],
+            "placeholder": "",
+            "options": [],
+            "settings": {
+              "fieldArray": {
+                "min": 1,
+                "max": 3
+              },
+              "field": "reference"
+            },
+            "errors": {},
+            "behaviours": [
+              {
+                "type": "fieldArray",
+                "min": 1,
+                "max": 3,
+                "addAnotherLabel": "Add another reference"
+              }
+            ]
+          }
+        ],
+        "title": "Supporting details",
+        "conditionalTitle": [
+          {
+            "targetFieldId": "applicant-type",
+            "targetStepId": "about-the-business",
+            "operator": "equal",
+            "value": "registered-business",
+            "title": "Supporting business details"
+          }
+        ]
+      }
+    ]
+  },
+  "readiness": [
+    {
+      "code": "no-confirmation",
+      "message": "Add a confirmation page: SSB ends every form with one",
+      "where": "start"
+    },
+    {
+      "code": "no-declaration",
+      "message": "Add a declaration page before the confirmation page",
+      "where": "start"
+    }
+  ],
+  "logic": [
+    {
+      "code": "incomplete-condition",
+      "where": "draft-rule",
+      "message": "Choose a field and comparison for this condition."
+    },
+    {
+      "code": "incomplete-action",
+      "where": "draft-rule",
+      "message": "Choose an action for this rule."
+    },
+    {
+      "code": "formula",
+      "where": "draft-rule",
+      "message": "Fix the formula: incomplete expression."
+    }
+  ],
+  "compatibility": [
+    {
+      "code": "ssb-action-show_blocks",
+      "where": "business-rule",
+      "message": "Choose ‘Hide targets initially’ in this logic block so the Show rule reveals them only when its conditions match.",
+      "severity": "warning"
+    },
+    {
+      "code": "ssb-action-require_answer",
+      "where": "adult-rule",
+      "message": "SSB cannot run this require answer action yet. It stays saved in your form.",
+      "severity": "warning"
+    },
+    {
+      "code": "ssb-calculation",
+      "where": "totals:staff",
+      "message": "SSB cannot run this calculated field yet. It stays saved in your form.",
+      "severity": "warning"
+    },
+    {
+      "code": "ssb-answer-mention",
+      "where": "contact-note",
+      "message": "SSB cannot insert this answer into body text yet. The reference stays saved in your form.",
+      "severity": "warning"
+    }
+  ]
+}

@@ -1,0 +1,203 @@
+@import "tailwindcss" source(".");
+/* GovBB's tokens (colour ramp, type, spacing) as --govbb-* custom properties. Only the tokens: govbb.css's global
+   body, heading and link rules would fight Tailwind and the editor's own DOM. */
+@import "@govtech-bb/frontend/tokens.css";
+
+/* Figtree, the GovBB face, from the design system's package: variable 400–700, latin and latin-ext */
+@font-face {
+  font-family: Figtree;
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("@govtech-bb/frontend/assets/fonts/figtree-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: Figtree;
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("@govtech-bb/frontend/assets/fonts/figtree-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: Figtree;
+  font-style: italic;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("@govtech-bb/frontend/assets/fonts/figtree-latin-italic.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: Figtree;
+  font-style: italic;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("@govtech-bb/frontend/assets/fonts/figtree-latin-ext-italic.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/*
+ * The tool's tokens, all GovBB: the ramp for the odd step, and the roles the editor uses. Ink text and borders,
+ * teal for anything you can act on and for focus, blue-10 for what's selected, grey for structure.
+ */
+@theme {
+  --font-sans: var(--govbb-font-sans);
+  --font-mono: var(--govbb-font-mono);
+
+  --color-*: initial;
+  --color-white: #fff;
+  --color-black: #000;
+
+  --color-grey-10: var(--govbb-grey-10);
+  --color-grey-20: var(--govbb-grey-20);
+  --color-grey-30: var(--govbb-grey-30);
+  --color-grey-40: var(--govbb-grey-40);
+  --color-grey-50: var(--govbb-grey-50);
+  --color-grey-60: var(--govbb-grey-60);
+  --color-grey-70: var(--govbb-grey-70);
+  --color-grey-80: var(--govbb-grey-80);
+  --color-teal-10: var(--govbb-teal-10);
+  --color-teal-20: var(--govbb-teal-20);
+  --color-teal-40: var(--govbb-teal-40);
+  --color-teal-80: var(--govbb-teal-80);
+  --color-teal-90: var(--govbb-teal-90);
+  --color-blue-10: var(--govbb-blue-10);
+  --color-blue-20: var(--govbb-blue-20);
+  --color-blue-40: var(--govbb-blue-40);
+  --color-blue-80: var(--govbb-blue-80);
+  --color-red-10: var(--govbb-red-10);
+  --color-red-20: var(--govbb-red-20);
+  --color-red-80: var(--govbb-red-80);
+  --color-green-10: var(--govbb-green-10);
+  --color-green-80: var(--govbb-green-80);
+  --color-yellow-20: var(--govbb-yellow-20);
+  --color-yellow-40: var(--govbb-yellow-40);
+  --color-yellow-80: var(--govbb-yellow-80);
+  --color-pink-10: var(--govbb-pink-10);
+  --color-pink-80: var(--govbb-pink-80);
+
+  /* Roles */
+  --color-ink: var(--govbb-color-ink); /* text, control borders */
+  --color-muted: var(--govbb-color-muted); /* secondary text, hints, icons: 7:1 on white */
+  --color-subtle: var(--govbb-grey-70); /* ghost prompts in empty blocks: 7:1, as AA wants of text */
+  --color-line: var(--govbb-grey-20); /* dividers */
+  --color-line-strong: var(--govbb-grey-50); /* the chrome's field borders */
+  --color-tint: var(--govbb-grey-10); /* quiet fills and hovers */
+  --color-highlight: var(--govbb-color-highlight); /* selected blocks and rows */
+  --color-interactive: var(--govbb-color-interactive); /* actions, switches on, checked fills */
+  --color-interactive-active: var(--govbb-color-interactive-active);
+  --color-interactive-subtle: var(--govbb-teal-10);
+  --color-focus: var(--govbb-color-focus);
+  --color-error: var(--govbb-color-error);
+  --color-error-subtle: var(--govbb-red-10);
+  --color-brand: var(--govbb-color-brand);
+  --color-brand-dark: var(--govbb-blue-80);
+  --color-gold: var(--govbb-color-brand-accent);
+  --color-placeholder: var(--govbb-grey-70);
+  --color-hover: var(--govbb-grey-20); /* grey-10 is the desk: a hover has to show on it too */
+  --color-input: #fff;
+
+  /* Named by px, valued in rem. No line-heights: components set them. */
+  --text-*: initial;
+  --text-12: 0.75rem;
+  --text-13: 0.8125rem;
+  --text-14: 0.875rem;
+  --text-15: 0.9375rem;
+  --text-16: 1rem;
+  --text-18: 1.125rem;
+  --text-20: 1.25rem;
+  --text-22: 1.375rem;
+  --text-24: 1.5rem;
+  --text-28: 1.75rem;
+  --text-32: 2rem;
+  --text-40: 2.5rem;
+
+  /* GovBB has one radius */
+  --radius-xs: 2px;
+  --radius-sm: var(--govbb-radius);
+  --radius-md: var(--govbb-radius);
+  --radius-lg: var(--govbb-radius);
+  --radius-xl: var(--govbb-radius);
+  --radius-2xl: var(--govbb-radius);
+
+  /* The chrome's fields: a hairline (grey-60, 3:1 on white) that darkens to ink on hover; on focus an ink edge
+     under GovBB's teal halo, as teal alone is 2:1 on white */
+  --shadow-input: inset 0 0 0 1px var(--govbb-grey-60);
+  --shadow-input-hover: inset 0 0 0 1px var(--govbb-color-ink);
+  --shadow-input-focus: inset 0 0 0 2px var(--govbb-color-ink), 0 0 0 3px var(--govbb-color-focus);
+  --shadow-input-active: inset 0 0 0 2px var(--govbb-color-interactive);
+  /* GovBB controls' hover: the pressed-paper inset */
+  --shadow-press: var(--govbb-shadow-form-hover);
+  /* The tool floats over the form, the form never does: popups lift off it in navy-tinted shade (blue-90), so a
+     menu can't pass for one of the form's 2px ink controls */
+  --shadow-popup: 0 0 0 1px var(--govbb-grey-40), 0 4px 8px -2px rgb(0 14 48 / 0.12), 0 16px 32px -8px rgb(0 14 48 / 0.24);
+  /* The page the form is written on, over the grey desk */
+  --shadow-sheet: 0 0 0 1px rgb(0 14 48 / 0.06), 0 1px 3px rgb(0 14 48 / 0.08);
+
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 758px;
+  --breakpoint-lg: 992px;
+  --breakpoint-xl: 1200px;
+  --breakpoint-2xl: 1440px;
+
+  --default-transition-duration: 120ms;
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+
+/*
+ * The form on the canvas: GovBB's form controls a step denser than citizens get them (18px, not 20; 52px controls,
+ * not 66; 36px radios, not 48), as GovBB's own docs run at 18px. Everything else is the citizen form's.
+ */
+:root {
+  --page-width: 700px;
+  --form-text: 1.125rem; /* 18px, line-height 1.5 */
+  --form-control: 3.25rem; /* 52px: inputs, selects, buttons */
+  --form-marker: 2.25rem; /* 36px: radio and checkbox boxes */
+  --form-gap: 1rem; /* space under a question's answer; the next label's 24px top padding adds to it */
+}
+
+/* SSB's field widths (ui.width, gov-bb's ADR 0034): from 768px up, a question's label, hint and box stop at a fixed
+   measure. markBlocks (behaviors.ts) puts data-width on the question's blocks */
+@media (min-width: 768px) {
+  [data-lexical-editor] [data-width="short"] {
+    --field-width: 24ch;
+  }
+  [data-lexical-editor] [data-width="medium"] {
+    --field-width: 38ch;
+  }
+}
+
+@layer base {
+  html {
+    line-height: 1.15;
+    color: var(--color-ink);
+    background: var(--color-white);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--govbb-teal-20);
+    color: var(--color-ink);
+  }
+  [contenteditable] {
+    caret-color: var(--color-ink);
+  }
+  /* GovBB's focus: a teal halo, 3px here as the chrome is denser, over a 2px ink ring that fills the offset: teal
+     alone is 2:1 on white, the ink makes it 3:1 anywhere. Not where a control draws its own focus (outline-none),
+     nor round the editor */
+  :focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+  :focus-visible:not(.outline-none, [contenteditable]) {
+    box-shadow: 0 0 0 2px var(--color-ink);
+  }
+}
