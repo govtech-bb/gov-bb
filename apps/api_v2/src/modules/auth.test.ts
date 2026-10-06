@@ -1,63 +1,93 @@
 import { describe, expect, it } from "vitest";
-import { admitGoogleIdentity, Forbidden, parseEmployee } from "./auth";
+import { admitGitHubIdentity, Forbidden, parseEmployee } from "./auth";
 
-const google = (profile: object = {}, action = "create-user") => ({
-  email: "employee@govtech.bb",
+const github = (profile: object = {}, action = "create-user") => ({
+  email: "employee@example.com",
+  emailVerified: true,
   source: {
     method: "oauth",
     action,
     oauth: {
-      providerId: "google",
+      providerId: "github",
       profile: {
-        email: "employee@govtech.bb",
-        email_verified: true,
-        hd: "govtech.bb",
+        email: "employee@example.com",
+        organizationMembership: {
+          state: "active",
+          organization: { login: "govtech-bb" },
+        },
         ...profile,
       },
     },
   },
 });
 
-describe("Google employee admission", () => {
+describe("GitHub employee admission", () => {
   it.each(["create-user", "sign-in", "link-account"])(
     "checks fresh claims for %s",
     (action) => {
-      expect(admitGoogleIdentity(google({}, action))).toEqual({
+      expect(admitGitHubIdentity(github({}, action))).toEqual({
         ok: true,
         value: undefined,
       });
       expect(
-        admitGoogleIdentity(google({ hd: "outside.example" }, action)).ok,
+        admitGitHubIdentity(github({ organizationMembership: null }, action))
+          .ok,
       ).toBe(false);
     },
   );
   it.each([
-    { hd: undefined },
-    { hd: "GOVTECH.BB" },
-    { hd: "sub.govtech.bb" },
-    { hd: "govtech.bb.attacker.example" },
-    { email_verified: false },
-    { email_verified: "true" },
-    { email: "employee@gmail.com" },
+    { organizationMembership: undefined },
+    {
+      organizationMembership: {
+        state: "pending",
+        organization: { login: "govtech-bb" },
+      },
+    },
+    {
+      organizationMembership: {
+        state: "active",
+        organization: { login: "another-org" },
+      },
+    },
+    { organizationMembership: { state: "active" } },
+    { email: "another@example.com" },
   ])("refuses untrusted membership claims %j", (profile) => {
-    const result = admitGoogleIdentity(google(profile));
+    const result = admitGitHubIdentity(github(profile));
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toBeInstanceOf(Forbidden);
   });
   it("rejects another provider or an inconsistent derived email", () => {
+    const identity = github();
     expect(
-      admitGoogleIdentity({ ...google(), email: "another@govtech.bb" }).ok,
+      admitGitHubIdentity({
+        ...identity,
+        source: {
+          ...identity.source,
+          oauth: { ...identity.source.oauth, providerId: "google" },
+        },
+      }).ok,
     ).toBe(false);
     expect(
-      admitGoogleIdentity({ ...google(), source: { method: "email-password" } })
+      admitGitHubIdentity({ ...github(), email: "another@govtech.bb" }).ok,
+    ).toBe(false);
+    expect(
+      admitGitHubIdentity({ ...github(), source: { method: "email-password" } })
         .ok,
     ).toBe(false);
   });
+  it.each([false, undefined, "true"])(
+    "rejects unverified email: %s",
+    (emailVerified) => {
+      expect(admitGitHubIdentity({ ...github(), emailVerified }).ok).toBe(
+        false,
+      );
+    },
+  );
   it("parses only the employee data needed after session verification", () => {
     expect(
       parseEmployee({
         id: "employee-id",
-        email: "EMPLOYEE@GOVTECH.BB",
+        email: "EMPLOYEE@EXAMPLE.COM",
         name: "Employee",
         emailVerified: true,
         token: "never-expose",
@@ -66,7 +96,7 @@ describe("Google employee admission", () => {
       ok: true,
       value: {
         id: "employee-id",
-        email: "employee@govtech.bb",
+        email: "employee@example.com",
         name: "Employee",
       },
     });

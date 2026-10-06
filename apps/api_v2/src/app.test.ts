@@ -685,7 +685,7 @@ describe("authentication HTTP bridge", () => {
     });
     try {
       const response = await authApp.inject({
-        url: "/api/auth/callback/google?code=sensitive-code&state=sensitive-state",
+        url: "/api/auth/callback/github?code=sensitive-code&state=sensitive-state",
         headers: { cookie: "session=sensitive-cookie" },
       });
       expect(response.statusCode).toBe(500);
@@ -705,7 +705,7 @@ describe("authentication HTTP bridge", () => {
         handle: async (request) => {
           received.push(request);
           const headers = new Headers({
-            location: "https://accounts.google.com/example",
+            location: "https://github.com/example",
             "cache-control": "public, max-age=60",
           });
           headers.append("set-cookie", "state=one; Path=/; HttpOnly");
@@ -718,7 +718,7 @@ describe("authentication HTTP bridge", () => {
       const response = await authApp.inject({
         method: "POST",
         url: "/api/auth/sign-in/social",
-        payload: { provider: "google" },
+        payload: { provider: "github" },
         headers: { ...TEST_HEADERS, host: "untrusted.example" },
       });
       expect(received).toHaveLength(1);
@@ -729,11 +729,9 @@ describe("authentication HTTP bridge", () => {
         `${TEST_HTTP_CONFIG.apiOrigin}/api/auth/sign-in/social`,
       );
       expect(request.headers.get("cookie")).toBe(TEST_HEADERS.cookie);
-      expect(await request.json()).toEqual({ provider: "google" });
+      expect(await request.json()).toEqual({ provider: "github" });
       expect(response.statusCode).toBe(302);
-      expect(response.headers.location).toBe(
-        "https://accounts.google.com/example",
-      );
+      expect(response.headers.location).toBe("https://github.com/example");
       expect(response.headers["set-cookie"]).toEqual([
         "state=one; Path=/; HttpOnly",
         "session=two; Path=/; HttpOnly",

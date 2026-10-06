@@ -2,10 +2,10 @@ import type { Pool } from "pg";
 import type { Logger } from "pino";
 import type { AuthConfig } from "../config";
 import {
-  admitGoogleIdentity,
+  admitGitHubIdentity,
   AuthUnavailable,
   parseEmployee,
-  WORKSPACE_DOMAIN,
+  GITHUB_ORGANIZATION,
   type Employee,
   type Forbidden,
 } from "../modules/auth";
@@ -20,7 +20,15 @@ export async function createBetterAuth(
 ) {
   // Native import keeps this CommonJS application's compiled entrypoint compatible with Better Auth's ESM package.
   const { betterAuth } = await import("better-auth");
-  // Google claims are consumed before account persistence; the editor never calls Google APIs.
+  const { github } = await import("better-auth/social-providers");
+  const githubOptions = {
+    clientId: config.githubClientId,
+    clientSecret: config.githubClientSecret.reveal(),
+    scope: ["read:org"],
+    disableIdTokenSignIn: true,
+  };
+  const githubProvider = github(githubOptions);
+  // Membership is checked during sign-in; subsequent requests need only the local session.
   const discardOAuthTokens = async () => ({
     data: {
       accessToken: null,
@@ -39,18 +47,43 @@ export async function createBetterAuth(
     trustedOrigins: [config.editorOrigin],
     emailAndPassword: { enabled: false },
     socialProviders: {
-      google: {
-        clientId: config.googleClientId,
-        clientSecret: config.googleClientSecret.reveal(),
-        hd: WORKSPACE_DOMAIN,
-        accessType: "online",
-        disableIdTokenSignIn: true,
+      github: {
+        ...githubOptions,
+        async getUserInfo(tokens) {
+          const identity = await githubProvider.getUserInfo(tokens);
+          if (!identity) return null;
+          const membership = await fetch(
+            `https://api.github.com/user/memberships/orgs/${GITHUB_ORGANIZATION}`,
+            {
+              headers: {
+                Authorization: `Bearer ${tokens.accessToken}`,
+                Accept: "application/vnd.github+json",
+                "User-Agent": "gov-bb-editor",
+                "X-GitHub-Api-Version": "2022-11-28",
+              },
+              signal: AbortSignal.timeout(15_000),
+            },
+          );
+          return {
+            ...identity,
+            data: {
+              ...identity.data,
+              organizationMembership: membership.ok
+                ? await membership.json()
+                : null,
+            },
+          };
+        },
       },
     },
     user: {
       modelName: "auth_user",
       validateUserInfo: ({ user, source }) => {
-        const admitted = admitGoogleIdentity({ email: user.email, source });
+        const admitted = admitGitHubIdentity({
+          email: user.email,
+          emailVerified: user.emailVerified,
+          source,
+        });
         if (!admitted.ok)
           return {
             error: "organization_access_denied",
@@ -66,7 +99,8 @@ export async function createBetterAuth(
     },
     account: {
       modelName: "auth_account",
-      accountLinking: { enabled: false },
+      // Admit org membership first, then preserve existing users with the same verified email.
+      accountLinking: { enabled: true, trustedProviders: [] },
     },
     databaseHooks: {
       account: {

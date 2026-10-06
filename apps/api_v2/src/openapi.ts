@@ -345,7 +345,7 @@ export const ROUTES = {
     method: ["GET", "POST"],
     url: "/api/auth/*",
     schema: {
-      summary: "Google sign-in and session protocol",
+      summary: "GitHub sign-in and session protocol",
       description:
         "Better Auth owns the endpoints under this prefix. Responses are never cached.",
       tags: ["auth"],
@@ -363,13 +363,16 @@ export const OPENAPI_DOCUMENT = {
     title: "api_v2",
     description:
       "Public markdown content and employee-authenticated editor operations. " +
-      "Editor reads, writes, and the version token require a Google Workspace session.",
+      "Editor reads, writes, and the version token require a GitHub-authenticated govtech-bb organization member session.",
     version: "0.0.0",
   },
   tags: [
     { name: "pages", description: "Content pages, stored as markdown" },
     { name: "meta", description: "Freshness" },
-    { name: "auth", description: "Google Workspace sign-in and sessions" },
+    {
+      name: "auth",
+      description: "GitHub organization member sign-in and sessions",
+    },
   ],
   components: {
     securitySchemes: {

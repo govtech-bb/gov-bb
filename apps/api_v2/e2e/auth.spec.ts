@@ -69,50 +69,65 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
     expect(expected.schemaProblems).toEqual([]);
   });
 
-  it("applies the configured Google admission hook on provisioning and returning sign-in", () => {
+  it("applies the configured GitHub admission hook on provisioning and returning sign-in", () => {
     const check = auth.instance.options.user.validateUserInfo;
     for (const action of ["create-user", "sign-in", "link-account"] as const) {
       const claims = {
-        email: "employee@govtech.bb",
-        email_verified: true,
-        hd: "govtech.bb",
+        email: "employee@example.com",
+        organizationMembership: {
+          state: "active",
+          organization: { login: "govtech-bb" },
+        },
       };
       const source = {
         action,
         method: "oauth",
-        oauth: { providerId: "google", profile: claims },
+        oauth: { providerId: "github", profile: claims },
       };
-      expect(check({ user: { email: claims.email }, source })).toBeUndefined();
+      expect(
+        check({ user: { email: claims.email, emailVerified: true }, source }),
+      ).toBeUndefined();
       for (const profile of [
-        { ...claims, hd: undefined },
-        { ...claims, hd: "other.govtech.bb" },
-        { ...claims, email_verified: false },
-        { ...claims, email: "employee@elsewhere.example" },
+        { ...claims, organizationMembership: undefined },
+        {
+          ...claims,
+          organizationMembership: {
+            state: "pending",
+            organization: { login: "govtech-bb" },
+          },
+        },
+        {
+          ...claims,
+          organizationMembership: {
+            state: "active",
+            organization: { login: "another-org" },
+          },
+        },
       ]) {
         expect(
           check({
-            user: { email: profile.email },
-            source: { ...source, oauth: { providerId: "google", profile } },
+            user: { email: profile.email, emailVerified: true },
+            source: { ...source, oauth: { providerId: "github", profile } },
           }),
         ).toMatchObject({ error: "organization_access_denied" });
       }
     }
   });
 
-  it("discards Google tokens before creating and updating account rows", async () => {
+  it("discards GitHub tokens before creating and updating account rows", async () => {
     const context = await auth.instance.$context;
     const tokens = {
-      accessToken: "unused-google-access-token",
-      refreshToken: "unused-google-refresh-token",
-      idToken: "unused-google-id-token",
+      accessToken: "unused-github-access-token",
+      refreshToken: "unused-github-refresh-token",
+      idToken: "unused-github-id-token",
       accessTokenExpiresAt: new Date(Date.now() + 60_000),
       refreshTokenExpiresAt: new Date(Date.now() + 120_000),
     };
     const account = await context.internalAdapter.createAccount({
       userId: employee.userId,
-      providerId: "google",
-      accountId: "google-test-employee",
-      scope: "openid email profile",
+      providerId: "github",
+      accountId: "github-test-employee",
+      scope: "read:user user:email read:org",
       ...tokens,
     });
     const storedAccount = () =>
@@ -124,9 +139,9 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
     const expected = [
       {
         userId: employee.userId,
-        providerId: "google",
-        accountId: "google-test-employee",
-        scope: "openid email profile",
+        providerId: "github",
+        accountId: "github-test-employee",
+        scope: "read:user user:email read:org",
         accessToken: null,
         refreshToken: null,
         idToken: null,
@@ -319,7 +334,7 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
 
   it("refuses a stored user who no longer meets the employee policy", async () => {
     const denied = await createEmployeeSession(database, server.url, {
-      email: "outsider@example.com",
+      emailVerified: false,
     });
     const response = await fetch(`${server.url}/version`, {
       headers: { cookie: denied.cookie },
@@ -327,9 +342,9 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
     expect(response.status).toBe(403);
   });
 
-  it("starts Google OAuth with a PKCE challenge and rejects external callback URLs", async () => {
+  it("starts GitHub OAuth with a PKCE challenge and rejects external callback URLs", async () => {
     const body = {
-      provider: "google",
+      provider: "github",
       disableRedirect: true,
       callbackURL: `${AUTH_ENV.EDITOR_ORIGIN}/auth?state=complete`,
       errorCallbackURL: `${AUTH_ENV.EDITOR_ORIGIN}/auth?state=error`,
@@ -345,8 +360,14 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
     expect(response.status).toBe(200);
     const data = z.object({ url: z.string() }).parse(await response.json());
     const url = new URL(data.url);
-    expect(url.hostname).toBe("accounts.google.com");
-    expect(url.searchParams.get("hd")).toBe("govtech.bb");
+    expect(url.hostname).toBe("github.com");
+    expect(url.pathname).toBe("/login/oauth/authorize");
+    expect(url.searchParams.get("scope")?.split(" ")).toEqual(
+      expect.arrayContaining(["read:user", "user:email", "read:org"]),
+    );
+    expect(url.searchParams.get("redirect_uri")).toBe(
+      `${server.url}/api/auth/callback/github`,
+    );
     expect(url.searchParams.get("code_challenge")).toBeTruthy();
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
     expect(response.headers.get("set-cookie")).toContain("HttpOnly");
@@ -399,7 +420,7 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
 
   it("does not log callback credentials or session cookies", async () => {
     await fetch(
-      `${server.url}/api/auth/callback/google?code=never-log-this-code&state=never-log-this-state`,
+      `${server.url}/api/auth/callback/github?code=never-log-this-code&state=never-log-this-state`,
       { redirect: "manual" },
     );
     expect(server.stderr).not.toContain("never-log-this-code");

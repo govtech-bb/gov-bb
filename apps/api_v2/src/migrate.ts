@@ -20,19 +20,22 @@ import { z } from "zod";
 import { SQL as INIT_SQL } from "./migrations/001_init";
 import { SQL as MARKDOWN_PAGES_SQL } from "./migrations/002_markdown_pages";
 import { SQL as AUTH_SQL } from "./migrations/003_auth";
+import { SQL as GITHUB_SESSIONS_SQL } from "./migrations/004_github_sessions";
 import type { Database } from "./store";
 
 const SCRIPTS: Record<string, string> = {
   "001_init": INIT_SQL,
   "002_markdown_pages": MARKDOWN_PAGES_SQL,
   "003_auth": AUTH_SQL,
+  "004_github_sessions": GITHUB_SESSIONS_SQL,
 };
 
-/** Existing content migrations followed by the additive authentication tables. */
+/** Content and authentication migrations in deployment order. */
 export const MIGRATIONS = [
   "001_init",
   "002_markdown_pages",
   "003_auth",
+  "004_github_sessions",
 ] as const;
 
 /** Runs a whole SQL script, statements and all. */

@@ -111,8 +111,8 @@ export const AUTH_ENV = {
   BETTER_AUTH_URL: "http://127.0.0.1:3020",
   EDITOR_ORIGIN: "http://localhost:3000",
   BETTER_AUTH_SECRET: "api-v2-test-secret-at-least-thirty-two-characters",
-  GOOGLE_CLIENT_ID: "api-v2-test-client.apps.googleusercontent.com",
-  GOOGLE_CLIENT_SECRET: "api-v2-test-client-secret",
+  GITHUB_CLIENT_ID: "api-v2-test-client",
+  GITHUB_CLIENT_SECRET: "api-v2-test-client-secret",
 };
 
 const entrypoint = join(root, "dist", "src", "main.js");
@@ -261,7 +261,7 @@ export async function createEmployeeSession(
     );
     const context = await runtime.instance.$context;
     const userId = randomUUID();
-    // The Google identity check is tested separately. Here the fixture inserts
+    // The GitHub identity check is tested separately. Here the fixture inserts
     // a verified employee and asks BetterAuth itself to mint and store a session.
     await pool.query(
       'insert into auth_user (id, name, email, "emailVerified") values ($1, $2, $3, $4)',

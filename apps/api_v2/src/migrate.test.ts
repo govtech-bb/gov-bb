@@ -44,7 +44,12 @@ describe("migrate", () => {
     const { client, db } = freshDb();
     const ran = await migrate(db, (script) => client.exec(script));
 
-    expect(ran).toEqual(["001_init", "002_markdown_pages", "003_auth"]);
+    expect(ran).toEqual([
+      "001_init",
+      "002_markdown_pages",
+      "003_auth",
+      "004_github_sessions",
+    ]);
     expect(await tableNames(db)).toEqual([
       "auth_account",
       "auth_session",
@@ -77,7 +82,7 @@ describe("migrate", () => {
     await db.execute(sql`delete from schema_migrations`);
 
     await expect(migrate(db, (script) => client.exec(script))).resolves.toEqual(
-      ["001_init", "002_markdown_pages", "003_auth"],
+      ["001_init", "002_markdown_pages", "003_auth", "004_github_sessions"],
     );
     await client.close();
   });
@@ -99,7 +104,7 @@ describe("migrate", () => {
     );
 
     await expect(migrate(db, (script) => client.exec(script))).resolves.toEqual(
-      ["002_markdown_pages", "003_auth"],
+      ["002_markdown_pages", "003_auth", "004_github_sessions"],
     );
     const pages = await client.query(
       "select count(*)::int as n from content_pages",
@@ -132,6 +137,37 @@ describe("migrate", () => {
     if (!(refused instanceof Error))
       throw new Error("Expected trigger rejection");
     expect(String(refused.cause)).toMatch(/append-only/);
+    await client.close();
+  });
+
+  it("revokes legacy sessions while preserving users and admitted GitHub sessions", async () => {
+    const { client, db } = freshDb();
+    await migrate(db, (script) => client.exec(script));
+    await client.exec(`
+      delete from schema_migrations where name = '004_github_sessions';
+      insert into auth_user (id, name, email, "emailVerified") values
+        ('legacy', 'Legacy user', 'employee@govtech.bb', true),
+        ('member', 'GitHub member', 'member@example.com', true);
+      insert into auth_account (id, "accountId", "providerId", "userId", "updatedAt") values
+        ('google-account', 'google-id', 'google', 'legacy', now()),
+        ('github-account', 'github-id', 'github', 'member', now());
+      insert into auth_session (id, token, "userId", "expiresAt", "updatedAt") values
+        ('legacy-session', 'old-token', 'legacy', now() + interval '1 hour', now()),
+        ('member-session', 'new-token', 'member', now() + interval '1 hour', now());
+    `);
+    expect(await migrate(db, (script) => client.exec(script))).toEqual([
+      "004_github_sessions",
+    ]);
+    expect((await client.query("select id from auth_session")).rows).toEqual([
+      { id: "member-session" },
+    ]);
+    expect(
+      (await client.query("select count(*)::int as count from auth_user")).rows,
+    ).toEqual([{ count: 2 }]);
+    expect(
+      (await client.query("select count(*)::int as count from auth_account"))
+        .rows,
+    ).toEqual([{ count: 2 }]);
     await client.close();
   });
 });

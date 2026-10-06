@@ -44,14 +44,14 @@ await context.route("**/api/auth/**", async (route) => {
   if (path === "/api/auth/sign-in/social") {
     signIns++;
     const body = request.postDataJSON();
-    assert.equal(body.provider, "google");
+    assert.equal(body.provider, "github");
     assert.equal(body.disableRedirect, true);
     callback = body.callbackURL;
     assert.equal(new URL(callback).origin, base.origin);
     assert.equal(new URL(body.errorCallbackURL).searchParams.get("state"), "error");
 
     return route.fulfill({
-      json: { url: "https://accounts.google.com/o/oauth2/v2/auth?state=fixture", redirect: false },
+      json: { url: "https://github.com/login/oauth/authorize?state=fixture", redirect: false },
       headers,
     });
   }
@@ -66,8 +66,8 @@ await context.route("**/api/auth/**", async (route) => {
   throw new Error(`Unexpected auth endpoint: ${path}`);
 });
 
-await context.route("https://accounts.google.com/**", (route) =>
-  route.fulfill({ contentType: "text/html", body: "<h1>Google sign-in fixture</h1>" }),
+await context.route("https://github.com/**", (route) =>
+  route.fulfill({ contentType: "text/html", body: "<h1>GitHub sign-in fixture</h1>" }),
 );
 
 await context.addInitScript(() => {
@@ -99,8 +99,8 @@ await context.addInitScript(() => {
 try {
   const target = "/services/team/page?view=source#content";
   await page.goto(new URL(target, base).href);
-  await page.waitForURL("https://accounts.google.com/**", { waitUntil: "commit" });
-  assert.equal(signIns, 1, "anonymous entry starts Google once without a button");
+  await page.waitForURL("https://github.com/**", { waitUntil: "commit" });
+  assert.equal(signIns, 1, "anonymous entry starts GitHub once without a button");
   assert.equal(new URL(callback).searchParams.get("returnTo"), target);
 
   session = employeeSession();
@@ -148,7 +148,7 @@ try {
   await page.getByText(/Your sign-in could not be confirmed/).waitFor();
   assert.equal(signIns, 1, "missing callback cookie stops with recovery");
   await page.goto(new URL("/auth?state=error&error=access_denied", base).href);
-  await page.getByText(/Use your govtech.bb Google Workspace account/).waitFor();
+  await page.getByText(/active govtech-bb membership/).waitFor();
   assert.equal(signIns, 1, "provider denial does not loop");
 
   unavailable = true;
@@ -157,10 +157,10 @@ try {
   assert.equal(signIns, 1, "outage does not start OAuth");
   unavailable = false;
   await page.getByRole("button", { name: "Try again" }).click();
-  await page.waitForURL("https://accounts.google.com/**", { waitUntil: "commit" });
+  await page.waitForURL("https://github.com/**", { waitUntil: "commit" });
   assert.equal(signIns, 2, "recovery retries only when requested");
   console.log(
-    "PASS automatic Google login, callback, recovery, sign-out and blocked-draft preservation",
+    "PASS automatic GitHub login, callback, recovery, sign-out and blocked-draft preservation",
   );
 } finally {
   await browser.close();

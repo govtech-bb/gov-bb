@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { err, ok, type Result } from "./result";
 
-/** Only this Google Workspace domain can provision editor sessions. */
-export const WORKSPACE_DOMAIN = "govtech.bb";
+/** Only active members of this GitHub organization can provision editor sessions. */
+export const GITHUB_ORGANIZATION = "govtech-bb";
 
 /** An admitted employee, without session or provider tokens. */
 export interface Employee {
@@ -17,7 +17,7 @@ export class Unauthenticated extends Error {
   readonly _tag = "Unauthenticated";
   /** Explain how a caller can recover without exposing credentials. */
   constructor() {
-    super("Sign in with your govtech.bb Google account.");
+    super("Sign in with your GitHub account.");
   }
 }
 
@@ -27,7 +27,9 @@ export class Forbidden extends Error {
   readonly _tag = "Forbidden";
   /** Describe the required organization without exposing rejected profile data. */
   constructor() {
-    super("Use a verified govtech.bb Google Workspace account.");
+    super(
+      "Use a GitHub account with a verified email and active govtech-bb membership.",
+    );
   }
 }
 
@@ -43,10 +45,7 @@ export class AuthUnavailable extends Error {
   }
 }
 
-const employeeEmail = z
-  .email()
-  .transform((email) => email.toLowerCase())
-  .refine((email) => email.split("@")[1] === WORKSPACE_DOMAIN);
+const employeeEmail = z.email().transform((email) => email.toLowerCase());
 const employeeSchema = z.object({
   id: z.string().min(1),
   email: employeeEmail,
@@ -66,24 +65,27 @@ export function parseEmployee(input: unknown): Result<Employee, Forbidden> {
     : err(new Forbidden());
 }
 
-const googleIdentity = z.object({
+const githubIdentity = z.object({
   email: employeeEmail,
+  emailVerified: z.literal(true),
   source: z.object({
     method: z.literal("oauth"),
     oauth: z.object({
-      providerId: z.literal("google"),
+      providerId: z.literal("github"),
       profile: z.object({
         email: employeeEmail,
-        email_verified: z.literal(true),
-        hd: z.literal(WORKSPACE_DOMAIN),
+        organizationMembership: z.object({
+          state: z.literal("active"),
+          organization: z.object({ login: z.literal(GITHUB_ORGANIZATION) }),
+        }),
       }),
     }),
   }),
 });
 
-/** Admit fresh Google claims on both provisioning and returning OAuth sign-ins. */
-export function admitGoogleIdentity(input: unknown): Result<void, Forbidden> {
-  const parsed = googleIdentity.safeParse(input);
+/** Admit fresh GitHub claims on both provisioning and returning OAuth sign-ins. */
+export function admitGitHubIdentity(input: unknown): Result<void, Forbidden> {
+  const parsed = githubIdentity.safeParse(input);
   if (
     !parsed.success ||
     parsed.data.email !== parsed.data.source.oauth.profile.email

@@ -34,7 +34,7 @@ export function createEditorAuth(apiOrigin: string, now: () => number): EditorAu
     async signIn(editorOrigin, returnTo) {
       const result = await client.signIn
         .social({
-          provider: "google",
+          provider: "github",
           callbackURL: authCallback(editorOrigin, "complete", returnTo),
           errorCallbackURL: authCallback(editorOrigin, "error", returnTo),
           disableRedirect: true,
@@ -49,7 +49,8 @@ export function createEditorAuth(apiOrigin: string, now: () => number): EditorAu
 
       if (
         url.protocol !== "https:" ||
-        url.hostname !== "accounts.google.com" ||
+        url.origin !== "https://github.com" ||
+        url.pathname !== "/login/oauth/authorize" ||
         url.username ||
         url.password
       ) {

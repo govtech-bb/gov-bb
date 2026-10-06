@@ -32,7 +32,7 @@ describe("booting without a database", () => {
   it("does not echo supplied secret values when configuration is invalid", async () => {
     const { code, output } = await runToExit({
       BETTER_AUTH_SECRET: "do-not-print-this",
-      GOOGLE_CLIENT_SECRET: "private-client-secret",
+      GITHUB_CLIENT_SECRET: "private-client-secret",
     });
     expect(code).toBe(1);
     expect(output).not.toContain("do-not-print-this");

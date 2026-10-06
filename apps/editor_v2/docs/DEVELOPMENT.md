@@ -38,7 +38,7 @@ Routes use `/services`, `/services/$serviceId` and `/services/$serviceId/$docume
 
 Start generates `src/routeTree.gen.ts` during development and builds. Keep that file checked in so standalone typechecks work on a fresh checkout. It is excluded from linting and formatting; edit route files instead. Vitest uses its own configuration without the Start plugin.
 
-`getRouter` composes the Better Auth client from the public API origin. The workspace layout checks the API session before rendering. `/auth` stays outside that layout so failed sign-ins and sign-out cannot create redirect loops. The client includes cookies on API calls; its origin is configured with `VITE_API_ORIGIN`, which must be HTTPS in production. Building the static shell does not contact the API or Google.
+`getRouter` composes the Better Auth client from the public API origin. The workspace layout checks the API session before rendering. `/auth` stays outside that layout so failed sign-ins and sign-out cannot create redirect loops. The client includes cookies on API calls; its origin is configured with `VITE_API_ORIGIN`, which must be HTTPS in production. Building the static shell does not contact the API or GitHub.
 
 ## Browser checks
 
@@ -51,7 +51,7 @@ PLAYWRIGHT_MODULE_PATH=/path/to/playwright-core \
 
 The runner resolves an existing `playwright` or `playwright-core` installation, with `PLAYWRIGHT_MODULE_PATH` as an alternative. Chromium must be available to that installation. Each suite uses an isolated browser context.
 
-App UI suites supply an employee session at the HTTP boundary through `scripts/browser/auth-fixture.mjs`; production has no authentication bypass. `authentication.mjs` separately exercises anonymous automatic login, callback confirmation, cancellation, unavailable authentication, sign-out and preservation of drafts that cannot be saved, using intercepted API/Google HTTP responses. Real Google consent and deployment cookies require a configured deployment smoke test.
+App UI suites supply an employee session at the HTTP boundary through `scripts/browser/auth-fixture.mjs`; production has no authentication bypass. `authentication.mjs` separately exercises anonymous automatic login, callback confirmation, cancellation, unavailable authentication, sign-out and preservation of drafts that cannot be saved, using intercepted API/GitHub HTTP responses. Real GitHub consent and deployment cookies require a configured deployment smoke test.
 
 Pass suite names after the URL to run a subset:
 

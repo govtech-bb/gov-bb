@@ -18,8 +18,8 @@ export interface AuthConfig {
   readonly apiOrigin: string;
   readonly editorOrigin: string;
   readonly secret: Redacted<string>;
-  readonly googleClientId: string;
-  readonly googleClientSecret: Redacted<string>;
+  readonly githubClientId: string;
+  readonly githubClientSecret: Redacted<string>;
 }
 
 /** The process's parsed settings; inner modules never read environment variables. */
@@ -69,8 +69,8 @@ const environment = z
     BETTER_AUTH_URL: origin,
     EDITOR_ORIGIN: origin,
     BETTER_AUTH_SECRET: z.string().min(32),
-    GOOGLE_CLIENT_ID: z.string().min(1),
-    GOOGLE_CLIENT_SECRET: z.string().min(1),
+    GITHUB_CLIENT_ID: z.string().min(1),
+    GITHUB_CLIENT_SECRET: z.string().min(1),
   })
   .superRefine((value, context) => {
     if (value.NODE_ENV !== "production") return;
@@ -112,8 +112,8 @@ export function parseConfig(
       apiOrigin: env.BETTER_AUTH_URL,
       editorOrigin: env.EDITOR_ORIGIN,
       secret: new Redacted(env.BETTER_AUTH_SECRET),
-      googleClientId: env.GOOGLE_CLIENT_ID,
-      googleClientSecret: new Redacted(env.GOOGLE_CLIENT_SECRET),
+      githubClientId: env.GITHUB_CLIENT_ID,
+      githubClientSecret: new Redacted(env.GITHUB_CLIENT_SECRET),
     },
   });
 }

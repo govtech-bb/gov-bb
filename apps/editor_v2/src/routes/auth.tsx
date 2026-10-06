@@ -42,7 +42,7 @@ function AuthPage() {
       ? "Your sign-in could not be confirmed. Allow cookies for the editor and API, then try again."
       : failure === "unavailable"
         ? "We could not reach the sign-in service. Your browser drafts have been kept. Try again when the service is available."
-        : "Sign-in was not completed. Use your govtech.bb Google Workspace account to continue.";
+        : "Sign-in was not completed. Use a GitHub account with a verified email and active govtech-bb membership to continue.";
 
   return (
     <main className="mx-auto max-w-160 px-6 py-12 text-ink">
@@ -53,7 +53,7 @@ function AuthPage() {
         {signedOut
           ? "Your drafts remain in this browser."
           : pending
-            ? "Opening Google to sign in with your work account."
+            ? "Opening GitHub to sign you in."
             : message}
       </p>
       {!pending && (

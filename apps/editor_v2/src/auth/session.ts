@@ -55,7 +55,7 @@ export function parseEmployeeSession(
 export interface EditorAuth {
   /** Recheck the authoritative API session rather than using a UI cache. */
   session(): Promise<AuthResult<EmployeeSession | null>>;
-  /** Start Google OAuth and return its authorization URL without navigating. */
+  /** Start GitHub OAuth and return its authorization URL without navigating. */
   signIn(editorOrigin: string, returnTo: string): Promise<AuthResult<string>>;
   /** Revoke the API session without removing browser drafts. */
   signOut(): Promise<AuthResult<void>>;

@@ -6,8 +6,8 @@ const required = {
   BETTER_AUTH_URL: "http://localhost:3020",
   EDITOR_ORIGIN: "http://localhost:3000",
   BETTER_AUTH_SECRET: "test-only-secret-with-at-least-32-characters",
-  GOOGLE_CLIENT_ID: "test-client",
-  GOOGLE_CLIENT_SECRET: "test-client-secret",
+  GITHUB_CLIENT_ID: "test-client",
+  GITHUB_CLIENT_SECRET: "test-client-secret",
 };
 
 describe("auth configuration", () => {
@@ -54,7 +54,7 @@ describe("auth configuration", () => {
       String(result.value.auth.secret),
     ]) {
       expect(rendered).not.toContain(required.BETTER_AUTH_SECRET);
-      expect(rendered).not.toContain(required.GOOGLE_CLIENT_SECRET);
+      expect(rendered).not.toContain(required.GITHUB_CLIENT_SECRET);
     }
   });
 });

@@ -15,9 +15,9 @@ pnpm dev:editor_v2
 
 Open `http://localhost:3000`. Set `PORT` to use another port, for example `PORT=3015 pnpm dev:editor_v2`. The app runs on TanStack Start and Vite in SPA mode.
 
-Run [api_v2](../api_v2/README.md) with its Google authentication configuration first. Opening the editor automatically starts Google sign-in when no session exists; use a `govtech.bb` Workspace account. The API session expires after eight hours. The editor checks it on navigation, window focus and expiry, and verifies the session cookie after Google returns. Cancellation, denied accounts, unavailable authentication and blocked cookies stop at a recovery screen instead of restarting sign-in.
+Run [api_v2](../api_v2/README.md) with its GitHub authentication configuration first. Opening the editor automatically starts GitHub sign-in when no session exists; use a GitHub account with a verified email and active membership in `govtech-bb`. The API session expires after eight hours. The editor checks it on navigation, window focus and expiry, and verifies the session cookie after GitHub returns. Cancellation, denied accounts, unavailable authentication and blocked cookies stop at a recovery screen instead of restarting sign-in.
 
-`VITE_API_ORIGIN` is the public API origin, defaulting to `http://localhost:3020` during development. Production builds require an explicit HTTPS origin. Both production origins must be on the same site for the API's host-only, SameSite cookies; the API's configured editor origin must match this app's origin exactly. Browser requests include credentials. Keep Google credentials and the Better Auth secret exclusively in the API environment.
+`VITE_API_ORIGIN` is the public API origin, defaulting to `http://localhost:3020` during development. Production builds require an explicit HTTPS origin. Both production origins must be on the same site for the API's host-only, SameSite cookies; the API's configured editor origin must match this app's origin exactly. Browser requests include credentials. Keep GitHub credentials and the Better Auth secret exclusively in the API environment.
 
 Authentication gates the workspace; it does not publish or synchronize drafts. Signing out preserves local drafts and is blocked if the current draft cannot be safely saved. Browser storage remains local to this origin and is not separated by account.
 
@@ -29,7 +29,7 @@ VITE_API_ORIGIN=https://api.example.gov.bb pnpm exec nx run-many -p editor_v2 -t
 
 The static app is built into `apps/editor_v2/dist/client`. Serve existing assets first, then rewrite application URLs to `/_shell.html` with HTTP 200. The generated server build is used to create the shell; static hosting does not run it. Keep the same origin when migrating a deployment so existing browser drafts remain accessible.
 
-`/auth` is a public SPA route for OAuth completion, errors and signed-out recovery. The Google provider callback is served by the API at `/api/auth/callback/google`; the editor never handles provider tokens.
+`/auth` is a public SPA route for OAuth completion, errors and signed-out recovery. The GitHub provider callback is served by the API at `/api/auth/callback/github`; the editor never handles provider tokens.
 
 Tests run with Vitest and cover forms, saved drafts and page conversion, including the current content in `apps/landing/src/content`.
 
