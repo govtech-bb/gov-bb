@@ -454,7 +454,7 @@
                 "value": 0
               },
               "max": {
-                "error": "You cannot continue with this application. The amount you receive is more than BDS $3,000 a month.",
+                "error": "You cannot continue with this application. The total amount you receive is more than BDS $3,000 a month.",
                 "value": 692.3
               }
             },
@@ -508,7 +508,7 @@
                 "value": 0
               },
               "max": {
-                "error": "You cannot continue with this application. The amount you receive is more than BDS $3,000 a month.",
+                "error": "You cannot continue with this application. The total amount you receive is more than BDS $3,000 a month.",
                 "value": 1500
               }
             },
@@ -562,7 +562,7 @@
                 "value": 0
               },
               "max": {
-                "error": "You cannot continue with this application. The amount you receive is more than BDS $3,000 a month.",
+                "error": "You cannot continue with this application. The total amount you receive is more than BDS $3,000 a month.",
                 "value": 3000
               }
             },
@@ -1101,7 +1101,13 @@
           "ref": "components/relationship",
           "overrides": {
             "fieldId": "co-applicant-relationship",
-            "label": "What is their relationship to you?"
+            "label": "What is their relationship to you?",
+            "validations": {
+              "required": {
+                "error": "Select their relationship to you",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1669,7 +1675,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select whether you own land or property",
+                "error": "Select whether you (or your spouse, if you are married) own land or property",
                 "value": true
               }
             },
@@ -1921,14 +1927,26 @@
           "ref": "components/name",
           "overrides": {
             "fieldId": "occupant-name",
-            "label": "Full name"
+            "label": "Full name",
+            "validations": {
+              "required": {
+                "error": "Full name is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/relationship",
           "overrides": {
             "fieldId": "occupant-relationship",
-            "label": "Relationship to you"
+            "label": "Relationship to you",
+            "validations": {
+              "required": {
+                "error": "Relationship to you is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1961,6 +1979,10 @@
               "required": {
                 "error": "Age is required",
                 "value": true
+              },
+              "min": {
+                "error": "Age must be 0 or more",
+                "value": 0
               }
             },
             "ui": {
@@ -1988,6 +2010,10 @@
             "validations": {
               "required": {
                 "value": false
+              },
+              "min": {
+                "error": "Monthly income must be 0 or more",
+                "value": 0
               }
             },
             "ui": {
@@ -2026,6 +2052,10 @@
               "required": {
                 "error": "Upload 2 recent payslips",
                 "value": true
+              },
+              "minItems": {
+                "error": "Upload 2 recent payslips",
+                "value": 2
               },
               "fileTypes": {
                 "error": "The file must be a PDF, JPG or PNG",
@@ -2168,6 +2198,10 @@
               "required": {
                 "error": "Upload 2 recent payslips for them",
                 "value": true
+              },
+              "minItems": {
+                "error": "Upload 2 recent payslips for them",
+                "value": 2
               },
               "fileTypes": {
                 "error": "The file must be a PDF, JPG or PNG",
@@ -2404,7 +2438,7 @@
     }
   ],
   "createdAt": "2026-09-03T00:00:00.000Z",
-  "updatedAt": "2026-10-06T00:00:00.000Z",
+  "updatedAt": "2026-10-06T20:27:44.000Z",
   "meta": {
     "visibility": "preview"
   }
