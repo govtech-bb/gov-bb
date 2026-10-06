@@ -165,6 +165,11 @@ with the form's declaration wording; keep the single `confirmed` option.
       submission-confirmation   ← explicit terminal step, elements: []
 ```
 
+A **Change** link on check-your-answers brings the applicant back to the review
+after Continue. It stops first at any step the change revealed or left invalid
+(including through cross-step conditions). There is nothing to author for this;
+see [ADR 0076](docs/decisions/0076-change-returns-to-the-first-step-needing-the-applicant.md).
+
 Drop paper-form artifacts that don't belong online: handwritten
 **"Signature of …"** text fields, **"Date of declaration"** inputs the citizen
 fills by hand (the submission is timestamped), and **"For official use"**
