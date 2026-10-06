@@ -38,6 +38,12 @@ pass validation; otherwise check-your-answers itself.
   form), values)`, which is the same pure validator the analytics path uses,
   filtered by evaluated visibility (ADR 0040). `form.validateField` can't be
   used: TanStack only runs field validators for mounted fields.
+- **Repeatable steps are trusted on completion alone.** `getVisibleFields`
+  can't evaluate a repeat instance's conditions off-screen; it reads a render
+  flag that is stale for an instance that isn't mounted. The result was a
+  hidden required field that looked empty, which pulled the applicant back to
+  a finished repeated step (caught by the e2e test on the master form).
+  Repeatable steps are still revisited when they are incomplete.
 - **The scan stops at the review.** Continue on the review marks it
   completed, so "first incomplete step" would carry an applicant who came back
   from the declaration on to the declaration.
@@ -59,3 +65,8 @@ pass validation; otherwise check-your-answers itself.
   fields, and they run only while the flag is set.
 - The API validation from #2855 remains the backstop. This decision is about
   the applicant not reaching it.
+- **Known gap:** a cross-step condition that newly requires a field on an
+  already-completed *repeatable* step is not caught on the client; the API's
+  422 still catches it. Closing the gap needs per-instance visibility
+  evaluation that handles shared fields (#2932). Once that lands, remove the
+  repeatable carve-out from `isStepValid` in `form-renderer.tsx`.
