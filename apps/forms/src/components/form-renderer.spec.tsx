@@ -1632,4 +1632,18 @@ describe("FormRenderer — returning from a Change (#2812)", () => {
     ]);
     expect(renderAt(true).isStepValid(makeStep("s2"))).toBe(false);
   });
+
+  it("trusts a repeatable step's completion instead of re-validating it", () => {
+    // getVisibleFields can't evaluate a repeat instance's conditions (it reads
+    // render flags, stale off-screen), so a hidden required field would look
+    // empty and wrongly pull the applicant back to a finished step.
+    const { getVisibleFields, collectStepErrorCodes } = vi.mocked(formsLibMock);
+    collectStepErrorCodes.mockReturnValue([
+      { fieldId: "fund-source-other", codes: ["required"] },
+    ]);
+    const repeatInstance = makeStep("s5~1", [], [{ type: "repeatable" }]);
+
+    expect(renderAt(true).isStepValid(repeatInstance)).toBe(true);
+    expect(getVisibleFields).not.toHaveBeenCalled();
+  });
 });
