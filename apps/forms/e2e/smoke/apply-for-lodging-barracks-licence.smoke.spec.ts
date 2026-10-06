@@ -125,6 +125,7 @@ import {
   submitAndConfirm,
   tickCheckbox,
   uploadOne,
+  mockGeocoder,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
 
@@ -723,6 +724,8 @@ async function confirmAndSubmit(page: Page): Promise<void> {
   await expect(page.getByText(/Polyclinic|Complex/).first()).toBeVisible();
   await expect(page.getByText("your local polyclinic")).toHaveCount(0);
 }
+
+test.beforeEach(({ page }) => mockGeocoder(page));
 
 test.describe("Lodging House / Barracks Licence — Live Smoke", () => {
   test("submits a new licence as the property owner with one unit, never asked who owns the property", async ({

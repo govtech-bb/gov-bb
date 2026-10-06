@@ -78,6 +78,7 @@ import {
   submitAndConfirm,
   tickCheckbox,
   uploadOne,
+  mockGeocoder,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
 
@@ -287,6 +288,8 @@ async function dateField(
   await fillDate(page, step, suffix, day, month, year);
   await afterField(page);
 }
+
+test.beforeEach(({ page }) => mockGeocoder(page));
 
 test.describe("Temporary Restaurant Permit — Live Smoke", () => {
   test("submits the real form end-to-end and reaches the confirmation screen", async ({

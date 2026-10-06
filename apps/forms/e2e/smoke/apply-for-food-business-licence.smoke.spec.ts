@@ -103,6 +103,7 @@ import {
   tickCheckbox,
   uploadMany,
   uploadOne,
+  mockGeocoder,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
 
@@ -536,6 +537,8 @@ async function confirmAndSubmit(page: Page): Promise<void> {
   // the header note.
   await expect(page.getByText(/Environmental Health/).first()).toBeVisible();
 }
+
+test.beforeEach(({ page }) => mockGeocoder(page));
 
 test.describe("Apply for a Food Business Licence — Live Smoke", () => {
   test("submits a first-time application for an open, fixed-property business", async ({
