@@ -111,6 +111,32 @@
   margin-block-end: 1rem;
   color: var(--page-blue);
 }
+/* Float with zero height keeps the caret at the start of the empty heading. */
+.page-editable
+  :is(.page-h1, .page-h2, .page-h3, .page-h4, .page-h5, .page-h6):has(> br:only-child)::before {
+  float: inline-start;
+  block-size: 0;
+  color: var(--color-subtle);
+  pointer-events: none;
+}
+.page-editable .page-h1:has(> br:only-child)::before {
+  content: "Heading 1" / "";
+}
+.page-editable .page-h2:has(> br:only-child)::before {
+  content: "Heading 2" / "";
+}
+.page-editable .page-h3:has(> br:only-child)::before {
+  content: "Heading 3" / "";
+}
+.page-editable .page-h4:has(> br:only-child)::before {
+  content: "Heading 4" / "";
+}
+.page-editable .page-h5:has(> br:only-child)::before {
+  content: "Heading 5" / "";
+}
+.page-editable .page-h6:has(> br:only-child)::before {
+  content: "Heading 6" / "";
+}
 .page-body :is(.page-actions, [data-page-component="actions"]) {
   display: flex;
   flex-wrap: wrap;
