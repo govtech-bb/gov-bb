@@ -29,7 +29,8 @@ const DEFAULT_BASE_BRANCH = "main";
  *      substituted by Vite — see vite.config.ts `define`). This is the fallback
  *      for Amplify Compute, whose SSR Lambda doesn't receive runtime env vars;
  *      set PUBLISH_BASE_BRANCH in the Amplify console and redeploy to change it.
- *   3. `main`, the trunk.
+ *   3. `main`, the trunk — only in a dev build. In production, neither var
+ *      being set fails fast (#1366) rather than silently targeting a default.
  * This is the single source of truth: the Deploy flow (`publishRecipe`,
  * `getPublishBaseBranch`), the services and content publish paths, and the
  * recipe reads in github-recipes.ts all use it, so the branch a Deploy's
@@ -41,7 +42,14 @@ const DEFAULT_BASE_BRANCH = "main";
 export function resolveBaseBranch(): string {
   const runtime = process.env["PUBLISH_BASE_BRANCH"]?.trim();
   if (runtime) return runtime;
-  return process.env.PUBLISH_BASE_BRANCH_DEFAULT?.trim() || DEFAULT_BASE_BRANCH;
+  const baked = process.env.PUBLISH_BASE_BRANCH_DEFAULT?.trim();
+  if (baked) return baked;
+  if (import.meta.env.DEV) return DEFAULT_BASE_BRANCH;
+  throw new Error(
+    "[form_builder] PUBLISH_BASE_BRANCH is not set for this production build. " +
+      "Set PUBLISH_BASE_BRANCH (or the baked PUBLISH_BASE_BRANCH_DEFAULT) for " +
+      "this environment so recipe PRs target the correct base branch.",
+  );
 }
 
 export interface RepoDisplay {
