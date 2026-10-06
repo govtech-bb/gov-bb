@@ -1298,6 +1298,38 @@ describe("FormRenderer", () => {
     expect(mockForm.deleteField).toHaveBeenCalledWith("step-1~1_name");
   });
 
+  it("forgets removed instances' completion on 'No', so a re-added one is not treated as done (#2812)", async () => {
+    // Instance ids are reused by count: a later "Yes" re-creates step-1~1.
+    // A stale completion record would let a return-from-Change skip it.
+    const user = userEvent.setup();
+    const { removeRepeatableStep } = vi.mocked(formsLibMock);
+    const repeatableBehaviour = { type: "repeatable", min: 1, max: 3 };
+    const baseStep = makeStep("step-1", [], [repeatableBehaviour]);
+    const removedStep = makeStep("step-1~1", [], [repeatableBehaviour]);
+    (removeRepeatableStep as Mock).mockReturnValue([baseStep]);
+    mockForm.getFieldValue.mockReturnValue("no");
+    sessionStorage.setItem(
+      "completedSteps_test-form",
+      JSON.stringify(["step-1", "step-1~1"]),
+    );
+
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1"
+        visibleSteps={[baseStep, removedStep]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+
+    expect(
+      JSON.parse(sessionStorage.getItem("completedSteps_test-form") ?? "[]"),
+    ).toEqual(["step-1"]);
+  });
+
   it("renders step description when present", () => {
     const step = { ...makeStep("step-1"), description: "Fill in your details" };
     render(

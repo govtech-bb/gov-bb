@@ -91,6 +91,15 @@ export function markStepCompleted(formId: string, stepId: string) {
   }
 }
 
+// Forget steps that no longer exist — removed repeat instances, whose ids are
+// reused by count when the applicant adds another again (#2812).
+export function unmarkStepsCompleted(formId: string, stepIds: string[]) {
+  const remaining = getCompletedSteps(formId).filter(
+    (id) => !stepIds.includes(id),
+  );
+  sessionStorage.setItem(`completedSteps_${formId}`, JSON.stringify(remaining));
+}
+
 /**
  * Returns the first step in `activeSteps` that has not yet been completed.
  *

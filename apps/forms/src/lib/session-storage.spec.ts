@@ -23,6 +23,7 @@ import {
   clearFormState,
   getCompletedSteps,
   markStepCompleted,
+  unmarkStepsCompleted,
   getFirstIncompleteActiveStep,
   getReviewReturnStep,
   isStepAccessible,
@@ -167,6 +168,26 @@ describe("markStepCompleted", () => {
     markStepCompleted(FORM_ID, "step1");
     markStepCompleted(FORM_ID, "step2");
     expect(getCompletedSteps(FORM_ID)).toEqual(["step1", "step2"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// unmarkStepsCompleted
+// ---------------------------------------------------------------------------
+
+describe("unmarkStepsCompleted", () => {
+  it("removes only the given steps", () => {
+    markStepCompleted(FORM_ID, "step1");
+    markStepCompleted(FORM_ID, "step1~1");
+    markStepCompleted(FORM_ID, "step2");
+    unmarkStepsCompleted(FORM_ID, ["step1~1"]);
+    expect(getCompletedSteps(FORM_ID)).toEqual(["step1", "step2"]);
+  });
+
+  it("ignores steps that were never completed", () => {
+    markStepCompleted(FORM_ID, "step1");
+    unmarkStepsCompleted(FORM_ID, ["nope"]);
+    expect(getCompletedSteps(FORM_ID)).toEqual(["step1"]);
   });
 });
 
