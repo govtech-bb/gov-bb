@@ -123,6 +123,7 @@ vi.mock("@forms/lib", () => ({
     onBlur: vi.fn(),
   })),
   collectStepErrorCodes: vi.fn(() => []),
+  getVisibleFields: vi.fn(() => []),
 }));
 
 import FormRenderer from "./form-renderer";
@@ -1652,5 +1653,52 @@ describe("form-step-view funnel emission (#2682)", () => {
       form: "apply-for-temporary-restaurant-permit",
       step: "food-safety",
     });
+  });
+});
+
+describe("FormRenderer — returning from a Change (#2812)", () => {
+  function renderAt(returnToReview?: boolean) {
+    const step = makeStep("step-1");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        returnToReview={returnToReview}
+      />,
+    );
+    return mockUseStepGuard.mock.calls.at(-1)?.[0];
+  }
+
+  it("forwards returnToReview to the step guard", () => {
+    expect(renderAt(true).returnToReview).toBe(true);
+    expect(renderAt(undefined).returnToReview).toBeFalsy();
+  });
+
+  it("judges a step by its visible fields against the live answers", () => {
+    const { getVisibleFields, collectStepErrorCodes } = vi.mocked(formsLibMock);
+    const visible = [makePlainField("s2_name", "name", "s2")];
+    getVisibleFields.mockReturnValue(visible as any);
+    collectStepErrorCodes.mockReturnValue([]);
+    mockForm.state.values = { s2_name: "Ada" };
+    const target = makeStep("s2");
+
+    expect(renderAt(true).isStepValid(target)).toBe(true);
+    // Hidden fields are filtered out first: a hidden required field must not
+    // make its step look unfinished.
+    expect(getVisibleFields).toHaveBeenCalledWith(target, mockForm);
+    expect(collectStepErrorCodes).toHaveBeenCalledWith(visible, {
+      s2_name: "Ada",
+    });
+  });
+
+  it("reports a step with a failing visible field as not valid", () => {
+    const { collectStepErrorCodes } = vi.mocked(formsLibMock);
+    collectStepErrorCodes.mockReturnValue([
+      { fieldId: "name", codes: ["required"] },
+    ]);
+    expect(renderAt(true).isStepValid(makeStep("s2"))).toBe(false);
   });
 });

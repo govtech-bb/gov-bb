@@ -31,6 +31,8 @@ export interface FormRendererProps {
    * (#1682).
    */
   draftToken?: string;
+  /** `?returnTo=check-your-answers` — see `UseStepGuardProps` (#2812). */
+  returnToReview?: boolean;
 }
 
 export type UseStepGuardProps = {
