@@ -201,6 +201,78 @@ describe("POST /builder/registry/validate — required-message check", () => {
   });
 });
 
+// #2877: the Deploy-gate half of the API's boot-time rule. A catchment-routed
+// recipe whose only mapped webhook was removed in the builder used to deploy
+// green and then be refused by the recipe loader, so the form vanished.
+describe("POST /builder/registry/validate — catchment routing needs a mapped webhook", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getFullCatalogMock.mockResolvedValue(getCatalog());
+  });
+
+  const CATCHMENT_RECIPE = {
+    ...makeRecipe([
+      {
+        ref: "components/generic-text",
+        overrides: {
+          fieldId: "employer-name",
+          label: "Employer name",
+          validations: {
+            required: { value: true, error: "Employer name is required" },
+          },
+        },
+      },
+    ]),
+    catchmentRouting: {
+      coordinatesField: "step-1.coordinates",
+      parishField: "step-1.parish",
+    },
+  };
+
+  const MAPPED_WEBHOOK = {
+    type: "webhook",
+    config: {
+      mapping: {
+        programmeCode: "RESTAURANT_LICENCE",
+        applicant: {
+          name: "step-1.employer-name",
+          email: "step-1.email",
+          phone: "step-1.phone",
+        },
+      },
+    },
+  };
+
+  it("rejects a catchment-routed recipe with no mapped webhook", async () => {
+    const recipe = {
+      ...CATCHMENT_RECIPE,
+      processors: [
+        { type: "email", config: { recipientField: "step-1.email" } },
+      ],
+    };
+    const res = mockRes();
+
+    await validateHandler({ body: { recipe } } as Request, res);
+
+    expect(res.body).toMatchObject({
+      ok: false,
+      issues: [{ path: "processors" }],
+    });
+    expect(
+      (res.body as { issues: { message: string }[] }).issues[0].message,
+    ).toMatch(/catchmentRouting.*mapping\.programmeCode/);
+  });
+
+  it("accepts a catchment-routed recipe that keeps its mapped webhook", async () => {
+    const recipe = { ...CATCHMENT_RECIPE, processors: [MAPPED_WEBHOOK] };
+    const res = mockRes();
+
+    await validateHandler({ body: { recipe } } as Request, res);
+
+    expect(res.body).toMatchObject({ ok: true });
+  });
+});
+
 // The kebab-case id rule lives in the shared schema (kebabIdSchema, issues
 // #741/#745) and reaches this endpoint for free because validateHandler
 // funnels the recipe through validateFormContract before any catalog work.

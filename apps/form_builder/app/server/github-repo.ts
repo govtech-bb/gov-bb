@@ -15,6 +15,43 @@ export function repoOwner(): string {
   return v;
 }
 
+const DEFAULT_BASE_BRANCH = "main";
+
+/**
+ * The branch the builder reads committed recipes from and opens its Deploy
+ * PRs against, from `PUBLISH_BASE_BRANCH`. Resolution order:
+ *   1. The LIVE runtime env var — wins wherever the platform exposes it
+ *      (docker, ECS, local node), so changing it retargets deploys with no
+ *      rebuild. Read via bracket access on purpose: Vite's `define` only
+ *      rewrites the literal `process.env.PUBLISH_BASE_BRANCH`, so the bracket
+ *      form survives the build as a real runtime read instead of being inlined.
+ *   2. The build-time baked value (`process.env.PUBLISH_BASE_BRANCH_DEFAULT`,
+ *      substituted by Vite — see vite.config.ts `define`). This is the fallback
+ *      for Amplify Compute, whose SSR Lambda doesn't receive runtime env vars;
+ *      set PUBLISH_BASE_BRANCH in the Amplify console and redeploy to change it.
+ *   3. `main`, the trunk — only in a dev build. In production, neither var
+ *      being set fails fast (#1366) rather than silently targeting a default.
+ * This is the single source of truth: the Deploy flow (`publishRecipe`,
+ * `getPublishBaseBranch`), the services and content publish paths, and the
+ * recipe reads in github-recipes.ts all use it, so the branch a Deploy's
+ * stale-base guard compares against is the branch the builder read the recipe
+ * from (#2899), and the value the modal shows can never diverge from the PR's
+ * actual base. Lives here rather than in publish.ts because github-recipes.ts
+ * needs it and publish.ts imports from there.
+ */
+export function resolveBaseBranch(): string {
+  const runtime = process.env["PUBLISH_BASE_BRANCH"]?.trim();
+  if (runtime) return runtime;
+  const baked = process.env.PUBLISH_BASE_BRANCH_DEFAULT?.trim();
+  if (baked) return baked;
+  if (import.meta.env.DEV) return DEFAULT_BASE_BRANCH;
+  throw new Error(
+    "[form_builder] PUBLISH_BASE_BRANCH is not set for this production build. " +
+      "Set PUBLISH_BASE_BRANCH (or the baked PUBLISH_BASE_BRANCH_DEFAULT) for " +
+      "this environment so recipe PRs target the correct base branch.",
+  );
+}
+
 export interface RepoDisplay {
   owner: string | null;
   name: string;

@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import "@testing-library/jest-dom/vitest";
 import { expect } from "vitest";
 import type { ComponentType } from "react";
 import { render, screen, waitFor } from "@testing-library/react";

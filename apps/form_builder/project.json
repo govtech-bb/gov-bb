@@ -65,6 +65,13 @@
       "options": {
         "lintFilePatterns": ["apps/form_builder/**/*.{ts,tsx}"]
       }
+    },
+    "test": {
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/apps/api/src/forms/form-definitions/recipes/**/*.json"
+      ]
     }
   },
   "tags": []

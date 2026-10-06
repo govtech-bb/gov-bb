@@ -5,7 +5,6 @@ import { openSelect, chooseOption } from "../../test/select";
  * #519: the conditional Target Field picker is gated on and scoped to the
  * selected Target Step, keyed by resolved field id.
  */
-import "@testing-library/jest-dom";
 import { useState } from "react";
 import { render, screen, within, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";

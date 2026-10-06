@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1136.0",
+    "@govtech-bb/registry": "workspace:*",
     "@tanstack/ai-client": "^0.31.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",

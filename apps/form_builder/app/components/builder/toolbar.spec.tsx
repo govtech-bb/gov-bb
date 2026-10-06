@@ -1,9 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import "@testing-library/jest-dom";
 import { render, screen, fireEvent } from "../../test/ui";
-import userEvent from "@testing-library/user-event";
 import { Toolbar } from "./toolbar";
 
 function renderToolbar(overrides: Partial<Parameters<typeof Toolbar>[0]> = {}) {
@@ -20,8 +18,7 @@ function renderToolbar(overrides: Partial<Parameters<typeof Toolbar>[0]> = {}) {
     isPublishing: false,
     isReadOnly: false,
     lastSaveStatus: "idle" as const,
-    visibility: "public" as const,
-    onVisibilityChange: vi.fn(),
+    status: "public" as const,
     onFormIdChange,
     onTitleChange: vi.fn(),
     onNew: vi.fn(),
@@ -40,7 +37,6 @@ function renderToolbar(overrides: Partial<Parameters<typeof Toolbar>[0]> = {}) {
   return {
     onFormIdChange: props.onFormIdChange,
     onDiscard: props.onDiscard,
-    onVisibilityChange: props.onVisibilityChange,
   };
 }
 
@@ -48,36 +44,45 @@ function formIdInput() {
   return screen.getByLabelText(/form id/i);
 }
 
-describe("Toolbar — Visibility selector (#1682)", () => {
-  it("reflects the current visibility value", () => {
-    renderToolbar({ visibility: "draft" });
+describe("Toolbar — read-only status from the API (#2875)", () => {
+  it("shows the status apps/api reports and where to change it, with no control", () => {
+    renderToolbar({ status: "maintenance" });
+    expect(screen.getByTestId("form-status")).toHaveTextContent("Maintenance");
     expect(
-      screen.getByRole("combobox", { name: "Visibility" }),
-    ).toHaveTextContent("Draft");
-  });
-
-  it("offers public, preview, draft and maintenance options", async () => {
-    const user = userEvent.setup();
-    renderToolbar();
-    await user.click(screen.getByRole("combobox", { name: "Visibility" }));
+      screen.getByText(/set in the feature flagging tool/i),
+    ).toBeInTheDocument();
+    // #1682's Visibility select is gone: the builder never edits the status.
     expect(
-      (await screen.findAllByRole("option")).map(
-        (option) => option.textContent,
-      ),
-    ).toEqual(["Public", "Preview", "Draft", "Maintenance"]);
+      screen.queryByRole("combobox", { name: /visibility/i }),
+    ).not.toBeInTheDocument();
   });
 
-  it("calls onVisibilityChange with the selected level", async () => {
-    const user = userEvent.setup();
-    const { onVisibilityChange } = renderToolbar({ visibility: "public" });
-    await user.click(screen.getByRole("combobox", { name: "Visibility" }));
-    await user.click(await screen.findByRole("option", { name: "Preview" }));
-    expect(onVisibilityChange).toHaveBeenCalledWith("preview");
+  it("summarises the status next to Form settings", () => {
+    renderToolbar({ status: "preview" });
+    expect(
+      screen.getByRole("button", { name: /Form settings/ }),
+    ).toHaveTextContent("Preview");
   });
 
-  it("is disabled when the form is read-only", () => {
-    renderToolbar({ isReadOnly: true });
-    expect(screen.getByLabelText(/visibility/i)).toBeDisabled();
+  it("says 'Not published' for a form with no live status yet", () => {
+    renderToolbar({ status: null });
+    expect(screen.getByTestId("form-status")).toHaveTextContent(
+      "Not published",
+    );
+  });
+
+  it("says the status is unavailable when the API could not report one", () => {
+    renderToolbar({ status: "unavailable" });
+    expect(screen.getByTestId("form-status")).toHaveTextContent(
+      "Status unavailable",
+    );
+  });
+
+  it("says it is checking while the forms list is in flight", () => {
+    renderToolbar({ status: "loading" });
+    expect(screen.getByTestId("form-status")).toHaveTextContent(
+      "Checking status…",
+    );
   });
 });
 
@@ -180,49 +185,35 @@ describe("Toolbar — unsaved changes + Discard", () => {
   it("disables Deploy when there are unsaved changes (#331)", () => {
     renderToolbar({ hasUnsavedChanges: true });
 
-    expect(screen.getByRole("button", { name: /publish/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^publish$/i })).toBeDisabled();
   });
 
   it("enables Deploy when the draft is clean", () => {
     renderToolbar({ hasUnsavedChanges: false });
 
-    expect(screen.getByRole("button", { name: /publish/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /^publish$/i })).toBeEnabled();
   });
 });
 
-describe("Toolbar — Deploy blocked while visibility is draft (#1682)", () => {
-  it("disables Deploy when visibility is draft, even on a clean valid draft", () => {
-    renderToolbar({ hasUnsavedChanges: false, visibility: "draft" });
+describe("Toolbar — Deploy is never gated on status (#2875)", () => {
+  // #1682 disabled Deploy while the recipe's `meta.visibility` was `draft`.
+  // Status is the service_status row's job now, so a clean form deploys
+  // whatever the API reports — including no status at all.
+  it.each([
+    "draft",
+    "preview",
+    "public",
+    "maintenance",
+    "unavailable",
+    "loading",
+    null,
+  ] as const)("enables Deploy on a clean form when status is %s", (status) => {
+    renderToolbar({ hasUnsavedChanges: false, status });
 
-    expect(screen.getByRole("button", { name: /publish/i })).toBeDisabled();
-  });
-
-  it("shows a hint telling the author to set Preview or Public", () => {
-    renderToolbar({ hasUnsavedChanges: false, visibility: "draft" });
-
+    expect(screen.getByRole("button", { name: /^publish$/i })).toBeEnabled();
     expect(
-      screen.getByText(
-        /set visibility to preview or public in form settings to publish/i,
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it("enables Deploy when visibility is preview", () => {
-    renderToolbar({ hasUnsavedChanges: false, visibility: "preview" });
-
-    expect(screen.getByRole("button", { name: /publish/i })).toBeEnabled();
-  });
-
-  it("enables Deploy when visibility is public", () => {
-    renderToolbar({ hasUnsavedChanges: false, visibility: "public" });
-
-    expect(screen.getByRole("button", { name: /publish/i })).toBeEnabled();
-  });
-
-  it("enables Deploy when visibility is maintenance (#1694)", () => {
-    renderToolbar({ hasUnsavedChanges: false, visibility: "maintenance" });
-
-    expect(screen.getByRole("button", { name: /publish/i })).toBeEnabled();
+      screen.queryByText(/set visibility to preview or public/i),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -234,7 +225,7 @@ describe("Toolbar — read-only lock (#874)", () => {
 
   it("disables Deploy when read-only, even on a clean draft", () => {
     renderToolbar({ hasUnsavedChanges: false, isReadOnly: true });
-    expect(screen.getByRole("button", { name: /publish/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^publish$/i })).toBeDisabled();
   });
 
   it("disables the Form ID and Title inputs when read-only", () => {

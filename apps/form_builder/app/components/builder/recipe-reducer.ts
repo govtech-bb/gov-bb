@@ -10,7 +10,6 @@ import type {
   Behaviour,
   ContactDetails,
   FieldOverrides,
-  RecipeVisibility,
 } from "@govtech-bb/form-types";
 
 // Listed in display order. `check-your-answers` is first so the pinned tail
@@ -237,10 +236,7 @@ export type RecipeAction =
       formId: string;
       title: string;
       description?: string;
-    }
-  // Set the launch-gate visibility (#1682). Writes `meta.visibility`, seeding
-  // `meta` if the draft has none (legacy form loaded without it).
-  | { type: "SET_VISIBILITY"; visibility: RecipeVisibility };
+    };
 
 // Shared module-level constant; treat as immutable. RESET / new-form flows
 // call makeRequiredSteps() and makeDefaultProcessors() afresh, so don't mutate
@@ -504,15 +500,6 @@ export function recipeReducer(
         ...(action.description !== undefined
           ? { description: action.description }
           : {}),
-      };
-    }
-
-    case "SET_VISIBILITY": {
-      // Merge into meta so future meta keys survive; seed meta when the loaded
-      // draft had none (legacy form predating the control).
-      return {
-        ...state,
-        meta: { ...state.meta, visibility: action.visibility },
       };
     }
 
