@@ -40,7 +40,12 @@ describe.skipIf(!HAS_DATABASE)(
       if (database) await dropScratchDatabase(database);
     });
 
-    const status = async () => (await fetch(`${server.url}/pages`)).status;
+    // A seeded page, so a 200 means a query reached Postgres and came back.
+    const page = () =>
+      fetch(
+        `${server.url}/pages?url=/money-financial-support/calculate-severance-pay`,
+      );
+    const status = async () => (await page()).status;
 
     const drops = () =>
       server.stderr.split("idle database connection dropped").length - 1;
@@ -73,7 +78,7 @@ describe.skipIf(!HAS_DATABASE)(
       try {
         await dropConnections();
 
-        const response = await fetch(`${server.url}/pages`);
+        const response = await page();
         expect(response.status).toBe(500);
         expect(await response.json()).toEqual({ error: "internal_error" });
       } finally {

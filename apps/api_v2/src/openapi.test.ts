@@ -16,7 +16,7 @@ import type { FastifyInstance } from "fastify";
 import { describe, expect, it } from "vitest";
 import { buildApp } from "./app";
 import { buildOpenApiDocument } from "./openapi-document";
-import { createTestDb } from "./test-db";
+import { aPage, createTestDb } from "./test-db";
 
 const committed = JSON.parse(
   readFileSync(
@@ -72,40 +72,14 @@ describe("openapi.json", () => {
 });
 
 describe("response schemas", () => {
-  /**
-   * Fastify serialises through the response schema, so a property the schema
-   * does not know about is dropped from the wire. That is a feature for
-   * hygiene and a trap for a block document, whose whole shape is open — this
-   * asserts that a document survives the round trip intact rather than
-   * arriving stripped of the blocks that make it a page.
-   */
-  it("does not strip a block document on the way out", async () => {
-    const { db, close } = await createTestDb();
-    const app = await buildApp({ db });
-    const { aDocument } = await import("./test-db");
-
-    const created = await app.inject({
-      method: "POST",
-      url: "/pages",
-      payload: aDocument(),
-    });
-
-    expect(created.statusCode).toBe(201);
-    expect(created.json().body).toEqual(aDocument().body);
-
-    await app.close();
-    await close();
-  });
-
   it("keeps a null description null rather than dropping it", async () => {
     const { db, close } = await createTestDb();
     const app = await buildApp({ db });
-    const { aDocument } = await import("./test-db");
 
     const created = await app.inject({
       method: "POST",
       url: "/pages",
-      payload: aDocument({ description: null }),
+      payload: aPage({ description: null }),
     });
 
     expect(created.json()).toHaveProperty("description", null);

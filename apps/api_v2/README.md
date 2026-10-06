@@ -12,7 +12,10 @@ DB_NAME=gov_bb_v2 pnpm --filter @govtech-bb/api-v2 dev
 ```
 
 It migrates and seeds on boot, both idempotently, and refuses to start if the
-database is unreachable rather than serving an empty estate. Connection comes
+database is unreachable rather than serving an empty estate. The seed is the
+live estate — the 116 markdown pages under `apps/landing/src/content`, the
+categories and a row per form recipe — snapshotted into
+`src/seed-data/estate.json` by `pnpm --filter @govtech-bb/api-v2 seed-data`. Connection comes
 from the same `DB_*` variables every other service here reads — the Drizzle
 spelling of `packages/database/src/data-source-env.ts`, not a bespoke config.
 `SEED=false` skips the seed.
@@ -41,20 +44,31 @@ matches (#2862), so do not reword it.
 Reads are public. Writes are unauthenticated until #2701 lands, and nothing
 here should be reachable from anywhere but a laptop until it does.
 
-| Method   | Path                                   | What it is                                 |
-| -------- | -------------------------------------- | ------------------------------------------ |
-| `GET`    | `/pages`                               | summaries; `?drafts=true` includes drafts  |
-| `GET`    | `/pages/by-url?url=…`                  | the site's routing key                     |
-| `GET`    | `/pages/:id`                           | the editor's key                           |
-| `GET`    | `/collections`                         | collection definitions                     |
-| `GET`    | `/collections/:key/records`            | records; `?keys=true` for editing          |
-| `GET`    | `/version`                             | a change token clients poll                |
-| `GET`    | `/openapi.json`                        | the spec, generated from the route schemas |
-| `POST`   | `/pages`                               | create                                     |
-| `PUT`    | `/pages/:id`                           | save; `if-updated-at` header, 409 / 422    |
-| `DELETE` | `/pages/:id`                           | delete                                     |
-| `PUT`    | `/collections/:key/records/:recordKey` | write a record                             |
-| `DELETE` | `/collections/:key/records/:recordKey` | delete a record                            |
+| Method   | Path            | What it is                                 |
+| -------- | --------------- | ------------------------------------------ |
+| `GET`    | `/pages?url=…`  | the site's read: a public page, see below  |
+| `GET`    | `/pages/:id`    | the editor's read, any visibility          |
+| `GET`    | `/version`      | a change token clients poll                |
+| `GET`    | `/openapi.json` | the spec, generated from the route schemas |
+| `POST`   | `/pages`        | create                                     |
+| `PUT`    | `/pages/:id`    | save; `if-updated-at` header, 409 / 422    |
+| `DELETE` | `/pages/:id`    | delete                                     |
+
+`GET /pages?url=` answers
+`{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs}`:
+
+| Status | When                                                                                    |
+| ------ | --------------------------------------------------------------------------------------- |
+| 400    | `url` missing or empty                                                                  |
+| 301    | a bare `/<slug>` with no page of its own, naming exactly one public page                |
+| 404    | no page at `url`, or it or a page above it is not `public`                              |
+| 404    | a `/start` page whose form is not `public`                                              |
+| 200    | the page; `hide_start_links` is true when its `/start` sub-page or form is not `public` |
+
+`forms.visibility` is read on every request, and a form with no row counts as
+hidden. `frontmatter` is the stored frontmatter with the title and description
+(columns of their own) put back; `breadcrumbs` is the full trail, current page
+included and Home not.
 
 Because writes are open, the CORS origin allow-list is load-bearing rather
 than hygiene: it is what stops any page a developer has open from preflighting
@@ -77,17 +91,25 @@ disagree, and again when the app serves a route the document does not carry.
 
 ## What a page is
 
-`content_pages.body` is a **block document** — `{version, blocks, refs}`,
-validated by `@govtech-bb/block-kit` — not a markdown string. The EPIC's ERD
-(#2698) says `body_markdown`; [ADR 0074](../../docs/decisions/0074-content-pages-store-a-block-document-not-markdown.md) sets out why the block
-document won: markdown cannot express a data reference, cannot be validated
-against the estate, and smuggles presentation in as hand-written HTML.
+`content_pages.body_markdown` is the page body, stored and served as written.
+This API serves the content and decides what may be seen; the site owns how
+it renders. landing_v2 sanitises and compiles the markdown on its server
+(`apps/landing_v2/src/server/markdown.ts`), so a change to the rendering never
+means recompiling stored pages. The block document of
+[ADR 0074](../../docs/decisions/0074-content-pages-store-a-block-document-not-markdown.md)
+returns later, as a change of its own.
 
-`block-kit`'s rules run **here**, inside the same request as the write, on
-context read fresh from the database. In the browser spike they ran only in
-the browser, which made them advisory.
+A page files under at most one `categories` row and names at most one
+`forms` row, both by foreign key, so an unknown category or form id is a 422
+rather than a page that silently never shows its Start button. `visibility`
+(`public | preview | draft`) replaces `is_draft`; `published_at` is stamped
+the first time a page goes public.
 
-The DDL lives in `src/migrations/001_init.ts` as a string rather than a `.sql`
+Migration `002_markdown_pages` moves a database from `001_init` onto this
+schema. The block documents a laptop may still hold cannot become markdown,
+so it deletes them first and the seed refills the estate on the next boot.
+
+The DDL lives in `src/migrations/` as strings rather than a `.sql`
 file, because this app compiles to CommonJS and its tests run as ESM: the two
 spell "the directory this file is in" differently and only one exists at a
 time. `src/schema.test.ts` compares the result against the Drizzle definition
@@ -100,8 +122,8 @@ pnpm exec nx run api_v2:test   # no database needed
 ```
 
 They run against PGlite in-process — Postgres 17 compiled to WASM — so the
-migration, the constraints, the enums and the append-only trigger are all
-genuinely exercised.
+migrations, the constraints, the enums and the append-only trigger are all
+genuinely exercised, and one test seeds the whole estate.
 
 ```bash
 DB_HOST=localhost pnpm exec nx run api_v2:e2e

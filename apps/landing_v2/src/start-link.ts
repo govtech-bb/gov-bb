@@ -1,8 +1,8 @@
-import type { RenderContext } from "@govtech-bb/block-kit";
-
 /**
- * Turns a start_link target into an href: a form id becomes a link into the
- * forms app, and a page or external target is left as it is.
+ * Turns a start link into an href: an authored href is used as it is, and a
+ * link api_v2 stamped with a form id becomes a link into the forms app.
+ * Undefined when it is neither, so the button is left out rather than
+ * pointing nowhere.
  *
  * Not server-only: the page component calls it, during SSR and again on
  * hydration, with the forms URL `getPage` returned.
@@ -12,7 +12,8 @@ import type { RenderContext } from "@govtech-bb/block-kit";
 // `${FORMS_URL}/forms/<id>` and FORMS_URL keeps meaning the app origin (#2840).
 export function startLinkHref(
   formsBaseUrl: string,
-): NonNullable<RenderContext["resolveHref"]> {
-  return (kind, target) =>
-    kind === "form" ? `${formsBaseUrl}/forms/${target}` : target;
+  href: string | undefined,
+  formId: string | undefined,
+): string | undefined {
+  return href ?? (formId ? `${formsBaseUrl}/forms/${formId}` : undefined);
 }

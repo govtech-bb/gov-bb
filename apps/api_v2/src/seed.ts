@@ -1,81 +1,78 @@
 /**
- * Loads the seven pages, four collections and 163 pharmacy records the block
- * editor spike proved the model against.
- *
- * The corpus lives here rather than in the spike package it came from because
- * the API now owns the estate: `landing_v2` and `builder_v2` read it over
- * HTTP instead of each seeding a browser database of their own, so one copy
- * in one place is the whole point.
+ * Loads the live estate's categories, forms and markdown pages — the
+ * snapshot in `seed-data/estate.json`.
  *
  * Every insert is `on conflict do nothing`, so this is additive and
  * idempotent: it inserts what is missing and never overwrites what an author
- * has since changed. That is the same choice the browser seed makes, for the
- * same reason — an early-return guard there meant a newly added page never
- * reached a database that had been seeded before, silently.
+ * has since changed. An early-return guard ("already seeded") would instead
+ * mean a newly added page never reached a database seeded before it, silently.
  */
 
 import { sql } from "drizzle-orm";
-import { collectionRecords, contentPages, dataCollections } from "./schema";
-import { COLLECTIONS, DOCUMENTS, RECORDS_BY_COLLECTION } from "./seed-data";
+import { categories, contentPages, forms } from "./schema";
+import { ESTATE } from "./seed-data";
 import type { Database } from "./store";
 
 export async function seed(db: Database): Promise<{
-  collections: number;
-  records: number;
+  categories: number;
+  forms: number;
   documents: number;
 }> {
-  let collections = 0;
-  let records = 0;
-  let documents = 0;
+  const counts = { categories: 0, forms: 0, documents: 0 };
 
-  for (const collection of COLLECTIONS) {
+  for (const category of ESTATE.categories) {
     const result = await db
-      .insert(dataCollections)
-      .values({
-        key: collection.key,
-        title: collection.title,
-        recordKey: collection.record_key,
-        schema: collection.schema,
-      })
+      .insert(categories)
+      .values(category)
       .onConflictDoNothing()
-      .returning({ key: dataCollections.key });
-    collections += result.length;
+      .returning({ id: categories.id });
+    counts.categories += result.length;
   }
 
-  for (const [collectionKey, rows] of Object.entries(RECORDS_BY_COLLECTION)) {
-    for (const row of rows) {
-      const result = await db
-        .insert(collectionRecords)
-        .values({
-          collectionKey,
-          recordKey: row.record_key,
-          data: row.data,
-        })
-        .onConflictDoNothing()
-        .returning({ id: collectionRecords.id });
-      records += result.length;
-    }
+  for (const form of ESTATE.forms) {
+    const result = await db
+      .insert(forms)
+      .values({ formId: form.form_id, visibility: form.visibility })
+      .onConflictDoNothing()
+      .returning({ formId: forms.formId });
+    counts.forms += result.length;
   }
 
-  for (const doc of DOCUMENTS) {
+  const categoryIds = new Map(
+    (
+      await db
+        .select({ id: categories.id, slug: categories.slug })
+        .from(categories)
+    ).map((row) => [row.slug, row.id]),
+  );
+
+  for (const page of ESTATE.pages) {
+    const published =
+      page.visibility === "public"
+        ? new Date(page.published_at ?? Date.now())
+        : null;
     const result = await db
       .insert(contentPages)
       .values({
-        url: doc.url,
-        slug: doc.slug,
-        schemaName: doc.schema_name,
-        documentType: doc.document_type,
-        title: doc.title,
-        description: doc.description,
-        isDraft: doc.is_draft,
-        body: doc.body,
+        url: page.url,
+        slug: page.url.split("/").at(-1) ?? "",
+        categoryId: page.category
+          ? (categoryIds.get(page.category) ?? null)
+          : null,
+        title: page.title,
+        description: page.description,
+        visibility: page.visibility,
+        formId: page.form_id,
+        bodyMarkdown: page.body_markdown,
+        frontmatter: page.frontmatter,
+        publishedAt: published,
       })
       .onConflictDoNothing()
       .returning({ id: contentPages.id });
-    documents += result.length;
+    counts.documents += result.length;
   }
 
-  return { collections, records, documents };
+  return counts;
 }
 
 /** True when the estate is empty, so boot can say something useful. */

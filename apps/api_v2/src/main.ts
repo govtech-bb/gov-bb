@@ -29,9 +29,9 @@ async function main() {
   // is missing and leaves everything an author has touched alone.
   if (process.env.SEED !== "false") {
     const counts = await seed(db);
-    if (counts.documents + counts.collections + counts.records > 0) {
+    if (counts.documents + counts.categories + counts.forms > 0) {
       console.log(
-        `api_v2: seeded ${counts.documents} pages, ${counts.collections} collections, ${counts.records} records`,
+        `api_v2: seeded ${counts.documents} pages, ${counts.categories} categories, ${counts.forms} forms`,
       );
     }
   }

@@ -28,29 +28,14 @@ export async function createTestDb(): Promise<{
   return { db, close: () => client.close() };
 }
 
-/** A minimal valid document — the shape every write test starts from. */
-export function aDocument(overrides: Record<string, unknown> = {}) {
+/** A minimal valid page — the shape every write test starts from. */
+export function aPage(overrides: Record<string, unknown> = {}) {
   return {
-    version: 1 as const,
-    id: "11111111-1111-4111-8111-111111111111",
-    url: "/money-financial-support/calculate-severance-pay/start",
-    slug: "start",
-    schema_name: "transaction" as const,
-    document_type: "start_page",
+    url: "/money-financial-support/calculate-severance-pay",
     title: "Find out how much severance payment you are owed",
     description: null,
-    is_draft: false,
-    body: {
-      version: 1 as const,
-      blocks: [
-        {
-          id: "b_one",
-          type: "paragraph" as const,
-          content: [{ text: "You should complete the calculator in one go." }],
-        },
-      ],
-      refs: {},
-    },
+    visibility: "public" as const,
+    body_markdown: "You should complete the calculator in one go.",
     ...overrides,
   };
 }

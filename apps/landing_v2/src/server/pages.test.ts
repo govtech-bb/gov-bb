@@ -5,21 +5,29 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApiClient, createCachingDispatcher } from "./api";
 import { ApiUnavailableError, loadPage } from "./pages";
 
-const doc = (blocks: unknown[], refs: Record<string, unknown> = {}) => ({
-  version: 1,
-  id: "doc-1",
+const aPage = (overrides: Record<string, unknown> = {}) => ({
   url: "/test",
-  slug: "test-page",
-  schema_name: "guide",
-  document_type: "test",
-  title: "A test page",
-  description: null,
-  is_draft: false,
-  body: { version: 1, blocks, refs },
-  updated_at: "2026-09-22T00:00:00.000Z",
+  frontmatter: { title: "A test page" },
+  body_markdown: "Hello",
+  form_id: null,
+  hide_start_links: false,
+  breadcrumbs: [{ name: "A test page", url: "/test" }],
+  ...overrides,
 });
 
-type Route = { status: number; body?: unknown; hold?: Promise<void> };
+const ENTRY_MARKDOWN = [
+  "There are 2 ways to apply. You can:",
+  "",
+  "- apply online: <a data-start-link>Start now</a>",
+  "- apply by post",
+].join("\n");
+
+type Route = {
+  status: number;
+  body?: unknown;
+  hold?: Promise<void>;
+  location?: string;
+};
 
 /** A throwaway api_v2 answering from a table of path → response. */
 async function startApi(routes: (path: string) => Route | undefined) {
@@ -28,6 +36,7 @@ async function startApi(routes: (path: string) => Route | undefined) {
     await route.hold;
     res.statusCode = route.status;
     res.setHeader("content-type", "application/json");
+    if (route.location) res.setHeader("location", route.location);
     res.end(JSON.stringify(route.body ?? { error: route.status }));
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -53,19 +62,114 @@ afterEach(async () => {
   close = undefined;
 });
 
-const byUrl = (url: string) => `/pages/by-url?url=${encodeURIComponent(url)}`;
+const byUrl = (url: string) => `/pages?url=${encodeURIComponent(url)}`;
 
 describe("loadPage", () => {
-  it("throws an error naming the slug and the field when a page is malformed", async () => {
-    const malformed = doc([{ id: "p1", type: "paragraph", content: "oops" }]);
+  it("returns the page api_v2 served", async () => {
     const api = await startApi((path) =>
-      path === byUrl("/test") ? { status: 200, body: malformed } : undefined,
+      path === byUrl("/test") ? { status: 200, body: aPage() } : undefined,
+    );
+    close = api.close;
+    const client = createApiClient(api.baseUrl, dispatcher);
+
+    expect(await loadPage("/test", client)).toEqual({
+      kind: "page",
+      page: {
+        url: "/test",
+        frontmatter: { title: "A test page" },
+        hast: {
+          type: "root",
+          children: [
+            {
+              type: "element",
+              tagName: "p",
+              properties: {},
+              children: [{ type: "text", value: "Hello" }],
+            },
+          ],
+        },
+        breadcrumbs: [{ name: "A test page", url: "/test" }],
+      },
+    });
+  });
+
+  it("sanitises the markdown's raw HTML before it renders", async () => {
+    const api = await startApi(() => ({
+      status: 200,
+      body: aPage({
+        body_markdown: '<script>alert(1)</script>\n\n<p onclick="x()">Hi</p>',
+      }),
+    }));
+    close = api.close;
+    const client = createApiClient(api.baseUrl, dispatcher);
+
+    const tree = JSON.stringify(await loadPage("/test", client));
+
+    expect(tree).not.toContain("script");
+    expect(tree).not.toContain("onclick");
+    expect(tree).toContain("Hi");
+  });
+
+  it("stamps the Start link with the form api_v2 names", async () => {
+    const api = await startApi(() => ({
+      status: 200,
+      body: aPage({ body_markdown: ENTRY_MARKDOWN, form_id: "severance" }),
+    }));
+    close = api.close;
+    const client = createApiClient(api.baseUrl, dispatcher);
+
+    const tree = JSON.stringify(await loadPage("/test", client));
+
+    expect(tree).toContain('"dataFormId":"severance"');
+    expect(tree).toContain("There are 2 ways to apply.");
+  });
+
+  it("removes the Start link, and counts the ways down, when api_v2 says to", async () => {
+    const api = await startApi(() => ({
+      status: 200,
+      body: aPage({
+        body_markdown: ENTRY_MARKDOWN,
+        form_id: "severance",
+        hide_start_links: true,
+      }),
+    }));
+    close = api.close;
+    const client = createApiClient(api.baseUrl, dispatcher);
+
+    const tree = JSON.stringify(await loadPage("/test", client));
+
+    expect(tree).not.toContain("dataStartLink");
+    expect(tree).toContain("There is 1 way to apply.");
+    expect(tree).toContain("apply by post");
+  });
+
+  it("hands back a redirect to the canonical url rather than following it", async () => {
+    // Followed, the site path would be requested from api_v2 and 404.
+    const api = await startApi((path) =>
+      path === byUrl("/test")
+        ? { status: 301, body: { redirect: "/a/test" }, location: "/a/test" }
+        : undefined,
+    );
+    close = api.close;
+    const client = createApiClient(api.baseUrl, dispatcher);
+
+    expect(await loadPage("/test", client)).toEqual({
+      kind: "redirect",
+      url: "/a/test",
+    });
+  });
+
+  it("throws an error naming the url and the field when a page is malformed", async () => {
+    const api = await startApi((path) =>
+      path === byUrl("/test")
+        ? { status: 200, body: aPage({ body_markdown: 42 }) }
+        : undefined,
     );
     close = api.close;
     const client = createApiClient(api.baseUrl, dispatcher);
 
     await expect(loadPage("/test", client)).rejects.toThrow(
-      /"test-page".*body\.blocks\.0\.content/,
+      /"\/test".*body_markdown/,
     );
   });
 
@@ -103,48 +207,5 @@ describe("loadPage", () => {
     // connection.
     await expect(failure).rejects.toBeInstanceOf(ApiUnavailableError);
     await expect(failure).rejects.toThrow(/api_v2 answered 500/);
-  });
-
-  it("fetches the records of every collection the page reads, in parallel", async () => {
-    const page = doc(
-      [
-        {
-          id: "c1",
-          type: "contact",
-          title: "Contact us",
-          description: [],
-          collection: "offices",
-          record: "hq",
-          fields: [],
-        },
-      ],
-      { r1: { kind: "record", collection: "people", record: "p1" } },
-    );
-    // Neither records request is answered until both have arrived, so a
-    // loader that fetched them one after the other would never finish.
-    let arrivals = 0;
-    let bothArrived!: () => void;
-    const both = new Promise<void>((resolve) => (bothArrived = resolve));
-    const records = (body: unknown): Route => {
-      if (++arrivals === 2) bothArrived();
-      return { status: 200, body, hold: both };
-    };
-    const api = await startApi((path) => {
-      if (path === byUrl("/test")) return { status: 200, body: page };
-      if (path === "/collections/offices/records")
-        return records([{ slug: "hq" }]);
-      if (path === "/collections/people/records")
-        return records([{ slug: "p1" }]);
-    });
-    close = api.close;
-    const client = createApiClient(api.baseUrl, dispatcher);
-
-    const loaded = await loadPage("/test", client);
-
-    expect(loaded?.doc.slug).toBe("test-page");
-    expect(loaded?.data).toEqual({
-      offices: [{ slug: "hq" }],
-      people: [{ slug: "p1" }],
-    });
   });
 });

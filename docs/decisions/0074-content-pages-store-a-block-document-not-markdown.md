@@ -1,7 +1,7 @@
 # 0074 — `content_pages` stores a block document, not markdown
 
 **Date:** 2026-09-24
-**Status:** Accepted
+**Status:** Deferred (2026-10-01) — `apps/api_v2` stores and serves `body_markdown` for now, and landing_v2 renders it (migration `002_markdown_pages`, #2861); the block document returns later as a change of its own.
 
 ## Context
 

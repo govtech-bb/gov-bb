@@ -17,11 +17,15 @@
 
 import { sql } from "drizzle-orm";
 import { SQL as INIT_SQL } from "./migrations/001_init";
+import { SQL as MARKDOWN_PAGES_SQL } from "./migrations/002_markdown_pages";
 import type { Database } from "./store";
 
-const SCRIPTS: Record<string, string> = { "001_init": INIT_SQL };
+const SCRIPTS: Record<string, string> = {
+  "001_init": INIT_SQL,
+  "002_markdown_pages": MARKDOWN_PAGES_SQL,
+};
 
-export const MIGRATIONS = ["001_init"] as const;
+export const MIGRATIONS = ["001_init", "002_markdown_pages"] as const;
 
 /** Runs a whole SQL script, statements and all. */
 export type Exec = (script: string) => Promise<unknown>;
