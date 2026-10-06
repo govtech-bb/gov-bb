@@ -63,6 +63,7 @@ env:
   AMPLIFY_FORMS_URL: https://forms.staging.alpha.gov.bb
   AMPLIFY_LANDING_URL: https://staging.alpha.gov.bb
   AMPLIFY_FORM_BUILDER_URL: https://builder.staging.alpha.gov.bb
+  AMPLIFY_FEATURE_FLAGGING_URL: https://feature-flagging.staging.alpha.gov.bb
 
 jobs:
   # Move the `staging` deploy pointer to the commit being deployed BEFORE any
@@ -95,6 +96,7 @@ jobs:
       forms: ${{ steps.affected.outputs.forms }}
       landing: ${{ steps.affected.outputs.landing }}
       fb-app: ${{ steps.affected.outputs.fb-app }}
+      ff-app: ${{ steps.affected.outputs.ff-app }}
       migrations: ${{ steps.affected.outputs.migrations }}
       amplify-config: ${{ steps.affected.outputs.amplify-config }}
     steps:
@@ -139,6 +141,7 @@ jobs:
           echo "forms=$(has forms)" >> "$GITHUB_OUTPUT"
           echo "landing=$(has landing)" >> "$GITHUB_OUTPUT"
           echo "fb-app=$(has form-builder-app)" >> "$GITHUB_OUTPUT"
+          echo "ff-app=$(has feature-flagging-app)" >> "$GITHUB_OUTPUT"
 
           # TypeORM migrations live in packages/database/src/migrations/; the old
           # pattern matched only apps/api/src/database/migrations/, which holds
@@ -591,9 +594,66 @@ jobs:
           EXPECT_CODES: "200,302,307"
         run: bash .github/scripts/smoke-test-url.sh
 
+  # Feature-flagging admin UI (apps/feature_flagging SSR) at
+  # feature-flagging.staging.alpha.gov.bb. Gives staging a way to change a
+  # service's status before prod (gov-bb#2755). App created by alpha-infra#700.
+  amplify-feature-flagging:
+    name: Amplify build (feature-flagging)
+    needs: setup
+    if: needs.setup.outputs.ff-app == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Trigger and monitor Amplify build
+        env:
+          # gov-bb-feature-flagging-staging, created by alpha-infra#700.
+          AMPLIFY_APP_ID: d15rkwf3l5cmbx
+          AMPLIFY_BRANCH: staging
+          APP_LABEL: feature-flagging
+        run: |
+          set -euo pipefail
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE --region "$AWS_REGION" \
+            --query jobSummary.jobId --output text)
+          echo "Amplify $APP_LABEL job: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" --region "$AWS_REGION" \
+              --query job.summary.status --output text)
+            echo "[$i/30] $APP_LABEL: $STATUS"
+            case "$STATUS" in
+              SUCCEED) echo "✅ Amplify $APP_LABEL build succeeded"; exit 0 ;;
+              FAILED|CANCELLED) echo "❌ Amplify $APP_LABEL build $STATUS"; exit 1 ;;
+            esac
+            sleep 30
+          done
+          echo "❌ Amplify $APP_LABEL build did not finish in 15 min"
+          exit 1
+
+      - name: Smoke test feature-flagging URL
+        env:
+          URL: ${{ env.AMPLIFY_FEATURE_FLAGGING_URL }}
+          LABEL: feature-flagging
+          # Auth-gated like form-builder: an unauthenticated request redirects
+          # to the GitHub login flow. A redirect means the SSR is alive.
+          EXPECT_CODES: "200,302,307"
+        run: bash .github/scripts/smoke-test-url.sh
+
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, deploy-form-builder, ssr-smoke, amplify-forms, amplify-landing, amplify-form-builder]
+    needs: [setup, deploy-api, deploy-form-builder, ssr-smoke, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -623,6 +683,7 @@ jobs:
             row "Amplify forms"        "${{ needs.amplify-forms.result }}"
             row "Amplify landing"      "${{ needs.amplify-landing.result }}"
             row "Amplify form-builder" "${{ needs.amplify-form-builder.result }}"
+            row "Amplify feature-flagging" "${{ needs.amplify-feature-flagging.result }}"
             echo ""
             echo "**URLs (ALB / amplifyapp.com until DNS lands):**"
             echo "- API: ${{ env.API_SMOKE_URL }}"
@@ -630,4 +691,5 @@ jobs:
             echo "- forms: ${{ env.AMPLIFY_FORMS_URL }}"
             echo "- landing: ${{ env.AMPLIFY_LANDING_URL }}"
             echo "- form-builder app: ${{ env.AMPLIFY_FORM_BUILDER_URL }}"
+            echo "- feature-flagging: ${{ env.AMPLIFY_FEATURE_FLAGGING_URL }}"
           } >> "$GITHUB_STEP_SUMMARY"
