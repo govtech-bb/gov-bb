@@ -1,11 +1,16 @@
 import { $getRoot, ElementNode, type NodeKey, type SerializedElementNode } from "lexical";
-import { isMap, parseDocument } from "yaml";
+import { isMap, isScalar, isSeq, parseDocument } from "yaml";
 
 export type PageMetadata = {
   title?: string;
   description?: string;
   lede?: string;
   form_id?: string;
+  category?: string;
+  categories?: string[];
+  subcategory?: string;
+  visibility?: string;
+  publish_date?: string;
 };
 
 type SerializedPageMetadata = SerializedElementNode & {
@@ -89,10 +94,28 @@ export function pageMetadataFromYaml(yaml: string): PageMetadata {
   const document = parseDocument(yaml);
   const metadata: PageMetadata = {};
 
-  for (const key of ["title", "description", "lede", "form_id"] as const) {
+  for (const key of [
+    "title",
+    "description",
+    "lede",
+    "form_id",
+    "category",
+    "subcategory",
+    "visibility",
+    "publish_date",
+  ] as const) {
     const value = document.get(key);
 
     if (typeof value === "string") metadata[key] = value;
+  }
+
+  const categories = document.get("categories");
+
+  if (isSeq(categories)) {
+    const values = categories.items.map((item) => (isScalar(item) ? item.value : undefined));
+
+    if (values.every((value): value is string => typeof value === "string"))
+      metadata.categories = values;
   }
 
   return metadata;

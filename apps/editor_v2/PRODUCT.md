@@ -6,15 +6,17 @@ The GovBB editor is an internal web tool for the GovTech Barbados service team a
 
 Authors can write service pages, build application forms and calculators, save local drafts, import and export files, and preview supported page content. The workspace groups an entry page, an optional start page, supporting pages and at most one form or calculator per service. Content-only services are supported.
 
-The editor owns content authoring and conversion. Form-wide settings panels, page metadata panels, form-check dashboards, submissions, publishing, CMS integration and respondent execution are outside its scope. Hosts choose an editor preset and supply persistence.
+The editor owns content authoring and conversion, including common page metadata. Form-wide settings panels, form-check dashboards, submissions, publishing, scheduling, CMS integration and respondent execution are outside its scope. Hosts choose an editor preset and supply persistence.
 
 ## Page authoring
 
-Pages support headings, paragraphs, inline formatting, links, hard breaks, blockquotes, separators, nested lists, tables, notices, details and action buttons. Authors arrange the body freely. The title is edited above the body and stored in YAML frontmatter; descriptions and introductions remain separate metadata.
+Pages support headings, paragraphs, inline formatting, links, hard breaks, blockquotes, separators, nested lists, tables, notices, details and action buttons. Authors arrange the body freely. The title is edited above the body and stored in YAML frontmatter. The introduction is edited directly beneath the title. A collapsed Page details section on the separator summarises current values and edits description, categories, subcategory, visibility, publication date and form ID. Category options are a host-supplied stub, currently empty; the row appears only when options or imported categories exist, and imported categories remain visible and preserved, with the first primary. No taxonomy or backend supplies options yet.
+
+Page details use the same local autosave and undo history as the body. Visibility and publication date are stored metadata; changing them does not publish or schedule a page. Optional fields stay absent until edited, and clearing one removes its key. Unfamiliar imported values are retained; specialist frontmatter remains editable in Markdown.
 
 Original Markdown is retained exactly until a visual edit. Edits preserve unknown metadata, intentionally absent fields, content structure and destinations. Unsupported HTML and specialist content remain editable in source mode. Invalid YAML keeps the working source and last committed document intact.
 
-Page-to-form associations are explicit. Import preserves `form_id` and button URLs. Details is a reader-operated disclosure.
+Page-to-form associations are explicit. Import preserves `form_id` and button URLs; editing Form ID does not rewrite button destinations. The Details body component is a reader-operated disclosure.
 
 ## Form authoring
 

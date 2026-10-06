@@ -223,18 +223,27 @@
   text-wrap: balance;
   border-radius: var(--radius-sm);
 }
-.page-title-input::placeholder {
-  color: var(--color-subtle);
-}
-.page-title-input:focus-visible {
-  outline: 2px solid var(--color-ink);
-  outline-offset: 0.4rem;
-}
-.page-document-lede {
+.page-lede-input {
+  display: block;
+  inline-size: 100%;
   margin-block-start: 1.25rem;
+  padding: 0;
+  overflow: hidden;
+  resize: none;
+  background: transparent;
   color: var(--color-muted);
   font-size: 1.25rem;
   line-height: 1.6;
+  border-radius: var(--radius-sm);
+}
+.page-title-input::placeholder,
+.page-lede-input::placeholder {
+  color: var(--color-subtle);
+}
+.page-title-input:focus-visible,
+.page-lede-input:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 0.4rem;
 }
 .page-document-paused {
   padding: 1rem 1.5rem;

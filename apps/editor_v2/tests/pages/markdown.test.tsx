@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
+import { parse } from "yaml";
 import {
   $createParagraphNode,
   $createTextNode,
@@ -160,6 +161,7 @@ test("start-page form association and intentionally absent description remain di
         expect($pageMetadata()).toEqual({
           title: "Get a copy of a birth certificate",
           form_id: "get-birth-certificate",
+          publish_date: "2026-01-13",
         });
         $getRoot().append($createParagraphNode().append($createTextNode("New instructions")));
       },
@@ -199,18 +201,47 @@ test("pension tables keep header rows, alignment and content", () => {
   }
 });
 
-test("metadata preserves unknown YAML values, comments and absent fields through edits and undo", async () => {
+test("page details preserve unknown YAML, comments and absent fields through edits, clears and undo", async () => {
   const source =
-    "---\n# Routing metadata\ntitle: Original\ncustom:\n  enabled: false\n  empty: null\n  values: [one, two]\n---\n\nBody\n";
+    "---\n# Routing metadata\ntitle: Original\ncategory: housing\npublish_date: '2026-10-06'\ncustom:\n  enabled: false\n  empty: null\n  values: [one, two]\n---\n\nBody\n";
 
   const editor = createHeadlessEditor(govbbPageEditor, visual(source));
 
   try {
-    editor.update(() => $setPageMetadata({ title: "Changed", lede: "Visible introduction" }), {
-      discrete: true,
-      tag: HISTORY_PUSH_TAG,
-    });
+    editor.update(
+      () => {
+        expect($pageMetadata()).toEqual({
+          title: "Original",
+          category: "housing",
+          publish_date: "2026-10-06",
+        });
+        $setPageMetadata({
+          title: "Changed",
+          lede: "Visible introduction",
+          category: undefined,
+          categories: ["money-financial-support", "work-employment"],
+          subcategory: "pensions",
+          visibility: "preview",
+          publish_date: "2026-10-07",
+          form_id: "apply-for-support",
+        });
+      },
+      { discrete: true, tag: HISTORY_PUSH_TAG },
+    );
     const changed = govbbPageCodec.encode(editor.getEditorState().toJSON());
+    editor.getEditorState().read(
+      () =>
+        expect($pageMetadata()).toEqual({
+          title: "Changed",
+          lede: "Visible introduction",
+          categories: ["money-financial-support", "work-employment"],
+          subcategory: "pensions",
+          visibility: "preview",
+          publish_date: "2026-10-07",
+          form_id: "apply-for-support",
+        }),
+      { editor },
+    );
     expect(changed).toContain("# Routing metadata");
     expect(changed).toContain("enabled: false");
     expect(changed).toContain("empty: null");
@@ -221,6 +252,52 @@ test("metadata preserves unknown YAML values, comments and absent fields through
     editor.dispatchCommand(REDO_COMMAND, undefined);
     await Promise.resolve();
     expect(govbbPageCodec.encode(editor.getEditorState().toJSON())).toBe(changed);
+    editor.update(
+      () =>
+        $setPageMetadata({
+          categories: undefined,
+          subcategory: undefined,
+          visibility: undefined,
+          publish_date: undefined,
+          form_id: undefined,
+        }),
+      { discrete: true, tag: HISTORY_PUSH_TAG },
+    );
+    const cleared = govbbPageCodec.encode(editor.getEditorState().toJSON());
+    expect(cleared).not.toMatch(/^(?:categories|subcategory|visibility|publish_date|form_id):/m);
+    expect(cleared).toContain("# Routing metadata");
+    expect(parse(cleared.split("---")[1]!).custom).toEqual({
+      enabled: false,
+      empty: null,
+      values: ["one", "two"],
+    });
+    editor.dispatchCommand(UNDO_COMMAND, undefined);
+    await Promise.resolve();
+    expect(govbbPageCodec.encode(editor.getEditorState().toJSON())).toBe(changed);
+  } finally {
+    editor.dispose();
+  }
+});
+
+test("unfamiliar page detail values survive unrelated edits without coercion", () => {
+  const source =
+    "---\ntitle: Original\ncategory: [custom]\ncategories: [housing, 7]\nsubcategory: false\nvisibility: { custom: true }\npublish_date: 123\n---\n\nBody\n";
+
+  const editor = createHeadlessEditor(govbbPageEditor, visual(source));
+
+  try {
+    editor.update(
+      () => {
+        expect($pageMetadata()).toEqual({ title: "Original" });
+        $setPageMetadata({ title: "Changed" });
+      },
+      { discrete: true },
+    );
+    const changed = govbbPageCodec.encode(editor.getEditorState().toJSON());
+    expect(parse(changed.split("---")[1]!)).toEqual({
+      ...parse(source.split("---")[1]!),
+      title: "Changed",
+    });
   } finally {
     editor.dispose();
   }
