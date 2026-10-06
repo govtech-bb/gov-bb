@@ -339,6 +339,37 @@ describe("useStepGuard", () => {
       expect(lastSearch()).toEqual(expect.objectContaining({ step: "step-2" }));
     });
 
+    it("does not re-judge the step the applicant just completed", () => {
+      // It has just passed the on-screen validators; a second opinion from the
+      // off-screen check must not be able to bounce them back onto it.
+      markComplete(FORM_ID, "step-2", "step-3", "check-your-answers");
+      const result = renderReturning((s) => s.stepId !== "step-1");
+      act(() => result.current.completeAndContinue("step-1"));
+      expect(lastSearch()).toEqual(
+        expect.objectContaining({ step: "check-your-answers" }),
+      );
+    });
+
+    it.each(["check-your-answers", "declaration"])(
+      "ignores the flag when completing %s (only steps before the review return)",
+      (stepId) => {
+        // e.g. a hand-edited ?step=declaration&returnTo=… link. On submit the
+        // completion records are already cleared, so a return scan would send
+        // a submitted applicant to an empty step 1 instead of confirmation.
+        const result = renderReturning();
+        const withConfirmation = [
+          ...formSteps,
+          step("submission-confirmation"),
+        ];
+        act(() => result.current.completeAndContinue(stepId, withConfirmation));
+        const next =
+          withConfirmation[
+            withConfirmation.findIndex((s) => s.stepId === stepId) + 1
+          ].stepId;
+        expect(lastSearch()).toEqual(expect.objectContaining({ step: next }));
+      },
+    );
+
     it("navigating to check-your-answers by any route drops the flag", () => {
       markComplete(FORM_ID, "step-1", "step-2", "step-3", "check-your-answers");
       const result = renderReturning();
