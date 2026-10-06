@@ -1,12 +1,12 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "target": "ES2023",
     "lib": ["ES2023"],
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": ".",
     "declaration": false,
     "esModuleInterop": true,
     "resolveJsonModule": true,

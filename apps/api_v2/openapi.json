@@ -2,10 +2,18 @@
   "openapi": "3.0.3",
   "info": {
     "title": "api_v2",
-    "description": "The content API for the content-as-data spike (#2700). Reads are public; writes are unauthenticated until #2701 lands and must not be reachable from anywhere but a laptop until then.",
+    "description": "Public markdown content and employee-authenticated editor operations. Editor reads, writes, and the version token require a Google Workspace session.",
     "version": "0.0.0"
   },
   "components": {
+    "securitySchemes": {
+      "editorSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "better-auth.session_token",
+        "description": "HTTP-only employee session cookie; Secure-prefixed in production."
+      }
+    },
     "schemas": {}
   },
   "paths": {
@@ -183,7 +191,7 @@
       "post": {
         "summary": "Create a page",
         "tags": ["pages"],
-        "description": "Writes are unauthenticated until #2701 lands.",
+        "description": "Requires an employee session and the editor's Origin header.",
         "requestBody": {
           "required": true,
           "content": {
@@ -263,6 +271,11 @@
             }
           }
         },
+        "security": [
+          {
+            "editorSession": []
+          }
+        ],
         "responses": {
           "201": {
             "description": "Default Response",
@@ -375,6 +388,46 @@
               }
             }
           },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
           "422": {
             "description": "Default Response",
             "content": {
@@ -411,6 +464,26 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
           }
         }
       }
@@ -428,6 +501,11 @@
             "in": "path",
             "name": "id",
             "required": true
+          }
+        ],
+        "security": [
+          {
+            "editorSession": []
           }
         ],
         "responses": {
@@ -542,7 +620,67 @@
               }
             }
           },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
           "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "503": {
             "description": "Default Response",
             "content": {
               "application/json": {
@@ -567,7 +705,7 @@
       "put": {
         "summary": "Save a page",
         "tags": ["pages"],
-        "description": "Send the `updated_at` you last read in the `if-updated-at` header. If the stored row has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first.",
+        "description": "Requires an employee session and the editor's Origin header. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first.",
         "requestBody": {
           "required": true,
           "content": {
@@ -666,6 +804,11 @@
             "description": "The `updated_at` this client last read. Omit to accept whatever is stored."
           }
         ],
+        "security": [
+          {
+            "editorSession": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Default Response",
@@ -778,6 +921,46 @@
               }
             }
           },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
           "404": {
             "description": "Default Response",
             "content": {
@@ -859,12 +1042,33 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
           }
         }
       },
       "delete": {
         "summary": "Delete a page",
         "tags": ["pages"],
+        "description": "Requires an employee session and the editor's Origin header.",
         "parameters": [
           {
             "schema": {
@@ -875,9 +1079,74 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "editorSession": []
+          }
+        ],
         "responses": {
           "204": {
             "description": "Default Response"
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
           }
         }
       }
@@ -887,6 +1156,11 @@
         "summary": "A version token for the whole estate",
         "tags": ["meta"],
         "description": "`change_events` is append-only and gets a row on every write, so its count and newest timestamp identify the state of everything without reading any of it. Clients poll this and refetch only when it moves.",
+        "security": [
+          {
+            "editorSession": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Default Response",
@@ -908,6 +1182,108 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/{*}": {
+      "get": {
+        "summary": "Google sign-in and session protocol",
+        "tags": ["auth"],
+        "description": "Better Auth owns the endpoints under this prefix. Responses are never cached.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "*",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "post": {
+        "summary": "Google sign-in and session protocol",
+        "tags": ["auth"],
+        "description": "Better Auth owns the endpoints under this prefix. Responses are never cached.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "*",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
           }
         }
       }
@@ -921,6 +1297,10 @@
     {
       "name": "meta",
       "description": "Freshness"
+    },
+    {
+      "name": "auth",
+      "description": "Google Workspace sign-in and sessions"
     }
   ]
 }

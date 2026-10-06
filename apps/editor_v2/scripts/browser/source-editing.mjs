@@ -1,10 +1,11 @@
+import { authenticatedContext } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "./playwright.mjs";
 
 const browser = await chromium.launch();
 
-const context = await browser.newContext({
+const context = await authenticatedContext(browser, {
   viewport: { width: 1440, height: 1000 },
   permissions: ["clipboard-read", "clipboard-write"],
 });
@@ -152,7 +153,7 @@ try {
     "utf8",
   );
 
-  const legacyContext = await browser.newContext();
+  const legacyContext = await authenticatedContext(browser);
   const legacyPage = await legacyContext.newPage();
   await legacyPage.goto(url);
   await legacyPage.evaluate((bytes) => {

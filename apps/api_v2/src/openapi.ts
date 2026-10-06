@@ -18,7 +18,7 @@
  * it.
  */
 
-import type { FastifySchema } from "fastify";
+import type { FastifySchema, HTTPMethods } from "fastify";
 
 const visibility = {
   type: "string",
@@ -214,6 +214,10 @@ const idParams = {
   required: ["id"],
 } as const;
 
+const editorSecurity = [{ editorSession: [] }];
+const authErrors = { 401: error, 403: error, 503: error };
+
+/** Request and response contracts shared by serving and documentation. */
 export const SCHEMAS = {
   getPageByUrl: {
     summary: "Get a public page by its url",
@@ -249,20 +253,23 @@ export const SCHEMAS = {
     description: "The editor's read: any visibility, markdown included.",
     tags: ["pages"],
     params: idParams,
-    response: { 200: pageDocument, 404: error },
+    security: editorSecurity,
+    response: { 200: pageDocument, 404: error, ...authErrors },
   },
 
   createPage: {
     summary: "Create a page",
-    description: "Writes are unauthenticated until #2701 lands.",
+    description: "Requires an employee session and the editor's Origin header.",
     tags: ["pages"],
     body: pageInput,
-    response: { 201: pageDocument, 422: validationFailed },
+    security: editorSecurity,
+    response: { 201: pageDocument, 422: validationFailed, ...authErrors },
   },
 
   savePage: {
     summary: "Save a page",
     description:
+      "Requires an employee session and the editor's Origin header. " +
       "Send the `updated_at` you last read in the `if-updated-at` header. " +
       "If the stored row has moved on since, the save is refused with a 409 " +
       "rather than silently discarding whoever wrote first.",
@@ -280,19 +287,23 @@ export const SCHEMAS = {
       },
     },
     body: pageInput,
+    security: editorSecurity,
     response: {
       200: pageDocument,
       404: error,
       409: conflict,
       422: validationFailed,
+      ...authErrors,
     },
   },
 
   deletePage: {
     summary: "Delete a page",
+    description: "Requires an employee session and the editor's Origin header.",
     tags: ["pages"],
     params: idParams,
-    response: { 204: { type: "null" } },
+    security: editorSecurity,
+    response: { 204: { type: "null" }, ...authErrors },
   },
 
   version: {
@@ -302,7 +313,9 @@ export const SCHEMAS = {
       "count and newest timestamp identify the state of everything without " +
       "reading any of it. Clients poll this and refetch only when it moves.",
     tags: ["meta"],
+    security: editorSecurity,
     response: {
+      ...authErrors,
       200: {
         type: "object",
         properties: {
@@ -316,18 +329,57 @@ export const SCHEMAS = {
   },
 } satisfies Record<string, FastifySchema>;
 
+/** Route identity is shared without constructing a database or auth bypass. */
+export const ROUTES = {
+  getPageByUrl: { method: "GET", url: "/pages", schema: SCHEMAS.getPageByUrl },
+  getPage: { method: "GET", url: "/pages/:id", schema: SCHEMAS.getPage },
+  createPage: { method: "POST", url: "/pages", schema: SCHEMAS.createPage },
+  savePage: { method: "PUT", url: "/pages/:id", schema: SCHEMAS.savePage },
+  deletePage: {
+    method: "DELETE",
+    url: "/pages/:id",
+    schema: SCHEMAS.deletePage,
+  },
+  version: { method: "GET", url: "/version", schema: SCHEMAS.version },
+  auth: {
+    method: ["GET", "POST"],
+    url: "/api/auth/*",
+    schema: {
+      summary: "Google sign-in and session protocol",
+      description:
+        "Better Auth owns the endpoints under this prefix. Responses are never cached.",
+      tags: ["auth"],
+    },
+  },
+} satisfies Record<
+  string,
+  { method: HTTPMethods | HTTPMethods[]; url: string; schema: FastifySchema }
+>;
+
+/** OpenAPI metadata and the employee-session security scheme. */
 export const OPENAPI_DOCUMENT = {
   openapi: "3.0.3",
   info: {
     title: "api_v2",
     description:
-      "The content API for the content-as-data spike (#2700). Reads are " +
-      "public; writes are unauthenticated until #2701 lands and must not be " +
-      "reachable from anywhere but a laptop until then.",
+      "Public markdown content and employee-authenticated editor operations. " +
+      "Editor reads, writes, and the version token require a Google Workspace session.",
     version: "0.0.0",
   },
   tags: [
     { name: "pages", description: "Content pages, stored as markdown" },
     { name: "meta", description: "Freshness" },
+    { name: "auth", description: "Google Workspace sign-in and sessions" },
   ],
+  components: {
+    securitySchemes: {
+      editorSession: {
+        type: "apiKey" as const,
+        in: "cookie" as const,
+        name: "better-auth.session_token",
+        description:
+          "HTTP-only employee session cookie; Secure-prefixed in production.",
+      },
+    },
+  },
 };

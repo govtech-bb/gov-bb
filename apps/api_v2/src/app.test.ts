@@ -8,12 +8,21 @@
  * the real handlers and the real error handler, against a real database.
  */
 
-import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { FastifyInstance } from "fastify";
-import { buildApp, IF_UPDATED_AT, PUBLIC_READ } from "./app";
-import { categories, forms, type Visibility } from "./schema";
-import { aPage, createTestDb } from "./test-db";
+import type { FastifyInstance, InjectOptions } from "fastify";
+import pino from "pino";
+import { IF_UPDATED_AT, PUBLIC_READ } from "./app";
+import { categories, changeEvents, forms, type Visibility } from "./schema";
+import {
+  aPage,
+  createTestApp,
+  createTestDb,
+  TEST_EMPLOYEE,
+  TEST_HEADERS,
+  TEST_HTTP_CONFIG,
+} from "./test-db";
+import { AuthUnavailable, Forbidden } from "./modules/auth";
+import { err, ok } from "./modules/result";
 import { ApiStore, type Database } from "./store";
 
 let app: FastifyInstance;
@@ -24,7 +33,7 @@ let store: ApiStore;
 beforeEach(async () => {
   ({ db, close } = await createTestDb());
   store = new ApiStore(db);
-  app = await buildApp({ db });
+  app = await createTestApp(db);
   await app.ready();
 });
 
@@ -33,8 +42,11 @@ afterEach(async () => {
   await close();
 });
 
+const inject = (options: InjectOptions) =>
+  app.inject({ ...options, headers: { ...TEST_HEADERS, ...options.headers } });
+
 const seedPage = async (overrides: Record<string, unknown> = {}) =>
-  await store.create(aPage(overrides));
+  await store.create(aPage(overrides), TEST_EMPLOYEE.id);
 
 const seedForm = async (formId: string, visibility: Visibility) =>
   await db.insert(forms).values({ formId, visibility });
@@ -51,7 +63,7 @@ const seedCategory = async () =>
   )[0];
 
 const read = (url: string) =>
-  app.inject({ url: `/pages?url=${encodeURIComponent(url)}` });
+  inject({ url: `/pages?url=${encodeURIComponent(url)}` });
 
 const ENTRY = "/money-financial-support/calculate-severance-pay";
 const START = `${ENTRY}/start`;
@@ -65,13 +77,13 @@ const ENTRY_MARKDOWN = [
 
 describe("GET /pages?url=", () => {
   it("400s when url is missing", async () => {
-    const response = await app.inject({ url: "/pages" });
+    const response = await inject({ url: "/pages" });
     expect(response.statusCode).toBe(400);
     expect(response.json()).toMatchObject({ error: "bad_request" });
   });
 
   it("400s when url is empty", async () => {
-    const response = await app.inject({ url: "/pages?url=" });
+    const response = await inject({ url: "/pages?url=" });
     expect(response.statusCode).toBe(400);
   });
 
@@ -168,10 +180,10 @@ describe("GET /pages?url=", () => {
     expect((await read(START)).statusCode).toBe(404);
   });
 
-  it.each(["preview", "draft"])(
+  it.each(["preview", "draft"] as const)(
     "404s a /start page whose form is %s",
     async (visibility) => {
-      await seedForm("severance", visibility as Visibility);
+      await seedForm("severance", visibility);
       await seedPage({ url: START, form_id: "severance" });
       expect((await read(START)).statusCode).toBe(404);
     },
@@ -231,7 +243,7 @@ describe("GET /pages?url=", () => {
 describe("GET /pages/:id", () => {
   it("returns the page with its markdown, whatever its visibility", async () => {
     const created = await seedPage({ visibility: "draft" });
-    const response = await app.inject({ url: `/pages/${created.id}` });
+    const response = await inject({ url: `/pages/${created.id}` });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
@@ -240,11 +252,11 @@ describe("GET /pages/:id", () => {
       body_markdown: "You should complete the calculator in one go.",
       published_at: null,
     });
-    expect(response.headers["cache-control"]).toBe("no-cache");
+    expect(response.headers["cache-control"]).toBe("no-store");
   });
 
   it("404s with a JSON body, not a stack trace", async () => {
-    const response = await app.inject({
+    const response = await inject({
       url: "/pages/22222222-2222-4222-8222-222222222222",
     });
 
@@ -256,7 +268,7 @@ describe("GET /pages/:id", () => {
 
 describe("POST /pages", () => {
   it("creates the page", async () => {
-    const response = await app.inject({
+    const response = await inject({
       method: "POST",
       url: "/pages",
       payload: aPage({ body_markdown: "Hello **there**" }),
@@ -268,13 +280,14 @@ describe("POST /pages", () => {
   });
 
   it("422s an unknown form id, naming the field", async () => {
-    const response = await app.inject({
+    const response = await inject({
       method: "POST",
       url: "/pages",
       payload: aPage({ form_id: "no-such-form" }),
     });
 
     expect(response.statusCode).toBe(422);
+    expect(response.headers["cache-control"]).toBe("no-store");
     expect(response.json()).toMatchObject({
       error: "validation_failed",
       errors: [{ field: "form_id" }],
@@ -283,7 +296,7 @@ describe("POST /pages", () => {
 
   it("422s a url another page already has", async () => {
     await seedPage();
-    const response = await app.inject({
+    const response = await inject({
       method: "POST",
       url: "/pages",
       payload: aPage(),
@@ -297,7 +310,7 @@ describe("POST /pages", () => {
 
   it("422s an id another page already has, naming the id", async () => {
     const existing = await seedPage();
-    const response = await app.inject({
+    const response = await inject({
       method: "POST",
       url: "/pages",
       payload: aPage({ id: existing.id, url: "/somewhere-else" }),
@@ -310,19 +323,20 @@ describe("POST /pages", () => {
   });
 
   it("400s a page with no title", async () => {
-    const response = await app.inject({
+    const response = await inject({
       method: "POST",
       url: "/pages",
       payload: aPage({ title: undefined }),
     });
     expect(response.statusCode).toBe(400);
+    expect(response.headers["cache-control"]).toBe("no-store");
   });
 });
 
 describe("PUT /pages/:id", () => {
   it("saves and returns the new updated_at", async () => {
     const created = await seedPage();
-    const response = await app.inject({
+    const response = await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
       headers: { [IF_UPDATED_AT]: created.updated_at },
@@ -336,14 +350,14 @@ describe("PUT /pages/:id", () => {
 
   it("409s on a stale if-updated-at and leaves the row untouched", async () => {
     const created = await seedPage();
-    await app.inject({
+    await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
       headers: { [IF_UPDATED_AT]: created.updated_at },
       payload: { ...created, title: "First writer wins" },
     });
 
-    const response = await app.inject({
+    const response = await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
       headers: { [IF_UPDATED_AT]: created.updated_at },
@@ -355,7 +369,7 @@ describe("PUT /pages/:id", () => {
   });
 
   it("404s a page that is not there", async () => {
-    const response = await app.inject({
+    const response = await inject({
       method: "PUT",
       url: "/pages/22222222-2222-4222-8222-222222222222",
       payload: aPage(),
@@ -367,7 +381,7 @@ describe("PUT /pages/:id", () => {
     const draft = await seedPage({ visibility: "draft" });
     const put = async (current: typeof draft, visibility: Visibility) =>
       (
-        await app.inject({
+        await inject({
           method: "PUT",
           url: `/pages/${draft.id}`,
           payload: { ...current, visibility },
@@ -382,10 +396,10 @@ describe("PUT /pages/:id", () => {
     expect(hidden.published_at).toBe(published.published_at);
     expect(again.published_at).toBe(published.published_at);
 
-    const actions = (await db.execute(
-      sql`select action from change_events order by version_no`,
-    )) as { rows?: Array<{ action: string }> } | Array<{ action: string }>;
-    const rows = Array.isArray(actions) ? actions : (actions.rows ?? []);
+    const rows = await db
+      .select({ action: changeEvents.action })
+      .from(changeEvents)
+      .orderBy(changeEvents.versionNo);
     expect(rows.map((row) => row.action)).toEqual([
       "created",
       "published",
@@ -398,7 +412,7 @@ describe("PUT /pages/:id", () => {
 describe("DELETE /pages/:id", () => {
   it("removes the page", async () => {
     const created = await seedPage();
-    const response = await app.inject({
+    const response = await inject({
       method: "DELETE",
       url: `/pages/${created.id}`,
     });
@@ -412,9 +426,10 @@ describe("Cache-Control", () => {
   it("answers a matching If-None-Match with 304, carrying the same Cache-Control", async () => {
     await seedPage();
     const first = await read(ENTRY);
-    const etag = first.headers.etag as string;
+    const etag = first.headers.etag;
+    if (typeof etag !== "string") throw new Error("Expected a public ETag");
 
-    const second = await app.inject({
+    const second = await inject({
       url: `/pages?url=${encodeURIComponent(ENTRY)}`,
       headers: { "if-none-match": etag },
     });
@@ -425,28 +440,30 @@ describe("Cache-Control", () => {
 
   // #2835: without a policy every hit for an unknown url reached Postgres.
   it("sends a ten-second policy on the public by-url 404", async () => {
-    const response = await app.inject({ url: "/pages?url=/nope" });
+    const response = await inject({ url: "/pages?url=/nope" });
 
     expect(response.statusCode).toBe(404);
     expect(response.headers["cache-control"]).toBe("public, max-age=10");
     expect(response.headers.etag).toBeUndefined();
   });
 
-  it("sends no Cache-Control on the /pages/:id 404", async () => {
-    const byId = await app.inject({
+  it("prevents caching the /pages/:id 404", async () => {
+    const byId = await inject({
       url: "/pages/22222222-2222-4222-8222-222222222222",
     });
 
     expect(byId.statusCode).toBe(404);
-    expect(byId.headers["cache-control"]).toBeUndefined();
+    expect(byId.headers["cache-control"]).toBe("no-store");
   });
 
   // A route must only advertise a policy for the response it actually sent —
   // a 500 must not carry PUBLIC_READ just because the handler set it before
   // the store call that then failed.
   it("sends no Cache-Control on a genuine store failure", async () => {
-    const brokenApp = await buildApp({ db: {} as Database });
+    const broken = await createTestDb();
+    const brokenApp = await createTestApp(broken.db);
     await brokenApp.ready();
+    await broken.close();
 
     const response = await brokenApp.inject({ url: "/pages?url=/x" });
 
@@ -466,7 +483,7 @@ describe("timestamp precision", () => {
    */
   it("round-trips updated_at through JSON without losing precision", async () => {
     const created = await seedPage();
-    const fetched = (await app.inject({ url: `/pages/${created.id}` })).json();
+    const fetched = (await inject({ url: `/pages/${created.id}` })).json();
 
     expect(fetched.updated_at).toBe(created.updated_at);
     expect(fetched.updated_at).toMatch(/\.\d{3}Z$/);
@@ -477,7 +494,7 @@ describe("timestamp precision", () => {
 
     let current = created;
     for (const title of ["First edit", "Second edit"]) {
-      const response = await app.inject({
+      const response = await inject({
         method: "PUT",
         url: `/pages/${current.id}`,
         headers: { [IF_UPDATED_AT]: current.updated_at },
@@ -492,14 +509,8 @@ describe("timestamp precision", () => {
 });
 
 describe("CORS", () => {
-  /**
-   * Writes are unauthenticated until #2701, so the origin allow-list is the
-   * only thing standing between a developer's running instance and any page
-   * they happen to have open. These assert the boundary rather than assuming
-   * the defaults are safe — the defaults are what made it reachable.
-   */
   it("lets the dev server preflight a write", async () => {
-    const response = await app.inject({
+    const response = await inject({
       method: "OPTIONS",
       url: "/pages/x",
       headers: {
@@ -520,7 +531,7 @@ describe("CORS", () => {
     // Assumption (#2702): landing_v2 fetches api_v2 from its own server, not
     // the browser, so its origin never meets CORS and came out of the
     // default allow-list.
-    const response = await app.inject({
+    const response = await inject({
       method: "GET",
       url: "/pages?url=/x",
       headers: { origin: "http://localhost:3030" },
@@ -530,7 +541,7 @@ describe("CORS", () => {
   });
 
   it("refuses to hand an unknown site permission to write", async () => {
-    const response = await app.inject({
+    const response = await inject({
       method: "OPTIONS",
       url: "/pages/x",
       headers: {
@@ -545,7 +556,218 @@ describe("CORS", () => {
   it("still serves a request with no Origin at all", async () => {
     // curl, a health check, the tests themselves.
     const created = await seedPage();
-    const response = await app.inject({ url: `/pages/${created.id}` });
+    const response = await app.inject({
+      url: `/pages/${created.id}`,
+      headers: { cookie: TEST_HEADERS.cookie },
+    });
     expect(response.statusCode).toBe(200);
+  });
+});
+
+describe("employee access", () => {
+  it.each([
+    ["GET", "/pages/not-a-uuid"],
+    ["HEAD", "/pages/not-a-uuid"],
+    ["GET", "/version"],
+    ["POST", "/pages"],
+    ["PUT", "/pages/not-a-uuid"],
+    ["DELETE", "/pages/not-a-uuid"],
+  ] as const)(
+    "rejects anonymous %s %s before validation or storage",
+    async (method, url) => {
+      const response = await app.inject({
+        method,
+        url,
+        headers: { origin: TEST_HTTP_CONFIG.editorOrigin },
+      });
+      expect(response.statusCode).toBe(401);
+      expect(response.headers["cache-control"]).toBe("no-store");
+      expect(response.headers.etag).toBeUndefined();
+    },
+  );
+
+  it.each([
+    ["expired", ok(null), 401],
+    ["outside the workspace", err(new Forbidden()), 403],
+    ["unavailable", err(new AuthUnavailable()), 503],
+  ] as const)(
+    "fails closed when the session is %s",
+    async (_name, result, status) => {
+      const restricted = await createTestApp(db, {
+        sessions: { findSession: async () => result },
+      });
+      try {
+        const response = await restricted.inject({
+          url: "/version",
+          headers: TEST_HEADERS,
+        });
+        expect(response.statusCode).toBe(status);
+        expect(response.headers["cache-control"]).toBe("no-store");
+        expect(response.headers.etag).toBeUndefined();
+      } finally {
+        await restricted.close();
+      }
+    },
+  );
+
+  it.each([undefined, "null", "https://evil.example"])(
+    "rejects a write from origin %s even with a session",
+    async (origin) => {
+      for (const method of ["POST", "PUT", "DELETE"] as const) {
+        const response = await app.inject({
+          method,
+          url: method === "POST" ? "/pages" : "/pages/not-a-uuid",
+          payload: aPage(),
+          headers: {
+            cookie: TEST_HEADERS.cookie,
+            ...(origin === undefined ? {} : { origin }),
+          },
+        });
+        expect(response.statusCode).toBe(403);
+        expect(response.headers["cache-control"]).toBe("no-store");
+      }
+      expect(await store.version()).toEqual({ count: 0, latest: null });
+    },
+  );
+
+  it("records the authenticated employee on create and save events", async () => {
+    const created = await inject({
+      method: "POST",
+      url: "/pages",
+      payload: aPage(),
+    });
+    expect(created.statusCode).toBe(201);
+    const saved = await inject({
+      method: "PUT",
+      url: `/pages/${created.json().id}`,
+      payload: aPage({ title: "Updated" }),
+    });
+    expect(saved.statusCode).toBe(200);
+    const events = await db
+      .select({ actor: changeEvents.actor })
+      .from(changeEvents);
+    expect(events).toEqual([
+      { actor: TEST_EMPLOYEE.id },
+      { actor: TEST_EMPLOYEE.id },
+    ]);
+  });
+
+  it("never gives editor reads an ETag or a conditional 304", async () => {
+    const page = await seedPage();
+    for (const url of [`/pages/${page.id}`, "/version"]) {
+      const response = await inject({ url, headers: { "if-none-match": "*" } });
+      expect(response.statusCode).toBe(200);
+      expect(response.headers["cache-control"]).toBe("no-store");
+      expect(response.headers.etag).toBeUndefined();
+    }
+  });
+
+  it("keeps public content and documentation available without a session", async () => {
+    await seedPage();
+    const page = await app.inject({ url: `/pages?url=${ENTRY}` });
+    expect(page.statusCode).toBe(200);
+    expect(page.headers["cache-control"]).toBe(PUBLIC_READ);
+    expect(page.headers.etag).toBeDefined();
+    expect((await app.inject({ url: "/openapi.json" })).statusCode).toBe(200);
+  });
+});
+
+describe("authentication HTTP bridge", () => {
+  it("keeps callback credentials and adapter error details out of logs", async () => {
+    const logs: string[] = [];
+    const authApp = await createTestApp(db, {
+      logger: pino({ level: "info" }, { write: (line) => logs.push(line) }),
+      auth: {
+        handle: async () => {
+          throw new Error("sensitive-adapter-detail");
+        },
+      },
+    });
+    try {
+      const response = await authApp.inject({
+        url: "/api/auth/callback/google?code=sensitive-code&state=sensitive-state",
+        headers: { cookie: "session=sensitive-cookie" },
+      });
+      expect(response.statusCode).toBe(500);
+      const logged = logs.join("\n");
+      expect(logged).toContain("request failed");
+      expect(logged).toContain("/api/auth/*");
+      expect(logged).not.toContain("sensitive-");
+    } finally {
+      await authApp.close();
+    }
+  });
+
+  it("uses the configured origin and forwards the body and individual cookies", async () => {
+    const received: Request[] = [];
+    const authApp = await createTestApp(db, {
+      auth: {
+        handle: async (request) => {
+          received.push(request);
+          const headers = new Headers({
+            location: "https://accounts.google.com/example",
+            "cache-control": "public, max-age=60",
+          });
+          headers.append("set-cookie", "state=one; Path=/; HttpOnly");
+          headers.append("set-cookie", "session=two; Path=/; HttpOnly");
+          return new Response(null, { status: 302, headers });
+        },
+      },
+    });
+    try {
+      const response = await authApp.inject({
+        method: "POST",
+        url: "/api/auth/sign-in/social",
+        payload: { provider: "google" },
+        headers: { ...TEST_HEADERS, host: "untrusted.example" },
+      });
+      expect(received).toHaveLength(1);
+      const request = received[0];
+      if (!request)
+        throw new Error("Expected the auth adapter to receive a request");
+      expect(request.url).toBe(
+        `${TEST_HTTP_CONFIG.apiOrigin}/api/auth/sign-in/social`,
+      );
+      expect(request.headers.get("cookie")).toBe(TEST_HEADERS.cookie);
+      expect(await request.json()).toEqual({ provider: "google" });
+      expect(response.statusCode).toBe(302);
+      expect(response.headers.location).toBe(
+        "https://accounts.google.com/example",
+      );
+      expect(response.headers["set-cookie"]).toEqual([
+        "state=one; Path=/; HttpOnly",
+        "session=two; Path=/; HttpOnly",
+      ]);
+      expect(response.headers["cache-control"]).toBe("no-store");
+      expect(response.headers.etag).toBeUndefined();
+    } finally {
+      await authApp.close();
+    }
+  });
+
+  it("never caches auth successes or transport failures", async () => {
+    let fail = false;
+    const authApp = await createTestApp(db, {
+      auth: {
+        handle: async () => {
+          if (fail) throw new Error("sensitive-token-do-not-log");
+          return Response.json({ session: null });
+        },
+      },
+    });
+    try {
+      for (const status of [200, 500]) {
+        const response = await authApp.inject({
+          url: "/api/auth/get-session",
+          headers: { "if-none-match": "*" },
+        });
+        expect(response.statusCode).toBe(status);
+        expect(response.headers["cache-control"]).toBe("no-store");
+        expect(response.headers.etag).toBeUndefined();
+        fail = true;
+      }
+    } finally {
+      await authApp.close();
+    }
   });
 });

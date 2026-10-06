@@ -4,21 +4,18 @@
  * Two things are asserted. The committed `openapi.json` matches what the
  * running app generates, so adding a route or changing a response shape shows
  * up in a pull request's diff rather than only in a running process. And
- * every route the app actually serves is in the document — a route with no
- * schema is invisible to `@fastify/swagger`, which is the quiet way an API
- * grows an undocumented endpoint.
+ * the running app's route registrations produce the same document as the
+ * standalone builder, so a missing registration cannot hide behind the catalog.
  */
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { FastifyInstance } from "fastify";
 import { describe, expect, it } from "vitest";
-import { buildApp } from "./app";
 import { buildOpenApiDocument } from "./openapi-document";
-import { aPage, createTestDb } from "./test-db";
+import { aPage, createTestApp, createTestDb, TEST_HEADERS } from "./test-db";
 
-const committed = JSON.parse(
+const committed: unknown = JSON.parse(
   readFileSync(
     join(dirname(fileURLToPath(import.meta.url)), "..", "openapi.json"),
     "utf8",
@@ -33,26 +30,12 @@ describe("openapi.json", () => {
 
   it("documents every route the app serves", async () => {
     const { db, close } = await createTestDb();
-    const app = await buildApp({ db });
+    const app = await createTestApp(db);
     await app.ready();
 
-    const documented = new Set(
-      Object.entries(committed.paths as Record<string, object>).flatMap(
-        ([path, operations]) =>
-          Object.keys(operations).map(
-            (method) => `${method.toUpperCase()} ${path}`,
-          ),
-      ),
-    );
-
-    // `/openapi.json` serves the document and is deliberately not in it.
-    const undocumented = servedRoutes(app).filter(
-      (route) =>
-        route !== "GET /openapi.json" &&
-        !documented.has(route.replace(/:(\w+)/g, "{$1}")),
-    );
-
-    expect(undocumented).toEqual([]);
+    // Check the actual registrations as well as the standalone catalog builder.
+    // Fastify's printed tree omits auth's wildcard beneath CORS's OPTIONS *.
+    expect(app.swagger()).toEqual(committed);
 
     await app.close();
     await close();
@@ -60,7 +43,7 @@ describe("openapi.json", () => {
 
   it("is served by the app itself", async () => {
     const { db, close } = await createTestDb();
-    const app = await buildApp({ db });
+    const app = await createTestApp(db);
     const response = await app.inject({ url: "/openapi.json" });
 
     expect(response.statusCode).toBe(200);
@@ -74,12 +57,13 @@ describe("openapi.json", () => {
 describe("response schemas", () => {
   it("keeps a null description null rather than dropping it", async () => {
     const { db, close } = await createTestDb();
-    const app = await buildApp({ db });
+    const app = await createTestApp(db);
 
     const created = await app.inject({
       method: "POST",
       url: "/pages",
       payload: aPage({ description: null }),
+      headers: TEST_HEADERS,
     });
 
     expect(created.json()).toHaveProperty("description", null);
@@ -88,36 +72,3 @@ describe("response schemas", () => {
     await close();
   });
 });
-
-/**
- * Every route the app serves, as "METHOD /path".
- *
- * `printRoutes` draws a tree, so a leaf's real path is its own segment joined
- * to those of its ancestors — reading each line on its own would report
- * `/:id` as a route in its own right. HEAD and OPTIONS are Fastify's, not
- * ours: it adds them to every GET and to the CORS preflight, and neither is
- * something an OpenAPI document is expected to carry.
- */
-function servedRoutes(app: FastifyInstance): string[] {
-  const prefixes: string[] = [];
-  const routes: string[] = [];
-
-  for (const line of app.printRoutes({ commonPrefix: false }).split("\n")) {
-    const match = line.match(/^([\s│]*)(?:├──|└──) (\S*)(?: \(([A-Z, ]+)\))?/);
-    if (!match) continue;
-
-    const [, indent, segment, methods] = match;
-    const depth = Math.floor(indent.length / 4);
-    prefixes.length = depth;
-    prefixes.push(segment);
-
-    if (!methods) continue;
-    const path = prefixes.join("").replace(/\/$/, "") || "/";
-    for (const method of methods.split(", ")) {
-      if (method === "HEAD" || method === "OPTIONS") continue;
-      routes.push(`${method} ${path}`);
-    }
-  }
-
-  return routes;
-}

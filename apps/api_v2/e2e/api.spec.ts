@@ -8,21 +8,39 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { z } from "zod";
 import {
+  AUTH_ENV,
+  createEmployeeSession,
   createScratchDatabase,
+  databaseQuery,
   dropScratchDatabase,
   HAS_DATABASE,
   startServer,
   type Server,
 } from "./support";
 
+const pageSchema = z
+  .object({
+    id: z.string(),
+    url: z.string(),
+    title: z.string(),
+    updated_at: z.string(),
+    body_markdown: z.string(),
+    visibility: z.enum(["public", "preview", "draft"]),
+  })
+  .passthrough();
+const objectSchema = z.record(z.string(), z.unknown());
+
 describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
   let server: Server;
   let database: string;
+  let cookie: string;
 
   beforeAll(async () => {
     database = await createScratchDatabase();
     server = await startServer({ DB_NAME: database });
+    cookie = (await createEmployeeSession(database, server.url)).cookie;
   });
 
   afterAll(async () => {
@@ -31,11 +49,13 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
   });
 
   const get = async (path: string) => {
-    const response = await fetch(`${server.url}${path}`);
+    const response = await fetch(`${server.url}${path}`, {
+      headers: { cookie },
+    });
     return {
       status: response.status,
       headers: response.headers,
-      body: response.status === 204 ? null : await response.json(),
+      body: objectSchema.parse(await response.json()),
     };
   };
 
@@ -46,7 +66,11 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
   const createPage = async (url: string) => {
     const response = await fetch(`${server.url}/pages`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        cookie,
+        origin: AUTH_ENV.EDITOR_ORIGIN,
+      },
       body: JSON.stringify({
         url,
         title: "An e2e page",
@@ -55,7 +79,7 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
       }),
     });
     expect(response.status).toBe(201);
-    return await response.json();
+    return pageSchema.parse(await response.json());
   };
 
   const put = (page: { id: string; updated_at: string }, changes: object) =>
@@ -63,6 +87,8 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
+        cookie,
+        origin: AUTH_ENV.EDITOR_ORIGIN,
         "if-updated-at": page.updated_at,
       },
       body: JSON.stringify({ ...page, ...changes }),
@@ -72,8 +98,8 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
     const { status, body } = await byUrl(SEEDED);
 
     expect(status).toBe(200);
-    expect(body.body_markdown.length).toBeGreaterThan(0);
-    expect(body.breadcrumbs[0]).toEqual({
+    expect(z.string().parse(body.body_markdown).length).toBeGreaterThan(0);
+    expect(z.array(z.unknown()).parse(body.breadcrumbs)[0]).toEqual({
       name: "Money and financial support",
       url: "/money-financial-support",
     });
@@ -118,7 +144,7 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
 
     expect(status).toBe(200);
     expect(body.openapi).toBe("3.0.3");
-    expect(Object.keys(body.paths)).toContain("/pages");
+    expect(Object.keys(objectSchema.parse(body.paths))).toContain("/pages");
   });
 
   /**
@@ -133,7 +159,7 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
     for (const title of ["First edit", "Second edit"]) {
       const response = await put(current, { title });
       expect(response.status).toBe(200);
-      current = await response.json();
+      current = pageSchema.parse(await response.json());
     }
 
     expect(current.title).toBe("Second edit");
@@ -141,9 +167,18 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
   });
 
   it("refuses a save whose if-updated-at has been overtaken", async () => {
-    const stale = await createPage("/e2e/overtaken");
+    const page = await createPage("/e2e/overtaken");
+    // A create and edit can share one millisecond; give the prior version a
+    // distinct timestamp without changing the application's version policy.
+    await databaseQuery(
+      database,
+      "update content_pages set updated_at = $2 where id = $1",
+      [page.id, new Date(Date.now() - 60_000)],
+    );
+    const stale = pageSchema.parse((await get(`/pages/${page.id}`)).body);
 
-    await put(stale, { title: "Whoever got there first" });
+    const first = await put(stale, { title: "Whoever got there first" });
+    expect(first.status).toBe(200);
     const second = await put(stale, { title: "Whoever would have clobbered" });
 
     expect(second.status).toBe(409);
@@ -158,7 +193,7 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
     const response = await put(page, { form_id: "no-such-form" });
 
     expect(response.status).toBe(422);
-    const { errors } = await response.json();
+    const { errors } = objectSchema.parse(await response.json());
     expect(errors).toEqual([
       { field: "form_id", message: "No form with that id." },
     ]);
@@ -171,7 +206,7 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
     expect(etag).toBeTruthy();
 
     const second = await fetch(path, {
-      headers: { "If-None-Match": etag as string },
+      headers: { "If-None-Match": etag ?? "" },
     });
 
     expect(second.status).toBe(304);
@@ -184,7 +219,9 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
     const page = await createPage("/e2e/version");
     await put(page, { title: "Moved the token" });
 
-    expect((await get("/version")).body.count).toBeGreaterThan(before.count);
+    expect((await get("/version")).body.count).toBeGreaterThan(
+      z.number().parse(before.count),
+    );
   });
 
   it("is safe to restart: the migration and the seed both run again", async () => {

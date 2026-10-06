@@ -80,6 +80,22 @@ export default defineConfig([
     files: ["**/*.spec.{ts,tsx}", "**/*.test.{ts,tsx}"],
     rules: { "@typescript-eslint/no-explicit-any": "off" },
   },
+  {
+    files: ["apps/api_v2/src/{modules,services}/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-non-null-assertion": "error",
+      "no-restricted-imports": ["error", { patterns: [{
+        group: ["better-auth", "better-auth/**", "fastify", "pg", "drizzle-orm", "drizzle-orm/**", "pino", "**/adapters/**", "**/routes/**", "**/config", "**/db", "**/app", "**/main", "**/store"],
+        message: "Auth policy and services depend on domain values and narrow ports; compose infrastructure in main.ts.",
+      }] }],
+      "no-restricted-globals": ["error", "Request", "Response", "fetch"],
+      "no-restricted-syntax": ["error", {
+        selector: "MemberExpression[object.name='process'][property.name='env']",
+        message: "Read environment variables only in the composition root.",
+      }],
+    },
+  },
   { files: ["**/*.json"], plugins: { json }, language: "json/json", extends: ["json/recommended"] },
   {
     files: ["**/*.css"],

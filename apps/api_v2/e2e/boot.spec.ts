@@ -18,6 +18,27 @@ import { describe, expect, it } from "vitest";
 import { runToExit } from "./support";
 
 describe("booting without a database", () => {
+  it("refuses missing auth configuration before attempting a database connection", async () => {
+    const { code, output } = await runToExit({
+      BETTER_AUTH_SECRET: "",
+      DB_HOST: "127.0.0.1",
+      DB_PORT: "1",
+    });
+    expect(code).toBe(1);
+    expect(output).toContain("BETTER_AUTH_SECRET");
+    expect(output).not.toContain("Cannot reach Postgres");
+  });
+
+  it("does not echo supplied secret values when configuration is invalid", async () => {
+    const { code, output } = await runToExit({
+      BETTER_AUTH_SECRET: "do-not-print-this",
+      GOOGLE_CLIENT_SECRET: "private-client-secret",
+    });
+    expect(code).toBe(1);
+    expect(output).not.toContain("do-not-print-this");
+    expect(output).not.toContain("private-client-secret");
+  });
+
   it("exits non-zero and says where it looked", async () => {
     const { code, output } = await runToExit({
       DB_HOST: "127.0.0.1",

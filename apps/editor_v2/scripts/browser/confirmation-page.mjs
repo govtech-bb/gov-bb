@@ -1,10 +1,11 @@
+import { authenticatedContext, authenticatedPage } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "./playwright.mjs";
 
 const browser = await chromium.launch();
 
-const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+const page = await authenticatedPage(browser, { viewport: { width: 1440, height: 1000 } });
 
 const errors = [];
 
@@ -122,7 +123,7 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.screenshot({ path: "/tmp/lexical-confirmation-page.png" });
 
-  const recoveryContext = await browser.newContext();
+  const recoveryContext = await authenticatedContext(browser);
   const recoveryPage = await recoveryContext.newPage();
   const prior = structuredClone(initial);
   settings(confirmation(prior)).pageType = "unsupported-page";

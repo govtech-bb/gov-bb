@@ -20,13 +20,18 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Client } from "pg";
+import { Client, Pool } from "pg";
+import { createHmac, randomUUID } from "node:crypto";
+import pino from "pino";
+import { createBetterAuth } from "../src/adapters/better-auth";
+import { parseConfig } from "../src/config";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** The suite is skipped unless a Postgres has been pointed at. */
 export const HAS_DATABASE = Boolean(process.env.DB_HOST);
 
+/** Connection settings for the scratch PostgreSQL test server. */
 export const DB = {
   host: process.env.DB_HOST ?? "localhost",
   port: Number(process.env.DB_PORT ?? "5432"),
@@ -47,7 +52,7 @@ const admin = () => new Client({ ...DB, database: DB.adminDatabase });
  * anything they already had.
  */
 export async function createScratchDatabase(): Promise<string> {
-  const name = `api_v2_e2e_${Date.now().toString(36)}`;
+  const name = `api_v2_e2e_${randomUUID().replaceAll("-", "")}`;
   const client = admin();
   await client.connect();
   await client.query(`create database ${name}`);
@@ -93,14 +98,26 @@ export async function dropScratchDatabase(name: string): Promise<void> {
   await client.end();
 }
 
+/** A real compiled application process, with observable shutdown. */
 export interface Server {
   url: string;
   stderr: string;
-  stop: () => Promise<void>;
+  stop: (signal?: "SIGINT" | "SIGTERM") => Promise<number | null>;
 }
+
+/** Non-secret credentials used only with the isolated test database. */
+export const AUTH_ENV = {
+  NODE_ENV: "test",
+  BETTER_AUTH_URL: "http://127.0.0.1:3020",
+  EDITOR_ORIGIN: "http://localhost:3000",
+  BETTER_AUTH_SECRET: "api-v2-test-secret-at-least-thirty-two-characters",
+  GOOGLE_CLIENT_ID: "api-v2-test-client.apps.googleusercontent.com",
+  GOOGLE_CLIENT_SECRET: "api-v2-test-client-secret",
+};
 
 const entrypoint = join(root, "dist", "src", "main.js");
 
+/** Fail clearly when a process test has no compiled executable to exercise. */
 export function assertBuilt(): void {
   if (!existsSync(entrypoint)) {
     throw new Error(
@@ -121,6 +138,8 @@ export async function startServer(
     cwd: root,
     env: {
       ...process.env,
+      ...AUTH_ENV,
+      BETTER_AUTH_URL: `http://127.0.0.1:${port}`,
       DB_HOST: DB.host,
       DB_PORT: String(DB.port),
       DB_USERNAME: DB.user,
@@ -131,13 +150,22 @@ export async function startServer(
     stdio: ["ignore", "pipe", "pipe"],
   });
 
+  const exited = new Promise<number | null>((resolve) =>
+    child.once("exit", resolve),
+  );
   const server: Server = {
     url: `http://127.0.0.1:${port}`,
     stderr: "",
-    stop: async () => {
-      if (child.exitCode !== null || child.signalCode !== null) return;
-      child.kill("SIGTERM");
-      await new Promise((resolve) => child.once("exit", resolve));
+    stop: async (signal = "SIGTERM") => {
+      if (child.exitCode !== null || child.signalCode !== null)
+        return child.exitCode;
+      child.kill(signal);
+      const timer = setTimeout(() => child.kill("SIGKILL"), 10_000);
+      try {
+        return await exited;
+      } finally {
+        clearTimeout(timer);
+      }
     },
   };
 
@@ -148,7 +176,14 @@ export async function startServer(
     server.stderr += String(chunk);
   });
 
-  if (waitForReady) await waitForHealthy(server, child);
+  if (waitForReady) {
+    try {
+      await waitForHealthy(server, child);
+    } catch (error) {
+      await server.stop();
+      throw error;
+    }
+  }
   return server;
 }
 
@@ -161,7 +196,7 @@ async function waitForHealthy(server: Server, child: ChildProcess) {
       );
     }
     try {
-      const response = await fetch(`${server.url}/version`);
+      const response = await fetch(`${server.url}/openapi.json`);
       if (response.ok) return;
     } catch {
       // Not listening yet.
@@ -178,7 +213,7 @@ export async function runToExit(
   assertBuilt();
   const child = spawn(process.execPath, [entrypoint], {
     cwd: root,
-    env: { ...process.env, ...env },
+    env: { ...process.env, ...AUTH_ENV, ...env },
     stdio: ["ignore", "pipe", "pipe"],
   });
 
@@ -198,4 +233,80 @@ export async function runToExit(
   });
 
   return { code, output };
+}
+
+/** A database-backed BetterAuth session minted solely by this test harness. */
+export interface EmployeeSession {
+  cookie: string;
+  userId: string;
+  sessionId: string;
+  token: string;
+  expiresAt: Date;
+}
+
+/** Create a real library session; there is no corresponding HTTP bypass endpoint. */
+export async function createEmployeeSession(
+  database: string,
+  apiOrigin: string,
+  options: { expiresAt?: Date; email?: string; emailVerified?: boolean } = {},
+): Promise<EmployeeSession> {
+  const config = parseConfig({ ...AUTH_ENV, BETTER_AUTH_URL: apiOrigin });
+  if (!config.ok) throw config.error;
+  const pool = new Pool({ ...DB, database });
+  try {
+    const runtime = await createBetterAuth(
+      pool,
+      config.value.auth,
+      pino({ enabled: false }),
+    );
+    const context = await runtime.instance.$context;
+    const userId = randomUUID();
+    // The Google identity check is tested separately. Here the fixture inserts
+    // a verified employee and asks BetterAuth itself to mint and store a session.
+    await pool.query(
+      'insert into auth_user (id, name, email, "emailVerified") values ($1, $2, $3, $4)',
+      [
+        userId,
+        "API test employee",
+        options.email ?? `${userId}@govtech.bb`,
+        options.emailVerified ?? true,
+      ],
+    );
+    const session = await context.internalAdapter.createSession(
+      userId,
+      false,
+      options.expiresAt ? { expiresAt: options.expiresAt } : {},
+      true,
+    );
+    if (!session) throw new Error("BetterAuth did not create the test session");
+    const signature = createHmac("sha256", config.value.auth.secret.reveal())
+      .update(session.token)
+      .digest("base64");
+    return {
+      cookie: `${context.authCookies.sessionToken.name}=${encodeURIComponent(`${session.token}.${signature}`)}`,
+      userId,
+      sessionId: session.id,
+      token: session.token,
+      expiresAt: session.expiresAt,
+    };
+  } finally {
+    await pool.end();
+  }
+}
+
+/** Execute a test assertion or mutation inside the suite's isolated database. */
+export async function databaseQuery(
+  database: string,
+  sql: string,
+  values: unknown[] = [],
+): Promise<unknown[]> {
+  if (!/^api_v2_e2e_[a-z0-9]+$/.test(database))
+    throw new Error("Expected a scratch database name");
+  const client = new Client({ ...DB, database });
+  try {
+    await client.connect();
+    return (await client.query(sql, values)).rows;
+  } finally {
+    await client.end();
+  }
 }

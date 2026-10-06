@@ -304,7 +304,7 @@ export class ApiStore {
     };
   }
 
-  async create(input: PageInput): Promise<PageDocument> {
+  async create(input: PageInput, actorId: string): Promise<PageDocument> {
     const values = this.valuesOf(input);
     const inserted = await this.db
       .insert(contentPages)
@@ -319,7 +319,7 @@ export class ApiStore {
       });
 
     const saved = toDocument(inserted[0]);
-    await this.appendChangeEvent(saved, "created");
+    await this.appendChangeEvent(saved, "created", actorId);
     return saved;
   }
 
@@ -327,6 +327,7 @@ export class ApiStore {
     id: string,
     input: PageInput,
     ifUpdatedAt: string | null,
+    actorId: string,
   ): Promise<PageDocument> {
     const values = this.valuesOf(input);
     const now = new Date();
@@ -372,6 +373,7 @@ export class ApiStore {
     await this.appendChangeEvent(
       saved,
       firstPublished ? "published" : "updated",
+      actorId,
     );
     return saved;
   }
@@ -401,6 +403,7 @@ export class ApiStore {
   private async appendChangeEvent(
     doc: PageDocument,
     action: "created" | "updated" | "published",
+    actorId: string,
   ): Promise<void> {
     const [next] = await this.db
       .select({
@@ -419,6 +422,7 @@ export class ApiStore {
       entityId: doc.id,
       versionNo: Number(next?.versionNo ?? 1),
       action,
+      actor: actorId,
       snapshot: doc,
     });
   }

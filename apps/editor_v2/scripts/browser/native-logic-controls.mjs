@@ -1,10 +1,11 @@
+import { authenticatedPage } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "./playwright.mjs";
 
 const browser = await chromium.launch();
 
-const page = await browser.newPage({ viewport: { width: 1440, height: 1050 } });
+const page = await authenticatedPage(browser, { viewport: { width: 1440, height: 1050 } });
 
 const errors = [];
 

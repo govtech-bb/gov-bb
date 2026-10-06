@@ -875,6 +875,16 @@
         "anti-slop/no-runtime-typeof": "off",
         "anti-slop/no-unsafe-dictionary-type": "off"
       }
+    },
+    {
+      "files": [
+        "src/auth/session.ts"
+      ],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
     }
   ]
 }

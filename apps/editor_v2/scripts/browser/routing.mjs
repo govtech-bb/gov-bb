@@ -1,9 +1,10 @@
+import { authenticatedContext } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { chromium } from "./playwright.mjs";
 
 const browser = await chromium.launch();
 
-const context = await browser.newContext();
+const context = await authenticatedContext(browser);
 
 const page = await context.newPage();
 

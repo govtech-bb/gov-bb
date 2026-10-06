@@ -16,26 +16,36 @@
  */
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 import { SQL as INIT_SQL } from "./migrations/001_init";
 import { SQL as MARKDOWN_PAGES_SQL } from "./migrations/002_markdown_pages";
+import { SQL as AUTH_SQL } from "./migrations/003_auth";
 import type { Database } from "./store";
 
 const SCRIPTS: Record<string, string> = {
   "001_init": INIT_SQL,
   "002_markdown_pages": MARKDOWN_PAGES_SQL,
+  "003_auth": AUTH_SQL,
 };
 
-export const MIGRATIONS = ["001_init", "002_markdown_pages"] as const;
+/** Existing content migrations followed by the additive authentication tables. */
+export const MIGRATIONS = [
+  "001_init",
+  "002_markdown_pages",
+  "003_auth",
+] as const;
 
 /** Runs a whole SQL script, statements and all. */
 export type Exec = (script: string) => Promise<unknown>;
 
+/** Resolve a migration declared in this runner. */
 export function readMigration(name: string): string {
   const script = SCRIPTS[name];
   if (!script) throw new Error(`No migration named ${name}`);
   return script;
 }
 
+/** Apply pending SQL scripts in their existing order, without touching authored content. */
 export async function migrate(db: Database, exec: Exec): Promise<string[]> {
   await exec(
     `create table if not exists schema_migrations (
@@ -48,10 +58,16 @@ export async function migrate(db: Database, exec: Exec): Promise<string[]> {
    * `execute` is typed per driver — node-postgres hands back a QueryResult
    * with `.rows`, PGlite hands back the array itself.
    */
-  const applied = (await db.execute(
+  const applied: unknown = await db.execute(
     sql`select name from schema_migrations`,
-  )) as { rows?: Array<{ name: string }> } | Array<{ name: string }>;
-  const rows = Array.isArray(applied) ? applied : (applied.rows ?? []);
+  );
+  const rowSchema = z.array(z.object({ name: z.string() }));
+  const rows = z
+    .union([
+      rowSchema,
+      z.object({ rows: rowSchema }).transform((value) => value.rows),
+    ])
+    .parse(applied);
   const done = new Set(rows.map((row) => row.name));
 
   const ran: string[] = [];

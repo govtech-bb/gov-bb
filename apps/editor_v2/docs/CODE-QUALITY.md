@@ -33,6 +33,7 @@ Keep runtime validation at JSON, Markdown, saved-state, extension and browser in
 | Registry and extension adapters | Each installed module owns its configuration contract; shared composition preserves opaque data for that module. |
 | Persistence, YAML metadata and workspace imports | Stored drafts, recovery journals, metadata and storage-key ownership are checked before use. |
 | Test decoders and coverage readers | Tests exercise invalid inputs and extension boundaries, so they need the same validation operations. |
+| Authentication search and session parsing | Router search parameters and API session responses must be parsed before the editor uses them. |
 
 Use `SAFETY:` comments to explain type assertions whose invariants TypeScript cannot express. Do not claim that an incomplete draft satisfies the published schema. Where a draft or adapter genuinely needs an exception, keep it local and explain why.
 

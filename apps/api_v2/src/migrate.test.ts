@@ -13,34 +13,43 @@ import { PGlite } from "@electric-sql/pglite";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { migrate, readMigration } from "./migrate";
 import * as schema from "./schema";
 import type { Database } from "./store";
 
 const freshDb = () => {
   const client = new PGlite();
-  const db = drizzle(client, { schema }) as unknown as Database;
+  const db = drizzle(client, { schema });
   return { client, db };
 };
 
 const tableNames = async (db: Database) => {
-  const result = (await db.execute(
+  const result: unknown = await db.execute(
     sql`select table_name from information_schema.tables
          where table_schema = 'public' order by table_name`,
-  )) as
-    | { rows?: Array<{ table_name: string }> }
-    | Array<{ table_name: string }>;
-  const rows = Array.isArray(result) ? result : (result.rows ?? []);
+  );
+  const records = z.array(z.object({ table_name: z.string() }));
+  const rows = z
+    .union([
+      records,
+      z.object({ rows: records }).transform((value) => value.rows),
+    ])
+    .parse(result);
   return rows.map((row) => row.table_name);
 };
 
 describe("migrate", () => {
-  it("creates the four tables plus its own bookkeeping", async () => {
+  it("creates content and authentication tables plus its own bookkeeping", async () => {
     const { client, db } = freshDb();
     const ran = await migrate(db, (script) => client.exec(script));
 
-    expect(ran).toEqual(["001_init", "002_markdown_pages"]);
+    expect(ran).toEqual(["001_init", "002_markdown_pages", "003_auth"]);
     expect(await tableNames(db)).toEqual([
+      "auth_account",
+      "auth_session",
+      "auth_user",
+      "auth_verification",
       "categories",
       "change_events",
       "content_pages",
@@ -68,7 +77,7 @@ describe("migrate", () => {
     await db.execute(sql`delete from schema_migrations`);
 
     await expect(migrate(db, (script) => client.exec(script))).resolves.toEqual(
-      ["001_init", "002_markdown_pages"],
+      ["001_init", "002_markdown_pages", "003_auth"],
     );
     await client.close();
   });
@@ -90,7 +99,7 @@ describe("migrate", () => {
     );
 
     await expect(migrate(db, (script) => client.exec(script))).resolves.toEqual(
-      ["002_markdown_pages"],
+      ["002_markdown_pages", "003_auth"],
     );
     const pages = await client.query(
       "select count(*)::int as n from content_pages",
@@ -116,13 +125,13 @@ describe("migrate", () => {
       .execute(sql`update change_events set actor = 'someone else'`)
       .then(
         () => null,
-        (error: Error) => error,
+        (error: unknown) => error,
       );
 
     expect(refused).toBeInstanceOf(Error);
-    expect(String((refused as Error & { cause?: unknown }).cause)).toMatch(
-      /append-only/,
-    );
+    if (!(refused instanceof Error))
+      throw new Error("Expected trigger rejection");
+    expect(String(refused.cause)).toMatch(/append-only/);
     await client.close();
   });
 });

@@ -1,3 +1,4 @@
+import { authenticatedContext } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { chromium } from "./playwright.mjs";
 
@@ -10,7 +11,7 @@ try {
     ["Meta", 80],
     ["Control", 950],
   ]) {
-    const context = await browser.newContext({
+    const context = await authenticatedContext(browser, {
       viewport: { width: 1440, height: 900 },
       userAgent:
         modifier === "Meta"

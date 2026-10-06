@@ -1,15 +1,17 @@
 import {
   ClientOnly,
-  createRootRoute,
+  createRootRouteWithContext,
   HeadContent,
   Link,
   Outlet,
   Scripts,
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import type { EditorAuth } from "../auth/session";
 import stylesheet from "../../index.css?url";
 
-export const Route = createRootRoute({
+/** Static document with explicit runtime dependencies supplied by getRouter. */
+export const Route = createRootRouteWithContext<{ auth: EditorAuth }>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },

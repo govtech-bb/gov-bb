@@ -19,6 +19,8 @@ import {
   type WorkspaceRepository,
 } from "./model";
 
+type Account = { email: string; onSignOut: () => Promise<string | undefined> };
+
 type OpenDocument = { document: WorkspaceDocument; store: DraftStore };
 
 type Boot = { repository: WorkspaceRepository; location: WorkspaceLocation; panes: OpenDocument[] };
@@ -58,7 +60,8 @@ function downloadWorkspace() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function ServiceWorkspace() {
+/** Open local drafts only after the host has authenticated the employee. */
+export function ServiceWorkspace({ email, onSignOut }: Account) {
   const params = useParams({ strict: false });
   const pathname = useRouterState({ select: (state) => state.location.pathname });
 
@@ -94,10 +97,10 @@ export function ServiceWorkspace() {
       </main>
     );
 
-  return <Workspace initial={initial.ready} />;
+  return <Workspace initial={initial.ready} email={email} onSignOut={onSignOut} />;
 }
 
-function Workspace({ initial }: { initial: Boot }) {
+function Workspace({ initial, email, onSignOut }: { initial: Boot } & Account) {
   const repository = initial.repository;
   const [index, setIndex] = useState(repository.index);
   const params = useParams({ strict: false });
@@ -114,6 +117,7 @@ function Workspace({ initial }: { initial: Boot }) {
   const [panes, setPanes] = useState(initial.panes);
   const [dialog, setDialog] = useState<"service" | "rename" | "document">();
   const [error, setError] = useState("");
+  const [signingOut, setSigningOut] = useState(false);
   const service = index.services.find((item) => item.id === location?.serviceId);
   const selected = service?.documents.find((item) => item.id === location?.documentId);
   const current = panes.find((pane) => pane.document.id === selected?.id);
@@ -182,6 +186,24 @@ function Workspace({ initial }: { initial: Boot }) {
 
   const refresh = () => setIndex(repository.index);
 
+  const signOut = async () => {
+    try {
+      flushDocument(current?.store);
+      setSigningOut(true);
+      const failure = await onSignOut();
+
+      if (failure) setError(failure);
+    } catch (failure) {
+      setError(
+        failure instanceof Error
+          ? failure.message
+          : "Save or download this draft before signing out.",
+      );
+    } finally {
+      setSigningOut(false);
+    }
+  };
+
   return (
     <div className="isolate flex min-h-dvh flex-col bg-grey-10 text-ink">
       <a
@@ -219,6 +241,16 @@ function Workspace({ initial }: { initial: Boot }) {
           onClick={() => openDialog("service")}
         >
           Create service
+        </Button>
+        <span className="max-w-64 truncate text-14" title={email}>
+          {email}
+        </span>
+        <Button
+          className="text-white hover:text-white"
+          disabled={signingOut}
+          onClick={() => void signOut()}
+        >
+          {signingOut ? "Signing out…" : "Sign out"}
         </Button>
       </header>
       {error && (

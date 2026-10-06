@@ -18,6 +18,7 @@ if (!url || !["http:", "https:"].includes(url.protocol)) {
 const suites = requested.length
   ? requested
   : [
+      "authentication.mjs",
       "native-form-schema.mjs",
       "native-logic-controls.mjs",
       "native-formula.mjs",

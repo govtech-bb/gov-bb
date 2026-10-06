@@ -16,12 +16,14 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   allowConnections,
+  createEmployeeSession,
   createScratchDatabase,
   dropScratchDatabase,
   HAS_DATABASE,
   startServer,
   terminateBackends,
   type Server,
+  type EmployeeSession,
 } from "./support";
 
 describe.skipIf(!HAS_DATABASE)(
@@ -29,10 +31,12 @@ describe.skipIf(!HAS_DATABASE)(
   () => {
     let server: Server;
     let database: string;
+    let employee: EmployeeSession;
 
     beforeAll(async () => {
       database = await createScratchDatabase();
       server = await startServer({ DB_NAME: database });
+      employee = await createEmployeeSession(database, server.url);
     });
 
     afterAll(async () => {
@@ -81,10 +85,22 @@ describe.skipIf(!HAS_DATABASE)(
         const response = await page();
         expect(response.status).toBe(500);
         expect(await response.json()).toEqual({ error: "internal_error" });
+        const privateResponse = await fetch(`${server.url}/version`, {
+          headers: { cookie: employee.cookie },
+        });
+        expect(privateResponse.status).toBe(503);
+        expect(privateResponse.headers.get("cache-control")).toBe("no-store");
       } finally {
         await allowConnections(database, true);
       }
       expect(await status()).toBe(200);
+      expect(
+        (
+          await fetch(`${server.url}/version`, {
+            headers: { cookie: employee.cookie },
+          })
+        ).status,
+      ).toBe(200);
     });
   },
 );
