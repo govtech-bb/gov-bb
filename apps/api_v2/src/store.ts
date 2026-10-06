@@ -76,6 +76,23 @@ export interface PageResponse {
   breadcrumbs: Breadcrumb[];
 }
 
+/** A service as the editor's list shows it: its entry page and the pages below. */
+export interface ServiceSummary {
+  /** The entry page's id. */
+  id: string;
+  url: string;
+  title: string;
+  category: { slug: string; title: string };
+  visibility: Visibility;
+  /** The entry page's form, else its `/start` page's. */
+  form_id: string | null;
+  has_start_page: boolean;
+  /** The entry page plus every page below it. */
+  page_count: number;
+  /** The latest change across those pages. */
+  updated_at: string;
+}
+
 export type Resolution =
   | { kind: "page"; page: PageResponse }
   | { kind: "redirect"; url: string }
@@ -280,6 +297,60 @@ export class ApiStore {
       if (i === 0 && category) return [{ name: category.title, url: prefix }];
       return [];
     });
+  }
+
+  /**
+   * The estate grouped into services. The schema has no service, so it is
+   * read from the urls: a categorised page with no page above it is an entry,
+   * and every page below it (its `/start` page, supporting pages) belongs to
+   * it. Uncategorised pages such as `/terms-conditions` are not services.
+   */
+  async listServices(): Promise<ServiceSummary[]> {
+    const rows = await this.db
+      .select({
+        id: contentPages.id,
+        url: contentPages.url,
+        title: contentPages.title,
+        visibility: contentPages.visibility,
+        formId: contentPages.formId,
+        updatedAt: contentPages.updatedAt,
+        categorySlug: categories.slug,
+        categoryTitle: categories.title,
+      })
+      .from(contentPages)
+      .leftJoin(categories, eq(contentPages.categoryId, categories.id));
+
+    // ponytail: groups the whole estate in memory; move to SQL or page it past a few thousand pages.
+    const urls = new Set(rows.map((row) => row.url));
+    const groups = new Map<string, typeof rows>();
+    for (const row of rows) {
+      const entry =
+        prefixesOf(row.url).find((prefix) => urls.has(prefix)) ?? row.url;
+      groups.set(entry, [...(groups.get(entry) ?? []), row]);
+    }
+
+    return [...groups]
+      .flatMap(([url, pages]) => {
+        const entry = pages.find((page) => page.url === url);
+        if (!entry?.categorySlug || !entry.categoryTitle) return [];
+        const start = pages.find((page) => page.url === `${url}/start`);
+        return [
+          {
+            id: entry.id,
+            url,
+            title: entry.title,
+            category: { slug: entry.categorySlug, title: entry.categoryTitle },
+            visibility: entry.visibility,
+            form_id: entry.formId ?? start?.formId ?? null,
+            has_start_page: start !== undefined,
+            page_count: pages.length,
+            updated_at: new Date(
+              Math.max(...pages.map((page) => page.updatedAt.getTime())),
+            ).toISOString(),
+          },
+        ];
+      })
+      .sort((a, b) => a.title.localeCompare(b.title));
   }
 
   async get(id: string): Promise<PageDocument | null> {

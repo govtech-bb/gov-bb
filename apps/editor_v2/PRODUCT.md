@@ -6,6 +6,8 @@ The GovBB editor is an internal web tool for the GovTech Barbados service team a
 
 Authors can write service pages, build application forms and calculators, save local drafts, import and export files, and preview supported page content. The workspace groups an entry page, an optional start page, supporting pages and at most one form or calculator per service. Content-only services are supported.
 
+The Services list shows api_v2's services with search, sorting, column choice and pagination. It is read-only: titles open the page on landing, and opening an API service in the editor is not yet supported. Services drafted in this browser are listed separately beneath it.
+
 The editor owns content authoring and conversion, including common page metadata. Form-wide settings panels, form-check dashboards, submissions, publishing, scheduling, CMS integration and respondent execution are outside its scope. Hosts choose an editor preset and supply persistence.
 
 ## Page authoring

@@ -1,4 +1,6 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
+import { createEditorApi } from "./api/services";
 import { createEditorAuth } from "./auth/better-auth-client";
 import { parseApiOrigin } from "./auth/session";
 import { routeTree } from "./routeTree.gen";
@@ -9,10 +11,15 @@ export function getRouter() {
 
   if (!origin.ok) throw origin.error;
   const auth = createEditorAuth(origin.value, Date.now);
+  const api = createEditorApi(origin.value, import.meta.env.VITE_LANDING_ORIGIN);
+  const queryClient = new QueryClient();
 
   return createRouter({
     routeTree,
-    context: { auth },
+    context: { auth, api },
+    Wrap: ({ children }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
     defaultPreload: false,
     notFoundMode: "root",
     defaultPendingComponent: () => (

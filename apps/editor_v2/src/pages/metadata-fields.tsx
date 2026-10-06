@@ -199,7 +199,7 @@ function PageDetail({
   );
 }
 
-const visibilityLabels = new Map([
+export const visibilityLabels = new Map([
   ["", "Public"],
   ["public", "Public"],
   ["preview", "Preview link only"],

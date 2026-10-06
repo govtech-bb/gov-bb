@@ -147,6 +147,53 @@ const pageDocument = {
   additionalProperties: false,
 } as const;
 
+const serviceSummary = {
+  type: "object",
+  properties: {
+    id: {
+      type: "string",
+      format: "uuid",
+      description: "The entry page's id.",
+    },
+    url: { type: "string" },
+    title: { type: "string" },
+    category: {
+      type: "object",
+      properties: { slug: { type: "string" }, title: { type: "string" } },
+      required: ["slug", "title"],
+      additionalProperties: false,
+    },
+    visibility,
+    form_id: {
+      type: "string",
+      nullable: true,
+      description: "The entry page's form, else its `/start` page's.",
+    },
+    has_start_page: { type: "boolean" },
+    page_count: {
+      type: "integer",
+      description: "The entry page plus every page below it.",
+    },
+    updated_at: {
+      type: "string",
+      format: "date-time",
+      description: "The latest change across those pages.",
+    },
+  },
+  required: [
+    "id",
+    "url",
+    "title",
+    "category",
+    "visibility",
+    "form_id",
+    "has_start_page",
+    "page_count",
+    "updated_at",
+  ],
+  additionalProperties: false,
+} as const;
+
 /** What a write sends. The slug comes from the url. */
 const pageInput = {
   type: "object",
@@ -306,6 +353,20 @@ export const SCHEMAS = {
     response: { 204: { type: "null" }, ...authErrors },
   },
 
+  listServices: {
+    summary: "List services",
+    description:
+      "The editor's index, ordered by title. The schema has no service, so " +
+      "one is read from the urls: a categorised page with no page above it " +
+      "is an entry, and every page below it belongs to it.",
+    tags: ["pages"],
+    security: editorSecurity,
+    response: {
+      200: { type: "array", items: serviceSummary },
+      ...authErrors,
+    },
+  },
+
   version: {
     summary: "A version token for the whole estate",
     description:
@@ -339,6 +400,11 @@ export const ROUTES = {
     method: "DELETE",
     url: "/pages/:id",
     schema: SCHEMAS.deletePage,
+  },
+  listServices: {
+    method: "GET",
+    url: "/services",
+    schema: SCHEMAS.listServices,
   },
   version: { method: "GET", url: "/version", schema: SCHEMAS.version },
   auth: {

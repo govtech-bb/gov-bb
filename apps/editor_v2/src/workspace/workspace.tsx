@@ -1,6 +1,7 @@
 import logo from "@govtech-bb/frontend/assets/images/govbb-logo.svg?raw";
 import { Link, useBlocker, useNavigate, useParams, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import type { EditorApi } from "../api/services";
 import { workspaceLink } from "./navigation";
 import { Button } from "../ui/button";
 import { browserDraftStorage } from "../host/govbb-draft";
@@ -10,6 +11,7 @@ import type { DraftStore } from "../persistence/draft-store";
 import { DocumentDialog, ServiceDialog } from "./dialogs";
 import { openDocument, openWorkspace } from "./documents";
 import { WorkspaceFormEditor } from "./form-editor";
+import { ServicesList } from "./services-list";
 import {
   documentLabel,
   flushDocument,
@@ -61,7 +63,7 @@ function downloadWorkspace() {
 }
 
 /** Open local drafts only after the host has authenticated the employee. */
-export function ServiceWorkspace({ email, onSignOut }: Account) {
+export function ServiceWorkspace({ api, email, onSignOut }: Account & { api: EditorApi }) {
   const params = useParams({ strict: false });
   const pathname = useRouterState({ select: (state) => state.location.pathname });
 
@@ -97,10 +99,15 @@ export function ServiceWorkspace({ email, onSignOut }: Account) {
       </main>
     );
 
-  return <Workspace initial={initial.ready} email={email} onSignOut={onSignOut} />;
+  return <Workspace initial={initial.ready} api={api} email={email} onSignOut={onSignOut} />;
 }
 
-function Workspace({ initial, email, onSignOut }: { initial: Boot } & Account) {
+function Workspace({
+  initial,
+  api,
+  email,
+  onSignOut,
+}: { initial: Boot; api: EditorApi } & Account) {
   const repository = initial.repository;
   const [index, setIndex] = useState(repository.index);
   const params = useParams({ strict: false });
@@ -341,12 +348,16 @@ function Workspace({ initial, email, onSignOut }: { initial: Boot } & Account) {
             </section>
           )}
           {!service && !missing && (
-            <section className="mx-auto w-full max-w-240 px-6 py-10">
+            <section className="mx-auto w-full max-w-300 px-6 py-10">
               <h1 className="text-32 font-semibold">Services</h1>
-              <p className="mt-2 text-16 text-muted">
+              <p className="mt-2 mb-8 text-16 text-muted">
                 Write the pages and build the form for each service in one place.
               </p>
-              <ul className="mt-8 divide-y divide-line border-y border-line bg-white">
+              <ServicesList api={api} />
+              {index.services.length > 0 && (
+                <h2 className="mt-12 text-20 font-semibold">Drafts in this browser</h2>
+              )}
+              <ul className="mt-4 divide-y divide-line border-y border-line bg-white empty:hidden">
                 {index.services.map((item) => (
                   <li key={item.id}>
                     <Link

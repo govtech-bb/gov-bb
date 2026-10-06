@@ -98,6 +98,10 @@ export async function registerPageRoutes(
         );
       },
     });
+    editor.route({
+      ...ROUTES.listServices,
+      handler: async () => store.listServices(),
+    });
     editor.route({ ...ROUTES.version, handler: async () => store.version() });
     editor.route<{ Body: PageInput }>({
       ...ROUTES.createPage,

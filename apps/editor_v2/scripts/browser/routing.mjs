@@ -96,6 +96,25 @@ try {
   await page.getByRole("heading", { name: "Services", exact: true }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/services");
 
+  const services = page.getByRole("region", { name: "Services" });
+  const rows = services.locator("tbody tr");
+  await services.getByText("Get a copy of a birth certificate", { exact: true }).waitFor();
+  assert.equal(await rows.count(), 3);
+  const search = page.getByRole("searchbox", { name: "Search services" });
+  await search.fill("birth-certificate");
+  assert.equal(await rows.count(), 1);
+  await search.fill("");
+  const serviceHeader = services.getByRole("columnheader", { name: /^Service/ });
+  assert.equal(await serviceHeader.getAttribute("aria-sort"), "ascending");
+  await serviceHeader.getByRole("button").click();
+  assert.equal(await serviceHeader.getAttribute("aria-sort"), "descending");
+  assert.match(await rows.first().innerText(), /^What prescription colours mean/);
+  await page.getByRole("button", { name: "Columns" }).click();
+  await page.getByRole("menuitemcheckbox", { name: "Category" }).click();
+  await page.keyboard.press("Escape");
+  assert.equal(await services.getByRole("columnheader", { name: /^Category/ }).count(), 0);
+  await page.getByRole("heading", { name: "Drafts in this browser" }).waitFor();
+
   await page.goto(url(ids[0]));
   await page.getByRole("link", { name: "Services", exact: true }).click();
   await page.getByRole("link", { name: /Routing service/ }).click();

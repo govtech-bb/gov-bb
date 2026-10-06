@@ -42,6 +42,8 @@ src/presets                  selected modules and built-in Form registry data
 src/persistence              storage-independent draft state machine
 src/host                     browser storage/events and application binding
 src/workspace                service/document index, navigation and document creation/import
+src/api                      api_v2 content reads, such as the services list
+src/ui/table                 shared list table: features and components once; each list adds columns and data
 src/routes                   TanStack routes and server-safe document shell
 ```
 
