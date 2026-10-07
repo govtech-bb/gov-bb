@@ -22,53 +22,41 @@ import { SQL as GITHUB_SESSIONS_SQL } from "./migrations/004_github_sessions";
 import { SQL as HIERARCHY_SQL } from "./migrations/005_hierarchy_and_search";
 import type { Database } from "./db";
 
-const SCRIPTS: Record<string, string> = {
-  "001_init": INIT_SQL,
-  "002_markdown_pages": MARKDOWN_PAGES_SQL,
-  "003_auth": AUTH_SQL,
-  "004_github_sessions": GITHUB_SESSIONS_SQL,
-  "005_hierarchy_and_search": HIERARCHY_SQL,
-};
-
-/** Content, then authentication, then the page hierarchy and search text. */
-export const MIGRATIONS = [
-  "001_init",
-  "002_markdown_pages",
-  "003_auth",
-  "004_github_sessions",
-  "005_hierarchy_and_search",
+/** The migrations, in the order they apply. Each is idempotent by rule. */
+const MIGRATIONS = [
+  ["001_init", INIT_SQL],
+  ["002_markdown_pages", MARKDOWN_PAGES_SQL],
+  ["003_auth", AUTH_SQL],
+  ["004_github_sessions", GITHUB_SESSIONS_SQL],
+  ["005_hierarchy_and_search", HIERARCHY_SQL],
 ] as const;
 
-/** Runs a whole SQL script, statements and all. */
-export type Exec = (script: string) => Promise<unknown>;
+/** Serialises instances that boot together; released when its transaction ends. */
+const LOCK = "select pg_advisory_xact_lock(hashtext('api_v2 migrations'));";
 
-/** Resolve a migration declared in this runner. */
-export function readMigration(name: string): string {
-  const script = SCRIPTS[name];
-  if (!script) throw new Error(`No migration named ${name}`);
-  return script;
-}
+/** Runs a whole SQL script, statements and all, as one implicit transaction. */
+export type Exec = (script: string) => Promise<unknown>;
 
 /** Apply pending SQL scripts in their existing order, without touching authored content. */
 export async function migrate(db: Database, exec: Exec): Promise<string[]> {
-  await exec(
-    `create table if not exists schema_migrations (
-       name       text primary key,
-       applied_at timestamptz not null default now()
-     )`,
-  );
+  await exec(`${LOCK}
+    create table if not exists schema_migrations (
+      name       text primary key,
+      applied_at timestamptz not null default now()
+    );`);
 
   const applied = await db.execute(sql`select name from schema_migrations`);
   const rows = z.array(z.object({ name: z.string() })).parse(applied.rows);
   const done = new Set(rows.map((row) => row.name));
 
   const ran: string[] = [];
-  for (const name of MIGRATIONS) {
+  for (const [name, script] of MIGRATIONS) {
     if (done.has(name)) continue;
-    await exec(readMigration(name));
-    await db.execute(
-      sql`insert into schema_migrations (name) values (${name})`,
-    );
+    // The script and its record commit together. An instance that loses the
+    // race for the lock re-runs an idempotent script and records nothing new.
+    await exec(`${LOCK}
+${script}
+insert into schema_migrations (name) values ('${name}') on conflict do nothing;`);
     ran.push(name);
   }
   return ran;

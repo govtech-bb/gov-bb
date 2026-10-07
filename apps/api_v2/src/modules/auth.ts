@@ -37,8 +37,6 @@ export class Forbidden extends Error {
 export class AuthUnavailable extends Error {
   /** Stable protocol-projection discriminator. */
   readonly _tag = "AuthUnavailable";
-  /** Safe operation metadata for request-correlated diagnostics. */
-  readonly operation = "read_session";
   /** Do not retain SDK errors containing tokens or SQL parameters. */
   constructor() {
     super("Sign-in is temporarily unavailable. Try again.");

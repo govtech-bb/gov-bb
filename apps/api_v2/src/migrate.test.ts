@@ -12,7 +12,11 @@
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { migrate, readMigration } from "./migrate";
+import { migrate } from "./migrate";
+import { SQL as INIT_SQL } from "./migrations/001_init";
+import { SQL as MARKDOWN_PAGES_SQL } from "./migrations/002_markdown_pages";
+import { SQL as AUTH_SQL } from "./migrations/003_auth";
+import { SQL as GITHUB_SESSIONS_SQL } from "./migrations/004_github_sessions";
 import type { Database } from "./db";
 import { createEmptyDb } from "./test-db";
 
@@ -87,7 +91,7 @@ describe("migrate", () => {
     // seeded pages whose NOT NULL body the new columns cannot fill. 002
     // clears them rather than failing, and the seed refills the estate.
     const { db, exec, close } = await freshDb();
-    await exec(readMigration("001_init"));
+    await exec(INIT_SQL);
     await exec(
       `insert into content_pages (url, slug, schema_name, document_type, title, body)
        values ('/x', 'x', 'answer', 'answer', 'X',
@@ -113,7 +117,13 @@ describe("migrate", () => {
     // Pages seeded before the hierarchy have no parent, so every /start step
     // would list as a service. 005 clears them and the seed refills them.
     const { db, exec, close } = await freshDb();
-    for (const name of ALL.slice(0, 4)) await exec(readMigration(name));
+    for (const script of [
+      INIT_SQL,
+      MARKDOWN_PAGES_SQL,
+      AUTH_SQL,
+      GITHUB_SESSIONS_SQL,
+    ])
+      await exec(script);
     await exec(
       `create table schema_migrations (name text primary key, applied_at timestamptz not null default now());
        insert into schema_migrations (name) values ('001_init'), ('002_markdown_pages'), ('003_auth'), ('004_github_sessions');

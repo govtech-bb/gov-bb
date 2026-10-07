@@ -600,7 +600,7 @@
             "url": "{{baseUrl}}/pages/{{pageId}}",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"url\": \"{{pageUrl}}\",\n  \"title\": \"Postman test page (edited)\",\n  \"visibility\": \"draft\",\n  \"body_markdown\": \"Edited from Postman.\"\n}"
+              "raw": "{\n  \"url\": \"{{pageUrl}}\",\n  \"category_id\": null,\n  \"title\": \"Postman test page (edited)\",\n  \"description\": null,\n  \"visibility\": \"draft\",\n  \"form_id\": null,\n  \"body_markdown\": \"Edited from Postman.\",\n  \"frontmatter\": {}\n}"
             }
           },
           "event": [
@@ -640,7 +640,7 @@
             "url": "{{baseUrl}}/pages/{{pageId}}",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"url\": \"{{pageUrl}}\",\n  \"title\": \"Stale write\",\n  \"body_markdown\": \"Should be refused.\"\n}"
+              "raw": "{\n  \"url\": \"{{pageUrl}}\",\n  \"category_id\": null,\n  \"title\": \"Stale write\",\n  \"description\": null,\n  \"visibility\": \"draft\",\n  \"form_id\": null,\n  \"body_markdown\": \"Should be refused.\",\n  \"frontmatter\": {}\n}"
             }
           },
           "event": [

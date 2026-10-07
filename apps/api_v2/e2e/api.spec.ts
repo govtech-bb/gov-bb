@@ -39,7 +39,7 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
 
   beforeAll(async () => {
     database = await createScratchDatabase();
-    server = await startServer({ DB_NAME: database });
+    server = await startServer({ DB_NAME: database, SEED: "true" });
     cookie = (await createEmployeeSession(database, server.url)).cookie;
   });
 
@@ -234,7 +234,7 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
     const before = (await get("/version")).body;
     await server.stop();
 
-    server = await startServer({ DB_NAME: database });
+    server = await startServer({ DB_NAME: database, SEED: "true" });
 
     // The seed is additive: it writes no event and overwrites nothing.
     expect((await get("/version")).body).toEqual(before);

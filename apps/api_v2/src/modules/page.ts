@@ -41,7 +41,12 @@ export type PageId = z.infer<typeof PageId>;
 /** Parses a page's url: a path with no trailing slash, query or fragment. */
 export const PageUrl = z
   .string()
+  .max(512)
   .regex(/^\/[^?#]*[^/?#]$/)
+  .refine(
+    (url) => (segmentsOf(url).at(-1) ?? "").length <= 200,
+    "The url's last segment, its slug, can be at most 200 characters.",
+  )
   .describe("The site's routing key.");
 
 /** Parses every field of a page its author sets. */
@@ -52,10 +57,10 @@ export const PageFields = z.object({
     "The page this one sits beneath, in the same category; null for a " +
       "page at the root of its category, which is what the category lists.",
   ),
-  title: z.string().min(1),
+  title: z.string().min(1).max(300),
   description: z.string().nullable(),
   visibility: Visibility,
-  form_id: z.string().nullable(),
+  form_id: z.string().max(100).nullable(),
   body_markdown: z.string(),
   frontmatter: Frontmatter,
 });
@@ -95,6 +100,17 @@ export const PageDocument = PageFields.extend({
 
 /** A page as the editor reads it. */
 export type PageDocument = z.infer<typeof PageDocument>;
+
+/**
+ * Parses what a save sends: every field, since a save replaces the page and
+ * defaults none, except `parent_id`. Leaving that out keeps the page's parent,
+ * so a client that does not know about the hierarchy cannot detach a
+ * sub-page, and so publish it, by omission.
+ */
+export const SaveFields = PageFields.partial({ parent_id: true });
+
+/** What a save sends. */
+export type SaveFields = z.infer<typeof SaveFields>;
 
 /** A page's stored values, as a write sets them. */
 export interface PageValues {
@@ -189,23 +205,28 @@ export function creationOf(
 }
 
 /**
- * What saving `fields` over the stored page writes. Publication is stamped
- * the first time the page goes public and never moves after that.
+ * What saving `fields` over the stored page writes. The version moves
+ * strictly forward, so two saves in one millisecond still differ, and
+ * publication is stamped the first time the page goes public and never moves
+ * after that.
  */
 export function revisionOf(
   current: PageDocument,
   fields: PageFields,
   now: Date,
 ) {
+  const updatedAt = new Date(
+    Math.max(now.getTime(), Date.parse(current.updated_at) + 1),
+  );
   const publishedAt =
     current.published_at !== null
       ? new Date(current.published_at)
       : fields.visibility === "public"
-        ? now
+        ? updatedAt
         : null;
   return {
     values: pageValues(fields),
-    updatedAt: now,
+    updatedAt,
     publishedAt,
     action:
       current.published_at === null && publishedAt !== null

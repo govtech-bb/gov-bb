@@ -34,7 +34,8 @@
           {
             "schema": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "maxLength": 512
             },
             "in": "query",
             "name": "url",
@@ -284,6 +285,7 @@
                 "properties": {
                   "url": {
                     "type": "string",
+                    "maxLength": 512,
                     "pattern": "^\\/[^?#]*[^/?#]$",
                     "description": "The site's routing key."
                   },
@@ -302,7 +304,8 @@
                   },
                   "title": {
                     "type": "string",
-                    "minLength": 1
+                    "minLength": 1,
+                    "maxLength": 300
                   },
                   "description": {
                     "nullable": true,
@@ -318,7 +321,8 @@
                   },
                   "form_id": {
                     "nullable": true,
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                   },
                   "body_markdown": {
                     "type": "string"
@@ -382,6 +386,7 @@
                   "properties": {
                     "url": {
                       "type": "string",
+                      "maxLength": 512,
                       "pattern": "^\\/[^?#]*[^/?#]$",
                       "description": "The site's routing key."
                     },
@@ -400,7 +405,8 @@
                     },
                     "title": {
                       "type": "string",
-                      "minLength": 1
+                      "minLength": 1,
+                      "maxLength": 300
                     },
                     "description": {
                       "nullable": true,
@@ -416,7 +422,8 @@
                     },
                     "form_id": {
                       "nullable": true,
-                      "type": "string"
+                      "type": "string",
+                      "maxLength": 100
                     },
                     "body_markdown": {
                       "type": "string"
@@ -1511,6 +1518,7 @@
                   "properties": {
                     "url": {
                       "type": "string",
+                      "maxLength": 512,
                       "pattern": "^\\/[^?#]*[^/?#]$",
                       "description": "The site's routing key."
                     },
@@ -1529,7 +1537,8 @@
                     },
                     "title": {
                       "type": "string",
-                      "minLength": 1
+                      "minLength": 1,
+                      "maxLength": 300
                     },
                     "description": {
                       "nullable": true,
@@ -1545,7 +1554,8 @@
                     },
                     "form_id": {
                       "nullable": true,
-                      "type": "string"
+                      "type": "string",
+                      "maxLength": 100
                     },
                     "body_markdown": {
                       "type": "string"
@@ -1768,7 +1778,7 @@
         "tags": [
           "pages"
         ],
-        "description": "Requires an employee session and the editor's Origin header. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first.",
+        "description": "Requires an employee session and the editor's Origin header. Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first.",
         "requestBody": {
           "required": true,
           "content": {
@@ -1778,6 +1788,7 @@
                 "properties": {
                   "url": {
                     "type": "string",
+                    "maxLength": 512,
                     "pattern": "^\\/[^?#]*[^/?#]$",
                     "description": "The site's routing key."
                   },
@@ -1796,7 +1807,8 @@
                   },
                   "title": {
                     "type": "string",
-                    "minLength": 1
+                    "minLength": 1,
+                    "maxLength": 300
                   },
                   "description": {
                     "nullable": true,
@@ -1812,7 +1824,8 @@
                   },
                   "form_id": {
                     "nullable": true,
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                   },
                   "body_markdown": {
                     "type": "string"
@@ -1845,17 +1858,17 @@
                         "type": "string"
                       }
                     }
-                  },
-                  "id": {
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                   }
                 },
                 "required": [
                   "url",
+                  "category_id",
                   "title",
-                  "body_markdown"
+                  "description",
+                  "visibility",
+                  "form_id",
+                  "body_markdown",
+                  "frontmatter"
                 ]
               }
             }
@@ -1874,7 +1887,9 @@
           },
           {
             "schema": {
-              "type": "string"
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
             },
             "in": "header",
             "name": "if-updated-at",
@@ -1897,6 +1912,7 @@
                   "properties": {
                     "url": {
                       "type": "string",
+                      "maxLength": 512,
                       "pattern": "^\\/[^?#]*[^/?#]$",
                       "description": "The site's routing key."
                     },
@@ -1915,7 +1931,8 @@
                     },
                     "title": {
                       "type": "string",
-                      "minLength": 1
+                      "minLength": 1,
+                      "maxLength": 300
                     },
                     "description": {
                       "nullable": true,
@@ -1931,7 +1948,8 @@
                     },
                     "form_id": {
                       "nullable": true,
-                      "type": "string"
+                      "type": "string",
+                      "maxLength": 100
                     },
                     "body_markdown": {
                       "type": "string"

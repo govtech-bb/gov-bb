@@ -15,7 +15,7 @@ import {
   CategoryNode,
   SearchDocument,
 } from "../modules/navigation";
-import { NewPage, PageDocument, PageId } from "../modules/page";
+import { NewPage, PageDocument, PageId, SaveFields } from "../modules/page";
 import { PublicPage } from "../modules/page-visibility";
 import { EstateVersion } from "../services/editor-index";
 
@@ -73,7 +73,7 @@ export const SCHEMAS = {
       "(301) to the one visible page with that slug.",
     tags: ["pages"],
     ...siteRead,
-    querystring: z.object({ url: z.string().min(1) }),
+    querystring: z.object({ url: z.string().min(1).max(512) }),
     response: {
       200: PublicPage,
       301: z.object({ redirect: z.string() }),
@@ -188,21 +188,24 @@ export const SCHEMAS = {
     summary: "Save a page",
     description:
       "Requires an employee session and the editor's Origin header. " +
+      "Send every field: a save replaces the page and defaults none, except " +
+      "that leaving `parent_id` out keeps the page's parent. " +
       "Send the `updated_at` you last read in the `if-updated-at` header. " +
       "If the stored row has moved on since, the save is refused with a 409 " +
       "rather than silently discarding whoever wrote first.",
     tags: ["pages"],
     params: idParams,
     headers: z.object({
-      "if-updated-at": z
-        .string()
+      "if-updated-at": z.iso
+        .datetime({ offset: true })
+        .transform((value) => new Date(value))
         .optional()
         .describe(
           "The `updated_at` this client last read. Omit to accept " +
             "whatever is stored.",
         ),
     }),
-    body: NewPage,
+    body: SaveFields,
     security: editorSecurity,
     response: {
       200: PageDocument,

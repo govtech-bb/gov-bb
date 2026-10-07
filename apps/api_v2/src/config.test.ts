@@ -39,12 +39,21 @@ describe("auth configuration", () => {
       }).ok,
     ).toBe(true);
   });
+  it("seeds only when asked to, in any spelling of yes", () => {
+    const seed = (value: string | undefined) => {
+      const result = parseConfig({ ...required, SEED: value });
+      if (!result.ok) throw result.error;
+      return result.value.seed;
+    };
+    expect([undefined, "false", "0"].map(seed)).toEqual([false, false, false]);
+    expect(["true", "1", "yes"].map(seed)).toEqual([true, true, true]);
+  });
   it("keeps existing runtime defaults while redacting all credential representations", () => {
     const result = parseConfig(required);
     if (!result.ok) throw result.error;
     expect(result.value).toMatchObject({
       port: 3020,
-      seed: true,
+      seed: false,
       database: { host: "localhost", port: 5432, database: "gov_bb_v2" },
     });
     expect(result.value.auth.secret.reveal()).toBe(required.BETTER_AUTH_SECRET);

@@ -8,7 +8,7 @@
  * mean a newly added page never reached a database seeded before it, silently.
  */
 
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { writeSearchChunks } from "./adapters/postgres-pages";
 import type { Database } from "./db";
 import { chunkMarkdown } from "./modules/search-text";
@@ -114,12 +114,4 @@ export async function seed(db: Database): Promise<{
   }
 
   return counts;
-}
-
-/** True when the estate is empty, so boot can say something useful. */
-export async function isEmpty(db: Database): Promise<boolean> {
-  const { rows } = await db.execute<{ count: number }>(
-    sql`select count(*)::int as count from content_pages`,
-  );
-  return (rows[0]?.count ?? 0) === 0;
 }

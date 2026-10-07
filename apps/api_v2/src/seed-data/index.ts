@@ -6,37 +6,48 @@
  * the running API ships without the landing app's source.
  */
 
-import type { Frontmatter, Visibility } from "../modules/page";
+import { z } from "zod";
+import { Frontmatter, PageUrl, Visibility } from "../modules/page";
 import estateJson from "./estate.json";
 
-export interface SeedCategory {
-  slug: string;
-  title: string;
-  description: string | null;
+const SeedCategory = z.object({
+  slug: z.string(),
+  title: z.string(),
+  description: z.string().nullable(),
   /** The parent category's slug, for a subcategory. */
-  parent: string | null;
-  position: number;
-}
+  parent: z.string().nullable(),
+  position: z.int(),
+});
 
-export interface SeedPage {
-  url: string;
+/** A snapshotted category, filed under its parent's slug. */
+export type SeedCategory = z.infer<typeof SeedCategory>;
+
+const SeedPage = z.object({
+  url: PageUrl,
   /** A category slug, resolved to `category_id` at seed time. */
-  category: string | null;
+  category: z.string().nullable(),
   /** The parent page's url, resolved to `parent_id` at seed time. */
-  parent: string | null;
-  title: string;
-  description: string | null;
-  visibility: Visibility;
-  form_id: string | null;
+  parent: z.string().nullable(),
+  title: z.string(),
+  description: z.string().nullable(),
+  visibility: Visibility,
+  form_id: z.string().nullable(),
   /** The frontmatter's `publish_date`, when it has one. */
-  published_at: string | null;
-  body_markdown: string;
-  frontmatter: Frontmatter;
-}
+  published_at: z.string().nullable(),
+  body_markdown: z.string(),
+  frontmatter: Frontmatter,
+});
 
-export interface SeedEstate {
-  categories: SeedCategory[];
-  pages: SeedPage[];
-}
+/** A snapshotted page, filed under its category's slug and its parent's url. */
+export type SeedPage = z.infer<typeof SeedPage>;
 
-export const ESTATE = estateJson as SeedEstate;
+const SeedEstate = z.object({
+  categories: z.array(SeedCategory),
+  pages: z.array(SeedPage),
+});
+
+/** The snapshot as `scripts/build-seed-data.ts` writes it. */
+export type SeedEstate = z.infer<typeof SeedEstate>;
+
+/** The committed snapshot, parsed. */
+export const ESTATE = SeedEstate.parse(estateJson);

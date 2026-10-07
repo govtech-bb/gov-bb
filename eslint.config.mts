@@ -90,6 +90,13 @@ export default defineConfig([
         message: "Domain modules and services depend on domain values and narrow ports; compose infrastructure in main.ts.",
       }] }],
       "no-restricted-globals": ["error", "Request", "Response", "fetch"],
+    },
+  },
+  {
+    // Only the composition root reads the environment; the test harness reads its database settings.
+    files: ["apps/api_v2/src/**/*.ts"],
+    ignores: ["apps/api_v2/src/main.ts", "apps/api_v2/src/test-db.ts", "apps/api_v2/src/**/*.test.ts"],
+    rules: {
       "no-restricted-syntax": ["error", {
         selector: "MemberExpression[object.name='process'][property.name='env']",
         message: "Read environment variables only in the composition root.",
@@ -105,10 +112,6 @@ export default defineConfig([
         group: ["better-auth", "better-auth/**", "pg", "drizzle-orm", "drizzle-orm/**", "**/adapters/**", "**/config", "**/db", "**/main", "**/migrate", "**/schema", "**/seed"],
         message: "Routes receive services through buildApp's options; compose infrastructure in main.ts.",
       }] }],
-      "no-restricted-syntax": ["error", {
-        selector: "MemberExpression[object.name='process'][property.name='env']",
-        message: "Read environment variables only in the composition root.",
-      }],
     },
   },
   { files: ["**/*.json"], plugins: { json }, language: "json/json", extends: ["json/recommended"] },

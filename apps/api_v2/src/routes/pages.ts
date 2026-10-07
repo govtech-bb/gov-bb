@@ -125,11 +125,10 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     url: "/pages/:id",
     schema: SCHEMAS.savePage,
     handler: async (request, reply) => {
-      const header = request.headers[IF_UPDATED_AT];
       const saved = await editing.save(
         request.params.id,
         request.body,
-        header ? new Date(header) : null,
+        request.headers[IF_UPDATED_AT] ?? null,
         actor(request),
       );
       if (saved.ok) return saved.value;
@@ -162,7 +161,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     url: "/pages/:id",
     schema: SCHEMAS.deletePage,
     handler: async (request, reply) => {
-      const deleted = await editing.delete(request.params.id);
+      const deleted = await editing.delete(request.params.id, actor(request));
       if (deleted.ok) return reply.status(204).send();
       switch (deleted.error._tag) {
         case "PageRejected":

@@ -31,7 +31,7 @@ For local development only, `AUTH_BYPASS=true` skips sign-in. BetterAuth is not 
 | `DB_NAME`                                          | `gov_bb_v2`                                                                    |
 | `DB_SSL_CA`                                        | Optional PEM contents or CA file path; production uses verified TLS            |
 | `PORT`                                             | `3020`                                                                         |
-| `SEED`                                             | Only `false` disables the additive seed                                        |
+| `SEED`                                             | `true` loads the committed estate snapshot on boot; off by default             |
 | `BETTER_AUTH_URL`                                  | Required public API origin                                                     |
 | `EDITOR_ORIGIN`                                    | Required editor origin; the exact credentialed CORS and write-origin allowlist |
 | `BETTER_AUTH_SECRET`                               | Required secret of at least 32 characters                                      |
@@ -45,12 +45,12 @@ Production requires HTTPS API/editor origins on the same site, such as separate 
 
 `main.ts` is the composition root. It parses configuration, creates one logger and pool, connects, migrates and seeds, then constructs the adapters (`PostgresPages`, BetterAuth or the local bypass), the services over them, and the HTTP app, and on shutdown closes the app before the pool. `src/test-db.ts` composes the same graph for tests.
 
-| Layer | Directory | Owns |
-| --- | --- | --- |
-| Domain | `src/modules` | Page shapes and write rules (placement, publication), what a viewer may see, categories and what they list, service grouping, search text, auth admission. Pure: no I/O, no clock. |
-| Application | `src/services` | One use case each (`PageResolution`, `SiteNavigation`, `PageEditing`, `EditorIndex`, `EditorAccess`), with the ports it needs declared beside it. |
-| Outbound adapters | `src/adapters` | `PostgresPages` (all content SQL, including the recursive hierarchy reads), BetterAuth, the local bypass. |
-| Inbound adapters | `src/routes`, `src/app.ts` | Zod request/response contracts, the HTTP mapping of each result. |
+| Layer             | Directory                  | Owns                                                                                                                                                                               |
+| ----------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Domain            | `src/modules`              | Page shapes and write rules (placement, publication), what a viewer may see, categories and what they list, service grouping, search text, auth admission. Pure: no I/O, no clock. |
+| Application       | `src/services`             | One use case each (`PageResolution`, `SiteNavigation`, `PageEditing`, `EditorIndex`, `EditorAccess`), with the ports it needs declared beside it.                                  |
+| Outbound adapters | `src/adapters`             | `PostgresPages` (all content SQL, including the recursive hierarchy reads), BetterAuth, the local bypass.                                                                          |
+| Inbound adapters  | `src/routes`, `src/app.ts` | Zod request/response contracts, the HTTP mapping of each result.                                                                                                                   |
 
 Route plugins receive exactly the services they use as plugin options from `buildApp`; nothing is decorated onto the Fastify instance and nothing is autoloaded, so every dependency is visible where the app is composed. Expected failures are `Result` values that routes map to status codes; only defects throw. ESLint enforces the direction: domain and services cannot import Fastify, drizzle, pg, BetterAuth, adapters or routes, and routes cannot import infrastructure.
 
@@ -78,7 +78,7 @@ Migration `003_auth` adds BetterAuth's four core tables: `auth_user`, `auth_sess
 | DELETE   | `/pages/:id`         | Employee delete                                                    |
 | GET/POST | `/api/auth/*`        | BetterAuth's GitHub/session protocol                               |
 
-Missing, expired, or revoked sessions produce JSON 401 responses; disallowed employees or write origins produce 403; unavailable session verification produces 503. The API does not redirect protected content requests to GitHub—the editor handles navigation. Authenticated writes require `Origin: <EDITOR_ORIGIN>`. Auth/session/editor responses use `Cache-Control: no-store` and do not receive ETags. Create/save audit rows record the authenticated user ID, never a caller-supplied actor. Existing deletion and audit transaction behavior is unchanged.
+Missing, expired, or revoked sessions produce JSON 401 responses; disallowed employees or write origins produce 403; unavailable session verification produces 503. The API does not redirect protected content requests to GitHub—the editor handles navigation. Authenticated writes require `Origin: <EDITOR_ORIGIN>`. Auth/session/editor responses use `Cache-Control: no-store` and do not receive ETags. Create, save and delete audit rows record the authenticated user ID, never a caller-supplied actor, and commit with the write they record.
 
 Public site reads (`/pages?url=`, `/categories…`, `/catalog`, `/search/documents`) send `public, max-age=60, stale-while-revalidate=300, stale-if-error=86400`; unknown public URLs send `public, max-age=10`. ETags and 304s remain available for public reads. These routes do not look up or refresh employee sessions.
 
@@ -86,15 +86,17 @@ Preview: the site's server sends its `PREVIEW_SECRET` as `x-preview-token`, and 
 
 The hierarchy is `parent_id`, not the url. A page is served only when it and every page above it are visible; its breadcrumbs are its category (and parent category, for a subcategory), then the pages above it; a category lists only the pages at its root (`parent_id` null), so `start` steps and sub-pages never appear in a listing. A sub-page must share its parent's category (moving the parent moves its sub-pages), a page cannot sit beneath itself, and a page with sub-pages cannot be deleted: each is a field-specific 422.
 
-`GET /pages?url=` returns `{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs}`. `hide_start_links` is true when the page's `start` sub-page is hidden from the viewer. Whether a form is open is the forms API's to say: `form_id` is a name, and the site asks the forms API for the form's status. The API serves markdown as written; the site owns sanitization and rendering. Editor writes return field-specific 422s for invalid references or duplicates, 409 for a stale supplied version, and stamp `published_at` only on first publication.
+`GET /pages?url=` returns `{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs}`. `hide_start_links` is true when the page's `start` sub-page is hidden from the viewer. Whether a form is open is the forms API's to say: `form_id` is a name, and the site asks the forms API for the form's status. The API serves markdown as written; the site owns sanitization and rendering. Editor writes return field-specific 422s for invalid references or duplicates, 409 for a stale supplied version, and stamp `published_at` only on first publication. A save replaces the page, so it sends every field; only `parent_id` may be left out, which keeps the page's parent. A request its route's schema refuses (a missing field, an id that is not a UUID, an `if-updated-at` that is not a timestamp, a url over 512 characters, a title over 300) is a 400; Fastify's own refusals keep their status (a body that is not JSON is a 415), and an unknown route is a JSON 404.
 
 `search_chunks` holds each page's body split at its headings, as plain text, rewritten in the same transaction as every save. Rejoined, a page's chunks are exactly the text landing's search indexes today (`search-text.test.ts` checks every seeded page), so moving search onto the API does not move its ranking. The generated `tsv` column and its GIN index are there for server-side search and are not read yet.
 
-The seed is a committed snapshot of legacy markdown and the category taxonomy, subcategories included, with each sub-page's parent. Inserts are additive and idempotent and never replace authored changes. Regenerate it with `pnpm seed-data` when intentionally updating the snapshot.
+The seed is a committed snapshot of legacy markdown and the category taxonomy, subcategories included, with each sub-page's parent. Inserts are additive and idempotent and never replace authored changes. It runs only with `SEED=true`, because an additive insert also brings back a page an editor deleted. Regenerate it with `pnpm seed-data` when intentionally updating the snapshot.
 
 ## Operations and tests
 
 SIGINT/SIGTERM drain HTTP requests before closing the shared pool; startup failures also release acquired resources. JSON logs omit cookies, OAuth callback query parameters, provider tokens and raw driver error objects. The exact warning `idle database connection dropped` remains the operational alarm marker; its safe `code` identifies the failure. Public content failures continue to use the existing 500 response, while authentication outages fail closed with 503.
+
+Migrations run at boot. Each script commits with its `schema_migrations` row under a PostgreSQL advisory lock, so instances that boot together apply them one at a time; every script must be safe to replay, because an instance that waited on the lock runs it again.
 
 ```sh
 pnpm exec nx run api_v2:build

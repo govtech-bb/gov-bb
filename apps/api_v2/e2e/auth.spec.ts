@@ -31,7 +31,7 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
 
   beforeAll(async () => {
     database = await createScratchDatabase();
-    server = await startServer({ DB_NAME: database });
+    server = await startServer({ DB_NAME: database, SEED: "true" });
     employee = await createEmployeeSession(database, server.url);
     pool = new Pool({ ...DB, database });
     const config = parseConfig({ ...AUTH_ENV, BETTER_AUTH_URL: server.url });

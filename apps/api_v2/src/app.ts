@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { STATUS_CODES } from "node:http";
 import Fastify, {
   LogController,
   type FastifyBaseLogger,
@@ -126,14 +127,29 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   });
 
   app.setErrorHandler((error: FastifyError, request, reply) => {
-    if (error.validation)
-      return reply
-        .status(400)
-        .send({ error: "bad_request", message: error.message });
-    // Database errors can contain SQL parameters, and auth errors can contain tokens.
-    request.log.error({ failure: "internal_error" }, "request failed");
+    // Fastify's own refusals (invalid JSON, wrong content type, too large,
+    // schema validation) carry their 4xx status; only failures are 500s.
+    const status = error.statusCode ?? 500;
+    if (status < 500)
+      return reply.status(status).send({
+        error: (STATUS_CODES[status] ?? "error")
+          .toLowerCase()
+          .replaceAll(" ", "_"),
+        message: error.message,
+      });
+    // The message can carry SQL parameters or tokens, so only the code is logged.
+    request.log.error(
+      { failure: "internal_error", code: error.code },
+      "request failed",
+    );
     return reply.status(500).send({ error: "internal_error" });
   });
+  app.setNotFoundHandler((request, reply) =>
+    reply.status(404).send({
+      error: "not_found",
+      message: `No route for ${request.method} ${request.url.split("?")[0]}`,
+    }),
+  );
 
   await app.register(siteRoutes, {
     resolution: options.resolution,

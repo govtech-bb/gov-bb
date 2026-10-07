@@ -14,6 +14,7 @@ import {
   type PageId,
   type PageRejected,
   type PageValues,
+  type SaveFields,
 } from "../modules/page";
 import { err, ok, type Result } from "../modules/result";
 import { chunkMarkdown, type SearchChunk } from "../modules/search-text";
@@ -139,13 +140,13 @@ export class PageEditing {
   }
 
   /**
-   * Save a page. With `expectedUpdatedAt`, a page that has moved on since the
-   * caller read it is refused rather than silently discarding whoever wrote
-   * first; without it the caller accepts whatever is stored.
+   * Replace a page's fields. With `expectedUpdatedAt`, a page that has moved
+   * on since the caller read it is refused rather than silently discarding
+   * whoever wrote first; without it the caller accepts whatever is stored.
    */
   save(
     id: PageId,
-    input: NewPage,
+    fields: SaveFields,
     expectedUpdatedAt: Date | null,
     actor: Employee,
   ): Promise<
@@ -165,12 +166,11 @@ export class PageEditing {
       )
         return err(new PageConflict(id));
 
-      // A client that does not know about the hierarchy must not detach a
-      // sub-page, and so publish it, by leaving parent_id out.
+      // Null moves the page to its category's root; only leaving it out keeps the parent.
       const placed = await place(records, id, {
-        ...withDefaults(input),
+        ...fields,
         parent_id:
-          input.parent_id === undefined ? current.parent_id : input.parent_id,
+          fields.parent_id === undefined ? current.parent_id : fields.parent_id,
       });
       if (!placed.ok) return placed;
       const revision = revisionOf(current, placed.value, this.clock());
@@ -197,13 +197,21 @@ export class PageEditing {
     });
   }
 
-  /** Delete a page; one with sub-pages is refused, and one already gone is not an error. */
+  /** Delete a page and audit it; one with sub-pages is refused, and one already gone is not an error. */
   delete(
     id: PageId,
+    actor: Employee,
   ): Promise<Result<void, PageRejected | ContentStoreUnavailable>> {
     return this.records.atomically(async (records) => {
       const removed = await records.remove(id);
-      return removed.ok ? ok(undefined) : removed;
+      if (!removed.ok) return removed;
+      if (removed.value === null) return ok(undefined);
+      const logged = await records.appendChange({
+        page: removed.value,
+        action: "deleted",
+        actorId: actor.id,
+      });
+      return logged.ok ? ok(undefined) : logged;
     });
   }
 }

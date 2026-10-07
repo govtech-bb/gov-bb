@@ -66,7 +66,8 @@ const environment = z
   .object({
     NODE_ENV: z.string().optional(),
     PORT: z.coerce.number().int().min(0).max(65535).default(3020),
-    SEED: z.string().optional(),
+    // Opt-in: re-seeding on every boot would bring back pages editors deleted.
+    SEED: z.stringbool().default(false),
     DB_HOST: z.string().default("localhost"),
     DB_PORT: z.coerce.number().int().min(1).max(65535).default(5432),
     DB_USERNAME: z.string().default("postgres"),
@@ -121,7 +122,7 @@ export function parseConfig(
   const env = parsed.data;
   return ok({
     port: env.PORT,
-    seed: env.SEED !== "false",
+    seed: env.SEED,
     ...(env.PREVIEW_SECRET
       ? { previewSecret: new Redacted(env.PREVIEW_SECRET) }
       : {}),

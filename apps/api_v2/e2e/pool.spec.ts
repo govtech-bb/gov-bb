@@ -35,7 +35,7 @@ describe.skipIf(!HAS_DATABASE)(
 
     beforeAll(async () => {
       database = await createScratchDatabase();
-      server = await startServer({ DB_NAME: database });
+      server = await startServer({ DB_NAME: database, SEED: "true" });
       employee = await createEmployeeSession(database, server.url);
     });
 

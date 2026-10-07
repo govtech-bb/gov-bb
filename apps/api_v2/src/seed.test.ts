@@ -8,7 +8,14 @@ import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { seed } from "./seed";
 import { ESTATE } from "./seed-data";
-import { createTestDb, createTestServices, expectOk } from "./test-db";
+import { Redacted } from "./modules/redacted";
+import { PREVIEW_TOKEN } from "./routes/site";
+import {
+  createTestApp,
+  createTestDb,
+  createTestServices,
+  expectOk,
+} from "./test-db";
 
 describe("seed", () => {
   it("loads every page and category, and a second run adds nothing", async () => {
@@ -123,6 +130,31 @@ describe("seed", () => {
     );
     expect(rows).toEqual([{ unindexed: 0 }]);
 
+    await close();
+  }, 60_000);
+
+  it("serves every seeded url, to the public and in preview, without a 500", async () => {
+    // Responses are checked against their schema on the way out, so a page
+    // the contract cannot describe would fail here rather than in production.
+    const { db, close } = await createTestDb();
+    await seed(db);
+    const app = await createTestApp(db, {
+      previewSecret: new Redacted("preview"),
+    });
+
+    const failed: string[] = [];
+    for (const { url } of ESTATE.pages) {
+      for (const headers of [{}, { [PREVIEW_TOKEN]: "preview" }]) {
+        const response = await app.inject({
+          url: `/pages?url=${encodeURIComponent(url)}`,
+          headers,
+        });
+        if (response.statusCode >= 500) failed.push(url);
+      }
+    }
+    expect(failed).toEqual([]);
+
+    await app.close();
     await close();
   }, 60_000);
 });

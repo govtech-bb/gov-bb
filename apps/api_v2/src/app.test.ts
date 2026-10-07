@@ -16,7 +16,7 @@ import pino from "pino";
 import { IF_UPDATED_AT } from "./routes/pages";
 import { PUBLIC_READ } from "./routes/responses";
 import type { Database } from "./db";
-import type { Visibility } from "./modules/page";
+import { withDefaults, type Visibility } from "./modules/page";
 import { categories, changeEvents, searchChunks } from "./schema";
 import {
   aPage,
@@ -508,11 +508,42 @@ describe("PUT /pages/:id", () => {
     );
   });
 
+  it("400s a save that leaves a field out, rather than resetting it", async () => {
+    const created = await seedPage({ form_id: "severance-calculator" });
+    const { form_id, ...partial } = created;
+
+    const response = await inject({
+      method: "PUT",
+      url: `/pages/${created.id}`,
+      payload: partial,
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(expectOk(await services.editing.get(created.id))?.form_id).toBe(
+      "severance-calculator",
+    );
+  });
+
+  it("400s an if-updated-at that is not a timestamp, rather than saving unconditionally", async () => {
+    const created = await seedPage();
+    const response = await inject({
+      method: "PUT",
+      url: `/pages/${created.id}`,
+      headers: { [IF_UPDATED_AT]: "yesterday" },
+      payload: { ...created, title: "Saved by accident" },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(expectOk(await services.editing.get(created.id))?.title).toBe(
+      created.title,
+    );
+  });
+
   it("404s a page that is not there", async () => {
     const response = await inject({
       method: "PUT",
       url: "/pages/22222222-2222-4222-8222-222222222222",
-      payload: aPage(),
+      payload: withDefaults(aPage()),
     });
     expect(response.statusCode).toBe(404);
   });
@@ -569,11 +600,12 @@ describe("PUT /pages/:id", () => {
     // hierarchy must not detach a sub-page (and so publish it) by omission.
     const parent = await seedPage({ visibility: "draft" });
     const child = await seedPage({ url: START, parent_id: parent.id });
+    const { parent_id, ...unplaced } = child;
 
     const response = await inject({
       method: "PUT",
       url: `/pages/${child.id}`,
-      payload: aPage({ url: START, title: "Renamed" }),
+      payload: { ...unplaced, title: "Renamed" },
     });
 
     expect(response.statusCode).toBe(200);
@@ -691,6 +723,21 @@ describe("DELETE /pages/:id", () => {
     expect(expectOk(await services.editing.get(created.id))).toBeNull();
   });
 
+  it("records who deleted the page, which moves the version", async () => {
+    const created = await seedPage();
+    await inject({ method: "DELETE", url: `/pages/${created.id}` });
+
+    const events = await db
+      .select({ action: changeEvents.action, actor: changeEvents.actor })
+      .from(changeEvents)
+      .orderBy(changeEvents.versionNo);
+    expect(events).toEqual([
+      { action: "created", actor: TEST_EMPLOYEE.id },
+      { action: "deleted", actor: TEST_EMPLOYEE.id },
+    ]);
+    expect(expectOk(await services.index.version()).count).toBe(2);
+  });
+
   it("422s a page that still has sub-pages, and keeps it", async () => {
     const parent = await seedPage();
     await seedPage({ url: START, parent_id: parent.id });
@@ -703,6 +750,55 @@ describe("DELETE /pages/:id", () => {
     expect(response.statusCode).toBe(422);
     expect(response.json().errors[0].field).toBe("id");
     expect(expectOk(await services.editing.get(parent.id))).not.toBeNull();
+  });
+});
+
+describe("client errors", () => {
+  it("400s a body that is not valid JSON", async () => {
+    const response = await inject({
+      method: "POST",
+      url: "/pages",
+      headers: { "content-type": "application/json" },
+      payload: "{",
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toBe("bad_request");
+  });
+
+  it("415s a body that is not JSON at all", async () => {
+    const response = await inject({
+      method: "POST",
+      url: "/pages",
+      headers: { "content-type": "text/csv" },
+      payload: "url,title",
+    });
+    expect(response.statusCode).toBe(415);
+    expect(response.json().error).toBe("unsupported_media_type");
+  });
+
+  it.each([
+    ["a title over 300 characters", { title: "x".repeat(301) }],
+    ["a url over 512 characters", { url: `/${"x".repeat(512)}/pay` }],
+  ])("400s a page with %s", async (_name, overrides) => {
+    const response = await inject({
+      method: "POST",
+      url: "/pages",
+      payload: aPage(overrides),
+    });
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("400s a read of a url over 512 characters", async () => {
+    expect((await read(`/${"x".repeat(512)}`)).statusCode).toBe(400);
+  });
+
+  it("answers a route that does not exist with a JSON 404", async () => {
+    const response = await inject({ url: "/nowhere?x=1" });
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({
+      error: "not_found",
+      message: "No route for GET /nowhere",
+    });
   });
 });
 
@@ -927,7 +1023,7 @@ describe("employee access", () => {
     const saved = await inject({
       method: "PUT",
       url: `/pages/${created.json().id}`,
-      payload: aPage({ title: "Updated" }),
+      payload: withDefaults(aPage({ title: "Updated" })),
     });
     expect(saved.statusCode).toBe(200);
     const events = await db
