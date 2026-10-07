@@ -27,6 +27,8 @@ import {
 } from '../lib/service-status'
 import { shouldHideStartLink } from '../lib/hide-start-link'
 import { checkFormAccessible } from '../lib/preview-form-access'
+import { getApiV2Page } from '../lib/api-v2-page'
+import type { SerializedContentPage } from '../lib/api-v2-page'
 import { seoTags } from '../lib/page-head'
 import {
   buildGovernmentServiceLd,
@@ -49,12 +51,14 @@ const toListItem = (p: ContentPage): CategoryListItem => ({
 
 type LoaderData =
   | {
-      // Only the URL crosses the loader→client serialization boundary; the
-      // full page (incl. its component function, which seroval can't serialize)
-      // is re-resolved from the registry — a module constant on both sides — at
-      // render time.
+      // A static page sends only its URL across the loader→client
+      // serialization boundary; the full page (incl. its component function,
+      // which seroval can't serialize) is re-resolved from the registry — a
+      // module constant on both sides — at render time. An api_v2 page (#2944)
+      // isn't in the registry, so it sends the page itself.
       kind: 'page'
       url: string
+      page?: SerializedContentPage
       availableForms: string[]
       underMaintenance: boolean
       /** Whether the form's application window has closed (#1936) — for the
@@ -106,9 +110,24 @@ export const Route = createFileRoute('/$')({
       }
     }
 
-    const page = findPage(splat)
+    // api_v2 first (#2944): it serves only public pages, so a miss (or no
+    // api_v2 configured) falls back to the static registry page. A known
+    // subcategory listing is never an api_v2 page, so it skips the round
+    // trip (#2950); `findPage` still runs first, keeping today's precedence.
+    const isSubcategory =
+      segments.length === 2 &&
+      CATEGORY_BY_SLUG[segments[0]] !== undefined &&
+      getSubcategory(segments[0], segments[1]) !== undefined
+    const v2 = isSubcategory
+      ? ({ kind: 'miss' } as const)
+      : await getApiV2Page({ data: `/${splat}` })
+    if (v2.kind === 'redirect') throw redirect({ href: v2.to, statusCode: 301 })
+    const v2Page = v2.kind === 'page' ? v2.page : undefined
+    const page = v2Page ?? findPage(splat)
     if (page) {
-      if (!isVisible(page, level, overlay)) throw notFound()
+      // api_v2 already enforced visibility, and the status overlay never
+      // changes an api_v2 page's; the form-level state below still applies.
+      if (!v2Page && !isVisible(page, level, overlay)) throw notFound()
       // Only content pages render Start now buttons, so the forms list is
       // resolved here (server-side, cached) and nowhere else.
       let availableForms = await getAvailableForms()
@@ -168,8 +187,11 @@ export const Route = createFileRoute('/$')({
         availableForms,
         underMaintenance,
         applicationClosed,
-        level: pageLevel(page, overlay),
-        startSubPageVisible: isStartSubPageVisible(page, level, overlay),
+        level: v2Page ? 'public' : pageLevel(page, overlay),
+        startSubPageVisible: v2Page
+          ? !v2Page.hideStartLinks
+          : isStartSubPageVisible(page, level, overlay),
+        page: v2Page,
       }
     }
 
@@ -200,7 +222,7 @@ export const Route = createFileRoute('/$')({
   head: ({ loaderData }) => {
     if (!loaderData) return {}
     if (loaderData.kind === 'page') {
-      const page = findPage(loaderData.url)
+      const page = loaderData.page ?? findPage(loaderData.url)
       if (!page) return {}
       const title = page.frontmatter.title
       const isPublic = loaderData.level === 'public'
@@ -262,7 +284,7 @@ export const Route = createFileRoute('/$')({
 function ContentRoute() {
   const data = Route.useLoaderData()
   if (data.kind === 'page') {
-    const page = findPage(data.url)
+    const page = data.page ?? findPage(data.url)
     if (!page) throw notFound()
     return (
       <PageView
