@@ -15,6 +15,7 @@ import {
   createTestApp,
   createTestDb,
   TEST_EMPLOYEE,
+  TEST_HTTP_CONFIG,
   type TestDb,
 } from "./test-db";
 
@@ -133,6 +134,23 @@ describe("GET /categories", () => {
         },
       ],
     });
+  });
+});
+
+describe("Vary", () => {
+  it("keys public reads on the preview token without dropping CORS's Origin", async () => {
+    const response = await app.inject({
+      url: "/categories",
+      headers: { origin: TEST_HTTP_CONFIG.editorOrigin },
+    });
+
+    expect(response.headers["access-control-allow-origin"]).toBe(
+      TEST_HTTP_CONFIG.editorOrigin,
+    );
+    const vary = String(response.headers.vary)
+      .split(",")
+      .map((value) => value.trim().toLowerCase());
+    expect(vary).toEqual(expect.arrayContaining(["origin", "x-preview-token"]));
   });
 });
 

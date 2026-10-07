@@ -48,7 +48,12 @@ export async function siteRead<T>(
   missing = "Not found",
 ) {
   // Public and preview reads share a url, so a cache must key on the token.
-  reply.header("Vary", PREVIEW_TOKEN);
+  // Appended, not set: CORS has already added `Origin`.
+  const vary = reply.getHeader("Vary");
+  reply.header(
+    "Vary",
+    vary ? `${String(vary)}, ${PREVIEW_TOKEN}` : PREVIEW_TOKEN,
+  );
   const viewer = viewerOf(request, secret);
   if (viewer === null) {
     return reply

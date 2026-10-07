@@ -597,6 +597,49 @@ describe("PUT /pages/:id", () => {
     expect((await read("/c")).statusCode).toBe(200);
   });
 
+  it("moves sub-pages, all the way down, when their parent changes category", async () => {
+    const from = await seedCategory();
+    const [to] = await db
+      .insert(categories)
+      .values({ slug: "work-employment", title: "Work" })
+      .returning();
+    const parent = await seedPage({ category_id: from.id });
+    const start = await seedPage({ url: START, parent_id: parent.id });
+    const below = await seedPage({ url: `${START}/more`, parent_id: start.id });
+
+    const response = await inject({
+      method: "PUT",
+      url: `/pages/${parent.id}`,
+      payload: { ...parent, category_id: to.id },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect((await store.get(start.id))?.category_id).toBe(to.id);
+    expect((await store.get(below.id))?.category_id).toBe(to.id);
+  });
+
+  it("files an uncategorised parent's sub-pages when it gets a category", async () => {
+    // The composite key skips rows whose category is null, so this case is
+    // the store's to carry, not the cascade's.
+    const category = await seedCategory();
+    const parent = await seedPage();
+    const start = await seedPage({ url: START, parent_id: parent.id });
+    const below = await seedPage({ url: `${START}/more`, parent_id: start.id });
+
+    await inject({
+      method: "PUT",
+      url: `/pages/${parent.id}`,
+      payload: { ...parent, category_id: category.id },
+    });
+
+    expect((await store.get(start.id))?.category_id).toBe(category.id);
+    expect((await store.get(below.id))?.category_id).toBe(category.id);
+    expect((await read(START)).json().breadcrumbs[0]).toEqual({
+      name: "Money and financial support",
+      url: "/money-financial-support",
+    });
+  });
+
   it("re-cuts the page's search chunks from the saved body", async () => {
     const created = await seedPage({ body_markdown: "Old text" });
     await inject({
@@ -748,10 +791,9 @@ describe("CORS", () => {
     );
   });
 
-  it("refuses landing_v2's origin, now that every fetch is server-side", async () => {
-    // Assumption (#2702): landing_v2 fetches api_v2 from its own server, not
-    // the browser, so its origin never meets CORS and came out of the
-    // default allow-list.
+  it("refuses a site's origin, since sites fetch from their own server", async () => {
+    // Assumption (#2702): the site reads api_v2 from its server, not the
+    // browser, so only the editor's origin is on the allow-list.
     const response = await inject({
       method: "GET",
       url: "/pages?url=/x",

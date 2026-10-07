@@ -726,6 +726,28 @@ export class ApiStore {
     return { parentId, categoryId };
   }
 
+  /**
+   * Give a page's uncategorised sub-pages, all the way down, its category.
+   * `on update cascade` moves sub-pages that had the parent's old category,
+   * but the composite key skips a row whose category is null, so a parent
+   * that gains its first category would otherwise leave them behind.
+   */
+  private async fileUncategorisedBelow(
+    tx: Transaction,
+    id: string,
+    categoryId: string,
+  ) {
+    await tx.execute(sql`
+      with recursive below as (
+        select id from content_pages where parent_id = ${id}
+        union all
+        select p.id from content_pages p join below b on p.parent_id = b.id
+      ) cycle id set is_cycle using path
+      update content_pages set category_id = ${categoryId}
+        where category_id is null
+          and id in (select id from below where not is_cycle)`);
+  }
+
   /** A page cannot sit beneath itself, directly or further down. */
   private async refuseCycle(tx: Transaction, id: string, parentId: string) {
     const above = await tx.execute<{ id: string }>(sql`
@@ -806,6 +828,9 @@ export class ApiStore {
         if (updated.length === 0) return null;
 
         const document = toDocument(updated[0]);
+        if (document.category_id !== null) {
+          await this.fileUncategorisedBelow(tx, id, document.category_id);
+        }
         await writeSearchChunks(tx, id, document.body_markdown);
         const firstPublished = document.published_at === now.toISOString();
         await this.appendChangeEvent(

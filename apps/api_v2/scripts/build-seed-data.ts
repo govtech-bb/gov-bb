@@ -11,8 +11,8 @@
  *   registry gives it — primary category, then subcategory, then leaf. A
  *   page is filed under its subcategory when it names one. A sub-page such
  *   as `<service>/start` hangs off its parent's url, takes its parent's
- *   category and records the parent; so do the pages landing nests by
- *   `PARENT_PATHS` without nesting their url. A second category is dropped:
+ *   category and records the parent; so do the pages landing nests without
+ *   nesting their url (`NESTED_WITHOUT_URL`). A second category is dropped:
  *   a page has one `category_id`.
  * - categories: `CATEGORY_TAXONOMY` in its order, each subcategory a
  *   category with a parent.
@@ -23,8 +23,6 @@ import { join, relative } from "node:path";
 import { execFileSync } from "node:child_process";
 import matter from "gray-matter";
 import { CATEGORY_TAXONOMY } from "@govtech-bb/content/categories";
-// The hierarchy landing hardcodes; once seeded, the database records it.
-import { PARENT_PATHS } from "../../landing/src/lib/breadcrumb-hierarchy";
 import type { Frontmatter } from "../src/schema";
 import type { SeedEstate, SeedPage } from "../src/seed-data";
 
@@ -131,12 +129,19 @@ const categoryOf = (page: Parsed): string | null =>
     ? categoryOf(bySlug.get(parentSlug(page.path)!)!)
     : null);
 
-const nestedUrls = new Map(
-  Object.entries(PARENT_PATHS).map(([child, parent]) => [
-    `/${child}`,
-    `/${parent}`,
-  ]),
-);
+/**
+ * Pages beneath a parent their url does not nest under: landing's
+ * `PARENT_PATHS` (`apps/landing/src/lib/breadcrumb-hierarchy.ts`), copied
+ * rather than imported so this script does not reach into another app and
+ * survives landing deleting it once it reads `parent_id`. Child url → parent.
+ */
+const NESTED_WITHOUT_URL: Record<string, string> = {
+  "/health-and-emergency-services/free-or-subsidised-medication":
+    "/health-and-emergency-services/find-an-open-pharmacy",
+  "/health-and-emergency-services/prescription-colours":
+    "/health-and-emergency-services/find-an-open-pharmacy",
+};
+const nestedUrls = new Map(Object.entries(NESTED_WITHOUT_URL));
 
 const parentUrlOf = (page: Parsed): string | null => {
   const parent = bySlug.get(parentSlug(page.path) ?? "");

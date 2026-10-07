@@ -10,8 +10,8 @@ import swagger from "@fastify/swagger";
 import { OPENAPI_DOCUMENT } from "./openapi";
 import type { Redacted } from "./modules/redacted";
 import { registerAuthRoutes, type AuthHandler } from "./routes/auth";
-import { EDITOR_READ, IF_UPDATED_AT, registerPageRoutes } from "./routes/pages";
-import { registerSiteRoutes } from "./routes/site";
+import { IF_UPDATED_AT, registerPageRoutes } from "./routes/pages";
+import { EDITOR_READ, registerSiteRoutes } from "./routes/site";
 import type { EditorAccess } from "./services/editor-access";
 import {
   ConflictError,
@@ -20,12 +20,8 @@ import {
   type ApiStore,
 } from "./store";
 
-export {
-  EDITOR_READ,
-  IF_UPDATED_AT,
-  NOT_FOUND_READ,
-  PUBLIC_READ,
-} from "./routes/pages";
+export { IF_UPDATED_AT } from "./routes/pages";
+export { EDITOR_READ, NOT_FOUND_READ, PUBLIC_READ } from "./routes/site";
 
 /** A Scalar reference page over the generated spec. */
 const DOCS_HTML = `<!doctype html>

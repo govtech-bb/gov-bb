@@ -8,7 +8,7 @@
  * the two agree.
  *
  * `content_pages.body_markdown` is the page body, stored as written; the site
- * renders it (landing_v2 sanitises and compiles it). The block document of
+ * sanitises and renders it. The block document of
  * ADR 0074 returns as a later change.
  */
 
