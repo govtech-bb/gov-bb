@@ -44,6 +44,10 @@
     {
       "key": "subPageId",
       "value": ""
+    },
+    {
+      "key": "serviceId",
+      "value": ""
     }
   ],
   "item": [
@@ -467,6 +471,83 @@
                   "pm.test('200 with count', () => {",
                   "  pm.response.to.have.status(200);",
                   "  pm.expect(pm.response.json()).to.have.property('count');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List services",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "better-auth.session_token={{sessionToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/services"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 with services', () => pm.response.to.have.status(200));",
+                  "const [first] = pm.response.json();",
+                  "if (first) pm.collectionVariables.set('serviceId', first.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Open a service",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "better-auth.session_token={{sessionToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/services/{{serviceId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 with its pages, entry first', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().pages[0].role).to.equal('entry');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Every category, for filing pages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "better-auth.session_token={{sessionToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/taxonomy"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 with categories and ids', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().categories[0]).to.have.property('id');",
                   "});"
                 ]
               }

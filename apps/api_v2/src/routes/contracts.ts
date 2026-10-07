@@ -8,12 +8,13 @@
 
 import type { FastifySchema } from "fastify";
 import { z } from "zod";
-import { ServiceSummary } from "../modules/estate-services";
+import { ServiceDetail, ServiceSummary } from "../modules/estate-services";
 import {
   CatalogEntry,
   CategoryListing,
   CategoryNode,
   SearchDocument,
+  TaxonomyEntry,
 } from "../modules/navigation";
 import { NewPage, PageDocument, PageId, SaveFields } from "../modules/page";
 import { PublicPage } from "../modules/page-visibility";
@@ -244,6 +245,37 @@ export const SCHEMAS = {
     tags: ["pages"],
     security: editorSecurity,
     response: { 200: z.array(ServiceSummary), 500: error, ...authErrors },
+  },
+
+  getService: {
+    summary: "Open a service",
+    description:
+      "Its entry page and every page below it by `parent_id`, each before " +
+      "the pages below it. 404 when the page is not a service's entry.",
+    tags: ["pages"],
+    params: idParams,
+    security: editorSecurity,
+    response: {
+      200: ServiceDetail,
+      400: error,
+      404: error,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  getTaxonomy: {
+    summary: "Every category a page can be filed under",
+    description:
+      "Each category with its id, followed by its subcategories, whether or " +
+      "not it lists anything yet: what a page's `category_id` can name.",
+    tags: ["categories"],
+    security: editorSecurity,
+    response: {
+      200: z.object({ categories: z.array(TaxonomyEntry) }),
+      500: error,
+      ...authErrors,
+    },
   },
 
   version: {

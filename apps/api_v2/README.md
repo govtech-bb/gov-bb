@@ -69,6 +69,8 @@ Migration `003_auth` adds BetterAuth's four core tables: `auth_user`, `auth_sess
 | GET      | `/docs/openapi.json` | Public OpenAPI document                                            |
 | GET      | `/pages/:id`         | Employee; includes drafts and previews                             |
 | GET      | `/services`          | Employee service index, grouped by `parent_id`                     |
+| GET      | `/services/:id`      | Employee; one service's pages with their roles, entry first        |
+| GET      | `/taxonomy`          | Employee; every category with its id, for filing pages             |
 | GET      | `/version`           | Employee change token                                              |
 | POST     | `/pages`             | Employee create                                                    |
 | PUT      | `/pages/:id`         | Employee save; existing optional `if-updated-at` concurrency check |

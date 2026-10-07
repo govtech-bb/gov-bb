@@ -106,6 +106,21 @@ export const SearchDocument = PageSummary.extend({
 /** A page as search indexes it. */
 export type SearchDocument = z.infer<typeof SearchDocument>;
 
+/** A category as the editor files pages under it: any category, with its id. */
+export const TaxonomyEntry = z.object({
+  id: z.guid(),
+  parent_id: z
+    .guid()
+    .nullable()
+    .describe("The category this is a subcategory of, or null."),
+  slug: z.string(),
+  url: z.string().describe("`/<category>`, or `/<category>/<subcategory>`."),
+  title: z.string(),
+});
+
+/** A category as the editor files pages under it. */
+export type TaxonomyEntry = z.infer<typeof TaxonomyEntry>;
+
 const byTitle = <T extends { title: string }>(a: T, b: T) =>
   a.title.localeCompare(b.title);
 
@@ -141,6 +156,25 @@ export function categoryCrumbs(
     name: row.title,
     url: urlOf(row, categories),
   }));
+}
+
+/** Every category, each followed by its subcategories, whether or not it lists anything. */
+export function taxonomyOf(
+  categories: readonly CategoryRecord[],
+): TaxonomyEntry[] {
+  return categories
+    .filter((row) => row.parentId === null)
+    .flatMap((row) => [
+      row,
+      ...categories.filter((sub) => sub.parentId === row.id),
+    ])
+    .map((row) => ({
+      id: row.id,
+      parent_id: row.parentId,
+      slug: row.slug,
+      url: urlOf(row, categories),
+      title: row.title,
+    }));
 }
 
 /**

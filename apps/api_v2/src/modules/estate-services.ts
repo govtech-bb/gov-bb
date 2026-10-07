@@ -42,6 +42,36 @@ export const ServiceSummary = z.object({
 /** A service as the editor's list shows it. */
 export type ServiceSummary = z.infer<typeof ServiceSummary>;
 
+/** A page of a service, as the editor opens it. */
+export const ServicePage = z.object({
+  id: PageId,
+  parent_id: PageId.nullable(),
+  role: z.enum(["entry", "start", "supporting"]),
+  url: z.string(),
+  slug: z.string(),
+  title: z.string(),
+  visibility: Visibility,
+  form_id: z.string().nullable(),
+  updated_at: z.iso.datetime(),
+});
+
+/** A page of a service, as the editor opens it. */
+export type ServicePage = z.infer<typeof ServicePage>;
+
+/** A service as the editor opens it: its summary and every page in it. */
+export const ServiceDetail = z.object({
+  service: ServiceSummary,
+  pages: z
+    .array(ServicePage)
+    .describe("The entry page, then each page before the pages below it."),
+});
+
+/** A service as the editor opens it. */
+export type ServiceDetail = z.infer<typeof ServiceDetail>;
+
+const isStartOf = (page: IndexedPage, entry: IndexedPage) =>
+  page.parentId === entry.id && page.slug === "start";
+
 /** Group pages into services by `parent_id`, ordered by title. */
 export function groupServices(pages: readonly IndexedPage[]): ServiceSummary[] {
   // ponytail: groups the whole estate in memory; move to SQL or page it past a few thousand pages.
@@ -65,9 +95,7 @@ export function groupServices(pages: readonly IndexedPage[]): ServiceSummary[] {
     .flatMap(([rootId, members]) => {
       const entry = byId.get(rootId);
       if (!entry?.category) return [];
-      const start = members.find(
-        (page) => page.parentId === entry.id && page.slug === "start",
-      );
+      const start = members.find((page) => isStartOf(page, entry));
       return [
         {
           id: entry.id,
@@ -85,4 +113,39 @@ export function groupServices(pages: readonly IndexedPage[]): ServiceSummary[] {
       ];
     })
     .sort((a, b) => a.title.localeCompare(b.title));
+}
+
+/** The service whose entry page this is, with every page below it; null for any other page. */
+export function serviceAt(
+  pages: readonly IndexedPage[],
+  id: PageId,
+): ServiceDetail | null {
+  const entry = pages.find((page) => page.id === id);
+  const service = groupServices(pages).find((summary) => summary.id === id);
+  // Walking down from a page with no parent cannot meet a loop.
+  if (!entry || entry.parentId !== null || !service) return null;
+  const below = (parent: IndexedPage): IndexedPage[] =>
+    pages
+      .filter((page) => page.parentId === parent.id)
+      .sort((a, b) => a.title.localeCompare(b.title))
+      .flatMap((page) => [page, ...below(page)]);
+  return {
+    service,
+    pages: [entry, ...below(entry)].map((page) => ({
+      id: page.id,
+      parent_id: page.parentId,
+      role:
+        page === entry
+          ? "entry"
+          : isStartOf(page, entry)
+            ? "start"
+            : "supporting",
+      url: page.url,
+      slug: page.slug,
+      title: page.title,
+      visibility: page.visibility,
+      form_id: page.formId,
+      updated_at: page.updatedAt.toISOString(),
+    })),
+  };
 }

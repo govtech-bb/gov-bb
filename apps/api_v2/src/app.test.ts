@@ -372,6 +372,123 @@ describe("GET /services", () => {
   });
 });
 
+describe("GET /services/:id", () => {
+  it("opens a service: its entry page, then each page before the pages below it", async () => {
+    const category = await seedCategory();
+    const entry = await seedPage({ category_id: category.id });
+    const start = await seedPage({
+      url: START,
+      parent_id: entry.id,
+      form_id: "severance-pay",
+    });
+    const supporting = await seedPage({
+      url: "/money-financial-support/how-severance-is-worked-out",
+      parent_id: start.id,
+      title: "How severance pay is worked out",
+    });
+
+    const response = await inject({ url: `/services/${entry.id}` });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    const { service, pages } = response.json();
+    expect(service).toMatchObject({
+      id: entry.id,
+      form_id: "severance-pay",
+      page_count: 3,
+    });
+    expect(
+      pages.map(({ id, parent_id, role }: Record<string, unknown>) => ({
+        id,
+        parent_id,
+        role,
+      })),
+    ).toEqual([
+      { id: entry.id, parent_id: null, role: "entry" },
+      { id: start.id, parent_id: entry.id, role: "start" },
+      { id: supporting.id, parent_id: start.id, role: "supporting" },
+    ]);
+  });
+
+  it("404s a page that is not a service's entry", async () => {
+    const category = await seedCategory();
+    const entry = await seedPage({ category_id: category.id });
+    const start = await seedPage({ url: START, parent_id: entry.id });
+    const terms = await seedPage({
+      url: "/terms-conditions",
+      title: "Terms and conditions",
+    });
+
+    for (const id of [
+      start.id,
+      terms.id,
+      "22222222-2222-4222-8222-222222222222",
+    ]) {
+      expect((await inject({ url: `/services/${id}` })).statusCode, id).toBe(
+        404,
+      );
+    }
+  });
+});
+
+describe("GET /taxonomy", () => {
+  it("lists every category with its id, each before its subcategories, whether or not it lists anything", async () => {
+    const [money, youth] = await db
+      .insert(categories)
+      .values([
+        {
+          slug: "money-financial-support",
+          title: "Money and financial support",
+          position: 0,
+        },
+        {
+          slug: "youth-and-community",
+          title: "Youth and community",
+          position: 1,
+        },
+      ])
+      .returning();
+    if (!money || !youth) throw new Error("The categories were not inserted");
+    const [arts] = await db
+      .insert(categories)
+      .values({
+        slug: "arts-culture",
+        title: "Arts and culture",
+        parentId: youth.id,
+      })
+      .returning();
+    if (!arts) throw new Error("The subcategory was not inserted");
+
+    const response = await inject({ url: "/taxonomy" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.json().categories).toEqual([
+      {
+        id: money.id,
+        parent_id: null,
+        slug: "money-financial-support",
+        url: "/money-financial-support",
+        title: "Money and financial support",
+      },
+      {
+        id: youth.id,
+        parent_id: null,
+        slug: "youth-and-community",
+        url: "/youth-and-community",
+        title: "Youth and community",
+      },
+      {
+        id: arts.id,
+        parent_id: youth.id,
+        slug: "arts-culture",
+        url: "/youth-and-community/arts-culture",
+        title: "Arts and culture",
+      },
+    ]);
+  });
+});
+
 describe("POST /pages", () => {
   it("creates the page", async () => {
     const response = await inject({
@@ -963,6 +1080,8 @@ describe("employee access", () => {
     ["GET", "/pages/not-a-uuid"],
     ["HEAD", "/pages/not-a-uuid"],
     ["GET", "/services"],
+    ["GET", "/services/not-a-uuid"],
+    ["GET", "/taxonomy"],
     ["GET", "/version"],
     ["POST", "/pages"],
     ["PUT", "/pages/not-a-uuid"],

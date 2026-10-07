@@ -1,10 +1,17 @@
 import { z } from "zod";
 import {
   groupServices,
+  serviceAt,
   type IndexedPage,
+  type ServiceDetail,
   type ServiceSummary,
 } from "../modules/estate-services";
-import type { ContentStoreUnavailable } from "../modules/page";
+import {
+  taxonomyOf,
+  type CategoryRecord,
+  type TaxonomyEntry,
+} from "../modules/navigation";
+import type { ContentStoreUnavailable, PageId } from "../modules/page";
 import { ok, type Result } from "../modules/result";
 
 /** The change log's size and newest timestamp. */
@@ -22,6 +29,8 @@ export interface IndexReads {
   indexedPages(): Promise<
     Result<readonly IndexedPage[], ContentStoreUnavailable>
   >;
+  /** Every category, in the order the site lists them. */
+  categories(): Promise<Result<CategoryRecord[], ContentStoreUnavailable>>;
   /** The change log's size and newest timestamp. */
   changeLogVersion(): Promise<Result<EstateVersion, ContentStoreUnavailable>>;
 }
@@ -37,6 +46,20 @@ export class EditorIndex {
   > {
     const pages = await this.reads.indexedPages();
     return pages.ok ? ok(groupServices(pages.value)) : pages;
+  }
+
+  /** The service whose entry page this is, with every page in it, or null. */
+  async service(
+    id: PageId,
+  ): Promise<Result<ServiceDetail | null, ContentStoreUnavailable>> {
+    const pages = await this.reads.indexedPages();
+    return pages.ok ? ok(serviceAt(pages.value, id)) : pages;
+  }
+
+  /** Every category a page can be filed under, each before its subcategories. */
+  async taxonomy(): Promise<Result<TaxonomyEntry[], ContentStoreUnavailable>> {
+    const categories = await this.reads.categories();
+    return categories.ok ? ok(taxonomyOf(categories.value)) : categories;
   }
 
   /**

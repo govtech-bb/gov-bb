@@ -90,6 +90,34 @@ export const editorRoutes: FastifyPluginAsyncZod<{
   });
   editor.route({
     method: "GET",
+    url: "/services/:id",
+    schema: SCHEMAS.getService,
+    handler: async (request, reply) => {
+      const found = await index.service(request.params.id);
+      if (!found.ok)
+        return reply.status(500).send(storageFailed(request.log, found.error));
+      return (
+        found.value ??
+        reply.status(404).send({
+          error: "not_found",
+          message: `No service with entry page ${request.params.id}`,
+        })
+      );
+    },
+  });
+  editor.route({
+    method: "GET",
+    url: "/taxonomy",
+    schema: SCHEMAS.getTaxonomy,
+    handler: async (request, reply) => {
+      const categories = await index.taxonomy();
+      return categories.ok
+        ? { categories: categories.value }
+        : reply.status(500).send(storageFailed(request.log, categories.error));
+    },
+  });
+  editor.route({
+    method: "GET",
     url: "/version",
     schema: SCHEMAS.version,
     handler: async (request, reply) => {
