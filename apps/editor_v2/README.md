@@ -21,7 +21,7 @@ Run [api_v2](../api_v2/README.md) with its GitHub authentication configuration f
 
 For local development without GitHub, run `vite dev` with `VITE_AUTH_BYPASS=true` and start api_v2 with `AUTH_BYPASS=true`. The editor then treats you as signed in. Builds ignore the flag, and the API refuses its own flag outside a local setup.
 
-`VITE_LANDING_ORIGIN` is the optional public site origin. When set, service titles in the Services list link to their page there; otherwise they are plain text.
+`VITE_LANDING_ORIGIN` is the optional public site origin. When set, each service's path in the Services list links to its page there.
 
 Authentication gates the workspace; it does not publish or synchronize drafts. Signing out preserves local drafts and is blocked if the current draft cannot be safely saved. Browser storage remains local to this origin and is not separated by account.
 

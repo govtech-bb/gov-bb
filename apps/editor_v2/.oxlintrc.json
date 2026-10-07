@@ -862,7 +862,8 @@
     },
     {
       "files": [
-        "src/api/page-markdown.ts"
+        "src/api/page-markdown.ts",
+        "src/workspace/api-pages.ts"
       ],
       "rules": {
         "anti-slop/no-runtime-typeof": "off"

@@ -249,7 +249,7 @@ function permitted(from: string, to: string, typeOnly: boolean) {
         "@govtech-bb/frontend/assets/images/govbb-logo.svg?raw",
       ].includes(to) ||
       to.startsWith("@base-ui/") ||
-      (from === "src/workspace/workspace.tsx" && to === "@tanstack/react-router")
+      (from.endsWith(".tsx") && to === "@tanstack/react-router")
     );
 
   if (within(from, "src/forms/schema")) return within(to, "src/forms/schema");

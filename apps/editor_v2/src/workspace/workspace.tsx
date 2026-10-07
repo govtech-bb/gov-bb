@@ -1,8 +1,13 @@
 import logo from "@govtech-bb/frontend/assets/images/govbb-logo.svg?raw";
 import { Link, useBlocker, useNavigate, useParams, useRouterState } from "@tanstack/react-router";
 import { CaretRight, PencilSimpleLine } from "@phosphor-icons/react";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import type { EditorApi } from "../api/client";
+import { ApiFailure, type EditorApi } from "../api/client";
+import { serviceQuery } from "../api/queries";
+import { ApiPagePane } from "./api-page";
+import { serviceDocuments } from "./api-pages";
+import { ApiServiceNav } from "./api-service";
 import { workspaceLink } from "./navigation";
 import { Button } from "../ui/button";
 import { browserDraftStorage } from "../host/govbb-draft";
@@ -123,6 +128,15 @@ function Workspace({
         : undefined;
 
   const [panes, setPanes] = useState(initial.panes);
+
+  // Pages from the content API, kept mounted once visited like the browser's own documents.
+  const [apiPanes, setApiPanes] = useState(() =>
+    initial.location?.documentId &&
+    !repository.index.services.some((item) => item.id === initial.location?.serviceId)
+      ? [initial.location.documentId]
+      : [],
+  );
+
   const [dialog, setDialog] = useState<"service" | "rename" | "document">();
   const [error, setError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
@@ -130,7 +144,20 @@ function Workspace({
   const selected = service?.documents.find((item) => item.id === location?.documentId);
   const current = panes.find((pane) => pane.document.id === selected?.id);
 
-  const missing = !!location && (!service || (!!location.documentId && !selected));
+  const remote = useQuery({
+    ...serviceQuery(api, location?.serviceId ?? ""),
+    enabled: !!location && !service,
+  });
+
+  const remoteDocuments = remote.data ? serviceDocuments(remote.data) : [];
+  const remoteSelected = remoteDocuments.find((item) => item.id === location?.documentId);
+
+  const missing =
+    !!location &&
+    (service
+      ? !!location.documentId && !selected
+      : (remote.error instanceof ApiFailure && remote.error.status === 404) ||
+        (!!remote.data && !!location.documentId && !remoteSelected));
 
   useBlocker({
     enableBeforeUnload: () => {
@@ -147,9 +174,15 @@ function Workspace({
         flushDocument(current?.store);
 
         if (next.routeId === "/_workspace/services/$serviceId/$documentId") {
-          const document = repository.index.services
-            .find((item) => item.id === next.params.serviceId)
-            ?.documents.find((item) => item.id === next.params.documentId);
+          const local = repository.index.services.find((item) => item.id === next.params.serviceId);
+
+          const document = local?.documents.find((item) => item.id === next.params.documentId);
+          const documentId = next.params.documentId;
+
+          if (!local && documentId)
+            setApiPanes((previous) =>
+              previous.includes(documentId) ? previous : [...previous, documentId],
+            );
 
           if (document && !panes.some((pane) => pane.document.id === document.id)) {
             const store = openDocument(document, browserDraftStorage);
@@ -244,6 +277,14 @@ function Workspace({
             <span className="min-w-0 max-w-100 truncate">{service.title}</span>
           </>
         )}
+        {!service && remote.data && (
+          <>
+            <span aria-hidden="true" className="text-blue-20">
+              /
+            </span>
+            <span className="min-w-0 max-w-100 truncate">{remote.data.service.title}</span>
+          </>
+        )}
         <Button
           className="ms-auto text-white hover:text-white"
           onClick={() => openDialog("service")}
@@ -268,11 +309,18 @@ function Workspace({
       )}
       <div
         className={
-          service
+          service || remote.data
             ? "grid flex-1 grid-cols-[15rem_minmax(0,1fr)] max-lg:grid-cols-1"
             : "flex flex-1 flex-col"
         }
       >
+        {!service && remote.data && location && (
+          <ApiServiceNav
+            serviceId={location.serviceId}
+            documents={remoteDocuments}
+            selectedId={remoteSelected?.id}
+          />
+        )}
         {service && (
           <aside className="border-e border-line bg-white px-4 py-5 max-lg:border-e-0 max-lg:border-b">
             <details open>
@@ -341,14 +389,29 @@ function Workspace({
             <section className="p-8">
               <h1 className="text-28 font-semibold">Document not found</h1>
               <p role="alert" className="my-3 text-muted">
-                This service or document is not in this browser's workspace.
+                This service or document is not in the content API or this browser's workspace.
               </p>
               <Link to="/services" className="text-interactive underline underline-offset-4">
                 Back to services
               </Link>
             </section>
           )}
-          {!service && !missing && (
+          {!service && !missing && location && remote.isPending && (
+            <p role="status" className="p-8 text-muted">
+              Loading service…
+            </p>
+          )}
+          {!service && !missing && remote.isError && (
+            <section className="p-8">
+              <p role="alert" className="mb-4">
+                We could not load this service. Check you are still signed in, then try again.
+              </p>
+              <Button variant="secondary" onClick={() => void remote.refetch()}>
+                Try again
+              </Button>
+            </section>
+          )}
+          {!location && (
             <section className="mx-auto w-full max-w-300 px-6 py-10">
               <h1 className="text-32 font-semibold tracking-tight">Services</h1>
               <p className="mt-1 mb-6 text-16 text-muted">Every service in the content API.</p>
@@ -397,6 +460,24 @@ function Workspace({
               </Button>
             </section>
           )}
+          {!service && remote.data && !location?.documentId && (
+            <section className="p-8">
+              <h1 className="text-28 font-semibold">{remote.data.service.title}</h1>
+              <p className="my-3 text-muted">Choose a document or add one to this service.</p>
+            </section>
+          )}
+          {apiPanes.map((id) => (
+            <section
+              key={id}
+              hidden={id !== remoteSelected?.id}
+              inert={id !== remoteSelected?.id}
+              aria-label={
+                remoteDocuments.find((item) => item.id === id)?.title ?? "Page from the content API"
+              }
+            >
+              <ApiPagePane api={api} id={id} active={id === remoteSelected?.id} />
+            </section>
+          ))}
           {panes.map((pane) => (
             <section
               key={pane.document.id}

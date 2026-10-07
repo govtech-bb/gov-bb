@@ -627,8 +627,15 @@ test("pure page conversion and workspace models reject browser globals while bro
 
 test("routing stays in the workspace UI", () => {
   const source = 'import { Link } from "@tanstack/react-router";';
-  expect(boundaryIssues(new Map([["src/workspace/workspace.tsx", source]]))).toEqual([]);
 
-  for (const file of ["src/workspace/model.ts", "src/pages/editor.tsx", "src/host/page-editor.tsx"])
+  for (const file of ["src/workspace/workspace.tsx", "src/workspace/api-page.tsx"])
+    expect(boundaryIssues(new Map([[file, source]]))).toEqual([]);
+
+  for (const file of [
+    "src/workspace/model.ts",
+    "src/workspace/api-pages.ts",
+    "src/pages/editor.tsx",
+    "src/host/page-editor.tsx",
+  ])
     expect(boundaryIssues(new Map([[file, source]]))).toHaveLength(1);
 });

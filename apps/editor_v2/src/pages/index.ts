@@ -19,6 +19,12 @@ export { $pageMetadata, $setPageMetadata, type PageMetadata } from "./metadata";
 
 export { PageEditor, PageHistoryControls } from "./editor";
 
-export { PageTitleField, PageDetailsFields, visibilityLabels } from "./metadata-fields";
+export {
+  PageTitleField,
+  PageDetailsFields,
+  visibilityLabels,
+  type PageCategory,
+  type PageDetailsOptions,
+} from "./metadata-fields";
 
 export { PagePreview } from "./preview";

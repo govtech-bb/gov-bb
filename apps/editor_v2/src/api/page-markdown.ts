@@ -243,3 +243,20 @@ function categoryOf(
 
   return sub?.id ?? null;
 }
+
+/** The categories page details offers: each top-level category with its subcategories. */
+export function pickerCategories(categories: readonly TaxonomyCategory[]) {
+  return categories.flatMap((category) =>
+    category.parent_id === null
+      ? [
+          {
+            slug: category.slug,
+            title: category.title,
+            subcategories: categories.flatMap((sub) =>
+              sub.parent_id === category.id ? [{ slug: sub.slug, title: sub.title }] : [],
+            ),
+          },
+        ]
+      : [],
+  );
+}

@@ -16,6 +16,7 @@ import {
   UsersThree,
 } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import type { EditorApi, ServiceSummary } from "../api/client";
 import { servicesQuery } from "../api/queries";
@@ -82,26 +83,32 @@ function ServiceCell({ service, href }: { service: ServiceSummary; href: string 
         <Icon className="size-5" />
       </span>
       <div className="min-w-0 py-0.5">
+        <Link
+          to="/services/$serviceId/$documentId"
+          params={{ serviceId: service.id, documentId: service.id }}
+          className="text-15 leading-snug font-semibold text-ink hover:underline hover:underline-offset-4"
+        >
+          {service.title}
+        </Link>
         {href ? (
           <a
             href={href}
             target="_blank"
             rel="noreferrer"
-            className="group/title text-15 leading-snug font-semibold text-ink hover:underline hover:underline-offset-4"
+            className="group/path mt-0.5 block font-mono text-12 wrap-break-word text-muted hover:text-ink hover:underline hover:underline-offset-4"
           >
-            {service.title}
+            {service.url}
             <ArrowUpRight
               aria-hidden="true"
-              className="ms-1 inline size-3.5 text-muted group-hover/title:text-ink"
+              className="ms-1 inline size-3 text-muted group-hover/path:text-ink"
             />
             <span className="sr-only"> (opens in a new tab)</span>
           </a>
         ) : (
-          <span className="text-15 leading-snug font-semibold">{service.title}</span>
+          <span className="mt-0.5 block font-mono text-12 wrap-break-word text-muted">
+            {service.url}
+          </span>
         )}
-        <span className="mt-0.5 block font-mono text-12 wrap-break-word text-muted">
-          {service.url}
-        </span>
         <span className="mt-2 hidden flex-wrap items-center gap-x-2 gap-y-1 text-13 text-muted @max-3xl:flex">
           <VisibilityTag visibility={service.visibility} />
           {service.category.title}
@@ -172,7 +179,7 @@ const serviceColumns = (api: EditorApi) =>
     }),
   ]);
 
-/** The api_v2 estate as a read-only list; opening a service in the editor is still to come. */
+/** The api_v2 estate; each service opens in the editor at its entry page. */
 export function ServicesList({ api }: { api: EditorApi }) {
   const services = useQuery(servicesQuery(api));
   const columns = useMemo(() => serviceColumns(api), [api]);

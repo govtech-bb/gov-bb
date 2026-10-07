@@ -11,6 +11,7 @@ export type PageMetadata = {
   subcategory?: string;
   visibility?: string;
   publish_date?: string;
+  url?: string;
 };
 
 type SerializedPageMetadata = SerializedElementNode & {
@@ -103,6 +104,7 @@ export function pageMetadataFromYaml(yaml: string): PageMetadata {
     "subcategory",
     "visibility",
     "publish_date",
+    "url",
   ] as const) {
     const value = document.get(key);
 
@@ -145,7 +147,7 @@ export function validateMetadata(yaml: string) {
   if (document.contents && !isMap(document.contents))
     throw new Error("Page metadata must be a YAML mapping");
 
-  for (const key of ["title", "description", "lede", "form_id"]) {
+  for (const key of ["title", "description", "lede", "form_id", "url"]) {
     const value = document.get(key);
 
     if (value !== undefined && value !== null && typeof value !== "string")

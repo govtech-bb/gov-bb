@@ -1,4 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterContextProvider,
+} from "@tanstack/react-router";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
 import { createEditorApi, type ServiceSummary } from "../../src/api/client";
@@ -17,7 +24,16 @@ const service = (n: number): ServiceSummary => ({
   updated_at: "2026-10-06T12:00:00.000Z",
 });
 
-test("lists API services sorted by title, a page at a time, linked to landing", () => {
+const root = createRootRoute();
+
+const router = createRouter({
+  routeTree: root.addChildren([
+    createRoute({ getParentRoute: () => root, path: "/services/$serviceId/$documentId" }),
+  ]),
+  history: createMemoryHistory({ initialEntries: ["/services"] }),
+});
+
+test("lists API services sorted by title, a page at a time, opening each in the editor", () => {
   const api = createEditorApi("http://localhost:3020", "https://alpha.gov.bb");
   const client = new QueryClient();
   client.setQueryData(
@@ -26,9 +42,11 @@ test("lists API services sorted by title, a page at a time, linked to landing", 
   );
 
   const html = renderToStaticMarkup(
-    <QueryClientProvider client={client}>
-      <ServicesList api={api} />
-    </QueryClientProvider>,
+    <RouterContextProvider router={router}>
+      <QueryClientProvider client={client}>
+        <ServicesList api={api} />
+      </QueryClientProvider>
+    </RouterContextProvider>,
   );
 
   const titles = [...html.matchAll(/>(Service \d\d)</g)].map(([, title]) => title);
@@ -36,6 +54,7 @@ test("lists API services sorted by title, a page at a time, linked to landing", 
   expect(titles.slice(0, 3)).toEqual(["Service 01", "Service 02", "Service 03"]);
   expect(html).toContain("1–25 of 30");
   expect(html).toContain("30 services");
+  expect(html).toContain(`href="/services/${service(1).id}/${service(1).id}"`);
   expect(html).toContain('href="https://alpha.gov.bb/business-trade/service-1"');
   expect(html).toContain("Preview link only");
   expect(html).toContain("with start");

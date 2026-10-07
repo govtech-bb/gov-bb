@@ -148,7 +148,7 @@ export function PageTitleField() {
   );
 }
 
-type Category = {
+export type PageCategory = {
   slug: string;
   title: string;
   subcategories?: readonly { slug: string; title: string }[];
@@ -210,7 +210,19 @@ const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZ
 
 const shortControl = "max-w-80";
 
-export function PageDetailsFields({ categories = [] }: { categories?: readonly Category[] }) {
+export type PageDetailsOptions = {
+  categories?: readonly PageCategory[];
+  /** A page files under one category, so the picker hides once one is chosen. */
+  single?: boolean;
+  /** When the server dates publication, its date shown read-only; null until the page first goes public. */
+  publishedAt?: string | null;
+};
+
+export function PageDetailsFields({
+  categories = [],
+  single = false,
+  publishedAt,
+}: PageDetailsOptions) {
   const { metadata, yaml, editable, update, historyKeys } = useMetadataUpdate();
   const id = useId();
   const document = parseDocument(yaml);
@@ -228,7 +240,10 @@ export function PageDetailsFields({ categories = [] }: { categories?: readonly C
 
   const visibility = metadata.visibility ?? "";
   const unusualVisibility = !["", "public", "preview", "draft"].includes(visibility);
-  const date = metadata.publish_date ?? "";
+
+  const date =
+    (publishedAt === undefined ? metadata.publish_date : publishedAt?.slice(0, 10)) ?? "";
+
   const parsedDate = new Date(date);
 
   const unusualDate =
@@ -286,6 +301,18 @@ export function PageDetailsFields({ categories = [] }: { categories?: readonly C
         {...historyKeys}
       >
         <legend className="sr-only">Page details</legend>
+        {document.has("url") && (
+          <PageDetail id={`${id}-url`} label="Path" unsupported={unsupported("url")}>
+            <input
+              id={`${id}-url`}
+              className={control}
+              value={metadata.url ?? ""}
+              spellCheck={false}
+              autoCapitalize="off"
+              onChange={(event) => update({ url: event.target.value })}
+            />
+          </PageDetail>
+        )}
         <PageDetail id={`${id}-description`} label="Description">
           <textarea
             id={`${id}-description`}
@@ -329,29 +356,31 @@ export function PageDetailsFields({ categories = [] }: { categories?: readonly C
                   </span>
                 );
               })}
-              <select
-                id={`${id}-category`}
-                aria-label="Add category"
-                className={cn(selectControl, "w-[min(100%,20rem)]")}
-                disabled={categories.length === 0}
-                value=""
-                onChange={(event) => {
-                  if (event.target.value) changeCategories([...selected, event.target.value]);
-                }}
-              >
-                <option value="">
-                  {categories.length ? "Add category…" : "No categories available"}
-                </option>
-                {categories.flatMap((category) =>
-                  selected.includes(category.slug)
-                    ? []
-                    : [
-                        <option key={category.slug} value={category.slug}>
-                          {category.title}
-                        </option>,
-                      ],
-                )}
-              </select>
+              {!(single && selected.length > 0) && (
+                <select
+                  id={`${id}-category`}
+                  aria-label="Add category"
+                  className={cn(selectControl, "w-[min(100%,20rem)]")}
+                  disabled={categories.length === 0}
+                  value=""
+                  onChange={(event) => {
+                    if (event.target.value) changeCategories([...selected, event.target.value]);
+                  }}
+                >
+                  <option value="">
+                    {categories.length ? "Add category…" : "No categories available"}
+                  </option>
+                  {categories.flatMap((category) =>
+                    selected.includes(category.slug)
+                      ? []
+                      : [
+                          <option key={category.slug} value={category.slug}>
+                            {category.title}
+                          </option>,
+                        ],
+                  )}
+                </select>
+              )}
             </div>
           </PageDetail>
         )}
@@ -406,7 +435,15 @@ export function PageDetailsFields({ categories = [] }: { categories?: readonly C
           label="Publication date"
           unsupported={unsupported("publish_date")}
         >
-          {unusualDate ? (
+          {publishedAt !== undefined ? (
+            <input
+              id={`${id}-date`}
+              className={cn(control, shortControl)}
+              value={date ? dateFormat.format(parsedDate) : ""}
+              placeholder="Set when the page is first made public"
+              readOnly
+            />
+          ) : unusualDate ? (
             <>
               <input
                 id={`${id}-date`}

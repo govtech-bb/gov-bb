@@ -7,6 +7,7 @@ import {
   PageHistoryControls,
   PageTitleField,
   PagePreview,
+  type PageDetailsOptions,
 } from "../pages";
 import { govbbPageEditor } from "../presets/govbb-page";
 import type { DraftStore } from "../persistence/draft-store";
@@ -19,15 +20,23 @@ import {
   useDraft,
 } from "./source-ui";
 
-export function PageDraftEditor({ store, active = true }: { store: DraftStore; active?: boolean }) {
+export function PageDraftEditor({
+  store,
+  active = true,
+  details,
+}: {
+  store: DraftStore;
+  active?: boolean;
+  details?: PageDetailsOptions;
+}) {
   return (
     <DraftProvider store={store}>
-      <PageDraft active={active} />
+      <PageDraft active={active} details={details} />
     </DraftProvider>
   );
 }
 
-function PageDraft({ active }: { active: boolean }) {
+function PageDraft({ active, details }: { active: boolean; details?: PageDetailsOptions }) {
   const draft = useDraft();
   const [preview, setPreview] = useState(false);
 
@@ -96,7 +105,7 @@ function PageDraft({ active }: { active: boolean }) {
         <div className="page-document-canvas">
           <div hidden={preview} inert={paused || preview} className="page-document-writing">
             <PageTitleField />
-            <PageDetailsFields />
+            <PageDetailsFields {...details} />
             <PageEditor label="Page content" />
           </div>
           {preview && <PagePreviewSurface source={draft.committed} />}
