@@ -488,6 +488,31 @@ describe('$ route subcategory gating', () => {
     expect(data.kind).toBe('subcategory')
     expect(data.subcategory.slug).toBe('youth-development-leadership')
   })
+
+  it('skips the api_v2 lookup for a known subcategory URL (#2950)', async () => {
+    mocks.findPage.mockReturnValue(undefined)
+    mocks.isCategoryVisible.mockReturnValue(true)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    await loader({
+      params: { _splat: 'youth-and-community/youth-development-leadership' },
+      context: { level: 'public', serviceStatuses: [] },
+    })
+    expect(v2Mocks.getApiV2Page).not.toHaveBeenCalled()
+  })
+
+  it('still asks api_v2 for a two-segment URL that is not a subcategory', async () => {
+    mocks.findPage.mockReturnValue(undefined)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    await loader({
+      params: { _splat: 'youth-and-community/some-service' },
+      context: { level: 'public', serviceStatuses: [] },
+    }).catch(() => undefined)
+    expect(v2Mocks.getApiV2Page).toHaveBeenCalledWith({
+      data: '/youth-and-community/some-service',
+    })
+  })
 })
 
 describe('form route beforeLoad gating', () => {

@@ -111,8 +111,16 @@ export const Route = createFileRoute('/$')({
     }
 
     // api_v2 first (#2944): it serves only public pages, so a miss (or no
-    // api_v2 configured) falls back to the static registry page.
-    const v2 = await getApiV2Page({ data: `/${splat}` })
+    // api_v2 configured) falls back to the static registry page. A known
+    // subcategory listing is never an api_v2 page, so it skips the round
+    // trip (#2950); `findPage` still runs first, keeping today's precedence.
+    const isSubcategory =
+      segments.length === 2 &&
+      CATEGORY_BY_SLUG[segments[0]] !== undefined &&
+      getSubcategory(segments[0], segments[1]) !== undefined
+    const v2 = isSubcategory
+      ? ({ kind: 'miss' } as const)
+      : await getApiV2Page({ data: `/${splat}` })
     if (v2.kind === 'redirect') throw redirect({ href: v2.to, statusCode: 301 })
     const v2Page = v2.kind === 'page' ? v2.page : undefined
     const page = v2Page ?? findPage(splat)
