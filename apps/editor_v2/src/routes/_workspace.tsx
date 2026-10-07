@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_workspace")({
 });
 
 function WorkspacePage() {
-  const { auth, employee } = Route.useRouteContext();
+  const { auth, api, employee } = Route.useRouteContext();
 
-  return employee ? <App auth={auth} employee={employee} /> : null;
+  return employee ? <App auth={auth} api={api} employee={employee} /> : null;
 }

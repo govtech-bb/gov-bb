@@ -1151,6 +1151,152 @@
         }
       }
     },
+    "/services": {
+      "get": {
+        "summary": "List services",
+        "tags": ["pages"],
+        "description": "The editor's index, ordered by title. The schema has no service, so one is read from the urls: a categorised page with no page above it is an entry, and every page below it belongs to it.",
+        "security": [
+          {
+            "editorSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "The entry page's id."
+                      },
+                      "url": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "category": {
+                        "type": "object",
+                        "properties": {
+                          "slug": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["slug", "title"],
+                        "additionalProperties": false
+                      },
+                      "visibility": {
+                        "type": "string",
+                        "enum": ["public", "preview", "draft"]
+                      },
+                      "form_id": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "The entry page's form, else its `/start` page's."
+                      },
+                      "has_start_page": {
+                        "type": "boolean"
+                      },
+                      "page_count": {
+                        "type": "integer",
+                        "description": "The entry page plus every page below it."
+                      },
+                      "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "The latest change across those pages."
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "url",
+                      "title",
+                      "category",
+                      "visibility",
+                      "form_id",
+                      "has_start_page",
+                      "page_count",
+                      "updated_at"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/version": {
       "get": {
         "summary": "A version token for the whole estate",

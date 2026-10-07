@@ -1,5 +1,8 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
+import { createEditorApi } from "./api/services";
 import { createEditorAuth } from "./auth/better-auth-client";
+import { bypassAuth } from "./auth/bypass";
 import { parseApiOrigin } from "./auth/session";
 import { routeTree } from "./routeTree.gen";
 
@@ -8,11 +11,22 @@ export function getRouter() {
   const origin = parseApiOrigin(import.meta.env.VITE_API_ORIGIN, import.meta.env.PROD);
 
   if (!origin.ok) throw origin.error;
-  const auth = createEditorAuth(origin.value, Date.now);
+
+  // Builds compile the bypass out: import.meta.env.DEV is false there.
+  const auth =
+    import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS === "true"
+      ? bypassAuth
+      : createEditorAuth(origin.value, Date.now);
+
+  const api = createEditorApi(origin.value, import.meta.env.VITE_LANDING_ORIGIN);
+  const queryClient = new QueryClient();
 
   return createRouter({
     routeTree,
-    context: { auth },
+    context: { auth, api },
+    Wrap: ({ children }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
     defaultPreload: false,
     notFoundMode: "root",
     defaultPendingComponent: () => (

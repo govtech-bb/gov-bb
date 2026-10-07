@@ -28,7 +28,7 @@ export {
 /** HTTP dependencies are constructed once by the process composition root. */
 export interface AppOptions {
   store: ApiStore;
-  access: EditorAccess;
+  access: Pick<EditorAccess, "requireEmployee">;
   auth: AuthHandler;
   config: { apiOrigin: string; editorOrigin: string };
   /** The root logger shared with database and authentication adapters. */

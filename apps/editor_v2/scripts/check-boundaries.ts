@@ -239,11 +239,13 @@ function permitted(from: string, to: string, typeOnly: boolean) {
       within(to, "src/forms") ||
       within(to, "src/pages") ||
       within(to, "src/ui") ||
+      within(to, "src/api") ||
       [
         "src/cn.ts",
         "lexical",
         "react",
         "@phosphor-icons/react",
+        "@tanstack/react-query",
         "@govtech-bb/frontend/assets/images/govbb-logo.svg?raw",
       ].includes(to) ||
       to.startsWith("@base-ui/") ||
@@ -268,9 +270,14 @@ function permitted(from: string, to: string, typeOnly: boolean) {
     return (
       sharedUiLayer(to) ||
       to === "src/cn.ts" ||
-      ["react", "react-dom", "date-fns", "react-day-picker", "@phosphor-icons/react"].includes(
-        to,
-      ) ||
+      [
+        "react",
+        "react-dom",
+        "date-fns",
+        "react-day-picker",
+        "@phosphor-icons/react",
+        "@tanstack/react-table",
+      ].includes(to) ||
       to.startsWith("@base-ui/") ||
       to.startsWith("date-fns/")
     );

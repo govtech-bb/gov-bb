@@ -28,6 +28,11 @@ export interface AppConfig {
   readonly seed: boolean;
   readonly database: DatabaseConfig;
   readonly auth: AuthConfig;
+  /**
+   * Local development only: skip sign-in and run every editor request as a
+   * fixed developer. Refused in production and unless the editor is local.
+   */
+  readonly authBypass: boolean;
 }
 
 /** Invalid startup settings, reporting field names but never supplied values. */
@@ -71,8 +76,23 @@ const environment = z
     BETTER_AUTH_SECRET: z.string().min(32),
     GITHUB_CLIENT_ID: z.string().min(1),
     GITHUB_CLIENT_SECRET: z.string().min(1),
+    AUTH_BYPASS: z.enum(["true", "false"]).optional(),
   })
   .superRefine((value, context) => {
+    // A bypassed API admits any caller, so it is only for an editor on this machine.
+    if (
+      value.AUTH_BYPASS === "true" &&
+      (value.NODE_ENV === "production" ||
+        !["localhost", "127.0.0.1"].includes(
+          new URL(value.EDITOR_ORIGIN).hostname,
+        ))
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["AUTH_BYPASS"],
+        message:
+          "Auth can only be bypassed for a local editor outside production",
+      });
     if (value.NODE_ENV !== "production") return;
     for (const field of ["BETTER_AUTH_URL", "EDITOR_ORIGIN"] as const) {
       if (!value[field].startsWith("https://"))
@@ -115,5 +135,6 @@ export function parseConfig(
       githubClientId: env.GITHUB_CLIENT_ID,
       githubClientSecret: new Redacted(env.GITHUB_CLIENT_SECRET),
     },
+    authBypass: env.AUTH_BYPASS === "true",
   });
 }

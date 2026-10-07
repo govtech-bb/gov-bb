@@ -3,12 +3,21 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { TipProvider } from "./ui/tooltip";
 import { ServiceWorkspace } from "./workspace/workspace";
+import type { EditorApi } from "./api/services";
 import { localReturnPath, type EditorAuth, type EmployeeSession } from "./auth/session";
 
 const icons = { weight: "bold" as const };
 
 /** Authenticated shell; changing sessions never changes browser draft storage. */
-export function App({ auth, employee }: { auth: EditorAuth; employee: EmployeeSession }) {
+export function App({
+  auth,
+  api,
+  employee,
+}: {
+  auth: EditorAuth;
+  api: EditorApi;
+  employee: EmployeeSession;
+}) {
   const navigate = useNavigate();
   const href = useRouterState({ select: (state) => state.location.href });
   const [notice, setNotice] = useState("");
@@ -83,7 +92,7 @@ export function App({ auth, employee }: { auth: EditorAuth; employee: EmployeeSe
             {notice}
           </p>
         )}
-        <ServiceWorkspace email={employee.email} onSignOut={signOut} />
+        <ServiceWorkspace api={api} email={employee.email} onSignOut={signOut} />
       </TipProvider>
     </IconContext.Provider>
   );

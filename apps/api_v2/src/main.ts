@@ -6,6 +6,7 @@ import { createBetterAuth } from "./adapters/better-auth";
 import { parseConfig } from "./config";
 import { connect, createPool } from "./db";
 import { migrate } from "./migrate";
+import { authBypass } from "./services/auth-bypass";
 import { EditorAccess } from "./services/editor-access";
 import { seed } from "./seed";
 import { ApiStore } from "./store";
@@ -89,12 +90,18 @@ async function main(): Promise<void> {
     }
     if (stopping) return;
     operation = "auth";
-    const auth = await createBetterAuth(pool, config.auth, logger);
+    const betterAuth = config.authBypass
+      ? undefined
+      : await createBetterAuth(pool, config.auth, logger);
+    if (!betterAuth)
+      logger.warn(
+        "AUTH_BYPASS is on: every editor request runs as a local developer without signing in",
+      );
     operation = "http";
     app = await buildApp({
       store: new ApiStore(db),
-      access: new EditorAccess(auth),
-      auth,
+      access: betterAuth ? new EditorAccess(betterAuth) : authBypass.access,
+      auth: betterAuth ?? authBypass.auth,
       config: config.auth,
       logger,
     });

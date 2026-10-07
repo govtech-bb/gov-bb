@@ -7,11 +7,12 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import type { EditorApi } from "../api/services";
 import type { EditorAuth } from "../auth/session";
 import stylesheet from "../../index.css?url";
 
 /** Static document with explicit runtime dependencies supplied by getRouter. */
-export const Route = createRootRouteWithContext<{ auth: EditorAuth }>()({
+export const Route = createRootRouteWithContext<{ auth: EditorAuth; api: EditorApi }>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },

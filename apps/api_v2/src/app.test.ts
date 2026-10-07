@@ -266,6 +266,60 @@ describe("GET /pages/:id", () => {
   });
 });
 
+describe("GET /services", () => {
+  it("groups each entry page with the pages below it, ordered by title", async () => {
+    const category = await seedCategory();
+    await seedForm("severance-pay", "public");
+    await seedPage({ category_id: category.id });
+    await seedPage({
+      category_id: category.id,
+      url: START,
+      form_id: "severance-pay",
+    });
+    const supporting = await seedPage({
+      category_id: category.id,
+      url: `${ENTRY}/how-it-is-worked-out`,
+      title: "How severance pay is worked out",
+    });
+    await seedPage({
+      category_id: category.id,
+      url: "/money-financial-support/apply-for-a-grant",
+      title: "Apply for a grant",
+      visibility: "draft",
+    });
+    await seedPage({ url: "/terms-conditions", title: "Terms and conditions" });
+
+    const response = await inject({ url: "/services" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    const services = response.json();
+    expect(services).toMatchObject([
+      {
+        url: "/money-financial-support/apply-for-a-grant",
+        visibility: "draft",
+        form_id: null,
+        has_start_page: false,
+        page_count: 1,
+      },
+      {
+        url: ENTRY,
+        title: "Find out how much severance payment you are owed",
+        category: {
+          slug: "money-financial-support",
+          title: "Money and financial support",
+        },
+        visibility: "public",
+        form_id: "severance-pay",
+        has_start_page: true,
+        page_count: 3,
+        updated_at: supporting.updated_at,
+      },
+    ]);
+    expect(services).toHaveLength(2);
+  });
+});
+
 describe("POST /pages", () => {
   it("creates the page", async () => {
     const response = await inject({
@@ -568,6 +622,7 @@ describe("employee access", () => {
   it.each([
     ["GET", "/pages/not-a-uuid"],
     ["HEAD", "/pages/not-a-uuid"],
+    ["GET", "/services"],
     ["GET", "/version"],
     ["POST", "/pages"],
     ["PUT", "/pages/not-a-uuid"],
