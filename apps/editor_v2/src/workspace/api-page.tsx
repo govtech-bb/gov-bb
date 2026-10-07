@@ -17,6 +17,7 @@ import {
   seedApiPage,
   serverBaseKey,
   writeServerBase,
+  fieldLabel,
   type ServerBase,
 } from "./api-pages";
 import { openDocument } from "./documents";
@@ -91,20 +92,6 @@ export function ApiPagePane({ api, id, active }: { api: EditorApi; id: string; a
 
   return <ApiPageEditor api={api} page={opened.data} active={active} />;
 }
-
-const FIELD_LABELS = new Map([
-  ["title", "Title"],
-  ["url", "Path"],
-  ["category", "Category"],
-  ["category_id", "Category"],
-  ["subcategory", "Subcategory"],
-  ["description", "Description"],
-  ["visibility", "Visibility"],
-  ["form_id", "Form ID"],
-  ["publish_date", "Publication date"],
-  ["lede", "Introduction"],
-  ["parent_id", "Parent page"],
-]);
 
 const noticeClass = "page-document-paused flex flex-wrap items-center gap-x-3 gap-y-2";
 
@@ -224,7 +211,7 @@ function ApiPageEditor({ api, page, active }: { api: EditorApi; page: ApiPage; a
       <ul className="mt-1 list-disc ps-5">
         {errors.map((error) => (
           <li key={`${error.field}:${error.message}`}>
-            {FIELD_LABELS.get(error.field) ?? error.field}: {error.message}
+            {fieldLabel(error.field)}: {error.message}
           </li>
         ))}
       </ul>

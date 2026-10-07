@@ -124,3 +124,20 @@ export async function savePage(
     }
   }
 }
+
+const FIELD_LABELS = new Map([
+  ["title", "Title"],
+  ["url", "Path"],
+  ["category", "Category"],
+  ["category_id", "Category"],
+  ["subcategory", "Subcategory"],
+  ["description", "Description"],
+  ["visibility", "Visibility"],
+  ["form_id", "Form ID"],
+  ["publish_date", "Publication date"],
+  ["lede", "Introduction"],
+  ["parent_id", "Parent page"],
+]);
+
+/** How the editor names a field the API refused. */
+export const fieldLabel = (field: string) => FIELD_LABELS.get(field) ?? field;

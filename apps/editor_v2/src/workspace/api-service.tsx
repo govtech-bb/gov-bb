@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { Button } from "../ui/button";
 import { documentLabel, type PageDocument } from "./model";
 
 /** An API service's pages, in the sidebar the browser workspace uses. */
@@ -6,10 +7,12 @@ export function ApiServiceNav({
   serviceId,
   documents,
   selectedId,
+  onAdd,
 }: {
   serviceId: string;
   documents: readonly PageDocument[];
   selectedId: string | undefined;
+  onAdd: () => void;
 }) {
   return (
     <aside className="border-e border-line bg-white px-4 py-5 max-lg:border-e-0 max-lg:border-b">
@@ -31,6 +34,11 @@ export function ApiServiceNav({
               </li>
             ))}
           </ul>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={onAdd}>
+              Add document
+            </Button>
+          </div>
         </nav>
       </details>
     </aside>

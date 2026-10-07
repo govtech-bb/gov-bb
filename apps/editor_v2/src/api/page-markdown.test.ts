@@ -4,7 +4,7 @@ import { createHeadlessEditor } from "../editor/core/create-editor";
 import { $setPageMetadata } from "../pages/metadata";
 import { govbbPageCodec, govbbPageEditor } from "../presets/govbb-page";
 import type { ApiPage, TaxonomyCategory } from "./client";
-import { markdownToSaveFields, pageToMarkdown } from "./page-markdown";
+import { markdownToSaveFields, pageToMarkdown, suggestedUrl } from "./page-markdown";
 
 const VISIBILITIES = ["public", "preview", "draft"] as const;
 
@@ -160,5 +160,14 @@ describe("page markdown", () => {
     );
 
     expect(saved.ok ? [] : saved.errors.map((error) => error.field)).toEqual([field]);
+  });
+
+  it("suggests a new page's path from its title, beneath its prefix", () => {
+    expect(suggestedUrl("/money-financial-support", "Apply for a Grant!")).toBe(
+      "/money-financial-support/apply-for-a-grant",
+    );
+    expect(suggestedUrl("/youth-and-community/arts-culture", "  Café crème -- 2026 ")).toBe(
+      "/youth-and-community/arts-culture/cafe-creme-2026",
+    );
   });
 });

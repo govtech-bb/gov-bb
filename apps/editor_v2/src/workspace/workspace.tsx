@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ApiFailure, type EditorApi } from "../api/client";
 import { serviceQuery, versionQuery } from "../api/queries";
+import { ApiPageDialog, ApiServiceDialog } from "./api-dialogs";
 import { ApiPagePane } from "./api-page";
 import { serviceDocuments } from "./api-pages";
 import { ApiServiceNav } from "./api-service";
@@ -137,7 +138,10 @@ function Workspace({
       : [],
   );
 
-  const [dialog, setDialog] = useState<"service" | "rename" | "document">();
+  const [dialog, setDialog] = useState<
+    "service" | "rename" | "document" | "api-service" | "api-page"
+  >();
+
   const [error, setError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
   const service = index.services.find((item) => item.id === location?.serviceId);
@@ -219,7 +223,7 @@ function Workspace({
 
   const navigate = (next: WorkspaceLocation) => routerNavigate(workspaceLink(next));
 
-  const openDialog = (next: "service" | "rename" | "document") => {
+  const openDialog = (next: "service" | "rename" | "document" | "api-service" | "api-page") => {
     try {
       flushDocument(current?.store);
       setDialog(next);
@@ -291,7 +295,7 @@ function Workspace({
         )}
         <Button
           className="ms-auto text-white hover:text-white"
-          onClick={() => openDialog("service")}
+          onClick={() => openDialog("api-service")}
         >
           Create service
         </Button>
@@ -323,6 +327,7 @@ function Workspace({
             serviceId={location.serviceId}
             documents={remoteDocuments}
             selectedId={remoteSelected?.id}
+            onAdd={() => openDialog("api-page")}
           />
         )}
         {service && (
@@ -422,7 +427,12 @@ function Workspace({
               <ServicesList api={api} />
               {index.services.length > 0 && (
                 <>
-                  <h2 className="mt-12 text-20 font-semibold">Drafts in this browser</h2>
+                  <div className="mt-12 flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="text-20 font-semibold">Drafts in this browser</h2>
+                    <Button variant="secondary" onClick={() => openDialog("service")}>
+                      Create browser draft
+                    </Button>
+                  </div>
                   <p className="mt-1 text-16 text-muted">
                     Write the pages and build the form for each service in one place.
                   </p>
@@ -468,6 +478,9 @@ function Workspace({
             <section className="p-8">
               <h1 className="text-28 font-semibold">{remote.data.service.title}</h1>
               <p className="my-3 text-muted">Choose a document or add one to this service.</p>
+              <Button variant="accent" onClick={() => openDialog("api-page")}>
+                Add document
+              </Button>
             </section>
           )}
           {apiPanes.map((id) => (
@@ -509,6 +522,27 @@ function Workspace({
             refresh();
             setDialog(undefined);
             navigate({ serviceId: created.id, documentId: created.documents[0]?.id });
+          }}
+        />
+      )}
+      {dialog === "api-service" && (
+        <ApiServiceDialog
+          api={api}
+          close={() => setDialog(undefined)}
+          done={(id) => {
+            setDialog(undefined);
+            navigate({ serviceId: id, documentId: id });
+          }}
+        />
+      )}
+      {dialog === "api-page" && remote.data && location && (
+        <ApiPageDialog
+          api={api}
+          detail={remote.data}
+          close={() => setDialog(undefined)}
+          done={(id) => {
+            setDialog(undefined);
+            navigate({ serviceId: location.serviceId, documentId: id });
           }}
         />
       )}
