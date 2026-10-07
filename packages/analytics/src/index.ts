@@ -125,17 +125,28 @@ export function stepNumberToWord(n: number): string {
 // the truncated name (`…:form-step-vi`), but the dashboard queries the full
 // name — so those events are counted yet their per-step / confirmation /
 // validation breakdowns silently read zero, and long-id per-step names can even
-// collide into one bucket. To stay within the limit AND keep each event
-// distinct, an overflowing name falls back to a compact code. Short-id forms are
-// unaffected (their full names already fit). Emission (trackEvent /
-// stepCompleteEventName) and the dashboard's queries/aggregation MUST all route
-// through eventName() / canonicalEvent() / stepFromEvent() so both sides agree.
+// collide into one bucket.
+//
+// To stay within the limit AND keep each event distinct:
+//  - an overflowing event suffix falls back to a compact code (≤5 chars);
+//  - a form id that is itself too long (>44, so even `<id>:<code>` overflows) is
+//    shortened to a stable `<prefix>~<hash>` key — unique and deterministic, so
+//    emission and the dashboard derive the same key from the id.
+// Short-id forms are unaffected (their full names already fit). Emission
+// (trackEvent / stepCompleteEventName) and the dashboard's queries/aggregation
+// MUST all route through eventName() / eventFormKey() / canonicalEvent() /
+// stepFromEvent() so both sides agree.
 
 export const MAX_EVENT_NAME_LENGTH = 50;
 
+// Longest compact suffix is 5 chars (`fstrt`, `fconf`, …), so capping the form
+// key at 44 keeps `<key>:<code>` ≤ 50 for every event of a given form — a single
+// stable key per form, independent of which event it is.
+const MAX_FORM_KEY = MAX_EVENT_NAME_LENGTH - 1 - 5;
+
 /** Canonical event suffix → compact code, applied only when the full
- *  `<formId>:<event>` name would exceed the 50-char limit. Codes are distinct
- *  and short enough that a 44-char form id still fits. */
+ *  `<formId>:<event>` name would exceed the 50-char limit. Per-step events
+ *  (`form-step-<n>`) are coded dynamically (`s<n>`) to cover any step count. */
 export const SHORT_EVENT: Readonly<Record<string, string>> = {
   "form-start": "fstrt",
   "form-step-view": "sview",
@@ -151,32 +162,67 @@ export const SHORT_EVENT: Readonly<Record<string, string>> = {
   "page-start-view": "pstvw",
   "payment-initiated": "pinit",
   "payment-returned": "pretn",
-  "form-step-one": "s1",
-  "form-step-two": "s2",
-  "form-step-three": "s3",
-  "form-step-four": "s4",
-  "form-step-five": "s5",
-  "form-step-six": "s6",
-  "form-step-seven": "s7",
-  "form-step-eight": "s8",
-  "form-step-nine": "s9",
-  "form-step-ten": "s10",
 };
 
 const CANONICAL_BY_SHORT: Readonly<Record<string, string>> = Object.fromEntries(
   Object.entries(SHORT_EVENT).map(([canonical, short]) => [short, canonical]),
 );
 
+/** FNV-1a → 6 base36 chars. Deterministic and dependency-free, so the browser
+ *  (emission) and the server (dashboard) hash a form id identically. */
+function hash6(s: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(36).padStart(6, "0").slice(0, 6);
+}
+
+/** The 1-based step number a `form-step-<suffix>` carries (word `one`–`ten` or a
+ *  bare number for step 11+), or null if the suffix is not a step. */
+function stepNumberOf(suffix: string): number | null {
+  const word = NUMBER_WORDS.indexOf(suffix as (typeof NUMBER_WORDS)[number]);
+  if (word !== -1) return word + 1;
+  return /^\d+$/.test(suffix) ? Number(suffix) : null;
+}
+
+/** The compact suffix for an event: `s<n>` for any per-step event, else the
+ *  SHORT_EVENT code, else the event unchanged (defensive — all tracked events
+ *  are mapped). */
+function shortSuffix(event: string): string {
+  const step = /^form-step-(.+)$/.exec(event);
+  if (step) {
+    const n = stepNumberOf(step[1]);
+    if (n !== null) return `s${n}`;
+  }
+  return SHORT_EVENT[event] ?? event;
+}
+
+/** The form-id portion of an event name: the id itself when ≤44 chars (history
+ *  preserved), else a stable `<prefix>~<hash>` key so a very long id still fits.
+ *  Emission and dashboard both derive the key from the id, so no reverse map is
+ *  needed for per-form queries. */
+export function eventFormKey(formId: string): string {
+  return formId.length <= MAX_FORM_KEY
+    ? formId
+    : `${formId.slice(0, MAX_FORM_KEY - 7)}~${hash6(formId)}`;
+}
+
 /**
  * Build the Umami event name for a per-form event, guaranteed within the 50-char
- * limit. Returns the full `<formId>:<event>` when it fits (unchanged history for
- * short-id forms); otherwise falls back to the compact code.
+ * limit. Full `<formId>:<event>` when it fits (unchanged history for short-id
+ * forms); otherwise `<key>:<compact-code>`, where the key is the id or its hashed
+ * form for ids > 44 chars.
  */
 export function eventName(formId: string, event: string): string {
   const full = `${formId}:${event}`;
   if (full.length <= MAX_EVENT_NAME_LENGTH) return full;
-  const short = SHORT_EVENT[event];
-  return short ? `${formId}:${short}` : full.slice(0, MAX_EVENT_NAME_LENGTH); // last-resort guard for unmapped events
+  const name = `${eventFormKey(formId)}:${shortSuffix(event)}`;
+  // Reachable only for an unmapped event on a >44-char id; mapped events always fit.
+  return name.length <= MAX_EVENT_NAME_LENGTH
+    ? name
+    : name.slice(0, MAX_EVENT_NAME_LENGTH);
 }
 
 /** Map a stored event suffix back to its canonical name (compact code → long);
@@ -187,18 +233,13 @@ export function canonicalEvent(event: string): string {
 }
 
 /** The 1-based step number an event suffix represents, or null if it is not a
- *  per-step event. Handles both the full `form-step-<word>` names (short-id
- *  forms) and the `s<n>` compact codes (long-id forms). */
+ *  per-step event. Handles the full `form-step-<word>` and `form-step-<n>` names
+ *  (short-id forms, any step count) and the `s<n>` compact codes (long-id forms). */
 export function stepFromEvent(event: string): number | null {
   const short = /^s(\d+)$/.exec(event);
   if (short) return Number(short[1]);
-  if (event.startsWith("form-step-")) {
-    const i = NUMBER_WORDS.indexOf(
-      event.slice("form-step-".length) as (typeof NUMBER_WORDS)[number],
-    );
-    return i === -1 ? null : i + 1;
-  }
-  return null;
+  const step = /^form-step-(.+)$/.exec(event);
+  return step ? stepNumberOf(step[1]) : null;
 }
 
 export function trackPageview(): void {
