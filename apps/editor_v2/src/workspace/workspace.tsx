@@ -1,6 +1,5 @@
 import logo from "@govtech-bb/frontend/assets/images/govbb-logo.svg?raw";
 import { Link, useBlocker, useNavigate, useParams, useRouterState } from "@tanstack/react-router";
-import { CaretRight, PencilSimpleLine } from "@phosphor-icons/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ApiFailure, type EditorApi } from "../api/client";
@@ -295,13 +294,7 @@ function Workspace({
             <span className="min-w-0 max-w-100 truncate">{remote.data.service.title}</span>
           </>
         )}
-        <Button
-          className="ms-auto text-white hover:text-white"
-          onClick={() => openDialog("api-service")}
-        >
-          Create service
-        </Button>
-        <span className="max-w-64 truncate text-14" title={email}>
+        <span className="ms-auto max-w-64 truncate text-14" title={email}>
           {email}
         </span>
         <Button
@@ -425,43 +418,27 @@ function Workspace({
           )}
           {!location && (
             <section className="mx-auto w-full max-w-300 px-6 py-10">
-              <h1 className="text-32 font-semibold tracking-tight">Services</h1>
-              <p className="mt-1 mb-6 text-16 text-muted">Every service in the content API.</p>
-              <ServicesList api={api} />
+              <ServicesList api={api} onCreate={() => openDialog("api-service")} />
               {index.services.length > 0 && (
-                <>
-                  <div className="mt-12 flex flex-wrap items-center justify-between gap-3">
-                    <h2 className="text-20 font-semibold">Drafts in this browser</h2>
-                    <Button variant="secondary" onClick={() => openDialog("service")}>
-                      Create browser draft
-                    </Button>
-                  </div>
-                  <p className="mt-1 text-16 text-muted">
-                    Write the pages and build the form for each service in one place.
-                  </p>
-                </>
+                <div className="mt-12 mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="text-20 font-semibold">Drafts in this browser</h2>
+                  <Button variant="secondary" onClick={() => openDialog("service")}>
+                    Create browser draft
+                  </Button>
+                </div>
               )}
-              <ul className="mt-4 divide-y divide-line rounded-sm bg-white shadow-sheet empty:hidden">
+              <ul className="rounded-sm bg-white px-3 py-2 shadow-sheet empty:hidden">
                 {index.services.map((item) => (
                   <li key={item.id}>
                     <Link
                       {...workspaceLink({ serviceId: item.id, documentId: item.documents[0]?.id })}
-                      className="flex items-center gap-3 px-4 py-3.5 transition-colors duration-150 hover:bg-tint"
+                      className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-sm px-3 py-2 hover:bg-tint"
                     >
-                      <span
-                        aria-hidden="true"
-                        className="grid size-10 shrink-0 place-items-center rounded-sm bg-tint text-muted"
-                      >
-                        <PencilSimpleLine className="size-5" />
+                      <span className="truncate text-15 text-ink">{item.title}</span>
+                      <span className="text-14 text-muted tabular-nums">
+                        {item.documents.length}{" "}
+                        {item.documents.length === 1 ? "document" : "documents"}
                       </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-15 font-semibold">{item.title}</span>
-                        <span className="block text-13 text-muted tabular-nums">
-                          {item.documents.length}{" "}
-                          {item.documents.length === 1 ? "document" : "documents"}
-                        </span>
-                      </span>
-                      <CaretRight aria-hidden="true" className="size-4 shrink-0 text-muted" />
                     </Link>
                   </li>
                 ))}

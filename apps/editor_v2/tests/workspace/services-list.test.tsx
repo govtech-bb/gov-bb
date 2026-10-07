@@ -21,7 +21,7 @@ const service = (n: number): ServiceSummary => ({
   form_id: n === 1 ? "service-one" : null,
   has_start_page: n === 1,
   page_count: n === 1 ? 2 : 1,
-  updated_at: "2026-10-06T12:00:00.000Z",
+  updated_at: `2026-09-${String(n).padStart(2, "0")}T12:00:00.000Z`,
 });
 
 const root = createRootRoute();
@@ -33,7 +33,7 @@ const router = createRouter({
   history: createMemoryHistory({ initialEntries: ["/services"] }),
 });
 
-test("lists API services sorted by title, a page at a time, opening each in the editor", () => {
+test("lists API services newest change first, a page at a time, opening each in the editor", () => {
   const api = createEditorApi("http://localhost:3020", "https://alpha.gov.bb");
   const client = new QueryClient();
   client.setQueryData(
@@ -44,20 +44,21 @@ test("lists API services sorted by title, a page at a time, opening each in the 
   const html = renderToStaticMarkup(
     <RouterContextProvider router={router}>
       <QueryClientProvider client={client}>
-        <ServicesList api={api} />
+        <ServicesList api={api} onCreate={() => {}} />
       </QueryClientProvider>
     </RouterContextProvider>,
   );
 
   const titles = [...html.matchAll(/>(Service \d\d)</g)].map(([, title]) => title);
   expect(titles).toHaveLength(25);
-  expect(titles.slice(0, 3)).toEqual(["Service 01", "Service 02", "Service 03"]);
+  expect(titles.slice(0, 3)).toEqual(["Service 30", "Service 29", "Service 28"]);
   expect(html).toContain("1–25 of 30");
   expect(html).toContain("30 services");
-  expect(html).toContain(`href="/services/${service(1).id}/${service(1).id}"`);
-  expect(html).toContain('href="https://alpha.gov.bb/business-trade/service-1"');
+  expect(html).toContain(`href="/services/${service(30).id}/${service(30).id}"`);
+  expect(html).toContain('href="https://alpha.gov.bb/business-trade/service-30"');
   expect(html).toContain("Preview link only");
-  expect(html).toContain("with start");
+  expect(html).toContain('aria-sort="descending"');
+  expect(html).toContain("Search title or URL");
+  expect(html).toContain("All categories");
   expect(html).toContain("Draft link only");
-  expect(html).toContain('aria-sort="ascending"');
 });
