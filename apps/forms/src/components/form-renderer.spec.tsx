@@ -15,11 +15,11 @@ import type { Mock } from "vitest";
  * - Renders ApplicantNameDisplay on the declaration step
  * - Renders SubmissionConfirmation on the submission-confirmation step
  * - Renders a FieldRenderer for each plain field in the step
- * - show-hide group: renders controlled fields when toggle value is true
- * - show-hide group: does not render controlled fields when toggle value is false
+ * - show-hide group: nests controlled fields inside its toggle renderer
  * - radio-conditional: radio field with conditional child is grouped correctly
  */
 
+import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useStore } from "@tanstack/react-form";
@@ -37,12 +37,29 @@ vi.mock("../hooks/use-step-guard", () => ({
 // tests can verify the toggle/insetFieldsByOption arguments — without this
 // extra metadata the spec could only assert which field IDs were rendered,
 // not whether the right props were threaded through.
+type MockInsetEntry = {
+  field: { id: string };
+  insetFieldsByOption?: Map<string, MockInsetEntry[]>;
+};
+
+/** A field id, or `{ id, nested }` when the entry hosts reveals of its own. */
+function serializeInsetEntry(entry: MockInsetEntry) {
+  if (!entry.insetFieldsByOption) return entry.field.id;
+  return {
+    id: entry.field.id,
+    nested: Array.from(entry.insetFieldsByOption.entries()).map(
+      ([value, entries]) => [value, entries.map(serializeInsetEntry)],
+    ),
+  };
+}
+
 vi.mock("./field-renderer", () => ({
   __esModule: true,
   default: (props: {
     field: { id: string };
+    children?: ReactNode;
     formVersion?: string;
-    insetFieldsByOption?: Map<string, Array<{ field: { id: string } }>>;
+    insetFieldsByOption?: Map<string, MockInsetEntry[]>;
   }) => (
     <div
       data-testid="field-renderer"
@@ -52,12 +69,14 @@ vi.mock("./field-renderer", () => ({
         props.insetFieldsByOption
           ? JSON.stringify(
               Array.from(props.insetFieldsByOption.entries()).map(
-                ([value, entries]) => [value, entries.map((e) => e.field.id)],
+                ([value, entries]) => [value, entries.map(serializeInsetEntry)],
               ),
             )
           : ""
       }
-    />
+    >
+      {props.children}
+    </div>
   ),
 }));
 
@@ -73,7 +92,11 @@ vi.mock("./review", () => ({
 
 vi.mock("./submission-confirmation", () => ({
   __esModule: true,
-  default: () => <div data-testid="submission-confirmation" />,
+  default: (props: { markdownContent?: string }) => (
+    <div data-testid="submission-confirmation">
+      <span data-testid="confirmation-markdown">{props.markdownContent}</span>
+    </div>
+  ),
 }));
 
 vi.mock("./applicant-name-display", () => ({
@@ -655,7 +678,7 @@ describe("FormRenderer", () => {
     );
   });
 
-  it("show-hide group: renders controlled fields when toggle value is true", () => {
+  it("show-hide group: nests controlled fields inside its toggle renderer", () => {
     const toggleField = {
       id: "step1_toggle",
       fieldId: "toggle",
@@ -681,14 +704,6 @@ describe("FormRenderer", () => {
       behaviours: [{ type: "fieldConditionalOn", targetFieldId: "toggle" }],
     };
     const step = makeStep("step1", [toggleField, controlledField]);
-
-    mockUseStore.mockImplementation((_store: any, selector: any) => {
-      try {
-        return selector({ values: { step1_toggle: true }, fieldMeta: {} });
-      } catch {
-        return {};
-      }
-    });
 
     render(
       <FormRenderer
@@ -705,58 +720,11 @@ describe("FormRenderer", () => {
     const fieldIds = renderers.map((el) => el.getAttribute("data-field-id"));
     expect(fieldIds).toContain("step1_toggle");
     expect(fieldIds).toContain("step1_detail");
-  });
-
-  it("show-hide group: does not render controlled fields when toggle value is false", () => {
-    const toggleField = {
-      id: "step1_toggle",
-      fieldId: "toggle",
-      stepId: "step1",
-      name: "toggle",
-      label: "Toggle",
-      htmlType: "show-hide" as any,
-      disabled: false,
-      hidden: false,
-      conditionallyHidden: false,
-      behaviours: [],
-    };
-    const controlledField = {
-      id: "step1_detail",
-      fieldId: "detail",
-      stepId: "step1",
-      name: "detail",
-      label: "Detail",
-      htmlType: "text" as const,
-      disabled: false,
-      hidden: false,
-      conditionallyHidden: false,
-      behaviours: [{ type: "fieldConditionalOn", targetFieldId: "toggle" }],
-    };
-    const step = makeStep("step1", [toggleField, controlledField]);
-
-    mockUseStore.mockImplementation((_store: any, selector: any) => {
-      try {
-        return selector({ values: { step1_toggle: false }, fieldMeta: {} });
-      } catch {
-        return {};
-      }
-    });
-
-    render(
-      <FormRenderer
-        form={mockForm}
-        formMeta={makeMeta() as any}
-        stepId="step1"
-        visibleSteps={[step]}
-        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
-        submissionState={mockSubmissionState as any}
-      />,
+    expect(
+      renderers.find((el) => el.dataset.fieldId === "step1_toggle"),
+    ).toContainElement(
+      renderers.find((el) => el.dataset.fieldId === "step1_detail")!,
     );
-
-    const renderers = screen.getAllByTestId("field-renderer");
-    const fieldIds = renderers.map((el) => el.getAttribute("data-field-id"));
-    expect(fieldIds).toContain("step1_toggle");
-    expect(fieldIds).not.toContain("step1_detail");
   });
 
   it("radio-conditional: radio field with conditional child is rendered as a FieldRenderer group", () => {
@@ -827,6 +795,82 @@ describe("FormRenderer", () => {
     expect(insetOptions).toEqual([["yes", ["step1_extra"]]]);
   });
 
+  it("radio-conditional: a revealed radio keeps its OWN reveals, nested a level deeper", () => {
+    const radio = (id: string, fieldId: string, behaviours: any[] = []) => ({
+      id,
+      fieldId,
+      stepId: "step1",
+      name: fieldId,
+      label: fieldId,
+      htmlType: "radio" as const,
+      disabled: false,
+      hidden: false,
+      conditionallyHidden: false,
+      options: [
+        { value: "yes", label: "Yes" },
+        { value: "no", label: "No" },
+      ],
+      behaviours,
+    });
+    const revealedBy = (targetFieldId: string, value: string) => ({
+      type: "fieldConditionalOn",
+      targetFieldId,
+      operator: "equal",
+      value,
+    });
+
+    // outer=yes reveals inner; inner=yes reveals a notice, inner=no reveals a
+    // detail field. The detail/notice ALSO carry the outer condition (the
+    // stale-value guard authored in the recipe), so this asserts they nest
+    // under the inner question rather than being claimed by the outer one.
+    const outer = radio("step1_outer", "outer");
+    const inner = radio("step1_inner", "inner", [revealedBy("outer", "yes")]);
+    const notice = {
+      ...makePlainField("step1_notice", "notice", "step1"),
+      behaviours: [revealedBy("outer", "yes"), revealedBy("inner", "yes")],
+    };
+    const detail = {
+      ...makePlainField("step1_detail", "detail", "step1"),
+      behaviours: [revealedBy("outer", "yes"), revealedBy("inner", "no")],
+    };
+    const step = makeStep("step1", [outer, inner, notice, detail]);
+
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+
+    // Only the outer radio renders page-level; everything else is an inset.
+    const renderers = screen.getAllByTestId("field-renderer");
+    const fieldIds = renderers.map((el) => el.getAttribute("data-field-id"));
+    expect(fieldIds).toEqual(["step1_outer"]);
+
+    const outerEl = renderers[0];
+    const insetOptions = JSON.parse(
+      outerEl.getAttribute("data-inset-options") || "[]",
+    );
+    expect(insetOptions).toEqual([
+      [
+        "yes",
+        [
+          {
+            id: "step1_inner",
+            nested: [
+              ["yes", ["step1_notice"]],
+              ["no", ["step1_detail"]],
+            ],
+          },
+        ],
+      ],
+    ]);
+  });
+
   it("select-conditional: select field with conditional child is grouped with insetFieldsByOption (#863)", () => {
     const selectField = {
       id: "step1_choice",
@@ -891,15 +935,14 @@ describe("FormRenderer", () => {
     expect(insetOptions).toEqual([["yes", ["step1_extra"]]]);
   });
 
-  it("select-conditional: a multiple select keeps the page-level fallback (#863)", () => {
-    const multiSelectField = {
+  it("checkbox-conditional: a child revealed by one option is grouped with insetFieldsByOption", () => {
+    const checkboxField = {
       id: "step1_choice",
       fieldId: "choice",
       stepId: "step1",
       name: "choice",
       label: "Choice",
-      htmlType: "select" as const,
-      multiple: true,
+      htmlType: "checkbox" as const,
       disabled: false,
       hidden: false,
       conditionallyHidden: false,
@@ -923,12 +966,12 @@ describe("FormRenderer", () => {
         {
           type: "fieldConditionalOn",
           targetFieldId: "choice",
-          operator: "equal",
-          value: "yes",
+          operator: "in",
+          value: ["yes"],
         },
       ],
     };
-    const step = makeStep("step1", [multiSelectField, conditionalChild]);
+    const step = makeStep("step1", [checkboxField, conditionalChild]);
 
     render(
       <FormRenderer
@@ -941,16 +984,80 @@ describe("FormRenderer", () => {
       />,
     );
 
-    // Both fields render as plain page-level renderers — no inset grouping.
+    const renderers = screen.getAllByTestId("field-renderer");
+    const fieldIds = renderers.map((el) => el.getAttribute("data-field-id"));
+    expect(fieldIds).toContain("step1_choice");
+    expect(fieldIds).not.toContain("step1_extra");
+
+    const checkboxEl = renderers.find(
+      (el) => el.getAttribute("data-field-id") === "step1_choice",
+    )!;
+    const insetOptions = JSON.parse(
+      checkboxEl.getAttribute("data-inset-options") || "[]",
+    ) as Array<[string, string[]]>;
+    expect(insetOptions).toEqual([["yes", ["step1_extra"]]]);
+  });
+
+  it("checkbox-conditional: a child revealed by several options keeps the page-level fallback", () => {
+    const checkboxField = {
+      id: "step1_choice",
+      fieldId: "choice",
+      stepId: "step1",
+      name: "choice",
+      label: "Choice",
+      htmlType: "checkbox" as const,
+      disabled: false,
+      hidden: false,
+      conditionallyHidden: false,
+      options: [
+        { value: "yes", label: "Yes" },
+        { value: "maybe", label: "Maybe" },
+        { value: "no", label: "No" },
+      ],
+      behaviours: [],
+    };
+    const conditionalChild = {
+      id: "step1_extra",
+      fieldId: "extra",
+      stepId: "step1",
+      name: "extra",
+      label: "Extra",
+      htmlType: "text" as const,
+      disabled: false,
+      hidden: false,
+      conditionallyHidden: false,
+      behaviours: [
+        {
+          type: "fieldConditionalOn",
+          targetFieldId: "choice",
+          operator: "in",
+          value: ["yes", "maybe"],
+        },
+      ],
+    };
+    const step = makeStep("step1", [checkboxField, conditionalChild]);
+
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+
+    // There is no single option to nest under, so both fields stay page-level.
     const renderers = screen.getAllByTestId("field-renderer");
     const fieldIds = renderers.map((el) => el.getAttribute("data-field-id"));
     expect(fieldIds).toContain("step1_choice");
     expect(fieldIds).toContain("step1_extra");
 
-    const selectEl = renderers.find(
+    const checkboxEl = renderers.find(
       (el) => el.getAttribute("data-field-id") === "step1_choice",
     )!;
-    expect(selectEl.getAttribute("data-inset-options")).toBe("");
+    expect(checkboxEl.getAttribute("data-inset-options")).toBe("");
   });
 
   it("clicking Previous calls navigateToStep with the previous step's id", async () => {
@@ -1016,6 +1123,28 @@ describe("FormRenderer", () => {
     await user.click(screen.getByRole("button", { name: /submit/i }));
     expect(mockForm.handleSubmit).toHaveBeenCalled();
     expect(mockCompleteAndContinue).toHaveBeenCalledWith("declaration");
+  });
+
+  it("disables submission while a request is already in progress", async () => {
+    const user = userEvent.setup();
+    mockUseStore.mockImplementation((_store, selector) =>
+      selector({ values: {}, fieldMeta: {}, isSubmitting: true }),
+    );
+    const step = makeStep("declaration");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="declaration"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    const submit = screen.getByRole("button", { name: "Submitting…" });
+    expect(submit).toBeDisabled();
+    await user.click(submit);
+    expect(mockForm.handleSubmit).not.toHaveBeenCalled();
   });
 
   // #317: form.handleSubmit() resolves even when validation fails (it just
@@ -1401,5 +1530,58 @@ describe("FormRenderer", () => {
     expect(heading).toContainElement(caption);
     // No em-dash suffix in the labelled case — the caption carries the marker.
     expect(heading.textContent).not.toContain("—");
+  });
+});
+
+describe("FormRenderer — conditional confirmation markdown (#2068)", () => {
+  const confirmationStep = () => ({
+    ...makeStep("submission-confirmation"),
+    markdownContent: "Lead.\n\n{inspection}",
+    conditionalMarkdown: [
+      {
+        token: "inspection",
+        default: "An officer may arrange an inspection.",
+        variants: [
+          {
+            targetStepId: "food-safety",
+            targetFieldId: "has-food-licence",
+            operator: "equal" as const,
+            value: "no",
+            content: "An officer will inspect your set-up.",
+          },
+        ],
+      },
+    ],
+  });
+
+  const renderConfirmation = (submissionState: Record<string, unknown>) => {
+    const step = confirmationStep();
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta({ steps: [step] }) as any}
+        stepId="submission-confirmation"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={submissionState as any}
+      />,
+    );
+    return screen.getByTestId("confirmation-markdown");
+  };
+
+  it("renders the branch resolved at submit", () => {
+    const node = renderConfirmation({
+      ...mockSubmissionState,
+      resolvedMarkdown: "Lead.\n\nAn officer will inspect your set-up.",
+    });
+    expect(node).toHaveTextContent("An officer will inspect your set-up.");
+  });
+
+  it("falls back to the default passage rather than a literal token", () => {
+    // A state persisted before this shipped, or an error path that commits no
+    // resolution. Rendering `{inspection}` at a citizen would be the failure.
+    const node = renderConfirmation(mockSubmissionState);
+    expect(node).toHaveTextContent("An officer may arrange an inspection.");
+    expect(node).not.toHaveTextContent("{inspection}");
   });
 });

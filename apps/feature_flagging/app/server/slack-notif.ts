@@ -1,6 +1,8 @@
 import { getSlackWebhookUrl } from "./secrets";
 
 export async function sendSlackNotification(message: string): Promise<void> {
+  // Only prod notifies — sandbox, staging and local dev stay quiet.
+  if (process.env.AWS_BRANCH !== "prod") return;
   try {
     const webhookUrl = await getSlackWebhookUrl();
     if (!webhookUrl) return;

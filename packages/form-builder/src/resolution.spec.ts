@@ -1,4 +1,8 @@
-import { hydrateForm, collectUnknownRefs } from "./resolution";
+import {
+  hydrateForm,
+  collectUnknownRefs,
+  collectGenericRequiredMessages,
+} from "./resolution";
 import { UnknownRefError } from "./errors";
 import { getCatalog, getRegistryItem } from "./catalog";
 import type { RegistryCatalog } from "./catalog";
@@ -268,6 +272,35 @@ describe("hydrateForm", () => {
 
     const contract = hydrateForm(recipe, catalog);
     expect(contract.steps[0].elements[0].hint).toBe("Use work email");
+  });
+
+  it("carries a content block's variant/content/summary overrides onto the resolved primitive (#2873)", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [
+            {
+              ref: "components/content",
+              overrides: {
+                variant: "details",
+                summary: "What you will need",
+                content: "Bring your **National ID**.",
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    const contract = hydrateForm(recipe, catalog);
+    expect(contract.steps[0].elements[0]).toMatchObject({
+      htmlType: "content",
+      variant: "details",
+      summary: "What you will need",
+      content: "Bring your **National ID**.",
+    });
   });
 
   it("applies isDisabled override on a component field", () => {
@@ -800,6 +833,47 @@ describe("hydrateForm", () => {
     expect(contract.steps[0].markdownContent).toBeUndefined();
   });
 
+  it("carries a step's conditionalMarkdown through to the hydrated step (#2068)", () => {
+    const conditionalMarkdown = [
+      {
+        token: "inspection",
+        default: "An officer may arrange an inspection.",
+        variants: [
+          {
+            targetStepId: "food-safety",
+            targetFieldId: "has-food-licence",
+            operator: "equal" as const,
+            value: "no",
+            content: "An officer will inspect your set-up.",
+          },
+        ],
+      },
+    ];
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "submission-confirmation",
+          title: "Application submitted",
+          markdownContent: "Lead.\n\n{inspection}",
+          conditionalMarkdown,
+          elements: [],
+        },
+      ],
+    });
+
+    const contract = hydrateForm(recipe, catalog);
+    expect(contract.steps[0].conditionalMarkdown).toEqual(conditionalMarkdown);
+  });
+
+  it("omits step conditionalMarkdown when absent", () => {
+    const recipe = makeRecipe({
+      steps: [{ stepId: "step-1", title: "Step 1", elements: [] }],
+    });
+
+    const contract = hydrateForm(recipe, catalog);
+    expect(contract.steps[0].conditionalMarkdown).toBeUndefined();
+  });
+
   it("lifts meta.closingDateTime onto the served contract (#1936)", () => {
     const recipe = makeRecipe({
       meta: {
@@ -848,5 +922,180 @@ describe("hydrateForm", () => {
     expect(
       hydrateForm(recipe as never, {} as never).catchmentRouting,
     ).toBeUndefined();
+  });
+});
+
+// ─── collectGenericRequiredMessages ──────────────────────────────────────────
+// #2714: the Deploy-gate half of #2227. `pnpm validate-recipes` guards the
+// recipes committed to the trunk; this guards what the Form Builder deploys,
+// against the *full* catalog, so a custom DB component's defaults are checked
+// too. Both read `requiredMessageDefect`, so neither can drift on the rule.
+
+describe("collectGenericRequiredMessages", () => {
+  let catalog: RegistryCatalog;
+
+  beforeEach(() => {
+    catalog = getCatalog();
+  });
+
+  it("returns [] when every required field names itself", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [
+            {
+              ref: "components/generic-text",
+              overrides: {
+                fieldId: "employer-name",
+                label: "Employer name",
+                validations: {
+                  required: { value: true, error: "Employer name is required" },
+                },
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(collectGenericRequiredMessages(recipe, catalog)).toEqual([]);
+  });
+
+  it("flags a generic primitive left on its inherited message", () => {
+    // components/generic-text ships "This field is required" as its base, so a
+    // recipe that only overrides fieldId + label inherits the defect.
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "employment",
+          title: "Employment",
+          elements: [
+            {
+              ref: "components/generic-text",
+              overrides: { fieldId: "employer-name", label: "Employer name" },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(collectGenericRequiredMessages(recipe, catalog)).toEqual([
+      {
+        path: "steps[employment].elements[0]",
+        fieldId: "employer-name",
+        defect: "generic",
+      },
+    ]);
+  });
+
+  it("flags an override that replaced a good base message with a bare rule", () => {
+    // `validations` merge per rule key, so `required: { value: true }` over
+    // components/last-name discards "Last name is required" entirely.
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "about-you",
+          title: "About you",
+          elements: [
+            {
+              ref: "components/last-name",
+              overrides: { validations: { required: { value: true } } },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(collectGenericRequiredMessages(recipe, catalog)).toEqual([
+      {
+        path: "steps[about-you].elements[0]",
+        fieldId: "last-name",
+        defect: "missing",
+      },
+    ]);
+  });
+
+  it("checks each child of a block separately", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "blocks/personal-information" }],
+        },
+      ],
+    });
+
+    const issues = collectGenericRequiredMessages(recipe, catalog);
+    // The block's own children ship naming messages; nothing to report. If this
+    // ever fails, the block regressed — not this collector.
+    expect(issues).toEqual([]);
+  });
+
+  it("reports a block child that an override left with no message", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [
+            {
+              ref: "blocks/personal-information",
+              overrides: {
+                "first-name": { validations: { required: { value: true } } },
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(collectGenericRequiredMessages(recipe, catalog)).toEqual([
+      {
+        path: "steps[step-1].elements[0]",
+        fieldId: "first-name",
+        defect: "missing",
+      },
+    ]);
+  });
+
+  it("passes an optional field with no message", () => {
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [
+            {
+              ref: "components/generic-text",
+              overrides: {
+                fieldId: "nickname",
+                label: "Nickname",
+                validations: { required: { value: false } },
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(collectGenericRequiredMessages(recipe, catalog)).toEqual([]);
+  });
+
+  it("skips a ref that does not resolve", () => {
+    // Unresolved refs are collectUnknownRefs' job — and that layer runs first.
+    const recipe = makeRecipe({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/this-does-not-exist" }],
+        },
+      ],
+    });
+
+    expect(collectGenericRequiredMessages(recipe, catalog)).toEqual([]);
   });
 });

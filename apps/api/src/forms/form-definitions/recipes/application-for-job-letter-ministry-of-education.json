@@ -603,14 +603,26 @@
                 "label": "Bimonthly",
                 "value": "bimonthly"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select whether you are paid monthly or bimonthly",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-number",
           "overrides": {
             "fieldId": "current-salary",
-            "label": "Current Salary"
+            "label": "Current Salary",
+            "validations": {
+              "required": {
+                "error": "Current Salary is required",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -762,5 +774,5 @@
     }
   ],
   "createdAt": "2026-06-08T18:48:15.188Z",
-  "updatedAt": "2026-06-08T18:48:15.188Z"
+  "updatedAt": "2026-09-17T13:49:39.000Z"
 }

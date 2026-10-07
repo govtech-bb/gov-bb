@@ -1,4 +1,5 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { Heading, ServiceList, ServiceListItem } from "@govtech-bb/react";
 import { fetchFormDefinitions } from "@forms/form-api";
 import type { PublicFormSummary } from "@forms/types";
 import { LANDING_URL } from "../config/landing";
@@ -55,34 +56,36 @@ function Index() {
   const groups = groupFormsByCategory(forms);
 
   return (
-    <div className="container py-8 lg:py-16">
-      <div className="form-width">
-        <h1 className="govbb-text-h1 mb-6">Forms</h1>
+    <div className="govbb-width-container govbb-main-wrapper govbb-grid-row">
+      <div className="govbb-grid-column-two-thirds-from-desktop">
+        <Heading as="h1" className="mb-6">
+          Forms
+        </Heading>
         <div className="flex flex-col gap-8">
           {groups.map(({ category, forms }) => (
             <section key={category}>
-              <h2 className="govbb-text-h2 mb-4">{category}</h2>
-              <ul className="flex flex-col gap-2">
+              <Heading as="h2" className="mb-4">
+                {category}
+              </Heading>
+              <ServiceList variant="signpost">
                 {forms.map(({ formId, title }) => (
-                  <li key={formId}>
-                    <Link
-                      to="/forms/$formId"
-                      params={{ formId }}
-                      className="group flex items-center justify-between gap-4 rounded-md border border-grey-00 bg-white-00 px-4 py-3 no-underline transition-colors hover:border-teal-00 hover:bg-teal-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-100"
-                    >
-                      <span className="font-medium text-teal-00 group-hover:text-teal-100">
-                        {title}
-                      </span>
-                      <span
-                        aria-hidden="true"
-                        className="text-teal-00 group-hover:text-teal-100"
+                  <ServiceListItem
+                    key={formId}
+                    href={`/forms/${encodeURIComponent(formId)}`}
+                    renderLink={({ className, children }) => (
+                      <Link
+                        to="/forms/$formId"
+                        params={{ formId }}
+                        className={className}
                       >
-                        &rsaquo;
-                      </span>
-                    </Link>
-                  </li>
+                        {children}
+                      </Link>
+                    )}
+                  >
+                    {title}
+                  </ServiceListItem>
                 ))}
-              </ul>
+              </ServiceList>
             </section>
           ))}
         </div>

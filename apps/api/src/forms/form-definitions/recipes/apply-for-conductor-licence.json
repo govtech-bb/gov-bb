@@ -245,7 +245,7 @@
           "ref": "components/postcode",
           "overrides": {
             "fieldId": "contact-postcode",
-            "hint": "For example, BB17004 (optional)"
+            "hint": "For example, BB17004"
           }
         },
         {
@@ -286,7 +286,7 @@
             "label": "Have you had a conductor or driving licence before?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have had a conductor or driving licence before",
                 "value": true
               }
             },
@@ -363,7 +363,7 @@
             "label": "Do you have any endorsements?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have any endorsements",
                 "value": true
               }
             },
@@ -393,6 +393,12 @@
             "fieldId": "licence-type",
             "ui": {
               "width": "medium"
+            },
+            "validations": {
+              "required": {
+                "error": "Type of licence is required",
+                "value": true
+              }
             }
           }
         },
@@ -404,6 +410,11 @@
             "hint": "For example, 15 12 2025",
             "ui": {
               "width": "medium"
+            },
+            "validations": {
+              "required": {
+                "value": true
+              }
             }
           }
         },
@@ -414,6 +425,12 @@
             "fieldId": "endorsement-duration",
             "ui": {
               "width": "medium"
+            },
+            "validations": {
+              "required": {
+                "error": "Enter how long the endorsement appeared on your licence",
+                "value": true
+              }
             }
           }
         }
@@ -446,7 +463,7 @@
             "label": "Have you ever been disqualified?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have ever been disqualified",
                 "value": true
               }
             },
@@ -474,7 +491,13 @@
                 "operator": "equal",
                 "value": "yes"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Court name is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -489,7 +512,13 @@
                 "operator": "equal",
                 "value": "yes"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Court reason for disqualification is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -525,7 +554,13 @@
                 "operator": "equal",
                 "value": "yes"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Length of disqualification is required",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -543,7 +578,7 @@
             "label": "Have you ever had any criminal convictions?",
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have ever had any criminal convictions",
                 "value": true
               }
             },
@@ -584,6 +619,10 @@
                   ".docx",
                   ".png"
                 ]
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "Each file must be 5 MB or smaller"
               },
               "maxSize": {
                 "error": "The file must be 25MB or smaller",
@@ -637,7 +676,7 @@
     }
   ],
   "createdAt": "2026-06-04T21:08:16.549Z",
-  "updatedAt": "2026-06-12T14:00:00.000Z",
+  "updatedAt": "2026-09-18T18:21:48.000Z",
   "meta": {
     "visibility": "maintenance"
   }

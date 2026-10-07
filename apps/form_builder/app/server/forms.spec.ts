@@ -1,4 +1,8 @@
 import type { Mock } from "vitest";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { buildServiceRows } from "../components/services/service-model";
 /**
  * @vitest-environment node
  */
@@ -32,20 +36,29 @@ vi.mock("./api-client", () => {
 // the precedence tests don't hit GitHub.
 vi.mock("./github-recipes", () => ({
   getPublishedRecipe: vi.fn(),
+  getRecipeCommittedAt: vi.fn(),
+  RecipeNotFoundError: class RecipeNotFoundError extends Error {},
+  RECIPES_BASE: "apps/api/src/forms/form-definitions/recipes",
 }));
 
 import { getSession } from "./session-cipher.server";
 import { api, ApiError } from "./api-client";
-import { getPublishedRecipe } from "./github-recipes";
+import {
+  getPublishedRecipe,
+  getRecipeCommittedAt,
+  RecipeNotFoundError,
+} from "./github-recipes";
 import {
   listForms,
   getRecipe,
   rekeyRecipe,
+  resolveCurrentRecipe,
   submitRecipe,
   updateRecipe,
 } from "./forms";
 
 const getPublishedRecipeMock = getPublishedRecipe as Mock;
+const getRecipeCommittedAtMock = getRecipeCommittedAt as Mock;
 
 const SESSION = {
   login: "alice",
@@ -57,11 +70,13 @@ const apiGet = api.get as Mock;
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.stubEnv("BUILDER_API_URL", "https://builder-api.example.test");
   process.env.SESSION_SECRET = Buffer.alloc(32).toString("base64");
   (getSession as Mock).mockReturnValue(SESSION);
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   delete process.env.SESSION_SECRET;
 });
 
@@ -409,6 +424,9 @@ describe("listForms", () => {
       isDisabled: true,
       isOrphanOverride: true,
       isPublished: false,
+      // #2411: a synthetic override row is seeded after `draftIds` is built,
+      // so it must not claim a working copy — there is no row to delete.
+      hasDraftRow: false,
     });
   });
 
@@ -481,6 +499,9 @@ describe("listForms", () => {
       version: "2.0.0",
       isPublished: true,
       isDisabled: true,
+      // #2411: the row is real, so the flag is true even though the picker
+      // suppresses the action here — Enable wins a disabled row.
+      hasDraftRow: true,
     });
   });
 
@@ -589,6 +610,12 @@ describe("updateRecipe — userLogin threading (#874)", () => {
 
 describe("getRecipe (draft-vs-published precedence)", () => {
   const FORM_ID = "apply-for-conductor-licence";
+
+  // The #2489 re-sync runs after precedence is decided; answer "not stale" so
+  // these tests stay about precedence and hydration.
+  beforeEach(() => {
+    (api.post as Mock).mockResolvedValue({ resynced: false });
+  });
 
   // A schema-valid published recipe; getRecipe parses the published copy before
   // returning it, so it must satisfy serviceContractRecipeSchema.
@@ -715,4 +742,476 @@ describe("getRecipe (draft-vs-published precedence)", () => {
     expect(result.meta).toBeUndefined();
     expect(result.title).toBe("Conductor (draft)");
   });
+});
+
+// #2489: a draft row that predates the committed recipe (a hand-fix merged
+// while the row sat idle) is replaced by the committed recipe on open, so a
+// later Deploy republishes the fix instead of reverting it. Staleness is
+// decided by the API from the row's own updated_at (forms.resync.db.spec.ts
+// covers the SQL); this spec covers what getRecipe does around that call.
+// #2878: "committed at" is the recipe's own `updatedAt`; the git committer
+// date is read only for a committed copy whose stamp is absent.
+describe("getRecipe — re-syncs a stale draft row from the committed recipe (#2489)", () => {
+  const FORM_ID = "apply-for-conductor-licence";
+  const COMMITTED_AT = "2026-09-15T10:00:00Z";
+  const apiPost = api.post as Mock;
+  // meta on both copies keeps the #1682 hydration fetch out of the way.
+  const published = {
+    formId: FORM_ID,
+    title: "Apply for Conductor Licence",
+    description: "Apply for a conductor licence",
+    version: "1.3.0",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-09-15T00:00:00.000Z",
+    steps: [],
+    meta: { visibility: "public" },
+  };
+  const draft = { ...published, title: "Conductor (draft)", version: "1.1.0" };
+
+  function call() {
+    return getRecipe({
+      data: { formId: FORM_ID },
+      context: { session: SESSION },
+    } as never);
+  }
+
+  it("replaces the draft with the committed recipe when the API confirms the row predates its updatedAt", async () => {
+    apiGet.mockResolvedValue(draft);
+    getPublishedRecipeMock.mockResolvedValue(published);
+    apiPost.mockResolvedValue({ resynced: true });
+
+    const result = await call();
+
+    expect(result.title).toBe("Apply for Conductor Licence");
+    // #2878: the committed recipe's own stamp decides; git is not consulted.
+    expect(getRecipeCommittedAtMock).not.toHaveBeenCalled();
+    expect(apiPost).toHaveBeenCalledWith(`/builder/forms/${FORM_ID}/resync`, {
+      recipe: expect.objectContaining({ title: "Apply for Conductor Licence" }),
+      committedAt: published.updatedAt,
+    });
+  });
+
+  it("normalises a committed updatedAt with an offset to the UTC instant the API accepts (#2878)", async () => {
+    apiGet.mockResolvedValue(draft);
+    getPublishedRecipeMock.mockResolvedValue({
+      ...published,
+      updatedAt: "2026-09-15T10:00:00+04:00",
+    });
+    apiPost.mockResolvedValue({ resynced: true });
+
+    await call();
+
+    expect(apiPost).toHaveBeenCalledWith(
+      `/builder/forms/${FORM_ID}/resync`,
+      expect.objectContaining({ committedAt: "2026-09-15T06:00:00.000Z" }),
+    );
+  });
+
+  it("falls back to the git committer date when the committed recipe carries no updatedAt (#2878)", async () => {
+    const { updatedAt: _stamp, ...unstamped } = published;
+    apiGet.mockResolvedValue(draft);
+    getPublishedRecipeMock.mockResolvedValue(unstamped);
+    getRecipeCommittedAtMock.mockResolvedValue(COMMITTED_AT);
+    apiPost.mockResolvedValue({ resynced: true });
+
+    const result = await call();
+
+    expect(result.title).toBe("Apply for Conductor Licence");
+    expect(getRecipeCommittedAtMock).toHaveBeenCalledWith(
+      SESSION.accessToken,
+      FORM_ID,
+    );
+    expect(apiPost).toHaveBeenCalledWith(
+      `/builder/forms/${FORM_ID}/resync`,
+      expect.objectContaining({ committedAt: COMMITTED_AT }),
+    );
+  });
+
+  it("keeps the draft when the committed recipe has no updatedAt and no commit touches it", async () => {
+    const { updatedAt: _stamp, ...unstamped } = published;
+    apiGet.mockResolvedValue(draft);
+    getPublishedRecipeMock.mockResolvedValue(unstamped);
+    getRecipeCommittedAtMock.mockResolvedValue(null);
+
+    const result = await call();
+
+    expect(result.title).toBe("Conductor (draft)");
+    expect(apiPost).not.toHaveBeenCalled();
+  });
+
+  it("keeps the draft, with no git fallback, when the committed updatedAt is not a datetime", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    apiGet.mockResolvedValue(draft);
+    getPublishedRecipeMock.mockResolvedValue({
+      ...published,
+      updatedAt: "last Tuesday",
+    });
+
+    const result = await call();
+
+    expect(result.title).toBe("Conductor (draft)");
+    expect(getRecipeCommittedAtMock).not.toHaveBeenCalled();
+    expect(apiPost).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("keeps the draft when the API reports it was saved after the committed stamp (or is a pre-#2489 row)", async () => {
+    apiGet.mockResolvedValue(draft);
+    getPublishedRecipeMock.mockResolvedValue(published);
+    apiPost.mockResolvedValue({ resynced: false });
+
+    const result = await call();
+
+    expect(result.title).toBe("Conductor (draft)");
+  });
+
+  it("leaves a draft with no committed copy alone, quietly", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    apiGet.mockResolvedValue(draft);
+    getPublishedRecipeMock.mockRejectedValue(
+      new RecipeNotFoundError("Recipe not found"),
+    );
+
+    const result = await call();
+
+    expect(result.title).toBe("Conductor (draft)");
+    expect(getRecipeCommittedAtMock).not.toHaveBeenCalled();
+    expect(apiPost).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("keeps the draft and still opens the form when GitHub cannot be reached", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    apiGet.mockResolvedValue(draft);
+    getPublishedRecipeMock.mockRejectedValue(new Error("GitHub 503"));
+
+    const result = await call();
+
+    expect(result.title).toBe("Conductor (draft)");
+    expect(apiPost).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("re-sync skipped"),
+      expect.any(Error),
+    );
+    warn.mockRestore();
+  });
+
+  it("keeps the draft when the git fallback read fails", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { updatedAt: _stamp, ...unstamped } = published;
+    apiGet.mockResolvedValue(draft);
+    getPublishedRecipeMock.mockResolvedValue(unstamped);
+    getRecipeCommittedAtMock.mockRejectedValue(new Error("GitHub 503"));
+
+    const result = await call();
+
+    expect(result.title).toBe("Conductor (draft)");
+    expect(apiPost).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("keeps the draft and still opens the form when the API re-sync call fails", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    apiGet.mockResolvedValue(draft);
+    getPublishedRecipeMock.mockResolvedValue(published);
+    apiPost.mockRejectedValue(new ApiError(500, "db down"));
+
+    const result = await call();
+
+    expect(result.title).toBe("Conductor (draft)");
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("reads the committed recipe once when the metaless row already hydrated it (#2900)", async () => {
+    // A legacy row with no `meta` fetches the committed recipe to hydrate it
+    // (#1682); the re-sync must reuse that copy, not read the same file again.
+    const { meta: _meta, ...metalessDraft } = draft;
+    apiGet.mockResolvedValue(metalessDraft);
+    getRecipeCommittedAtMock.mockResolvedValue(COMMITTED_AT);
+    getPublishedRecipeMock.mockResolvedValue(published);
+    apiPost.mockResolvedValue({ resynced: true });
+
+    const result = await call();
+
+    expect(result.title).toBe("Apply for Conductor Licence");
+    expect(result.meta).toEqual({ visibility: "public" });
+    expect(getPublishedRecipeMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("reads the committed recipe once for a row that needed no hydration (#2900)", async () => {
+    apiGet.mockResolvedValue(draft);
+    getRecipeCommittedAtMock.mockResolvedValue(COMMITTED_AT);
+    getPublishedRecipeMock.mockResolvedValue(published);
+    apiPost.mockResolvedValue({ resynced: true });
+
+    await call();
+
+    expect(getPublishedRecipeMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not re-sync the published fallback — with no draft row there is nothing stale", async () => {
+    apiGet.mockRejectedValue(new ApiError(404, "not found"));
+    getPublishedRecipeMock.mockResolvedValue(published);
+
+    const result = await call();
+
+    expect(result.title).toBe("Apply for Conductor Licence");
+    expect(getRecipeCommittedAtMock).not.toHaveBeenCalled();
+    expect(apiPost).not.toHaveBeenCalled();
+  });
+});
+
+// #2897: the services workspace's first adoption reads the form through this
+// same resolver, so the recipe it stores is the one getRecipe would show —
+// including the #2489 re-sync of a stale draft row — rather than the raw row.
+describe("resolveCurrentRecipe — shared by getRecipe and services adoption (#2897)", () => {
+  const FORM_ID = "apply-for-conductor-licence";
+  const apiPost = api.post as Mock;
+  const published = {
+    formId: FORM_ID,
+    title: "Apply for Conductor Licence",
+    description: "Apply for a conductor licence",
+    version: "1.3.0",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-09-15T00:00:00.000Z",
+    steps: [],
+    meta: { visibility: "public" },
+  };
+  const draft = { ...published, title: "Conductor (draft)", version: "1.1.0" };
+
+  it("replaces a stale draft row with the committed recipe, as getRecipe does", async () => {
+    apiGet.mockResolvedValue(draft);
+    getPublishedRecipeMock.mockResolvedValue(published);
+    apiPost.mockResolvedValue({ resynced: true });
+
+    const result = await resolveCurrentRecipe(FORM_ID, SESSION.accessToken);
+
+    expect(result?.title).toBe("Apply for Conductor Licence");
+    expect(apiPost).toHaveBeenCalledWith(
+      `/builder/forms/${FORM_ID}/resync`,
+      expect.objectContaining({ committedAt: published.updatedAt }),
+    );
+  });
+
+  it("keeps a draft row the API says was saved after the committed stamp", async () => {
+    apiGet.mockResolvedValue(draft);
+    getPublishedRecipeMock.mockResolvedValue(published);
+    apiPost.mockResolvedValue({ resynced: false });
+
+    const result = await resolveCurrentRecipe(FORM_ID, SESSION.accessToken);
+
+    expect(result?.title).toBe("Conductor (draft)");
+  });
+
+  it("returns null when neither a draft row nor a committed copy exists", async () => {
+    apiGet.mockRejectedValue(new ApiError(404, "not found"));
+    getPublishedRecipeMock.mockRejectedValue(new Error("no published recipe"));
+
+    await expect(
+      resolveCurrentRecipe(FORM_ID, SESSION.accessToken),
+    ).resolves.toBeNull();
+  });
+});
+
+describe("listForms — hasDraftRow (#2411)", () => {
+  function stub(drafts: unknown[], published: unknown[]) {
+    apiGet.mockImplementation((path: string) => {
+      if (path === "/builder/forms") return Promise.resolve(drafts);
+      if (path === "/builder/forms/published")
+        return Promise.resolve(published);
+      if (path === "/builder/forms/disabled") return Promise.resolve([]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+  }
+
+  it("flags a published form that a scratch row is shadowing", async () => {
+    stub(
+      [
+        {
+          id: "uuid-1",
+          formId: "passport-renewal",
+          title: "Passport Renewal (working copy)",
+          version: "1.1.0",
+          isPublished: false,
+        },
+      ],
+      [
+        {
+          formId: "passport-renewal",
+          title: "Passport Renewal",
+          version: "1.0.0",
+        },
+      ],
+    );
+
+    const [form] = await listForms();
+
+    // Both true at once is the whole point: the row wins the merge, and
+    // isPublished is OR'd back on. Without hasDraftRow the picker cannot tell
+    // this apart from a published form with no working copy.
+    expect(form).toMatchObject({
+      formId: "passport-renewal",
+      isPublished: true,
+      hasDraftRow: true,
+    });
+  });
+
+  it("does not flag a published form with no scratch row", async () => {
+    stub(
+      [],
+      [
+        {
+          formId: "drivers-licence",
+          title: "Drivers Licence",
+          version: "1.0.0",
+        },
+      ],
+    );
+
+    const [form] = await listForms();
+
+    expect(form).toMatchObject({
+      formId: "drivers-licence",
+      isPublished: true,
+      hasDraftRow: false,
+    });
+  });
+
+  it("flags a draft-only form", async () => {
+    stub(
+      [
+        {
+          id: "uuid-2",
+          formId: "new-thing",
+          title: "New Thing",
+          version: "0.1.0",
+          isPublished: false,
+        },
+      ],
+      [],
+    );
+
+    const [form] = await listForms();
+
+    expect(form).toMatchObject({ formId: "new-thing", hasDraftRow: true });
+  });
+});
+
+it("connects local service pages to canonical recipes and opens them only in unconfigured development", async () => {
+  const root = await mkdtemp(join(tmpdir(), "service-forms-"));
+  const recipes = join(root, "apps/api/src/forms/form-definitions/recipes");
+  const recipe = {
+    formId: "get-birth-certificate",
+    title: "Get a birth certificate",
+    version: "1.0.0",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    steps: [],
+    meta: { visibility: "preview" },
+  };
+  const cwd = vi
+    .spyOn(process, "cwd")
+    .mockReturnValue(join(root, "apps/form_builder"));
+  try {
+    vi.stubEnv("DEV", true);
+    vi.stubEnv("BUILDER_API_URL", "");
+    apiGet.mockRejectedValue(new Error("BUILDER_API_URL is not set"));
+    await mkdir(join(recipes, recipe.formId), { recursive: true });
+    await writeFile(
+      join(recipes, `${recipe.formId}.json`),
+      JSON.stringify(recipe),
+    );
+    await writeFile(
+      join(recipes, recipe.formId, "0.1.0.json"),
+      JSON.stringify({ ...recipe, version: "0.1.0" }),
+    );
+    await writeFile(join(recipes, "README.md"), "Canonical recipes");
+
+    const forms = await listForms();
+    expect(forms).toEqual([
+      expect.objectContaining({
+        formId: recipe.formId,
+        title: recipe.title,
+        version: "1.0.0",
+        isPublished: true,
+      }),
+    ]);
+    // #2875: no API here, so no status — the recipe's `meta.visibility` is
+    // never read as one (the builder renders this as "Status unavailable").
+    expect(forms[0]).not.toHaveProperty("visibility");
+    const pages = ["index", "start", "help"].map((name) => ({
+      path: `apps/landing/src/content/${recipe.formId}/${name}.md`,
+      title: recipe.title,
+      formId: name === "help" ? "" : recipe.formId,
+      category: "family-birth-relationships",
+      visibility: "public",
+      hasFormButton: name === "start",
+    }));
+    expect(buildServiceRows(forms, pages)).toEqual([
+      expect.objectContaining({
+        form: forms[0],
+        hasForm: true,
+        pages: expect.arrayContaining(pages),
+      }),
+    ]);
+    expect(
+      await getRecipe({
+        data: { formId: recipe.formId },
+        context: { session: SESSION },
+      } as never),
+    ).toEqual(recipe);
+    await expect(
+      getRecipe({
+        data: { formId: "../outside" },
+        context: { session: SESSION },
+      } as never),
+    ).rejects.toThrow();
+    expect(apiGet).not.toHaveBeenCalled();
+    expect(getPublishedRecipeMock).not.toHaveBeenCalled();
+
+    vi.stubEnv("BUILDER_API_URL", "http://127.0.0.1:3003");
+    apiGet.mockRejectedValue(new TypeError("fetch failed"));
+    expect(await listForms()).toEqual(forms);
+    expect(
+      await getRecipe({
+        data: { formId: recipe.formId },
+        context: { session: SESSION },
+      } as never),
+    ).toEqual(recipe);
+
+    apiGet.mockRejectedValue(new ApiError(401, "Not authorised"));
+    await expect(listForms()).rejects.toThrow("Not authorised");
+    await expect(
+      getRecipe({
+        data: { formId: recipe.formId },
+        context: { session: SESSION },
+      } as never),
+    ).rejects.toThrow("Not authorised");
+    vi.stubEnv("BUILDER_API_URL", "https://builder-api.example.test");
+    apiGet.mockRejectedValue(new TypeError("fetch failed"));
+    await expect(listForms()).rejects.toThrow("fetch failed");
+    await expect(
+      getRecipe({
+        data: { formId: recipe.formId },
+        context: { session: SESSION },
+      } as never),
+    ).rejects.toThrow("fetch failed");
+
+    vi.stubEnv("BUILDER_API_URL", "");
+    apiGet.mockRejectedValue(new Error("BUILDER_API_URL is not set"));
+    vi.stubEnv("DEV", false);
+    await expect(listForms()).rejects.toThrow("BUILDER_API_URL is not set");
+    await expect(
+      getRecipe({
+        data: { formId: recipe.formId },
+        context: { session: SESSION },
+      } as never),
+    ).rejects.toThrow("BUILDER_API_URL is not set");
+  } finally {
+    cwd.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
 });

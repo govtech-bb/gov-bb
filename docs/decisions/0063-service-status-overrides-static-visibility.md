@@ -125,4 +125,6 @@ matching their existing architecture:
   seed" rule via each app's own effective-visibility mapping, not a shared
   package — the forms API and landing gates are intentionally separate,
   file-disjoint implementations (see #1896/#1897), each translating the three
-  `service_status` values into its own existing visibility vocabulary.
+  `service_status` values into its own existing visibility vocabulary. The
+  Form Builder (ADR 0074, #2875) consumes the forms API's *result* through
+  form_builder_api instead of adding a third mapping.

@@ -2,6 +2,9 @@
 # Anything matched here is excluded from the COPY operations in every Dockerfile
 # that builds from this monorepo.
 
+# Patterns match relative to the context root; only `**/` ones apply inside
+# apps/* and packages/*.
+
 # Build outputs and dependency dirs — rebuilt fresh inside the container.
 node_modules
 **/node_modules
@@ -10,6 +13,10 @@ dist
 .nx
 .next
 **/.next
+**/.output
+**/.nitro
+**/.tanstack
+**/.amplify-hosting
 coverage
 **/coverage
 
@@ -18,14 +25,14 @@ coverage
 .gitignore
 .gitattributes
 .github
-.vscode
+**/.vscode
 .idea
 *.swp
 
 # Local-only env and secrets — never bake into images.
-.env
-.env.*
-!.env.example
+**/.env
+**/.env.*
+!**/.env.example
 
 # Compose files and Docker meta — not consumed by Dockerfile builds.
 docker-compose*.yml
@@ -33,7 +40,7 @@ docker-compose*.yml
 # Docs and ephemeral noise.
 README.md
 docs
-*.log
+**/*.log
 .DS_Store
 Thumbs.db
 
@@ -42,5 +49,5 @@ Thumbs.db
 .prettiercache
 
 # Test artifacts that shouldn't ship.
-test-results
-playwright-report
+**/test-results
+**/playwright-report

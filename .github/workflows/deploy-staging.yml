@@ -63,6 +63,7 @@ env:
   AMPLIFY_FORMS_URL: https://forms.staging.alpha.gov.bb
   AMPLIFY_LANDING_URL: https://staging.alpha.gov.bb
   AMPLIFY_FORM_BUILDER_URL: https://builder.staging.alpha.gov.bb
+  AMPLIFY_FEATURE_FLAGGING_URL: https://feature-flagging.staging.alpha.gov.bb
 
 jobs:
   # Move the `staging` deploy pointer to the commit being deployed BEFORE any
@@ -95,6 +96,7 @@ jobs:
       forms: ${{ steps.affected.outputs.forms }}
       landing: ${{ steps.affected.outputs.landing }}
       fb-app: ${{ steps.affected.outputs.fb-app }}
+      ff-app: ${{ steps.affected.outputs.ff-app }}
       migrations: ${{ steps.affected.outputs.migrations }}
       amplify-config: ${{ steps.affected.outputs.amplify-config }}
     steps:
@@ -104,7 +106,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version-file: ".nvmrc"
@@ -119,12 +121,18 @@ jobs:
           # triggered on push:staging.)
           main-branch-name: main
           workflow-id: deploy-staging.yml
+          # This workflow only runs via workflow_dispatch. The action's default
+          # last-successful-event is push, which never matched a staging run, so
+          # every deploy fell back to HEAD~1 with only a warning (run 35656441931)
+          # and under-deployed whenever a promotion had been skipped.
+          last-successful-event: workflow_dispatch
+          error-on-no-successful-workflow: true
 
       - name: Compute affected deploy targets
         id: affected
         run: |
           AFFECTED=$(pnpm exec nx show projects \
-            --affected --base="$NX_BASE" --head="$NX_HEAD" --type app --json 2>/dev/null || echo '[]')
+            --affected --base="$NX_BASE" --head="$NX_HEAD" --type app --json)
           echo "Affected apps: $AFFECTED"
           has() { echo "$AFFECTED" | jq -e --arg p "$1" 'index($p)' >/dev/null && echo true || echo false; }
 
@@ -133,6 +141,7 @@ jobs:
           echo "forms=$(has forms)" >> "$GITHUB_OUTPUT"
           echo "landing=$(has landing)" >> "$GITHUB_OUTPUT"
           echo "fb-app=$(has form-builder-app)" >> "$GITHUB_OUTPUT"
+          echo "ff-app=$(has feature-flagging-app)" >> "$GITHUB_OUTPUT"
 
           # TypeORM migrations live in packages/database/src/migrations/; the old
           # pattern matched only apps/api/src/database/migrations/, which holds
@@ -180,16 +189,32 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      # Reads the layer cache CI's docker-build job writes on every push to
+      # main (same scope) instead of building cold. No cache-to. provenance:
+      # false keeps a plain single-manifest image, as `docker build` +
+      # `docker push` produced.
       - name: Build and push image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-from: type=gha,scope=ci-api
+
+      - name: Image reference
         id: build
-        run: |
-          set -euo pipefail
-          IMAGE_URI="${{ steps.ecr-login.outputs.registry }}/${ECR_REPOSITORY}:${{ github.sha }}"
-          LATEST_URI="${{ steps.ecr-login.outputs.registry }}/${ECR_REPOSITORY}:latest"
-          docker build --platform linux/amd64 -f apps/api/Dockerfile -t "$IMAGE_URI" -t "$LATEST_URI" .
-          docker push "$IMAGE_URI"
-          docker push "$LATEST_URI"
-          echo "image=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: echo "image=$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Get current task definition
         run: |
@@ -224,7 +249,7 @@ jobs:
             --task-definition "$TASK_DEF_ARN" \
             --launch-type FARGATE \
             --network-configuration "awsvpcConfiguration={subnets=[subnet-0374aa2ad1df7a431,subnet-04e50152fa2b77b88],securityGroups=[sg-0e6b76b9c1c50d397],assignPublicIp=DISABLED}" \
-            --overrides '{"containerOverrides":[{"name":"api","command":["pnpm","migration:run"]}]}' \
+            --overrides '{"containerOverrides":[{"name":"api","command":["node","node_modules/typeorm/cli.js","migration:run","-d","dist/src/database/data-source.js"]}]}' \
             --region $AWS_REGION \
             --query tasks[0].taskArn \
             --output text)
@@ -285,16 +310,30 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      # Same cache reuse as the api job (scope written by CI's docker-build
+      # job on push to main).
       - name: Build and push image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: apps/form_builder_api/Dockerfile
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/gov-bb-form-builder:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/gov-bb-form-builder:latest
+          cache-from: type=gha,scope=ci-form-builder-api
+
+      - name: Image reference
         id: build
-        run: |
-          set -euo pipefail
-          IMAGE_URI="${{ steps.ecr-login.outputs.registry }}/gov-bb-form-builder:${{ github.sha }}"
-          LATEST_URI="${{ steps.ecr-login.outputs.registry }}/gov-bb-form-builder:latest"
-          docker build --platform linux/amd64 -f apps/form_builder_api/Dockerfile -t "$IMAGE_URI" -t "$LATEST_URI" .
-          docker push "$IMAGE_URI"
-          docker push "$LATEST_URI"
-          echo "image=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: echo "image=$REGISTRY/gov-bb-form-builder:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Get current task definition
         run: |
@@ -355,7 +394,7 @@ jobs:
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version-file: ".nvmrc"
@@ -555,9 +594,66 @@ jobs:
           EXPECT_CODES: "200,302,307"
         run: bash .github/scripts/smoke-test-url.sh
 
+  # Feature-flagging admin UI (apps/feature_flagging SSR) at
+  # feature-flagging.staging.alpha.gov.bb. Gives staging a way to change a
+  # service's status before prod (gov-bb#2755). App created by alpha-infra#700.
+  amplify-feature-flagging:
+    name: Amplify build (feature-flagging)
+    needs: setup
+    if: needs.setup.outputs.ff-app == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Trigger and monitor Amplify build
+        env:
+          # gov-bb-feature-flagging-staging, created by alpha-infra#700.
+          AMPLIFY_APP_ID: d15rkwf3l5cmbx
+          AMPLIFY_BRANCH: staging
+          APP_LABEL: feature-flagging
+        run: |
+          set -euo pipefail
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE --region "$AWS_REGION" \
+            --query jobSummary.jobId --output text)
+          echo "Amplify $APP_LABEL job: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" --region "$AWS_REGION" \
+              --query job.summary.status --output text)
+            echo "[$i/30] $APP_LABEL: $STATUS"
+            case "$STATUS" in
+              SUCCEED) echo "✅ Amplify $APP_LABEL build succeeded"; exit 0 ;;
+              FAILED|CANCELLED) echo "❌ Amplify $APP_LABEL build $STATUS"; exit 1 ;;
+            esac
+            sleep 30
+          done
+          echo "❌ Amplify $APP_LABEL build did not finish in 15 min"
+          exit 1
+
+      - name: Smoke test feature-flagging URL
+        env:
+          URL: ${{ env.AMPLIFY_FEATURE_FLAGGING_URL }}
+          LABEL: feature-flagging
+          # Auth-gated like form-builder: an unauthenticated request redirects
+          # to the GitHub login flow. A redirect means the SSR is alive.
+          EXPECT_CODES: "200,302,307"
+        run: bash .github/scripts/smoke-test-url.sh
+
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, deploy-form-builder, ssr-smoke, amplify-forms, amplify-landing, amplify-form-builder]
+    needs: [setup, deploy-api, deploy-form-builder, ssr-smoke, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -587,6 +683,7 @@ jobs:
             row "Amplify forms"        "${{ needs.amplify-forms.result }}"
             row "Amplify landing"      "${{ needs.amplify-landing.result }}"
             row "Amplify form-builder" "${{ needs.amplify-form-builder.result }}"
+            row "Amplify feature-flagging" "${{ needs.amplify-feature-flagging.result }}"
             echo ""
             echo "**URLs (ALB / amplifyapp.com until DNS lands):**"
             echo "- API: ${{ env.API_SMOKE_URL }}"
@@ -594,4 +691,5 @@ jobs:
             echo "- forms: ${{ env.AMPLIFY_FORMS_URL }}"
             echo "- landing: ${{ env.AMPLIFY_LANDING_URL }}"
             echo "- form-builder app: ${{ env.AMPLIFY_FORM_BUILDER_URL }}"
+            echo "- feature-flagging: ${{ env.AMPLIFY_FEATURE_FLAGGING_URL }}"
           } >> "$GITHUB_STEP_SUMMARY"

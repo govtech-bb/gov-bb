@@ -198,14 +198,26 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "N.I.S NO",
-            "fieldId": "parent-nlis-no"
+            "fieldId": "parent-nlis-no",
+            "validations": {
+              "required": {
+                "error": "N.I.S NO is required",
+                "value": true
+              }
+            }
           }
         },
         {
           "ref": "components/generic-text",
           "overrides": {
             "label": "TAMIS NO",
-            "fieldId": "parent-tamis-no"
+            "fieldId": "parent-tamis-no",
+            "validations": {
+              "required": {
+                "error": "TAMIS NO is required",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -405,5 +417,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:17:17.379Z",
-  "updatedAt": "2026-06-05T00:37:09.037Z"
+  "updatedAt": "2026-09-17T13:49:39.000Z"
 }

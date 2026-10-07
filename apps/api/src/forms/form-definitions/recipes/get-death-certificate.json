@@ -57,7 +57,7 @@
           "overrides": {
             "fieldId": "applicant-middle-name",
             "label": "Middle name",
-            "hint": "Optional. Provide only if known"
+            "hint": "Provide only if known"
           }
         },
         {
@@ -168,7 +168,7 @@
           "ref": "components/postcode",
           "overrides": {
             "fieldId": "applicant-postcode",
-            "hint": "For example, BB17004 (optional)"
+            "hint": "For example, BB17004"
           }
         },
         {
@@ -448,7 +448,12 @@
                 "operator": "equal",
                 "value": "yes"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": true
+              }
+            }
           }
         },
         {
@@ -568,7 +573,7 @@
     }
   ],
   "createdAt": "2026-06-08T21:18:47.989Z",
-  "updatedAt": "2026-06-12T00:00:00.000Z",
+  "updatedAt": "2026-09-18T18:21:48.000Z",
   "meta": {
     "visibility": "public"
   }

@@ -23,6 +23,9 @@
  *    day/month/year widget; must be in the past.
  *  - `contact.contact-parish` / `emergency-parish` are `components/parish` →
  *    native `<select>` with slug values (use "st-michael").
+ *  - `emergency.emergency-relationship` is `components/relationship` → native
+ *    `<select>` with slug values (use "parent"); it was a text input before
+ *    #2217 re-pointed it off `components/name`.
  *  - `experience.years-of-experience` is `components/generic-number` → number
  *    input (fillField).
  *  - Conditionals / branches we choose to keep the optional sub-fields hidden:
@@ -38,7 +41,7 @@
  *  - The renderer auto-injects `check-your-answers` before the declaration; it is
  *    guarded below.
  *  - `declaration` is the explicit final step; its single-option confirmation
- *    checkbox input is `declaration_declaration-confirmed-confirmed`. The
+ *    checkbox input is `declaration_declaration-confirmed`. The
  *    recipe's `declaration-date` is `isHidden`, so it is not filled.
  *  - The confirmation step title is "Application submitted" (rendered as the h1)
  *    and the recipe sets no processing message, so the subheading falls back to
@@ -48,6 +51,7 @@ import { faker } from "@faker-js/faker";
 import { test } from "@playwright/test";
 import {
   STEP_TIMEOUT,
+  openSmokeForm,
   advance,
   currentStep,
   expectStep,
@@ -64,7 +68,7 @@ test.describe("Community Sports Training Programme — Live Smoke", () => {
   test("submits the real form end-to-end and reaches the confirmation screen", async ({
     page,
   }) => {
-    await page.goto(`/forms/${FORM_ID}`);
+    await openSmokeForm(page, FORM_ID);
     await page.waitForURL((url) => !!url.searchParams.get("step"), {
       timeout: STEP_TIMEOUT,
     });
@@ -132,7 +136,7 @@ test.describe("Community Sports Training Programme — Live Smoke", () => {
       faker.person.firstName(),
     );
     await fillField(page, step, "emergency-last-name", faker.person.lastName());
-    await fillField(page, step, "emergency-relationship", "Parent");
+    await selectDropdown(page, step, "emergency-relationship", "parent");
     await fillField(
       page,
       step,
@@ -161,7 +165,8 @@ test.describe("Community Sports Training Programme — Live Smoke", () => {
     // ─── Declaration ─────────────────────────────────────────────────────────
     step = expectStep(page, "declaration", { exact: true });
     await page
-      .locator(`input[id="declaration_declaration-confirmed-confirmed"]`)
+      .locator(`fieldset[id="declaration_declaration-confirmed"]`)
+      .getByRole("checkbox")
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────

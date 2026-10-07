@@ -1,6 +1,10 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { serviceContractRecipeSchema } from "@govtech-bb/form-types";
+import {
+  canonicalizeRecipe,
+  serializeRecipe,
+  serviceContractRecipeSchema,
+} from "@govtech-bb/form-types";
 import { BUILTIN_REGISTRY } from "@govtech-bb/registry";
 
 // Guards the invariants RecipeFileLoaderService relies on. Recipes are flat
@@ -178,6 +182,47 @@ it("recipes pair passport show-hide toggles with optionalIf on the National ID f
   expect(problems).toEqual([]);
 });
 
+// A catchment-routed form is routed to exactly one polyclinic, so its
+// confirmation copy must show only that clinic's contact details — via the
+// shared `{polyclinicContact}` token, whose fallback restores the full list
+// when nothing resolves. The seven-clinic list used to be hardcoded into every
+// one of these recipes (#254); the risk now is a new EHO form authored by
+// copy-pasting an older `## Contact` section and bringing it back, which would
+// regress on that form alone and silently. Nothing else in the gate would
+// notice, so this pins it.
+it("catchment-routed recipes use {polyclinicContact}, never hardcoded contact details", async () => {
+  const problems: string[] = [];
+  const recipes = await readRecipeFiles();
+
+  for (const { file, raw } of recipes) {
+    const recipe = raw as {
+      catchmentRouting?: unknown;
+      steps?: { markdownContent?: string }[];
+    };
+    if (!recipe.catchmentRouting) continue;
+
+    const body = (recipe.steps ?? [])
+      .map((step) => step.markdownContent ?? "")
+      .join("\n");
+
+    // A routed form must not carry any clinic's phone number — the routed one
+    // included, since it arrives through the token, not the authored copy.
+    const phones = body.match(/tel:\+1246\d+/g);
+    if (phones) {
+      problems.push(
+        `${file}: hardcodes contact number(s) [${[...new Set(phones)].join(", ")}] — use {polyclinicContact}`,
+      );
+    }
+    if (body.includes("## Contact") && !body.includes("{polyclinicContact}")) {
+      problems.push(
+        `${file}: has a ## Contact section without {polyclinicContact}`,
+      );
+    }
+  }
+
+  expect(problems).toEqual([]);
+});
+
 // Proves the net actually catches malformed recipes (#2075 acceptance criteria)
 // without polluting the real recipes/ set: each synthetic recipe is a mutation
 // of a real, valid one, and asserts the *specific* problem is reported so a
@@ -259,5 +304,32 @@ describe("checkRecipe rejects malformed recipes", () => {
         p.includes("duplicate fieldId"),
       ),
     ).toBe(true);
+  });
+});
+
+// Canonical serialization (#2487). Every writer of a recipe file goes through
+// serializeRecipe, so it must be safe to apply to any recipe already in the
+// repo: value-preserving (only key order changes) and a fixed point once
+// applied. Those two properties together also cover the subtrees the schema
+// walk cannot read — a z.pipe/transform, an unmatched union member — which it
+// deliberately leaves in place rather than guessing at.
+describe("canonical serialization over the real recipes", () => {
+  it("only ever reorders keys — nothing dropped, added or changed", async () => {
+    const recipes = await readRecipeFiles();
+    expect(recipes.length).toBeGreaterThan(50);
+
+    for (const { file, raw } of recipes) {
+      // toEqual is order-insensitive, so this fails only on a real value change.
+      expect(canonicalizeRecipe(raw), file).toEqual(raw);
+    }
+  });
+
+  it("is a fixed point — normalizing an already-canonical file is a no-op", async () => {
+    const recipes = await readRecipeFiles();
+
+    for (const { file, raw } of recipes) {
+      const once = serializeRecipe(raw);
+      expect(serializeRecipe(JSON.parse(once)), file).toBe(once);
+    }
   });
 });

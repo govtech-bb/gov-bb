@@ -1,0 +1,1513 @@
+import { respondToConfirmation } from "../../test/ui";
+/**
+ * @vitest-environment jsdom
+ */
+import { createElement, type ReactElement, type ReactNode } from "react";
+import { render, screen, fireEvent, within, waitFor } from "../../test/ui";
+import userEvent from "@testing-library/user-event";
+import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
+import { serializeRecipeDraft } from "@govtech-bb/form-builder";
+import {
+  serviceDraftSchema,
+  type ServiceDraft,
+  type ServiceSnapshot,
+} from "@govtech-bb/form-types";
+import type { UseBlockerOpts } from "@tanstack/react-router";
+import { act } from "../../test/ui";
+
+let mockLinkedDraft: RecipeDraft | null = null;
+let mockInitialService: ServiceDraft | null = null;
+let mockAssistantSnapshot: ServiceSnapshot | undefined;
+const mockListServiceDrafts = vi.fn(async () => [] as ServiceDraft[]);
+let mockLinkedFormId: string | undefined;
+let mockSearch: {
+  service?: string;
+  formId?: string;
+  newFormId?: string;
+  title?: string;
+} = {};
+let mockBlocker: UseBlockerOpts;
+
+vi.mock("../../components/app-shell", () => ({
+  AppShell: ({
+    children,
+    assistant,
+  }: {
+    children: ReactNode;
+    assistant: ReactNode;
+  }) => (
+    <>
+      {children}
+      {assistant}
+    </>
+  ),
+}));
+
+// TanStack Start's createServerFn / react-router are ESM-only and pull network
+// at module-eval. The component only reads `Route.useLoaderData()` /
+// `Route.useSearch()` and `useNavigate`, so a minimal shim is enough to render
+// BuilderPage in jsdom.
+vi.mock("@tanstack/react-router", () => ({
+  createFileRoute: () => (config: Record<string, unknown>) => ({
+    ...config,
+    useLoaderData: () => ({
+      catalog: CATALOG,
+      baseBranch: "dev",
+      initialDraft: mockLinkedDraft,
+      initialFormId: mockLinkedFormId,
+      initialService: mockInitialService,
+    }),
+    useSearch: () => mockSearch,
+    useRouteContext: () => ({ user: { login: "test" } }),
+  }),
+  useNavigate: () => vi.fn(),
+  useBlocker: (options: UseBlockerOpts) => {
+    mockBlocker = options;
+  },
+}));
+
+// validateRecipe is the only server fn a Save-draft click reaches (and only on
+// the valid path); the rest are mocked so importing the route doesn't attempt a
+// real RPC. previewRecipe is threaded out the same way so the Preview-modal
+// tests can drive its success/failure paths.
+const validateRecipe = vi.fn();
+const previewRecipe = vi.fn();
+vi.mock("../../server/registry", () => ({
+  getCatalogFn: vi.fn(),
+  validateRecipe: (...args: unknown[]) => validateRecipe(...args),
+  previewRecipe: (...args: unknown[]) => previewRecipe(...args),
+}));
+const getRecipe = vi.fn();
+const rekeyRecipe = vi.fn();
+const submitRecipe = vi.fn();
+const updateRecipe = vi.fn();
+// Always resolve to "no selection" by default so the picker's Promise.all
+// load path works; individual tests can override per case.
+const getFormConfig = vi.fn((..._args: unknown[]) =>
+  Promise.resolve({ mdaContactId: null, processors: null }),
+);
+vi.mock("../../server/forms", () => ({
+  submitRecipe: (...args: unknown[]) => submitRecipe(...args),
+  updateRecipe: (...args: unknown[]) => updateRecipe(...args),
+  rekeyRecipe: (...args: unknown[]) => rekeyRecipe(...args),
+  deleteForm: vi.fn(),
+  disableForm: vi.fn(),
+  enableForm: vi.fn(),
+  getRecipe: (...args: unknown[]) => getRecipe(...args),
+  getFormConfig: (...args: unknown[]) => getFormConfig(...args),
+}));
+// The committed recipe sha loadFormWorkspace captures for the Deploy
+// stale-base guard (#2489). Resolve to "nothing committed" by default so the
+// picker's Promise.all load path works without GitHub; the rest of the module
+// stays real (service-drafts imports it).
+const getFormSourceSha = vi.fn((..._args: unknown[]) =>
+  Promise.resolve<string | null>(null),
+);
+vi.mock("../../server/services", async (original) => ({
+  ...(await original<typeof import("../../server/services")>()),
+  getFormSourceSha: (...args: unknown[]) => getFormSourceSha(...args),
+}));
+// MDA contact directory (issue #607) — stub the server fn and the hook so the
+// contact-details dropdown doesn't pull a real RPC at module-eval.
+vi.mock("../../server/mda-contacts", () => ({
+  listMdaContacts: vi.fn(() => Promise.resolve([])),
+  createMdaContact: vi.fn(),
+}));
+vi.mock("../../components/builder/use-mda-contacts", () => ({
+  useMdaContacts: () => ({
+    contacts: [],
+    loadError: null,
+    refetch: vi.fn(),
+    upsertContact: vi.fn(),
+  }),
+}));
+const publishRecipe = vi.fn();
+const getNextDeployVersion = vi.fn();
+vi.mock("../../server/publish", () => ({
+  publishRecipe: (...args: unknown[]) => publishRecipe(...args),
+  getPublishBaseBranch: vi.fn(),
+  getNextDeployVersion: (...args: unknown[]) => getNextDeployVersion(...args),
+  eraseRecipe: vi.fn(),
+}));
+vi.mock("../../components/builder/form-assistant", () => ({
+  FormAssistant: (props: { artifact?: { snapshot: ServiceSnapshot } }) => {
+    mockAssistantSnapshot = props.artifact?.snapshot;
+    return null;
+  },
+}));
+vi.mock("../../lib/service-drafts", async (original) => ({
+  ...(await original<typeof import("../../lib/service-drafts")>()),
+  listServiceDrafts: () => mockListServiceDrafts(),
+}));
+
+vi.mock("../../components/content/use-content-list", () => ({
+  useContentList: () => ({ pages: [], loading: false }),
+}));
+
+// The Open picker's forms list is a slow GitHub-API waterfall; stub it out.
+// `mockForms` is swappable per test so we can drive the uniqueness pre-flight.
+// `refetch`/`upsertForm` are stable spies so the save-flow tests can assert
+// which branch fired (full refetch for a new form, cheap upsert for a re-save).
+let mockForms: {
+  id: string;
+  formId: string;
+  title: string;
+  version: string;
+  isPublished: boolean;
+  publishedVersion?: string;
+  visibility?: "public" | "preview" | "draft" | "maintenance";
+}[] = [];
+const mockRefetch = vi.fn();
+const mockUpsertForm = vi.fn();
+vi.mock("../../components/builder/use-forms-list", () => ({
+  useFormsList: () => ({
+    forms: mockForms,
+    loadError: null,
+    refetch: mockRefetch,
+    upsertForm: mockUpsertForm,
+  }),
+}));
+
+// Keep the real reducer logic, but make EMPTY_DRAFT (the useReducer seed)
+// swappable per test so we can render an invalid vs a valid starting draft.
+let mockEmptyDraft: RecipeDraft;
+vi.mock("../../components/builder/recipe-reducer", async () => {
+  const actual = await vi.importActual(
+    "../../components/builder/recipe-reducer",
+  );
+  return {
+    __esModule: true,
+    ...actual,
+    get EMPTY_DRAFT() {
+      return mockEmptyDraft;
+    },
+  };
+});
+
+// Catalog-dependent helpers are stubbed so the valid path doesn't depend on a
+// populated registry catalog. serializeRecipeDraft stays real: it's catalog-
+// free and pure (it strips editor-only field ids), and the unsaved-changes
+// tests rely on `draftsEqual` — which serializes both drafts — to discriminate
+// edited drafts from the saved baseline. No test inspects the serialized recipe.
+// findRecipeIdCollisions is swappable per test (default: no collisions) so the
+// AI apply path's collision pre-flight can be driven. formatCollisionIssues
+// stays real, so its message text is asserted directly.
+const mockCollisions: ReturnType<
+  typeof import("@govtech-bb/form-builder").findRecipeIdCollisions
+> = { fieldIdCollisions: [], stepIdCollisions: [] };
+vi.mock("@govtech-bb/form-builder", async () => {
+  const actual = await vi.importActual("@govtech-bb/form-builder");
+  return {
+    ...actual,
+    findRecipeIdCollisions: () => mockCollisions,
+    resolveFieldIds: () => [],
+  };
+});
+
+const CATALOG: RegistryCatalog = { components: [], blocks: [], custom: [] };
+
+// Only the two required steps — no editable step, so validation fails its first
+// pre-flight check ("add at least one step").
+const INVALID_DRAFT: RecipeDraft = {
+  formId: "",
+  title: "",
+  steps: [
+    { stepId: "declaration", title: "Declaration", fields: [], behaviours: [] },
+    {
+      stepId: "submission-confirmation",
+      title: "Submission Confirmation",
+      fields: [],
+      behaviours: [],
+    },
+  ],
+};
+
+// Invalid (no editable step ⇒ fails the "add at least one step" pre-flight) but
+// non-empty, so it reads as having unsaved changes. Save draft is now gated on
+// unsaved changes, so the "save an invalid draft anyway for review" flow needs a
+// dirty draft — a wholly-empty form has nothing to save.
+const DIRTY_INVALID_DRAFT: RecipeDraft = {
+  formId: "in-progress",
+  title: "In Progress",
+  steps: [
+    { stepId: "declaration", title: "Declaration", fields: [], behaviours: [] },
+    {
+      stepId: "submission-confirmation",
+      title: "Submission Confirmation",
+      fields: [],
+      behaviours: [],
+    },
+  ],
+};
+
+// One editable step carrying a field, so every pre-flight check passes and the
+// (stubbed) server validate decides the outcome.
+// Steps are in the reducer's canonical [...editable, ...required] order with
+// every required step present, so it models a real editor draft: LOAD_DRAFT
+// leaves it unchanged, and draftsEqual round-trips it cleanly (no false
+// "unsaved changes" after a save → edit → discard).
+const VALID_DRAFT: RecipeDraft = {
+  formId: "test-form",
+  title: "Test Form",
+  steps: [
+    {
+      stepId: "step-1",
+      title: "Step 1",
+      fields: [
+        {
+          id: "f1",
+          kind: "component",
+          ref: "components/first-name",
+          overrides: {},
+        },
+      ],
+      behaviours: [],
+    },
+    {
+      stepId: "check-your-answers",
+      title: "Check your answers",
+      fields: [],
+      behaviours: [],
+    },
+    { stepId: "declaration", title: "Declaration", fields: [], behaviours: [] },
+    {
+      stepId: "submission-confirmation",
+      title: "Submission Confirmation",
+      fields: [],
+      behaviours: [],
+    },
+  ],
+};
+
+// A complete author-time payment config — every required field filled.
+const COMPLETE_PAYMENT_CONFIG = {
+  provider: "ezpay" as const,
+  department: "Treasury",
+  paymentCode: "FEE-001",
+  amount: 50,
+  description: "Application fee",
+  customerEmailPath: "applicant.email",
+  customerNamePath: "applicant.fullName",
+};
+
+// VALID_DRAFT carrying a payment processor whose config is incomplete (the empty
+// strings makeDefaultProcessor seeds) — the save must be blocked.
+const DRAFT_WITH_INCOMPLETE_PAYMENT: RecipeDraft = {
+  ...VALID_DRAFT,
+  processors: [
+    {
+      id: "pay-1",
+      type: "payment",
+      config: {
+        provider: "ezpay",
+        department: "",
+        paymentCode: "",
+        amount: 0,
+        description: "",
+        customerEmailPath: "",
+        customerNamePath: "",
+      },
+    },
+  ],
+} as RecipeDraft;
+
+// Same draft but with a complete payment config — the save must proceed.
+const DRAFT_WITH_COMPLETE_PAYMENT: RecipeDraft = {
+  ...VALID_DRAFT,
+  processors: [
+    { id: "pay-1", type: "payment", config: COMPLETE_PAYMENT_CONFIG },
+  ],
+} as RecipeDraft;
+
+const { Route } = (await import("./index")) as unknown as {
+  Route: { component: () => ReactElement };
+};
+
+function formMenuItem(name: string) {
+  if (!screen.queryByRole("menuitem", { name })) {
+    fireEvent.click(screen.getByRole("button", { name: "More form actions" }));
+  }
+  return screen.getByRole("menuitem", { name });
+}
+
+function renderBuilder() {
+  return render(createElement(Route.component));
+}
+
+describe("BuilderPage — service workspace links", () => {
+  afterEach(() => {
+    mockLinkedDraft = null;
+    mockInitialService = null;
+    mockListServiceDrafts.mockResolvedValue([]);
+    mockLinkedFormId = undefined;
+    mockSearch = {};
+  });
+
+  it("keeps the new form tied to the service even after discarding changes", async () => {
+    mockForms = [];
+    mockEmptyDraft = INVALID_DRAFT;
+    mockSearch = {
+      service: "page:apps/landing/src/content/pensions/index.md",
+      newFormId: "pensions",
+      title: "Pension advice",
+    };
+    renderBuilder();
+    expect(screen.getByLabelText("Form ID")).toHaveValue("pensions");
+    expect(screen.getByLabelText("Form ID")).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "New" }),
+    ).not.toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("Untitled form"), {
+      target: { value: "Changed title" },
+    });
+    fireEvent.click(formMenuItem("Discard changes"));
+    await respondToConfirmation("Discard changes");
+    expect(screen.getByLabelText("Form ID")).toHaveValue("pensions");
+    expect(screen.getByPlaceholderText("Untitled form")).toHaveValue(
+      "Pension advice",
+    );
+  });
+
+  it("asks before leaving unsaved work for the service library", async () => {
+    mockForms = [];
+    mockEmptyDraft = DIRTY_INVALID_DRAFT;
+    renderBuilder();
+    const navigation = {
+      current: {
+        routeId: "/builder/" as const,
+        fullPath: "/builder/" as const,
+        pathname: "/builder",
+        params: {},
+        search: {},
+      },
+      next: {
+        routeId: "/services" as const,
+        fullPath: "/services" as const,
+        pathname: "/services",
+        params: {},
+        search: {},
+      },
+      action: "BACK" as const,
+    };
+    expect(mockBlocker.enableBeforeUnload).toBe(true);
+    let decision: boolean | Promise<boolean>;
+    act(() => {
+      decision = mockBlocker.shouldBlockFn(navigation);
+    });
+    await respondToConfirmation("Cancel");
+    await expect(decision!).resolves.toBe(true);
+    act(() => {
+      decision = mockBlocker.shouldBlockFn(navigation);
+    });
+    await respondToConfirmation("Discard changes");
+    await expect(decision!).resolves.toBe(false);
+  });
+
+  it("opens the linked form as saved and preserves edits during background refresh", async () => {
+    const user = userEvent.setup();
+    mockForms = [];
+    mockEmptyDraft = INVALID_DRAFT;
+    mockLinkedDraft = VALID_DRAFT;
+    mockLinkedFormId = VALID_DRAFT.formId;
+    const view = renderBuilder();
+    expect(screen.getByLabelText("Form ID")).toHaveValue(VALID_DRAFT.formId);
+    expect(formMenuItem("Discard changes")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    const title = screen.getByPlaceholderText("Untitled form");
+    await user.clear(title);
+    await user.type(title, "Edited service title");
+    expect(formMenuItem("Discard changes")).not.toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    mockLinkedDraft = { ...VALID_DRAFT, title: "Background server title" };
+    view.rerender(createElement(Route.component));
+    expect(title).toHaveValue("Edited service title");
+  });
+
+  it("refreshes sibling page saves without replacing the open form or accepting a changed form baseline", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    mockLinkedDraft = VALID_DRAFT;
+    mockLinkedFormId = VALID_DRAFT.formId;
+    const id = "aa984ddf-ac15-43dc-a817-4559cfb37c4d";
+    const path = "apps/landing/src/content/example/index.md";
+    const initial = serviceDraftSchema.parse({
+      revision: 1,
+      updatedAt: "now",
+      updatedBy: "editor",
+      manifest: {
+        schemaVersion: 1,
+        serviceId: "example",
+        title: "Example",
+        formId: VALID_DRAFT.formId,
+        entryPoint: id,
+        pages: [
+          { id, path, title: "Main", publicPath: "/example", kind: "main" },
+        ],
+      },
+      pages: [
+        {
+          id,
+          path,
+          frontmatter: { title: "Main" },
+          body: "Original page",
+          baseSha: null,
+        },
+      ],
+      recipe: serializeRecipeDraft(VALID_DRAFT),
+      pendingConfig: { mdaContactId: null, processors: null },
+    });
+    mockInitialService = initial;
+    mockListServiceDrafts.mockResolvedValue([initial]);
+    renderBuilder();
+    fireEvent.change(screen.getByPlaceholderText("Untitled form"), {
+      target: { value: "Unsaved form title" },
+    });
+    const latest = {
+      ...initial,
+      revision: 2,
+      pages: [{ ...initial.pages[0], body: "Updated page" }],
+    };
+    mockListServiceDrafts.mockResolvedValue([latest]);
+    await act(async () => {
+      window.dispatchEvent(new Event("service-draft-saved"));
+    });
+    expect(mockAssistantSnapshot?.pages[0].body).toBe("Updated page");
+    expect(mockAssistantSnapshot?.recipe?.title).toBe("Unsaved form title");
+    mockListServiceDrafts.mockResolvedValue([
+      {
+        ...latest,
+        revision: 3,
+        recipe: { ...initial.recipe!, title: "Concurrent form edit" },
+        pages: [{ ...initial.pages[0], body: "Later page" }],
+      },
+    ]);
+    await act(async () => {
+      window.dispatchEvent(new Event("storage"));
+    });
+    expect(mockAssistantSnapshot?.pages[0].body).toBe("Updated page");
+    expect(screen.getByPlaceholderText("Untitled form")).toHaveValue(
+      "Unsaved form title",
+    );
+  });
+});
+
+describe("BuilderPage — validate on Save draft click", () => {
+  beforeEach(() => {
+    validateRecipe.mockReset();
+    mockForms = [];
+  });
+
+  it("surfaces errors and leaves the SubmitModal closed when the draft is invalid and the user cancels the confirm", async () => {
+    mockEmptyDraft = DIRTY_INVALID_DRAFT;
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+    await respondToConfirmation("Cancel");
+
+    expect(
+      await screen.findByText(/add at least one step/i),
+    ).toBeInTheDocument();
+    // User declined the "save anyway?" prompt, so the modal stays closed.
+
+    expect(
+      screen.queryByRole("dialog", { name: "Save draft" }),
+    ).not.toBeInTheDocument();
+    // Pre-flight fails before the server is ever asked.
+    expect(validateRecipe).not.toHaveBeenCalled();
+  }, 30_000); // load (passes locally well under the limit). 30s gives headroom. See #625. // Heavy render + userEvent flow; 15s flakes under CI's concurrent test
+
+  it("opens the SubmitModal when the draft is invalid but the user confirms the save-anyway prompt", async () => {
+    mockEmptyDraft = DIRTY_INVALID_DRAFT;
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+    await respondToConfirmation("Save draft");
+
+    // Errors still surface in the panel...
+    expect(
+      await screen.findByText(/add at least one step/i),
+    ).toBeInTheDocument();
+    // ...and on confirm, the version-entry modal opens just like a valid save.
+
+    expect(
+      await screen.findByText("Save draft", { selector: "h2" }),
+    ).toBeInTheDocument();
+  }, 30_000); // load (passes locally well under the limit). 30s gives headroom. See #625. // Heavy render + userEvent flow; 15s flakes under CI's concurrent test
+
+  it("opens the SubmitModal on click when validation passes, without prompting", async () => {
+    mockEmptyDraft = VALID_DRAFT;
+    validateRecipe.mockResolvedValue({ ok: true });
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+
+    // The modal renders "Save draft" as both its heading and its submit
+    // button; the heading (a <strong>) is the unambiguous "modal is open" signal.
+    expect(
+      await screen.findByText("Save draft", { selector: "h2" }),
+    ).toBeInTheDocument();
+    expect(validateRecipe).toHaveBeenCalledTimes(1);
+    // Valid drafts must never trigger the confirm prompt.
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it("carries the draft's meta.visibility into the serialized recipe sent to the server (#1682)", async () => {
+    // serializeRecipeDraft is real here, so this proves the builder's visibility
+    // selection round-trips all the way to the save/validate wire.
+    mockEmptyDraft = { ...VALID_DRAFT, meta: { visibility: "preview" } };
+    validateRecipe.mockResolvedValue({ ok: true });
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+
+    expect(validateRecipe).toHaveBeenCalledTimes(1);
+    const arg = validateRecipe.mock.calls[0][0] as {
+      data: { recipe: { meta?: { visibility?: string } } };
+    };
+    expect(arg.data.recipe.meta).toEqual({ visibility: "preview" });
+  });
+
+  it("hard-gates Save draft on a title collision: error shown, modal closed, no save-anyway", async () => {
+    // An otherwise-valid new form whose title collides with another form.
+    mockEmptyDraft = VALID_DRAFT;
+    mockForms = [
+      {
+        id: "other",
+        formId: "other-form",
+        title: "Test Form",
+        version: "1.0.0",
+        isPublished: true,
+      },
+    ];
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+
+    expect(
+      await screen.findByText(/already exists. Choose a different title/i),
+    ).toBeInTheDocument();
+    // Collision is a hard gate — unlike contract errors, there's no
+    // "save anyway" confirm and the server is never asked.
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(validateRecipe).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("dialog", { name: "Save draft" }),
+    ).not.toBeInTheDocument();
+  }, 30_000); // load (passes locally well under the limit). 30s gives headroom. See #625. // Heavy render + userEvent flow; 15s flakes under CI's concurrent test
+});
+
+describe("BuilderPage — incomplete payment config blocks save", () => {
+  beforeEach(() => {
+    validateRecipe.mockReset();
+    submitRecipe.mockReset();
+    mockForms = [];
+  });
+
+  it("blocks Save draft, surfaces an inline error, and sends no request when a payment processor is incomplete", async () => {
+    mockEmptyDraft = DRAFT_WITH_INCOMPLETE_PAYMENT;
+    validateRecipe.mockResolvedValue({ ok: true });
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+
+    // Inline error surfaces in the always-visible validation panel...
+    expect(
+      await screen.findByText(/payment processor is incomplete/i),
+    ).toBeInTheDocument();
+    // ...the modal never opens, no save-anyway prompt fires (hard gate)...
+    expect(
+      screen.queryByRole("dialog", { name: "Save draft" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    // ...and the server is never asked to validate or save.
+    expect(validateRecipe).not.toHaveBeenCalled();
+    expect(submitRecipe).not.toHaveBeenCalled();
+  }, 30_000);
+
+  it("lets Save draft proceed when every payment processor is complete", async () => {
+    mockEmptyDraft = DRAFT_WITH_COMPLETE_PAYMENT;
+    validateRecipe.mockResolvedValue({ ok: true });
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+
+    // No payment error, and the save flow reaches the modal + server validate.
+    expect(
+      screen.queryByText(/payment processor is incomplete/i),
+    ).not.toBeInTheDocument();
+    expect(
+      await screen.findByText("Save draft", { selector: "h2" }),
+    ).toBeInTheDocument();
+    expect(validateRecipe).toHaveBeenCalledTimes(1);
+  }, 30_000);
+});
+
+describe("BuilderPage — formId/title pre-flight on Validate", () => {
+  beforeEach(() => {
+    validateRecipe.mockReset();
+    mockForms = [];
+  });
+
+  it("surfaces 'Form ID is required' for an empty formId and never asks the server", async () => {
+    mockEmptyDraft = { ...VALID_DRAFT, formId: "" };
+    renderBuilder();
+
+    await userEvent.click(formMenuItem("Check form"));
+
+    expect(await screen.findByText(/form id is required/i)).toBeInTheDocument();
+    expect(validateRecipe).not.toHaveBeenCalled();
+  });
+
+  it("surfaces the kebab-case hint for a malformed formId", async () => {
+    mockEmptyDraft = { ...VALID_DRAFT, formId: "Bad-Id-" };
+    renderBuilder();
+
+    await userEvent.click(formMenuItem("Check form"));
+
+    expect(
+      await screen.findByText(/lowercase letters, numbers, and hyphens only/i),
+    ).toBeInTheDocument();
+    expect(validateRecipe).not.toHaveBeenCalled();
+  });
+
+  it("surfaces 'Title is required' for an empty title", async () => {
+    mockEmptyDraft = { ...VALID_DRAFT, title: "" };
+    renderBuilder();
+
+    await userEvent.click(formMenuItem("Check form"));
+
+    expect(await screen.findByText(/title is required/i)).toBeInTheDocument();
+    expect(validateRecipe).not.toHaveBeenCalled();
+  });
+
+  it("reports both an empty formId and an empty title together", async () => {
+    mockEmptyDraft = { ...VALID_DRAFT, formId: "", title: "" };
+    renderBuilder();
+
+    await userEvent.click(formMenuItem("Check form"));
+
+    expect(await screen.findByText(/form id is required/i)).toBeInTheDocument();
+    expect(screen.getByText(/title is required/i)).toBeInTheDocument();
+    expect(validateRecipe).not.toHaveBeenCalled();
+  });
+
+  it("passes the formId/title pre-flight and reaches the server for a valid draft", async () => {
+    mockEmptyDraft = VALID_DRAFT;
+    validateRecipe.mockResolvedValue({ ok: true });
+    renderBuilder();
+
+    await userEvent.click(formMenuItem("Check form"));
+
+    expect(validateRecipe).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("BuilderPage — unsaved changes + Discard", () => {
+  beforeEach(() => {
+    mockForms = [];
+    validateRecipe.mockReset();
+    getRecipe.mockReset();
+  });
+
+  function discardButton() {
+    return formMenuItem("Discard changes");
+  }
+  function saveDraftButton() {
+    return screen.getByRole("button", { name: /save draft/i });
+  }
+  function titleInput() {
+    return screen.getByLabelText(/^title$/i);
+  }
+
+  it("shows no unsaved indicator and disables Discard + Save draft for a brand-new empty form", () => {
+    mockEmptyDraft = INVALID_DRAFT; // empty form: formId/title blank, no editable step
+    renderBuilder();
+
+    expect(screen.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
+    expect(discardButton()).toHaveAttribute("aria-disabled", "true");
+    expect(saveDraftButton()).toBeDisabled();
+  });
+
+  it("surfaces the unsaved indicator and enables Save draft after a manual edit on a fresh form", () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    renderBuilder();
+
+    fireEvent.change(titleInput(), { target: { value: "My New Form" } });
+
+    expect(screen.getByText(/unsaved changes/i)).toBeInTheDocument();
+    expect(saveDraftButton()).toBeEnabled();
+  });
+
+  it("disables Deploy while the draft has unsaved changes (#331)", () => {
+    mockEmptyDraft = VALID_DRAFT; // dirty, never saved ⇒ unsaved changes
+    renderBuilder();
+
+    expect(screen.getByRole("button", { name: /^publish$/i })).toBeDisabled();
+  });
+
+  it("lets a clean form Deploy regardless of its recipe meta.visibility, and shows the API's status instead (#2875)", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    // The list stamps the status apps/api reports (a service_status row wins
+    // over the recipe); the recipe below says `draft`, the API says `public`.
+    mockForms = [
+      {
+        id: "wip",
+        formId: "wip-form",
+        title: "WIP Form",
+        version: "1.0.0",
+        isPublished: true,
+        visibility: "public",
+      },
+    ];
+    // Loaded clean (no edits) so nothing but a visibility gate could block
+    // Deploy — #1682's gate on `meta.visibility === "draft"` is gone.
+    getRecipe.mockResolvedValue({
+      formId: "wip-form",
+      title: "WIP Form",
+      version: "1.0.0",
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/first-name" }],
+          behaviours: [],
+        },
+        {
+          stepId: "check-your-answers",
+          title: "Check your answers",
+          elements: [],
+          behaviours: [],
+        },
+        {
+          stepId: "declaration",
+          title: "Declaration",
+          elements: [],
+          behaviours: [],
+        },
+        {
+          stepId: "submission-confirmation",
+          title: "Submission Confirmation",
+          elements: [],
+          behaviours: [],
+        },
+      ],
+      createdAt: "2020-01-01T00:00:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+      meta: { visibility: "draft" },
+    });
+    renderBuilder();
+
+    await userEvent.click(formMenuItem("Open form"));
+    await userEvent.click(await screen.findByText("WIP Form"));
+    expect(await screen.findByDisplayValue("wip-form")).toBeInTheDocument();
+
+    expect(screen.getByRole("button", { name: /^publish$/i })).toBeEnabled();
+    expect(
+      screen.queryByText(/set visibility to preview or public/i),
+    ).not.toBeInTheDocument();
+    // The toolbar shows the API's status, not the recipe's `draft`.
+    expect(screen.getByTestId("form-status")).toHaveTextContent("Public");
+  });
+
+  it("shows 'Not published' for a form absent from the published index (#2875)", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    mockForms = [
+      {
+        id: "wip",
+        formId: "wip-form",
+        title: "WIP Form",
+        version: "1.0.0",
+        isPublished: false,
+      },
+    ];
+    getRecipe.mockResolvedValue({
+      formId: "wip-form",
+      title: "WIP Form",
+      version: "1.0.0",
+      steps: [
+        {
+          stepId: "check-your-answers",
+          title: "Check your answers",
+          elements: [],
+          behaviours: [],
+        },
+        {
+          stepId: "declaration",
+          title: "Declaration",
+          elements: [],
+          behaviours: [],
+        },
+        {
+          stepId: "submission-confirmation",
+          title: "Submission Confirmation",
+          elements: [],
+          behaviours: [],
+        },
+      ],
+      createdAt: "2020-01-01T00:00:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+      // A `public` seed in the recipe must not surface as the status.
+      meta: { visibility: "public" },
+    });
+    renderBuilder();
+
+    await userEvent.click(formMenuItem("Open form"));
+    await userEvent.click(await screen.findByText("WIP Form"));
+    expect(await screen.findByDisplayValue("wip-form")).toBeInTheDocument();
+
+    expect(screen.getByTestId("form-status")).toHaveTextContent(
+      "Not published",
+    );
+  });
+
+  it("clears the form when Discard is confirmed and there is no saved baseline", async () => {
+    mockEmptyDraft = VALID_DRAFT; // dirty but never saved/loaded ⇒ no baseline
+    renderBuilder();
+
+    fireEvent.change(titleInput(), { target: { value: "Edited Title" } });
+    fireEvent.click(discardButton());
+    await respondToConfirmation("Discard changes");
+
+    // No baseline to revert to, so Discard clears the form (same as New).
+    expect(titleInput()).toHaveValue("");
+    expect(screen.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
+  });
+
+  it("reverts to the saved baseline when Discard is confirmed after a save", async () => {
+    const user = userEvent.setup();
+    mockEmptyDraft = VALID_DRAFT; // baseline title "Test Form"
+    validateRecipe.mockResolvedValue({ ok: true });
+    renderBuilder();
+
+    // Save the draft so it becomes the baseline; the indicator then clears.
+    await user.click(saveDraftButton());
+    const dialog = await screen.findByRole("dialog", { name: "Save draft" });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Save draft" }),
+    );
+    await within(dialog).findByText(/^Draft saved\./i);
+    await user.click(within(dialog).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    expect(screen.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
+
+    // Edit ⇒ unsaved again.
+    fireEvent.change(titleInput(), { target: { value: "Edited Title" } });
+    expect(screen.getByText(/unsaved changes/i)).toBeInTheDocument();
+
+    // Discard ⇒ back to the saved title, indicator clears.
+    fireEvent.click(discardButton());
+    await respondToConfirmation("Discard changes");
+    expect(titleInput()).toHaveValue("Test Form");
+    expect(screen.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps the edit when the Discard confirm is declined", async () => {
+    mockEmptyDraft = VALID_DRAFT;
+    renderBuilder();
+
+    fireEvent.change(titleInput(), { target: { value: "Edited Title" } });
+    fireEvent.click(discardButton());
+    await respondToConfirmation("Cancel");
+
+    expect(titleInput()).toHaveValue("Edited Title");
+  });
+
+  it("does not flag unsaved changes right after loading a recipe that lacks a required step", async () => {
+    // An older recipe with no check-your-answers step; LOAD_DRAFT back-fills it,
+    // so the baseline must be the *normalized* draft, not the raw loaded one —
+    // otherwise the form reads as dirty the instant it opens.
+    mockEmptyDraft = INVALID_DRAFT;
+    mockForms = [
+      {
+        id: "old",
+        formId: "old-form",
+        title: "Old Form",
+        version: "2.0.0",
+        isPublished: true,
+      },
+    ];
+    getRecipe.mockResolvedValue({
+      formId: "old-form",
+      title: "Old Form",
+      version: "2.0.0",
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/first-name" }],
+          behaviours: [],
+        },
+        {
+          stepId: "declaration",
+          title: "Declaration",
+          elements: [],
+          behaviours: [],
+        },
+        {
+          stepId: "submission-confirmation",
+          title: "Submission Confirmation",
+          elements: [],
+          behaviours: [],
+        },
+      ],
+      createdAt: "2020-01-01T00:00:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+    });
+    renderBuilder();
+
+    await userEvent.click(formMenuItem("Open form"));
+    await userEvent.click(await screen.findByText("Old Form"));
+
+    // Once the load has applied (toolbar Form ID reflects it)…
+    expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
+    // …a freshly loaded form has no unsaved changes.
+    expect(screen.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("BuilderPage — Open picker freshness after save", () => {
+  beforeEach(() => {
+    mockForms = [];
+    validateRecipe.mockReset();
+    getRecipe.mockReset();
+    mockRefetch.mockClear();
+    mockUpsertForm.mockClear();
+    submitRecipe.mockReset();
+    updateRecipe.mockReset();
+    publishRecipe.mockReset();
+    getNextDeployVersion.mockReset();
+  });
+
+  it("full-refetches the picker (no upsert) after saving a brand-new form", async () => {
+    mockEmptyDraft = VALID_DRAFT; // never loaded ⇒ a genuine create
+    validateRecipe.mockResolvedValue({ ok: true });
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+    await userEvent.click(
+      within(
+        await screen.findByRole("dialog", { name: "Save draft" }),
+      ).getByRole("button", { name: "Save draft" }),
+    );
+    await screen.findByText(/^Draft saved\./i);
+
+    // A new form needs the server-merged row, so the slow refetch is acceptable…
+    expect(mockRefetch).toHaveBeenCalledTimes(1);
+    // …and the cheap upsert path must not also fire.
+    expect(mockUpsertForm).not.toHaveBeenCalled();
+    // A brand-new form is a create (POST), never an in-place update.
+    expect(submitRecipe).toHaveBeenCalledTimes(1);
+    expect(updateRecipe).not.toHaveBeenCalled();
+  });
+
+  it("overwrites the loaded draft in place (PUT, same version) and upserts the picker row without a refetch", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    mockForms = [
+      {
+        id: "old",
+        formId: "old-form",
+        title: "Old Form",
+        version: "2.0.0",
+        isPublished: true,
+      },
+    ];
+    getRecipe.mockResolvedValue({
+      formId: "old-form",
+      title: "Old Form",
+      version: "2.0.0",
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/first-name" }],
+          behaviours: [],
+        },
+        {
+          stepId: "check-your-answers",
+          title: "Check your answers",
+          elements: [],
+          behaviours: [],
+        },
+        {
+          stepId: "declaration",
+          title: "Declaration",
+          elements: [],
+          behaviours: [],
+        },
+        {
+          stepId: "submission-confirmation",
+          title: "Submission Confirmation",
+          elements: [],
+          behaviours: [],
+        },
+      ],
+      createdAt: "2020-01-01T00:00:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+    });
+    validateRecipe.mockResolvedValue({ ok: true });
+    renderBuilder();
+
+    // Load the existing form so the save reads as a re-save (formId unchanged).
+    await userEvent.click(formMenuItem("Open form"));
+    await userEvent.click(await screen.findByText("Old Form"));
+    expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
+
+    // Edit the title so the form is dirty (Save draft is gated on unsaved
+    // changes) and the upsert has a fresh title to carry into the picker row.
+    fireEvent.change(screen.getByLabelText(/^title$/i), {
+      target: { value: "Old Form (renamed)" },
+    });
+
+    // Save Changes now defaults to the loaded version (2.0.0), so the save
+    // overwrites the draft in place rather than minting a new patch row (#329).
+    // A loaded form's modal reads "Save draft" rather than "Save draft".
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+    await userEvent.click(
+      within(
+        await screen.findByRole("dialog", { name: "Save draft" }),
+      ).getByRole("button", { name: "Save draft" }),
+    );
+    await screen.findByText(/^Draft saved\./i);
+
+    // The same-version save routes through updateRecipe (PUT, overwrite), never
+    // submitRecipe (POST create) — so no duplicate draft is created.
+    expect(updateRecipe).toHaveBeenCalledTimes(1);
+    expect(submitRecipe).not.toHaveBeenCalled();
+
+    // Re-save patches just this row client-side — no slow listForms() waterfall.
+    expect(mockRefetch).not.toHaveBeenCalled();
+    expect(mockUpsertForm).toHaveBeenCalledTimes(1);
+    expect(mockUpsertForm).toHaveBeenCalledWith({
+      // The server-assigned id ("old") is preserved, not replaced with formId.
+      id: "old",
+      formId: "old-form",
+      title: "Old Form (renamed)",
+      // The version is unchanged — Save Changes overwrites in place at 2.0.0.
+      version: "2.0.0",
+      // An in-place same-version save leaves the published row winning the
+      // version tie, so the badge stays.
+      isPublished: true,
+    });
+  });
+
+  it("preserves publishedVersion in the optimistic picker row after Deploy", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    // A published form, loaded clean (no edits) so Deploy is enabled.
+    mockForms = [
+      {
+        id: "old",
+        formId: "old-form",
+        title: "Old Form",
+        version: "1.0.0",
+        isPublished: true,
+        publishedVersion: "1.0.0",
+      },
+    ];
+    getRecipe.mockResolvedValue({
+      formId: "old-form",
+      title: "Old Form",
+      version: "1.0.0",
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/first-name" }],
+          behaviours: [],
+        },
+        {
+          stepId: "check-your-answers",
+          title: "Check your answers",
+          elements: [],
+          behaviours: [],
+        },
+        {
+          stepId: "declaration",
+          title: "Declaration",
+          elements: [],
+          behaviours: [],
+        },
+        {
+          stepId: "submission-confirmation",
+          title: "Submission Confirmation",
+          elements: [],
+          behaviours: [],
+        },
+      ],
+      createdAt: "2020-01-01T00:00:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+    });
+    validateRecipe.mockResolvedValue({ ok: true });
+    // #1196: Deploy overwrites the flat file; the published index is unchanged
+    // until the PR merges.
+    publishRecipe.mockResolvedValue({
+      prUrl: "https://github.com/x/y/pull/7",
+      prNumber: 7,
+    });
+    renderBuilder();
+
+    await userEvent.click(formMenuItem("Open form"));
+    await userEvent.click(await screen.findByText("Old Form"));
+    expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
+
+    // Deploy from the toolbar opens the modal and resolves the target version.
+    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+    const publishModal = (
+      screen
+        .getByText("Publish form", { selector: "h2" })
+        .closest("div") as HTMLElement
+    ).parentElement as HTMLElement;
+    await userEvent.click(
+      within(publishModal).getByRole("button", { name: "Send for review" }),
+    );
+    await waitFor(() => expect(publishRecipe).toHaveBeenCalledTimes(1));
+
+    // The published index is unchanged until the PR merges, so the optimistic
+    // row keeps its existing version + publishedVersion (a frozen breadcrumb).
+    expect(mockUpsertForm).toHaveBeenCalledWith({
+      id: "old",
+      formId: "old-form",
+      title: "Old Form",
+      version: "1.0.0",
+      isPublished: false,
+      publishedVersion: "1.0.0",
+    });
+  });
+
+  it("overwrites in place on every consecutive Save Changes — no duplicate drafts (#329)", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    mockForms = [
+      {
+        id: "old",
+        formId: "old-form",
+        title: "Old Form",
+        version: "2.0.0",
+        isPublished: false,
+      },
+    ];
+    getRecipe.mockResolvedValue({
+      formId: "old-form",
+      title: "Old Form",
+      version: "2.0.0",
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/first-name" }],
+          behaviours: [],
+        },
+        {
+          stepId: "check-your-answers",
+          title: "Check your answers",
+          elements: [],
+          behaviours: [],
+        },
+        {
+          stepId: "declaration",
+          title: "Declaration",
+          elements: [],
+          behaviours: [],
+        },
+        {
+          stepId: "submission-confirmation",
+          title: "Submission Confirmation",
+          elements: [],
+          behaviours: [],
+        },
+      ],
+      createdAt: "2020-01-01T00:00:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+    });
+    validateRecipe.mockResolvedValue({ ok: true });
+    renderBuilder();
+
+    await userEvent.click(formMenuItem("Open form"));
+    await userEvent.click(await screen.findByText("Old Form"));
+    expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
+
+    const titleField = screen.getByLabelText(/^title$/i);
+
+    // First edit + Save: defaults to 2.0.0, overwrites in place (PUT).
+    fireEvent.change(titleField, { target: { value: "Old Form (edit 1)" } });
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+    await userEvent.click(
+      within(
+        await screen.findByRole("dialog", { name: "Save draft" }),
+      ).getByRole("button", { name: "Save draft" }),
+    );
+    await screen.findByText(/^Draft saved\./i);
+
+    await userEvent.click(screen.getByRole("button", { name: /^close$/i }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+
+    // Second edit + Save: still defaults to 2.0.0 (the save didn't bump it), so
+    // it overwrites the same row again rather than minting 2.0.1.
+    fireEvent.change(titleField, { target: { value: "Old Form (edit 2)" } });
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+    await userEvent.click(
+      within(
+        await screen.findByRole("dialog", { name: "Save draft" }),
+      ).getByRole("button", { name: "Save draft" }),
+    );
+    await screen.findAllByText(/^Draft saved\./i);
+
+    // Both saves are PUTs at the unchanged version; no POST ever fires, so the
+    // backend keeps exactly one 2.0.0 draft instead of accumulating duplicates.
+    expect(updateRecipe).toHaveBeenCalledTimes(2);
+    expect(submitRecipe).not.toHaveBeenCalled();
+    // Both PUTs target the same loaded row (same formId), confirming the second
+    // save overwrote the first rather than branching to a new draft.
+    const targetedFormIds = updateRecipe.mock.calls.map(
+      ([arg]) => arg.data.formId,
+    );
+    expect(new Set(targetedFormIds).size).toBe(1);
+    // Heavy: two full save-cycles with many async userEvent waits — exceeds the
+    // 5s default under CI load (#329 flake). Give it room.
+  }, 15000);
+});
+
+describe("BuilderPage — re-key (changing a loaded form's ID)", () => {
+  // A complete, canonical-order recipe for `formId` so loading it leaves the
+  // draft non-dirty and every save pre-flight passes.
+  function loadedRecipe(formId: string, title: string) {
+    return {
+      formId,
+      title,
+      version: "2.0.0",
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          elements: [{ ref: "components/first-name" }],
+          behaviours: [],
+        },
+        {
+          stepId: "check-your-answers",
+          title: "Check your answers",
+          elements: [],
+          behaviours: [],
+        },
+        {
+          stepId: "declaration",
+          title: "Declaration",
+          elements: [],
+          behaviours: [],
+        },
+        {
+          stepId: "submission-confirmation",
+          title: "Submission Confirmation",
+          elements: [],
+          behaviours: [],
+        },
+      ],
+      createdAt: "2020-01-01T00:00:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+    };
+  }
+
+  beforeEach(() => {
+    mockForms = [];
+    validateRecipe.mockReset();
+    getRecipe.mockReset();
+    rekeyRecipe.mockReset();
+    submitRecipe.mockReset();
+    mockRefetch.mockClear();
+    mockUpsertForm.mockClear();
+  });
+
+  it("does not route a cleared Form ID through rekeyRecipe (an empty id is not a re-key)", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    mockForms = [
+      {
+        id: "old",
+        formId: "old-form",
+        title: "Old Form",
+        version: "2.0.0",
+        isPublished: false,
+      },
+    ];
+    getRecipe.mockResolvedValue(loadedRecipe("old-form", "Old Form"));
+    // Server validate fails (empty id), but the user picks "save anyway", so
+    // handleSubmit still runs — and must not treat the empty id as a re-key.
+    validateRecipe.mockResolvedValue({
+      valid: false,
+      issues: [{ path: "formId", message: "Form ID is required" }],
+    });
+    submitRecipe.mockResolvedValue(undefined);
+    renderBuilder();
+
+    await userEvent.click(formMenuItem("Open form"));
+    await userEvent.click(await screen.findByText("Old Form"));
+    expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
+
+    // Clear the Form ID, then save-anyway through the confirm.
+    fireEvent.change(screen.getByDisplayValue("old-form"), {
+      target: { value: "" },
+    });
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+    await respondToConfirmation("Save draft");
+    await userEvent.click(
+      within(
+        await screen.findByRole("dialog", { name: "Save draft" }),
+      ).getByRole("button", { name: "Save draft" }),
+    );
+    await screen.findByText(/^Draft saved\./i);
+
+    // An empty id is never a re-key — the rekey endpoint must not be hit.
+    expect(rekeyRecipe).not.toHaveBeenCalled();
+  }, 30_000);
+
+  it("re-keys via rekeyRecipe and full-refetches when a draft form's ID changes", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    mockForms = [
+      {
+        id: "old",
+        formId: "old-form",
+        title: "Old Form",
+        version: "2.0.0",
+        isPublished: false,
+      },
+    ];
+    getRecipe.mockResolvedValue(loadedRecipe("old-form", "Old Form"));
+    validateRecipe.mockResolvedValue({ ok: true });
+    rekeyRecipe.mockResolvedValue(undefined);
+    renderBuilder();
+
+    await userEvent.click(formMenuItem("Open form"));
+    await userEvent.click(await screen.findByText("Old Form"));
+    expect(await screen.findByDisplayValue("old-form")).toBeInTheDocument();
+
+    // Change the Form ID — this turns the next save into a re-key.
+    fireEvent.change(screen.getByDisplayValue("old-form"), {
+      target: { value: "old-form-renamed" },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+    await userEvent.click(
+      within(
+        await screen.findByRole("dialog", { name: "Save draft" }),
+      ).getByRole("button", { name: "Save draft" }),
+    );
+    await screen.findByText(/^Draft saved\./i);
+
+    // The save routed through the dedicated re-key endpoint, carrying the
+    // *old* id so the API can move the rows.
+    expect(rekeyRecipe).toHaveBeenCalledTimes(1);
+    expect(rekeyRecipe).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ oldFormId: "old-form" }),
+      }),
+    );
+    // A re-key needs the full refetch (old-id row must vanish) — never the
+    // one-row upsert.
+    expect(mockRefetch).toHaveBeenCalledTimes(1);
+    expect(mockUpsertForm).not.toHaveBeenCalled();
+  }, 30_000);
+
+  it("pre-blocks re-keying a published form and never calls rekeyRecipe", async () => {
+    mockEmptyDraft = INVALID_DRAFT;
+    mockForms = [
+      {
+        id: "pub",
+        formId: "pub-form",
+        title: "Pub Form",
+        version: "2.0.0",
+        isPublished: true,
+      },
+    ];
+    getRecipe.mockResolvedValue(loadedRecipe("pub-form", "Pub Form"));
+    validateRecipe.mockResolvedValue({ ok: true });
+    renderBuilder();
+
+    await userEvent.click(formMenuItem("Open form"));
+    await userEvent.click(await screen.findByText("Pub Form"));
+    expect(await screen.findByDisplayValue("pub-form")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByDisplayValue("pub-form"), {
+      target: { value: "pub-form-renamed" },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /save draft/i }));
+
+    // The published guard is a hard gate: the error surfaces, the server is
+    // never validated, and no re-key is attempted.
+    expect(
+      await screen.findByText(/cannot change the id of a published form/i),
+    ).toBeInTheDocument();
+    expect(rekeyRecipe).not.toHaveBeenCalled();
+    expect(validateRecipe).not.toHaveBeenCalled();
+  }, 30_000);
+});
+
+describe("BuilderPage — Preview modal recipe JSON (#744)", () => {
+  beforeEach(() => {
+    previewRecipe.mockReset();
+    mockForms = [];
+  });
+
+  // This block is the only one that arms previewRecipe; reset on the way out
+  // so a future preview-triggering test can't inherit a stale armed mock.
+  afterEach(() => {
+    previewRecipe.mockReset();
+  });
+
+  it("offers View recipe JSON even when the preview request fails", async () => {
+    mockEmptyDraft = VALID_DRAFT;
+    previewRecipe.mockRejectedValue(new Error("preview boom"));
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /^preview$/i }));
+
+    // The recipe is captured before the request fires, so the JSON action is
+    // available exactly when debugging matters most — when preview fails.
+    expect(await screen.findByText(/preview boom/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /view recipe json/i }),
+    ).toBeInTheDocument();
+  }, 30_000);
+
+  it("offers View recipe JSON alongside a successful preview", async () => {
+    mockEmptyDraft = VALID_DRAFT;
+    previewRecipe.mockResolvedValue({
+      formId: "test-form",
+      title: "Test Form",
+      version: "0.0.1",
+      steps: [],
+    });
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole("button", { name: /^preview$/i }));
+
+    expect(
+      within(await screen.findByRole("dialog", { name: "Preview" })).getByRole(
+        "heading",
+        { name: "Test Form" },
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /view recipe json/i }),
+    ).toBeInTheDocument();
+  }, 30_000);
+});
+
+it("keeps the draft while collapsing the outline and editing a new step", async () => {
+  mockEmptyDraft = INVALID_DRAFT;
+  const user = userEvent.setup();
+  renderBuilder();
+  await user.click(screen.getByRole("button", { name: /Form settings/ }));
+  const title = screen.getByRole("textbox", { name: "Title" });
+  fireEvent.change(title, { target: { value: "Community support" } });
+  await user.click(screen.getByRole("button", { name: "Add your first page" }));
+  expect(screen.getByRole("textbox", { name: "Page title" })).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "Form pages" }));
+  expect(screen.getByRole("button", { name: "Form pages" })).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
+  expect(title).toHaveValue("Community support");
+  expect(screen.getByRole("textbox", { name: "Page title" })).toBeVisible();
+});

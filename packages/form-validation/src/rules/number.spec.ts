@@ -6,6 +6,7 @@ import {
   equalRunner,
   notEqualRunner,
 } from "./number";
+import { DEFAULT_ZONE } from "@govtech-bb/expressions";
 
 const cfg = (
   value?: unknown,
@@ -274,12 +275,26 @@ describe("numeric runners with transform: yearsSince", () => {
 // A date exactly `days` from today, as the { day, month, year } object a date
 // field stores — so the derived lead time is deterministic regardless of run
 // date (or the time of day the test runs).
+// Anchored on the Barbados calendar day, because that is what `daysUntil`
+// measures from. `new Date()` would anchor on the runner's zone instead: CI
+// runs in UTC, where just after midnight it is already tomorrow in UTC but
+// still today in Barbados, so every offset came out a day short.
 const dateDaysAhead = (
   days: number,
 ): { day: number; month: number; year: number } => {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return { day: d.getDate(), month: d.getMonth() + 1, year: d.getFullYear() };
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: DEFAULT_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const d = new Date(`${today}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return {
+    day: d.getUTCDate(),
+    month: d.getUTCMonth() + 1,
+    year: d.getUTCFullYear(),
+  };
 };
 
 describe("minRunner with transform: daysUntil (lead-time gate)", () => {

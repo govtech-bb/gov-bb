@@ -1,0 +1,116 @@
+@import 'leaflet/dist/leaflet.css' layer(components);
+
+@layer components {
+  .water-outages-page,
+  .water-outages-notices,
+  .water-outages-figure,
+  .water-outages-card,
+  .water-outages-subscribe,
+  .water-outages-result {
+    display: grid;
+    gap: var(--govbb-space-s);
+  }
+
+  .water-outages-page {
+    gap: var(--govbb-space-xm);
+  }
+
+  .water-outages-page :is(p, h1, h2, h3) {
+    max-inline-size: var(--govbb-measure);
+    overflow-wrap: anywhere;
+  }
+
+  .water-outages-figure,
+  .water-outages-card {
+    gap: var(--govbb-space-xs);
+  }
+
+  .water-outages-controls,
+  .water-outages-metadata {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--govbb-space-xs);
+  }
+
+  .water-outages-controls {
+    align-items: end;
+    gap: var(--govbb-space-s);
+  }
+
+  .water-outages-controls > .govbb-form-group {
+    flex: 1 1 16rem;
+  }
+
+  :is(.water-outages-controls, .water-outages-subscribe) > .govbb-form-group {
+    margin-block-end: 0;
+  }
+
+  .water-outages-map,
+  .water-outages-card {
+    border: 2px solid var(--govbb-color-neutral);
+    border-radius: var(--govbb-radius);
+  }
+
+  .water-outages-map {
+    isolation: isolate;
+    block-size: 26.25rem;
+    overflow: hidden;
+  }
+
+  .water-outages-map-canvas {
+    block-size: 100%;
+    inline-size: 100%;
+    font-family: var(--govbb-font-sans);
+  }
+
+  .water-outages-marker:focus-visible {
+    outline: 3px solid var(--govbb-color-ink);
+    outline-offset: 3px;
+  }
+
+  .water-outages-map-message,
+  .water-outages-card {
+    padding: var(--govbb-space-xm);
+  }
+
+  .water-outages-note,
+  .water-outages-subscribe {
+    background: var(--govbb-color-highlight);
+  }
+
+  .water-outages-badge {
+    padding: var(--govbb-space-xxs) var(--govbb-space-xs);
+    border-radius: var(--govbb-radius);
+    background: var(--govbb-color-highlight);
+    color: var(--govbb-color-muted);
+  }
+
+  .water-outages-badge[data-type='emergency'] {
+    background: var(--govbb-red-20);
+    color: var(--govbb-red-90);
+  }
+
+  .water-outages-badge[data-type='planned'] {
+    background: var(--govbb-teal-20);
+    color: var(--govbb-teal-ink);
+  }
+
+  .water-outages-badge[data-type='repair'] {
+    background: var(--govbb-yellow-20);
+    color: var(--govbb-color-ink);
+  }
+
+  .water-outages-badge[data-type='notice'] {
+    color: var(--govbb-blue-90);
+  }
+
+  .water-outages-result[data-tone='success'] {
+    background: var(--govbb-green-10);
+    color: var(--govbb-green-80);
+  }
+
+  .water-outages-result[data-tone='error'] {
+    background: var(--govbb-red-10);
+  }
+}

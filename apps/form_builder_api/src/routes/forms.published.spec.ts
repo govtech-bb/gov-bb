@@ -208,20 +208,32 @@ describe("GET /builder/forms/published", () => {
       );
     });
 
-    it("omits the header (public-only fallback) when RECIPE_PREVIEW_TOKEN is unset", async () => {
+    it("omits the header (public-only fallback) and warns when RECIPE_PREVIEW_TOKEN is unset (#2875)", async () => {
+      // Outside production the token is optional (env.ts requires it in prod),
+      // but the fallback must not be silent: the builder reads every status
+      // from this list, so a missing token blanks them all.
       delete process.env.RECIPE_PREVIEW_TOKEN;
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
         json: vi.fn().mockResolvedValue({ data: [] }),
       }) as unknown as typeof fetch;
 
+      // The warning fires once per process, so take a fresh module instance
+      // rather than depending on which earlier test tripped it first.
+      vi.resetModules();
+      const { listPublishedHandler: freshHandler } = await import("./forms");
       const res = mockRes();
-      await listPublishedHandler({} as Request, res);
+      await freshHandler({} as Request, res);
 
       const opts = (global.fetch as unknown as { mock: { calls: unknown[][] } })
         .mock.calls[0][1] as Record<string, unknown>;
       expect(opts.headers).toBeUndefined();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringMatching(/RECIPE_PREVIEW_TOKEN is unset/),
+      );
+      warn.mockRestore();
     });
   });
 });

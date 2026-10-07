@@ -1,4 +1,5 @@
 import { AnyFieldApi } from "@tanstack/react-form";
+import type { ReactNode } from "react";
 import {
   ClientPrimitive,
   FieldValidationProperties,
@@ -17,6 +18,7 @@ import { renderCheckboxAccordionField } from "./checkbox-accordion-field";
 import { renderRadioField } from "./radio-field";
 import { renderShowHideField } from "./show-hide-field";
 import { AddressLookupField } from "./address-lookup-field";
+import { OpeningHoursField } from "./opening-hours-field";
 import { renderContentElement } from "./content-field";
 
 export type { InsetFieldEntry };
@@ -29,6 +31,7 @@ export default function FieldRenderer({
   formId,
   previewToken,
   draftToken,
+  children,
 }: {
   // Needs the React `.Field` component from useForm()'s ReactFormExtendedApi,
   // which AnyFormApi (form-core) doesn't expose and which has no ergonomic
@@ -47,6 +50,8 @@ export default function FieldRenderer({
   /** `?draft=` token, forwarded to FileUpload so DB-scratch file fields resolve
    *  during draft review (#1682). */
   draftToken?: string;
+  /** Fields inside a show/hide disclosure. */
+  children?: ReactNode;
 }) {
   if (field.hidden) return null;
 
@@ -151,9 +156,11 @@ export default function FieldRenderer({
                 />
               );
             case "show-hide":
-              return renderShowHideField(ctx);
+              return renderShowHideField(ctx, children);
             case "address-lookup":
               return <AddressLookupField ctx={ctx} />;
+            case "opening-hours":
+              return <OpeningHoursField ctx={ctx} />;
             default:
               return (
                 <div style={{ color: "red" }}>

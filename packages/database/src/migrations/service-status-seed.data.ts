@@ -192,10 +192,6 @@ export const SERVICE_STATUS_SEED_ROWS: {
     status: "form_disabled",
   },
   {
-    slug: "nhc-application-rental-unit",
-    status: "disabled",
-  },
-  {
     slug: "nhc-land-property-application",
     status: "disabled",
   },

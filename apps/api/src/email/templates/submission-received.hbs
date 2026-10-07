@@ -1,7 +1,7 @@
 <html>
-  <head>
-    <meta charset='utf-8' />
-    <style>
+    <head>
+        <meta charset='utf-8' />
+        <style>
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
           "Helvetica Neue", Arial, sans-serif;
@@ -137,66 +137,62 @@
         width: auto;
         margin-left: 24px;
       }
-    </style>
-  </head>
-  <body>
-    <div class='wrapper'>
-      <div class='header'>
-        <div class='header-brand'>
-          {{#if coatOfArmsUrl}}
-            <img src='{{coatOfArmsUrl}}' alt='' />
-          {{/if}}
-          <span>Government of Barbados</span>
+        </style>
+    </head>
+    <body>
+        <div class="wrapper">
+            <div class="header">
+                <div class="header-brand">
+                    {{#if coatOfArmsUrl}}
+                        <img src="{{ coatOfArmsUrl }}" alt="" />
+                    {{/if}}
+                    <span>Government of Barbados</span>
+                </div>
+            </div>
+            <div class="body">
+                <h1 class="title">{{ formTitle }} Submission</h1>
+                <p class="intro">
+                    Thank you for your submission. It has been received and is now being
+                    processed.
+                </p>
+                <div class="reference">
+                    <p class="reference-label">Reference Number:</p>
+                    <p class="reference-number">{{ submissionId }}</p>
+                    <p class="reference-note">
+                        Please retain this reference number for tracking and follow-up
+                        purposes.
+                    </p>
+                    <p class="reference-note"><a href="https://tracking.alpha.gov.bb/reference">Track my application</a></p>
+                </div>
+                {{#if markdownHtml}}
+                    <div class="next-content">{{{ markdownHtml }}}</div>
+                {{ else }}
+                    <h2 class="next-title">What Happens Next?</h2>
+                    <ul class="next-list">
+                        {{#if departmentName}}
+                            <li>Your submission will be processed by {{ departmentName }}.</li>
+                        {{/if}}
+                        <li>
+                            Your submission will be reviewed and you will be contacted if any
+                            further information is needed.
+                        </li>
+                    </ul>
+                {{/if}}
+            </div>
+            <div class="footer">
+                {{#if coatOfArmsUrl}}
+                    <img class="footer-crest" src="{{ coatOfArmsUrl }}" alt="" />
+                {{/if}}
+                <p>This is an automated confirmation email from the Government of Barbados.</p>
+                <p>
+                    If you have any questions about your submission, please contact
+                {{#if departmentName}}{{ departmentName }}{{ else }}the relevant
+                    government department{{/if}}
+                and include your reference number: {{ submissionId }}
+            </p>
+            <p>Please do not reply to this email.</p>
+            <p class="copyright">© {{ year }} Government of Barbados</p>
         </div>
-      </div>
-
-      <div class='body'>
-        <h1 class='title'>{{formTitle}} Submission</h1>
-
-        <p class='intro'>
-          Thank you for your submission. It has been received and is now being
-          processed.
-        </p>
-
-        <div class='reference'>
-          <p class='reference-label'>Reference Number:</p>
-          <p class='reference-number'>{{submissionId}}</p>
-          <p class='reference-note'>
-            Please retain this reference number for tracking and follow-up
-            purposes.
-          </p>
-        </div>
-
-        {{#if markdownHtml}}
-          <div class='next-content'>{{{markdownHtml}}}</div>
-        {{else}}
-          <h2 class='next-title'>What Happens Next?</h2>
-          <ul class='next-list'>
-            {{#if departmentName}}
-              <li>Your submission will be processed by {{departmentName}}.</li>
-            {{/if}}
-            <li>
-              Your submission will be reviewed and you will be contacted if any
-              further information is needed.
-            </li>
-          </ul>
-        {{/if}}
-      </div>
-
-      <div class='footer'>
-        {{#if coatOfArmsUrl}}
-          <img class='footer-crest' src='{{coatOfArmsUrl}}' alt='' />
-        {{/if}}
-        <p>This is an automated confirmation email from the Government of Barbados.</p>
-        <p>
-          If you have any questions about your submission, please contact
-          {{#if departmentName}}{{departmentName}}{{else}}the relevant
-            government department{{/if}}
-          and include your reference number: {{submissionId}}
-        </p>
-        <p>Please do not reply to this email.</p>
-        <p class='copyright'>&copy; {{year}} Government of Barbados</p>
-      </div>
     </div>
-  </body>
+</body>
 </html>

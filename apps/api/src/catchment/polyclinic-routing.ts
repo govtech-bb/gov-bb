@@ -1,25 +1,59 @@
+import { POLYCLINIC_CONTACTS } from "@govtech-bb/form-conditions";
+
 /**
- * Routing data that is NOT geometry. Keyed by the GeoJSON `properties.name`.
- * The GeoJSON holds only the catchment shapes + names; the programme codes,
- * the parish fallback map, and the per-catchment MDA emails all live here.
+ * Routing data that is NOT geometry. The GeoJSON holds only the catchment
+ * shapes + names; the serving-catchment redirects, the programme codes and the
+ * parish fallback map live here.
+ *
+ * The per-catchment MDA inboxes used to live here too. They are now rows in
+ * `catchment_contact` (see `CatchmentContactService`), so an environment can
+ * hold its own real addresses and rotating one needs no deploy. That does not
+ * cover `CATCHMENT_CONTACT` below — a published citizen-facing contact line is
+ * a different thing from a private notification inbox; see its own note.
  */
 
 /**
- * Derived placeholder programme codes, one per catchment. The CMS will
- * eventually issue real per-polyclinic routing codes (env-specific); until then
- * these stable slugs make `programme_code` vary by location. Swap the values
- * when the CMS codes arrive — keys must stay in lockstep with the GeoJSON names.
+ * GeoJSON catchment → the polyclinic whose Environmental Health Department
+ * actually serves it, for the catchments where those differ. Applied to the
+ * **whole** resolution: the programme code, the MDA inbox, and the polyclinic
+ * named in the `{polyclinic}` token on the confirmation page and in the
+ * applicant email. A catchment absent from here serves itself.
+ *
+ * `Frederick Miller Polyclinic` has no Environmental Health Department of its
+ * own; its area falls under St. Philip. It stays a real catchment in the
+ * GeoJSON — that geometry is the true primary-care catchment and is reachable
+ * by a coordinate hit (no parish maps to it) — but nothing routed by it should
+ * ever name Frederick Miller. Redirecting here rather than dissolving the
+ * polygon into St. Philip keeps the geography honest and keeps the name, the
+ * code, and the inbox from drifting apart, which is exactly how the
+ * confirmation page came to name a polyclinic the submission had not gone to.
+ *
+ * Both the key and the value must name real GeoJSON catchments, and a value
+ * must not itself be redirected (no chains) — `CatchmentRoutingService`
+ * throws at boot otherwise.
  */
-export const PROGRAMME_CODES: Record<string, string> = {
-  "Branford Taitt Polyclinic": "TEMP_RESTAURANT_LICENCE_BRANFORD_TAITT",
-  "David Thompson Health & Social Services Complex":
-    "TEMP_RESTAURANT_LICENCE_DAVID_THOMPSON",
-  "Eunice Gibson Polyclinic": "TEMP_RESTAURANT_LICENCE_EUNICE_GIBSON",
-  "Frederick Miller Polyclinic": "TEMP_RESTAURANT_LICENCE_FREDERICK_MILLER",
-  "Maurice Byer Polyclinic": "TEMP_RESTAURANT_LICENCE_MAURICE_BYER",
-  "Randal Phillips Polyclinic": "TEMP_RESTAURANT_LICENCE_RANDAL_PHILLIPS",
-  "Sir Winston Scott Polyclinic": "TEMP_RESTAURANT_LICENCE_WINSTON_SCOTT",
-  "St. Philip Polyclinic": "TEMP_RESTAURANT_LICENCE_ST_PHILIP",
+export const SERVING_CATCHMENT: Record<string, string> = {
+  "Frederick Miller Polyclinic": "St. Philip Polyclinic",
+};
+
+/**
+ * Catchment → the suffix the CMS appends to a programme code. Not derivable
+ * from the name — `Sir Winston Scott Polyclinic` → `WINSTON_SCOTT`, and the
+ * Complex → `DAVID_THOMPSON` — so it stays a table. Keys are **serving**
+ * catchment names (see `SERVING_CATCHMENT`): a catchment served by another
+ * polyclinic has no key of its own, so there are seven keys over the eight
+ * GeoJSON catchments, not eight. Keys must stay in lockstep with the GeoJSON
+ * `properties.name` values — `CatchmentRoutingService.onModuleInit` throws at
+ * boot if either side drifts.
+ */
+export const CATCHMENT_SUFFIX: Record<string, string> = {
+  "Branford Taitt Polyclinic": "BRANFORD_TAITT",
+  "David Thompson Health & Social Services Complex": "DAVID_THOMPSON",
+  "Eunice Gibson Polyclinic": "EUNICE_GIBSON",
+  "Maurice Byer Polyclinic": "MAURICE_BYER",
+  "Randal Phillips Polyclinic": "RANDAL_PHILLIPS",
+  "Sir Winston Scott Polyclinic": "WINSTON_SCOTT",
+  "St. Philip Polyclinic": "ST_PHILIP",
 };
 
 /**
@@ -42,21 +76,25 @@ export const PARISH_DEFAULTS: Record<string, string> = {
 };
 
 /**
- * Per-catchment MDA (Environmental Health) inbox, keyed by the GeoJSON
- * `properties.name`. All 8 currently point at the shared **test inbox**
- * (`testing@govtech.bb`) so no environment can email the real polyclinics
- * during testing — swap in the Ministry-confirmed per-catchment inboxes before
- * production. A catchment with no entry here would resolve to `mdaEmail: null`
- * (the service warns at boot and a coordinate hit there fails the MDA email
- * loudly, isolated/DLQ'd, rather than misrouting).
+ * Serving catchment → the single contact line shown on the confirmation page
+ * and in the applicant email for a form routed to that catchment. Keys are
+ * **serving** catchment names (redirected catchments have no row of their own —
+ * Frederick Miller resolves to St. Philip's row). The line names the same
+ * polyclinic the `{polyclinic}` token renders so the confirmation body can't
+ * pair a name with another clinic's details (#254).
+ *
+ * Not restated here: this *is* `POLYCLINIC_CONTACTS` from
+ * `@govtech-bb/form-conditions`, which also derives the `{polyclinicContact}`
+ * all-clinics fallback from the same rows — the routed single line and the
+ * fallback are one table, so they cannot drift. Aliased under the local
+ * `CATCHMENT_*` name because `CatchmentRoutingService` validates it at boot
+ * alongside `CATCHMENT_SUFFIX` and against the same GeoJSON catchment names.
+ *
+ * Unlike the MDA inboxes this file gave up to `catchment_contact`, these are
+ * the *published* phone/email a citizen is told to call, not a private
+ * notification address, and they change on the Ministry's timescale rather than
+ * an environment's — so they stay in code and rotating one is a deploy. If that
+ * becomes the wrong trade they belong as columns on `catchment_contact`, read at
+ * response time the way `resolveMdaEmail` already is — tracked in #2661.
  */
-export const POLYCLINIC_EMAILS: Record<string, string> = {
-  "Branford Taitt Polyclinic": "testing@govtech.bb",
-  "David Thompson Health & Social Services Complex": "testing@govtech.bb",
-  "Eunice Gibson Polyclinic": "testing@govtech.bb",
-  "Frederick Miller Polyclinic": "testing@govtech.bb",
-  "Maurice Byer Polyclinic": "testing@govtech.bb",
-  "Randal Phillips Polyclinic": "testing@govtech.bb",
-  "Sir Winston Scott Polyclinic": "testing@govtech.bb",
-  "St. Philip Polyclinic": "testing@govtech.bb",
-};
+export const CATCHMENT_CONTACT = POLYCLINIC_CONTACTS;

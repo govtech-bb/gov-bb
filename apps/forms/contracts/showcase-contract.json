@@ -1,0 +1,998 @@
+{
+  "formId": "showcase",
+  "title": "Fake community event application",
+  "description": "A local test form covering every supported field and the forms package migration.",
+  "version": "1.0.0",
+  "createdAt": "2026-09-09T00:00:00Z",
+  "updatedAt": "2026-09-09T00:00:00Z",
+  "contactDetails": {
+    "title": "Demo services team (fictional)",
+    "email": "demo@example.test",
+    "address": {
+      "line1": "10 Demo Lane",
+      "line2": "Example office",
+      "city": "Bridgetown",
+      "country": "Barbados"
+    },
+    "telephoneNumber": "+1 416 555 0123"
+  },
+  "steps": [
+    {
+      "stepId": "intro",
+      "title": "Before you begin",
+      "elements": [],
+      "markdownContent": "# Test the forms interface\n\nThis is a **fake community event application**. Use made-up details. Uploads and submissions stay in this local demo; no application, email or payment is sent.\n\nUse **Continue** for a blank form, or [start with sample answers](/__demo/start). You can [clear the demo answers and start again](/__demo/reset) at any time.\n\n## What to check\n\n- Header, official banner, stage banner, skip link and footer\n- Every field type, hints, errors and conditional questions\n- Repeated answers, file uploads, opening hours and address lookup\n- Review, declaration, confirmation and print layout\n\n### Try other page states\n\nThese shortcuts let you check a state without completing the whole form. Confirmation shortcuts replace this demo's saved outcome.\n\n| Page | Preview |\n| --- | --- |\n| Directory | [Local form directory](/) |\n| Draft | [Open draft mode](/forms/showcase?draft=demo) |\n| Closed | [Applications closed](/forms/showcase-closed) |\n| Error | [Form loading error](/forms/showcase-error) |\n| Missing form | [Form not found](/forms/showcase-missing) |\n| Missing page | [Page not found](/not-a-real-page) |\n| Success | [Submission received](/__demo/state/success) |\n| Success without a reference | [Reference hidden](/__demo/state/no-reference) |\n| Processing | [Still processing](/__demo/state/processing) |\n| Submission failure | [Try again](/__demo/state/failure) |\n| Payment due | [Continue to payment](/__demo/state/payment-pending) |\n| Payment complete | [Payment receipt](/__demo/state/payment-success) |\n| Payment failure | [Payment failed](/__demo/state/payment-failed) |\n| Payment could not start | [Payment unavailable](/__demo/state/payment-unavailable) |\n\n### Markdown examples\n\nThis paragraph includes **bold text**, *emphasis*, ~~strikethrough~~ and `inline code`.\n\n> This blockquote is sample guidance. It does not describe a real service.\n\n1. Enter some fake answers.\n2. Check the review page.\n   - Change an answer and return.\n   - Try the page at a narrow mobile width.\n\n#### Long content\n\n| Item | Example |\n| --- | --- |\n| Long reference | DEMOABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ |\n\n```text\nDEMO-REFERENCE-001\nThis is a sample code block.\n```\n\n##### Smaller heading\n\nSample guidance below a level-five heading.\n\n###### Smallest heading\n\nSample guidance below a level-six heading.\n\n---\n\n[Download the form JSON](/__demo/contract.json) to reuse this resolved service contract with the forms renderer.\n"
+    },
+    {
+      "stepId": "contact",
+      "title": "Your fake contact details",
+      "elements": [
+        {
+          "fieldId": "first-name",
+          "label": "First name",
+          "htmlType": "text",
+          "hint": "For example, Alex. Leave this blank first to check the error summary.",
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Enter a first name"
+            },
+            "minLength": {
+              "value": 2,
+              "error": "First name must have at least 2 characters"
+            },
+            "maxLength": {
+              "value": 60,
+              "error": "First name must have 60 characters or fewer"
+            }
+          }
+        },
+        {
+          "fieldId": "last-name",
+          "label": "Last name",
+          "htmlType": "text",
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Enter a last name"
+            }
+          }
+        },
+        {
+          "fieldId": "email",
+          "label": "Email address",
+          "htmlType": "email",
+          "hint": "Use alex@example.test.",
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Enter an email address"
+            },
+            "email": {
+              "value": true,
+              "error": "Enter an email address in the correct format"
+            }
+          }
+        },
+        {
+          "fieldId": "contact-method",
+          "label": "How should we contact you?",
+          "htmlType": "radio",
+          "options": [
+            {
+              "label": "Email",
+              "value": "email"
+            },
+            {
+              "label": "Telephone",
+              "value": "telephone"
+            }
+          ],
+          "defaultValue": "email",
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Select a contact method"
+            }
+          }
+        },
+        {
+          "fieldId": "telephone",
+          "label": "Telephone number",
+          "htmlType": "tel",
+          "hint": "Optional when you choose email. For example, +1 416 555 0123 (a fictional number).",
+          "ui": {
+            "width": "medium"
+          },
+          "behaviours": [
+            {
+              "type": "optionalIf",
+              "targetFieldId": "contact-method",
+              "operator": "equal",
+              "value": "email"
+            }
+          ],
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Enter a telephone number"
+            },
+            "phone": {
+              "value": true,
+              "error": "Enter a valid telephone number"
+            }
+          }
+        },
+        {
+          "fieldId": "reference",
+          "label": "Fake reference",
+          "htmlType": "text",
+          "hint": "Type 1234567890 to check the input mask.",
+          "mask": "999999-9999",
+          "ui": {
+            "width": "medium"
+          },
+          "validations": {
+            "pattern": {
+              "value": "^\\d{6}-\\d{4}$",
+              "error": "Enter 10 digits in the format 123456-7890"
+            }
+          }
+        },
+        {
+          "fieldId": "initials",
+          "label": "Initials",
+          "htmlType": "text",
+          "ui": {
+            "width": "short"
+          },
+          "validations": {
+            "maxLength": {
+              "value": 3,
+              "error": "Enter 3 characters or fewer"
+            }
+          }
+        },
+        {
+          "fieldId": "demo-office",
+          "label": "Demo office",
+          "htmlType": "text",
+          "defaultValue": "Demo services team",
+          "isDisabled": true
+        },
+        {
+          "fieldId": "source",
+          "label": "Demo source",
+          "htmlType": "text",
+          "defaultValue": "local-showcase",
+          "ui": {
+            "hidden": true
+          }
+        }
+      ],
+      "description": "These details are only used to demonstrate the form."
+    },
+    {
+      "stepId": "choices",
+      "title": "About your event",
+      "elements": [
+        {
+          "fieldId": "applicant-type",
+          "label": "Who is organising the event?",
+          "htmlType": "radio",
+          "options": [
+            {
+              "label": "An individual",
+              "value": "individual"
+            },
+            {
+              "label": "An organisation",
+              "value": "organisation"
+            }
+          ],
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Select who is organising the event"
+            }
+          }
+        },
+        {
+          "fieldId": "organisation-name",
+          "label": "Organisation name",
+          "htmlType": "text",
+          "behaviours": [
+            {
+              "type": "fieldConditionalOn",
+              "targetFieldId": "applicant-type",
+              "operator": "equal",
+              "value": "organisation"
+            }
+          ],
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Enter an organisation name"
+            }
+          }
+        },
+        {
+          "fieldId": "event-name",
+          "label": "Name of your event",
+          "htmlType": "text",
+          "conditionalLabel": [
+            {
+              "targetFieldId": "applicant-type",
+              "operator": "equal",
+              "value": "organisation",
+              "label": "Name of the organisation’s event"
+            }
+          ],
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Enter an event name"
+            }
+          },
+          "ui": {
+            "width": "long"
+          }
+        },
+        {
+          "fieldId": "event-type",
+          "label": "Type of event",
+          "htmlType": "select",
+          "hint": "Choose Other to reveal a question. You can select one option.",
+          "options": [
+            {
+              "label": "Community gathering",
+              "value": "community"
+            },
+            {
+              "label": "Workshop",
+              "value": "workshop"
+            },
+            {
+              "label": "Other",
+              "value": "other"
+            },
+            {
+              "label": "Unavailable option",
+              "value": "unavailable",
+              "disabled": true
+            }
+          ],
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Select an event type"
+            }
+          }
+        },
+        {
+          "fieldId": "other-event",
+          "label": "Describe the other event",
+          "htmlType": "text",
+          "behaviours": [
+            {
+              "type": "fieldConditionalOn",
+              "targetFieldId": "event-type",
+              "operator": "equal",
+              "value": "other"
+            }
+          ],
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Describe the event"
+            }
+          }
+        },
+        {
+          "fieldId": "support",
+          "label": "What support do you need?",
+          "htmlType": "checkbox",
+          "hint": "Select up to 2 options. Interpreter reveals another question.",
+          "options": [
+            {
+              "label": "Step-free access",
+              "value": "access"
+            },
+            {
+              "label": "An interpreter",
+              "value": "interpreter"
+            },
+            {
+              "label": "Quiet space",
+              "value": "quiet"
+            },
+            {
+              "label": "Unavailable support",
+              "value": "unavailable",
+              "disabled": true
+            }
+          ],
+          "validations": {
+            "maxSelection": {
+              "value": 2,
+              "error": "Select no more than 2 support options"
+            }
+          }
+        },
+        {
+          "fieldId": "language",
+          "label": "Which language?",
+          "htmlType": "text",
+          "behaviours": [
+            {
+              "type": "fieldConditionalOn",
+              "targetFieldId": "support",
+              "operator": "in",
+              "value": ["interpreter"]
+            }
+          ],
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Enter the language"
+            }
+          }
+        },
+        {
+          "fieldId": "activities",
+          "label": "Activities at the event",
+          "htmlType": "checkbox-accordion",
+          "hint": "Open a group, select items, then collapse and reopen it. Select 1 to 3 activities.",
+          "groups": [
+            {
+              "label": "Food preparation",
+              "higherRisk": true,
+              "options": [
+                {
+                  "label": "Cooking hot food",
+                  "value": "cooking"
+                },
+                {
+                  "label": "Preparing chilled food",
+                  "value": "chilled"
+                }
+              ]
+            },
+            {
+              "label": "Community activities",
+              "options": [
+                {
+                  "label": "Craft stalls",
+                  "value": "crafts"
+                },
+                {
+                  "label": "Live music",
+                  "value": "music"
+                },
+                {
+                  "label": "Unavailable activity",
+                  "value": "unavailable",
+                  "disabled": true
+                }
+              ]
+            },
+            {
+              "label": "Information desk",
+              "options": [
+                {
+                  "label": "Information desk",
+                  "value": "information"
+                }
+              ]
+            }
+          ],
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Select at least one activity"
+            },
+            "minSelection": {
+              "value": 1,
+              "error": "Select at least one activity"
+            },
+            "maxSelection": {
+              "value": 3,
+              "error": "Select no more than 3 activities"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "organisation",
+      "title": "Organisation details",
+      "elements": [
+        {
+          "fieldId": "registration",
+          "label": "Demo registration code",
+          "htmlType": "text",
+          "hint": "Use ORG-123.",
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Enter a registration code"
+            },
+            "pattern": {
+              "value": "^ORG-\\d{3}$",
+              "error": "Enter a code in the format ORG-123"
+            }
+          }
+        }
+      ],
+      "description": "This whole step only appears when an organisation is organising the event.",
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetFieldId": "applicant-type",
+          "operator": "equal",
+          "value": "organisation",
+          "targetStepId": "choices"
+        }
+      ]
+    },
+    {
+      "stepId": "dates",
+      "title": "Event dates and attendance",
+      "elements": [
+        {
+          "fieldId": "date-of-birth",
+          "label": "Your fake date of birth",
+          "htmlType": "date",
+          "hint": "For example, 15 6 1990. Try leaving just the month blank.",
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Enter your date of birth"
+            },
+            "past": {
+              "value": true,
+              "error": "Date of birth must be in the past"
+            },
+            "min": {
+              "value": 18,
+              "error": "You must be at least 18",
+              "transform": "yearsSince"
+            },
+            "minYear": {
+              "value": 1900,
+              "error": "Enter a year from 1900 onwards"
+            }
+          }
+        },
+        {
+          "fieldId": "start-date",
+          "label": "Event start date",
+          "htmlType": "date",
+          "hint": "For example, 10 10 2099. Try 31 February to check an invalid date.",
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Enter the event start date"
+            },
+            "future": {
+              "value": true,
+              "error": "Event start date must be in the future"
+            },
+            "min": {
+              "value": 14,
+              "error": "Allow at least 14 days before the event",
+              "transform": "daysUntil"
+            }
+          }
+        },
+        {
+          "fieldId": "end-date",
+          "label": "Event end date",
+          "htmlType": "date",
+          "hint": "Must be on or after the start date.",
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Enter the event end date"
+            },
+            "onOrAfter": {
+              "referenceFieldId": "start-date",
+              "error": "End date must be on or after start date"
+            }
+          }
+        },
+        {
+          "fieldId": "start-time",
+          "label": "Start time",
+          "htmlType": "time",
+          "step": 1800,
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Enter a start time"
+            }
+          }
+        },
+        {
+          "fieldId": "attendance",
+          "label": "Expected attendance",
+          "htmlType": "number",
+          "hint": "Enter a number between 1 and 500.",
+          "step": 1,
+          "ui": {
+            "width": "short"
+          },
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Enter the expected attendance"
+            },
+            "min": {
+              "value": 1,
+              "error": "Attendance must be at least 1"
+            },
+            "max": {
+              "value": 500,
+              "error": "Attendance must be 500 or fewer"
+            }
+          }
+        }
+      ],
+      "conditionalTitle": [
+        {
+          "targetStepId": "choices",
+          "targetFieldId": "applicant-type",
+          "operator": "equal",
+          "value": "organisation",
+          "title": "Dates for your organisation’s event"
+        }
+      ]
+    },
+    {
+      "stepId": "venue",
+      "title": "Find your fake venue",
+      "elements": [
+        {
+          "fieldId": "address-line-1",
+          "label": "Address line 1",
+          "htmlType": "address-lookup",
+          "hint": "Type Demo for suggestions, offline for a lookup failure, or nothing for no results. You can also type an address yourself.",
+          "geocodeTargets": {
+            "line2FieldId": "address-line-2",
+            "parishFieldId": "parish",
+            "coordinatesFieldId": "coordinates"
+          },
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Enter the first line of the address"
+            }
+          }
+        },
+        {
+          "fieldId": "address-line-2",
+          "label": "Address line 2",
+          "htmlType": "text"
+        },
+        {
+          "fieldId": "parish",
+          "label": "Parish",
+          "htmlType": "select",
+          "options": [
+            {
+              "label": "St Michael",
+              "value": "st-michael"
+            },
+            {
+              "label": "Christ Church",
+              "value": "christ-church"
+            }
+          ],
+          "ui": {
+            "width": "medium"
+          },
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Select a parish"
+            }
+          }
+        },
+        {
+          "fieldId": "coordinates",
+          "label": "Coordinates",
+          "htmlType": "text",
+          "ui": {
+            "hidden": true
+          }
+        },
+        {
+          "fieldId": "directions-toggle",
+          "label": "Add directions to the venue",
+          "htmlType": "show-hide",
+          "hint": "Close and reopen this section to check that your answer is kept."
+        },
+        {
+          "fieldId": "directions",
+          "label": "Directions",
+          "htmlType": "textarea",
+          "ui": {
+            "hideLabel": true,
+            "indent": true
+          },
+          "hint": "For example, use the side entrance.",
+          "behaviours": [
+            {
+              "type": "fieldConditionalOn",
+              "targetFieldId": "directions-toggle",
+              "operator": "equal",
+              "value": true
+            }
+          ],
+          "validations": {
+            "maxLength": {
+              "value": 300,
+              "error": "Use 300 characters or fewer"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "hours",
+      "title": "Opening hours",
+      "elements": [
+        {
+          "fieldId": "opening-hours",
+          "label": "When is the venue open?",
+          "htmlType": "opening-hours",
+          "hint": "Try shared weekday hours, separate weekend hours, and adding or removing a second time slot.",
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Add at least one set of opening hours"
+            },
+            "pattern": {
+              "value": "^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) ([01]\\d|2[0-3]):[0-5]\\d - ([01]\\d|2[0-3]):[0-5]\\d$",
+              "error": "Enter both an opening and a closing time for every set of hours"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "uploads",
+      "title": "Upload fake documents",
+      "elements": [
+        {
+          "fieldId": "upload-guide",
+          "label": "Sample files",
+          "htmlType": "content",
+          "variant": "text",
+          "content": "Download [demo.png](/__demo/files/demo.png), [upload-fails.png](/__demo/files/upload-fails.png), [wrong-type.txt](/__demo/files/wrong-type.txt) or [too-large.png](/__demo/files/too-large.png).\n\nUploads pause briefly so you can see progress. The file named **upload-fails.png** fails deliberately. Remove or dismiss a file, then try again."
+        },
+        {
+          "fieldId": "plan",
+          "label": "Event plan",
+          "htmlType": "file",
+          "multiple": false,
+          "hint": "Upload one PNG or PDF, up to 1 MB.",
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Upload an event plan"
+            },
+            "fileTypes": {
+              "value": ["image/png", "application/pdf"],
+              "error": "Upload a PNG or PDF file"
+            },
+            "maxSize": {
+              "value": 1048576,
+              "error": "The file must be 1 MB or smaller"
+            }
+          }
+        },
+        {
+          "fieldId": "supporting-files",
+          "label": "Supporting documents",
+          "htmlType": "file",
+          "multiple": true,
+          "hint": "Optional. Up to 3 PNG or PDF files, 1 MB per file and 2 MB in total.",
+          "validations": {
+            "fileTypes": {
+              "value": ["image/png", "application/pdf"],
+              "error": "Upload PNG or PDF files"
+            },
+            "maxItems": {
+              "value": 3,
+              "error": "Upload no more than 3 supporting documents"
+            },
+            "itemMaxSize": {
+              "value": 1048576,
+              "error": "Each file must be 1 MB or smaller"
+            },
+            "maxSize": {
+              "value": 2097152,
+              "error": "The files must total 2 MB or less"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "repeated-answers",
+      "title": "Add and remove answers",
+      "elements": [
+        {
+          "fieldId": "aliases",
+          "label": "Other event names",
+          "htmlType": "text",
+          "hint": "Optional. Add up to 3 answers, then remove the last one.",
+          "behaviours": [
+            {
+              "type": "fieldArray",
+              "min": 1,
+              "max": 3,
+              "addAnotherLabel": "Add another name"
+            }
+          ]
+        },
+        {
+          "fieldId": "notes",
+          "label": "Planning notes",
+          "htmlType": "textarea",
+          "hint": "Optional. Add up to 3 answers, then remove the last one.",
+          "behaviours": [
+            {
+              "type": "fieldArray",
+              "min": 1,
+              "max": 3,
+              "addAnotherLabel": "Add another note"
+            }
+          ]
+        },
+        {
+          "fieldId": "quantities",
+          "label": "Equipment quantities",
+          "htmlType": "number",
+          "hint": "Optional. Add up to 3 answers, then remove the last one.",
+          "behaviours": [
+            {
+              "type": "fieldArray",
+              "min": 1,
+              "max": 3,
+              "addAnotherLabel": "Add another quantity"
+            }
+          ]
+        },
+        {
+          "fieldId": "emails",
+          "label": "Other email addresses",
+          "htmlType": "email",
+          "hint": "Optional. Add up to 3 answers, then remove the last one.",
+          "behaviours": [
+            {
+              "type": "fieldArray",
+              "min": 1,
+              "max": 3,
+              "addAnotherLabel": "Add another email address"
+            }
+          ]
+        },
+        {
+          "fieldId": "phones",
+          "label": "Other telephone numbers",
+          "htmlType": "tel",
+          "hint": "Optional. Add up to 3 answers, then remove the last one.",
+          "behaviours": [
+            {
+              "type": "fieldArray",
+              "min": 1,
+              "max": 3,
+              "addAnotherLabel": "Add another telephone number"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "stepId": "volunteers",
+      "title": "Volunteer details",
+      "elements": [
+        {
+          "fieldId": "team-name",
+          "label": "Volunteer team name",
+          "htmlType": "text",
+          "hint": "Asked once and shared by every volunteer.",
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Enter a team name"
+            }
+          }
+        },
+        {
+          "fieldId": "volunteer-name",
+          "label": "Volunteer name",
+          "htmlType": "text",
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Enter a volunteer name"
+            }
+          }
+        },
+        {
+          "fieldId": "volunteer-email",
+          "label": "Volunteer email address",
+          "htmlType": "email",
+          "validations": {
+            "email": {
+              "value": true,
+              "error": "Enter an email address in the correct format"
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 2,
+          "addAnotherLabel": "Do you want to add another volunteer?",
+          "instanceLabel": "Volunteer"
+        },
+        {
+          "type": "sharedFields",
+          "fieldIds": ["team-name"]
+        }
+      ]
+    },
+    {
+      "stepId": "guidance",
+      "title": "Guidance and optional notes",
+      "elements": [
+        {
+          "fieldId": "plain-guidance",
+          "label": "Plain guidance",
+          "htmlType": "content",
+          "variant": "text",
+          "content": "## Plain guidance\n\nThis is a paragraph with **bold text** and a [link back to the demo](/forms/showcase)."
+        },
+        {
+          "fieldId": "inset-guidance",
+          "label": "Inset guidance",
+          "htmlType": "content",
+          "variant": "inset",
+          "content": "**Inset information:** keep a copy of the fake application.\n\n- Check the spacing.\n- Try the page on mobile."
+        },
+        {
+          "fieldId": "warning-guidance",
+          "label": "Warning guidance",
+          "htmlType": "content",
+          "variant": "warning",
+          "content": "**This is a test form.** Do not enter real personal details or upload private documents."
+        },
+        {
+          "fieldId": "details-guidance",
+          "label": "More information",
+          "htmlType": "content",
+          "variant": "details",
+          "summary": "Read more sample guidance",
+          "content": "### Inside the disclosure\n\n1. Open this section with a keyboard.\n2. Close it again.\n\n| Check | Expected result |\n| --- | --- |\n| Text | Readable and contained |\n| Links | Keyboard accessible |"
+        },
+        {
+          "fieldId": "optional-notes",
+          "label": "Anything else we should know?",
+          "htmlType": "textarea",
+          "hint": "Leave this blank to check the empty section on the review page.",
+          "validations": {
+            "maxLength": {
+              "value": 500,
+              "error": "Use 500 characters or fewer"
+            }
+          },
+          "placeholder": "Add a note about your imaginary event."
+        }
+      ]
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "elements": [],
+      "description": "Check the summaries, change an answer, and return here before continuing."
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "fieldId": "consent",
+          "label": "Declaration",
+          "htmlType": "checkbox",
+          "options": [
+            {
+              "label": "I confirm that:\n\n- **These are made-up details.**\n- I understand that this demo does not submit a real application.",
+              "value": "yes"
+            }
+          ],
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Confirm the declaration to continue"
+            },
+            "equal": {
+              "value": "yes",
+              "error": "Confirm the declaration to continue"
+            }
+          }
+        },
+        {
+          "fieldId": "submission-outcome",
+          "label": "Choose a demo submission result",
+          "htmlType": "select",
+          "defaultValue": "success",
+          "options": [
+            {
+              "label": "Successful submission",
+              "value": "success"
+            },
+            {
+              "label": "Still processing",
+              "value": "processing"
+            },
+            {
+              "label": "Submission failure",
+              "value": "failure"
+            },
+            {
+              "label": "Server validation error",
+              "value": "validation-error"
+            },
+            {
+              "label": "Payment due",
+              "value": "payment-pending"
+            },
+            {
+              "label": "Payment could not start",
+              "value": "payment-unavailable"
+            }
+          ],
+          "hint": "This control exists only in this fake form. For a validation error, select Successful submission afterwards to retry."
+        }
+      ]
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Demo application received",
+      "elements": [],
+      "nextSteps": [
+        {
+          "title": "What happens next",
+          "content": "Nothing is sent from this local demo.",
+          "items": [
+            "Print the confirmation to check the print layout.",
+            "Reload the page to check that the confirmation is kept."
+          ]
+        }
+      ],
+      "markdownContent": "## About this demo\n\n{organiserMessage}\n\nYour pretend venue would be handled by **{polyclinic}**.\n\n[Return to the demo](/forms/showcase) or [start again with sample answers](/__demo/start).\n\n[Call the fake team](tel:+14165550123) or [email the fake team](mailto:demo@example.test).",
+      "conditionalMarkdown": [
+        {
+          "token": "organiserMessage",
+          "default": "You applied as an **individual**.",
+          "variants": [
+            {
+              "targetStepId": "choices",
+              "targetFieldId": "applicant-type",
+              "operator": "equal",
+              "value": "organisation",
+              "content": "You applied on behalf of an **organisation**."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "processors": []
+}

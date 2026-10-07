@@ -612,7 +612,13 @@
                 "operator": "equal",
                 "targetFieldId": "bvtb-nail-technology"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Nail Technology – Level is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1070,7 +1076,7 @@
   "title": "Project Dawn – Block Transformation Unit Application",
   "formId": "project-dawn-application",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-06-05T00:00:00Z",
+  "updatedAt": "2026-09-17T13:49:39.000Z",
   "processors": [
     {
       "type": "email",

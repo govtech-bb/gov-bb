@@ -8,7 +8,7 @@
       "executor": "@nx/js:tsc",
       "outputs": ["{options.outputPath}"],
       "options": {
-        "outputPath": "dist/packages/umami-analytics",
+        "outputPath": "packages/umami-analytics/dist",
         "tsConfig": "packages/umami-analytics/tsconfig.json",
         "main": "packages/umami-analytics/src/index.ts"
       }

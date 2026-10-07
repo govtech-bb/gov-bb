@@ -17,7 +17,7 @@ export const Route = createFileRoute('/tell-us')({
 
 function TellUsPage() {
   return (
-    <div className="container pt-4 pb-8 lg:py-8">
+    <div className="govbb-width-container govbb-main-wrapper">
       <iframe
         className="m-0 border-none"
         data-tally-src="https://tally.so/embed/Pd1ele?alignLeft=1&transparentBackground=1&dynamicHeight=1"

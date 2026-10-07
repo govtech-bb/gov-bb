@@ -179,6 +179,13 @@ export interface SubmitResult {
    * routing or nothing resolved. Never carries the MDA email.
    */
   resolvedPolyclinic?: string;
+  /**
+   * The routed polyclinic's single contact line (name + phone + email), shown
+   * on the confirmation page in place of the full clinic list (#254). Absent
+   * when the form has no catchment routing or nothing resolved — the page then
+   * reads the shared all-clinics fallback.
+   */
+  resolvedPolyclinicContact?: string;
   deferred?: {
     paymentUrl: string;
     paymentId: string;

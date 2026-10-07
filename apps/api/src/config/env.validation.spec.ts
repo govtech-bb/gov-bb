@@ -256,6 +256,43 @@ describe("envValidationSchema", () => {
     });
   });
 
+  describe("SQS_MAX_RECEIVE_COUNT (#2168)", () => {
+    it("defaults to 3 and coerces an override", () => {
+      expect(validate({ ...baseEnv }).value?.SQS_MAX_RECEIVE_COUNT).toBe(3);
+      expect(
+        validate({ ...baseEnv, SQS_MAX_RECEIVE_COUNT: "5" }).value
+          ?.SQS_MAX_RECEIVE_COUNT,
+      ).toBe(5);
+    });
+
+    it("rejects a value below 1", () => {
+      expect(
+        validate({ ...baseEnv, SQS_MAX_RECEIVE_COUNT: "0" }).error?.message,
+      ).toMatch(/SQS_MAX_RECEIVE_COUNT/);
+    });
+  });
+
+  describe("SLACK_ALERTS_WEBHOOK_URL (#2168)", () => {
+    it("accepts a valid URL and an empty string (alerting off)", () => {
+      expect(
+        validate({
+          ...baseEnv,
+          SLACK_ALERTS_WEBHOOK_URL: "https://hooks.slack.com/services/x",
+        }).error,
+      ).toBeUndefined();
+      expect(
+        validate({ ...baseEnv, SLACK_ALERTS_WEBHOOK_URL: "" }).error,
+      ).toBeUndefined();
+    });
+
+    it("rejects a non-URL value", () => {
+      expect(
+        validate({ ...baseEnv, SLACK_ALERTS_WEBHOOK_URL: "not-a-url" }).error
+          ?.message,
+      ).toMatch(/SLACK_ALERTS_WEBHOOK_URL/);
+    });
+  });
+
   describe("allowUnknown parity (.passthrough)", () => {
     it("preserves unknown vars used by the config factories", () => {
       const { error, value } = validate({

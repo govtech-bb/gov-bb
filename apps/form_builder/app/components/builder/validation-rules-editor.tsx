@@ -1,0 +1,379 @@
+import { cn } from "../ui/utils/cn";
+import { Badge } from "../ui/badge";
+import { Select } from "../ui/select";
+import { Input } from "../ui/input";
+import { Button } from "../ui/button";
+import { VALIDATION_RULE_DESCRIPTORS } from "@govtech-bb/form-builder";
+import type {
+  HtmlTypes,
+  FieldOverrides,
+  ValidationType,
+  ValidationConfig,
+  ValidationRule,
+} from "@govtech-bb/form-types";
+import type { FieldRef, StepRef } from "./recipe-refs";
+import { FieldRefPicker } from "./field-ref-picker";
+
+interface ValidationRulesEditorProps {
+  htmlType: HtmlTypes;
+  rules: FieldOverrides["validations"];
+  // Validations declared on the base component/primitive. Surfaced as read-only
+  // "inherited" rows the author can override per field instance (#618).
+  baseRules?: ValidationRule;
+  fieldRefs: FieldRef[];
+  // Steps available as reference-rule scopes. Mirrors the behaviours editor's
+  // Target Step pattern, but unscoped (no targetStepId) stays fully editable
+  // for backward compatibility with existing reference rules (#840).
+  stepRefs: StepRef[];
+  onChange: (rules: FieldOverrides["validations"]) => void;
+}
+
+// `required` is owned by the dedicated Required checkbox (which reads the base
+// via `defaultRequired` and writes the off-sentinel). Excluding it here avoids
+// a double control (#618).
+const isManaged = (type: ValidationType) => type !== "required";
+
+// Rules whose `value` the recipe schema types as a number. The Value box is a
+// text input, so what the author types has to be converted before it is
+// committed — mirrors `ruleValueSchemas` in @govtech-bb/form-types, which is
+// what rejects a wrong shape on draft save and in CI. (#2384)
+const NUMERIC_RULE_VALUES = new Set<ValidationType>([
+  "minLength",
+  "maxLength",
+  "minItems",
+  "maxItems",
+  "minSelection",
+  "maxSelection",
+  "min",
+  "max",
+  "gt",
+  "lt",
+  "minYear",
+  "maxYear",
+  "itemMaxSize",
+  "maxSize",
+]);
+
+// Text box → the shape the rule runner consumes. Committing the raw string for
+// every rule is what put a comma string in `fileTypes.value` and crashed the
+// forms file-upload renderer on `.map`. (#2384)
+function parseRuleValue(ruleType: ValidationType, raw: string): unknown {
+  // An emptied box is a genuine deletion: handleUpdate strips an `undefined`
+  // patch key, so the committed config stops carrying `value` at all.
+  if (raw.trim() === "") return undefined;
+  if (ruleType === "fileTypes") {
+    return raw
+      .split(",")
+      .map((type) => type.trim())
+      .filter(Boolean);
+  }
+  if (NUMERIC_RULE_VALUES.has(ruleType)) {
+    const parsed = Number(raw);
+    // An entry that isn't a number stays as typed rather than becoming NaN —
+    // the draft-save gate then rejects it by name instead of silently storing
+    // a value no rule runner can use.
+    return Number.isFinite(parsed) ? parsed : raw;
+  }
+  return raw;
+}
+
+// The committed shape → the text box. `fileTypes` round-trips through the same
+// comma-separated form the author typed.
+function formatRuleValue(value: unknown): string {
+  if (value == null) return "";
+  return Array.isArray(value) ? value.join(", ") : String(value);
+}
+
+// Date→number transforms for the duration rules (#1020). Added rules seed
+// `yearsSince` so a date's "Min (duration)" rule is functional immediately
+// rather than comparing an underived date (which would always fail).
+const TRANSFORM_OPTIONS = [
+  "yearsSince",
+  "monthsSince",
+  "daysSince",
+  "daysUntil",
+] as const;
+
+export function ValidationRulesEditor({
+  htmlType,
+  rules,
+  baseRules,
+  fieldRefs,
+  stepRefs,
+  onChange,
+}: ValidationRulesEditorProps) {
+  const descriptors = VALIDATION_RULE_DESCRIPTORS[htmlType] ?? [];
+  const overrideRules = rules ?? {};
+  const base = baseRules ?? {};
+
+  const baseTypes = (Object.keys(base) as ValidationType[]).filter(isManaged);
+  const overrideTypes = (Object.keys(overrideRules) as ValidationType[]).filter(
+    isManaged,
+  );
+  // Union: inherited (base) rules first, then any author-added override-only
+  // rules. A rule that is both base and overridden appears once, as overridden.
+  const ruleTypes = [
+    ...baseTypes,
+    ...overrideTypes.filter((type) => !baseTypes.includes(type)),
+  ];
+  // A rule that is inherited or already present can't be re-added from scratch —
+  // inherited ones are reached via Override, not the Add dropdown.
+  const available = descriptors.filter(
+    (d) => isManaged(d.type) && !ruleTypes.includes(d.type),
+  );
+
+  // Write only genuine deltas: an empty override set collapses to `undefined`
+  // so the recipe never carries a non-delta `{}` (ADR 0013/0014/0024).
+  function commit(next: ValidationRule) {
+    onChange(Object.keys(next).length > 0 ? next : undefined);
+  }
+
+  function handleAdd(ruleType: ValidationType) {
+    const descriptor = descriptors.find((d) => d.type === ruleType);
+    // A transform-capable rule (a date's duration rule) seeds `yearsSince` so
+    // the bound applies to a derived age out of the box. (#1020)
+    const seed = descriptor?.hasTransform
+      ? ({ transform: "yearsSince" } as ValidationConfig)
+      : ({} as ValidationConfig);
+    commit({ ...overrideRules, [ruleType]: seed });
+  }
+
+  // Used by both author-added delete (×) and overridden Reset: drop the key,
+  // falling back to the inherited base (if any).
+  function removeRule(ruleType: ValidationType) {
+    const next = { ...overrideRules };
+    delete next[ruleType];
+    commit(next);
+  }
+
+  // Promote an inherited rule to an editable override, seeded from the base.
+  function handleOverride(ruleType: ValidationType) {
+    commit({ ...overrideRules, [ruleType]: { ...base[ruleType] } });
+  }
+
+  function handleUpdate(
+    ruleType: ValidationType,
+    patch: Partial<ValidationConfig>,
+  ) {
+    const existing = overrideRules[ruleType] ?? {};
+    const merged = { ...existing, ...patch } as Record<string, unknown>;
+    // A patched key set to `undefined` is a genuine deletion, not a stored
+    // `undefined`: strip it so the committed config never owns the key (e.g.
+    // clearing the Reference Step removes targetStepId entirely). ADR 0013/0014.
+    for (const key of Object.keys(patch)) {
+      if ((patch as Record<string, unknown>)[key] === undefined) {
+        delete merged[key];
+      }
+    }
+    commit({ ...overrideRules, [ruleType]: merged as ValidationConfig });
+  }
+
+  // Changing the Reference Step revalidates the Reference Field: a field that no
+  // longer belongs to the newly scoped step is cleared in the same update so a
+  // stale id can't be saved. Clearing the step (empty value) removes
+  // targetStepId entirely and falls back to the flat field list. (#840, #519)
+  function handleStepChange(ruleType: ValidationType, stepId: string) {
+    const existing = overrideRules[ruleType] ?? {};
+    const patch: Partial<ValidationConfig> = {
+      // undefined => handleUpdate strips the key (genuine delta).
+      targetStepId: stepId === "" ? undefined : stepId,
+    };
+    if (stepId !== "" && existing.referenceFieldId) {
+      const validIds = fieldRefs
+        .filter((f) => f.stepId === stepId)
+        .map((f) => f.fieldId);
+      if (!validIds.includes(existing.referenceFieldId)) {
+        patch.referenceFieldId = "";
+      }
+    }
+    handleUpdate(ruleType, patch);
+  }
+
+  return (
+    <div>
+      {ruleTypes.map((ruleType) => {
+        const descriptor = descriptors.find((d) => d.type === ruleType);
+        const label = descriptor?.label ?? ruleType;
+        const isOverridden = ruleType in overrideRules;
+        const hasBase = ruleType in base;
+
+        // Inherited: base-only rule shown read-only with an Override action.
+        if (!isOverridden) {
+          const config = base[ruleType] ?? {};
+          return (
+            <div
+              key={ruleType}
+              data-field-row
+              className="mb-1.5 flex min-w-0 flex-wrap items-center gap-2 rounded-lg border border-ui-hairline bg-ui-base px-3 py-2.25 transition-[border-color] duration-120 ease-[ease] hover:border-ui-inactive border-l-2 border-l-ui-line [border-left-style:dashed]"
+              style={{ flexDirection: "column", alignItems: "flex-start" }}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <strong>{label}</strong>
+                <Badge variant="secondary">Inherited from component</Badge>
+                <Button
+                  type="button"
+                  onClick={() => handleOverride(ruleType)}
+                  variant="secondary"
+                  size="sm"
+                >
+                  Override
+                </Button>
+              </div>
+              {descriptor?.hasValue && config.value != null && (
+                <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+                  <span className="text-[13px] font-medium text-ui-brand-hover">
+                    Value
+                  </span>
+                  <span>{formatRuleValue(config.value)}</span>
+                </div>
+              )}
+              {config.error && (
+                <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+                  <span className="text-[13px] font-medium text-ui-brand-hover">
+                    Error Message
+                  </span>
+                  <span>{config.error}</span>
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        // Editable: an override exists. With a base counterpart it's an override
+        // of an inherited rule (Reset returns to base); without one it's an
+        // author-added rule (× deletes it). Overridden rows reuse the standard
+        // override highlight.
+        const config = overrideRules[ruleType] ?? {};
+        return (
+          <div
+            key={ruleType}
+            data-field-row
+            className={cn(
+              "mb-1.5 flex min-w-0 flex-wrap items-center gap-2 rounded-lg border border-ui-hairline bg-ui-base px-3 py-2.25 transition-[border-color] duration-120 ease-[ease] hover:border-ui-inactive",
+              hasBase ? "border-l-2 border-l-(--ui-warning-text)" : "",
+            )}
+            style={{ flexDirection: "column", alignItems: "flex-start" }}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <strong>{label}</strong>
+              <Button
+                type="button"
+                onClick={() => removeRule(ruleType)}
+                variant="secondary"
+                size="sm"
+              >
+                {hasBase ? "Reset" : "×"}
+              </Button>
+            </div>
+            {descriptor?.hasValue && (
+              <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+                <Input
+                  type="text"
+                  placeholder={descriptor?.valuePlaceholder}
+                  value={formatRuleValue(config.value)}
+                  onChange={(e) =>
+                    handleUpdate(ruleType, {
+                      value: parseRuleValue(ruleType, e.target.value),
+                    })
+                  }
+                  label={"Value"}
+                  className="w-full min-w-0"
+                />
+              </div>
+            )}
+            {descriptor?.hasTransform && (
+              <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+                {/* No "none" option: a duration rule with no transform compares
+                    the raw date (NaN) and can never pass, so the transform is
+                    mandatory — seeded to `yearsSince` on add. (#1020) */}
+                <Select<string>
+                  value={(config.transform as string) ?? "yearsSince"}
+                  onValueChange={(nextValue) => {
+                    if (nextValue === null) return;
+                    handleUpdate(ruleType, {
+                      transform: nextValue as ValidationConfig["transform"],
+                    });
+                  }}
+                  label={"Transform"}
+                  items={[
+                    ...TRANSFORM_OPTIONS.map((t) => ({ value: t, label: t })),
+                  ]}
+                />
+              </div>
+            )}
+            {descriptor?.hasReference &&
+              (() => {
+                const targetStepId = config.targetStepId ?? "";
+                // Unscoped (no step): show the full flat field list and stay
+                // enabled — existing recipes have reference rules with no
+                // targetStepId and must remain fully editable. Scoped: filter
+                // the field list to the selected step. (#840)
+                const scopedRefs = targetStepId
+                  ? fieldRefs.filter((f) => f.stepId === targetStepId)
+                  : fieldRefs;
+                return (
+                  <>
+                    <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+                      <Select<string>
+                        value={targetStepId}
+                        onValueChange={(nextValue) => {
+                          if (nextValue === null) return;
+                          handleStepChange(ruleType, nextValue);
+                        }}
+                        label={"Reference Step"}
+                        items={[
+                          { value: "", label: "— any step —" },
+                          ...stepRefs.map((s) => ({
+                            value: s.stepId,
+                            label: s.title,
+                          })),
+                        ]}
+                      />
+                    </div>
+
+                    <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+                      <FieldRefPicker
+                        label={"Reference Field"}
+                        value={config.referenceFieldId ?? ""}
+                        fieldRefs={scopedRefs}
+                        onChange={(val) =>
+                          handleUpdate(ruleType, { referenceFieldId: val })
+                        }
+                      />
+                    </div>
+                  </>
+                );
+              })()}
+            <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+              <Input
+                type="text"
+                value={config.error ?? ""}
+                onChange={(e) =>
+                  handleUpdate(ruleType, { error: e.target.value })
+                }
+                label={"Error Message"}
+                className="w-full min-w-0"
+              />
+            </div>
+          </div>
+        );
+      })}
+      {available.length > 0 && (
+        <div>
+          <Select<string>
+            aria-label="Add rule"
+            value=""
+            onValueChange={(nextValue) => {
+              if (nextValue === null) return;
+              if (nextValue) handleAdd(nextValue as ValidationType);
+            }}
+            items={[
+              { value: "", label: "+ Add Rule" },
+              ...available.map((d) => ({ value: d.type, label: d.label })),
+            ]}
+          />
+        </div>
+      )}
+    </div>
+  );
+}

@@ -7,9 +7,9 @@ import { shallowMergeDefined } from "./merge";
  * that restates one key does not drop the primitive's other shipped keys.
  *
  * This is the SINGLE source of recipe override-merge semantics. It is called by
- * both the production serving path (apps/api/src/registry/resolution.ts) and
- * the builder preview path (packages/form-builder/src/resolution.ts) so the
- * preview can never diverge from what citizens are served — a wholesale spread
+ * the shared hydrator (packages/form-builder/src/resolution.ts), which both the
+ * production serving path and the builder preview use, so the preview can
+ * never diverge from what citizens are served — a wholesale spread
  * here previously regressed `validations` (#371) and `ui` (#789), and the fix
  * had to be applied to two separate copies of this body.
  */

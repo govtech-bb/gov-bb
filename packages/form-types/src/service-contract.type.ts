@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { formStepSchema, recipeFormStepSchema } from "./form-step.type";
+import {
+  formStepSchema,
+  recipeFormStepSchema,
+  type RecipeFormStep,
+} from "./form-step.type";
+import type { FieldOverrides } from "./primitive.type";
+import { ruleValueIssues } from "./validation.type";
 import { processorSchema } from "./processor.type";
 import { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "./id-pattern";
 import { semverSchema } from "./version-pattern";
@@ -111,7 +117,7 @@ export const recipeMetaSchema = z.object({
 });
 export type RecipeMeta = z.infer<typeof recipeMetaSchema>;
 
-export const serviceContractRecipeSchema = z.object({
+const serviceContractRecipeBaseSchema = z.object({
   formId: formIdSchema,
   title: titleSchema,
   description: z.string().optional(),
@@ -125,6 +131,55 @@ export const serviceContractRecipeSchema = z.object({
   meta: recipeMetaSchema.optional(),
   catchmentRouting: catchmentRoutingSchema.optional(),
 });
+
+/**
+ * Reject a rule whose `value` is not the shape its runner consumes — e.g.
+ * `fileTypes` authored as the comma string `"application/pdf,image/png"`
+ * instead of `["application/pdf", "image/png"]`, which crashed the forms
+ * file-upload renderer on `.map` (#2384).
+ *
+ * A recipe is an AUTHORED artifact, so it can fail loudly: this runs in CI
+ * (`pnpm validate-recipes`), in the API recipe loader, and on the builder's
+ * draft save, all before a citizen sees anything. The served-contract schema
+ * deliberately does NOT carry this check — see `ruleValueIssues`.
+ */
+const checkRecipeRuleValues = (
+  recipe: { steps: RecipeFormStep[] },
+  ctx: z.RefinementCtx,
+): void => {
+  recipe.steps.forEach((step, stepIndex) => {
+    step.elements.forEach((element, elementIndex) => {
+      if (!element.overrides) return;
+      // A component element carries one FieldOverrides; a block element
+      // carries a fieldId → FieldOverrides map.
+      const overrideEntries = element.ref.startsWith("blocks/")
+        ? Object.entries(element.overrides as Record<string, FieldOverrides>)
+        : [["", element.overrides as FieldOverrides] as const];
+
+      for (const [fieldId, overrides] of overrideEntries) {
+        if (!overrides?.validations) continue;
+        for (const message of ruleValueIssues(overrides.validations)) {
+          ctx.addIssue({
+            code: "custom",
+            path: [
+              "steps",
+              stepIndex,
+              "elements",
+              elementIndex,
+              "overrides",
+              ...(fieldId ? [fieldId] : []),
+              "validations",
+            ],
+            message,
+          });
+        }
+      }
+    });
+  });
+};
+
+export const serviceContractRecipeSchema =
+  serviceContractRecipeBaseSchema.superRefine(checkRecipeRuleValues);
 export type ServiceContractRecipe = z.infer<typeof serviceContractRecipeSchema>;
 
 // Lenient draft-save gate (#1499). The /builder/forms write surfaces persist a
@@ -134,10 +189,12 @@ export type ServiceContractRecipe = z.infer<typeof serviceContractRecipeSchema>;
 // draft may not yet carry stamped timestamps, and the normal save path stamps
 // them via serializeRecipeDraft anyway. Everything else (formId, title, steps,
 // version, meta) stays exactly as strict as the recipe schema.
-export const draftRecipeSchema = serviceContractRecipeSchema.extend({
-  createdAt: dateTimeFormatSchema.optional(),
-  updatedAt: dateTimeFormatSchema.optional(),
-});
+export const draftRecipeSchema = serviceContractRecipeBaseSchema
+  .extend({
+    createdAt: dateTimeFormatSchema.optional(),
+    updatedAt: dateTimeFormatSchema.optional(),
+  })
+  .superRefine(checkRecipeRuleValues);
 export type DraftRecipe = z.infer<typeof draftRecipeSchema>;
 
 /**

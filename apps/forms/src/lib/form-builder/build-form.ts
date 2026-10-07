@@ -61,8 +61,9 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
     formDescription: contract.description,
     contactDetails: contract.contactDetails,
     closingDateTime: contract.closingDateTime,
-    catchmentRouting: contract.catchmentRouting,
     steps,
+    // Before setupRepeatSteps split them — what the printed confirmation reads.
+    contractSteps: contract.steps,
     defaultValues: defaults,
     validationProperties: properties,
     stepConditionalTargets,

@@ -345,7 +345,13 @@
                 "operator": "equal",
                 "targetFieldId": "has-experience"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Level of Experience is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -363,7 +369,13 @@
                 "operator": "equal",
                 "targetFieldId": "has-experience"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter how many years of experience you have",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -649,7 +661,7 @@
   "title": "Youth Development Programme – Performing Arts Registration 2025–2026",
   "formId": "ydp-performing-arts-registration-2025-2026",
   "createdAt": "2025-01-01T00:00:00Z",
-  "updatedAt": "2026-06-05T00:00:00Z",
+  "updatedAt": "2026-09-17T13:49:39.000Z",
   "processors": [
     {
       "type": "email",

@@ -8,8 +8,8 @@
       "executor": "@nx/js:tsc",
       "outputs": ["{options.outputPath}"],
       "options": {
-        "outputPath": "dist/apps/api",
-        "tsConfig": "apps/api/tsconfig.json",
+        "outputPath": "apps/api/dist",
+        "tsConfig": "apps/api/tsconfig.build.json",
         "main": "apps/api/src/main.ts",
         "assets": [
           {

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { behaviourSchema } from "./behavior.type";
+import { behaviourSchema, conditionalLabelSchema } from "./behavior.type";
 import { validationRuleSchema } from "./validation.type";
 import { kebabIdSchema } from "./id-pattern";
 
@@ -24,6 +24,7 @@ export const htmlTypesSchema = z.enum([
   "select",
   "show-hide",
   "address-lookup",
+  "opening-hours",
   "content",
 ]);
 export type HtmlTypes = z.infer<typeof htmlTypesSchema>;
@@ -46,7 +47,12 @@ export const optionGroupSchema = z.object({
 });
 export type OptionGroup = z.infer<typeof optionGroupSchema>;
 
-export const contentVariantSchema = z.enum(["inset", "text", "details"]);
+export const contentVariantSchema = z.enum([
+  "inset",
+  "text",
+  "details",
+  "warning",
+]);
 export type ContentVariant = z.infer<typeof contentVariantSchema>;
 
 export const primitiveUISchema = z.object({
@@ -86,6 +92,9 @@ export type GeocodeTargets = z.infer<typeof geocodeTargetsSchema>;
 export const basePrimitiveSchema = z.object({
   fieldId: kebabIdSchema,
   label: z.string(),
+  // Per-answer label overrides (#2521) — see conditionalLabelSchema. The
+  // static `label` above stays the fallback.
+  conditionalLabel: z.array(conditionalLabelSchema).optional(),
   name: z.string().optional(),
   htmlType: htmlTypesSchema,
   placeholder: z.string().optional(),
@@ -174,7 +183,8 @@ export type CheckboxAccordionPrimitive = z.infer<
 export const selectPrimitiveSchema = basePrimitiveSchema.extend({
   options: z.array(optionSchema),
   htmlType: z.literal("select"),
-  multiple: z.boolean(),
+  // Accept legacy false flags, but selects cannot enable multiple values.
+  multiple: z.literal(false).optional(),
 });
 export type SelectPrimitive = z.infer<typeof selectPrimitiveSchema>;
 
@@ -206,10 +216,21 @@ export type AddressLookupPrimitive = z.infer<
   typeof addressLookupPrimitiveSchema
 >;
 
+// A weekly opening-hours grid (#2358): seven day rows, each holding zero or
+// more sets of hours entered through native time pickers. The submitted value
+// is a string array of "Monday 09:00 - 17:00" entries — one per set of hours,
+// days with no entries are simply absent — so ADR 0069's one-field-per-pair
+// invariant holds and array validation, check-your-answers and payload
+// rendering treat it like any other multi-value string field.
+export const openingHoursPrimitiveSchema = basePrimitiveSchema.extend({
+  htmlType: z.literal("opening-hours"),
+});
+export type OpeningHoursPrimitive = z.infer<typeof openingHoursPrimitiveSchema>;
+
 // A non-field static content block: renders markdown guidance (inset callout,
-// plain paragraph, or a collapsible details disclosure). Carries no submitted
-// value — the renderer draws it outside the form-field wrapper, so it is never
-// validated, summarised, or submitted.
+// plain paragraph, amber warning, or a collapsible details disclosure). Carries
+// no submitted value — the renderer draws it outside the form-field wrapper, so
+// it is never validated, summarised, or submitted.
 export const contentPrimitiveSchema = basePrimitiveSchema.extend({
   htmlType: z.literal("content"),
   content: z.string(),
@@ -232,6 +253,7 @@ export const primitiveSchema = z.discriminatedUnion("htmlType", [
   filePrimitiveSchema,
   showHidePrimitiveSchema,
   addressLookupPrimitiveSchema,
+  openingHoursPrimitiveSchema,
   contentPrimitiveSchema,
 ]);
 export type Primitive = z.infer<typeof primitiveSchema>;
@@ -240,6 +262,10 @@ export const fieldOverridesSchema = basePrimitiveSchema
   .pick({
     fieldId: true,
     label: true,
+    // Recipe overrides are picked, not spread: without this key a recipe's
+    // `conditionalLabel` would be silently dropped before it ever reached the
+    // served contract.
+    conditionalLabel: true,
     hint: true,
     placeholder: true,
     validations: true,

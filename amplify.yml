@@ -7,8 +7,8 @@ applications:
         preBuild:
           commands:
             - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
-            - npm install -g pnpm@11.6.0
-            - pnpm install --frozen-lockfile
+            - npm install -g "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")"
+            - pnpm install --frozen-lockfile --store-dir .pnpm-store
         build:
           commands:
             - pnpm exec nx run landing:build
@@ -18,8 +18,7 @@ applications:
           - "**/*"
       cache:
         paths:
-          - node_modules/**/*
-          - .nx/cache/**/*
+          - .pnpm-store/**/*
       customHeaders:
         - pattern: "**/*"
           headers:
@@ -35,13 +34,13 @@ applications:
             - key: "X-Frame-Options"
               value: "DENY"
             - key: "Permissions-Policy"
-              value: "camera=(), microphone=(), geolocation=(), payment=()"
+              value: "camera=(), microphone=(), geolocation=(self), payment=()"
             # script-src includes https://cloud.umami.is so the Umami Cloud
             # analytics script loads. Without it the browser blocks the fetch
             # and the script tag (rendered from VITE_UMAMI_WEBSITE_ID) never
             # executes — see issue #1364 follow-up.
             - key: "Content-Security-Policy"
-              value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cloud.umami.is; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https:; frame-ancestors https://*.alpha.gov.bb; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
+              value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cloud.umami.is; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org; font-src 'self'; connect-src 'self' https:; frame-ancestors https://*.alpha.gov.bb; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
   - appRoot: apps/chat
     frontend:
       buildPath: /
@@ -49,8 +48,8 @@ applications:
         preBuild:
           commands:
             - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
-            - npm install -g pnpm@11.6.0
-            - pnpm install --frozen-lockfile
+            - npm install -g "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")"
+            - pnpm install --frozen-lockfile --store-dir .pnpm-store
         build:
           commands:
             - pnpm exec nx run chat:build
@@ -60,8 +59,7 @@ applications:
           - "**/*"
       cache:
         paths:
-          - node_modules/**/*
-          - .nx/cache/**/*
+          - .pnpm-store/**/*
       customHeaders:
         - pattern: "**/*"
           headers:
@@ -84,12 +82,10 @@ applications:
         preBuild:
           commands:
             - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
-            - npm install -g pnpm@11.6.0
-            - pnpm install --frozen-lockfile
+            - npm install -g "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")"
+            - pnpm install --frozen-lockfile --store-dir .pnpm-store
         build:
           commands:
-            - pnpm exec nx run form-types:build
-            - pnpm exec nx run form-conditions:build
             - pnpm exec nx run forms:build
       artifacts:
         baseDirectory: apps/forms/dist
@@ -97,8 +93,7 @@ applications:
           - "**/*"
       cache:
         paths:
-          - node_modules/**/*
-          - .nx/cache/**/*
+          - .pnpm-store/**/*
       customHeaders:
         - pattern: "**/*"
           headers:
@@ -125,8 +120,8 @@ applications:
         preBuild:
           commands:
             - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
-            - npm install -g pnpm@11.6.0
-            - pnpm install --frozen-lockfile
+            - npm install -g "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")"
+            - pnpm install --frozen-lockfile --store-dir .pnpm-store
         build:
           commands:
             - pnpm exec nx run form-builder-app:build
@@ -136,8 +131,7 @@ applications:
           - "**/*"
       cache:
         paths:
-          - node_modules/**/*
-          - .nx/cache/**/*
+          - .pnpm-store/**/*
       customHeaders:
         - pattern: "**/*"
           headers:
@@ -162,8 +156,8 @@ applications:
         preBuild:
           commands:
             - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
-            - npm install -g pnpm@11.6.0
-            - pnpm install --frozen-lockfile
+            - npm install -g "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")"
+            - pnpm install --frozen-lockfile --store-dir .pnpm-store
         build:
           commands:
             - pnpm exec nx run feature-flagging-app:build
@@ -173,8 +167,7 @@ applications:
           - "**/*"
       cache:
         paths:
-          - node_modules/**/*
-          - .nx/cache/**/*
+          - .pnpm-store/**/*
       customHeaders:
         - pattern: "**/*"
           headers:
@@ -200,8 +193,8 @@ applications:
         preBuild:
           commands:
             - nvm use $(cat .nvmrc) || nvm install $(cat .nvmrc)
-            - npm install -g pnpm@11.6.0
-            - pnpm install --frozen-lockfile
+            - npm install -g "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")"
+            - pnpm install --frozen-lockfile --store-dir .pnpm-store
         build:
           commands:
             - pnpm exec nx run analytics-app:build
@@ -211,8 +204,7 @@ applications:
           - "**/*"
       cache:
         paths:
-          - node_modules/**/*
-          - .nx/cache/**/*
+          - .pnpm-store/**/*
       customHeaders:
         - pattern: "**/*"
           headers:

@@ -17,6 +17,9 @@
       }
     }
   ],
+  "meta": {
+    "visibility": "public"
+  },
   "steps": [
     {
       "stepId": "applicant-details",
@@ -25,7 +28,13 @@
         {
           "ref": "components/title",
           "overrides": {
-            "fieldId": "applicant-title"
+            "fieldId": "applicant-title",
+            "validations": {
+              "required": {
+                "error": "Title is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -47,7 +56,7 @@
         {
           "ref": "components/middle-name",
           "overrides": {
-            "hint": "Optional. Provide only if known",
+            "hint": "Provide only if known",
             "fieldId": "applicant-middle-name"
           }
         },
@@ -75,16 +84,50 @@
             "validations": {
               "gt": {
                 "error": "You must be at least 16 years old",
-                "value": "16",
+                "value": 15,
                 "transform": "yearsSince"
               },
               "lt": {
                 "error": "You must be no more than 34 years old",
-                "value": "34",
+                "value": 34,
                 "transform": "yearsSince"
               },
               "required": {
                 "error": "Date of birth is required",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "disability-eligibility",
+            "label": "Do you have a disability?",
+            "hint": "If you are over 24, you need to have a long-term health condition or disability to use this service.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "applicant-details",
+                "targetFieldId": "applicant-dob",
+                "operator": "gte",
+                "value": "25",
+                "transform": "yearsSince"
+              }
+            ],
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "error": "Select whether you have a disability",
                 "value": true
               }
             }
@@ -246,6 +289,41 @@
       "behaviours": []
     },
     {
+      "stepId": "ineligble-step",
+      "title": "You are ineligible",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "isDisabled": true,
+            "validations": {
+              "equal": {
+                "error": "You are not eligible to continue this application"
+              },
+              "required": {
+                "value": true,
+                "error": "You are not eligible to continue this application"
+              }
+            },
+            "ui": {
+              "width": "short",
+              "hideLabel": true
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "applicant-details",
+          "targetFieldId": "disability-eligibility",
+          "operator": "equal",
+          "value": "no"
+        }
+      ],
+      "markdownContent": "## Apply to Job Start Plus Programme Eligibility\n\n\nYou are eligible to sign up if you meet both of the 2 criteria:\n\n- You are 16 to 24 years old (or between 16 and 34 if you are a person with a disability).\n- You are not currently employed or enrolled in a training institution.\n\nCurrently, you do not meet one or more of the above criteria, and therefore are not eligible to complete this form."
+    },
+    {
       "stepId": "disability-support",
       "title": "Do you have a disability?",
       "description": "We ask you this so we can accommodate accessibility or support needs.",
@@ -256,7 +334,6 @@
             "ui": {
               "hideLabel": true
             },
-            "hint": "If you are over 24, you must have a disability or long-term health condition to apply.",
             "label": "Do you have a disability or long-term health condition?",
             "fieldId": "has-disability",
             "options": [
@@ -293,49 +370,56 @@
             ],
             "validations": {
               "required": {
-                "value": true
+                "value": true,
+                "error": "Enter your disability or long-term health condition"
               },
               "minLength": {
-                "value": "5"
+                "value": 5
               }
             }
           }
-        },
+        }
+      ],
+      "behaviours": [
         {
-          "ref": "components/generic-text",
+          "type": "stepConditionalOn",
+          "targetStepId": "applicant-details",
+          "targetFieldId": "disability-eligibility",
+          "operator": "notEqual",
+          "value": "yes"
+        }
+      ]
+    },
+    {
+      "stepId": "disability-support-min",
+      "title": "Tell us about your disability",
+      "description": "What is your disability or long-term health condition?\nWe ask you this so we can accommodate accessibility or support needs.",
+      "elements": [
+        {
+          "ref": "components/additional-details",
           "overrides": {
-            "isDisabled": true,
+            "ui": {
+              "hideLabel": true
+            },
             "validations": {
               "required": {
                 "value": true,
-                "error": "If you are over 24, you must have a disability or long-term health condition to apply."
-              },
-              "equal": {
-                "error": "If you are over 24, you must have a disability or long-term health condition to apply."
+                "error": "Enter your disability or long-term health condition"
               }
             },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetStepId": "applicant-details",
-                "targetFieldId": "applicant-dob",
-                "operator": "gte",
-                "value": "25",
-                "transform": "yearsSince"
-              },
-              {
-                "type": "optionalIf",
-                "targetStepId": "disability-support",
-                "targetFieldId": "has-disability",
-                "operator": "equal",
-                "value": "yes"
-              }
-            ],
-            "label": "Are you 25 years or older, without a disability?"
+            "fieldId": "disability-additional-details"
           }
         }
       ],
-      "behaviours": []
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "applicant-details",
+          "targetFieldId": "disability-eligibility",
+          "operator": "equal",
+          "value": "yes"
+        }
+      ]
     },
     {
       "stepId": "contact-details",
@@ -435,7 +519,7 @@
         {
           "ref": "components/postcode",
           "overrides": {
-            "hint": "For example, BB17004 (optional)",
+            "hint": "For example, BB17004",
             "fieldId": "contact-postcode"
           }
         },
@@ -474,7 +558,13 @@
         {
           "ref": "components/title",
           "overrides": {
-            "fieldId": "emergency-title"
+            "fieldId": "emergency-title",
+            "validations": {
+              "required": {
+                "error": "Title is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -548,7 +638,13 @@
                 "value": "other"
               }
             ],
-            "placeholder": "Select relationship"
+            "placeholder": "Select relationship",
+            "validations": {
+              "required": {
+                "error": "Relationship is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -921,7 +1017,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have had a paid job",
                 "value": true
               }
             }
@@ -970,7 +1066,13 @@
                 "operator": "equal",
                 "targetFieldId": "has-previous-paid-job"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter when you started this job",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -986,7 +1088,13 @@
                 "operator": "equal",
                 "targetFieldId": "has-previous-paid-job"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter when you ended this job",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1028,7 +1136,13 @@
                 "targetStepId": "previous-paid-job",
                 "targetFieldId": "has-previous-paid-job"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select whether you want to tell us about another paid job",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1050,13 +1164,13 @@
               }
             ],
             "validations": {
+              "equal": {
+                "error": "If you are currently employed, or in existing training, then you are ill-eligible for this program",
+                "value": "no"
+              },
               "required": {
                 "error": "To be eligible, you must not be currently employed or in existing training.",
                 "value": true
-              },
-              "equal": {
-                "value": "no",
-                "error": "If you are currently employed, or in existing training, then you are ill-eligible for this program"
               }
             }
           }
@@ -1075,7 +1189,13 @@
               "width": "medium"
             },
             "label": "Name of employer",
-            "fieldId": "previous-employer-name"
+            "fieldId": "previous-employer-name",
+            "validations": {
+              "required": {
+                "error": "Name of employer is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1085,7 +1205,13 @@
               "width": "medium"
             },
             "label": "Occupation",
-            "fieldId": "previous-occupation"
+            "fieldId": "previous-occupation",
+            "validations": {
+              "required": {
+                "error": "Occupation is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1095,7 +1221,13 @@
               "width": "medium"
             },
             "label": "When did you start this job?",
-            "fieldId": "previous-job-start"
+            "fieldId": "previous-job-start",
+            "validations": {
+              "required": {
+                "error": "Enter when you started this job",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1106,7 +1238,13 @@
             },
             "hint": "Provide the month and year (for example, December 2023)",
             "label": "When did you end this job?",
-            "fieldId": "previous-job-end"
+            "fieldId": "previous-job-end",
+            "validations": {
+              "required": {
+                "error": "Enter when you ended this job",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1128,7 +1266,13 @@
               "width": "medium"
             },
             "label": "Your main tasks",
-            "fieldId": "previous-main-tasks"
+            "fieldId": "previous-main-tasks",
+            "validations": {
+              "required": {
+                "error": "Your main tasks are required",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -1165,7 +1309,7 @@
               },
               "minLength": {
                 "error": "This must be at least 4 characters",
-                "value": "4"
+                "value": 4
               }
             }
           }
@@ -1197,7 +1341,7 @@
             ],
             "validations": {
               "required": {
-                "error": "This field is required",
+                "error": "Select whether you are willing to work some night shifts",
                 "value": true
               }
             }
@@ -1264,6 +1408,14 @@
               }
             }
           }
+        },
+        {
+          "ref": "components/date-of-birth",
+          "overrides": {
+            "label": "Date of declaration",
+            "fieldId": "declaration-date",
+            "isHidden": true
+          }
         }
       ],
       "behaviours": []
@@ -1272,13 +1424,9 @@
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "elements": [],
-      "behaviours": [],
-      "markdownContent": "## What happens next\n\n- We will review your application to confirm you meet the eligibility requirements.\n- If we need more details, we will contact you using the information you have provided.\n- If eligible, you will be added to our programme database.\n- You will be contacted about upcoming placements, interviews, or orientation sessions.\n\nIf you have questions, please contact the Job Start Plus team, email: jobstartplus@labour.gov.bb, or call the Ministry of Labour at (246) 535-1400 between the hours of 8:30 a.m. to 4:30 p.m., Monday to Friday.\n\nThank you for your interest in the Job Start Plus Programme."
+      "behaviours": []
     }
   ],
   "createdAt": "2026-06-09T17:09:06.077Z",
-  "updatedAt": "2026-06-12T00:00:00.000Z",
-  "meta": {
-    "visibility": "public"
-  }
+  "updatedAt": "2026-09-18T18:21:48.000Z"
 }

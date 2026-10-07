@@ -32,16 +32,19 @@ if (!computeDir) {
   process.exit(2)
 }
 
+// Use ::1 when a local development server already owns the IPv4 listener.
+const HOST = process.env.SSR_SMOKE_HOST ?? '127.0.0.1'
 const PORT = 3000 // the Amplify compute preset hard-codes 3000
 const BOOT_TIMEOUT_MS = 30_000 // max wait for the server to start listening
 const REQUEST_TIMEOUT_MS = 10_000 // a healthy SSR root answers in <1s; a hang must fail fast
 
+const origin = `http://${HOST.includes(':') ? `[${HOST}]` : HOST}:${PORT}`
 const entry = join(computeDir, 'index.mjs')
 console.log(`[smoke:${label}] booting ${entry} on :${PORT}`)
 
 const server = spawn(process.execPath, ['index.mjs'], {
   cwd: computeDir,
-  env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1' },
+  env: { ...process.env, PORT: String(PORT), HOST },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
 
@@ -89,10 +92,10 @@ function waitForListen() {
 }
 
 function hitRoot() {
-  console.log(`[smoke:${label}] GET http://127.0.0.1:${PORT}/`)
+  console.log(`[smoke:${label}] GET ${origin}/`)
   const started = Date.now()
   const req = request(
-    { host: '127.0.0.1', port: PORT, path: '/', method: 'GET' },
+    { host: HOST, port: PORT, path: '/', method: 'GET' },
     (res) => {
       const ms = Date.now() - started
       res.resume() // drain

@@ -10,7 +10,7 @@
         "{options.outputPath}"
       ],
       "options": {
-        "outputPath": "dist/packages/ai-bedrock",
+        "outputPath": "packages/ai-bedrock/dist",
         "tsConfig": "packages/ai-bedrock/tsconfig.json",
         "main": "packages/ai-bedrock/src/index.ts"
       }

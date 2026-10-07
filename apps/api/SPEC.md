@@ -196,6 +196,7 @@ The counters are per-process and in-memory — multi-task deployments rely on AW
 - `ConfigModule` is global, loads typed config namespaces (`app`, `database`, `email`, `spreadsheet`, `sqs`, plus `EZPAY_*` direct reads), and validates the environment with **Joi** at boot.
 - Joi rules enforce: production CORS safety, mandatory database creds, conditional SQS vars (only required when `SQS_ENABLED=true`), conditional EzPay webhook secret, and required EzPay base URL + department-keys JSON.
 - `FORMS_BASE_URL` — public forms site origin the EzPay return redirect bounces the citizen to. When empty it falls back to the first `CORS_ORIGIN` entry (the forms site on every deployed env), so it only needs setting if the two diverge.
+- `LANDING_BASE_URL` — public landing site origin, substituted into a recipe's `{landingUrl}` confirmation token so authored links to a service page point at this environment's landing site. Both confirmation surfaces sit off the landing origin (the page is served from the forms host; an email has no base URL at all), so a root-relative link would be broken on each. When empty, `@govtech-bb/form-conditions` substitutes the shared prod fallback `https://alpha.gov.bb` — the same fallback the forms app's `VITE_LANDING_URL` uses, so page and email can't diverge.
 
 ### 6.5 Boot sequence (`main.ts`)
 1. Import `./tracing` first to initialise OTEL before any Nest code.
@@ -233,6 +234,8 @@ Optional / conditionally required:
 - `SES_REGION`, `SES_FROM_ADDRESS` (default `noreply@gov.bb`), `SES_CONFIGURATION_SET`
 - `SPREADSHEET_EXPORT_DIR` (defaults to `<cwd>/exports`)
 - `SQS_ENABLED`, `SQS_REGION`, `SQS_QUEUE_URL`, `SQS_ENDPOINT` (LocalStack)
+- `SQS_MAX_RECEIVE_COUNT` (default `3`; must mirror the queue's AWS-side redrive policy — the consumer uses it to detect the terminal attempt that fires the operator alert)
+- `SLACK_ALERTS_WEBHOOK_URL` (operator alert webhook for permanently-failed submission dispatch, #2168; unset ⇒ silent no-op, logged once at boot)
 - `EZPAY_WEBHOOK_VERIFY_SIGNATURE`, `EZPAY_WEBHOOK_SECRET`
 - `SEED_ON_BOOT` (dev convenience — applies the seed form definitions in `database/seed.ts`)
 

@@ -46,11 +46,7 @@ describe("NotFound", () => {
 
   it("passes jest-axe accessibility audit", async () => {
     const { container } = render(<NotFound />);
-    // heading-order: h3 (Suggestions) follows h1 without an h2 — pre-existing
-    // structural issue in the component; excluded consistent with project convention.
-    const results = await axe(container, {
-      rules: { "heading-order": { enabled: false } },
-    });
+    const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
 });

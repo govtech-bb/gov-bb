@@ -1,13 +1,15 @@
 import { JSX } from "react";
+import { Checkbox, Fieldset, Hint } from "@govtech-bb/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import ErrorMessage from "../error-message";
-import { markdownComponents } from "../markdown-components";
 import { FieldRenderContext } from "./render-context";
+import FieldRenderer from "./index";
 
 export function renderCheckboxField(ctx: FieldRenderContext): JSX.Element {
   const {
     field,
+    form,
     f,
     sharedProps,
     requiredProps,
@@ -16,56 +18,49 @@ export function renderCheckboxField(ctx: FieldRenderContext): JSX.Element {
     errorId,
     errorMessage,
     labelClass,
+    labelSuffix,
     commitChange,
+    insetFieldsByOption,
+    formId,
+    previewToken,
+    draftToken,
   } = ctx;
+
+  // Keep the field ID on the fieldset; let the package generate option IDs.
+  const { id: _fieldId, ...inputProps } = sharedProps;
 
   if (field.options && field.options.length === 1) {
     const option = field.options[0];
     const value = (f.state.value as string | undefined) ?? "";
     return (
-      <fieldset className="govbb-fieldset" id={field.id}>
+      <Fieldset id={field.id}>
         <legend className={labelClass("govbb-fieldset__legend")}>
           {field.label}
+          {labelSuffix}
         </legend>
-        {field.hint && (
-          <p className="govbb-hint" id={hintId}>
-            {field.hint}
-          </p>
-        )}
+        {field.hint && <Hint id={hintId}>{field.hint}</Hint>}
         <ErrorMessage id={errorId} message={errorMessage} />
-        <div className="form-page__options">
-          <div
-            className="govbb-checkbox-item form-page__single-checkbox"
-            key={option.value}
-          >
-            <input
-              {...sharedProps}
-              {...requiredProps}
-              id={`${field.id}-${option.value}`}
-              className="govbb-checkbox"
-              checked={option.value === value}
-              aria-invalid={invalid}
-              onChange={() =>
-                commitChange(option.value === value ? "" : option.value)
-              }
-            />
-            <label
-              className="govbb-checkbox-item__label"
-              htmlFor={`${field.id}-${option.value}`}
-            >
+        <Checkbox
+          {...inputProps}
+          {...requiredProps}
+          value={option.value}
+          checked={option.value === value}
+          aria-invalid={invalid}
+          onChange={() =>
+            commitChange(option.value === value ? "" : option.value)
+          }
+          label={
+            <div className="govbb-prose wrap-anywhere">
               {/* Declaration/consent copy is authored in markdown
                   (bullets, bold) — render it so the statement reads
                   as intended rather than as a run-on line. */}
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={markdownComponents}
-              >
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {option.label}
               </ReactMarkdown>
-            </label>
-          </div>
-        </div>
-      </fieldset>
+            </div>
+          }
+        />
+      </Fieldset>
     );
   }
 
@@ -80,38 +75,50 @@ export function renderCheckboxField(ctx: FieldRenderContext): JSX.Element {
   };
 
   return (
-    <fieldset className="govbb-fieldset" id={field.id}>
+    <Fieldset id={field.id}>
       <legend className={labelClass("govbb-fieldset__legend")}>
         {field.label}
+        {labelSuffix}
       </legend>
-      {field.hint && (
-        <p className="govbb-hint" id={hintId}>
-          {field.hint}
-        </p>
-      )}
+      {field.hint && <Hint id={hintId}>{field.hint}</Hint>}
       <ErrorMessage id={errorId} message={errorMessage} />
-      <div className="form-page__options">
-        {field.options?.map((option) => {
-          return (
-            <div className="govbb-checkbox-item" key={option.value}>
-              <input
-                {...sharedProps}
-                id={`${field.id}-${option.value}`}
-                className="govbb-checkbox"
-                checked={checkboxValues.includes(option.value)}
-                aria-invalid={invalid}
-                onChange={() => toggle(option.value)}
-              />
-              <label
-                className="govbb-checkbox-item__label"
-                htmlFor={`${field.id}-${option.value}`}
-              >
-                {option.label}
-              </label>
-            </div>
-          );
-        })}
-      </div>
-    </fieldset>
+      {field.options?.map((option) => {
+        const insetEntries = insetFieldsByOption?.get(option.value);
+        const isChecked = checkboxValues.includes(option.value);
+        return (
+          <Checkbox
+            key={option.value}
+            {...inputProps}
+            label={option.label}
+            value={option.value}
+            checked={isChecked}
+            aria-invalid={invalid}
+            onChange={() => toggle(option.value)}
+            conditional={
+              insetEntries && isChecked
+                ? insetEntries.map(
+                    ({
+                      field: insetField,
+                      validationProperties: insetValidation,
+                      insetFieldsByOption: nestedInsets,
+                    }) => (
+                      <FieldRenderer
+                        key={insetField.id}
+                        form={form}
+                        field={insetField}
+                        validationProperties={insetValidation}
+                        insetFieldsByOption={nestedInsets}
+                        formId={formId}
+                        previewToken={previewToken}
+                        draftToken={draftToken}
+                      />
+                    ),
+                  )
+                : undefined
+            }
+          />
+        );
+      })}
+    </Fieldset>
   );
 }

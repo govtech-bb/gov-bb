@@ -60,7 +60,7 @@
             "ui": {
               "width": "long"
             },
-            "label": "What could we do to improve? (optional)",
+            "label": "What could we do to improve?",
             "fieldId": "improvement-comment"
           }
         }
@@ -102,5 +102,5 @@
     }
   ],
   "createdAt": "2026-06-11T13:09:19.311Z",
-  "updatedAt": "2026-06-11T13:09:19.311Z"
+  "updatedAt": "2026-08-20T18:45:33.000Z"
 }

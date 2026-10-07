@@ -80,6 +80,33 @@ export class FormConfigService {
   }
 
   /**
+   * Maps every form with an MDA link to its `ministry_key`, in two queries
+   * rather than the two-per-form `resolveMinistryKey` does. Used by the
+   * boot-time reference-prefix audit (#2318), which needs the whole picture at
+   * once. Forms with no config row, a dangling contact, or a blank key are
+   * omitted — the same misses `resolveMinistryKey` returns null for.
+   */
+  async listMinistryKeysByForm(): Promise<Map<string, string>> {
+    const [configs, contacts] = await Promise.all([
+      this.formConfigRepo.find(),
+      this.mdaContactRepo.find(),
+    ]);
+    const keyByContactId = new Map<string, string>();
+    for (const c of contacts) {
+      if (typeof c.ministryKey === "string" && c.ministryKey.length > 0) {
+        keyByContactId.set(c.id, c.ministryKey);
+      }
+    }
+    const out = new Map<string, string>();
+    for (const config of configs) {
+      if (!config.mdaContactId) continue;
+      const key = keyByContactId.get(config.mdaContactId);
+      if (key) out.set(config.formId, key);
+    }
+    return out;
+  }
+
+  /**
    * Lists the distinct non-blank `ministry_key`s present across `mda_contact`
    * (#1920/#2020). Used by the boot-time webhook-destinations audit to flag a
    * ministry that a form points at but that has no entry in the

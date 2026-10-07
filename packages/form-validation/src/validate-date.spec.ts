@@ -118,10 +118,23 @@ describe("validateDateField", () => {
       });
     });
 
-    it("rejects a year before 1900 with the 4-numbers message", () => {
+    it("rejects a 3-digit year", () => {
       const err = validateDateField(
         makeField(),
-        { day: "5", month: "6", year: "1899" },
+        { day: "5", month: "6", year: "925" },
+        {},
+      );
+      expect(err).toEqual({
+        message: "Year must include 4 numbers",
+        parts: ["year"],
+        code: "incomplete_date",
+      });
+    });
+
+    it("rejects a 5-digit year", () => {
+      const err = validateDateField(
+        makeField(),
+        { day: "5", month: "6", year: "12345" },
         {},
       );
       expect(err).toEqual({
@@ -133,6 +146,46 @@ describe("validateDateField", () => {
   });
 
   describe("priority 2 — information that cannot be correct", () => {
+    it("rejects a 4-digit but implausible year with the year bound message", () => {
+      const err = validateDateField(
+        makeField(),
+        { day: "5", month: "6", year: "1899" },
+        {},
+      );
+      expect(err).toEqual({
+        message: "Year must be 1900 or later",
+        parts: ["year"],
+        code: "invalid_date",
+      });
+    });
+
+    it("rejects 1800 — four numbers, but not a plausible year", () => {
+      const err = validateDateField(
+        makeField(),
+        { day: "5", month: "6", year: "1800" },
+        {},
+      );
+      expect(err).toEqual({
+        message: "Year must be 1900 or later",
+        parts: ["year"],
+        code: "invalid_date",
+      });
+    });
+
+    // "0090" is literally four numbers, so it is not an incompleteness error.
+    it("rejects a zero-padded implausible year", () => {
+      const err = validateDateField(
+        makeField(),
+        { day: "5", month: "6", year: "0090" },
+        {},
+      );
+      expect(err).toEqual({
+        message: "Year must be 1900 or later",
+        parts: ["year"],
+        code: "invalid_date",
+      });
+    });
+
     it("rejects an impossible month and highlights the month field", () => {
       const err = validateDateField(
         makeField(),

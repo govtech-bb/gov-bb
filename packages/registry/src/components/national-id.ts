@@ -3,7 +3,7 @@ import { NATIONAL_ID_FORMAT } from "../barbados-id-patterns";
 
 export const NationalIdNumber: TextPrimitive = {
   fieldId: "national-id-number",
-  label: "National ID number",
+  label: "National Identification (ID) number",
   htmlType: "text",
   ui: {
     width: "short",

@@ -1,3 +1,5 @@
+export * from "./ai";
+
 // Types
 export type {
   RecipeDraft,
@@ -31,6 +33,15 @@ export type {
 export { VALIDATION_RULE_DESCRIPTORS } from "./behaviors/validation-builder";
 export type { ValidationRuleDescriptor } from "./behaviors/validation-builder";
 
+// Type-specific settings (#2873): which override keys each htmlType's renderer
+// honours beyond Label/Hint, and the control that edits each.
+export { CUSTOM_ATTRIBUTE_DESCRIPTORS } from "./custom-attributes";
+export type {
+  CustomAttributeDescriptor,
+  CustomAttributeKey,
+  CustomAttributeStringKey,
+} from "./custom-attributes";
+
 // Processor authoring defaults
 export { makeDefaultProcessor } from "./processor-defaults";
 
@@ -43,7 +54,19 @@ export {
 } from "./processor-config";
 
 // Core utilities
-export { hydrateForm, collectUnknownRefs } from "./resolution";
+export {
+  hydrateForm,
+  collectUnknownRefs,
+  collectGenericRequiredMessages,
+} from "./resolution";
+export type { GenericRequiredMessage } from "./resolution";
+// Re-exported so a consumer of GenericRequiredMessage can name the type of
+// its `defect` field without depending on @govtech-bb/form-validation.
+export type { RequiredMessageDefect } from "@govtech-bb/form-validation";
+// Same reason, for the authoring surfaces: the editor's generic-message
+// warning has to test the wording the Deploy gate tests, or it stays silent
+// on copy the gate will reject (#2715).
+export { isFieldlessRequiredWording } from "@govtech-bb/form-validation";
 export { UnknownRefError } from "./errors";
 export type { UnknownRef } from "./errors";
 export { serializeRecipeDraft, deserializeRecipe } from "./serialization";

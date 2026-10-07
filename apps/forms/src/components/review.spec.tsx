@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "jest-axe";
 import Review from "./review";
@@ -1041,6 +1041,27 @@ describe("Review", () => {
     expect(mockNavigate).toHaveBeenCalled();
   });
 
+  it.each(["metaKey", "ctrlKey", "shiftKey", "altKey"])(
+    "preserves native Change link navigation with %s",
+    (modifier) => {
+      render(
+        <Review
+          formMeta={baseFormMeta as FormMeta}
+          form={makeMockForm() as never}
+          visibleSteps={[
+            makeStep({ stepId: "step-personal", title: "Personal Details" }),
+          ]}
+        />,
+      );
+
+      const link = screen.getByRole("link", {
+        name: "Change Personal Details",
+      });
+      expect(fireEvent.click(link, { [modifier]: true })).toBe(true);
+      expect(mockNavigate).not.toHaveBeenCalled();
+    },
+  );
+
   // -------------------------------------------------------------------------
   // handleChangeClick — navigate call with search param (line 41)
   // -------------------------------------------------------------------------
@@ -1215,5 +1236,97 @@ describe("Review", () => {
 
     const results = await axe(container);
     expect(results).toHaveNoViolations();
+  });
+
+  // #2317 (Phase 2): fieldArray answers are string arrays. They must render
+  // comma-space separated, with blank rows dropped — never String(value)'s
+  // "Ann,Bee", and never a lone "," row for an all-blank array.
+
+  it("fieldArray answers join with a comma and space", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-1",
+        title: "Step One",
+        fields: [
+          makeField({
+            id: "step-1.middle-name",
+            fieldId: "middle-name",
+            label: "Middle name",
+            htmlType: "text",
+            behaviours: [{ type: "fieldArray", min: 1, max: 4 }],
+          }),
+        ],
+      }),
+    ];
+    const form = makeMockForm({ "step-1.middle-name": ["Ann", "Bee"] });
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.getByText("Ann, Bee")).toBeInTheDocument();
+  });
+
+  it("fieldArray drops blank entries from the joined answer", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-1",
+        title: "Step One",
+        fields: [
+          makeField({
+            id: "step-1.middle-name",
+            fieldId: "middle-name",
+            label: "Middle name",
+            htmlType: "text",
+            behaviours: [{ type: "fieldArray", min: 1, max: 4 }],
+          }),
+        ],
+      }),
+    ];
+    const form = makeMockForm({ "step-1.middle-name": ["Ann", "", "Cee"] });
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.getByText("Ann, Cee")).toBeInTheDocument();
+  });
+
+  it("all-blank fieldArray value renders no row", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-1",
+        title: "Step One",
+        fields: [
+          makeField({
+            id: "step-1.middle-name",
+            fieldId: "middle-name",
+            label: "Middle name",
+            htmlType: "text",
+            behaviours: [{ type: "fieldArray", min: 1, max: 4 }],
+          }),
+        ],
+      }),
+    ];
+    const form = makeMockForm({ "step-1.middle-name": ["", ""] });
+
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={form as never}
+        visibleSteps={steps}
+      />,
+    );
+
+    expect(screen.queryByText("Middle name")).not.toBeInTheDocument();
+    expect(screen.getByText("No values provided")).toBeInTheDocument();
   });
 });

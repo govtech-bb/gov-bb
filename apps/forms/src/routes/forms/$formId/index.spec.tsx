@@ -16,14 +16,19 @@ import type { Mock } from "vitest";
 
 import { render, screen, act } from "@testing-library/react";
 
+// Stable across the hook's calls so a test can assert where a submit sent the
+// citizen — `() => vi.fn()` would hand back a fresh spy on every render.
+const { mockNavigate } = vi.hoisted(() => ({ mockNavigate: vi.fn() }));
+
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (routeConfig: any) => ({
     ...routeConfig,
     useLoaderData: vi.fn(),
     useSearch: vi.fn(),
   }),
-  // RouteComponent calls useNavigate to strip the ?preview= token after load.
-  useNavigate: () => vi.fn(),
+  // RouteComponent calls useNavigate to strip the ?preview= token after load,
+  // and to move to a step the server reported a validation error on.
+  useNavigate: () => mockNavigate,
 }));
 
 vi.mock("@tanstack/react-form", () => ({
@@ -79,7 +84,10 @@ vi.mock("../../../lib/form-category", () => ({
   formCategory: vi.fn(() => "test-category"),
 }));
 
-vi.mock("@forms/form-api", () => ({
+// Keep the real module's error classes: RouteComponent branches on
+// `instanceof FormValidationError`, so a stubbed stand-in would never match.
+vi.mock("@forms/form-api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@forms/form-api")>()),
   formatDataForSubmission: vi.fn(() => ({})),
   postFormSubmission: vi.fn(),
 }));
@@ -95,10 +103,12 @@ import {
   getVisibleFields,
   restoreRepeatableStepsFromStorage,
 } from "@forms/lib";
+import { FormValidationError } from "@forms/form-api";
 import {
   getFormData,
   getSubmissionState,
   clearSubmissionState,
+  storeSubmissionState,
 } from "../../../lib/session-storage";
 import { trackEvent } from "../../../lib/analytics";
 
@@ -109,6 +119,7 @@ const mockGetVisibleFields = getVisibleFields as Mock;
 const mockGetFormData = getFormData as Mock;
 const mockGetSubmissionState = getSubmissionState as Mock;
 const mockClearSubmissionState = clearSubmissionState as Mock;
+const mockStoreSubmissionState = storeSubmissionState as Mock;
 const mockRestoreRepeatableStepsFromStorage =
   restoreRepeatableStepsFromStorage as Mock;
 
@@ -116,6 +127,11 @@ const mockFormMeta = {
   formId: "test-form",
   formTitle: "Test Form",
   steps: [{ stepId: "step1", title: "Step 1", fields: [], behaviours: [] }],
+  // The contract's steps before the repeatable split — what the printed
+  // confirmation is built from.
+  contractSteps: [
+    { stepId: "step1", title: "Step 1", fields: [], behaviours: [] },
+  ],
   validationProperties: {},
   contactDetails: undefined,
   defaultValues: {},
@@ -139,6 +155,7 @@ const mockFormInstance = {
   getFieldValue: vi.fn(),
   validateField: vi.fn().mockResolvedValue([]),
   handleSubmit: vi.fn(),
+  setFieldMeta: vi.fn(),
 };
 
 const mockVisibleStep = {
@@ -332,6 +349,117 @@ describe("RouteComponent", () => {
 
     expect(mockFormRendererProps.current.submissionState).toBeUndefined();
     expect(mockClearSubmissionState).toHaveBeenCalledWith("test-form");
+  });
+
+  // #2587: the printed answers put the applicant's whole submission in session
+  // storage, where it stays until the tab closes. On a shared or kiosk device
+  // the next person can press Back onto the confirmation and print it. Once
+  // the applicant follows a link off the page they are done with it, so drop
+  // the answers then. Only `sections` — a pending payment's reference and
+  // paymentUrl must survive so the EzPay return can still find them.
+  describe("dropping the stored answers on leaving the confirmation", () => {
+    const confirmationState = {
+      hasPayment: false,
+      serviceName: "test-form",
+      submissionSuccess: true,
+      referenceNumber: "REF-9",
+      date: "01/01/2026",
+      sections: [{ stepId: "step1", title: "Step 1", fields: [] }],
+    };
+
+    const clickLink = (
+      href: string,
+      eventInit: Partial<MouseEventInit> = {},
+    ) => {
+      const link = document.createElement("a");
+      link.href = href;
+      link.textContent = "leave";
+      document.body.appendChild(link);
+      act(() => {
+        link.dispatchEvent(
+          new MouseEvent("click", { bubbles: true, button: 0, ...eventInit }),
+        );
+      });
+      link.remove();
+    };
+
+    beforeEach(() => {
+      vi.spyOn(Route, "useSearch").mockReturnValue({
+        step: "submission-confirmation",
+      });
+      mockGetSubmissionState.mockReturnValue(confirmationState);
+    });
+
+    it("drops the answers, keeping the rest of the receipt, when the applicant follows a link off the page", () => {
+      render(<Route.component />);
+      mockStoreSubmissionState.mockClear();
+
+      clickLink("https://landing.example.bb/");
+
+      expect(mockStoreSubmissionState).toHaveBeenCalledWith("test-form", {
+        ...confirmationState,
+        sections: undefined,
+      });
+    });
+
+    it("keeps it for the payment link — EzPay comes back to this state", () => {
+      mockGetSubmissionState.mockReturnValue({
+        ...confirmationState,
+        hasPayment: true,
+        paymentUrl: "https://pay.example.com/checkout",
+      });
+      render(<Route.component />);
+      mockStoreSubmissionState.mockClear();
+
+      clickLink("https://pay.example.com/checkout");
+
+      expect(mockStoreSubmissionState).not.toHaveBeenCalled();
+    });
+
+    // `LinkButton` renders the payment href verbatim; the anchor's own `.href`
+    // getter normalises it (a bare origin gains a trailing slash). Comparing
+    // against the raw attribute means a mismatch there can't clear the
+    // answers out from under a payment click.
+    it("keeps it for the payment link even when the browser would normalise its href", () => {
+      mockGetSubmissionState.mockReturnValue({
+        ...confirmationState,
+        hasPayment: true,
+        paymentUrl: "https://pay.example.com",
+      });
+      render(<Route.component />);
+      mockStoreSubmissionState.mockClear();
+
+      clickLink("https://pay.example.com");
+
+      expect(mockStoreSubmissionState).not.toHaveBeenCalled();
+    });
+
+    it("keeps it for a same-page anchor such as the skip link", () => {
+      render(<Route.component />);
+      mockStoreSubmissionState.mockClear();
+
+      clickLink("#main-content");
+
+      expect(mockStoreSubmissionState).not.toHaveBeenCalled();
+    });
+
+    it("keeps it for a Ctrl-click, which opens the link in a new tab and leaves this one in place", () => {
+      render(<Route.component />);
+      mockStoreSubmissionState.mockClear();
+
+      clickLink("https://landing.example.bb/", { ctrlKey: true });
+
+      expect(mockStoreSubmissionState).not.toHaveBeenCalled();
+    });
+
+    it("keeps it for a right-click", () => {
+      render(<Route.component />);
+      mockStoreSubmissionState.mockClear();
+
+      clickLink("https://landing.example.bb/", { button: 2 });
+
+      expect(mockStoreSubmissionState).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -742,6 +870,110 @@ describe("RouteComponent onSubmit handler", () => {
     expect(mockFormRendererProps.current.submissionState).toEqual(
       expect.objectContaining({ submissionSuccess: false }),
     );
+  });
+
+  // A 422 naming the exact field the server rejected used to be flattened into
+  // the generic "Something went wrong" panel, leaving the citizen with a retry
+  // that would fail identically and no idea which answer was at fault (#1257).
+  describe("server-side validation errors (422)", () => {
+    const stepWithParish = {
+      stepId: "step1",
+      title: "Step 1",
+      behaviours: [],
+      fields: [
+        {
+          id: "step1_parish",
+          fieldId: "parish",
+          stepId: "step1",
+          name: "parish",
+          label: "Parish",
+          htmlType: "select",
+          disabled: false,
+          hidden: false,
+          conditionallyHidden: false,
+          behaviours: [],
+        },
+      ],
+    };
+
+    function rejectWithFieldErrors(errors: unknown) {
+      (postFormSubmission as Mock).mockRejectedValue(
+        new FormValidationError("Validation failed", 422, errors),
+      );
+    }
+
+    it("puts the server's message on the field it names", async () => {
+      mockGetVisibleSteps.mockReturnValue([stepWithParish]);
+      const onSubmit = renderAndExtractOnSubmit();
+      rejectWithFieldErrors({ step1: { parish: ["Select the parish"] } });
+
+      await act(async () => {
+        await onSubmit({ value: {} });
+      });
+
+      expect(mockFormInstance.setFieldMeta).toHaveBeenCalledWith(
+        "step1_parish",
+        expect.any(Function),
+      );
+      const updater = mockFormInstance.setFieldMeta.mock.calls[0][1] as (
+        prev: unknown,
+      ) => { errors: string[]; isValid: boolean };
+      expect(updater({ errors: [], isValid: true, errorMap: {} })).toEqual(
+        expect.objectContaining({
+          errors: ["Select the parish"],
+          isValid: false,
+        }),
+      );
+    });
+
+    it("sends the citizen back to the step holding the error", async () => {
+      mockGetVisibleSteps.mockReturnValue([stepWithParish]);
+      const onSubmit = renderAndExtractOnSubmit();
+      rejectWithFieldErrors({ step1: { parish: ["Select the parish"] } });
+
+      await act(async () => {
+        await onSubmit({ value: {} });
+      });
+
+      const search = mockNavigate.mock.calls.at(-1)?.[0]?.search as (
+        prev: Record<string, unknown>,
+      ) => Record<string, unknown>;
+      expect(search({})).toEqual(expect.objectContaining({ step: "step1" }));
+    });
+
+    it("does not commit a failed submission state, so the answers stay editable", async () => {
+      mockGetVisibleSteps.mockReturnValue([stepWithParish]);
+      const onSubmit = renderAndExtractOnSubmit();
+      rejectWithFieldErrors({ step1: { parish: ["Select the parish"] } });
+
+      await act(async () => {
+        await onSubmit({ value: {} });
+      });
+
+      expect(mockFormRendererProps.current.submissionState).toBeUndefined();
+      expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
+        form: "test-form",
+        category: "test-category",
+        errors: "validation",
+      });
+    });
+
+    // Nothing to show a citizen means we must not swallow the failure: fall back
+    // to the panel rather than leaving them on a step with no feedback.
+    it("falls back to the failure panel when no error maps to a field", async () => {
+      mockGetVisibleSteps.mockReturnValue([stepWithParish]);
+      const onSubmit = renderAndExtractOnSubmit();
+      rejectWithFieldErrors({ "step-that-moved": { parish: ["stale"] } });
+
+      await act(async () => {
+        await onSubmit({ value: {} });
+      });
+
+      expect(mockFormInstance.setFieldMeta).not.toHaveBeenCalled();
+      expect(mockFormRendererProps.current.submissionState).toEqual(
+        expect.objectContaining({ submissionSuccess: false }),
+      );
+    });
   });
 
   it("filters hidden and conditionally-hidden fields before submission", async () => {

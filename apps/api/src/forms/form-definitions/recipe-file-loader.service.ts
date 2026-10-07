@@ -9,6 +9,7 @@ import * as fs from "node:fs/promises";
 import { watch, type FSWatcher } from "node:fs";
 import * as path from "node:path";
 import {
+  checkCatchmentRoutingHasMapping,
   serviceContractRecipeSchema,
   getRecipeVisibility,
   type PublicFormSummary,
@@ -38,6 +39,25 @@ export function isLeafName(name: string): boolean {
 // edit produces (the nx asset watcher re-copies the file, which fires
 // multiple change events) into one reload.
 const WATCH_DEBOUNCE_MS = 250;
+
+/**
+ * A recipe that declares `catchmentRouting` must also carry a mapped webhook:
+ * CatchmentRoutingService composes the per-polyclinic CMS programme code from
+ * `mapping.programmeCode`, so without one every submission resolves no code,
+ * the MDA email finds no recipient, and the case is dropped rather than
+ * misrouted. That failure is per-submission and silent from the outside — this
+ * turns it into a boot-time rejection of the recipe instead. The rule itself is
+ * shared with `pnpm validate-recipes` and the builder's Deploy gate (#2877) so
+ * a recipe this would reject is caught before it reaches the API.
+ */
+function assertCatchmentRoutingHasProgrammeCode(
+  recipe: ServiceContractRecipe,
+  filePath: string,
+): void {
+  const errors = checkCatchmentRoutingHasMapping(recipe);
+  if (errors.length === 0) return;
+  throw new Error(`Recipe ${filePath}: ${errors.join("; ")}`);
+}
 
 @Injectable()
 export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
@@ -164,6 +184,7 @@ export class RecipeFileLoaderService implements OnModuleInit, OnModuleDestroy {
             `Recipe ${filePath}: filename "${filenameFormId}" does not match recipe.formId "${recipe.formId}"`,
           );
         }
+        assertCatchmentRoutingHasProgrammeCode(recipe, filePath);
         next.set(recipe.formId, recipe);
       } catch (err) {
         const e = err as Error;

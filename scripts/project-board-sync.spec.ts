@@ -324,7 +324,7 @@ describe("gql", () => {
   const token = "t0ken";
 
   it("posts the query with the bearer token and returns data", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValue(
         new Response(JSON.stringify({ data: { ok: true } }), { status: 200 }),
@@ -348,7 +348,7 @@ describe("gql", () => {
   });
 
   it("throws when the GraphQL response carries errors", async () => {
-    const fetchMock = jest.fn().mockResolvedValue(
+    const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ errors: [{ message: "boom" }] }), {
         status: 200,
       }),
@@ -380,7 +380,7 @@ describe("resolveProjectMeta", () => {
         },
       },
     };
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValue(new Response(JSON.stringify(body), { status: 200 }));
     await expect(
@@ -391,7 +391,7 @@ describe("resolveProjectMeta", () => {
 
 describe("removeLabel", () => {
   it("swallows a 404 when the label is already absent", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValue(new Response(null, { status: 404 }));
     await expect(
@@ -407,7 +407,7 @@ describe("removeLabel", () => {
   });
 
   it("throws on a non-404 error status", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValue(new Response(null, { status: 500 }));
     await expect(
@@ -425,7 +425,7 @@ describe("removeLabel", () => {
 
 describe("assignIfUnassigned", () => {
   it("assigns when the issue has no assignees", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ assignees: [] }), { status: 200 }),
@@ -448,7 +448,7 @@ describe("assignIfUnassigned", () => {
   });
 
   it("does nothing when the issue already has an assignee", async () => {
-    const fetchMock = jest.fn().mockResolvedValue(
+    const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ assignees: [{ login: "someone" }] }), {
         status: 200,
       }),
@@ -465,7 +465,7 @@ describe("assignIfUnassigned", () => {
   });
 
   it("throws when the assignment fails", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ assignees: [] }), { status: 200 }),
@@ -486,7 +486,7 @@ describe("assignIfUnassigned", () => {
 
 describe("closeIssue", () => {
   it("closes the issue explicitly as completed", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValue(new Response(null, { status: 200 }));
     await closeIssue("o", "r", 5, "tok", fetchMock as unknown as typeof fetch);
@@ -500,7 +500,7 @@ describe("closeIssue", () => {
   });
 
   it("throws on a non-ok status", async () => {
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValue(new Response(null, { status: 500 }));
     await expect(

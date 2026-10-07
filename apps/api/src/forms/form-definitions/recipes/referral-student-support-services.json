@@ -800,7 +800,13 @@
                 "label": "Does not attend - student does not attend school",
                 "value": "non_attendance"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select how often the student attends school",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -917,7 +923,13 @@
                 "label": "No",
                 "value": "no"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select whether you have spoken to the parent or guardian",
+                "value": true
+              }
+            }
           }
         }
       ]
@@ -993,5 +1005,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:34:16.771Z",
-  "updatedAt": "2026-06-08T00:00:00.000Z"
+  "updatedAt": "2026-09-17T13:49:39.000Z"
 }

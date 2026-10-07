@@ -1,0 +1,651 @@
+import { randomUUID, createHash } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
+import matter from "gray-matter";
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import {
+  serviceIdSchema,
+  serviceManifestSchema,
+  serviceSnapshotSchema,
+  servicePageDraftSchema,
+  draftRecipeSchema,
+  servicePendingConfigSchema,
+  serviceReadiness,
+  seedServiceManifest,
+  type ServiceSnapshot,
+  type ServiceManifest,
+} from "@govtech-bb/form-types";
+import { api, ApiError } from "./api-client";
+import { requireSession } from "./auth/require-session";
+import { resolveStoredRecipe, resolveCurrentRecipe } from "./forms";
+import { loadLandingContentPage } from "./content";
+import {
+  redactRecipeSecrets,
+  restoreRecipeSecrets,
+  assertNoRedactedSecrets,
+} from "./redact-processor-secrets";
+import {
+  authHeaders,
+  repoUrl,
+  ghError,
+  getContents,
+  openPullRequest,
+  listOpenPRHeads,
+} from "./github";
+import {
+  resolveBaseBranch,
+  carryUnauthoredFields,
+  recipeWriteStamp,
+} from "./publish";
+import { contentSlug, startPageUrl } from "../lib/content";
+
+export const getServiceUser = createServerFn({ method: "GET" })
+  .middleware([requireSession])
+  .handler(({ context }) => context.session.login);
+async function sourceSha(token: string, path: string): Promise<string | null> {
+  if (import.meta.env.DEV && !token) {
+    const { readFile } = await import("node:fs/promises");
+    const { resolve } = await import("node:path");
+    try {
+      const raw = await readFile(resolve(process.cwd(), "../..", path));
+      return createHash("sha1")
+        .update(`blob ${raw.length}\0`)
+        .update(raw)
+        .digest("hex");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+      throw error;
+    }
+  }
+  const response = await getContents(token, path, resolveBaseBranch());
+  if (response.status === 404) return null;
+  if (!response.ok)
+    throw await ghError(
+      "Could not check the current published source",
+      response,
+    );
+  return ((await response.json()) as { sha: string }).sha;
+}
+
+export const loadServiceSource = createServerFn({
+  method: "POST",
+  strict: false,
+})
+  .middleware([requireSession])
+  .inputValidator(
+    z.object({
+      serviceId: serviceIdSchema,
+      title: z.string().optional(),
+      category: z.string().optional(),
+      subcategory: z.string().optional(),
+      formId: serviceIdSchema.nullable().optional(),
+      paths: z.array(servicePageDraftSchema.shape.path).max(100).optional(),
+    }),
+  )
+  .handler(async ({ data, context }): Promise<ServiceSnapshot> => {
+    const token = context.session.accessToken;
+    const manifestPath = `services/${data.serviceId}.json`;
+    const baseManifestSha = await sourceSha(token, manifestPath);
+    let savedManifest: ServiceManifest | null = null;
+    if (baseManifestSha) {
+      if (import.meta.env.DEV && !token) {
+        const { readFile } = await import("node:fs/promises");
+        const { resolve } = await import("node:path");
+        savedManifest = serviceManifestSchema.parse(
+          JSON.parse(
+            await readFile(
+              resolve(process.cwd(), "../..", manifestPath),
+              "utf8",
+            ),
+          ),
+        );
+      } else {
+        const response = await getContents(
+          token,
+          manifestPath,
+          resolveBaseBranch(),
+        );
+        if (!response.ok)
+          throw await ghError("Could not load the service", response);
+        const file = (await response.json()) as { content: string };
+        savedManifest = serviceManifestSchema.parse(
+          JSON.parse(Buffer.from(file.content, "base64").toString()),
+        );
+      }
+    }
+    if (savedManifest && savedManifest.serviceId !== data.serviceId)
+      throw new Error("This manifest belongs to a different service");
+    if (!savedManifest && !data.title)
+      throw new Error(
+        "This service draft is saved on another browser. Open its published pages from the library or load a Git version.",
+      );
+    const formId = savedManifest ? savedManifest.formId : (data.formId ?? null);
+    // A form that cannot be fetched must not block the workspace: readiness
+    // reports the missing form and the next load retries. Read through the
+    // same resolver as getRecipe so a stale draft row is re-synced with the
+    // committed recipe on first adoption too, not only on the next
+    // getServiceDraft refresh (#2897, ADR 0075).
+    const recipe = formId
+      ? await resolveCurrentRecipe(formId, token).catch(() => null)
+      : null;
+    const paths = savedManifest?.pages.map((p) => p.path) ?? data.paths ?? [];
+    const pages = await Promise.all(
+      paths.map(async (path) => {
+        const page = await loadLandingContentPage({ data: { path } });
+        if (page.reviewBlock || page.revision.source !== "base")
+          throw new Error(
+            "Finish this page's existing review before adding it to a service version.",
+          );
+        return {
+          id:
+            savedManifest?.pages.find((p) => p.path === path)?.id ??
+            randomUUID(),
+          path,
+          frontmatter: page.frontmatter,
+          body: page.body,
+          baseSha: page.sha || (await sourceSha(token, path)),
+        };
+      }),
+    );
+    const pendingConfig: ServiceSnapshot["pendingConfig"] = formId
+      ? await api
+          .get<
+            ServiceSnapshot["pendingConfig"]
+          >(`/builder/forms/${formId}/config`)
+          .catch(() => ({ mdaContactId: null, processors: null }))
+      : { mdaContactId: null, processors: null };
+    // A published manifest is authored fact; a new one is seeded with what the
+    // recipe already decides (#2683) so readiness only asks for what is missing.
+    const manifest: ServiceManifest =
+      savedManifest ??
+      seedServiceManifest(
+        {
+          schemaVersion: 1,
+          serviceId: data.serviceId,
+          title: data.title!,
+          description: recipe?.description ?? "",
+          category: data.category ?? "",
+          subcategory: data.subcategory ?? "",
+          formId,
+          pages: pages.map((p, i) => ({
+            id: p.id,
+            path: p.path,
+            title: String(p.frontmatter.title ?? "Untitled page"),
+            kind:
+              i === 0
+                ? "main"
+                : p.path.endsWith("/start.md")
+                  ? "start"
+                  : "guidance",
+            publicPath: new URL(
+              startPageUrl(
+                String(p.frontmatter.category ?? data.category ?? ""),
+                contentSlug(p.path),
+                String(p.frontmatter.subcategory ?? ""),
+              ),
+              "https://service.invalid",
+            ).pathname,
+          })),
+          entryPoint: pages[0]?.id ?? (formId ? "form" : null),
+          setup: {
+            step: "about",
+            delivery: "undecided",
+            applicantEmail: "undecided",
+          },
+        },
+        recipe,
+        pendingConfig,
+      );
+    return serviceSnapshotSchema.parse({
+      manifest,
+      pages,
+      recipe: redactRecipeSecrets(recipe),
+      pendingConfig,
+      baseManifestSha,
+      baseRecipeSha: formId
+        ? await sourceSha(
+            token,
+            `apps/api/src/forms/form-definitions/recipes/${formId}.json`,
+          )
+        : null,
+    });
+  });
+
+// Reuse the existing form draft and presence endpoints; service/page drafts stay in the authoring app.
+export const saveServiceRecipe = createServerFn({
+  method: "POST",
+  strict: false,
+})
+  .middleware([requireSession])
+  .inputValidator(
+    z.object({
+      recipe: draftRecipeSchema,
+      expectedRecipe: draftRecipeSchema.nullable(),
+      pendingConfig: servicePendingConfigSchema,
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const stored = await resolveStoredRecipe(
+      data.recipe.formId,
+      context.session.accessToken,
+    );
+    if (stored && !data.expectedRecipe)
+      throw new Error(
+        "This application already exists. Connect it from the service library.",
+      );
+    if (
+      stored &&
+      data.expectedRecipe &&
+      !isDeepStrictEqual(
+        draftRecipeSchema.parse(redactRecipeSecrets(stored)),
+        data.expectedRecipe,
+      )
+    )
+      throw new Error(
+        "The application draft changed. Reload before saving these changes.",
+      );
+    const recipe = restoreRecipeSecrets(data.recipe, stored);
+    if (recipe)
+      Object.assign(recipe, carryUnauthoredFields(stored ?? undefined, recipe));
+    assertNoRedactedSecrets(recipe);
+    const claim = await api.put<{ held: boolean }>(
+      `/builder/forms/${data.recipe.formId}/presence`,
+      { userLogin: context.session.login },
+    );
+    if (!claim.held)
+      throw new Error(
+        "Another person is editing this application. Your changes have not been saved.",
+      );
+    const body = {
+      recipe,
+      ...data.pendingConfig,
+      userLogin: context.session.login,
+    };
+    if (!stored) await api.post("/builder/forms", { ...body, isNew: true });
+    else {
+      try {
+        await api.put(`/builder/forms/${data.recipe.formId}`, body);
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.status !== 404) throw error;
+        await api.post("/builder/forms", { ...body, isNew: false });
+      }
+    }
+  });
+
+export const getFormSourceSha = createServerFn({ method: "GET" })
+  .middleware([requireSession])
+  .inputValidator(z.object({ formId: serviceIdSchema }))
+  .handler(({ data, context }) =>
+    sourceSha(
+      context.session.accessToken,
+      `apps/api/src/forms/form-definitions/recipes/${data.formId}.json`,
+    ),
+  );
+async function github<T>(
+  token: string,
+  path: string,
+  method = "GET",
+  body?: unknown,
+): Promise<T> {
+  if (!token)
+    throw new Error(
+      "Sign in with GitHub to save a named version or open a publication pull request.",
+    );
+  const response = await fetch(repoUrl(path), {
+    method,
+    headers: authHeaders(token),
+    ...(body ? { body: JSON.stringify(body) } : {}),
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!response.ok)
+    throw await ghError(
+      "GitHub could not complete the service change",
+      response,
+    );
+  return response.json() as Promise<T>;
+}
+
+// `recipeUpdatedAt` is the stamp the recipe file is written with (#2878): a
+// checkpoint write passes the time of that write (retainVersion). Omitted,
+// the recipe is emitted as the snapshot holds it — right for callers that use
+// the paths, or compare the recipe by content (sameRecipeContent).
+export function checkpointFiles(
+  snapshot: ServiceSnapshot,
+  recipeUpdatedAt?: string,
+): { path: string; content: string }[] {
+  const manifest = snapshot.manifest;
+  // Publication writes no visibility (#2683): a page's is its own frontmatter
+  // and a form's is the service_status row set in Feature flagging.
+  const files = [
+    {
+      path: `services/${manifest.serviceId}.json`,
+      content: JSON.stringify(manifest, null, 2) + "\n",
+    },
+    ...snapshot.pages.map((page) => ({
+      path: page.path,
+      content: matter.stringify(page.body + "\n", page.frontmatter),
+    })),
+  ];
+  if (snapshot.recipe)
+    files.push({
+      path: recipeFilePath(snapshot.recipe.formId),
+      content:
+        JSON.stringify(
+          redactRecipeSecrets(
+            recipeUpdatedAt
+              ? { ...snapshot.recipe, updatedAt: recipeUpdatedAt }
+              : snapshot.recipe,
+          ),
+          null,
+          2,
+        ) + "\n",
+    });
+  return files;
+}
+function recipeFilePath(formId: string): string {
+  return `apps/api/src/forms/form-definitions/recipes/${formId}.json`;
+}
+// True when two recipe files hold the same content: the parsed JSON objects
+// with `updatedAt` removed (#2878) — the definition scripts/recipe-content.ts
+// gives the CI guard and the archive job, so a stamp-only difference is never
+// a change.
+function sameRecipeContent(a: string, b: string): boolean {
+  const content = (raw: string) => {
+    const { updatedAt: _stamp, ...rest } = JSON.parse(raw) as Record<
+      string,
+      unknown
+    >;
+    return rest;
+  };
+  try {
+    return isDeepStrictEqual(content(a), content(b));
+  } catch {
+    return false;
+  }
+}
+// The file at `path` on `ref`, or null when it does not exist there.
+async function readFileAt(
+  token: string,
+  path: string,
+  ref: string,
+  failure: string,
+): Promise<{ sha: string; content: string } | null> {
+  const response = await getContents(token, path, ref);
+  if (response.status === 404) return null;
+  if (!response.ok) throw await ghError(failure, response);
+  const file = (await response.json()) as { sha: string; content?: string };
+  return {
+    sha: file.sha,
+    content: Buffer.from(file.content ?? "", "base64").toString(),
+  };
+}
+const versionInput = z.object({
+  id: z.string().uuid(),
+  label: z.string().trim().min(1).max(250),
+  snapshot: serviceSnapshotSchema,
+});
+async function retainVersion(
+  token: string,
+  data: z.infer<typeof versionInput>,
+  author: string,
+) {
+  const gitRef = `refs/tags/service-checkpoints/${data.snapshot.manifest.serviceId}/${data.id}`;
+  if (!token) throw new Error("Sign in with GitHub to save a named version.");
+  const response = await fetch(
+    repoUrl(
+      `/git/ref/tags/service-checkpoints/${data.snapshot.manifest.serviceId}/${data.id}`,
+    ),
+    { headers: authHeaders(token), signal: AbortSignal.timeout(20000) },
+  );
+  if (!response.ok && response.status !== 404)
+    throw await ghError("Could not check the saved Git version", response);
+  const existing = response.ok
+    ? ((await response.json()) as { object: { sha: string } })
+    : null;
+  const recipePath = data.snapshot.recipe
+    ? recipeFilePath(data.snapshot.recipe.formId)
+    : null;
+  if (existing) {
+    // A saved version's recipe is compared by content, whatever `updatedAt`
+    // it was written with (#2878), so publishing it later still matches its
+    // tag; every other file by blob sha.
+    await Promise.all(
+      checkpointFiles(data.snapshot).map(async (file) => {
+        const saved = await readFileAt(
+          token,
+          file.path,
+          existing.object.sha,
+          "Could not read the saved Git version",
+        );
+        const content = Buffer.from(file.content);
+        const matches =
+          saved !== null &&
+          (file.path === recipePath
+            ? sameRecipeContent(saved.content, file.content)
+            : saved.sha ===
+              createHash("sha1")
+                .update(`blob ${content.length}\0`)
+                .update(content)
+                .digest("hex"));
+        if (!matches)
+          throw new Error("The existing Git version does not match this draft");
+      }),
+    );
+    return { gitSha: existing.object.sha, gitRef };
+  }
+  const base = await github<{ object: { sha: string } }>(
+    token,
+    `/git/ref/heads/${encodeURIComponent(resolveBaseBranch())}`,
+  );
+  const parent = await github<{ tree: { sha: string } }>(
+    token,
+    `/git/commits/${base.object.sha}`,
+  );
+  // The recipe is written with `updatedAt` stamped at this write, as builder
+  // Deploy does (#2878) — but only when its content differs from the recipe
+  // the checkpoint's parent holds. Otherwise (a pages-only publication) the
+  // committed file is written back byte for byte, so its stamp does not move
+  // and the next open does not re-sync a draft row over unsaved edits.
+  const files = checkpointFiles(data.snapshot, recipeWriteStamp());
+  const recipeFile = files.find((file) => file.path === recipePath);
+  if (recipeFile) {
+    const committed = await readFileAt(
+      token,
+      recipeFile.path,
+      base.object.sha,
+      "Could not read the published application",
+    );
+    if (committed && sameRecipeContent(committed.content, recipeFile.content))
+      recipeFile.content = committed.content;
+  }
+  const tree = await github<{ sha: string }>(token, "/git/trees", "POST", {
+    base_tree: parent.tree.sha,
+    tree: files.map((file) => ({ ...file, mode: "100644", type: "blob" })),
+  });
+  const commit = await github<{ sha: string }>(token, "/git/commits", "POST", {
+    message: `${data.label}\n\nService ${data.snapshot.manifest.serviceId}; by ${author}`,
+    tree: tree.sha,
+    parents: [base.object.sha],
+  });
+  await github(token, "/git/refs", "POST", { ref: gitRef, sha: commit.sha });
+  return { gitSha: commit.sha, gitRef };
+}
+export const retainServiceVersion = createServerFn({
+  method: "POST",
+  strict: false,
+})
+  .middleware([requireSession])
+  .inputValidator(versionInput)
+  .handler(({ data, context }) =>
+    retainVersion(context.session.accessToken, data, context.session.login),
+  );
+
+export const publishServiceVersion = createServerFn({
+  method: "POST",
+  strict: false,
+})
+  .middleware([requireSession])
+  .inputValidator(versionInput)
+  .handler(async ({ data, context }) => {
+    const token = context.session.accessToken;
+    const { snapshot } = data;
+    const ready = serviceReadiness(snapshot);
+    if (!ready.ready)
+      throw new Error(ready.issues.map((i) => i.message).join(". "));
+    if (
+      JSON.stringify(redactRecipeSecrets(snapshot.recipe)) !==
+      JSON.stringify(snapshot.recipe)
+    )
+      throw new Error(
+        "Move embedded credentials to the existing private configuration before publication.",
+      );
+    assertNoRedactedSecrets(snapshot.recipe);
+    if (snapshot.recipe) {
+      const result = await api.post<{
+        ok: boolean;
+        issues?: { message: string }[];
+      }>("/builder/registry/validate", { recipe: snapshot.recipe });
+      if (!result.ok)
+        throw new Error(
+          result.issues?.map((i) => i.message).join(". ") ||
+            "Fix the application errors before publication",
+        );
+    }
+    const files = checkpointFiles(snapshot);
+    const paths = new Set(files.map((f) => f.path));
+    const branch = `service-builder/${snapshot.manifest.serviceId}-${data.id}`;
+    const prs = await listOpenPRHeads(token, resolveBaseBranch());
+    const own = prs.find((pr) => pr.headRef === branch);
+    if (own) {
+      const retained = await retainVersion(token, data, context.session.login);
+      const pr = await github<{ html_url: string; head: { sha: string } }>(
+        token,
+        `/pulls/${own.number}`,
+      );
+      if (pr.head.sha !== retained.gitSha)
+        throw new Error(
+          "The publication branch has changed. Review its existing pull request in GitHub.",
+        );
+      return { prNumber: own.number, prUrl: pr.html_url };
+    }
+    for (const pr of prs) {
+      const touched = await github<
+        { filename: string; previous_filename?: string }[]
+      >(token, `/pulls/${pr.number}/files?per_page=100`);
+      if (
+        touched.length === 100 ||
+        touched.some(
+          (f) => paths.has(f.filename) || paths.has(f.previous_filename ?? ""),
+        )
+      )
+        throw new Error(
+          `Pull request #${pr.number} may already change this service. Finish it before another publication.`,
+        );
+    }
+    const sources = [
+      {
+        path: `services/${snapshot.manifest.serviceId}.json`,
+        sha: snapshot.baseManifestSha,
+      },
+      ...snapshot.pages.map((p) => ({ path: p.path, sha: p.baseSha })),
+      ...(snapshot.recipe
+        ? [
+            {
+              path: `apps/api/src/forms/form-definitions/recipes/${snapshot.recipe.formId}.json`,
+              sha: snapshot.baseRecipeSha,
+            },
+          ]
+        : []),
+    ];
+    for (const file of sources)
+      if ((await sourceSha(token, file.path)) !== file.sha)
+        throw new Error(
+          `The published source for ${file.path} changed. Reload and compare before publication.`,
+        );
+    const retained = await retainVersion(token, data, context.session.login);
+    const response = await fetch(repoUrl(`/git/ref/heads/${branch}`), {
+      headers: authHeaders(token),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (response.status === 404)
+      await github(token, "/git/refs", "POST", {
+        ref: `refs/heads/${branch}`,
+        sha: retained.gitSha,
+      });
+    else if (
+      !response.ok ||
+      ((await response.json()) as { object: { sha: string } }).object.sha !==
+        retained.gitSha
+    )
+      throw new Error(
+        "The publication branch changed. Review its pull request before retrying.",
+      );
+    return openPullRequest(token, {
+      head: branch,
+      base: resolveBaseBranch(),
+      title: `Update service: ${snapshot.manifest.title}`,
+      body: `Publish **${data.label}** with ${snapshot.pages.length} content pages${snapshot.recipe ? " and the application form" : ""}.\n\nReview the existing environment's delivery and payment settings before deployment.\n\nCreated by @${context.session.login}.`,
+    });
+  });
+
+export const getServicePublication = createServerFn({
+  method: "GET",
+  strict: false,
+})
+  .middleware([requireSession])
+  .inputValidator(z.object({ prNumber: z.number().int().positive() }))
+  .handler(async ({ data, context }) => {
+    const pr = await github<{
+      state: string;
+      merged_at: string | null;
+      html_url: string;
+    }>(context.session.accessToken, `/pulls/${data.prNumber}`);
+    return {
+      state: pr.merged_at
+        ? "merged"
+        : pr.state === "open"
+          ? "review"
+          : "closed",
+      prUrl: pr.html_url,
+    };
+  });
+export interface ServiceGitCommit {
+  sha: string;
+  message: string;
+  author: string;
+  date: string;
+  url: string;
+}
+export const getServiceGitHistory = createServerFn({
+  method: "GET",
+  strict: false,
+})
+  .middleware([requireSession])
+  .inputValidator(z.object({ serviceId: serviceIdSchema, path: z.string() }))
+  .handler(async ({ data, context }): Promise<ServiceGitCommit[]> => {
+    if (
+      data.path !== `services/${data.serviceId}.json` &&
+      !servicePageDraftSchema.shape.path.safeParse(data.path).success &&
+      !/^apps\/api\/src\/forms\/form-definitions\/recipes\/[a-z0-9-]+\.json$/.test(
+        data.path,
+      )
+    )
+      throw new Error("Choose a service page or application");
+    const commits = await github<
+      {
+        sha: string;
+        html_url: string;
+        commit: { message: string; author: { name: string; date: string } };
+      }[]
+    >(
+      context.session.accessToken,
+      `/commits?${new URLSearchParams({ path: data.path, sha: resolveBaseBranch(), per_page: "25" })}`,
+    );
+    return commits.map((c) => ({
+      sha: c.sha,
+      message: c.commit.message.split("\n")[0],
+      author: c.commit.author.name,
+      date: c.commit.author.date,
+      url: c.html_url,
+    }));
+  });

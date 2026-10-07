@@ -176,6 +176,37 @@ describe("AddressLookupField", () => {
     );
   });
 
+  it("selects a suggestion with the keyboard and populates its coordinates", async () => {
+    const user = userEvent.setup();
+    mockSearch.mockResolvedValue([
+      {
+        label: "Bay Street, Bridgetown, St. Michael, Barbados",
+        lat: "13.1",
+        lon: "-59.6",
+        line1: "Bay Street",
+        line2: "Bridgetown",
+        parish: "st-michael",
+      },
+    ]);
+    renderField();
+
+    const input = screen.getByRole("combobox");
+    await user.type(input, "Bay");
+    const option = await screen.findByRole("option");
+    await user.keyboard("{ArrowDown}");
+    expect(input).toHaveAttribute("aria-activedescendant", option.id);
+    await user.keyboard("{Enter}");
+
+    expect(input).toHaveValue("Bay Street");
+    expect(input).toHaveFocus();
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(handleChange).toHaveBeenLastCalledWith("Bay Street");
+    expect(setFieldValue).toHaveBeenCalledWith(
+      "step-1.event-address-coordinates",
+      "13.1,-59.6",
+    );
+  });
+
   it("keeps free typing working (value tracks the input)", async () => {
     mockSearch.mockResolvedValue([]);
     renderField();
@@ -184,13 +215,59 @@ describe("AddressLookupField", () => {
     expect(handleChange).toHaveBeenLastCalledWith("My own address");
   });
 
+  // Picking a suggestion writes the routing coordinate, then editing the address
+  // by hand used to leave it behind — so the CMS received a precise coordinate
+  // for an address the applicant had already replaced, and catchment routing
+  // sent the application to the polyclinic serving the OLD address.
+  it("clears the geocoded coordinate when the address is edited by hand", async () => {
+    mockSearch.mockResolvedValue([
+      {
+        label:
+          "Chefette, Prescott Boulevard, Bridgetown, St. Michael, Barbados",
+        lat: "13.1",
+        lon: "-59.6",
+        line1: "Chefette, Prescott Boulevard",
+        line2: "Bridgetown",
+        parish: "st-michael",
+      },
+    ]);
+    renderField();
+
+    await userEvent.type(screen.getByRole("combobox"), "Che");
+    await userEvent.click(await screen.findByRole("option"));
+    setFieldValue.mockClear();
+
+    await userEvent.type(screen.getByRole("combobox"), "X");
+
+    expect(setFieldValue).toHaveBeenCalledWith(
+      "step-1.event-address-coordinates",
+      "",
+    );
+  });
+
+  // The parish is the routing fallback the server fills the coordinate from, and
+  // it is a field the applicant can see and correct — so it survives an edit.
+  it("leaves the parish alone when the address is edited by hand", async () => {
+    mockSearch.mockResolvedValue([]);
+    renderField();
+
+    await userEvent.type(screen.getByRole("combobox"), "My own address");
+
+    expect(setFieldValue).not.toHaveBeenCalledWith(
+      "step-1.event-parish",
+      expect.anything(),
+    );
+  });
+
   it("shows a non-blocking notice when the lookup fails", async () => {
     mockSearch.mockRejectedValue(new Error("network down"));
     renderField();
 
     await userEvent.type(screen.getByRole("combobox"), "Bridgetown");
 
-    expect(await screen.findByRole("status")).toBeTruthy();
+    expect(
+      await screen.findByText(/Address suggestions are unavailable/),
+    ).toHaveAttribute("role", "status");
     // Input still usable.
     expect(screen.getByRole("combobox")).toBeTruthy();
   });

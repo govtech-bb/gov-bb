@@ -1,5 +1,11 @@
 import { getSystemPrompt } from "./system-prompt.js";
 import { getCatalog, getRegistryItem } from "@govtech-bb/form-builder";
+import {
+  contentVariantSchema,
+  optionGroupSchema,
+  type GeocodeTargets,
+} from "@govtech-bb/form-types";
+import { REGISTRY_PRIMITIVES } from "@govtech-bb/registry";
 
 // Guards the embedded AI system prompt against drift from the registry.
 // Every component/block ref the prompt tells the model to emit must resolve
@@ -35,18 +41,11 @@ const MIGRATED_SLASH_REFS = [
   "components/generic/show-hide",
 ];
 
-const GENERIC_PRIMITIVES = [
-  "components/generic-text",
-  "components/generic-textarea",
-  "components/generic-date",
-  "components/generic-email",
-  "components/generic-tel",
-  "components/generic-checkbox",
-  "components/generic-file",
-  "components/generic-select",
-  "components/generic-radio",
-  "components/generic-number",
-];
+// Every `components/generic-*` primitive the registry exposes — derived, not
+// listed, so a primitive added to the registry but not to the prompt fails
+// the guard below (#2885: a hard-coded list of 10 let generic-time and
+// generic-checkbox-accordion go undocumented).
+const GENERIC_PRIMITIVES = Object.keys(REGISTRY_PRIMITIVES);
 
 // The 8 composite blocks the registry exposes (the UI block palette). Since
 // the vestigial builtin catalog was retired (#515), getCatalog().blocks is
@@ -87,10 +86,88 @@ describe("AI system prompt", () => {
   });
 
   it("surfaces every generic primitive plus show-hide", () => {
+    // An empty registry list would pass vacuously.
+    expect(GENERIC_PRIMITIVES).not.toEqual([]);
     const missing = [...GENERIC_PRIMITIVES, "components/show-hide"].filter(
       (ref) => !prompt.includes(ref),
     );
     expect(missing).toEqual([]);
+  });
+
+  // #2885: the five components the reference used to omit, each with the
+  // override keys its renderer honours. Key names and enum values are read
+  // from the form-types schemas so a rename there fails here, not in a form.
+  it("documents the content block with its variant, content and summary keys", () => {
+    expect(prompt).toContain("components/content");
+    for (const variant of contentVariantSchema.options) {
+      expect(prompt).toContain(`"${variant}"`);
+    }
+    // The key's own bullet, then every worked example carrying the shape —
+    // anchored so the word "content" elsewhere in the prompt cannot satisfy it.
+    expect(prompt).toMatch(/^ {2}- `"content"` — the markdown body/m);
+    const examples = prompt.match(/^\{"ref": "components\/content".*$/gm) ?? [];
+    expect(examples).not.toEqual([]);
+    for (const example of examples) {
+      expect(example).toContain('"variant"');
+      expect(example).toContain('"content"');
+    }
+    // summary is the details disclosure's clickable line, falling back to label.
+    expect(prompt).toMatch(/"summary".*details/);
+    expect(prompt).toContain("falls back to `label`");
+    expect(
+      examples.some(
+        (example) =>
+          example.includes('"variant": "details"') &&
+          example.includes('"summary"'),
+      ),
+    ).toBe(true);
+  });
+
+  it("documents address-lookup with its same-step geocodeTargets", () => {
+    expect(prompt).toContain("components/address-lookup");
+    expect(prompt).toContain('"geocodeTargets"');
+    // geocodeTargetsSchema is not exported from the form-types barrel (#2886
+    // adds that export — switch to it once merged), so the keys are listed
+    // here and must be kept in step with the schema by hand. The annotation is
+    // documentation only: nothing type-checks this spec (the api tsconfig
+    // excludes specs and vitest does not typecheck).
+    const targetKeys: (keyof GeocodeTargets)[] = [
+      "line2FieldId",
+      "parishFieldId",
+      "coordinatesFieldId",
+    ];
+    for (const key of targetKeys) {
+      expect(prompt).toContain(`"${key}"`);
+    }
+    expect(prompt).toMatch(/same[- ]step/i);
+  });
+
+  it("documents the checkbox accordion's groups shape", () => {
+    expect(prompt).toContain("components/generic-checkbox-accordion");
+    // Anchor on the worked example — the line the model copies — rather than
+    // on bare key names: "label" and "options" appear throughout the prompt.
+    const example = prompt.match(
+      /^\{"ref": "components\/generic-checkbox-accordion".*$/m,
+    )?.[0];
+    expect(example).toBeDefined();
+    expect(example).toContain('"groups"');
+    for (const key of Object.keys(optionGroupSchema.shape)) {
+      expect(example).toContain(`"${key}"`);
+    }
+  });
+
+  it("documents the step rule for generic-time and opening-hours", () => {
+    expect(prompt).toContain("components/generic-time");
+    expect(prompt).toContain("components/opening-hours");
+    expect(prompt).toContain('"step"');
+    // The prompt quotes generic-time's registry default so an override is only
+    // for a different increment — read from the registry, so retuning the
+    // default fails here instead of leaving a stale number in the prompt.
+    const defaultStep = REGISTRY_PRIMITIVES["components/generic-time"].step;
+    expect(defaultStep).toBeDefined();
+    expect(prompt).toContain(`registry default is ${defaultStep}`);
+    // opening-hours honours step only when it is a whole number of minutes.
+    expect(prompt).toContain("multiple of 60");
   });
 
   it("surfaces every registry block", () => {
@@ -130,6 +207,12 @@ describe("AI system prompt", () => {
     expect(prompt).toContain("stays VISIBLE but becomes optional");
   });
 
+  it("forbids writing (optional) into labels and teaches required value false", () => {
+    expect(prompt).toContain('NEVER write "(optional)"');
+    expect(prompt).toContain('"required": { "value": false }');
+    expect(prompt).toContain("omission inherits the registry");
+  });
+
   it("guards the alternative-identity pattern (reveal toggle + optionalIf)", () => {
     expect(prompt).toContain(
       "Never leave the primary field unconditionally required next to a reveal toggle",
@@ -158,10 +241,36 @@ describe("AI system prompt", () => {
     expect(prompt).toContain("only meaningful alongside");
   });
 
-  it("never mentions the deliberately-excluded fieldArray behaviour", () => {
-    // fieldArray is intentionally withheld (overlaps a repeatable step and
-    // invites misuse). Pin its absence so an edit can't quietly reintroduce it.
-    expect(prompt).not.toContain("fieldArray");
+  it("documents the fieldArray behaviour with its JSON shape", () => {
+    expect(prompt).toContain('"type": "fieldArray"');
+    expect(prompt).toContain('"min"');
+    expect(prompt).toContain('"max"');
+    expect(prompt).toContain('"addAnotherLabel"');
+  });
+
+  it("restricts fieldArray to the supported field types only", () => {
+    expect(prompt).toContain("text, number, time, tel, email, textarea");
+    expect(prompt).toContain("must NOT be used on other field types");
+  });
+
+  it("gives the fieldArray vs repeatable decision rule", () => {
+    expect(prompt).toMatch(
+      /one (question|field) (is )?answered (several|multiple) times/i,
+    );
+    expect(prompt).toMatch(/group of fields (that )?repeat(s)? together/i);
+  });
+
+  it("teaches the same-for-every-item gate instead of N fields to fill one by one", () => {
+    expect(prompt).toContain("Ask One Question Once, Not Once Per Item");
+    // The three parts of the pattern: the gate, the shared field on "yes", and
+    // the per-item fields keeping their own condition plus a second on "no".
+    expect(prompt).toContain('gate being `"yes"`');
+    expect(prompt).toContain('gate being `"no"`');
+    // The pattern only works because stacked conditions AND together — without
+    // that, a per-item field would show alongside the shared one.
+    expect(prompt).toMatch(/combine with AND/i);
+    // ...and it must stay opt-in: a gate is wrong when answers differ per item.
+    expect(prompt).toMatch(/answers normally differ per item/i);
   });
 
   it("directs relationship fields to components/relationship, not a text input", () => {
@@ -172,10 +281,13 @@ describe("AI system prompt", () => {
     expect(prompt).not.toContain("free-text relationship fields");
   });
 
-  it("makes address line 2 and similar continuation lines optional by default", () => {
-    // Explicit never-infer-required rule for continuation lines.
+  it("makes address line 2 and similar continuation lines explicitly optional", () => {
+    // Continuation lines must carry an explicit required: {value: false} —
+    // omission inherits required: true from the registry base.
     expect(prompt).toContain('"address line 2"');
-    expect(prompt).toContain("optional by default");
+    expect(prompt).toContain(
+      'These must be OPTIONAL: set `"required": {"value": false}` explicitly',
+    );
     // The inferred-required list must name line 1 specifically, not bare
     // "address" (which would sweep line 2 into required-by-default).
     expect(prompt).toMatch(
@@ -216,5 +328,58 @@ describe("AI system prompt", () => {
     expect(prompt).toMatch(/^- maxYear: /m);
     expect(prompt).toContain('"currentYear": true');
     expect(prompt).toContain("do NOT accept referenceFieldId");
+  });
+
+  // #2710: a required rule with no error (or a generic one) makes the runtime
+  // fall back to "This field is required", which names no field and becomes the
+  // error-summary link text verbatim. No example may teach that by example.
+  it("gives every required example an error message that names the field", () => {
+    // Messages that name no field. Matched case-insensitively on the whole
+    // error string, so "Type of licence is required" is unaffected.
+    const NAMES_NOTHING = [
+      "this field is required",
+      "error message",
+      "required",
+      "select an option",
+      "select an answer",
+      "...",
+    ];
+    // Quoted key only — the `- required: {...}` line in the Validation Types
+    // list documents the shape, it is not an element example.
+    const rules = [...prompt.matchAll(/"required":\s*\{[^}]*\}/g)]
+      .map((match) => match[0])
+      .filter((rule) => /"value":\s*true/.test(rule));
+    expect(rules.length).toBeGreaterThan(0);
+
+    const offenders = rules.filter((rule) => {
+      const error = rule.match(/"error":\s*"([^"]*)"/)?.[1]?.trim() ?? "";
+      return error === "" || NAMES_NOTHING.includes(error.toLowerCase());
+    });
+    expect(offenders).toEqual([]);
+  });
+
+  it("names the generic sentinel only to forbid it, never as an example", () => {
+    expect(prompt).not.toMatch(/"error":\s*"This field is required"/i);
+    expect(prompt).toContain('NEVER "This field is required"');
+  });
+
+  it("states the required rule on every generic-primitive element example", () => {
+    // The generic primitives are required-by-default, so an example that omits
+    // the rule silently emits a required field carrying the sentinel — which is
+    // invisible to the check above, since it inspects rules that are present.
+    // One element object per line is this prompt's house style.
+    const silent = prompt
+      .split("\n")
+      .filter((line) => /^\s*\{"ref": "components\/generic-/.test(line))
+      .filter((line) => !line.includes('"required"'));
+    expect(silent).toEqual([]);
+  });
+
+  it("makes the repeatable-step example's detail fields explicitly required", () => {
+    // This example is copied near-verbatim into real recipes, and
+    // components/generic-* are required-by-default — omitting the rule ships
+    // the generic sentinel as the message.
+    expect(prompt).toContain('"error": "Type of licence is required"');
+    expect(prompt).toContain('"error": "Date of endorsement is required"');
   });
 });

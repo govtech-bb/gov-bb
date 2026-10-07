@@ -305,7 +305,7 @@
         {
           "ref": "components/postcode",
           "overrides": {
-            "hint": "For example, BB17004 (optional)",
+            "hint": "For example, BB17004",
             "fieldId": "current-address-postcode"
           }
         }
@@ -431,7 +431,7 @@
         {
           "ref": "components/postcode",
           "overrides": {
-            "hint": "For example, BB17004 (optional)",
+            "hint": "For example, BB17004",
             "fieldId": "new-address-postcode"
           }
         },
@@ -525,7 +525,7 @@
     }
   ],
   "createdAt": "2026-06-04T22:01:37.244Z",
-  "updatedAt": "2026-06-16T00:00:00.000Z",
+  "updatedAt": "2026-08-20T18:45:33.000Z",
   "meta": {
     "visibility": "maintenance"
   }

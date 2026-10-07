@@ -1,0 +1,16 @@
+export {
+  Popover,
+  PopoverRoot,
+  PopoverTrigger,
+  PopoverClose,
+  PopoverContent,
+  PopoverTitle,
+  PopoverDescription,
+  type PopoverRootProps,
+  type PopoverTriggerProps,
+  type PopoverCloseProps,
+  type PopoverContentProps,
+  type PopoverTitleProps,
+  type PopoverDescriptionProps,
+  type PopoverSide,
+} from "./popover";

@@ -7,7 +7,26 @@ import css from "@eslint/css";
 import { tailwind4 } from "tailwind-csstree";
 import { defineConfig } from "eslint/config";
 
+const primitiveColorClasses = /(?:bg|text|border(?:-[trblxy])?|ring(?:-offset)?|outline|divide|fill|stroke|decoration|from|via|to|shadow)-(?:white|black|(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-[0-9]+)\b|\bdark:|(?:bg|text|border|ring|fill|stroke)-\[(?:#|rgba?\(|hsla?\(|oklch\(|oklab\()/;
+
 export default defineConfig([
+  {
+    files: [
+      "apps/form_builder/app/components/ui/**/*.{ts,tsx}",
+      "apps/form_builder/app/routes/-ui-catalogue.tsx",
+      "apps/form_builder/app/routes/dev.ui.tsx",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        ...["Literal[value", "TemplateElement[value.raw"].map((selector) => ({
+          selector: `${selector}=/${primitiveColorClasses.source}/]`,
+          message: "Use GovTech semantic color tokens instead of raw color or dark-mode classes.",
+        })),
+      ],
+    },
+  },
+
   {
     ignores: [
       "apps/forms/**",
@@ -60,6 +79,28 @@ export default defineConfig([
     // no-explicit-any stays strict on production code.
     files: ["**/*.spec.{ts,tsx}", "**/*.test.{ts,tsx}"],
     rules: { "@typescript-eslint/no-explicit-any": "off" },
+  },
+  {
+    // jest-dom's matchers are registered once, via the `/vitest` entry, in
+    // apps/form_builder/vitest.setup.ts. The bare entry references
+    // `@types/jest`, whose global `expect` silently shadows Vitest's for the
+    // whole app — and tsc cannot see that happen (skipLibCheck hides the
+    // duplicate declaration), so the type gate alone would not catch it.
+    files: ["apps/form_builder/app/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@testing-library/jest-dom",
+              message:
+                "Matchers are registered in vitest.setup.ts; this entry pulls in @types/jest and shadows Vitest's expect.",
+            },
+          ],
+        },
+      ],
+    },
   },
   { files: ["**/*.json"], plugins: { json }, language: "json/json", extends: ["json/recommended"] },
   {

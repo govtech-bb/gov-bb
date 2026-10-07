@@ -35,14 +35,21 @@ import {
   clearFormStartTime,
 } from "../../../lib/session-storage";
 import { elapsedSeconds } from "../../../lib/submit-duration";
-import { formatDataForSubmission, postFormSubmission } from "@forms/form-api";
+import { buildPrintedAnswers } from "../../../lib/printed-answers";
+import {
+  formatDataForSubmission,
+  postFormSubmission,
+  FormValidationError,
+} from "@forms/form-api";
 import { trackEvent } from "../../../lib/analytics";
+import { resolveServerFieldErrors } from "../../../lib/server-field-errors";
+import { resolveConditionalMarkdown } from "@govtech-bb/form-conditions";
+import { buildStepScopedValues } from "../../../lib/form-builder/helpers/value-tree";
 import { formCategory } from "../../../lib/form-category";
 import {
   resolveSubmissionOutcome,
   applyPaymentReturn,
 } from "../../../lib/submission-outcome";
-import { fillParishRoutingCoordinate } from "../../../lib/parish-routing-points";
 
 export const Route = createFileRoute("/forms/$formId/")({
   component: RouteComponent,
@@ -198,6 +205,46 @@ function FormView() {
     }
   }, [formMeta.formId, submissionState]);
 
+  // The stored outcome now carries the applicant's answers, so the printed
+  // copy survives a refresh (#2587) — but it would otherwise sit in the tab
+  // until it is closed. On a shared or kiosk device the next person can press
+  // Back onto this step and print someone else's submission. Following a link
+  // off the confirmation says the applicant is finished with it, so drop the
+  // answers from storage then — the receipt itself (reference, paymentUrl,
+  // amount) is kept, so a pending payment's return from EzPay is unaffected,
+  // and the page in front of them keeps rendering from React state. A
+  // same-page anchor (the skip link) is not an exit. Best-effort only: a
+  // browser serving Back from its bfcache never reloads the page, so this
+  // never fires, and an applicant who walks away without clicking anything
+  // doesn't trigger it either.
+  React.useEffect(() => {
+    if (step !== "submission-confirmation" || !submissionState) return;
+
+    const handleExit = (event: MouseEvent) => {
+      // Only a plain, unmodified left click actually leaves the page — a
+      // Ctrl/Cmd-click opens a new tab and leaves this one in place, and a
+      // handler upstream may already have taken this click (e.g. the Continue
+      // to payment button's own onClick).
+      if (event.defaultPrevented || event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+        return;
+      const anchor = (event.target as Element | null)?.closest?.("a");
+      const href = anchor?.getAttribute("href");
+      if (!href || href.startsWith("#")) return;
+      // Compare the raw attribute, not the browser-normalised `anchor.href`
+      // (lower-cased host, default port dropped, trailing slash added to a
+      // bare origin) — `paymentUrl` is stored and rendered verbatim.
+      if (href === submissionState.paymentUrl) return;
+      storeSubmissionState(formMeta.formId, {
+        ...submissionState,
+        sections: undefined,
+      });
+    };
+
+    document.addEventListener("click", handleExit);
+    return () => document.removeEventListener("click", handleExit);
+  }, [step, submissionState, formMeta.formId]);
+
   const repeatableStepSettingsRef = React.useRef<RepeatableStepSettings>(
     formMeta.repeatSettings,
   );
@@ -258,24 +305,62 @@ function FormView() {
       // render-mutated conditionallyHidden flag goes stale for fields that
       // never re-mounted after their controlling answer flipped, which
       // would leak de-selected answers into the payload.
+      // Keyed by stepId, the visible field ids per step — the submission
+      // payload's hidden set is its complement, and the printed confirmation's
+      // answers are built from it below, so the two cannot disagree.
+      const visibleFieldIdsByStep: Record<string, string[]> = {};
       const hiddenFields = visibleSteps.flatMap((step) => {
-        const visibleFieldIds = new Set(
-          getVisibleFields(step, form).map((field) => field.id),
+        const visible = getVisibleFields(step, form);
+        const visibleFieldIds = new Set(visible.map((field) => field.id));
+        visibleFieldIdsByStep[step.stepId] = visible.map(
+          (field) => field.fieldId,
         );
         return step.fields.filter((field) => !visibleFieldIds.has(field.id));
       });
-      const formattedData: FormValuesByStep = fillParishRoutingCoordinate(
-        formatDataForSubmission(
-          values,
-          repeatableStepSettingsRef.current,
-          hiddenFields,
-        ),
-        formMeta.catchmentRouting,
+      const formattedData: FormValuesByStep = formatDataForSubmission(
+        values,
+        repeatableStepSettingsRef.current,
+        hiddenFields,
       );
       let response;
       try {
         response = await postFormSubmission(formMeta, formattedData, preview);
-      } catch {
+      } catch (error) {
+        // The server told us which answers it rejected (422 + meta.errors).
+        // Put those messages back on the fields they name and return the
+        // citizen to the step holding the first one, so they can see and fix
+        // it — rather than the generic failure panel and a retry that would
+        // fail identically (#1257). A bundle nothing maps to (a renamed field,
+        // a repeatable step's per-instance shape) falls through to the panel:
+        // no feedback at all is worse than imprecise feedback.
+        if (error instanceof FormValidationError) {
+          const { byFieldId, stepId } = resolveServerFieldErrors(
+            error.errors,
+            visibleSteps,
+          );
+          if (stepId) {
+            for (const [fieldId, messages] of Object.entries(byFieldId)) {
+              form.setFieldMeta(fieldId, (prev) => ({
+                ...prev,
+                isValid: false,
+                errors: messages,
+                errorMap: { ...prev.errorMap, onServer: messages[0] },
+              }));
+            }
+            trackEvent("form-submit-error", {
+              form: formMeta.formId,
+              category: formCategory(formMeta.formId),
+              errors: "validation",
+            });
+            void navigate({
+              search: (prev: Record<string, unknown>) => ({
+                ...prev,
+                step: stepId,
+              }),
+            });
+            return;
+          }
+        }
         trackEvent("form-submit-error", {
           form: formMeta.formId,
           category: formCategory(formMeta.formId),
@@ -294,7 +379,37 @@ function FormView() {
         return;
       }
 
-      const { subState, event } = resolveSubmissionOutcome(response);
+      // Fill the confirmation body's per-answer passages (#2068) NOW, while the
+      // answers are still in the form store: `clearFormState` below drops the
+      // draft on success, so a refresh on the confirmation step would otherwise
+      // have no values to branch on and would fall back to the neutral passage
+      // while the applicant's email showed the real one. Persisted with the rest
+      // of the outcome, so it survives the reload.
+      const confirmationStep = formMeta.steps.find(
+        (step) => step.stepId === "submission-confirmation",
+      );
+      const resolvedMarkdown = confirmationStep
+        ? resolveConditionalMarkdown(
+            confirmationStep,
+            buildStepScopedValues(values as Record<string, unknown>),
+          )
+        : undefined;
+
+      // Same moment, same reason (#2587): build the answers for the printed
+      // confirmation while they are still here. Built from the shared summary
+      // builder, so the paper copy reads like the email the MDA received.
+      const printedAnswers = buildPrintedAnswers({
+        formMeta,
+        visibleFieldIdsByStep,
+        values: formattedData,
+        repeatSettings: repeatableStepSettingsRef.current,
+      });
+
+      const { subState, event } = resolveSubmissionOutcome(
+        response,
+        resolvedMarkdown,
+        printedAnswers,
+      );
       if (subState) {
         setSubmissionState(subState);
       }

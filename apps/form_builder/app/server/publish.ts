@@ -2,16 +2,20 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSession } from "./auth/require-session";
 import {
+  deployBranchLabel,
   deployBranchName,
   eraseBranchName,
+  formIdFromDeployBranch,
   kebabIdSchema,
   KEBAB_ID_PATTERN,
   KEBAB_ID_ERROR,
+  serializeRecipe,
   type ServiceContractRecipe,
   type ValidationResult,
 } from "@govtech-bb/form-types";
 import { api, ApiError } from "./api-client";
 import { listVersions, RECIPES_BASE } from "./github-recipes";
+import { resolveBaseBranch } from "./github-repo";
 import {
   repoUrl,
   authHeaders,
@@ -20,33 +24,64 @@ import {
   deleteBranch,
   getContents,
   createdAtFromContents,
+  recipeFromContents,
   putFile,
   openPullRequest,
+  listOpenPRHeads,
+  findOpenPRByHeadRef,
+  commentOnPR,
 } from "./github";
 
-const DEFAULT_BASE_BRANCH = "dev";
+// Re-exported for the content and services publish paths, which have always
+// read the base branch from here; the definition moved to github-repo.ts so
+// the recipe reads can share it without a circular import (#2899).
+export { resolveBaseBranch };
 
 /**
- * The branch the Deploy PR is opened against, from `PUBLISH_BASE_BRANCH`.
- * Resolution order:
- *   1. The LIVE runtime env var — wins wherever the platform exposes it
- *      (docker, ECS, local node), so changing it retargets deploys with no
- *      rebuild. Read via bracket access on purpose: Vite's `define` only
- *      rewrites the literal `process.env.PUBLISH_BASE_BRANCH`, so the bracket
- *      form survives the build as a real runtime read instead of being inlined.
- *   2. The build-time baked value (`process.env.PUBLISH_BASE_BRANCH_DEFAULT`,
- *      substituted by Vite — see vite.config.ts `define`). This is the fallback
- *      for Amplify Compute, whose SSR Lambda doesn't receive runtime env vars;
- *      set PUBLISH_BASE_BRANCH in the Amplify console and redeploy to change it.
- *   3. `dev`.
- * This is the single source of truth; both `publishRecipe` and
- * `getPublishBaseBranch` use it, so the value the modal shows can never diverge
- * from the PR's actual base.
+ * The top-level recipe fields the builder authors, and so the only ones a
+ * Deploy may remove. `serializeDraft` emits each of these from the draft it
+ * holds, so their absence from a published payload is a real edit (a cleared
+ * description, a form with no processors).
+ *
+ * Every other top-level field is one the builder cannot author — today
+ * `catchmentRouting`, the Environmental Health routing block. The builder only
+ * ever carried it through, so a draft that predates that passthrough (or any
+ * future field) publishes without it and the Contents PUT — a whole-file
+ * overwrite — silently deletes it from the recipe (#2376/#2377, replayed by
+ * #2394 from a stale draft row). `carryUnauthoredFields` puts those back, so
+ * losing a field the builder can't edit is no longer possible from here,
+ * whatever the draft happens to hold.
  */
-export function resolveBaseBranch(): string {
-  const runtime = process.env["PUBLISH_BASE_BRANCH"]?.trim();
-  if (runtime) return runtime;
-  return process.env.PUBLISH_BASE_BRANCH_DEFAULT?.trim() || DEFAULT_BASE_BRANCH;
+const BUILDER_AUTHORED_RECIPE_FIELDS = new Set([
+  "formId",
+  "title",
+  "description",
+  "contactDetails",
+  "processors",
+  "meta",
+  "steps",
+  "createdAt",
+  "updatedAt",
+]);
+
+/**
+ * Fields to re-add to `published` from the recipe already committed on the
+ * branch: those the builder does not author and the payload does not carry. A
+ * field the payload does carry always wins — this only ever fills gaps.
+ */
+export function carryUnauthoredFields(
+  committed: Record<string, unknown> | undefined,
+  published: Record<string, unknown>,
+): Record<string, unknown> {
+  if (!committed) return {};
+  return Object.fromEntries(
+    Object.entries(committed).filter(
+      ([key, value]) =>
+        !BUILDER_AUTHORED_RECIPE_FIELDS.has(key) &&
+        published[key] === undefined &&
+        value !== undefined,
+    ),
+  );
 }
 
 function renderPrBody({
@@ -79,16 +114,106 @@ function renderPrBody({
   ].join("\n");
 }
 
+/**
+ * The `updatedAt` a recipe write carries: now, whatever the payload said. The
+ * committed `updatedAt` is what the builder compares a draft row against to
+ * decide it is stale (#2878, ADR 0075), so every write — builder Deploy here,
+ * the services publication in services.ts — must move it. Date.now() is the
+ * clock deployBranchName already uses.
+ */
+export function recipeWriteStamp(): string {
+  return new Date(Date.now()).toISOString();
+}
+
+/**
+ * Read the recipe file's blob sha (if it exists) from `branch` and build the
+ * exact object a PUT to that branch should carry: the incoming recipe, plus
+ * the committed file's `createdAt` (#1720), any top-level fields the
+ * builder cannot author (#2376/#2377 — `carryUnauthoredFields`), and an
+ * `updatedAt` stamped at the write (#2878).
+ *
+ * Shared by the create path (PUT onto a freshly-created branch) and the reuse
+ * path (PUT onto an already-open PR's branch) — same lookup, just a different
+ * ref. Keeping both behind one helper matters: the reuse path is also a
+ * whole-file overwrite, so without the passthrough a redeploy onto an open PR
+ * would delete `catchmentRouting` exactly the way #2377 did (#2390).
+ */
+async function loadRecipeForWrite(
+  token: string,
+  branch: string,
+  recipePath: string,
+  recipe: ServiceContractRecipe,
+): Promise<{
+  recipeToPublish: ServiceContractRecipe;
+  existingSha: string | undefined;
+}> {
+  const existing = await getContents(token, recipePath, branch);
+  let existingSha: string | undefined;
+  let preservedCreatedAt: string | undefined;
+  let carriedFields: Record<string, unknown> = {};
+  if (existing.status === 200) {
+    const body = (await existing.json()) as {
+      sha?: string;
+      content?: string;
+    };
+    existingSha = body.sha;
+    preservedCreatedAt = createdAtFromContents(body);
+    carriedFields = carryUnauthoredFields(recipeFromContents(body), recipe);
+  }
+  const recipeToPublish = {
+    ...recipe,
+    ...carriedFields,
+    ...(preservedCreatedAt ? { createdAt: preservedCreatedAt } : {}),
+    // Stamped at the write (recipeWriteStamp) for a fresh PR and a re-deploy
+    // onto an open one alike.
+    updatedAt: recipeWriteStamp(),
+  } as ServiceContractRecipe;
+  return { recipeToPublish, existingSha };
+}
+
+/**
+ * The committed recipe file's blob sha on `branch`, or null when no file is
+ * committed there. The stale-base guard in `publishRecipe` compares this with
+ * the sha the builder captured when it loaded the form (#2489).
+ */
+async function committedRecipeSha(
+  token: string,
+  recipePath: string,
+  branch: string,
+): Promise<string | null> {
+  const res = await getContents(token, recipePath, branch);
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw await ghError("Could not check the current published source", res);
+  }
+  return ((await res.json()) as { sha: string }).sha;
+}
+
 export const publishRecipe = createServerFn({ method: "POST" })
   .middleware([requireSession])
   .inputValidator(
     z.object({
       recipe: z.unknown(),
       description: z.string().default(""),
+      // The committed recipe's blob sha on the base branch when the author
+      // loaded the form, or null when no committed copy existed then (#2489).
+      // Required, not optional: a Deploy that cannot say what it loaded
+      // cannot prove it isn't overwriting a fix that merged since.
+      expectedSourceSha: z
+        .string()
+        .regex(/^[0-9a-f]{40}$/)
+        .nullable(),
     }),
   )
   .handler(
-    async ({ data, context }): Promise<{ prUrl: string; prNumber: number }> => {
+    async ({
+      data,
+      context,
+    }): Promise<{
+      prUrl: string;
+      prNumber: number;
+      updatedExistingPR: boolean;
+    }> => {
       const recipe = data.recipe as ServiceContractRecipe;
       const description = data.description ?? "";
 
@@ -124,11 +249,40 @@ export const publishRecipe = createServerFn({ method: "POST" })
         throw new Error(`Recipe validation failed: ${detail}`);
       }
 
+      // encodeURIComponent on the formId segment is defense-in-depth at the
+      // sink (#293) — a no-op for the kebab id the guard above already
+      // enforced. Derivable from formId alone, so it's the same path
+      // regardless of which branch (a fresh one or an existing PR's) it's
+      // read from below.
+      const recipePath = `apps/api/src/forms/form-definitions/recipes/${encodeURIComponent(
+        recipe.formId,
+      )}.json`;
+
+      // Stale-base guard (#2489): the author is deploying the revision they
+      // loaded. If the committed recipe on the base branch has moved since —
+      // a fix merged while the form was open — this Deploy would overwrite
+      // that fix with the older draft (#2477 → #2479/#2482). Compare the live
+      // blob sha with the one captured at load and refuse before anything is
+      // written: no row PUT, no branch, no PR. A null expectation with a
+      // committed file present is a mismatch too (a form the author believed
+      // was new now exists on the base branch). The services publish path has
+      // the same guard (publishServiceVersion's baseRecipeSha).
+      const currentSha = await committedRecipeSha(
+        token,
+        recipePath,
+        baseBranch,
+      );
+      if (currentSha !== data.expectedSourceSha) {
+        throw new Error(
+          `The published source for ${recipe.formId} changed after you opened it. Reload and compare before deploying.`,
+        );
+      }
+
       // Persist the current draft and enforce the read-only lock (#874) before
-      // touching GitHub: PUT /builder/forms/:formId runs through enforcePresence,
-      // so a non-holder is rejected (409) here. (#1196: recipe versioning is
-      // retired — there is no version reservation; publish overwrites the single
-      // canonical flat file.)
+      // writing to GitHub: PUT /builder/forms/:formId runs through
+      // enforcePresence, so a non-holder is rejected (409) here. (#1196: recipe
+      // versioning is retired — there is no version reservation; publish
+      // overwrites the single canonical flat file.)
       try {
         await api.put(`/builder/forms/${recipe.formId}`, {
           recipe,
@@ -144,43 +298,95 @@ export const publishRecipe = createServerFn({ method: "POST" })
         throw err;
       }
 
+      // Reuse an already-open Deploy PR for this form instead of opening a
+      // duplicate that would conflict with it on the same recipe file (#2390).
+      // Matching is by branch name via formIdFromDeployBranch, never a
+      // `startsWith(deployBranchPrefix(...))` prefix test — see that
+      // function's doc comment for why a sibling form (e.g. "passport" vs
+      // "passport-renewal") would otherwise cross-match and push the wrong
+      // recipe onto the wrong PR. The parser recovers the branch's label,
+      // which for an over-length id is not the id itself (#2488), so the
+      // comparison is against deployBranchLabel, not recipe.formId.
+      const existingPR = await findOpenPRByHeadRef(
+        token,
+        baseBranch,
+        (headRef) =>
+          formIdFromDeployBranch(headRef) === deployBranchLabel(recipe.formId),
+      );
+
+      if (existingPR) {
+        // This branch belongs to a PR already in review — it must never be
+        // deleted on failure, so this path deliberately returns before the
+        // create-path's try/catch below and can never fall into its
+        // deleteBranch cleanup.
+        const { recipeToPublish, existingSha } = await loadRecipeForWrite(
+          token,
+          existingPR.headRef,
+          recipePath,
+          recipe,
+        );
+        const putRes = await putFile(token, {
+          path: recipePath,
+          message: `Publish ${recipe.formId}`,
+          content: serializeRecipe(recipeToPublish),
+          branch: existingPR.headRef,
+          ...(existingSha ? { sha: existingSha } : {}),
+        });
+        if (!putRes.ok) {
+          throw await ghError("Failed to write recipe file", putRes);
+        }
+
+        // Best-effort: the recipe is already committed to the PR by this
+        // point, so the deploy has succeeded — a failed comment must be
+        // swallowed, not surface as a failed deploy (#2390). Only post when
+        // there's something to say; an empty description adds nothing GitHub's
+        // own commit timeline doesn't already show.
+        const desc = description.trim();
+        if (desc) {
+          try {
+            await commentOnPR(
+              token,
+              existingPR.number,
+              `**Re-deployed from the form builder by @${session.login}**\n\n${desc}`,
+            );
+          } catch (err) {
+            console.warn(`Failed to comment on PR #${existingPR.number}:`, err);
+          }
+        }
+
+        return {
+          prUrl: existingPR.htmlUrl,
+          prNumber: existingPR.number,
+          updatedExistingPR: true,
+        };
+      }
+
       // Namespaced, dot-free branch (see deployBranchName, #805).
       const branch = deployBranchName(recipe.formId);
       await createBranchFrom(token, baseBranch, branch);
 
-      // From here on, any failure must attempt to delete `branch`.
+      // From here on, any failure must attempt to delete `branch`. Scoped to
+      // this newly-created branch only — the reuse path above always returns
+      // before reaching here.
       try {
-        // Overwrite the canonical flat recipe file in place. It already exists on
-        // the base branch (and so on this branch), so fetch its blob SHA — the
-        // Contents API requires `sha` to update an existing file. The same
-        // response carries the committed file's content, so preserve its original
-        // `createdAt` rather than restamping it (#1720); `updatedAt` stays at the
-        // freshly-serialized value. On first publish (no existing file) the recipe
-        // is written verbatim with both stamps minted. encodeURIComponent on the
-        // formId segment is defense-in-depth at the sink (#293) — a no-op for the
-        // kebab id the guard above already enforced.
-        const recipePath = `apps/api/src/forms/form-definitions/recipes/${encodeURIComponent(
-          recipe.formId,
-        )}.json`;
-        const existing = await getContents(token, recipePath, branch);
-        let existingSha: string | undefined;
-        let preservedCreatedAt: string | undefined;
-        if (existing.status === 200) {
-          const body = (await existing.json()) as {
-            sha?: string;
-            content?: string;
-          };
-          existingSha = body.sha;
-          preservedCreatedAt = createdAtFromContents(body);
-        }
-        const recipeToPublish = preservedCreatedAt
-          ? { ...recipe, createdAt: preservedCreatedAt }
-          : recipe;
+        // Overwrite the canonical flat recipe file in place. It already exists
+        // on the base branch (and so on this branch), so fetch its blob SHA —
+        // the Contents API requires `sha` to update an existing file. The same
+        // response carries the committed file's content, so preserve its
+        // original `createdAt` rather than restamping it (#1720); `updatedAt`
+        // is stamped at the write (#2878). On first publish (no existing
+        // file) the recipe keeps its minted `createdAt`.
+        const { recipeToPublish, existingSha } = await loadRecipeForWrite(
+          token,
+          branch,
+          recipePath,
+          recipe,
+        );
 
         const putRes = await putFile(token, {
           path: recipePath,
           message: `Publish ${recipe.formId}`,
-          content: JSON.stringify(recipeToPublish, null, 2) + "\n",
+          content: serializeRecipe(recipeToPublish),
           branch,
           ...(existingSha ? { sha: existingSha } : {}),
         });
@@ -188,7 +394,7 @@ export const publishRecipe = createServerFn({ method: "POST" })
           throw await ghError("Failed to write recipe file", putRes);
         }
 
-        return await openPullRequest(token, {
+        const pr = await openPullRequest(token, {
           base: baseBranch,
           head: branch,
           title: `Publish form: ${recipe.title}`,
@@ -198,6 +404,7 @@ export const publishRecipe = createServerFn({ method: "POST" })
             description,
           }),
         });
+        return { ...pr, updatedExistingPR: false };
       } catch (err) {
         await deleteBranch(branch, token);
         throw err;
@@ -215,6 +422,44 @@ export const publishRecipe = createServerFn({ method: "POST" })
 export const getPublishBaseBranch = createServerFn({ method: "GET" }).handler(
   async (): Promise<string> => resolveBaseBranch(),
 );
+
+/** One open Deploy PR, as surfaced to the builder's Open picker (#2390). */
+export interface OpenDeployPR {
+  /** What the branch carries: the form id, or for an over-length id its
+   * truncated, hashed label (#2488). Join to a form with
+   * `deployBranchLabel(form.formId)`, never `form.formId` directly. */
+  formId: string;
+  prNumber: number;
+  prUrl: string;
+  branch: string;
+}
+
+/**
+ * Open Deploy PRs mapped to the form each publishes — mirrors content's
+ * `listOpenContentPRs`, so the Open picker can badge a row "In review". Unlike
+ * content, this matches by branch name rather than the PR-files API: the
+ * builder's recipe path is derivable from the formId alone
+ * (formIdFromDeployBranch), so one `/pulls` call suffices without a follow-up
+ * per-PR files fetch.
+ */
+export const listOpenDeployPRs = createServerFn({ method: "GET" })
+  .middleware([requireSession])
+  .handler(async ({ context }): Promise<OpenDeployPR[]> => {
+    const token = context.session.accessToken;
+    const heads = await listOpenPRHeads(token, resolveBaseBranch());
+    const out: OpenDeployPR[] = [];
+    for (const head of heads) {
+      const formId = formIdFromDeployBranch(head.headRef);
+      if (formId === null) continue; // not a Deploy branch (Erase, content, …)
+      out.push({
+        formId,
+        prNumber: head.number,
+        prUrl: head.htmlUrl,
+        branch: head.headRef,
+      });
+    }
+    return out;
+  });
 
 function renderErasePrBody({
   formId,

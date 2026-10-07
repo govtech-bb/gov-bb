@@ -45,39 +45,39 @@ away — which is exactly what the bad forms do.
 
 When you see a field that means one of these things, use the named component.
 
-| The field is…                         | Use this ref                          | Renders as        |
-| -------------------------------------- | ------------------------------------- | ----------------- |
-| First / given name                     | `components/first-name`               | text              |
-| Middle name(s)                         | `components/middle-name`              | text              |
-| Last / family / surname                | `components/last-name`                | text              |
-| Title / salutation (Mr/Mrs/Miss)       | `components/title`                    | select (w/ opts)  |
-| Sex / gender                           | `components/sex`                      | **radio** (M/F)   |
-| Marital status                         | `components/marital-status`           | select (w/ opts)  |
-| Date of birth — **and any date**       | `components/date-of-birth`            | 3-part day/mo/yr  |
-| National / ID number                   | `components/national-id-number`       | text, masked      |
-| National Insurance (NIS) number        | `components/national-insurance-number`| text              |
-| Passport number                        | `components/passport-number`          | text              |
-| TAMIS number                           | `components/tamis-number`             | text              |
-| Email address                          | `components/email`                    | email (validated) |
-| Phone (generic)                        | `components/telephone`                | tel (validated)   |
-| Phone — mobile / home / work / fax     | `components/{mobile,home,work}-telephone`, `components/fax-number` | tel |
-| Street address                         | `components/address`                  | text              |
-| Parish (Barbados)                      | `components/parish`                   | select (w/ opts)  |
-| Country                                | `components/country`                  | select (w/ opts)  |
-| Nationality / citizenship              | `components/nationality`              | select (w/ opts)  |
-| Town / city                            | `components/town`                     | text              |
-| Postcode                               | `components/postcode`                 | text              |
-| Primary school                         | `components/primary-school`           | select (w/ opts)  |
-| Secondary school                       | `components/secondary-school`         | select (w/ opts)  |
-| Relationship to applicant             | `components/relationship`             | select (w/ opts)  |
-| Bank / account name / number / type    | `components/{bank,account-name,account-number,account-type}` | text/select |
-| Declaration / "I confirm" checkbox     | `components/confirmation`             | single checkbox   |
-| File upload                            | `components/upload-document`          | file              |
-| Important notices / expandable info    | `components/show-hide`                | disclosure        |
-| Long free text                         | `components/generic-textarea` (or `components/additional-details`) | textarea |
-| Yes/No or custom choice                | `components/generic-radio` (+ options)| radio             |
-| Custom number                          | `components/generic-number`           | number            |
-| Custom free text (no named fit)        | `components/generic-text`             | text              |
+| The field is…                       | Use this ref                                                       | Renders as        |
+| ----------------------------------- | ------------------------------------------------------------------ | ----------------- |
+| First / given name                  | `components/first-name`                                            | text              |
+| Middle name(s)                      | `components/middle-name`                                           | text              |
+| Last / family / surname             | `components/last-name`                                             | text              |
+| Title / salutation (Mr/Mrs/Miss)    | `components/title`                                                 | select (w/ opts)  |
+| Sex / gender                        | `components/sex`                                                   | **radio** (M/F)   |
+| Marital status                      | `components/marital-status`                                        | select (w/ opts)  |
+| Date of birth — **and any date**    | `components/date-of-birth`                                         | 3-part day/mo/yr  |
+| National / ID number                | `components/national-id-number`                                    | text, masked      |
+| National Insurance (NIS) number     | `components/national-insurance-number`                             | text              |
+| Passport number                     | `components/passport-number`                                       | text              |
+| TAMIS number                        | `components/tamis-number`                                          | text              |
+| Email address                       | `components/email`                                                 | email (validated) |
+| Phone (generic)                     | `components/telephone`                                             | tel (validated)   |
+| Phone — mobile / home / work / fax  | `components/{mobile,home,work}-telephone`, `components/fax-number` | tel               |
+| Street address                      | `components/address`                                               | text              |
+| Parish (Barbados)                   | `components/parish`                                                | select (w/ opts)  |
+| Country                             | `components/country`                                               | select (w/ opts)  |
+| Nationality / citizenship           | `components/nationality`                                           | select (w/ opts)  |
+| Town / city                         | `components/town`                                                  | text              |
+| Postcode                            | `components/postcode`                                              | text              |
+| Primary school                      | `components/primary-school`                                        | select (w/ opts)  |
+| Secondary school                    | `components/secondary-school`                                      | select (w/ opts)  |
+| Relationship to applicant           | `components/relationship`                                          | select (w/ opts)  |
+| Bank / account name / number / type | `components/{bank,account-name,account-number,account-type}`       | text/select       |
+| Declaration / "I confirm" checkbox  | `components/confirmation`                                          | single checkbox   |
+| File upload                         | `components/upload-document`                                       | file              |
+| Important notices / expandable info | `components/show-hide`                                             | disclosure        |
+| Long free text                      | `components/generic-textarea` (or `components/additional-details`) | textarea          |
+| Yes/No or custom choice             | `components/generic-radio` (+ options)                             | radio             |
+| Custom number                       | `components/generic-number`                                        | number            |
+| Custom free text (no named fit)     | `components/generic-text`                                          | text              |
 
 > The named **select / radio** components (`title`, `sex`, `marital-status`,
 > `parish`, `country`, `nationality`, `primary-school`, `secondary-school`,
@@ -100,12 +100,17 @@ and tests must use the slug, not the display label.
    `First name` ✅ · `First Name` ❌ · `SUBJECT(S)` ❌ → `Subject(s)` ✅
    Match the registry default label where one exists ("National ID number",
    "Date of birth", "Email address", "Telephone number", "Marital status").
-2. **Descriptive and user-friendly**, written *to the citizen*.
+2. **Descriptive and user-friendly**, written _to the citizen_.
    `Telephone No` ❌ → `Telephone number` ✅ · `DOB` ❌ → `Date of birth` ✅
 3. **Don't override the label at all** unless the form needs wording different
    from the component default — the defaults are already correct.
 4. **Error messages** follow the field's sentence-case label:
    `"School is required"`, not `"SUBJECT(S) is required"`.
+5. **Never write "(optional)" into a label or hint.** Optionality is data:
+   set `required: { value: false }` and the renderer appends a muted
+   "(optional)" to the label itself. Required fields carry no mark — never
+   asterisks. Conditionally-optional fields (`optionalIf`) stay unmarked; the
+   toggle that relaxes them explains itself.
 
 ---
 
@@ -200,19 +205,19 @@ a broken stub; it must hold the confirmation checkbox.
 
 This recipe is the canonical "needs updating" form. Representative fixes:
 
-| Field            | Before (`1.2.0`)                                   | After                                                            |
-| ---------------- | -------------------------------------------------- | --------------------------------------------------------------- |
-| First/Last name  | `generic-text`, label `"First Name"`               | `components/first-name` / `components/last-name`, `"First name"` |
-| Gender           | `generic-text`, label `"Gender"`, `minLength: 2`   | `components/sex` (radio), label `"Gender"`                       |
-| Date of birth    | three `generic-number` fields `dob-day/month/year` | one `components/date-of-birth`                                   |
-| ID Number        | `generic-text`, `"ID Number"`, `minLength: 2`      | `components/national-id-number`, `"National ID number"`         |
-| Address          | `generic-text` (no parish)                         | `components/address` **followed by `components/parish`**         |
-| Email            | `generic-text`, `"Email"`, `minLength: 2`          | `components/email`, `"Email address"`                           |
-| Telephone No     | `generic-text`, `"Telephone No"`                   | `components/telephone`, `"Telephone number"`                    |
-| `SUBJECT(S)` etc.| SHOUTING labels                                    | `"Subject(s)"`, `"Alternative"`, `"Resit"`                      |
-| Subjects info    | `generic-text` `type:"info" disabled:true`         | `components/show-hide` (or step `description`)                  |
-| `conditional`    | `"conditional": "resit"` (ignored)                 | `fieldConditionalOn` behaviour on `resit`                       |
-| Declaration      | free-text `"Signature of Claimant"` + hand `Date`, then an **empty** `declaration` step | drop the signature/date; put one `components/confirmation` in the `declaration` step |
+| Field             | Before (`1.2.0`)                                                                        | After                                                                                |
+| ----------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| First/Last name   | `generic-text`, label `"First Name"`                                                    | `components/first-name` / `components/last-name`, `"First name"`                     |
+| Gender            | `generic-text`, label `"Gender"`, `minLength: 2`                                        | `components/sex` (radio), label `"Gender"`                                           |
+| Date of birth     | three `generic-number` fields `dob-day/month/year`                                      | one `components/date-of-birth`                                                       |
+| ID Number         | `generic-text`, `"ID Number"`, `minLength: 2`                                           | `components/national-id-number`, `"National ID number"`                              |
+| Address           | `generic-text` (no parish)                                                              | `components/address` **followed by `components/parish`**                             |
+| Email             | `generic-text`, `"Email"`, `minLength: 2`                                               | `components/email`, `"Email address"`                                                |
+| Telephone No      | `generic-text`, `"Telephone No"`                                                        | `components/telephone`, `"Telephone number"`                                         |
+| `SUBJECT(S)` etc. | SHOUTING labels                                                                         | `"Subject(s)"`, `"Alternative"`, `"Resit"`                                           |
+| Subjects info     | `generic-text` `type:"info" disabled:true`                                              | `components/show-hide` (or step `description`)                                       |
+| `conditional`     | `"conditional": "resit"` (ignored)                                                      | `fieldConditionalOn` behaviour on `resit`                                            |
+| Declaration       | free-text `"Signature of Claimant"` + hand `Date`, then an **empty** `declaration` step | drop the signature/date; put one `components/confirmation` in the `declaration` step |
 
 Compare against
 [`barbados-secondary-entrance-exam-choice/1.1.0.json`](apps/api/src/forms/form-definitions/recipes/barbados-secondary-entrance-exam-choice/1.1.0.json),
@@ -222,7 +227,7 @@ which already follows every rule above.
 
 ## Before you publish
 
-- [ ] Each field uses the most specific named component (generic-* only where nothing fits).
+- [ ] Each field uses the most specific named component (generic-\* only where nothing fits).
 - [ ] All labels are sentence case, descriptive, citizen-facing.
 - [ ] `address` is followed by `parish`; phone/email/ID/date use named components.
 - [ ] Named selects/radios reference the component without re-declaring options.

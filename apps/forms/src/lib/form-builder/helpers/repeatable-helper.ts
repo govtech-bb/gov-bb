@@ -342,8 +342,14 @@ export const addRepeatableStep = ({
     stepId: nextStepId,
   };
 
+  // The real update. Assign a NEW array rather than splicing in place: the
+  // renderer's visibleSteps useMemo is keyed on `formMeta.steps` identity, so an
+  // in-place splice leaves it stale — the guard then sees the freshly added
+  // instance as inactive and bounces the citizen to the next step (#2205).
   const currentStepIndex = formMeta.steps.indexOf(currentStep);
-  formMeta.steps.splice(currentStepIndex + 1, 0, nextStep); // The real update
+  const nextSteps = [...formMeta.steps];
+  nextSteps.splice(currentStepIndex + 1, 0, nextStep);
+  formMeta.steps = nextSteps;
 
   // This is a temporary update that will be replaced when the useMemo recalculates visible steps due to the change in formMeta.steps
   // This is needed, since by the time we call completeAndContinue, the memoized visible steps would not have been recalculated yet
@@ -405,7 +411,11 @@ export const removeRepeatableStep = ({
   );
 
   if (deleteFromIndex !== -1) {
-    formMeta.steps.splice(deleteFromIndex, toRemove.length);
+    // New array for the same reason as in addRepeatableStep — keep the memo
+    // keyed on `formMeta.steps` in sync with the removal.
+    const nextSteps = [...formMeta.steps];
+    nextSteps.splice(deleteFromIndex, toRemove.length);
+    formMeta.steps = nextSteps;
   }
 
   // Filter visible steps

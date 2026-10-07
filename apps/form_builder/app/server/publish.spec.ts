@@ -2,7 +2,11 @@ import type { Mock } from "vitest";
 /**
  * @vitest-environment node
  */
-import type { ServiceContractRecipe } from "@govtech-bb/form-types";
+import {
+  deployBranchPrefix,
+  serializeRecipe,
+  type ServiceContractRecipe,
+} from "@govtech-bb/form-types";
 
 // Mock the session-cipher module before importing the SUT.
 vi.mock("./session-cipher.server", () => ({
@@ -22,7 +26,12 @@ vi.mock("./api-client", async () => ({
 
 import { getSession } from "./session-cipher.server";
 import { api, ApiError } from "./api-client";
-import { publishRecipe, eraseRecipe } from "./publish";
+import {
+  publishRecipe,
+  eraseRecipe,
+  listOpenDeployPRs,
+  resolveBaseBranch,
+} from "./publish";
 
 const SESSION = {
   login: "alice",
@@ -39,6 +48,10 @@ const RECIPE: ServiceContractRecipe = {
   updatedAt: "2026-05-22T00:00:00.000Z",
   steps: [],
 };
+// Every Deploy stamps `updatedAt` at the write from the frozen clock below
+// (#2878), whatever the payload carried.
+const STAMPED_AT = new Date(1_700_000_000_000).toISOString();
+const STAMPED_RECIPE = { ...RECIPE, updatedAt: STAMPED_AT };
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -49,6 +62,34 @@ function jsonResponse(status: number, body: unknown): Response {
 
 function emptyResponse(status: number): Response {
   return new Response(null, { status });
+}
+
+/** GET /pulls response for "no Deploy PR is open yet for this form" — the
+ *  common case that every pre-#2390 publishRecipe test now needs at the front
+ *  of its fetch chain, since publishRecipe looks this up before deciding
+ *  whether to reuse a PR or create one. */
+function noOpenPRs(): Response {
+  return jsonResponse(200, []);
+}
+
+/** Blob sha of the recipe committed on the base branch — what the builder
+ *  captured when it loaded the form and sends back as `expectedSourceSha`
+ *  (#2489). */
+const COMMITTED_SHA = "3f786850e387550fdab836ed7e6dc881de23001b";
+
+/** GET contents on the base branch for the stale-base guard (#2489): by
+ *  default the committed recipe is still the revision the author loaded. */
+function committedFile(sha = COMMITTED_SHA): Response {
+  return jsonResponse(200, { sha });
+}
+
+/** Raw shape of one `GET /pulls` entry, as the GitHub REST API returns it. */
+function openPR(number: number, headRef: string) {
+  return {
+    number,
+    html_url: `https://github.com/govtech-bb/gov-bb/pull/${number}`,
+    head: { ref: headRef },
+  };
 }
 
 beforeEach(() => {
@@ -75,13 +116,20 @@ afterEach(() => {
 });
 
 describe("publishRecipe", () => {
-  // The GitHub steps (createBranchFrom → getContents → putFile → openPullRequest)
-  // hit globalThis.fetch; validate + the presence-enforcing save go through the
-  // api mock. #1196: publish overwrites the canonical flat file in place — no
-  // version reservation, gate, or versioned path.
+  // The GitHub steps (the #2489 stale-base guard's getContents on the base
+  // branch → findOpenPRByHeadRef → createBranchFrom → getContents → putFile →
+  // openPullRequest) hit globalThis.fetch; validate + the presence-enforcing
+  // save go through the api mock. #1196: publish overwrites the canonical flat
+  // file in place — no version reservation, gate, or versioned path. #2489:
+  // the very first GitHub call is the committed-recipe read the guard compares
+  // with `expectedSourceSha`, so every chain below leads with
+  // `committedFile()` (a 404 for a first publish), then `noOpenPRs()` (#2390)
+  // unless it's specifically testing the reuse path.
   function happyFetch() {
     return vi
-      .fn()
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(committedFile()) // GET committed recipe on base — stale-base guard (#2489)
+      .mockResolvedValueOnce(noOpenPRs()) // GET open PRs — none match
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
       ) // GET base ref
@@ -98,16 +146,21 @@ describe("publishRecipe", () => {
 
   it("saves the draft, overwrites the flat recipe in place, and opens a PR", async () => {
     const fetchMock = happyFetch();
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     const result = await publishRecipe({
-      data: { recipe: RECIPE, description: "Updates passport-renewal" },
+      data: {
+        recipe: RECIPE,
+        description: "Updates passport-renewal",
+        expectedSourceSha: COMMITTED_SHA,
+      },
       context: { session: SESSION },
-    });
+    } as never);
 
     expect(result).toEqual({
       prUrl: "https://github.com/govtech-bb/gov-bb/pull/42",
       prNumber: 42,
+      updatedExistingPR: false,
     });
 
     // Presence-enforcing save (PUT) replaces the version reservation (#1196).
@@ -116,24 +169,28 @@ describe("publishRecipe", () => {
       userLogin: "alice",
     });
 
-    // GET base ref (dev)
-    expect(fetchMock.mock.calls[0][0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/git/ref/heads/dev",
+    // GET open PRs (#2390) — checked before any branch is created.
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      "https://api.github.com/repos/govtech-bb/gov-bb/pulls?state=open&base=main&per_page=100&page=1",
+    );
+    // GET base ref (main, the default base branch)
+    expect(fetchMock.mock.calls[2][0]).toBe(
+      "https://api.github.com/repos/govtech-bb/gov-bb/git/ref/heads/main",
     );
     // POST create branch — versionless branch name
     const createBody = JSON.parse(
-      (fetchMock.mock.calls[1][1] as RequestInit).body as string,
+      (fetchMock.mock.calls[3][1] as RequestInit).body as string,
     );
     expect(createBody.ref).toBe(
       "refs/heads/form-builder/passport-renewal-1700000000000",
     );
     expect(createBody.sha).toBe("devsha123");
     // GET existing flat file for its blob sha
-    expect(fetchMock.mock.calls[2][0]).toContain(
+    expect(fetchMock.mock.calls[4][0]).toContain(
       "/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal.json",
     );
     // PUT overwrites the flat file in place, carrying the existing sha
-    const putCall = fetchMock.mock.calls[3];
+    const putCall = fetchMock.mock.calls[5];
     expect(putCall[0]).toBe(
       "https://api.github.com/repos/govtech-bb/gov-bb/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal.json",
     );
@@ -142,13 +199,13 @@ describe("publishRecipe", () => {
     expect(putBody.message).toBe("Publish passport-renewal");
     expect(putBody.sha).toBe("existing-blob-sha");
     expect(Buffer.from(putBody.content, "base64").toString("utf8")).toBe(
-      JSON.stringify(RECIPE, null, 2) + "\n",
+      serializeRecipe(STAMPED_RECIPE),
     );
     // POST PR
     const prBody = JSON.parse(
-      (fetchMock.mock.calls[4][1] as RequestInit).body as string,
+      (fetchMock.mock.calls[6][1] as RequestInit).body as string,
     );
-    expect(prBody.base).toBe("dev");
+    expect(prBody.base).toBe("main");
     expect(prBody.head).toBe("form-builder/passport-renewal-1700000000000");
     expect(prBody.title).toBe("Publish form: Passport Renewal");
     expect(prBody.body).toContain("Form ID: `passport-renewal`");
@@ -165,7 +222,9 @@ describe("publishRecipe", () => {
       createdAt: committedCreatedAt,
     });
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(committedFile()) // GET committed recipe on base — stale-base guard (#2489)
+      .mockResolvedValueOnce(noOpenPRs()) // GET open PRs — none match
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
       ) // GET base ref
@@ -183,26 +242,147 @@ describe("publishRecipe", () => {
           html_url: "https://github.com/govtech-bb/gov-bb/pull/42",
         }),
       ); // POST pulls
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     await publishRecipe({
-      data: { recipe: RECIPE, description: "" },
+      data: {
+        recipe: RECIPE,
+        description: "",
+        expectedSourceSha: COMMITTED_SHA,
+      },
       context: { session: SESSION },
-    });
+    } as never);
 
     const putBody = JSON.parse(
-      (fetchMock.mock.calls[3][1] as RequestInit).body as string,
+      (fetchMock.mock.calls[5][1] as RequestInit).body as string,
     );
     const written = JSON.parse(
       Buffer.from(putBody.content, "base64").toString("utf8"),
     );
     expect(written.createdAt).toBe(committedCreatedAt);
-    expect(written.updatedAt).toBe(RECIPE.updatedAt);
+    // #2878: stamped at the write, not carried from the payload.
+    expect(written.updatedAt).toBe(STAMPED_AT);
+  });
+
+  it("carries a committed field the builder cannot author through a publish that omits it", async () => {
+    // The Environmental Health routing block is passthrough-only in the
+    // builder, so a stale draft publishes without it — and the Contents PUT is
+    // a whole-file overwrite, which used to delete it (#2376/#2377). The
+    // published file must keep the committed block.
+    const catchmentRouting = {
+      coordinatesField: "about-restaurant.restaurant-address-coordinates",
+      parishField: "about-restaurant.restaurant-parish",
+    };
+    const committed = JSON.stringify({ ...RECIPE, catchmentRouting });
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(committedFile()) // GET committed recipe on base — stale-base guard (#2489)
+      .mockResolvedValueOnce(noOpenPRs()) // GET open PRs — none match
+      .mockResolvedValueOnce(
+        jsonResponse(200, { object: { sha: "devsha123" } }),
+      ) // GET base ref
+      .mockResolvedValueOnce(jsonResponse(201, { ref: "refs/heads/x" })) // POST create branch
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          sha: "existing-blob-sha",
+          content: Buffer.from(committed, "utf8").toString("base64"),
+        }),
+      ) // GET existing flat file (sha + content)
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c1" } })) // PUT contents
+      .mockResolvedValueOnce(
+        jsonResponse(201, {
+          number: 42,
+          html_url: "https://github.com/govtech-bb/gov-bb/pull/42",
+        }),
+      ); // POST pulls
+    globalThis.fetch = fetchMock;
+
+    // RECIPE has no catchmentRouting — exactly the draft that dropped it.
+    await publishRecipe({
+      data: {
+        recipe: RECIPE,
+        description: "",
+        expectedSourceSha: COMMITTED_SHA,
+      },
+      context: { session: SESSION },
+    } as never);
+
+    const putBody = JSON.parse(
+      (fetchMock.mock.calls[5][1] as RequestInit).body as string,
+    );
+    const written = JSON.parse(
+      Buffer.from(putBody.content, "base64").toString("utf8"),
+    );
+    expect(written.catchmentRouting).toEqual(catchmentRouting);
+  });
+
+  it("lets the published payload win over the committed value, and keeps an authored field the author cleared", async () => {
+    // Only fields the builder cannot author are carried forward: a payload that
+    // does carry the block owns it, and clearing an authored field (here:
+    // processors) stays cleared rather than being resurrected from the commit.
+    const committed = JSON.stringify({
+      ...RECIPE,
+      catchmentRouting: {
+        coordinatesField: "old.coords",
+        parishField: "old.parish",
+      },
+      processors: [{ type: "email", config: { recipientField: "a.b" } }],
+    });
+    const incoming = {
+      ...RECIPE,
+      catchmentRouting: {
+        coordinatesField: "new.coords",
+        parishField: "new.parish",
+      },
+    } as ServiceContractRecipe;
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(committedFile()) // GET committed recipe on base — stale-base guard (#2489)
+      .mockResolvedValueOnce(noOpenPRs()) // GET open PRs — none match
+      .mockResolvedValueOnce(
+        jsonResponse(200, { object: { sha: "devsha123" } }),
+      ) // GET base ref
+      .mockResolvedValueOnce(jsonResponse(201, { ref: "refs/heads/x" })) // POST create branch
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          sha: "existing-blob-sha",
+          content: Buffer.from(committed, "utf8").toString("base64"),
+        }),
+      ) // GET existing flat file (sha + content)
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c1" } })) // PUT contents
+      .mockResolvedValueOnce(
+        jsonResponse(201, {
+          number: 42,
+          html_url: "https://github.com/govtech-bb/gov-bb/pull/42",
+        }),
+      ); // POST pulls
+    globalThis.fetch = fetchMock;
+
+    (api.post as Mock).mockResolvedValue({ ok: true, data: incoming });
+    await publishRecipe({
+      data: {
+        recipe: incoming,
+        description: "",
+        expectedSourceSha: COMMITTED_SHA,
+      },
+      context: { session: SESSION },
+    } as never);
+
+    const putBody = JSON.parse(
+      (fetchMock.mock.calls[5][1] as RequestInit).body as string,
+    );
+    const written = JSON.parse(
+      Buffer.from(putBody.content, "base64").toString("utf8"),
+    );
+    expect(written.catchmentRouting.coordinatesField).toBe("new.coords");
+    expect(written.processors).toBeUndefined();
   });
 
   it("stamps a fresh createdAt on first publish (no existing file)", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(emptyResponse(404)) // GET committed recipe on base — none yet (first publish)
+      .mockResolvedValueOnce(noOpenPRs()) // GET open PRs — none match
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
       ) // GET base ref
@@ -215,20 +395,63 @@ describe("publishRecipe", () => {
           html_url: "https://github.com/govtech-bb/gov-bb/pull/42",
         }),
       ); // POST pulls
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     await publishRecipe({
-      data: { recipe: RECIPE, description: "" },
+      data: { recipe: RECIPE, description: "", expectedSourceSha: null },
       context: { session: SESSION },
-    });
+    } as never);
 
     const putBody = JSON.parse(
-      (fetchMock.mock.calls[3][1] as RequestInit).body as string,
+      (fetchMock.mock.calls[5][1] as RequestInit).body as string,
     );
-    // No existing file → no sha, recipe written verbatim with its minted stamps.
+    // No existing file → no sha; the recipe is written with its minted
+    // createdAt and `updatedAt` stamped at the write (#2878).
     expect(putBody.sha).toBeUndefined();
     expect(Buffer.from(putBody.content, "base64").toString("utf8")).toBe(
-      JSON.stringify(RECIPE, null, 2) + "\n",
+      serializeRecipe(STAMPED_RECIPE),
+    );
+  });
+
+  it("writes the recipe in canonical key order (#2487)", async () => {
+    // The fixture is deliberately mis-ordered (`version` ahead of the stamps,
+    // `steps` last). Deploy must normalize it, so a recipe hand-edited in one
+    // key order and re-deployed in another yields a diff of the changed lines
+    // instead of the whole file.
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(emptyResponse(404)) // GET committed recipe on base — none yet (first publish)
+      .mockResolvedValueOnce(noOpenPRs())
+      .mockResolvedValueOnce(
+        jsonResponse(200, { object: { sha: "devsha123" } }),
+      )
+      .mockResolvedValueOnce(jsonResponse(201, { ref: "refs/heads/x" }))
+      .mockResolvedValueOnce(emptyResponse(404)) // no existing file
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c1" } }))
+      .mockResolvedValueOnce(
+        jsonResponse(201, { number: 42, html_url: "https://pr/42" }),
+      );
+    globalThis.fetch = fetchMock;
+
+    await publishRecipe({
+      data: { recipe: RECIPE, description: "", expectedSourceSha: null },
+      context: { session: SESSION },
+    } as never);
+
+    const putBody = JSON.parse(
+      (fetchMock.mock.calls[5][1] as RequestInit).body as string,
+    );
+    expect(Buffer.from(putBody.content, "base64").toString("utf8")).toBe(
+      `{
+  "formId": "passport-renewal",
+  "title": "Passport Renewal",
+  "description": "Renew your passport",
+  "steps": [],
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "${STAMPED_AT}",
+  "version": "1.2.0"
+}
+`,
     );
   });
 
@@ -237,36 +460,123 @@ describe("publishRecipe", () => {
       ok: false,
       issues: [{ path: "steps", message: "no steps" }],
     });
-    const fetchMock = vi.fn();
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const fetchMock = vi.fn<typeof fetch>();
+    globalThis.fetch = fetchMock;
 
     await expect(
       publishRecipe({
-        data: { recipe: RECIPE, description: "" },
+        data: {
+          recipe: RECIPE,
+          description: "",
+          expectedSourceSha: COMMITTED_SHA,
+        },
         context: { session: SESSION },
-      }),
+      } as never),
     ).rejects.toThrow(/validation failed/i);
     expect(api.put).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("surfaces a read-only-lock conflict (409 on the save) and never touches GitHub", async () => {
+  it("surfaces a read-only-lock conflict (409 on the save) and never writes to GitHub", async () => {
     (api.put as Mock).mockRejectedValue(new ApiError(409, "conflict"));
-    const fetchMock = vi.fn();
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(committedFile()); // GET committed recipe on base — stale-base guard (#2489)
+    globalThis.fetch = fetchMock;
 
     await expect(
       publishRecipe({
-        data: { recipe: RECIPE, description: "" },
+        data: {
+          recipe: RECIPE,
+          description: "",
+          expectedSourceSha: COMMITTED_SHA,
+        },
         context: { session: SESSION },
-      }),
+      } as never),
     ).rejects.toThrow(/another editor holds this form/i);
-    expect(fetchMock).not.toHaveBeenCalled();
+    // Only the guard's read happened — no branch, no file PUT, no PR.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "https://api.github.com/repos/govtech-bb/gov-bb/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal.json?ref=main",
+    );
+  });
+
+  // ---------------------------------------------------------------------
+  // #2489 — refuse a stale base: the committed recipe moved after load.
+  // ---------------------------------------------------------------------
+
+  it("refuses when the committed recipe changed after the form was loaded, before saving or writing anything", async () => {
+    // A fix merged to the base branch while the author's tab was open
+    // (#2477 → #2479/#2482). This Deploy would overwrite it with the older
+    // draft, so it must stop before the row PUT, the branch and the PR.
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        committedFile("9b1d2c3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c"),
+      ); // GET committed recipe on base — a newer blob than the author loaded
+    globalThis.fetch = fetchMock;
+
+    await expect(
+      publishRecipe({
+        data: {
+          recipe: RECIPE,
+          description: "",
+          expectedSourceSha: COMMITTED_SHA,
+        },
+        context: { session: SESSION },
+      } as never),
+    ).rejects.toThrow(
+      /The published source for passport-renewal changed after you opened it\. Reload and compare before deploying\./,
+    );
+    expect(api.put).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses when the author loaded a form with no committed copy but one now exists on the base branch", async () => {
+    // Typically the author's own earlier Deploy merged while the tab stayed
+    // open: the form they believe is new is now committed, and this Deploy
+    // would overwrite it unseen.
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(committedFile()); // GET committed recipe on base — exists
+    globalThis.fetch = fetchMock;
+
+    await expect(
+      publishRecipe({
+        data: { recipe: RECIPE, description: "", expectedSourceSha: null },
+        context: { session: SESSION },
+      } as never),
+    ).rejects.toThrow(/changed after you opened it/);
+    expect(api.put).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed when the committed source cannot be read, without saving or writing", async () => {
+    // An unreadable base is not "unchanged".
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse(500, { message: "boom" })); // GET committed recipe on base — GitHub error
+    globalThis.fetch = fetchMock;
+
+    await expect(
+      publishRecipe({
+        data: {
+          recipe: RECIPE,
+          description: "",
+          expectedSourceSha: COMMITTED_SHA,
+        },
+        context: { session: SESSION },
+      } as never),
+    ).rejects.toThrow(/Could not check the current published source/);
+    expect(api.put).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("deletes the branch when the contents PUT fails", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(committedFile()) // GET committed recipe on base — stale-base guard (#2489)
+      .mockResolvedValueOnce(noOpenPRs()) // GET open PRs — none match
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
       )
@@ -274,13 +584,17 @@ describe("publishRecipe", () => {
       .mockResolvedValueOnce(jsonResponse(200, { sha: "blob" }))
       .mockResolvedValueOnce(emptyResponse(422)) // PUT fails
       .mockResolvedValueOnce(emptyResponse(204)); // DELETE branch cleanup
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     await expect(
       publishRecipe({
-        data: { recipe: RECIPE, description: "" },
+        data: {
+          recipe: RECIPE,
+          description: "",
+          expectedSourceSha: COMMITTED_SHA,
+        },
         context: { session: SESSION },
-      }),
+      } as never),
     ).rejects.toThrow(/failed to write recipe file/i);
     const del = fetchMock.mock.calls.find(
       (c) => (c[1] as RequestInit | undefined)?.method === "DELETE",
@@ -293,18 +607,453 @@ describe("publishRecipe", () => {
   it("uses PUBLISH_BASE_BRANCH for the base ref and PR base when set", async () => {
     process.env.PUBLISH_BASE_BRANCH = "sandbox";
     const fetchMock = happyFetch();
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     await publishRecipe({
-      data: { recipe: RECIPE, description: "" },
+      data: {
+        recipe: RECIPE,
+        description: "",
+        expectedSourceSha: COMMITTED_SHA,
+      },
       context: { session: SESSION },
-    });
+    } as never);
 
-    expect(fetchMock.mock.calls[0][0]).toContain("/git/ref/heads/sandbox");
+    // The stale-base guard reads the committed recipe off the configured base
+    // branch too (#2489), not the default.
+    expect(fetchMock.mock.calls[0][0]).toContain("?ref=sandbox");
+    expect(fetchMock.mock.calls[2][0]).toContain("/git/ref/heads/sandbox");
     const prBody = JSON.parse(
-      (fetchMock.mock.calls[4][1] as RequestInit).body as string,
+      (fetchMock.mock.calls[6][1] as RequestInit).body as string,
     );
     expect(prBody.base).toBe("sandbox");
+  });
+
+  // ---------------------------------------------------------------------
+  // #2390 — reuse an already-open Deploy PR instead of opening a duplicate.
+  // ---------------------------------------------------------------------
+
+  it("reuses an already-open Deploy PR for this form: pushes onto its branch and comments, without creating a new branch", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(committedFile()) // GET committed recipe on base — stale-base guard (#2489)
+      // GET open PRs — one already open for this exact form
+      .mockResolvedValueOnce(
+        jsonResponse(200, [
+          openPR(17, "form-builder/passport-renewal-1699999999999"),
+        ]),
+      )
+      // GET the recipe file on the PR's branch, for its blob sha
+      .mockResolvedValueOnce(jsonResponse(200, { sha: "pr-blob-sha" }))
+      // PUT contents onto the PR's branch
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c2" } }))
+      // POST a PR comment with the author's description
+      .mockResolvedValueOnce(jsonResponse(201, { id: 1 }));
+    globalThis.fetch = fetchMock;
+
+    const result = await publishRecipe({
+      data: {
+        recipe: RECIPE,
+        description: "Bumped a copy typo",
+        expectedSourceSha: COMMITTED_SHA,
+      },
+      context: { session: SESSION },
+    } as never);
+
+    expect(result).toEqual({
+      prUrl: "https://github.com/govtech-bb/gov-bb/pull/17",
+      prNumber: 17,
+      updatedExistingPR: true,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+
+    // No branch was created for the reuse path.
+    const createBranchCall = fetchMock.mock.calls.find(
+      (c) => c[0] === "https://api.github.com/repos/govtech-bb/gov-bb/git/refs",
+    );
+    expect(createBranchCall).toBeUndefined();
+
+    // The write targets the existing PR's branch, not a fresh one.
+    expect(fetchMock.mock.calls[2][0]).toContain(
+      "/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal.json",
+    );
+    const putCall = fetchMock.mock.calls[3];
+    const putBody = JSON.parse((putCall[1] as RequestInit).body as string);
+    expect(putBody.branch).toBe("form-builder/passport-renewal-1699999999999");
+    expect(putBody.sha).toBe("pr-blob-sha");
+
+    // The description is posted as a PR comment crediting the author, with no
+    // injected timestamp (GitHub timestamps comments itself).
+    const commentCall = fetchMock.mock.calls[4];
+    expect(commentCall[0]).toBe(
+      "https://api.github.com/repos/govtech-bb/gov-bb/issues/17/comments",
+    );
+    const commentBody = JSON.parse(
+      (commentCall[1] as RequestInit).body as string,
+    );
+    expect(commentBody.body).toContain(
+      "Re-deployed from the form builder by @alice",
+    );
+    expect(commentBody.body).toContain("Bumped a copy typo");
+  });
+
+  // This is the regression the whole ticket hinges on: deployBranchPrefix's
+  // naive `startsWith` would have let "passport" match
+  // "form-builder/passport-renewal-<ts>" and push the wrong recipe onto the
+  // sibling form's PR.
+  it("carries a field the builder cannot author when reusing an open PR, too", async () => {
+    // The reuse path is also a whole-file Contents overwrite, so it needs the
+    // same passthrough the create path got in #2377 — otherwise redeploying
+    // onto an open PR would delete catchmentRouting exactly the way the
+    // original bug did, on a brand-new code path (#2390).
+    const catchmentRouting = {
+      coordinatesField: "about-restaurant.restaurant-address-coordinates",
+      parishField: "about-restaurant.restaurant-parish",
+    };
+    const committed = JSON.stringify({ ...RECIPE, catchmentRouting });
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(committedFile()) // GET committed recipe on base — stale-base guard (#2489)
+      .mockResolvedValueOnce(
+        jsonResponse(200, [
+          openPR(17, "form-builder/passport-renewal-1699999999999"),
+        ]),
+      ) // GET open PRs — one already open for this form
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          sha: "pr-blob-sha",
+          content: Buffer.from(committed, "utf8").toString("base64"),
+        }),
+      ) // GET the recipe on the PR branch (sha + content)
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c2" } })); // PUT
+    globalThis.fetch = fetchMock;
+
+    // RECIPE carries no catchmentRouting — the stale-draft case.
+    await publishRecipe({
+      data: {
+        recipe: RECIPE,
+        description: "",
+        expectedSourceSha: COMMITTED_SHA,
+      },
+      context: { session: SESSION },
+    } as never);
+
+    const putBody = JSON.parse(
+      (fetchMock.mock.calls[3][1] as RequestInit).body as string,
+    );
+    const written = JSON.parse(
+      Buffer.from(putBody.content, "base64").toString("utf8"),
+    );
+    expect(written.catchmentRouting).toEqual(catchmentRouting);
+  });
+
+  it("sibling-branch guard: formId 'passport' must not reuse the open PR for 'passport-renewal'", async () => {
+    const siblingRecipe: ServiceContractRecipe = {
+      ...RECIPE,
+      formId: "passport",
+      title: "Passport",
+    };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(emptyResponse(404)) // GET committed recipe on base — none yet (first publish)
+      // GET open PRs — only "passport-renewal"'s PR is open, not "passport"'s
+      .mockResolvedValueOnce(
+        jsonResponse(200, [
+          openPR(17, "form-builder/passport-renewal-1699999999999"),
+        ]),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(200, { object: { sha: "devsha123" } }),
+      ) // GET base ref
+      .mockResolvedValueOnce(jsonResponse(201, { ref: "refs/heads/x" })) // POST create branch
+      .mockResolvedValueOnce(emptyResponse(404)) // GET existing flat file for "passport" — none yet
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c1" } })) // PUT contents
+      .mockResolvedValueOnce(
+        jsonResponse(201, {
+          number: 43,
+          html_url: "https://github.com/govtech-bb/gov-bb/pull/43",
+        }),
+      ); // POST pulls — its own new PR
+    globalThis.fetch = fetchMock;
+
+    const result = await publishRecipe({
+      data: { recipe: siblingRecipe, description: "", expectedSourceSha: null },
+      context: { session: SESSION },
+    } as never);
+
+    expect(result).toEqual({
+      prUrl: "https://github.com/govtech-bb/gov-bb/pull/43",
+      prNumber: 43,
+      updatedExistingPR: false,
+    });
+
+    // Its own branch was created — "passport" did not piggyback on
+    // "passport-renewal"'s PR.
+    const createBody = JSON.parse(
+      (fetchMock.mock.calls[3][1] as RequestInit).body as string,
+    );
+    expect(createBody.ref).toBe(
+      "refs/heads/form-builder/passport-1700000000000",
+    );
+  });
+
+  it("an open Erase PR for this form does not satisfy the Deploy-PR lookup", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(committedFile()) // GET committed recipe on base — stale-base guard (#2489)
+      // GET open PRs — only an Erase PR is open for this form
+      .mockResolvedValueOnce(
+        jsonResponse(200, [
+          openPR(5, "form-builder/erase-passport-renewal-1699999999999"),
+        ]),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(200, { object: { sha: "devsha123" } }),
+      )
+      .mockResolvedValueOnce(jsonResponse(201, { ref: "refs/heads/x" }))
+      .mockResolvedValueOnce(jsonResponse(200, { sha: "existing-blob-sha" }))
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c1" } }))
+      .mockResolvedValueOnce(
+        jsonResponse(201, {
+          number: 42,
+          html_url: "https://github.com/govtech-bb/gov-bb/pull/42",
+        }),
+      );
+    globalThis.fetch = fetchMock;
+
+    const result = await publishRecipe({
+      data: {
+        recipe: RECIPE,
+        description: "",
+        expectedSourceSha: COMMITTED_SHA,
+      },
+      context: { session: SESSION },
+    } as never);
+
+    expect(result).toEqual({
+      prUrl: "https://github.com/govtech-bb/gov-bb/pull/42",
+      prNumber: 42,
+      updatedExistingPR: false,
+    });
+  });
+
+  it("a form whose id begins with 'erase-' does not reuse another form's Erase PR", async () => {
+    // eraseBranchName("passport") and deployBranchName("erase-passport") are
+    // the same string, so only the parser's erase-namespace check keeps a
+    // Deploy from landing a recipe on a branch whose job is deleting one.
+    const eraseLikeRecipe: ServiceContractRecipe = {
+      ...RECIPE,
+      formId: "erase-passport",
+      title: "Erase passport",
+    };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(emptyResponse(404)) // GET committed recipe on base — none yet (first publish)
+      // GET open PRs — only "passport"'s Erase PR is open
+      .mockResolvedValueOnce(
+        jsonResponse(200, [
+          openPR(5, "form-builder/erase-passport-1699999999999"),
+        ]),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(200, { object: { sha: "devsha123" } }),
+      ) // GET base ref
+      .mockResolvedValueOnce(jsonResponse(201, { ref: "refs/heads/x" })) // POST create branch
+      .mockResolvedValueOnce(emptyResponse(404)) // GET existing flat file — none yet
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c1" } })) // PUT contents
+      .mockResolvedValueOnce(
+        jsonResponse(201, {
+          number: 44,
+          html_url: "https://github.com/govtech-bb/gov-bb/pull/44",
+        }),
+      ); // POST pulls — its own new PR
+    globalThis.fetch = fetchMock;
+
+    const result = await publishRecipe({
+      data: {
+        recipe: eraseLikeRecipe,
+        description: "",
+        expectedSourceSha: null,
+      },
+      context: { session: SESSION },
+    } as never);
+
+    expect(result).toEqual({
+      prUrl: "https://github.com/govtech-bb/gov-bb/pull/44",
+      prNumber: 44,
+      updatedExistingPR: false,
+    });
+    const createBody = JSON.parse(
+      (fetchMock.mock.calls[3][1] as RequestInit).body as string,
+    );
+    expect(createBody.ref).toBe(
+      "refs/heads/form-builder/erase-passport-1700000000000",
+    );
+  });
+
+  it("reuses the open Deploy PR of a form whose id is too long for the branch to carry in full (#2488)", async () => {
+    // 84 chars — a real recipe id on main. Its branch carries a truncated,
+    // hashed label, so the reuse lookup must compare labels, not ids.
+    const longId =
+      "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026";
+    const longRecipe: ServiceContractRecipe = {
+      ...RECIPE,
+      formId: longId,
+      title: "Summer camp",
+    };
+    const head = `${deployBranchPrefix(longId)}1699999999999`;
+    expect(head).not.toContain(longId);
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(committedFile()) // GET committed recipe on base — stale-base guard (#2489)
+      .mockResolvedValueOnce(jsonResponse(200, [openPR(17, head)])) // GET open PRs
+      .mockResolvedValueOnce(jsonResponse(200, { sha: "pr-blob-sha" })) // GET file on the PR branch
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c2" } })); // PUT contents
+    globalThis.fetch = fetchMock;
+
+    const result = await publishRecipe({
+      data: {
+        recipe: longRecipe,
+        description: "",
+        expectedSourceSha: COMMITTED_SHA,
+      },
+      context: { session: SESSION },
+    } as never);
+
+    expect(result).toEqual({
+      prUrl: "https://github.com/govtech-bb/gov-bb/pull/17",
+      prNumber: 17,
+      updatedExistingPR: true,
+    });
+    expect(fetchMock.mock.calls[2][0]).toContain(
+      `/contents/apps/api/src/forms/form-definitions/recipes/${longId}.json`,
+    );
+    const putBody = JSON.parse(
+      (fetchMock.mock.calls[3][1] as RequestInit).body as string,
+    );
+    expect(putBody.branch).toBe(head);
+  });
+
+  it("posts no PR comment when the description is empty", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(committedFile()) // GET committed recipe on base — stale-base guard (#2489)
+      .mockResolvedValueOnce(
+        jsonResponse(200, [
+          openPR(17, "form-builder/passport-renewal-1699999999999"),
+        ]),
+      )
+      .mockResolvedValueOnce(jsonResponse(200, { sha: "pr-blob-sha" }))
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c2" } }));
+    globalThis.fetch = fetchMock;
+
+    const result = await publishRecipe({
+      // Whitespace-only trims to empty — carries no information a comment
+      // would add.
+      data: {
+        recipe: RECIPE,
+        description: "   ",
+        expectedSourceSha: COMMITTED_SHA,
+      },
+      context: { session: SESSION },
+    } as never);
+
+    expect(result.updatedExistingPR).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(4); // no comment POST
+  });
+
+  it("resolves the reuse deploy successfully even when the PR comment POST fails", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(committedFile()) // GET committed recipe on base — stale-base guard (#2489)
+      .mockResolvedValueOnce(
+        jsonResponse(200, [
+          openPR(17, "form-builder/passport-renewal-1699999999999"),
+        ]),
+      )
+      .mockResolvedValueOnce(jsonResponse(200, { sha: "pr-blob-sha" }))
+      .mockResolvedValueOnce(jsonResponse(201, { commit: { sha: "c2" } }))
+      .mockResolvedValueOnce(jsonResponse(500, { message: "boom" })); // comment POST fails
+    globalThis.fetch = fetchMock;
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const result = await publishRecipe({
+      data: {
+        recipe: RECIPE,
+        description: "Fixed a typo",
+        expectedSourceSha: COMMITTED_SHA,
+      },
+      context: { session: SESSION },
+    } as never);
+
+    // The recipe is already committed by this point — a failed comment must
+    // never fail a deploy that already succeeded.
+    expect(result).toEqual({
+      prUrl: "https://github.com/govtech-bb/gov-bb/pull/17",
+      prNumber: 17,
+      updatedExistingPR: true,
+    });
+    expect(warnSpy).toHaveBeenCalled();
+  });
+
+  it("does not DELETE the existing PR's branch when the reuse-path write fails", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(committedFile()) // GET committed recipe on base — stale-base guard (#2489)
+      .mockResolvedValueOnce(
+        jsonResponse(200, [
+          openPR(17, "form-builder/passport-renewal-1699999999999"),
+        ]),
+      )
+      .mockResolvedValueOnce(jsonResponse(200, { sha: "pr-blob-sha" }))
+      .mockResolvedValueOnce(emptyResponse(422)); // PUT fails
+    globalThis.fetch = fetchMock;
+
+    await expect(
+      publishRecipe({
+        data: {
+          recipe: RECIPE,
+          description: "",
+          expectedSourceSha: COMMITTED_SHA,
+        },
+        context: { session: SESSION },
+      } as never),
+    ).rejects.toThrow(/failed to write recipe file/i);
+
+    // Deleting an already-open PR's branch would close that PR and destroy
+    // the review — the reuse path must never do it.
+    const del = fetchMock.mock.calls.find(
+      (c) => (c[1] as RequestInit | undefined)?.method === "DELETE",
+    );
+    expect(del).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe("listOpenDeployPRs", () => {
+  it("maps open Deploy branches to their formId, dropping Erase and non-Deploy refs", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        jsonResponse(200, [
+          openPR(17, "form-builder/passport-renewal-1699999999999"),
+          openPR(5, "form-builder/erase-passport-renewal-1699999999999"),
+          openPR(9, "start-page-some-service-1699999999999"),
+        ]),
+      );
+    globalThis.fetch = fetchMock;
+
+    const result = await listOpenDeployPRs({
+      context: { session: SESSION },
+    } as never);
+
+    expect(result).toEqual([
+      {
+        formId: "passport-renewal",
+        prNumber: 17,
+        prUrl: "https://github.com/govtech-bb/gov-bb/pull/17",
+        branch: "form-builder/passport-renewal-1699999999999",
+      },
+    ]);
   });
 });
 
@@ -327,7 +1076,7 @@ describe("eraseRecipe", () => {
 
   it("opens a single-commit folder-delete PR on the happy path", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       // listVersions: directory listing on the base branch
       .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.0.0", "1.1.0"])))
       // get base ref
@@ -355,12 +1104,12 @@ describe("eraseRecipe", () => {
           html_url: "https://github.com/govtech-bb/gov-bb/pull/99",
         }),
       );
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     const result = await eraseRecipe({
       data: ERASE,
       context: { session: SESSION },
-    });
+    } as never);
 
     expect(result).toEqual({
       prUrl: "https://github.com/govtech-bb/gov-bb/pull/99",
@@ -373,12 +1122,12 @@ describe("eraseRecipe", () => {
 
     // listVersions reads on the base branch.
     expect(fetchMock.mock.calls[0][0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal?ref=dev",
+      "https://api.github.com/repos/govtech-bb/gov-bb/contents/apps/api/src/forms/form-definitions/recipes/passport-renewal?ref=main",
     );
 
     // Base ref read.
     expect(fetchMock.mock.calls[1][0]).toBe(
-      "https://api.github.com/repos/govtech-bb/gov-bb/git/ref/heads/dev",
+      "https://api.github.com/repos/govtech-bb/gov-bb/git/ref/heads/main",
     );
 
     // Branch is namespaced for erase and points at the base tip.
@@ -447,7 +1196,7 @@ describe("eraseRecipe", () => {
       "https://api.github.com/repos/govtech-bb/gov-bb/pulls",
     );
     const prBody = JSON.parse((prCall[1] as RequestInit).body as string);
-    expect(prBody.base).toBe("dev");
+    expect(prBody.base).toBe("main");
     expect(prBody.head).toBe(
       "form-builder/erase-passport-renewal-1700000000000",
     );
@@ -463,11 +1212,11 @@ describe("eraseRecipe", () => {
 
   it("refuses (no branch, no PR) when the form is disabled", async () => {
     (api.get as Mock).mockResolvedValue(["passport-renewal"]);
-    const fetchMock = vi.fn();
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const fetchMock = vi.fn<typeof fetch>();
+    globalThis.fetch = fetchMock;
 
     await expect(
-      eraseRecipe({ data: ERASE, context: { session: SESSION } }),
+      eraseRecipe({ data: ERASE, context: { session: SESSION } } as never),
     ).rejects.toThrow(/disabled/i);
 
     // The disabled gate fires before any GitHub call.
@@ -476,13 +1225,13 @@ describe("eraseRecipe", () => {
 
   it("refuses (no branch, no PR) when the folder has no versions to erase", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       // listVersions: empty folder (404 -> [])
       .mockResolvedValueOnce(emptyResponse(404));
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     await expect(
-      eraseRecipe({ data: ERASE, context: { session: SESSION } }),
+      eraseRecipe({ data: ERASE, context: { session: SESSION } } as never),
     ).rejects.toThrow(/nothing to erase/i);
 
     // Only the listing was attempted — no branch created.
@@ -491,7 +1240,7 @@ describe("eraseRecipe", () => {
 
   it("cleans up the branch when tree creation fails", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.0.0"])))
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
@@ -504,10 +1253,10 @@ describe("eraseRecipe", () => {
       .mockResolvedValueOnce(jsonResponse(422, { message: "boom" }))
       // cleanup DELETE
       .mockResolvedValueOnce(emptyResponse(204));
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     await expect(
-      eraseRecipe({ data: ERASE, context: { session: SESSION } }),
+      eraseRecipe({ data: ERASE, context: { session: SESSION } } as never),
     ).rejects.toThrow(/Failed to create tree/);
 
     const cleanup = fetchMock.mock.calls[5];
@@ -519,17 +1268,17 @@ describe("eraseRecipe", () => {
 
   it("does not attempt cleanup when branch creation fails", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.0.0"])))
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
       )
       // create branch fails
       .mockResolvedValueOnce(jsonResponse(422, { message: "ref exists" }));
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     await expect(
-      eraseRecipe({ data: ERASE, context: { session: SESSION } }),
+      eraseRecipe({ data: ERASE, context: { session: SESSION } } as never),
     ).rejects.toThrow(/Failed to create branch/);
 
     // No DELETE — the branch was never created.
@@ -539,7 +1288,7 @@ describe("eraseRecipe", () => {
   it("erases on the configured PUBLISH_BASE_BRANCH when set", async () => {
     process.env.PUBLISH_BASE_BRANCH = "sandbox";
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.0.0"])))
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "sandboxsha" } }),
@@ -557,9 +1306,9 @@ describe("eraseRecipe", () => {
           html_url: "https://github.com/govtech-bb/gov-bb/pull/7",
         }),
       );
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
-    await eraseRecipe({ data: ERASE, context: { session: SESSION } });
+    await eraseRecipe({ data: ERASE, context: { session: SESSION } } as never);
 
     // listVersions and the base ref both read sandbox.
     expect(fetchMock.mock.calls[0][0]).toContain("?ref=sandbox");
@@ -574,7 +1323,7 @@ describe("eraseRecipe", () => {
 
   it("cleans up the branch when PR creation (final step) fails", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(jsonResponse(200, dirListing(["1.0.0"])))
       .mockResolvedValueOnce(
         jsonResponse(200, { object: { sha: "devsha123" } }),
@@ -592,10 +1341,10 @@ describe("eraseRecipe", () => {
       .mockResolvedValueOnce(jsonResponse(500, { message: "internal" }))
       // cleanup DELETE
       .mockResolvedValueOnce(emptyResponse(204));
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
 
     await expect(
-      eraseRecipe({ data: ERASE, context: { session: SESSION } }),
+      eraseRecipe({ data: ERASE, context: { session: SESSION } } as never),
     ).rejects.toThrow(/Failed to open pull request/);
 
     const cleanup = fetchMock.mock.calls[8];
@@ -606,8 +1355,8 @@ describe("eraseRecipe", () => {
   });
 
   it("rejects an empty reason without consulting the disabled index or GitHub", async () => {
-    const fetchMock = vi.fn();
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const fetchMock = vi.fn<typeof fetch>();
+    globalThis.fetch = fetchMock;
 
     // The reason is the audit trail for a permanent delete — the server (not
     // just the bypassable client modal) must require it.
@@ -615,13 +1364,42 @@ describe("eraseRecipe", () => {
       eraseRecipe({
         data: { ...ERASE, reason: "" },
         context: { session: SESSION },
-      }),
+      } as never),
     ).rejects.toThrow();
 
     expect(api.get).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe("resolveBaseBranch — production fail-fast (#1366)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    delete process.env.PUBLISH_BASE_BRANCH;
+    delete process.env.PUBLISH_BASE_BRANCH_DEFAULT;
+  });
+
+  it("returns the runtime PUBLISH_BASE_BRANCH when set", () => {
+    process.env.PUBLISH_BASE_BRANCH = "sandbox";
+    expect(resolveBaseBranch()).toBe("sandbox");
+  });
+
+  it("falls back to the baked default when only PUBLISH_BASE_BRANCH_DEFAULT is set", () => {
+    process.env.PUBLISH_BASE_BRANCH_DEFAULT = "main";
+    expect(resolveBaseBranch()).toBe("main");
+  });
+
+  it("uses the dev default 'main' when nothing is set in a dev build", () => {
+    vi.stubEnv("DEV", true);
+    expect(resolveBaseBranch()).toBe("main");
+  });
+
+  it("throws when nothing is set in a production build", () => {
+    vi.stubEnv("DEV", false);
+    expect(() => resolveBaseBranch()).toThrow(/PUBLISH_BASE_BRANCH/);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // formId path-injection guard (#293) — a crafted formId must be rejected before
 // any GitHub/backend call so it can never reach a request path or branch name.
@@ -630,12 +1408,16 @@ describe("formId validation (#293)", () => {
   const TRAVERSAL_ID = "../../../.github/workflows/evil";
 
   it("publishRecipe rejects a traversal formId before any GitHub/API call", async () => {
-    const fetchMock = vi.fn();
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const fetchMock = vi.fn<typeof fetch>();
+    globalThis.fetch = fetchMock;
 
     await expect(
       publishRecipe({
-        data: { recipe: { ...RECIPE, formId: TRAVERSAL_ID }, description: "" },
+        data: {
+          recipe: { ...RECIPE, formId: TRAVERSAL_ID },
+          description: "",
+          expectedSourceSha: null,
+        },
       }),
     ).rejects.toThrow(/Invalid form ID/);
 
@@ -646,8 +1428,8 @@ describe("formId validation (#293)", () => {
   });
 
   it("eraseRecipe rejects a traversal formId before any GitHub/API call", async () => {
-    const fetchMock = vi.fn();
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const fetchMock = vi.fn<typeof fetch>();
+    globalThis.fetch = fetchMock;
 
     await expect(
       eraseRecipe({

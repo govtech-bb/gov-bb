@@ -49,6 +49,7 @@ export { GenericCheckboxAccordion } from "./generic-checkbox-accordion";
 export { GenericRadio } from "./generic-radio";
 export { GenericFile } from "./generic-file";
 export { GenericSelect } from "./generic-select";
+export { OpeningHours } from "./opening-hours";
 export { ShowHide } from "./show-hide";
 
 import { AccountName } from "./account-name";
@@ -101,6 +102,7 @@ import { GenericCheckboxAccordion } from "./generic-checkbox-accordion";
 import { GenericRadio } from "./generic-radio";
 import { GenericFile } from "./generic-file";
 import { GenericSelect } from "./generic-select";
+import { OpeningHours } from "./opening-hours";
 import { ShowHide } from "./show-hide";
 import type { Primitive } from "@govtech-bb/form-types";
 
@@ -158,13 +160,14 @@ const ALL = [
   Title,
   UploadDocument,
   WorkTelephone,
+  OpeningHours,
   ShowHide,
   ...PRIMITIVES,
 ] as const satisfies Primitive[];
 
 // Completeness guard: bump the literal type whenever you add a component to
 // ALL, so a registered-but-unlisted component fails the build.
-const _componentCount: 51 = ALL.length;
+const _componentCount: 52 = ALL.length;
 
 export const REGISTRY_COMPONENTS: Record<`components/${string}`, Primitive> =
   Object.fromEntries(ALL.map((c) => [`components/${c.fieldId}`, c]));

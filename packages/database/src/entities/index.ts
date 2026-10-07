@@ -20,6 +20,7 @@ export { FormDisabledOverrideEntity } from "./form-disabled-override.entity";
 export { MdaContactEntity } from "./mda-contact.entity";
 export type { MdaContactAddress } from "./mda-contact.entity";
 export { FormConfigEntity } from "./form-config.entity";
+export { CatchmentContactEntity } from "./catchment-contact.entity";
 export { FormEditingSessionEntity } from "./form-editing-session.entity";
 export { ServiceStatusEntity, ServiceStatus } from "./service-status.entity";
 export { ServiceStatusAuditLogEntity } from "./service-status-audit-log.entity";
@@ -28,3 +29,8 @@ export {
   NotificationOutcome,
   NotificationDeliveryStatus,
 } from "./notification-log.entity";
+export {
+  WaterSubscriberEntity,
+  WaterSubscriberStatus,
+} from "./water-subscriber.entity";
+export { WaterSentAlertEntity } from "./water-sent-alert.entity";

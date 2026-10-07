@@ -6,8 +6,10 @@ Guidance for working in this repo. Use **pnpm** for everything — never `npm`.
 
 `main` is the trunk and the default base for pull requests. Branch off `main`,
 keep the branch short-lived, and open the PR **against `main`** — never against
-`sandbox`/`staging`/`prod`. Merges to `main` are CI-gated (the "Main CI
-Required" ruleset: PR + status checks, no review required for now).
+`sandbox`/`staging`/`prod`. Merges to `main` are gated by the "Main CI
+Required" ruleset: PR + status checks + **one approving review**. Green CI alone
+does not make a PR mergeable, so never merge your own PR on green — hand it
+over for review.
 
 Merging to `main` drives a **sequential deploy fan-out**:
 
@@ -97,6 +99,21 @@ name" step fails fast in CI, and a local PreToolUse hook
 (`.claude/hooks/block-dotted-branch.sh`) blocks branch-creating git commands
 with a dotted name.
 
+### Keep a branch name to 63 characters once `/` becomes `-`
+
+The same preview host is a single DNS label, capped at **63 characters**, and
+Amplify builds it from the branch with every `/` turned into `-`. A longer
+branch gets a hostname that never resolves (`ERR_NAME_NOT_RESOLVED`), so the
+A11y scan and forms smoke gate fail on infrastructure rather than on the
+change and read as "flaky, merge anyway" (#2488). The same two guards enforce
+this. The form builder's auto-generated branches (`form-builder/<id>-<ts>`,
+`start-page-<slug>-<ts>`) fit themselves via `fitBranchSegment` in
+`@govtech-bb/form-types`, which truncates the id or slug and appends a short
+hash when the name would overshoot. So a branch carries a *label* derived from
+the id, not necessarily the id: join an open Deploy PR to a form with
+`formIdFromDeployBranch(headRef) === deployBranchLabel(formId)` (see ADR 0070
+for why the parser takes no candidate), never by comparing to `formId`.
+
 ### When creating a GitHub issue, assign it to the author
 
 Whenever you create a GitHub issue (`gh issue create`), always assign it to the
@@ -175,6 +192,12 @@ file list"):
 2. **A's `tsconfig.json` must list B in `references`** — e.g.
    `"references": [{ "path": "../B" }]` — so tsc uses B's declarations instead
    of pulling B's `.ts` source into A's program.
+
+Library builds emit into the package's own `packages/<name>/dist` (the api into
+`apps/api/dist`), so declarations and compiled code resolve their externals from
+that package's `node_modules`. pnpm uses its default isolated linker (ADR 0004):
+a project only sees dependencies its own `package.json` declares, so declare
+every import where it is used rather than relying on a sibling to pull it in.
 
 A package that is only consumed by a Vite/bundler app (which bundles source
 directly) can get away without a build target — but the moment a strict `tsc`

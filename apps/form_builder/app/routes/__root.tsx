@@ -1,4 +1,7 @@
+import "../components/ui/ui.css";
+import { ConfirmationProvider } from "../components/ui/dialog/confirmation";
 import type { ReactNode } from "react";
+import { GlobalAssistantProvider } from "../components/global-assistant";
 import {
   Outlet,
   createRootRoute,
@@ -20,7 +23,11 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <RootDocument>
-      <Outlet />
+      <ConfirmationProvider>
+        <GlobalAssistantProvider>
+          <Outlet />
+        </GlobalAssistantProvider>
+      </ConfirmationProvider>
     </RootDocument>
   );
 }

@@ -390,7 +390,13 @@
                 "operator": "equal",
                 "targetFieldId": "has-experience"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Select your level of experience",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -409,7 +415,13 @@
                 "operator": "equal",
                 "targetFieldId": "has-experience"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter how much experience you have",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -747,7 +759,7 @@
   "title": "National Community Cultural Training Programme Registration 2025–2026",
   "formId": "youth-cultural-training-registration-2025",
   "createdAt": "2025-01-01T00:00:00Z",
-  "updatedAt": "2026-06-05T00:00:00Z",
+  "updatedAt": "2026-09-17T13:49:39.000Z",
   "processors": [
     {
       "type": "email",

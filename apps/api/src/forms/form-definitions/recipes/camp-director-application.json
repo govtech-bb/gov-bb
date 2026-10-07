@@ -212,7 +212,13 @@
                 "label": "Male",
                 "value": "male"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Sex is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -242,7 +248,12 @@
           "ref": "components/address",
           "overrides": {
             "label": "Street address line 2",
-            "fieldId": "address-line-2"
+            "fieldId": "address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -316,7 +327,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select at least one option",
+                "error": "Select at least one description that applies to you",
                 "value": true
               }
             }
@@ -339,7 +350,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are a Give Back volunteer",
                 "value": true
               }
             }
@@ -357,7 +368,13 @@
                 "operator": "equal",
                 "targetFieldId": "give-back-volunteer"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Institution is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -372,7 +389,13 @@
                 "operator": "equal",
                 "targetFieldId": "give-back-volunteer"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Area of study is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -423,6 +446,11 @@
           "overrides": {
             "label": "Work address line 2",
             "fieldId": "work-address-line-2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -543,7 +571,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have any health conditions or support needs to report",
                 "value": true
               }
             }
@@ -768,7 +796,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are currently taking any medicine",
                 "value": true
               }
             }
@@ -815,7 +843,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are allergic to any medicine",
                 "value": true
               }
             }
@@ -869,7 +897,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have camp experience",
                 "value": true
               }
             }
@@ -995,7 +1023,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have paid or volunteer work experience",
                 "value": true
               }
             }
@@ -1082,7 +1110,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you are still in this role",
                 "value": true
               }
             }
@@ -1100,7 +1128,12 @@
                 "operator": "equal",
                 "targetFieldId": "still-in-role"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1118,7 +1151,13 @@
                 "operator": "equal",
                 "targetFieldId": "still-in-role"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Reason for leaving is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1250,7 +1289,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you belong to any organisations",
                 "value": true
               }
             }
@@ -1306,7 +1345,13 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Address",
-            "fieldId": "organisation-address"
+            "fieldId": "organisation-address",
+            "validations": {
+              "required": {
+                "error": "Address is required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -1546,7 +1591,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have any skills or activities you can lead or help with at camp",
                 "value": true
               }
             }
@@ -1645,7 +1690,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select how you can support this activity",
                 "value": true
               }
             }
@@ -1753,7 +1798,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Select an option",
+                "error": "Select whether you have any concerns about being responsible for children for at least 7 hours a day",
                 "value": true
               }
             }
@@ -1774,7 +1819,13 @@
                 "operator": "equal",
                 "targetFieldId": "concerns-about-responsibility"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "error": "Enter details of your concerns",
+                "value": true
+              }
+            }
           }
         }
       ],
@@ -1953,5 +2004,5 @@
     }
   ],
   "createdAt": "2026-06-11T15:00:03.273Z",
-  "updatedAt": "2026-06-11T15:00:03.273Z"
+  "updatedAt": "2026-09-18T18:21:48.000Z"
 }

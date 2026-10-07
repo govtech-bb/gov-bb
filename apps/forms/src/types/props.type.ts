@@ -1,4 +1,5 @@
 import { ContactDetails } from "@govtech-bb/form-types";
+import type { SummarySection } from "@govtech-bb/submission-summary";
 import { AnyFormApi } from "@tanstack/react-form";
 import { ClientFormStep, ClientPrimitive } from "./field-mapper.type";
 import { FormMeta } from "./renderer.type";
@@ -105,6 +106,36 @@ export interface SubmissionState {
    * went to. Absent for forms without coordinate-based routing.
    */
   polyclinic?: string;
+  /**
+   * The routed polyclinic's single contact line (name + phone + email, from the
+   * submit response `meta.resolvedPolyclinicContact`). The confirmation page
+   * substitutes it into the `{polyclinicContact}` token so only the routed
+   * clinic's details are shown; absent for forms without coordinate-based
+   * routing, which read the full all-clinics fallback (#254).
+   */
+  polyclinicContact?: string;
+  /**
+   * The confirmation body with its per-answer passages already filled (#2068),
+   * resolved at submit time and persisted with the rest of the outcome.
+   *
+   * It has to be captured here rather than evaluated at render: `clearFormState`
+   * drops the draft answers the moment the submission succeeds, so a refresh on
+   * the confirmation step has an outcome but no values left to branch on — and
+   * re-evaluating then would quietly show the fallback passage while the
+   * applicant's email showed the real one. Still carries `{polyclinic}` /
+   * `{landingUrl}`, which the page interpolates at render.
+   */
+  resolvedMarkdown?: string;
+  /**
+   * The applicant's answers as labelled sections, for the printed copy (#2587).
+   * Captured at submit time for the same reason as `resolvedMarkdown` above —
+   * `clearFormState` drops the draft on success, so there is nothing left to
+   * render from by the time the confirmation step is on screen.
+   *
+   * Only the rendered rows are kept, never the raw value tree: branch-skipped
+   * questions are already out, and files are already named.
+   */
+  sections?: SummarySection[];
   referenceNumber: string;
   // Optional: payment ("gated") submissions are not finalised yet, so the
   // server returns `submittedAt: null` — there is no submission date to show

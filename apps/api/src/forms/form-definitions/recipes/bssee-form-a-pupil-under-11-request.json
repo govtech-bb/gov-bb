@@ -59,7 +59,13 @@
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "pupil-other-names",
-            "label": "Other Names"
+            "label": "Other Names",
+            "validations": {
+              "required": {
+                "error": "Other Names are required",
+                "value": true
+              }
+            }
           }
         },
         {
@@ -384,5 +390,5 @@
     }
   ],
   "createdAt": "2026-06-02T15:33:27.264Z",
-  "updatedAt": "2026-06-02T15:33:27.264Z"
+  "updatedAt": "2026-09-17T13:49:39.000Z"
 }

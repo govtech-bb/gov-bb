@@ -18,9 +18,10 @@
  * Notes (from the 1.2.0 recipe contract):
  *  - Field IDs are `${stepId}_${fieldId}`.
  *  - `applicant-title`, `applicant-nationality`, `applicant-parish`,
- *    `prof-ref-parish`, `pers-ref-parish` and the testimonial relationship /
- *    parish fields render as native `<select>` (registry defaults + custom
- *    option lists) — use `selectDropdown` with slug values.
+ *    `prof-ref-parish`, `pers-ref-parish`, the referee relationship fields
+ *    (`prof-ref-relationship`, `pers-ref-relationship`) and the testimonial
+ *    relationship / parish fields render as native `<select>` (registry
+ *    defaults + custom option lists) — use `selectDropdown` with slug values.
  *  - `applicant-dob` is a `date-of-birth` three-part widget; must be in the past.
  *  - `passport-toggle` is a show/hide left OFF so the conditional
  *    `applicant-passport-number` stays hidden and `applicant-nid` is required —
@@ -31,7 +32,7 @@
  *    and a multi-file `passport-photos` upload requiring 2 files (via
  *    uploadMany) — the live field enforces a minItems of 2.
  *  - `declaration` is the explicit final step; its single-option confirmation
- *    checkbox input is `declaration_declaration-confirmed-confirmed`. The
+ *    checkbox input is `declaration_declaration-confirmed`. The
  *    renderer auto-injects `check-your-answers` immediately before it.
  *  - The `submission-confirmation` step has title "Application submitted" and no
  *    description, so the confirmation heading is "Application submitted" and the
@@ -43,6 +44,7 @@ import { test, expect } from "@playwright/test";
 import { TEST_PNG, TEST_PNG_2, TEST_PNG_3 } from "../helpers/test-data";
 import {
   STEP_TIMEOUT,
+  openSmokeForm,
   advance,
   currentStep,
   expectStep,
@@ -60,7 +62,7 @@ test.describe("Sell Goods or Services at a Beach or Park — Live Smoke", () => 
   test("submits the real form end-to-end and reaches the confirmation screen", async ({
     page,
   }) => {
-    await page.goto(`/forms/${FORM_ID}`);
+    await openSmokeForm(page, FORM_ID);
     await page.waitForURL((url) => !!url.searchParams.get("step"), {
       timeout: STEP_TIMEOUT,
     });
@@ -101,7 +103,9 @@ test.describe("Sell Goods or Services at a Beach or Park — Live Smoke", () => 
     // "services" routes to `services-details` and keeps `goods-details` hidden.
     step = expectStep(page, "goods-or-services", { exact: true });
     await page
-      .locator(`input[type=radio][id="${step}_goods-or-services-services"]`)
+      .locator(
+        `fieldset[id="${step}_goods-or-services"] input[type=radio][value="services"]`,
+      )
       .check();
     await advance(page, step);
 
@@ -125,7 +129,7 @@ test.describe("Sell Goods or Services at a Beach or Park — Live Smoke", () => 
       faker.person.firstName(),
     );
     await fillField(page, step, "prof-ref-last-name", faker.person.lastName());
-    await fillField(page, step, "prof-ref-relationship", "Former manager");
+    await selectDropdown(page, step, "prof-ref-relationship", "colleague");
     await fillField(page, step, "prof-ref-email", "testing@govtech.bb");
     await fillField(page, step, "prof-ref-telephone", "246-418-1234");
     await fillField(
@@ -154,7 +158,7 @@ test.describe("Sell Goods or Services at a Beach or Park — Live Smoke", () => 
       faker.person.firstName(),
     );
     await fillField(page, step, "pers-ref-last-name", faker.person.lastName());
-    await fillField(page, step, "pers-ref-relationship", "Community mentor");
+    await selectDropdown(page, step, "pers-ref-relationship", "friend");
     await fillField(page, step, "pers-ref-email", "testing@govtech.bb");
     await fillField(page, step, "pers-ref-telephone", "246-418-1234");
     await fillField(
@@ -260,15 +264,18 @@ test.describe("Sell Goods or Services at a Beach or Park — Live Smoke", () => 
     // ─── Declaration ─────────────────────────────────────────────────────────
     step = expectStep(page, "declaration", { exact: true });
     await page
-      .locator(`input[id="declaration_declaration-confirmed-confirmed"]`)
+      .locator(`fieldset[id="declaration_declaration-confirmed"]`)
+      .getByRole("checkbox")
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
-    // The deployed confirmation screen renders the generic "Thank you for your
-    // application" heading rather than the recipe's `submission-confirmation`
-    // title ("Application submitted") — match what the live renderer shows.
+    // Heading and subheading come from the recipe's `submission-confirmation`
+    // step (`title` / `description`) — the description replaces the generic
+    // "Your submission has been saved" default in the helper.
     await submitAndConfirm(page, {
       heading: "Thank you for your application",
+      subheading:
+        "Your information has been sent to the National Conservation Commission (NCC).",
     });
   });
 });

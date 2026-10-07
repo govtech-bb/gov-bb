@@ -2,7 +2,7 @@
 # Form Builder API — lightweight Express server for form CRUD + AI/Bedrock calls.
 # Runs behind the existing ALB at /builder/*.
 
-FROM node:24-alpine3.23@sha256:595398b0081eacda8e1c4c5b97b76cd1020e4d58a8ebcb4843b9bca1e79e7436 AS builder
+FROM node:24.20-alpine3.23@sha256:0388af2af070cd4736a1567cfed02469ba117848845b4165d87a333edb53d2ca AS builder
 
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
@@ -12,8 +12,8 @@ RUN chown app:app /app
 USER app
 
 COPY --chown=app:app package.json pnpm-lock.yaml pnpm-workspace.yaml nx.json tsconfig.base.json ./
+COPY --chown=app:app patches/ ./patches/
 COPY --chown=app:app apps/form_builder_api/package.json apps/form_builder_api/
-COPY --chown=app:app packages/ai-bedrock/package.json packages/ai-bedrock/
 COPY --chown=app:app packages/database/package.json packages/database/
 COPY --chown=app:app packages/form-builder/package.json packages/form-builder/
 COPY --chown=app:app packages/form-types/package.json packages/form-types/
@@ -31,11 +31,51 @@ COPY --chown=app:app packages/ packages/
 # Build the API and all workspace deps (Nx handles the dependency graph via dependsOn: ["^build"])
 RUN pnpm exec nx build form-builder-api
 
+# Each workspace package compiles into its own packages/<name>/dist (so its
+# declarations resolve externals from the package's own node_modules). Gather
+# them under dist/packages/<name> — the layout the runner stage symlinks.
+RUN for d in packages/*/dist; do \
+      [ -d "$d" ] || continue; \
+      n=$(basename "$(dirname "$d")"); \
+      mkdir -p "dist/packages/$n" && cp -R "$d/." "dist/packages/$n/"; \
+    done
+
+# ---- prod-deps ---------------------------------------------------------------
+# Runtime node_modules: only @govtech-bb/form-builder-api's graph (plus the root
+# project, whose runtime deps it shares), no devDependencies. Linked from the
+# cache-mount store where possible, fetched otherwise (a CACHED install layer
+# leaves the mount empty). Mirrors apps/api/Dockerfile.
+#
+# node-linker=hoisted here only: the workspace installs with pnpm's default
+# isolated layout (ADR 0004), but the runner resolves everything from a single
+# /app/node_modules, so this stage lays the prod deps out flat, npm-style.
+FROM builder AS prod-deps
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
+    rm -rf node_modules apps/form_builder_api/node_modules packages/*/node_modules && \
+    pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts --prefer-offline --prod \
+      --config.node-linker=hoisted \
+      --filter @govtech-bb/form-builder-api... --filter @govtech-bb/modular-forms-monorepo
+
 # ---- runner ----------------------------------------------------------------
 # Matches the main API's runner pattern exactly.
-FROM node:24-alpine3.23@sha256:595398b0081eacda8e1c4c5b97b76cd1020e4d58a8ebcb4843b9bca1e79e7436 AS runner
+FROM node:24.20-alpine3.23@sha256:0388af2af070cd4736a1567cfed02469ba117848845b4165d87a333edb53d2ca AS runner
 
-RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
+# Pick up Alpine security patches ahead of the base image's rebuild cadence
+# (e.g. openssl 3.5.8-r0 fixing CVE-2026-75803/CVE-2026-63073 while the base
+# still ships 3.5.7).
+RUN apk upgrade --no-cache
+
+# npm and corepack are dead weight AWS Inspector still scans (npm's vendored
+# tar/pacote/undici/ip-address/brace-expansion copies were all flagged);
+# nothing in this image runs either — the entrypoint is plain node.
+# /usr/local/include/node: node's bundled OpenSSL C headers are what Inspector
+# fingerprints for the "node-bundled OpenSSL" CRITICALs. They exist to compile
+# native addons; nothing in this image compiles at runtime. The statically-
+# linked OpenSSL inside the node binary remains and is tracked estate-wide in
+# gov-bb-security#41 until node ships a fixed OpenSSL.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+           /usr/local/lib/node_modules/corepack /usr/local/bin/corepack \
+           /usr/local/include/node
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
 
 WORKDIR /app
@@ -61,20 +101,15 @@ USER app
 # Compiled API output
 COPY --from=builder --chown=app:app /app/apps/form_builder_api/dist/ ./dist/
 
-# Compiled workspace packages (built by nx via dependsOn — emitted to dist/packages/{name}/src/*.js).
+# Compiled workspace packages (built by nx via dependsOn into packages/{name}/dist, gathered into dist/packages/{name}/src/*.js above).
 # Matches main API pattern: each workspace package's package.json declares main: "./src/index.js",
 # so dist/packages/{name}/src/index.js lands at packages/{name}/src/index.js to resolve correctly.
 COPY --from=builder --chown=app:app /app/dist/packages/ ./packages/
 
-# node_modules from builder (has all deps resolved)
-COPY --from=builder --chown=app:app /app/node_modules/ ./node_modules/
-
-# Drop esbuild from the runtime image (#1567). esbuild ships a Go-compiled
-# binary (@esbuild/<platform>/bin/esbuild) that AWS Inspector flags as
-# go/stdlib CVE-2025-68121 (+ other go/stdlib CVEs). It's a build-time tool
-# only — the runner runs `node dist/main.js` and never loads esbuild — so
-# removing it closes the finding with no runtime impact.
-RUN rm -rf node_modules/@esbuild node_modules/esbuild
+# Production-only node_modules (see prod-deps above).
+COPY --from=prod-deps --chown=app:app /app/node_modules/ ./node_modules/
+# pnpm hoists conflicting versions to the root; preserve this API's own resolutions.
+COPY --from=prod-deps --chown=app:app /app/apps/form_builder_api/node_modules/ ./node_modules/
 
 # Workspace package symlinks so require("@govtech-bb/database") resolves.
 # Generated from whatever's actually in packages/ rather than a hand-maintained
@@ -91,7 +126,6 @@ RUN mkdir -p node_modules/@govtech-bb && \
     done
 
 # Package manifests needed for module resolution
-COPY --from=builder --chown=app:app /app/packages/ai-bedrock/package.json ./packages/ai-bedrock/
 COPY --from=builder --chown=app:app /app/packages/database/package.json ./packages/database/
 COPY --from=builder --chown=app:app /app/packages/form-builder/package.json ./packages/form-builder/
 COPY --from=builder --chown=app:app /app/packages/form-types/package.json ./packages/form-types/
@@ -113,8 +147,3 @@ ENV PORT=3003
 EXPOSE 3003
 
 CMD ["node", "--require", "reflect-metadata", "dist/main.js"]
-
-# Bootstrap: trip nx-affected for form-builder-api so deploy-staging.yml builds
-# and pushes the first image to the gov-bb-form-builder ECR (empty since the
-# staging env stood up — same nx-affected gap that hit chat-ingest #468 and
-# api #470). form-builder-staging ECS has had no image to run.
