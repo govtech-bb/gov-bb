@@ -14,7 +14,7 @@ any build started.
 
 - Rebuilt `mohlm-application-use-state-land.json` around "Who are you applying
   for?" with route-specific Your details / Organisation details + Contact
-  person, a no-permission stop step, a shared "How should we contact you?"
+  person, a no-permission stop step, a shared "Contact details"
   step, land with or without an address, and an optional end date. Pinned it
   with `mohlm-application-use-state-land.spec.ts`.
 - Rewrote `apply-to-use-state-land.md` (title, routes, cost, next steps).
@@ -46,11 +46,19 @@ any build started.
   `has-permission` was overwritten by `applying-for`. Moving permission to its
   own page would have dodged it, but left the bug for the next form and added
   a page the spec didn't have. The server's own evaluation was never affected.
-- **Start page headings from the content prompt, wording from the spec.** The
-  builder's "How to apply" / "What happens next" headings break the
-  licence/application pattern's hard rules, so the wording was poured into
-  that pattern's headings. A `keywords: [state land]` entry keeps the
-  search-relevance case for "state land" passing after the retitle.
+- **Start page headings are the service's, not the platform's.** We first
+  poured the wording into the content prompt's licence/application headings
+  (Who can apply, Complete the form, What happens after you apply). Content
+  (7 Oct) reversed that: headings are being standardised on what each service
+  needs, so the audience line stays in the opening and the page uses Before
+  you start, How to apply, Cost and What happens next. Contact was kept
+  because it holds the only help route. The route list keeps the content
+  prompt's mechanics (plain count, start link inside the online item),
+  because the hide-online-route plugin depends on those, not on the heading.
+  A `keywords: [state land]` entry keeps the search-relevance case for "state
+  land" passing after the retitle.
+- **Middle name is back, optional, on both people.** It was dropped to match
+  the builder spec; content asked to keep it with the standard pattern.
 - **Postal code is plain text**, because the registry postcode only accepts
   Barbados postcodes and addresses can now be overseas.
 
