@@ -11,6 +11,8 @@
  *  - getCompletedSteps: returns [] when not set; returns stored array
  *  - markStepCompleted: adds step; does not add duplicate
  *  - getFirstIncompleteActiveStep: first incomplete step object; null when all done
+ *  - getReviewReturnStep: first incomplete-or-invalid step before the review;
+ *                         otherwise the review itself, never past it
  *  - isStepAccessible: first step always accessible; true when all preceding completed;
  *                      false when preceding incomplete; false when stepId not in list
  */
@@ -21,7 +23,9 @@ import {
   clearFormState,
   getCompletedSteps,
   markStepCompleted,
+  unmarkStepsCompleted,
   getFirstIncompleteActiveStep,
+  getReviewReturnStep,
   isStepAccessible,
   storeSubmissionState,
   getSubmissionState,
@@ -168,6 +172,26 @@ describe("markStepCompleted", () => {
 });
 
 // ---------------------------------------------------------------------------
+// unmarkStepsCompleted
+// ---------------------------------------------------------------------------
+
+describe("unmarkStepsCompleted", () => {
+  it("removes only the given steps", () => {
+    markStepCompleted(FORM_ID, "step1");
+    markStepCompleted(FORM_ID, "step1~1");
+    markStepCompleted(FORM_ID, "step2");
+    unmarkStepsCompleted(FORM_ID, ["step1~1"]);
+    expect(getCompletedSteps(FORM_ID)).toEqual(["step1", "step2"]);
+  });
+
+  it("ignores steps that were never completed", () => {
+    markStepCompleted(FORM_ID, "step1");
+    unmarkStepsCompleted(FORM_ID, ["nope"]);
+    expect(getCompletedSteps(FORM_ID)).toEqual(["step1"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // getFirstIncompleteActiveStep
 // ---------------------------------------------------------------------------
 
@@ -200,6 +224,73 @@ describe("getFirstIncompleteActiveStep", () => {
 
   it("returns null for an empty activeSteps array", () => {
     expect(getFirstIncompleteActiveStep(FORM_ID, [])).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getReviewReturnStep
+// ---------------------------------------------------------------------------
+
+describe("getReviewReturnStep", () => {
+  const activeSteps = [
+    { stepId: "step1" },
+    { stepId: "step2" },
+    { stepId: "check-your-answers" },
+    { stepId: "declaration" },
+  ];
+  const allValid = () => true;
+
+  it("returns check-your-answers when every earlier step is complete and valid", () => {
+    markStepCompleted(FORM_ID, "step1");
+    markStepCompleted(FORM_ID, "step2");
+    expect(getReviewReturnStep(FORM_ID, activeSteps, allValid)).toEqual({
+      stepId: "check-your-answers",
+    });
+  });
+
+  it("returns a newly revealed step that has not been completed", () => {
+    markStepCompleted(FORM_ID, "step1");
+    expect(getReviewReturnStep(FORM_ID, activeSteps, allValid)).toEqual({
+      stepId: "step2",
+    });
+  });
+
+  it("returns a completed step that is no longer valid", () => {
+    markStepCompleted(FORM_ID, "step1");
+    markStepCompleted(FORM_ID, "step2");
+    const step2Invalid = (s: { stepId: string }) => s.stepId !== "step2";
+    expect(getReviewReturnStep(FORM_ID, activeSteps, step2Invalid)).toEqual({
+      stepId: "step2",
+    });
+  });
+
+  it("never goes past check-your-answers, even when it is already completed", () => {
+    // Continue on the review marks it complete; an applicant back from the
+    // declaration must still land on the review, not on the declaration.
+    markStepCompleted(FORM_ID, "step1");
+    markStepCompleted(FORM_ID, "step2");
+    markStepCompleted(FORM_ID, "check-your-answers");
+    expect(getReviewReturnStep(FORM_ID, activeSteps, allValid)).toEqual({
+      stepId: "check-your-answers",
+    });
+  });
+
+  it("does not judge the validity of check-your-answers itself", () => {
+    markStepCompleted(FORM_ID, "step1");
+    markStepCompleted(FORM_ID, "step2");
+    const isStepValid = vi.fn(() => true);
+    getReviewReturnStep(FORM_ID, activeSteps, isStepValid);
+    expect(isStepValid).not.toHaveBeenCalledWith({
+      stepId: "check-your-answers",
+    });
+  });
+
+  it("returns null when there is no check-your-answers step", () => {
+    markStepCompleted(FORM_ID, "step1");
+    markStepCompleted(FORM_ID, "step2");
+    expect(
+      getReviewReturnStep(FORM_ID, activeSteps.slice(0, 2), allValid),
+    ).toBeNull();
   });
 });
 

@@ -1,4 +1,5 @@
 import {
+  ClientFormStep,
   ClientPrimitive,
   FieldValidationErrors,
   FieldValidationProperties,
@@ -15,6 +16,7 @@ import { shallow } from "@tanstack/react-store";
 import { isDateValidationError } from "@govtech-bb/form-validation";
 import { Behaviour } from "@govtech-bb/form-types";
 import { useStepGuard } from "../hooks/use-step-guard";
+import { unmarkStepsCompleted } from "../lib/session-storage";
 import Review from "./review";
 import SubmissionConfirmation from "./submission-confirmation";
 import ApplicantNameDisplay from "./applicant-name-display";
@@ -28,6 +30,7 @@ import {
   getInstanceMarker,
   buildFieldValidationProperties,
   collectStepErrorCodes,
+  stepPassesValidation,
 } from "@forms/lib";
 import { trackEvent } from "../lib/analytics";
 import { formCategory } from "../lib/form-category";
@@ -269,11 +272,20 @@ export default function FormRenderer({
   isDraft = false,
   previewToken,
   draftToken,
+  returnToReview,
 }: FormRendererProps) {
+  // Judges steps the applicant isn't on, for the return from a Change (#2812).
+  const isStepValid = React.useCallback(
+    (step: ClientFormStep) => stepPassesValidation(step, form),
+    [form],
+  );
+
   const { navigateToStep, completeAndContinue, currentIndex } = useStepGuard({
     formId: formMeta.formId,
     activeSteps: visibleSteps,
     currentStepId: stepId,
+    returnToReview,
+    isStepValid,
   });
 
   // currentIndex is -1 for the brief moment the guard effect is redirecting
@@ -579,12 +591,18 @@ function ActiveStep({
         // on refresh — sending the user back to a "step" they declined. Purge
         // the removed instances' field values so they stay gone. (#432)
         const remainingStepIds = new Set(updatedSteps.map((s) => s.stepId));
+        const removedStepIds: string[] = [];
         for (const step of visibleSteps) {
           if (remainingStepIds.has(step.stepId)) continue;
+          removedStepIds.push(step.stepId);
           for (const field of step.fields) {
             form.deleteField(field.id);
           }
         }
+        // Their completion goes too: instance ids are reused when the
+        // applicant adds another again, and a stale record would let the
+        // return from a Change skip the new, empty instance (#2812).
+        unmarkStepsCompleted(formMeta.formId, removedStepIds);
 
         completeAndContinue(currentStep.stepId, updatedSteps);
         return;

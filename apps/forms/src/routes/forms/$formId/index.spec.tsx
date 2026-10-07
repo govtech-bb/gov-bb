@@ -333,6 +333,21 @@ describe("RouteComponent", () => {
     expect(mockFormRendererProps.current.isDraft).toBe(false);
   });
 
+  it("passes returnToReview=true when the search carries returnTo (#2812)", () => {
+    vi.spyOn(Route, "useSearch").mockReturnValue({
+      step: "step1",
+      returnTo: "check-your-answers",
+    });
+    render(<Route.component />);
+    expect(mockFormRendererProps.current.returnToReview).toBe(true);
+  });
+
+  it("passes returnToReview=false on a normal journey", () => {
+    vi.spyOn(Route, "useSearch").mockReturnValue({ step: "step1" });
+    render(<Route.component />);
+    expect(mockFormRendererProps.current.returnToReview).toBe(false);
+  });
+
   it("ignores and clears any persisted submissionState on a fresh non-confirmation load", () => {
     vi.spyOn(Route, "useSearch").mockReturnValue({ step: "step1" });
     // A stale outcome from an earlier submission this session must not leak into
@@ -592,6 +607,22 @@ describe("Route.validateSearch", () => {
   it("returns an object where step is undefined when not provided", () => {
     const result = Route.validateSearch({});
     expect(result.step).toBeUndefined();
+  });
+
+  it("keeps returnTo=check-your-answers (#2812)", () => {
+    const result = Route.validateSearch({ returnTo: "check-your-answers" });
+    expect(result.returnTo).toBe("check-your-answers");
+  });
+
+  it("drops any other returnTo value without throwing", () => {
+    // A hand-edited or stale link must degrade to a normal journey, not an
+    // error page.
+    const result = Route.validateSearch({
+      step: "step1",
+      returnTo: "elsewhere",
+    });
+    expect(result).toEqual(expect.objectContaining({ step: "step1" }));
+    expect(result.returnTo).toBeUndefined();
   });
 });
 

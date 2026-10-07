@@ -60,10 +60,13 @@ export default function Review({
         category: formCategory(formMeta.formId),
         step: stepId,
       });
+      // returnTo brings Continue back here rather than through every later
+      // step (#2812).
       void navigate({
         search: (prev: Record<string, unknown>) => ({
           ...prev,
           step: stepId,
+          returnTo: "check-your-answers",
         }),
       });
     };
@@ -199,7 +202,7 @@ export default function Review({
                   {marker ? `${stepTitle} — ${marker.text}` : stepTitle}
                 </Heading>
                 <Link
-                  href={`/forms/${formMeta.formId}?step=${step.stepId}`}
+                  href={`/forms/${formMeta.formId}?step=${step.stepId}&returnTo=check-your-answers`}
                   onClick={handleChangeClick(step.stepId)}
                 >
                   Change{" "}

@@ -31,6 +31,8 @@ export interface FormRendererProps {
    * (#1682).
    */
   draftToken?: string;
+  /** `?returnTo=check-your-answers` — see `UseStepGuardProps` (#2812). */
+  returnToReview?: boolean;
 }
 
 export type UseStepGuardProps = {
@@ -47,6 +49,17 @@ export type UseStepGuardProps = {
    * present in activeSteps and reachable (all preceding steps completed).
    */
   currentStepId: string;
+  /**
+   * The applicant arrived from a Change link on check-your-answers
+   * (`?returnTo=check-your-answers`). Continue then returns to the review, or
+   * to the first step before it that still needs them (#2812).
+   */
+  returnToReview?: boolean;
+  /**
+   * Whether a step's visible answers still pass validation. Only consulted
+   * when `returnToReview` is set. Defaults to treating every step as valid.
+   */
+  isStepValid?: (step: ClientFormStep) => boolean;
 };
 
 /**

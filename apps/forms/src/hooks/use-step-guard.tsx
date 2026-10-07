@@ -3,9 +3,13 @@ import { useNavigate } from "@tanstack/react-router";
 import { ClientFormStep, UseStepGuardProps } from "@forms/types";
 import {
   getFirstIncompleteActiveStep,
+  getReviewReturnStep,
   isStepAccessible,
   markStepCompleted,
 } from "../lib/session-storage";
+
+// Module-level so the default keeps a stable identity across renders.
+const everyStepValid = () => true;
 
 /**
  * Condition-aware step guard for multi-step form navigation.
@@ -27,14 +31,22 @@ export function useStepGuard({
   formId,
   activeSteps,
   currentStepId,
+  returnToReview = false,
+  isStepValid = everyStepValid,
 }: UseStepGuardProps) {
   const navigate = useNavigate({ from: "/forms/$formId/" });
 
   // ─── Internal primitive: write the step ID into the URL ──────────────────
+  // Arriving at the review, by any route, ends a change journey: dropping
+  // `returnTo` here stops it riding along to the declaration (#2812).
   const navigateToStepId = useCallback(
     (stepId: string) => {
       void navigate({
-        search: (prev: Record<string, unknown>) => ({ ...prev, step: stepId }),
+        search: (prev: Record<string, unknown>) => ({
+          ...prev,
+          step: stepId,
+          ...(stepId === "check-your-answers" && { returnTo: undefined }),
+        }),
       });
     },
     [navigate],
@@ -84,10 +96,33 @@ export function useStepGuard({
       markStepCompleted(formId, completedStepId);
       const steps = stepsOverride ?? activeSteps;
       const currentIdx = steps.findIndex((s) => s.stepId === completedStepId);
+      // Came from a Change link: skip the steps already answered and go back
+      // to the review, stopping first anywhere the change left a gap (#2812).
+      // Only a step before the review returns — the review and declaration
+      // carry on as normal even if a stray `returnTo` is in the URL.
+      // Validity is only judged ahead of the step just completed: the steps
+      // up to it have passed the on-screen validators, and re-judging them
+      // could bounce the applicant between two steps forever if the two
+      // checks ever disagreed. Completion is still checked everywhere.
+      const reviewIdx = steps.findIndex(
+        (s) => s.stepId === "check-your-answers",
+      );
+      const returnStep =
+        returnToReview &&
+        currentIdx < reviewIdx &&
+        getReviewReturnStep(
+          formId,
+          steps,
+          (s) => steps.indexOf(s) <= currentIdx || isStepValid(s),
+        );
+      if (returnStep) {
+        navigateToStepId(returnStep.stepId);
+        return;
+      }
       const nextStep = steps[currentIdx + 1];
       if (nextStep) navigateToStepId(nextStep.stepId);
     },
-    [formId, activeSteps, navigateToStepId],
+    [formId, activeSteps, returnToReview, isStepValid, navigateToStepId],
   );
 
   // ─── Guard effect: enforce access rules on every relevant change ─────────
