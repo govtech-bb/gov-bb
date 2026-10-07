@@ -6,14 +6,15 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { EDITOR_READ, NOT_FOUND_READ, PUBLIC_READ } from "./routes/site";
+import { EDITOR_READ, NOT_FOUND_READ, PUBLIC_READ } from "./routes/responses";
 import { Redacted } from "./modules/redacted";
 import { categories } from "./schema";
-import { ApiStore } from "./store";
 import {
   aPage,
   createTestApp,
   createTestDb,
+  createTestServices,
+  expectOk,
   TEST_EMPLOYEE,
   TEST_HTTP_CONFIG,
   type TestDb,
@@ -36,9 +37,9 @@ const get = (url: string, token?: string) =>
  */
 beforeAll(async () => {
   test = await createTestDb();
-  const store = new ApiStore(test.db);
-  const page = (overrides: Record<string, unknown>) =>
-    store.create(aPage(overrides), TEST_EMPLOYEE.id);
+  const { editing } = createTestServices(test.db);
+  const page = async (overrides: Record<string, unknown>) =>
+    expectOk(await editing.create(aPage(overrides), TEST_EMPLOYEE));
 
   const [youth, money] = await test.db
     .insert(categories)
@@ -48,10 +49,12 @@ beforeAll(async () => {
       { slug: "housing", title: "Housing", position: 2 },
     ])
     .returning();
+  if (!youth || !money) throw new Error("The categories were not inserted");
   const [arts] = await test.db
     .insert(categories)
     .values({ slug: "arts", title: "Arts", parentId: youth.id })
     .returning();
+  if (!arts) throw new Error("The subcategory was not inserted");
 
   const apply = await page({
     url: "/money/apply",

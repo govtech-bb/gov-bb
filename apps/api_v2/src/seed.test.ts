@@ -8,8 +8,7 @@ import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { seed } from "./seed";
 import { ESTATE } from "./seed-data";
-import { ApiStore } from "./store";
-import { createTestDb } from "./test-db";
+import { createTestDb, createTestServices, expectOk } from "./test-db";
 
 describe("seed", () => {
   it("loads every page and category, and a second run adds nothing", async () => {
@@ -28,8 +27,11 @@ describe("seed", () => {
     const { db, close } = await createTestDb();
     await seed(db);
 
-    const resolved = await new ApiStore(db).resolve(
-      "/money-financial-support/calculate-severance-pay",
+    const resolved = expectOk(
+      await createTestServices(db).resolution.resolve(
+        "/money-financial-support/calculate-severance-pay",
+        "public",
+      ),
     );
 
     expect(resolved).toMatchObject({

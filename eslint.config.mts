@@ -86,10 +86,25 @@ export default defineConfig([
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-non-null-assertion": "error",
       "no-restricted-imports": ["error", { patterns: [{
-        group: ["better-auth", "better-auth/**", "fastify", "pg", "drizzle-orm", "drizzle-orm/**", "pino", "**/adapters/**", "**/routes/**", "**/config", "**/db", "**/app", "**/main", "**/store"],
-        message: "Auth policy and services depend on domain values and narrow ports; compose infrastructure in main.ts.",
+        group: ["better-auth", "better-auth/**", "fastify", "pg", "drizzle-orm", "drizzle-orm/**", "pino", "**/adapters/**", "**/routes/**", "**/config", "**/db", "**/app", "**/main", "**/schema"],
+        message: "Domain modules and services depend on domain values and narrow ports; compose infrastructure in main.ts.",
       }] }],
       "no-restricted-globals": ["error", "Request", "Response", "fetch"],
+      "no-restricted-syntax": ["error", {
+        selector: "MemberExpression[object.name='process'][property.name='env']",
+        message: "Read environment variables only in the composition root.",
+      }],
+    },
+  },
+  {
+    // The HTTP adapter receives services through buildApp's options; only main.ts builds infrastructure.
+    files: ["apps/api_v2/src/app.ts", "apps/api_v2/src/routes/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-non-null-assertion": "error",
+      "no-restricted-imports": ["error", { patterns: [{
+        group: ["better-auth", "better-auth/**", "pg", "drizzle-orm", "drizzle-orm/**", "**/adapters/**", "**/config", "**/db", "**/main", "**/migrate", "**/schema", "**/seed"],
+        message: "Routes receive services through buildApp's options; compose infrastructure in main.ts.",
+      }] }],
       "no-restricted-syntax": ["error", {
         selector: "MemberExpression[object.name='process'][property.name='env']",
         message: "Read environment variables only in the composition root.",

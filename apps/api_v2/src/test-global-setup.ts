@@ -10,7 +10,6 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import type { TestProject } from "vitest/node";
 import { migrate } from "./migrate";
-import * as schema from "./schema";
 import { adminQuery, runPrefix, TEST_SERVER } from "./test-db";
 
 export default async function setup(project: TestProject) {
@@ -28,7 +27,7 @@ export default async function setup(project: TestProject) {
   }
   const pool = new Pool({ ...TEST_SERVER, database: template });
   try {
-    await migrate(drizzle(pool, { schema }), (script) => pool.query(script));
+    await migrate(drizzle(pool), (script) => pool.query(script));
   } catch (error) {
     await pool.end();
     await adminQuery(`drop database if exists ${template} with (force)`);

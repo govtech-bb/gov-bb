@@ -14,17 +14,16 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import pino from "pino";
 import { IF_UPDATED_AT } from "./routes/pages";
-import { PUBLIC_READ } from "./routes/site";
-import {
-  categories,
-  changeEvents,
-  searchChunks,
-  type Visibility,
-} from "./schema";
+import { PUBLIC_READ } from "./routes/responses";
+import type { Database } from "./db";
+import type { Visibility } from "./modules/page";
+import { categories, changeEvents, searchChunks } from "./schema";
 import {
   aPage,
   createTestApp,
   createTestDb,
+  createTestServices,
+  expectOk,
   TEST_EMPLOYEE,
   TEST_HEADERS,
   TEST_HTTP_CONFIG,
@@ -32,16 +31,15 @@ import {
 import { AuthUnavailable, Forbidden } from "./modules/auth";
 import { Redacted } from "./modules/redacted";
 import { err, ok } from "./modules/result";
-import { ApiStore, type Database } from "./store";
 
 let app: FastifyInstance;
 let db: Database;
 let close: () => Promise<void>;
-let store: ApiStore;
+let services: ReturnType<typeof createTestServices>;
 
 beforeEach(async () => {
   ({ db, close } = await createTestDb());
-  store = new ApiStore(db);
+  services = createTestServices(db);
   app = await createTestApp(db);
   await app.ready();
 });
@@ -55,18 +53,19 @@ const inject = (options: InjectOptions) =>
   app.inject({ ...options, headers: { ...TEST_HEADERS, ...options.headers } });
 
 const seedPage = async (overrides: Record<string, unknown> = {}) =>
-  await store.create(aPage(overrides), TEST_EMPLOYEE.id);
+  expectOk(await services.editing.create(aPage(overrides), TEST_EMPLOYEE));
 
-const seedCategory = async () =>
-  (
-    await db
-      .insert(categories)
-      .values({
-        slug: "money-financial-support",
-        title: "Money and financial support",
-      })
-      .returning()
-  )[0];
+const seedCategory = async () => {
+  const [category] = await db
+    .insert(categories)
+    .values({
+      slug: "money-financial-support",
+      title: "Money and financial support",
+    })
+    .returning();
+  if (!category) throw new Error("The category insert returned no row");
+  return category;
+};
 
 const read = (url: string) =>
   inject({ url: `/pages?url=${encodeURIComponent(url)}` });
@@ -177,6 +176,7 @@ describe("GET /pages?url=", () => {
       .insert(categories)
       .values({ slug: "arts-culture", title: "Arts", parentId: parent.id })
       .returning();
+    if (!sub) throw new Error("The subcategory was not inserted");
     const url = "/money-financial-support/arts-culture/canvas";
     await seedPage({ url, title: "Canvas", category_id: sub.id });
 
@@ -293,6 +293,14 @@ describe("GET /pages/:id", () => {
       body_markdown: "You should complete the calculator in one go.",
       published_at: null,
     });
+    expect(response.headers["cache-control"]).toBe("no-store");
+  });
+
+  it("400s an id that is not a UUID instead of asking the database", async () => {
+    const response = await inject({ url: "/pages/not-a-uuid" });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "bad_request" });
     expect(response.headers["cache-control"]).toBe("no-store");
   });
 
@@ -495,7 +503,9 @@ describe("PUT /pages/:id", () => {
     });
 
     expect(response.statusCode).toBe(409);
-    expect((await store.get(created.id))?.title).toBe("First writer wins");
+    expect(expectOk(await services.editing.get(created.id))?.title).toBe(
+      "First writer wins",
+    );
   });
 
   it("404s a page that is not there", async () => {
@@ -604,6 +614,7 @@ describe("PUT /pages/:id", () => {
       .insert(categories)
       .values({ slug: "work-employment", title: "Work" })
       .returning();
+    if (!to) throw new Error("The category was not inserted");
     const parent = await seedPage({ category_id: from.id });
     const start = await seedPage({ url: START, parent_id: parent.id });
     const below = await seedPage({ url: `${START}/more`, parent_id: start.id });
@@ -615,8 +626,12 @@ describe("PUT /pages/:id", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect((await store.get(start.id))?.category_id).toBe(to.id);
-    expect((await store.get(below.id))?.category_id).toBe(to.id);
+    expect(expectOk(await services.editing.get(start.id))?.category_id).toBe(
+      to.id,
+    );
+    expect(expectOk(await services.editing.get(below.id))?.category_id).toBe(
+      to.id,
+    );
   });
 
   it("files an uncategorised parent's sub-pages when it gets a category", async () => {
@@ -633,8 +648,12 @@ describe("PUT /pages/:id", () => {
       payload: { ...parent, category_id: category.id },
     });
 
-    expect((await store.get(start.id))?.category_id).toBe(category.id);
-    expect((await store.get(below.id))?.category_id).toBe(category.id);
+    expect(expectOk(await services.editing.get(start.id))?.category_id).toBe(
+      category.id,
+    );
+    expect(expectOk(await services.editing.get(below.id))?.category_id).toBe(
+      category.id,
+    );
     expect((await read(START)).json().breadcrumbs[0]).toEqual({
       name: "Money and financial support",
       url: "/money-financial-support",
@@ -669,7 +688,7 @@ describe("DELETE /pages/:id", () => {
     });
 
     expect(response.statusCode).toBe(204);
-    expect(await store.get(created.id)).toBeNull();
+    expect(expectOk(await services.editing.get(created.id))).toBeNull();
   });
 
   it("422s a page that still has sub-pages, and keeps it", async () => {
@@ -683,7 +702,7 @@ describe("DELETE /pages/:id", () => {
 
     expect(response.statusCode).toBe(422);
     expect(response.json().errors[0].field).toBe("id");
-    expect(await store.get(parent.id)).not.toBeNull();
+    expect(expectOk(await services.editing.get(parent.id))).not.toBeNull();
   });
 });
 
@@ -891,7 +910,10 @@ describe("employee access", () => {
         expect(response.statusCode).toBe(403);
         expect(response.headers["cache-control"]).toBe("no-store");
       }
-      expect(await store.version()).toEqual({ count: 0, latest: null });
+      expect(expectOk(await services.index.version())).toEqual({
+        count: 0,
+        latest: null,
+      });
     },
   );
 

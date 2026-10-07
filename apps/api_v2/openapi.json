@@ -61,12 +61,6 @@
                     "frontmatter": {
                       "type": "object",
                       "properties": {
-                        "title": {
-                          "type": "string"
-                        },
-                        "description": {
-                          "type": "string"
-                        },
                         "lede": {
                           "type": "string"
                         },
@@ -89,6 +83,12 @@
                           }
                         },
                         "source_url": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
                           "type": "string"
                         }
                       },
@@ -244,6 +244,28 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
           }
         }
       },
@@ -260,14 +282,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "id": {
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
-                  },
                   "url": {
                     "type": "string",
-                    "pattern": "^\\/[^?#]*[^/?#]$"
+                    "pattern": "^\\/[^?#]*[^/?#]$",
+                    "description": "The site's routing key."
                   },
                   "category_id": {
                     "nullable": true,
@@ -277,6 +295,7 @@
                   },
                   "parent_id": {
                     "nullable": true,
+                    "description": "The page this one sits beneath, in the same category; null for a page at the root of its category, which is what the category lists.",
                     "type": "string",
                     "format": "uuid",
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
@@ -332,6 +351,11 @@
                         "type": "string"
                       }
                     }
+                  },
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                   }
                 },
                 "required": [
@@ -356,18 +380,10 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "id": {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
-                    },
                     "url": {
                       "type": "string",
+                      "pattern": "^\\/[^?#]*[^/?#]$",
                       "description": "The site's routing key."
-                    },
-                    "slug": {
-                      "type": "string",
-                      "description": "The url's last segment."
                     },
                     "category_id": {
                       "nullable": true,
@@ -383,7 +399,8 @@
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                     },
                     "title": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": {
                       "nullable": true,
@@ -434,6 +451,15 @@
                       },
                       "additionalProperties": false
                     },
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                    },
+                    "slug": {
+                      "type": "string",
+                      "description": "The url's last segment."
+                    },
                     "published_at": {
                       "nullable": true,
                       "description": "When the page first went public; null until it has.",
@@ -454,9 +480,7 @@
                     }
                   },
                   "required": [
-                    "id",
                     "url",
-                    "slug",
                     "category_id",
                     "parent_id",
                     "title",
@@ -465,6 +489,8 @@
                     "form_id",
                     "body_markdown",
                     "frontmatter",
+                    "id",
+                    "slug",
                     "published_at",
                     "created_at",
                     "updated_at"
@@ -557,6 +583,28 @@
                   "required": [
                     "error",
                     "errors"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
                   ],
                   "additionalProperties": {}
                 }
@@ -678,6 +726,28 @@
             }
           },
           "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "500": {
             "description": "Default Response",
             "content": {
               "application/json": {
@@ -882,6 +952,28 @@
             }
           },
           "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "500": {
             "description": "Default Response",
             "content": {
               "application/json": {
@@ -1113,6 +1205,28 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
           }
         }
       }
@@ -1182,6 +1296,28 @@
             }
           },
           "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "500": {
             "description": "Default Response",
             "content": {
               "application/json": {
@@ -1315,6 +1451,28 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
           }
         }
       }
@@ -1329,7 +1487,9 @@
         "parameters": [
           {
             "schema": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
             },
             "in": "path",
             "name": "id",
@@ -1349,18 +1509,10 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "id": {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
-                    },
                     "url": {
                       "type": "string",
+                      "pattern": "^\\/[^?#]*[^/?#]$",
                       "description": "The site's routing key."
-                    },
-                    "slug": {
-                      "type": "string",
-                      "description": "The url's last segment."
                     },
                     "category_id": {
                       "nullable": true,
@@ -1376,7 +1528,8 @@
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                     },
                     "title": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": {
                       "nullable": true,
@@ -1427,6 +1580,15 @@
                       },
                       "additionalProperties": false
                     },
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                    },
+                    "slug": {
+                      "type": "string",
+                      "description": "The url's last segment."
+                    },
                     "published_at": {
                       "nullable": true,
                       "description": "When the page first went public; null until it has.",
@@ -1447,9 +1609,7 @@
                     }
                   },
                   "required": [
-                    "id",
                     "url",
-                    "slug",
                     "category_id",
                     "parent_id",
                     "title",
@@ -1458,11 +1618,35 @@
                     "form_id",
                     "body_markdown",
                     "frontmatter",
+                    "id",
+                    "slug",
                     "published_at",
                     "created_at",
                     "updated_at"
                   ],
                   "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -1533,6 +1717,28 @@
               }
             }
           },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
           "503": {
             "description": "Default Response",
             "content": {
@@ -1570,14 +1776,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "id": {
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
-                  },
                   "url": {
                     "type": "string",
-                    "pattern": "^\\/[^?#]*[^/?#]$"
+                    "pattern": "^\\/[^?#]*[^/?#]$",
+                    "description": "The site's routing key."
                   },
                   "category_id": {
                     "nullable": true,
@@ -1587,6 +1789,7 @@
                   },
                   "parent_id": {
                     "nullable": true,
+                    "description": "The page this one sits beneath, in the same category; null for a page at the root of its category, which is what the category lists.",
                     "type": "string",
                     "format": "uuid",
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
@@ -1642,6 +1845,11 @@
                         "type": "string"
                       }
                     }
+                  },
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                   }
                 },
                 "required": [
@@ -1656,7 +1864,9 @@
         "parameters": [
           {
             "schema": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
             },
             "in": "path",
             "name": "id",
@@ -1685,18 +1895,10 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "id": {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
-                    },
                     "url": {
                       "type": "string",
+                      "pattern": "^\\/[^?#]*[^/?#]$",
                       "description": "The site's routing key."
-                    },
-                    "slug": {
-                      "type": "string",
-                      "description": "The url's last segment."
                     },
                     "category_id": {
                       "nullable": true,
@@ -1712,7 +1914,8 @@
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                     },
                     "title": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": {
                       "nullable": true,
@@ -1763,6 +1966,15 @@
                       },
                       "additionalProperties": false
                     },
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                    },
+                    "slug": {
+                      "type": "string",
+                      "description": "The url's last segment."
+                    },
                     "published_at": {
                       "nullable": true,
                       "description": "When the page first went public; null until it has.",
@@ -1783,9 +1995,7 @@
                     }
                   },
                   "required": [
-                    "id",
                     "url",
-                    "slug",
                     "category_id",
                     "parent_id",
                     "title",
@@ -1794,11 +2004,35 @@
                     "form_id",
                     "body_markdown",
                     "frontmatter",
+                    "id",
+                    "slug",
                     "published_at",
                     "created_at",
                     "updated_at"
                   ],
                   "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -1946,6 +2180,28 @@
               }
             }
           },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
           "503": {
             "description": "Default Response",
             "content": {
@@ -1979,7 +2235,9 @@
         "parameters": [
           {
             "schema": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
             },
             "in": "path",
             "name": "id",
@@ -1994,6 +2252,28 @@
         "responses": {
           "204": {
             "description": "Default Response"
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
           },
           "401": {
             "description": "Default Response",
@@ -2078,6 +2358,28 @@
                   "required": [
                     "error",
                     "errors"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
                   ],
                   "additionalProperties": {}
                 }
@@ -2249,6 +2551,28 @@
               }
             }
           },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
           "503": {
             "description": "Default Response",
             "content": {
@@ -2336,6 +2660,28 @@
             }
           },
           "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "500": {
             "description": "Default Response",
             "content": {
               "application/json": {

@@ -9,9 +9,11 @@
  */
 
 import { eq, sql } from "drizzle-orm";
+import { writeSearchChunks } from "./adapters/postgres-pages";
+import type { Database } from "./db";
+import { chunkMarkdown } from "./modules/search-text";
 import { categories, contentPages } from "./schema";
 import { ESTATE } from "./seed-data";
-import { writeSearchChunks, type Database } from "./store";
 
 export async function seed(db: Database): Promise<{
   categories: number;
@@ -88,7 +90,12 @@ export async function seed(db: Database): Promise<{
           })
           .onConflictDoNothing()
           .returning({ id: contentPages.id });
-        if (row) await writeSearchChunks(tx, row.id, page.body_markdown);
+        if (row)
+          await writeSearchChunks(
+            tx,
+            row.id,
+            chunkMarkdown(page.body_markdown),
+          );
         return row;
       });
       if (inserted) {

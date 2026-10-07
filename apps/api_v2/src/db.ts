@@ -1,11 +1,16 @@
 import { readFileSync } from "node:fs";
-import { drizzle } from "drizzle-orm/node-postgres";
+import { drizzle, type NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
+import type { PgDatabase } from "drizzle-orm/pg-core";
 import { Pool } from "pg";
 import type { Logger } from "pino";
 import type { AppConfig } from "./config";
 import { err, ok, type Result } from "./modules/result";
-import type { Database } from "./store";
-import * as schema from "./schema";
+
+/** The node-postgres drizzle handle: the pool's, or a transaction's within it. */
+export type Database = PgDatabase<
+  NodePgQueryResultHKT,
+  Record<string, unknown>
+>;
 
 /** A failed database setup operation, safe to report without driver details. */
 export class DatabaseFailure extends Error {
@@ -83,5 +88,5 @@ export async function connect(
       ),
     );
   }
-  return ok(drizzle(pool, { schema }));
+  return ok(drizzle(pool));
 }

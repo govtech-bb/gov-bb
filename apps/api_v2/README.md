@@ -43,7 +43,16 @@ Production requires HTTPS API/editor origins on the same site, such as separate 
 
 ## Boundaries
 
-`main.ts` parses configuration, creates one logger and pool, connects, migrates, seeds, then constructs BetterAuth, `ApiStore`, `EditorAccess`, and the HTTP app. Only the root constructs these dependencies. Routes translate HTTP; the access service consumes a session capability; the auth adapter owns BetterAuth and the GitHub identity boundary. Content persistence stays in the existing store.
+`main.ts` is the composition root. It parses configuration, creates one logger and pool, connects, migrates and seeds, then constructs the adapters (`PostgresPages`, BetterAuth or the local bypass), the services over them, and the HTTP app, and on shutdown closes the app before the pool. `src/test-db.ts` composes the same graph for tests.
+
+| Layer | Directory | Owns |
+| --- | --- | --- |
+| Domain | `src/modules` | Page shapes and write rules (placement, publication), what a viewer may see, categories and what they list, service grouping, search text, auth admission. Pure: no I/O, no clock. |
+| Application | `src/services` | One use case each (`PageResolution`, `SiteNavigation`, `PageEditing`, `EditorIndex`, `EditorAccess`), with the ports it needs declared beside it. |
+| Outbound adapters | `src/adapters` | `PostgresPages` (all content SQL, including the recursive hierarchy reads), BetterAuth, the local bypass. |
+| Inbound adapters | `src/routes`, `src/app.ts` | Zod request/response contracts, the HTTP mapping of each result. |
+
+Route plugins receive exactly the services they use as plugin options from `buildApp`; nothing is decorated onto the Fastify instance and nothing is autoloaded, so every dependency is visible where the app is composed. Expected failures are `Result` values that routes map to status codes; only defects throw. ESLint enforces the direction: domain and services cannot import Fastify, drizzle, pg, BetterAuth, adapters or routes, and routes cannot import infrastructure.
 
 Better Auth verifies the GitHub email, and the API checks `GET /user/memberships/orgs/govtech-bb` using the sign-in token on both first and returning sign-ins. Only `state: active` membership in `govtech-bb` is admitted; pending invitations, missing membership, and failed checks deny access. Any verified email domain is allowed. Password login and client-supplied ID-token sign-in are disabled. Existing users can link GitHub through the same verified email only after passing the membership check; provider trust never bypasses email verification. OAuth tokens are discarded before account persistence. Sessions expire absolutely after eight hours; reads do not extend them. Session cookies are checked against PostgreSQL on every protected request, so revocation takes effect immediately. Organization membership changes are checked on the next GitHub sign-in; existing application sessions must be revoked when immediate removal is required.
 

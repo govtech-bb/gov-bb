@@ -13,7 +13,7 @@ import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { migrate, readMigration } from "./migrate";
-import type { Database } from "./store";
+import type { Database } from "./db";
 import { createEmptyDb } from "./test-db";
 
 const ALL = [

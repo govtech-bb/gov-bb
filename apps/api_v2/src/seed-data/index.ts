@@ -6,7 +6,7 @@
  * the running API ships without the landing app's source.
  */
 
-import type { Frontmatter, Visibility } from "../schema";
+import type { Frontmatter, Visibility } from "../modules/page";
 import estateJson from "./estate.json";
 
 export interface SeedCategory {

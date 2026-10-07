@@ -15,7 +15,7 @@ import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { categories, changeEvents, contentPages, searchChunks } from "./schema";
 import { createTestDb } from "./test-db";
-import type { Database } from "./store";
+import type { Database } from "./db";
 
 type InformationSchemaColumn = {
   table_name: string;

@@ -28,14 +28,9 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import { VISIBILITIES, type Frontmatter, type PageId } from "./modules/page";
 
-export const pageVisibility = pgEnum("page_visibility", [
-  "public",
-  "preview",
-  "draft",
-]);
-
-export type Visibility = (typeof pageVisibility.enumValues)[number];
+export const pageVisibility = pgEnum("page_visibility", VISIBILITIES);
 
 export const changeAction = pgEnum("change_action", [
   "created",
@@ -44,22 +39,6 @@ export const changeAction = pgEnum("change_action", [
   "reverted",
   "deleted",
 ]);
-
-/**
- * What is left of a page's frontmatter once the fields with columns of their
- * own are taken out: title, description, category, visibility and form_id
- * are columns so filters and the form gate need no JSON lookup, and are not
- * repeated here.
- */
-export interface Frontmatter {
-  lede?: string;
-  stage?: string;
-  featured?: boolean;
-  section?: string;
-  service_type?: string;
-  keywords?: string[];
-  source_url?: string;
-}
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true, precision: 3 })
@@ -91,7 +70,8 @@ export const contentPages = pgTable(
   {
     id: uuid("id")
       .primaryKey()
-      .default(sql`gen_random_uuid()`),
+      .default(sql`gen_random_uuid()`)
+      .$type<PageId>(),
     url: varchar("url", { length: 512 }).notNull().unique(),
     slug: varchar("slug", { length: 200 }).notNull(),
     // Null for an uncategorised page, which lives at the root.
@@ -99,9 +79,11 @@ export const contentPages = pgTable(
       onDelete: "restrict",
     }),
     // Null for a page at the root of its category: what the category lists.
-    parentId: uuid("parent_id").references((): AnyPgColumn => contentPages.id, {
-      onDelete: "restrict",
-    }),
+    parentId: uuid("parent_id")
+      .references((): AnyPgColumn => contentPages.id, {
+        onDelete: "restrict",
+      })
+      .$type<PageId>(),
     title: varchar("title", { length: 300 }).notNull(),
     description: text("description"),
     visibility: pageVisibility("visibility").notNull().default("draft"),

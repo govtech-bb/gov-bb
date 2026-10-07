@@ -15,12 +15,16 @@ import { randomUUID } from "node:crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Client, Pool } from "pg";
 import { inject } from "vitest";
+import { PostgresPages } from "./adapters/postgres-pages";
 import { buildApp, type AppOptions } from "./app";
+import type { Database } from "./db";
 import { type Employee } from "./modules/auth";
-import { ok } from "./modules/result";
+import { ok, type Result } from "./modules/result";
 import { EditorAccess, type SessionReader } from "./services/editor-access";
-import { ApiStore, type Database } from "./store";
-import * as schema from "./schema";
+import { EditorIndex } from "./services/editor-index";
+import { PageEditing } from "./services/page-editing";
+import { PageResolution } from "./services/page-resolution";
+import { SiteNavigation } from "./services/site-navigation";
 
 declare module "vitest" {
   export interface ProvidedContext {
@@ -78,7 +82,7 @@ export async function createDatabase(
   );
   const pool = new Pool({ ...TEST_SERVER, database: name });
   return {
-    db: drizzle(pool, { schema }),
+    db: drizzle(pool),
     pool,
     name,
     close: async () => {
@@ -97,6 +101,23 @@ export async function createTestDb(): Promise<TestDb> {
 /** An empty, unmigrated database, for tests of the migrations themselves. */
 export async function createEmptyDb(): Promise<TestDb> {
   return createDatabase(inject("templateDatabase").replace(/template$/, ""));
+}
+
+/** Compose the content services over a test database, as main.ts does over its pool. */
+export function createTestServices(db: Database) {
+  const pages = new PostgresPages(db);
+  return {
+    resolution: new PageResolution(pages),
+    navigation: new SiteNavigation(pages),
+    editing: new PageEditing(pages, () => new Date()),
+    index: new EditorIndex(pages),
+  };
+}
+
+/** The value of a result a test expects to have succeeded. */
+export function expectOk<T>(result: Result<T, Error>): T {
+  if (!result.ok) throw result.error;
+  return result.value;
 }
 
 /** An employee fixture, never accepted by the production session adapter. */
@@ -126,7 +147,7 @@ export function createTestApp(
   } = {},
 ) {
   return buildApp({
-    store: new ApiStore(db),
+    ...createTestServices(db),
     access: new EditorAccess(
       options.sessions ?? { findSession: async () => ok(TEST_EMPLOYEE) },
     ),

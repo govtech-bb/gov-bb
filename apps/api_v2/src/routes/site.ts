@@ -1,17 +1,17 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { FastifyRequest } from "fastify";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
+import type { Viewer } from "../modules/page-visibility";
 import type { Redacted } from "../modules/redacted";
-import type { ApiStore, Viewer } from "../store";
+import type { PageResolution } from "../services/page-resolution";
+import type { SiteNavigation } from "../services/site-navigation";
 import { SCHEMAS } from "./contracts";
-
-/** Public content may be shared by the site and its caches. */
-export const PUBLIC_READ =
-  "public, max-age=60, stale-while-revalidate=300, stale-if-error=86400";
-/** Authenticated responses must never enter a browser or shared cache. */
-export const EDITOR_READ = "no-store";
-/** A short negative cache keeps missing public URLs inexpensive. */
-export const NOT_FOUND_READ = "public, max-age=10";
+import {
+  EDITOR_READ,
+  NOT_FOUND_READ,
+  PUBLIC_READ,
+  storageFailed,
+} from "./responses";
 
 /** Landing's server sends its PREVIEW_SECRET here for a reviewer's read. */
 export const PREVIEW_TOKEN = "x-preview-token";
@@ -45,16 +45,10 @@ const missing = (viewer: Viewer) =>
 
 /** What the site reads: pages by url, categories, the catalog and search text. */
 export const siteRoutes: FastifyPluginAsyncZod<{
-  store: Pick<
-    ApiStore,
-    | "resolve"
-    | "categoryTree"
-    | "categoryListing"
-    | "catalog"
-    | "searchDocuments"
-  >;
+  resolution: PageResolution;
+  navigation: SiteNavigation;
   previewSecret: Redacted<string> | undefined;
-}> = async (site, { store, previewSecret }) => {
+}> = async (site, { resolution, navigation, previewSecret }) => {
   site.decorateRequest("viewer", null);
   site.addHook("onRequest", async (request, reply) => {
     // Public and preview reads share a url, so a cache must key on the token.
@@ -88,20 +82,25 @@ export const siteRoutes: FastifyPluginAsyncZod<{
     handler: async (request, reply) => {
       const viewer = viewerFor(request);
       const { url } = request.query;
-      const resolved = await store.resolve(url, viewer);
-      if (resolved.kind === "not_found") {
+      const resolved = await resolution.resolve(url, viewer);
+      if (!resolved.ok)
+        return reply
+          .status(500)
+          .send(storageFailed(request.log, resolved.error));
+      const outcome = resolved.value;
+      if (outcome.kind === "not_found") {
         return reply
           .header("Cache-Control", missing(viewer))
           .status(404)
           .send({ error: "not_found", message: `No page at ${url}` });
       }
       reply.header("Cache-Control", found(viewer));
-      if (resolved.kind === "redirect")
+      if (outcome.kind === "redirect")
         return reply
           .status(301)
-          .header("Location", resolved.url)
-          .send({ redirect: resolved.url });
-      return resolved.page;
+          .header("Location", outcome.url)
+          .send({ redirect: outcome.url });
+      return outcome.page;
     },
   });
 
@@ -111,9 +110,13 @@ export const siteRoutes: FastifyPluginAsyncZod<{
     schema: SCHEMAS.getCategories,
     handler: async (request, reply) => {
       const viewer = viewerFor(request);
-      const categories = await store.categoryTree(viewer);
+      const categories = await navigation.categories(viewer);
+      if (!categories.ok)
+        return reply
+          .status(500)
+          .send(storageFailed(request.log, categories.error));
       reply.header("Cache-Control", found(viewer));
-      return { categories };
+      return { categories: categories.value };
     },
   });
 
@@ -124,15 +127,19 @@ export const siteRoutes: FastifyPluginAsyncZod<{
     handler: async (request, reply) => {
       const viewer = viewerFor(request);
       const { slug } = request.params;
-      const listing = await store.categoryListing([slug], viewer);
-      if (listing === null) {
+      const listing = await navigation.categoryListing([slug], viewer);
+      if (!listing.ok)
+        return reply
+          .status(500)
+          .send(storageFailed(request.log, listing.error));
+      if (listing.value === null) {
         return reply
           .header("Cache-Control", missing(viewer))
           .status(404)
           .send({ error: "not_found", message: `No category at /${slug}` });
       }
       reply.header("Cache-Control", found(viewer));
-      return listing;
+      return listing.value;
     },
   });
 
@@ -143,8 +150,15 @@ export const siteRoutes: FastifyPluginAsyncZod<{
     handler: async (request, reply) => {
       const viewer = viewerFor(request);
       const { category, slug } = request.params;
-      const listing = await store.categoryListing([category, slug], viewer);
-      if (listing === null) {
+      const listing = await navigation.categoryListing(
+        [category, slug],
+        viewer,
+      );
+      if (!listing.ok)
+        return reply
+          .status(500)
+          .send(storageFailed(request.log, listing.error));
+      if (listing.value === null) {
         return reply
           .header("Cache-Control", missing(viewer))
           .status(404)
@@ -154,7 +168,7 @@ export const siteRoutes: FastifyPluginAsyncZod<{
           });
       }
       reply.header("Cache-Control", found(viewer));
-      return listing;
+      return listing.value;
     },
   });
 
@@ -164,9 +178,11 @@ export const siteRoutes: FastifyPluginAsyncZod<{
     schema: SCHEMAS.getCatalog,
     handler: async (request, reply) => {
       const viewer = viewerFor(request);
-      const pages = await store.catalog(viewer);
+      const pages = await navigation.catalog(viewer);
+      if (!pages.ok)
+        return reply.status(500).send(storageFailed(request.log, pages.error));
       reply.header("Cache-Control", found(viewer));
-      return { pages };
+      return { pages: pages.value };
     },
   });
 
@@ -176,9 +192,13 @@ export const siteRoutes: FastifyPluginAsyncZod<{
     schema: SCHEMAS.getSearchDocuments,
     handler: async (request, reply) => {
       const viewer = viewerFor(request);
-      const documents = await store.searchDocuments(viewer);
+      const documents = await navigation.searchDocuments(viewer);
+      if (!documents.ok)
+        return reply
+          .status(500)
+          .send(storageFailed(request.log, documents.error));
       reply.header("Cache-Control", found(viewer));
-      return { documents };
+      return { documents: documents.value };
     },
   });
 };

@@ -8,186 +8,16 @@
 
 import type { FastifySchema } from "fastify";
 import { z } from "zod";
-
-const visibility = z.enum(["public", "preview", "draft"]);
-
-/** The frontmatter fields that did not become columns. */
-const frontmatterFields = {
-  lede: z.string().optional(),
-  stage: z.string().optional(),
-  featured: z.boolean().optional(),
-  section: z.string().optional(),
-  service_type: z.string().optional(),
-  keywords: z.array(z.string()).optional(),
-  source_url: z.string().optional(),
-};
-
-const frontmatter = z.object(frontmatterFields);
-
-const publicPage = z.object({
-  url: z.string(),
-  frontmatter: z
-    .object({
-      title: z.string(),
-      description: z.string().optional(),
-      ...frontmatterFields,
-    })
-    .describe(
-      "The stored frontmatter, with the page's title and description " +
-        "(columns of their own) put back.",
-    ),
-  body_markdown: z
-    .string()
-    .describe("The page body as written. The site sanitises and renders it."),
-  form_id: z
-    .string()
-    .nullable()
-    .describe(
-      "The form a Start link with no href of its own opens, or null. " +
-        "Whether the form is open is the forms API's to say.",
-    ),
-  hide_start_links: z
-    .boolean()
-    .describe(
-      "True when the page's `start` sub-page is hidden from this viewer: " +
-        'the site removes the Start link and counts "There are N ways…" down.',
-    ),
-  breadcrumbs: z
-    .array(z.object({ name: z.string(), url: z.string() }))
-    .describe(
-      "The full trail, current page included, Home not: the category " +
-        "(and its parent, for a subcategory), then the pages above this one.",
-    ),
-  published_at: z.iso
-    .datetime()
-    .nullable()
-    .describe(
-      "When the page first went public (seeded from landing's " +
-        "`publish_date`); null until it has.",
-    ),
-  updated_at: z.iso
-    .datetime()
-    .describe(
-      "The page's last save, visibility changes included: the site's " +
-        '"Last updated" line.',
-    ),
-});
-
-const pageDocument = z.object({
-  id: z.guid(),
-  url: z.string().describe("The site's routing key."),
-  slug: z.string().describe("The url's last segment."),
-  category_id: z.guid().nullable(),
-  parent_id: z
-    .guid()
-    .nullable()
-    .describe(
-      "The page this one sits beneath, in the same category; null for a " +
-        "page at the root of its category, which is what the category lists.",
-    ),
-  title: z.string(),
-  description: z.string().nullable(),
-  visibility,
-  form_id: z.string().nullable(),
-  body_markdown: z.string(),
-  frontmatter,
-  published_at: z.iso
-    .datetime()
-    .nullable()
-    .describe("When the page first went public; null until it has."),
-  created_at: z.iso.datetime(),
-  updated_at: z.iso
-    .datetime()
-    .describe(
-      "Millisecond precision, and exactly the value to send back in " +
-        "`if-updated-at` on the next save.",
-    ),
-});
-
-const serviceSummary = z.object({
-  id: z.guid().describe("The entry page's id."),
-  url: z.string(),
-  title: z.string(),
-  category: z.object({ slug: z.string(), title: z.string() }),
-  visibility,
-  form_id: z
-    .string()
-    .nullable()
-    .describe("The entry page's form, else its `/start` page's."),
-  has_start_page: z.boolean(),
-  page_count: z.int().describe("The entry page plus every page below it."),
-  updated_at: z.iso
-    .datetime()
-    .describe("The latest change across those pages."),
-});
-
-/** What a write sends. The slug comes from the url. */
-const pageInput = z.object({
-  id: z.guid().optional(),
-  url: z.string().regex(/^\/[^?#]*[^/?#]$/),
-  category_id: z.guid().nullable().optional(),
-  parent_id: z.guid().nullable().optional(),
-  title: z.string().min(1),
-  description: z.string().nullable().optional(),
-  visibility: visibility.optional(),
-  form_id: z.string().nullable().optional(),
-  body_markdown: z.string(),
-  frontmatter: frontmatter.optional(),
-});
-
-const categoryRef = z.object({
-  slug: z.string(),
-  url: z.string().describe("`/<category>`, or `/<category>/<subcategory>`."),
-  title: z.string(),
-  description: z.string().nullable(),
-});
-
-const pageSummary = z.object({
-  url: z.string(),
-  title: z.string(),
-  description: z.string().nullable(),
-  digital: z
-    .boolean()
-    .describe("It has a form, or its frontmatter says it is digital."),
-});
-
-const categoryTree = z.object({
-  categories: z.array(
-    categoryRef.extend({ subcategories: z.array(categoryRef) }),
-  ),
-});
-
-const categoryListing = z.object({
-  category: categoryRef,
-  parent: categoryRef
-    .nullable()
-    .describe("The category this is a subcategory of, or null."),
-  subcategories: z
-    .array(categoryRef)
-    .describe("Those with something to list, in order."),
-  pages: z
-    .array(pageSummary)
-    .describe("The pages at the category's root, A to Z."),
-});
-
-const catalog = z.object({
-  pages: z.array(pageSummary.extend({ stage: z.string().nullable() })),
-});
-
-const searchDocuments = z.object({
-  documents: z.array(
-    pageSummary.extend({
-      keywords: z.array(z.string()),
-      chunks: z
-        .array(z.object({ heading: z.string().nullable(), body: z.string() }))
-        .describe(
-          "The body as plain text, split at its headings, in order. " +
-            "Joined with spaces (heading, then body, skipping empties) " +
-            "they are the whole body's text.",
-        ),
-    }),
-  ),
-});
+import { ServiceSummary } from "../modules/estate-services";
+import {
+  CatalogEntry,
+  CategoryListing,
+  CategoryNode,
+  SearchDocument,
+} from "../modules/navigation";
+import { NewPage, PageDocument, PageId } from "../modules/page";
+import { PublicPage } from "../modules/page-visibility";
+import { EstateVersion } from "../services/editor-index";
 
 /** No credentials, or the preview token. */
 const previewSecurity: Array<Record<string, string[]>> = [
@@ -226,7 +56,7 @@ const conflict = z.looseObject({
   documentId: z.guid(),
 });
 
-const idParams = z.object({ id: z.string() });
+const idParams = z.object({ id: PageId });
 
 const editorSecurity = [{ editorSession: [] }];
 const authErrors = { 401: error, 403: error, 503: error };
@@ -245,11 +75,12 @@ export const SCHEMAS = {
     ...siteRead,
     querystring: z.object({ url: z.string().min(1) }),
     response: {
-      200: publicPage,
+      200: PublicPage,
       301: z.object({ redirect: z.string() }),
       400: error,
       401: error,
       404: error,
+      500: error,
     },
   },
 
@@ -260,7 +91,11 @@ export const SCHEMAS = {
       "or one of its subcategories has a visible page at its root.",
     tags: ["categories"],
     ...siteRead,
-    response: { 200: categoryTree, 401: error },
+    response: {
+      200: z.object({ categories: z.array(CategoryNode) }),
+      401: error,
+      500: error,
+    },
   },
 
   getCategory: {
@@ -271,7 +106,12 @@ export const SCHEMAS = {
     tags: ["categories"],
     ...siteRead,
     params: z.object({ slug: z.string() }),
-    response: { 200: categoryListing, 401: error, 404: error },
+    response: {
+      200: CategoryListing,
+      401: error,
+      404: error,
+      500: error,
+    },
   },
 
   getSubcategory: {
@@ -279,7 +119,12 @@ export const SCHEMAS = {
     tags: ["categories"],
     ...siteRead,
     params: z.object({ category: z.string(), slug: z.string() }),
-    response: { 200: categoryListing, 401: error, 404: error },
+    response: {
+      200: CategoryListing,
+      401: error,
+      404: error,
+      500: error,
+    },
   },
 
   getCatalog: {
@@ -289,7 +134,11 @@ export const SCHEMAS = {
       "service lists.",
     tags: ["pages"],
     ...siteRead,
-    response: { 200: catalog, 401: error },
+    response: {
+      200: z.object({ pages: z.array(CatalogEntry) }),
+      401: error,
+      500: error,
+    },
   },
 
   getSearchDocuments: {
@@ -299,7 +148,11 @@ export const SCHEMAS = {
       "plain-text chunks.",
     tags: ["search"],
     ...siteRead,
-    response: { 200: searchDocuments, 401: error },
+    response: {
+      200: z.object({ documents: z.array(SearchDocument) }),
+      401: error,
+      500: error,
+    },
   },
 
   getPage: {
@@ -308,16 +161,27 @@ export const SCHEMAS = {
     tags: ["pages"],
     params: idParams,
     security: editorSecurity,
-    response: { 200: pageDocument, 404: error, ...authErrors },
+    response: {
+      200: PageDocument,
+      400: error,
+      404: error,
+      500: error,
+      ...authErrors,
+    },
   },
 
   createPage: {
     summary: "Create a page",
     description: "Requires an employee session and the editor's Origin header.",
     tags: ["pages"],
-    body: pageInput,
+    body: NewPage,
     security: editorSecurity,
-    response: { 201: pageDocument, 422: validationFailed, ...authErrors },
+    response: {
+      201: PageDocument,
+      422: validationFailed,
+      500: error,
+      ...authErrors,
+    },
   },
 
   savePage: {
@@ -338,13 +202,15 @@ export const SCHEMAS = {
             "whatever is stored.",
         ),
     }),
-    body: pageInput,
+    body: NewPage,
     security: editorSecurity,
     response: {
-      200: pageDocument,
+      200: PageDocument,
+      400: error,
       404: error,
       409: conflict,
       422: validationFailed,
+      500: error,
       ...authErrors,
     },
   },
@@ -357,7 +223,13 @@ export const SCHEMAS = {
     tags: ["pages"],
     params: idParams,
     security: editorSecurity,
-    response: { 204: z.undefined(), 422: validationFailed, ...authErrors },
+    response: {
+      204: z.undefined(),
+      400: error,
+      422: validationFailed,
+      500: error,
+      ...authErrors,
+    },
   },
 
   listServices: {
@@ -368,7 +240,7 @@ export const SCHEMAS = {
       "`parent_id` belongs to it.",
     tags: ["pages"],
     security: editorSecurity,
-    response: { 200: z.array(serviceSummary), ...authErrors },
+    response: { 200: z.array(ServiceSummary), 500: error, ...authErrors },
   },
 
   version: {
@@ -381,7 +253,8 @@ export const SCHEMAS = {
     security: editorSecurity,
     response: {
       ...authErrors,
-      200: z.object({ count: z.int(), latest: z.string().nullable() }),
+      200: EstateVersion,
+      500: error,
     },
   },
 } satisfies Record<string, FastifySchema>;

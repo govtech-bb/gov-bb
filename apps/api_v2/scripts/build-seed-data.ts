@@ -23,7 +23,7 @@ import { join, relative } from "node:path";
 import { execFileSync } from "node:child_process";
 import matter from "gray-matter";
 import { CATEGORY_TAXONOMY } from "@govtech-bb/content/categories";
-import type { Frontmatter } from "../src/schema";
+import type { Frontmatter } from "../src/modules/page";
 import type { SeedEstate, SeedPage } from "../src/seed-data";
 
 const root = join(__dirname, "..", "..", "..");

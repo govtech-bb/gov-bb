@@ -16,14 +16,13 @@ import { OPENAPI_DOCUMENT } from "./openapi";
 import type { Redacted } from "./modules/redacted";
 import { authRoutes, type AuthHandler } from "./routes/auth";
 import { editorRoutes, IF_UPDATED_AT } from "./routes/pages";
-import { EDITOR_READ, siteRoutes } from "./routes/site";
+import { EDITOR_READ } from "./routes/responses";
+import { siteRoutes } from "./routes/site";
 import type { EditorAccess } from "./services/editor-access";
-import {
-  ConflictError,
-  NotFoundError,
-  ValidationFailedError,
-  type ApiStore,
-} from "./store";
+import type { EditorIndex } from "./services/editor-index";
+import type { PageEditing } from "./services/page-editing";
+import type { PageResolution } from "./services/page-resolution";
+import type { SiteNavigation } from "./services/site-navigation";
 
 /** A Scalar reference page over the generated spec. */
 const DOCS_HTML = `<!doctype html>
@@ -43,16 +42,26 @@ const DOCS_HTML = `<!doctype html>
   </body>
 </html>`;
 
-/** HTTP dependencies are constructed once by the process composition root. */
+/**
+ * HTTP dependencies, constructed once by the process composition root. Each
+ * route plugin receives exactly the ones it uses as its options; nothing is
+ * decorated onto the Fastify instance.
+ */
 export interface AppOptions {
-  store: ApiStore;
-  access: Pick<EditorAccess, "requireEmployee">;
-  auth: AuthHandler;
-  config: { apiOrigin: string; editorOrigin: string };
+  readonly resolution: PageResolution;
+  readonly navigation: SiteNavigation;
+  readonly editing: PageEditing;
+  readonly index: EditorIndex;
+  readonly access: Pick<EditorAccess, "requireEmployee">;
+  readonly auth: AuthHandler;
+  readonly config: {
+    readonly apiOrigin: string;
+    readonly editorOrigin: string;
+  };
   /** The site's preview token; without it, preview reads are refused. */
-  previewSecret?: Redacted<string>;
+  readonly previewSecret?: Redacted<string>;
   /** The root logger shared with database and authentication adapters. */
-  logger?: FastifyBaseLogger;
+  readonly logger?: FastifyBaseLogger;
 }
 
 /** Construct HTTP transport around explicit application capabilities. */
@@ -121,35 +130,19 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       return reply
         .status(400)
         .send({ error: "bad_request", message: error.message });
-    if (error instanceof ValidationFailedError) {
-      return reply.status(422).send({
-        error: "validation_failed",
-        message: error.message,
-        errors: error.errors,
-      });
-    }
-    if (error instanceof ConflictError) {
-      return reply.status(409).send({
-        error: "conflict",
-        message: error.message,
-        documentId: error.documentId,
-      });
-    }
-    if (error instanceof NotFoundError)
-      return reply
-        .status(404)
-        .send({ error: "not_found", message: error.message });
     // Database errors can contain SQL parameters, and auth errors can contain tokens.
     request.log.error({ failure: "internal_error" }, "request failed");
     return reply.status(500).send({ error: "internal_error" });
   });
 
   await app.register(siteRoutes, {
-    store: options.store,
+    resolution: options.resolution,
+    navigation: options.navigation,
     previewSecret: options.previewSecret,
   });
   await app.register(editorRoutes, {
-    store: options.store,
+    editing: options.editing,
+    index: options.index,
     access: options.access,
     editorOrigin: config.editorOrigin,
   });

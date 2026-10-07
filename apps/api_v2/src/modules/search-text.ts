@@ -13,6 +13,7 @@ export interface SearchChunk {
   body: string;
 }
 
+/** Markdown as landing indexes it: syntax stripped, whitespace collapsed. */
 export function stripMarkdown(markdown: string): string {
   return markdown
     .replace(/```[\s\S]*?```/g, " ")
@@ -29,19 +30,22 @@ const HEADING = /^#{1,6}\s/;
 
 /** Split at ATX headings outside code fences, then strip each part. */
 export function chunkMarkdown(markdown: string): SearchChunk[] {
-  const sections: Array<{ heading: string | null; lines: string[] }> = [
-    { heading: null, lines: [] },
-  ];
+  let current: { heading: string | null; lines: string[] } = {
+    heading: null,
+    lines: [],
+  };
+  const sections = [current];
   let inFence = false;
   for (const line of markdown.split("\n")) {
     if (!inFence && HEADING.test(line)) {
-      sections.push({ heading: line, lines: [] });
+      current = { heading: line, lines: [] };
+      sections.push(current);
       continue;
     }
     // An odd number of fences on a line opens or closes a block, pairing
     // them the way stripMarkdown's lazy match does.
     if ((line.match(/```/g)?.length ?? 0) % 2 === 1) inFence = !inFence;
-    sections.at(-1)!.lines.push(line);
+    current.lines.push(line);
   }
   return sections
     .map(({ heading, lines }) => ({

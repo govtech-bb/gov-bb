@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ESTATE } from "./seed-data";
+import { ESTATE } from "../seed-data";
 import { chunkMarkdown, stripMarkdown } from "./search-text";
 
 /** How a search client rebuilds one page's text from its chunks. */

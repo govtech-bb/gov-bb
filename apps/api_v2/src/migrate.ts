@@ -20,7 +20,7 @@ import { SQL as MARKDOWN_PAGES_SQL } from "./migrations/002_markdown_pages";
 import { SQL as AUTH_SQL } from "./migrations/003_auth";
 import { SQL as GITHUB_SESSIONS_SQL } from "./migrations/004_github_sessions";
 import { SQL as HIERARCHY_SQL } from "./migrations/005_hierarchy_and_search";
-import type { Database } from "./store";
+import type { Database } from "./db";
 
 const SCRIPTS: Record<string, string> = {
   "001_init": INIT_SQL,
