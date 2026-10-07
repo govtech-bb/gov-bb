@@ -11,7 +11,7 @@
   - A server function that calls `GET /pages?url=` with a 5s timeout and `redirect: "manual"`.
   - `fromApiV2`, which turns the response into landing's `ContentPage` using the build's own `processMarkdown` and `bakeStartLinkFormId`.
 - `$.tsx` loader: the api_v2 lookup goes where `findPage` used to run, after the category check. A hit sends its serialised page across the loader boundary; a static page still sends only its URL.
-- Follow-ups: #2946 (API dates), #2947 (sanitise HTML), #2950 (skip the lookup for subcategory URLs).
+- Follow-ups: #2947 (sanitise HTML). #2950 (skip the lookup for subcategory URLs) was folded into #2952, and #2946's dates landed with #2959.
 
 ## Why we did it that way
 
@@ -19,7 +19,7 @@
 - **A v2 hit is public.** The v1 `service_status` overlay never changes a v2 page's visibility, so the v1 `disabled` switch can no longer take down a page that api_v2 serves. v1 form-level state (closed, maintenance, `form_disabled`, the `/start` 404) still applies, because it describes the form rather than the page. The existing form block is shared in place; we didn't extract a helper.
 - **Reuse `ContentPage`, not a new union type.** The issue sketched a `ResolvedPage` union. Mapping onto `ContentPage` minus `Component`/`selfRendered` left `PageView`, `MarkdownContent`, `head()` and the JSON-LD builders untouched.
 - **No cache, 5s timeout.** The user chose no cache for now. Every page view costs one api_v2 call, and a hit also costs one markdown compile. The timeout is short because a fallback exists: a hung api_v2 (#2845) costs each view at most 5s, where 15s would add up towards Amplify's 28s SSR limit.
-- **"Last updated"** comes from the static page at the same URL until #2946 lands, and is left out otherwise. Every current v2 page was seeded from those files, so the date is the same one.
+- **"Last updated"** first came from the static page at the same URL, because the public response had no dates. Once #2959 added `published_at` and `updated_at`, it comes from `published_at` (review on #2952), and the static lookup is gone. It deliberately isn't `updated_at`, which also changes on visibility-only edits. The seed copies each file's `publish_date` into `published_at`, so the dates shown didn't change.
 - **Breadcrumbs stay registry-derived.** The API's `breadcrumbs` field is ignored, because every v2 page still has a static twin.
 
 ## What we almost got wrong

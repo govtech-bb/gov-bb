@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Element, RootContent } from 'hast'
-import type { ContentPage } from '../content/registry'
 import {
   API_V2_TIMEOUT_MS,
   fetchApiV2Page,
@@ -20,6 +19,8 @@ function pageBody(overrides: Partial<PageResponse> = {}): PageResponse {
     form_id: null,
     hide_start_links: false,
     breadcrumbs: [],
+    published_at: null,
+    updated_at: '2026-01-01T00:00:00.000Z',
     ...overrides,
   }
 }
@@ -293,17 +294,21 @@ describe('fromApiV2', () => {
     expect(link?.properties.dataFormId).toBe('register-birth')
   })
 
-  it('takes publish_date from the static twin, and has none without one', async () => {
-    const date = new Date('2026-01-02T00:00:00Z')
-    const staticPage = {
-      frontmatter: { publish_date: date },
-    } as ContentPage
-    expect(
-      (await fromApiV2(pageBody(), staticPage)).frontmatter.publish_date,
-    ).toEqual(date)
-    expect((await fromApiV2(pageBody())).frontmatter).not.toHaveProperty(
-      'publish_date',
+  it('takes publish_date from published_at, never updated_at', async () => {
+    const page = await fromApiV2(
+      pageBody({
+        published_at: '2026-01-02T00:00:00.000Z',
+        updated_at: '2026-05-05T00:00:00.000Z',
+      }),
     )
+    expect(page.frontmatter.publish_date).toEqual(
+      new Date('2026-01-02T00:00:00.000Z'),
+    )
+  })
+
+  it('has no publish_date until the page has been published', async () => {
+    const page = await fromApiV2(pageBody({ published_at: null }))
+    expect(page.frontmatter).not.toHaveProperty('publish_date')
   })
 
   it('keeps an http(s) source_url and drops any other scheme', async () => {

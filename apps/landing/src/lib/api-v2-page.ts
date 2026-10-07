@@ -1,6 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
 import { useRuntimeConfig } from 'nitro/runtime-config'
-import { findPage } from '../content/registry'
 import type { ContentPage } from '../content/registry'
 import { bakeStartLinkFormId } from '../utils/markdown/plugins'
 import type { Frontmatter } from './frontmatter'
@@ -19,7 +18,6 @@ export interface PageResponse {
   url: string
   frontmatter: {
     lede?: string
-    subcategory?: string
     stage?: string
     featured?: boolean
     section?: string
@@ -32,9 +30,15 @@ export interface PageResponse {
   body_markdown: string
   /** The form a href-less Start link in the markdown opens. */
   form_id: string | null
-  /** True when the `/start` sub-page or the form is not public. */
+  /** True when the `/start` sub-page is hidden from this viewer; the form's
+   * own state still comes from the forms API. */
   hide_start_links: boolean
   breadcrumbs: Array<{ name: string; url: string }>
+  /** When the page first went public; null until it has. */
+  published_at: string | null
+  /** The page's last save — also bumped by a visibility-only change, so not
+   * used for "Last updated". */
+  updated_at: string
 }
 
 /** A `ContentPage` that can cross the server-function boundary. */
@@ -127,19 +131,14 @@ export async function fetchApiV2Page(
 
 /**
  * Map an api_v2 page onto landing's `ContentPage`, compiling the markdown the
- * same way the build does. `staticPage` (the registry twin) only supplies the
- * "Last updated" date.
+ * same way the build does.
  */
-export async function fromApiV2(
-  body: PageResponse,
-  staticPage?: ContentPage,
-): Promise<ApiV2Page> {
+export async function fromApiV2(body: PageResponse): Promise<ApiV2Page> {
   const url = body.url.replace(/^\/+/, '')
   const segments = url.split('/')
   const leaf = segments[segments.length - 1]
   const slug = leaf === 'start' ? segments.slice(-2).join('/') : leaf
   const { stage, service_type, source_url, ...rest } = body.frontmatter
-  const publishDate = staticPage?.frontmatter.publish_date
   const frontmatter: Frontmatter = {
     ...rest,
     ...(stage === 'alpha' && { stage }),
@@ -151,7 +150,8 @@ export async function fromApiV2(
     categories: [segments[0]],
     visibility: 'public',
     ...(body.form_id && { form_id: body.form_id }),
-    ...(publishDate && { publish_date: publishDate }),
+    // "Last updated" is first publication, as in static frontmatter.
+    ...(body.published_at && { publish_date: new Date(body.published_at) }),
   }
   // Dynamic so the parser stays out of the client entry: a static import
   // survives the server-fn split and ships ~340 KB of remark/rehype.
@@ -187,7 +187,7 @@ export async function resolveApiV2Page(
   const result = await fetchApiV2Page(base, url, fetchImpl)
   if (result.kind !== 'page') return result
   try {
-    return { kind: 'page', page: await fromApiV2(result.body, findPage(url)) }
+    return { kind: 'page', page: await fromApiV2(result.body) }
   } catch (error) {
     console.warn(`[api-v2] compile failed for ${url}:`, error)
     return { kind: 'miss' }
