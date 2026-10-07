@@ -7,11 +7,16 @@ import Fastify, {
 } from "fastify";
 import cors from "@fastify/cors";
 import swagger from "@fastify/swagger";
+import {
+  jsonSchemaTransform,
+  serializerCompiler,
+  validatorCompiler,
+} from "fastify-type-provider-zod";
 import { OPENAPI_DOCUMENT } from "./openapi";
 import type { Redacted } from "./modules/redacted";
-import { registerAuthRoutes, type AuthHandler } from "./routes/auth";
-import { IF_UPDATED_AT, registerPageRoutes } from "./routes/pages";
-import { EDITOR_READ, registerSiteRoutes } from "./routes/site";
+import { authRoutes, type AuthHandler } from "./routes/auth";
+import { editorRoutes, IF_UPDATED_AT } from "./routes/pages";
+import { EDITOR_READ, siteRoutes } from "./routes/site";
 import type { EditorAccess } from "./services/editor-access";
 import {
   ConflictError,
@@ -19,9 +24,6 @@ import {
   ValidationFailedError,
   type ApiStore,
 } from "./store";
-
-export { IF_UPDATED_AT } from "./routes/pages";
-export { EDITOR_READ, NOT_FOUND_READ, PUBLIC_READ } from "./routes/site";
 
 /** A Scalar reference page over the generated spec. */
 const DOCS_HTML = `<!doctype html>
@@ -60,6 +62,8 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     logController: new LogController({ disableRequestLogging: true }),
     ...(logger ? { loggerInstance: logger } : {}),
   });
+  app.setValidatorCompiler(validatorCompiler);
+  app.setSerializerCompiler(serializerCompiler);
   app.addHook("onResponse", async (request, reply) => {
     request.log.info(
       {
@@ -79,7 +83,10 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     exposedHeaders: [IF_UPDATED_AT, "ETag"],
   });
   // Swagger must load before routes so its onRoute hook sees their schemas.
-  await app.register(swagger, { openapi: OPENAPI_DOCUMENT });
+  await app.register(swagger, {
+    openapi: OPENAPI_DOCUMENT,
+    transform: jsonSchemaTransform,
+  });
   app.get("/docs/openapi.json", { schema: { hide: true } }, async () =>
     app.swagger(),
   );
@@ -137,14 +144,18 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     return reply.status(500).send({ error: "internal_error" });
   });
 
-  registerAuthRoutes(app, options.auth, config.apiOrigin);
-  await registerPageRoutes(
-    app,
-    options.store,
-    options.access,
-    config.editorOrigin,
-    options.previewSecret,
-  );
-  registerSiteRoutes(app, options.store, options.previewSecret);
+  await app.register(siteRoutes, {
+    store: options.store,
+    previewSecret: options.previewSecret,
+  });
+  await app.register(editorRoutes, {
+    store: options.store,
+    access: options.access,
+    editorOrigin: config.editorOrigin,
+  });
+  await app.register(authRoutes, {
+    auth: options.auth,
+    apiOrigin: config.apiOrigin,
+  });
   return app;
 }

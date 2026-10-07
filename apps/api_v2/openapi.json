@@ -26,7 +26,9 @@
     "/pages": {
       "get": {
         "summary": "Get a public page by its url",
-        "tags": ["pages"],
+        "tags": [
+          "pages"
+        ],
         "description": "The site's read. A page is served only when it and every page above it (by `parent_id`) are visible: public, or preview too with the preview token. `hide_start_links` is set when the page's `start` sub-page is not. A bare `/<slug>` with no page of its own redirects (301) to the one visible page with that slug.",
         "parameters": [
           {
@@ -58,7 +60,6 @@
                     },
                     "frontmatter": {
                       "type": "object",
-                      "description": "The stored frontmatter, with the page's title and description (columns of their own) put back.",
                       "properties": {
                         "title": {
                           "type": "string"
@@ -91,17 +92,20 @@
                           "type": "string"
                         }
                       },
-                      "required": ["title"],
-                      "additionalProperties": false
+                      "required": [
+                        "title"
+                      ],
+                      "additionalProperties": false,
+                      "description": "The stored frontmatter, with the page's title and description (columns of their own) put back."
                     },
                     "body_markdown": {
                       "type": "string",
                       "description": "The page body as written. The site sanitises and renders it."
                     },
                     "form_id": {
-                      "type": "string",
                       "nullable": true,
-                      "description": "The form a Start link with no href of its own opens, or null. Whether the form is open is the forms API's to say."
+                      "description": "The form a Start link with no href of its own opens, or null. Whether the form is open is the forms API's to say.",
+                      "type": "string"
                     },
                     "hide_start_links": {
                       "type": "boolean",
@@ -109,7 +113,6 @@
                     },
                     "breadcrumbs": {
                       "type": "array",
-                      "description": "The full trail, current page included, Home not: the category (and its parent, for a subcategory), then the pages above this one.",
                       "items": {
                         "type": "object",
                         "properties": {
@@ -120,19 +123,25 @@
                             "type": "string"
                           }
                         },
-                        "required": ["name", "url"],
+                        "required": [
+                          "name",
+                          "url"
+                        ],
                         "additionalProperties": false
-                      }
+                      },
+                      "description": "The full trail, current page included, Home not: the category (and its parent, for a subcategory), then the pages above this one."
                     },
                     "published_at": {
+                      "nullable": true,
+                      "description": "When the page first went public (seeded from landing's `publish_date`); null until it has.",
                       "type": "string",
                       "format": "date-time",
-                      "nullable": true,
-                      "description": "When the page first went public (seeded from landing's `publish_date`); null until it has."
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
                     },
                     "updated_at": {
                       "type": "string",
                       "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
                       "description": "The page's last save, visibility changes included: the site's \"Last updated\" line."
                     }
                   },
@@ -162,7 +171,9 @@
                       "type": "string"
                     }
                   },
-                  "required": ["redirect"],
+                  "required": [
+                    "redirect"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -182,8 +193,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -202,8 +215,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -222,8 +237,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -232,7 +249,9 @@
       },
       "post": {
         "summary": "Create a page",
-        "tags": ["pages"],
+        "tags": [
+          "pages"
+        ],
         "description": "Requires an employee session and the editor's Origin header.",
         "requestBody": {
           "required": true,
@@ -243,37 +262,44 @@
                 "properties": {
                   "id": {
                     "type": "string",
-                    "format": "uuid"
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                   },
                   "url": {
                     "type": "string",
-                    "pattern": "^/[^?#]*[^/?#]$"
+                    "pattern": "^\\/[^?#]*[^/?#]$"
                   },
                   "category_id": {
+                    "nullable": true,
                     "type": "string",
                     "format": "uuid",
-                    "nullable": true
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                   },
                   "parent_id": {
+                    "nullable": true,
                     "type": "string",
                     "format": "uuid",
-                    "nullable": true
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                   },
                   "title": {
                     "type": "string",
                     "minLength": 1
                   },
                   "description": {
-                    "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "type": "string"
                   },
                   "visibility": {
                     "type": "string",
-                    "enum": ["public", "preview", "draft"]
+                    "enum": [
+                      "public",
+                      "preview",
+                      "draft"
+                    ]
                   },
                   "form_id": {
-                    "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "type": "string"
                   },
                   "body_markdown": {
                     "type": "string"
@@ -305,12 +331,14 @@
                       "source_url": {
                         "type": "string"
                       }
-                    },
-                    "additionalProperties": false
+                    }
                   }
                 },
-                "required": ["url", "title", "body_markdown"],
-                "additionalProperties": false
+                "required": [
+                  "url",
+                  "title",
+                  "body_markdown"
+                ]
               }
             }
           }
@@ -330,7 +358,8 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "format": "uuid"
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                     },
                     "url": {
                       "type": "string",
@@ -341,30 +370,36 @@
                       "description": "The url's last segment."
                     },
                     "category_id": {
+                      "nullable": true,
                       "type": "string",
                       "format": "uuid",
-                      "nullable": true
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                     },
                     "parent_id": {
+                      "nullable": true,
+                      "description": "The page this one sits beneath, in the same category; null for a page at the root of its category, which is what the category lists.",
                       "type": "string",
                       "format": "uuid",
-                      "nullable": true,
-                      "description": "The page this one sits beneath, in the same category; null for a page at the root of its category, which is what the category lists."
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                     },
                     "title": {
                       "type": "string"
                     },
                     "description": {
-                      "type": "string",
-                      "nullable": true
+                      "nullable": true,
+                      "type": "string"
                     },
                     "visibility": {
                       "type": "string",
-                      "enum": ["public", "preview", "draft"]
+                      "enum": [
+                        "public",
+                        "preview",
+                        "draft"
+                      ]
                     },
                     "form_id": {
-                      "type": "string",
-                      "nullable": true
+                      "nullable": true,
+                      "type": "string"
                     },
                     "body_markdown": {
                       "type": "string"
@@ -400,18 +435,21 @@
                       "additionalProperties": false
                     },
                     "published_at": {
+                      "nullable": true,
+                      "description": "When the page first went public; null until it has.",
                       "type": "string",
                       "format": "date-time",
-                      "nullable": true,
-                      "description": "When the page first went public; null until it has."
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
                     },
                     "created_at": {
                       "type": "string",
-                      "format": "date-time"
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
                     },
                     "updated_at": {
                       "type": "string",
                       "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
                       "description": "Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save."
                     }
                   },
@@ -450,8 +488,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -470,8 +510,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -485,7 +527,9 @@
                   "properties": {
                     "error": {
                       "type": "string",
-                      "enum": ["validation_failed"]
+                      "enum": [
+                        "validation_failed"
+                      ]
                     },
                     "message": {
                       "type": "string"
@@ -502,13 +546,19 @@
                             "type": "string"
                           }
                         },
-                        "required": ["field", "message"],
+                        "required": [
+                          "field",
+                          "message"
+                        ],
                         "additionalProperties": false
                       }
                     }
                   },
-                  "required": ["error", "errors"],
-                  "additionalProperties": true
+                  "required": [
+                    "error",
+                    "errors"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -527,8 +577,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -539,7 +591,9 @@
     "/categories": {
       "get": {
         "summary": "The categories the site lists",
-        "tags": ["categories"],
+        "tags": [
+          "categories"
+        ],
         "description": "In order, each with its subcategories. A category is listed when it or one of its subcategories has a visible page at its root.",
         "security": [
           {},
@@ -571,8 +625,8 @@
                             "type": "string"
                           },
                           "description": {
-                            "type": "string",
-                            "nullable": true
+                            "nullable": true,
+                            "type": "string"
                           },
                           "subcategories": {
                             "type": "array",
@@ -590,8 +644,8 @@
                                   "type": "string"
                                 },
                                 "description": {
-                                  "type": "string",
-                                  "nullable": true
+                                  "nullable": true,
+                                  "type": "string"
                                 }
                               },
                               "required": [
@@ -615,7 +669,9 @@
                       }
                     }
                   },
-                  "required": ["categories"],
+                  "required": [
+                    "categories"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -635,8 +691,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -647,7 +705,9 @@
     "/categories/{slug}": {
       "get": {
         "summary": "A category and what it lists",
-        "tags": ["categories"],
+        "tags": [
+          "categories"
+        ],
         "description": "Its subcategories and the visible pages at its root. 404 when it lists nothing.",
         "parameters": [
           {
@@ -687,14 +747,21 @@
                           "type": "string"
                         },
                         "description": {
-                          "type": "string",
-                          "nullable": true
+                          "nullable": true,
+                          "type": "string"
                         }
                       },
-                      "required": ["slug", "url", "title", "description"],
+                      "required": [
+                        "slug",
+                        "url",
+                        "title",
+                        "description"
+                      ],
                       "additionalProperties": false
                     },
                     "parent": {
+                      "nullable": true,
+                      "description": "The category this is a subcategory of, or null.",
                       "type": "object",
                       "properties": {
                         "slug": {
@@ -708,14 +775,17 @@
                           "type": "string"
                         },
                         "description": {
-                          "type": "string",
-                          "nullable": true
+                          "nullable": true,
+                          "type": "string"
                         }
                       },
-                      "required": ["slug", "url", "title", "description"],
-                      "additionalProperties": false,
-                      "nullable": true,
-                      "description": "The category this is a subcategory of, or null."
+                      "required": [
+                        "slug",
+                        "url",
+                        "title",
+                        "description"
+                      ],
+                      "additionalProperties": false
                     },
                     "subcategories": {
                       "type": "array",
@@ -733,11 +803,16 @@
                             "type": "string"
                           },
                           "description": {
-                            "type": "string",
-                            "nullable": true
+                            "nullable": true,
+                            "type": "string"
                           }
                         },
-                        "required": ["slug", "url", "title", "description"],
+                        "required": [
+                          "slug",
+                          "url",
+                          "title",
+                          "description"
+                        ],
                         "additionalProperties": false
                       },
                       "description": "Those with something to list, in order."
@@ -754,21 +829,31 @@
                             "type": "string"
                           },
                           "description": {
-                            "type": "string",
-                            "nullable": true
+                            "nullable": true,
+                            "type": "string"
                           },
                           "digital": {
                             "type": "boolean",
                             "description": "It has a form, or its frontmatter says it is digital."
                           }
                         },
-                        "required": ["url", "title", "description", "digital"],
+                        "required": [
+                          "url",
+                          "title",
+                          "description",
+                          "digital"
+                        ],
                         "additionalProperties": false
                       },
                       "description": "The pages at the category's root, A to Z."
                     }
                   },
-                  "required": ["category", "parent", "subcategories", "pages"],
+                  "required": [
+                    "category",
+                    "parent",
+                    "subcategories",
+                    "pages"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -788,8 +873,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -808,8 +895,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -820,7 +909,9 @@
     "/categories/{category}/{slug}": {
       "get": {
         "summary": "A subcategory and what it lists",
-        "tags": ["categories"],
+        "tags": [
+          "categories"
+        ],
         "parameters": [
           {
             "schema": {
@@ -867,14 +958,21 @@
                           "type": "string"
                         },
                         "description": {
-                          "type": "string",
-                          "nullable": true
+                          "nullable": true,
+                          "type": "string"
                         }
                       },
-                      "required": ["slug", "url", "title", "description"],
+                      "required": [
+                        "slug",
+                        "url",
+                        "title",
+                        "description"
+                      ],
                       "additionalProperties": false
                     },
                     "parent": {
+                      "nullable": true,
+                      "description": "The category this is a subcategory of, or null.",
                       "type": "object",
                       "properties": {
                         "slug": {
@@ -888,14 +986,17 @@
                           "type": "string"
                         },
                         "description": {
-                          "type": "string",
-                          "nullable": true
+                          "nullable": true,
+                          "type": "string"
                         }
                       },
-                      "required": ["slug", "url", "title", "description"],
-                      "additionalProperties": false,
-                      "nullable": true,
-                      "description": "The category this is a subcategory of, or null."
+                      "required": [
+                        "slug",
+                        "url",
+                        "title",
+                        "description"
+                      ],
+                      "additionalProperties": false
                     },
                     "subcategories": {
                       "type": "array",
@@ -913,11 +1014,16 @@
                             "type": "string"
                           },
                           "description": {
-                            "type": "string",
-                            "nullable": true
+                            "nullable": true,
+                            "type": "string"
                           }
                         },
-                        "required": ["slug", "url", "title", "description"],
+                        "required": [
+                          "slug",
+                          "url",
+                          "title",
+                          "description"
+                        ],
                         "additionalProperties": false
                       },
                       "description": "Those with something to list, in order."
@@ -934,21 +1040,31 @@
                             "type": "string"
                           },
                           "description": {
-                            "type": "string",
-                            "nullable": true
+                            "nullable": true,
+                            "type": "string"
                           },
                           "digital": {
                             "type": "boolean",
                             "description": "It has a form, or its frontmatter says it is digital."
                           }
                         },
-                        "required": ["url", "title", "description", "digital"],
+                        "required": [
+                          "url",
+                          "title",
+                          "description",
+                          "digital"
+                        ],
                         "additionalProperties": false
                       },
                       "description": "The pages at the category's root, A to Z."
                     }
                   },
-                  "required": ["category", "parent", "subcategories", "pages"],
+                  "required": [
+                    "category",
+                    "parent",
+                    "subcategories",
+                    "pages"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -968,8 +1084,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -988,8 +1106,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -1000,7 +1120,9 @@
     "/catalog": {
       "get": {
         "summary": "Every visible page",
-        "tags": ["pages"],
+        "tags": [
+          "pages"
+        ],
         "description": "Sub-pages included, `start` steps not, A to Z: for the sitemap and service lists.",
         "security": [
           {},
@@ -1028,16 +1150,16 @@
                             "type": "string"
                           },
                           "description": {
-                            "type": "string",
-                            "nullable": true
+                            "nullable": true,
+                            "type": "string"
                           },
                           "digital": {
                             "type": "boolean",
                             "description": "It has a form, or its frontmatter says it is digital."
                           },
                           "stage": {
-                            "type": "string",
-                            "nullable": true
+                            "nullable": true,
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -1051,7 +1173,9 @@
                       }
                     }
                   },
-                  "required": ["pages"],
+                  "required": [
+                    "pages"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -1071,8 +1195,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -1083,7 +1209,9 @@
     "/search/documents": {
       "get": {
         "summary": "What search indexes",
-        "tags": ["search"],
+        "tags": [
+          "search"
+        ],
         "description": "Every page the catalog lists, with its keywords and its body as plain-text chunks.",
         "security": [
           {},
@@ -1111,8 +1239,8 @@
                             "type": "string"
                           },
                           "description": {
-                            "type": "string",
-                            "nullable": true
+                            "nullable": true,
+                            "type": "string"
                           },
                           "digital": {
                             "type": "boolean",
@@ -1126,21 +1254,24 @@
                           },
                           "chunks": {
                             "type": "array",
-                            "description": "The body as plain text, split at its headings, in order. Joined with spaces (heading, then body, skipping empties) they are the whole body's text.",
                             "items": {
                               "type": "object",
                               "properties": {
                                 "heading": {
-                                  "type": "string",
-                                  "nullable": true
+                                  "nullable": true,
+                                  "type": "string"
                                 },
                                 "body": {
                                   "type": "string"
                                 }
                               },
-                              "required": ["heading", "body"],
+                              "required": [
+                                "heading",
+                                "body"
+                              ],
                               "additionalProperties": false
-                            }
+                            },
+                            "description": "The body as plain text, split at its headings, in order. Joined with spaces (heading, then body, skipping empties) they are the whole body's text."
                           }
                         },
                         "required": [
@@ -1155,7 +1286,9 @@
                       }
                     }
                   },
-                  "required": ["documents"],
+                  "required": [
+                    "documents"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -1175,8 +1308,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -1187,7 +1322,9 @@
     "/pages/{id}": {
       "get": {
         "summary": "Get a page by id",
-        "tags": ["pages"],
+        "tags": [
+          "pages"
+        ],
         "description": "The editor's read: any visibility, markdown included.",
         "parameters": [
           {
@@ -1214,7 +1351,8 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "format": "uuid"
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                     },
                     "url": {
                       "type": "string",
@@ -1225,30 +1363,36 @@
                       "description": "The url's last segment."
                     },
                     "category_id": {
+                      "nullable": true,
                       "type": "string",
                       "format": "uuid",
-                      "nullable": true
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                     },
                     "parent_id": {
+                      "nullable": true,
+                      "description": "The page this one sits beneath, in the same category; null for a page at the root of its category, which is what the category lists.",
                       "type": "string",
                       "format": "uuid",
-                      "nullable": true,
-                      "description": "The page this one sits beneath, in the same category; null for a page at the root of its category, which is what the category lists."
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                     },
                     "title": {
                       "type": "string"
                     },
                     "description": {
-                      "type": "string",
-                      "nullable": true
+                      "nullable": true,
+                      "type": "string"
                     },
                     "visibility": {
                       "type": "string",
-                      "enum": ["public", "preview", "draft"]
+                      "enum": [
+                        "public",
+                        "preview",
+                        "draft"
+                      ]
                     },
                     "form_id": {
-                      "type": "string",
-                      "nullable": true
+                      "nullable": true,
+                      "type": "string"
                     },
                     "body_markdown": {
                       "type": "string"
@@ -1284,18 +1428,21 @@
                       "additionalProperties": false
                     },
                     "published_at": {
+                      "nullable": true,
+                      "description": "When the page first went public; null until it has.",
                       "type": "string",
                       "format": "date-time",
-                      "nullable": true,
-                      "description": "When the page first went public; null until it has."
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
                     },
                     "created_at": {
                       "type": "string",
-                      "format": "date-time"
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
                     },
                     "updated_at": {
                       "type": "string",
                       "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
                       "description": "Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save."
                     }
                   },
@@ -1334,8 +1481,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -1354,8 +1503,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -1374,8 +1525,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -1394,8 +1547,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -1404,7 +1559,9 @@
       },
       "put": {
         "summary": "Save a page",
-        "tags": ["pages"],
+        "tags": [
+          "pages"
+        ],
         "description": "Requires an employee session and the editor's Origin header. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first.",
         "requestBody": {
           "required": true,
@@ -1415,37 +1572,44 @@
                 "properties": {
                   "id": {
                     "type": "string",
-                    "format": "uuid"
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                   },
                   "url": {
                     "type": "string",
-                    "pattern": "^/[^?#]*[^/?#]$"
+                    "pattern": "^\\/[^?#]*[^/?#]$"
                   },
                   "category_id": {
+                    "nullable": true,
                     "type": "string",
                     "format": "uuid",
-                    "nullable": true
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                   },
                   "parent_id": {
+                    "nullable": true,
                     "type": "string",
                     "format": "uuid",
-                    "nullable": true
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                   },
                   "title": {
                     "type": "string",
                     "minLength": 1
                   },
                   "description": {
-                    "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "type": "string"
                   },
                   "visibility": {
                     "type": "string",
-                    "enum": ["public", "preview", "draft"]
+                    "enum": [
+                      "public",
+                      "preview",
+                      "draft"
+                    ]
                   },
                   "form_id": {
-                    "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "type": "string"
                   },
                   "body_markdown": {
                     "type": "string"
@@ -1477,12 +1641,14 @@
                       "source_url": {
                         "type": "string"
                       }
-                    },
-                    "additionalProperties": false
+                    }
                   }
                 },
-                "required": ["url", "title", "body_markdown"],
-                "additionalProperties": false
+                "required": [
+                  "url",
+                  "title",
+                  "body_markdown"
+                ]
               }
             }
           }
@@ -1521,7 +1687,8 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "format": "uuid"
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                     },
                     "url": {
                       "type": "string",
@@ -1532,30 +1699,36 @@
                       "description": "The url's last segment."
                     },
                     "category_id": {
+                      "nullable": true,
                       "type": "string",
                       "format": "uuid",
-                      "nullable": true
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                     },
                     "parent_id": {
+                      "nullable": true,
+                      "description": "The page this one sits beneath, in the same category; null for a page at the root of its category, which is what the category lists.",
                       "type": "string",
                       "format": "uuid",
-                      "nullable": true,
-                      "description": "The page this one sits beneath, in the same category; null for a page at the root of its category, which is what the category lists."
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                     },
                     "title": {
                       "type": "string"
                     },
                     "description": {
-                      "type": "string",
-                      "nullable": true
+                      "nullable": true,
+                      "type": "string"
                     },
                     "visibility": {
                       "type": "string",
-                      "enum": ["public", "preview", "draft"]
+                      "enum": [
+                        "public",
+                        "preview",
+                        "draft"
+                      ]
                     },
                     "form_id": {
-                      "type": "string",
-                      "nullable": true
+                      "nullable": true,
+                      "type": "string"
                     },
                     "body_markdown": {
                       "type": "string"
@@ -1591,18 +1764,21 @@
                       "additionalProperties": false
                     },
                     "published_at": {
+                      "nullable": true,
+                      "description": "When the page first went public; null until it has.",
                       "type": "string",
                       "format": "date-time",
-                      "nullable": true,
-                      "description": "When the page first went public; null until it has."
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
                     },
                     "created_at": {
                       "type": "string",
-                      "format": "date-time"
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
                     },
                     "updated_at": {
                       "type": "string",
                       "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
                       "description": "Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save."
                     }
                   },
@@ -1641,8 +1817,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -1661,8 +1839,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -1681,8 +1861,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -1696,18 +1878,25 @@
                   "properties": {
                     "error": {
                       "type": "string",
-                      "enum": ["conflict"]
+                      "enum": [
+                        "conflict"
+                      ]
                     },
                     "message": {
                       "type": "string"
                     },
                     "documentId": {
                       "type": "string",
-                      "format": "uuid"
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                     }
                   },
-                  "required": ["error", "message", "documentId"],
-                  "additionalProperties": true
+                  "required": [
+                    "error",
+                    "message",
+                    "documentId"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -1721,7 +1910,9 @@
                   "properties": {
                     "error": {
                       "type": "string",
-                      "enum": ["validation_failed"]
+                      "enum": [
+                        "validation_failed"
+                      ]
                     },
                     "message": {
                       "type": "string"
@@ -1738,13 +1929,19 @@
                             "type": "string"
                           }
                         },
-                        "required": ["field", "message"],
+                        "required": [
+                          "field",
+                          "message"
+                        ],
                         "additionalProperties": false
                       }
                     }
                   },
-                  "required": ["error", "errors"],
-                  "additionalProperties": true
+                  "required": [
+                    "error",
+                    "errors"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -1763,8 +1960,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -1773,7 +1972,9 @@
       },
       "delete": {
         "summary": "Delete a page",
-        "tags": ["pages"],
+        "tags": [
+          "pages"
+        ],
         "description": "Requires an employee session and the editor's Origin header. A page with sub-pages is refused (422) until they are moved or deleted.",
         "parameters": [
           {
@@ -1808,8 +2009,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -1828,8 +2031,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -1843,7 +2048,9 @@
                   "properties": {
                     "error": {
                       "type": "string",
-                      "enum": ["validation_failed"]
+                      "enum": [
+                        "validation_failed"
+                      ]
                     },
                     "message": {
                       "type": "string"
@@ -1860,13 +2067,19 @@
                             "type": "string"
                           }
                         },
-                        "required": ["field", "message"],
+                        "required": [
+                          "field",
+                          "message"
+                        ],
                         "additionalProperties": false
                       }
                     }
                   },
-                  "required": ["error", "errors"],
-                  "additionalProperties": true
+                  "required": [
+                    "error",
+                    "errors"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -1885,8 +2098,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -1897,7 +2112,9 @@
     "/services": {
       "get": {
         "summary": "List services",
-        "tags": ["pages"],
+        "tags": [
+          "pages"
+        ],
         "description": "The editor's index, ordered by title. A categorised page at the root of its category is an entry, and every page beneath it by `parent_id` belongs to it.",
         "security": [
           {
@@ -1917,6 +2134,7 @@
                       "id": {
                         "type": "string",
                         "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$",
                         "description": "The entry page's id."
                       },
                       "url": {
@@ -1935,28 +2153,38 @@
                             "type": "string"
                           }
                         },
-                        "required": ["slug", "title"],
+                        "required": [
+                          "slug",
+                          "title"
+                        ],
                         "additionalProperties": false
                       },
                       "visibility": {
                         "type": "string",
-                        "enum": ["public", "preview", "draft"]
+                        "enum": [
+                          "public",
+                          "preview",
+                          "draft"
+                        ]
                       },
                       "form_id": {
-                        "type": "string",
                         "nullable": true,
-                        "description": "The entry page's form, else its `/start` page's."
+                        "description": "The entry page's form, else its `/start` page's.",
+                        "type": "string"
                       },
                       "has_start_page": {
                         "type": "boolean"
                       },
                       "page_count": {
                         "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991,
                         "description": "The entry page plus every page below it."
                       },
                       "updated_at": {
                         "type": "string",
                         "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
                         "description": "The latest change across those pages."
                       }
                     },
@@ -1991,8 +2219,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -2011,8 +2241,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -2031,8 +2263,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -2043,7 +2277,9 @@
     "/version": {
       "get": {
         "summary": "A version token for the whole estate",
-        "tags": ["meta"],
+        "tags": [
+          "meta"
+        ],
         "description": "`change_events` is append-only and gets a row on every write, so its count and newest timestamp identify the state of everything without reading any of it. Clients poll this and refetch only when it moves.",
         "security": [
           {
@@ -2059,14 +2295,19 @@
                   "type": "object",
                   "properties": {
                     "count": {
-                      "type": "integer"
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
                     },
                     "latest": {
-                      "type": "string",
-                      "nullable": true
+                      "nullable": true,
+                      "type": "string"
                     }
                   },
-                  "required": ["count", "latest"],
+                  "required": [
+                    "count",
+                    "latest"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -2086,8 +2327,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -2106,8 +2349,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -2126,8 +2371,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["error"],
-                  "additionalProperties": true
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -2138,7 +2385,9 @@
     "/api/auth/{*}": {
       "get": {
         "summary": "GitHub sign-in and session protocol",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "description": "Better Auth owns the endpoints under this prefix. Responses are never cached.",
         "parameters": [
           {
@@ -2158,7 +2407,9 @@
       },
       "post": {
         "summary": "GitHub sign-in and session protocol",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "description": "Better Auth owns the endpoints under this prefix. Responses are never cached.",
         "parameters": [
           {

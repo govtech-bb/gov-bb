@@ -1,41 +1,24 @@
 /**
  * The spec has to describe this server, not a previous one.
  *
- * Two things are asserted. The committed `openapi.json` matches what the
- * running app generates, so adding a route or changing a response shape shows
- * up in a pull request's diff rather than only in a running process. And
- * the running app's route registrations produce the same document as the
- * standalone builder, so a missing registration cannot hide behind the catalog.
+ * The committed `openapi.json` is a file snapshot of what the real app
+ * generates from its route schemas, so adding a route or changing a response
+ * shape shows up in a pull request's diff rather than only in a running
+ * process. Update it with `pnpm exec vitest run src/openapi.test.ts -u`.
  */
 
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { buildOpenApiDocument } from "./openapi-document";
 import { aPage, createTestApp, createTestDb, TEST_HEADERS } from "./test-db";
-
-const committed: unknown = JSON.parse(
-  readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), "..", "openapi.json"),
-    "utf8",
-  ),
-);
 
 describe("openapi.json", () => {
   it("matches what the app generates", async () => {
-    expect(await buildOpenApiDocument()).toEqual(committed);
-    // If this fails: pnpm --filter @govtech-bb/api-v2 openapi
-  });
-
-  it("documents every route the app serves", async () => {
     const { db, close } = await createTestDb();
     const app = await createTestApp(db);
     await app.ready();
 
-    // Check the actual registrations as well as the standalone catalog builder.
-    // Fastify's printed tree omits auth's wildcard beneath CORS's OPTIONS *.
-    expect(app.swagger()).toEqual(committed);
+    await expect(
+      `${JSON.stringify(app.swagger(), null, 2)}\n`,
+    ).toMatchFileSnapshot("../openapi.json");
 
     await app.close();
     await close();

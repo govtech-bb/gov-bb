@@ -14,3 +14,7 @@ apps/api/src/forms/form-definitions/recipes/
 
 # The editor uses Oxfmt and byte-preserved regression fixtures.
 apps/editor_v2/
+
+# api_v2's OpenAPI document is a file snapshot its test compares byte for
+# byte; reformatting it would fail that test on the next run.
+apps/api_v2/openapi.json

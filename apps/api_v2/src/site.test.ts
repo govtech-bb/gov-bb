@@ -6,7 +6,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { EDITOR_READ, NOT_FOUND_READ, PUBLIC_READ } from "./app";
+import { EDITOR_READ, NOT_FOUND_READ, PUBLIC_READ } from "./routes/site";
 import { Redacted } from "./modules/redacted";
 import { categories } from "./schema";
 import { ApiStore } from "./store";

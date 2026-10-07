@@ -1,5 +1,4 @@
-import type { FastifyInstance } from "fastify";
-import { ROUTES } from "../openapi";
+import type { FastifyPluginAsync } from "fastify";
 
 /** Authentication's HTTP boundary; the concrete adapter owns its framework. */
 export interface AuthHandler {
@@ -8,13 +7,19 @@ export interface AuthHandler {
 }
 
 /** Mount the authentication protocol without exposing adapter construction. */
-export function registerAuthRoutes(
-  app: FastifyInstance,
-  auth: AuthHandler,
-  apiOrigin: string,
-): void {
+export const authRoutes: FastifyPluginAsync<{
+  auth: AuthHandler;
+  apiOrigin: string;
+}> = async (app, { auth, apiOrigin }) => {
   app.route({
-    ...ROUTES.auth,
+    method: ["GET", "POST"],
+    url: "/api/auth/*",
+    schema: {
+      summary: "GitHub sign-in and session protocol",
+      description:
+        "Better Auth owns the endpoints under this prefix. Responses are never cached.",
+      tags: ["auth"],
+    },
     onRequest: async (_request, reply) => {
       reply.header("Cache-Control", "no-store");
     },
@@ -44,4 +49,4 @@ export function registerAuthRoutes(
       return reply.send(response.body ? await response.text() : null);
     },
   });
-}
+};

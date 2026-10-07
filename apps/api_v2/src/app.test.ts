@@ -13,7 +13,8 @@ import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import pino from "pino";
-import { IF_UPDATED_AT, PUBLIC_READ } from "./app";
+import { IF_UPDATED_AT } from "./routes/pages";
+import { PUBLIC_READ } from "./routes/site";
 import {
   categories,
   changeEvents,
