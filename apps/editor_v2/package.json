@@ -94,7 +94,8 @@
           "default",
           "^production",
           "{workspaceRoot}/apps/landing/src/content/**/*.md",
-          "{workspaceRoot}/apps/api_v2/openapi.json"
+          "{workspaceRoot}/apps/api_v2/openapi.json",
+          "{workspaceRoot}/apps/api_v2/src/seed-data/estate.json"
         ]
       },
       "typecheck": {

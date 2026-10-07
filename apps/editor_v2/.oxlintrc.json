@@ -862,6 +862,14 @@
     },
     {
       "files": [
+        "src/api/page-markdown.ts"
+      ],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": [
         "src/pages/metadata.ts"
       ],
       "rules": {
