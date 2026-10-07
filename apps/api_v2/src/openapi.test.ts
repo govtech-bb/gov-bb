@@ -44,10 +44,23 @@ describe("openapi.json", () => {
   it("is served by the app itself", async () => {
     const { db, close } = await createTestDb();
     const app = await createTestApp(db);
-    const response = await app.inject({ url: "/openapi.json" });
+    const response = await app.inject({ url: "/docs/openapi.json" });
 
     expect(response.statusCode).toBe(200);
     expect(response.json().info.title).toBe("api_v2");
+
+    await app.close();
+    await close();
+  });
+
+  it("is browsable as a reference page at /docs", async () => {
+    const { db, close } = await createTestDb();
+    const app = await createTestApp(db);
+    const response = await app.inject({ url: "/docs" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toMatch(/^text\/html/);
+    expect(response.body).toContain('data-url="/docs/openapi.json"');
 
     await app.close();
     await close();

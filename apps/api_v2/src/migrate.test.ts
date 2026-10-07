@@ -9,47 +9,44 @@
  * insurance, and this test is what keeps it true.
  */
 
-import { PGlite } from "@electric-sql/pglite";
 import { sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/pglite";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { migrate, readMigration } from "./migrate";
-import * as schema from "./schema";
 import type { Database } from "./store";
+import { createEmptyDb } from "./test-db";
 
-const freshDb = () => {
-  const client = new PGlite();
-  const db = drizzle(client, { schema });
-  return { client, db };
+const ALL = [
+  "001_init",
+  "002_markdown_pages",
+  "003_auth",
+  "004_github_sessions",
+  "005_hierarchy_and_search",
+];
+
+const freshDb = async () => {
+  const test = await createEmptyDb();
+  const exec = (script: string) => test.pool.query(script);
+  return { ...test, exec };
 };
 
 const tableNames = async (db: Database) => {
-  const result: unknown = await db.execute(
+  const result = await db.execute(
     sql`select table_name from information_schema.tables
          where table_schema = 'public' order by table_name`,
   );
-  const records = z.array(z.object({ table_name: z.string() }));
-  const rows = z
-    .union([
-      records,
-      z.object({ rows: records }).transform((value) => value.rows),
-    ])
-    .parse(result);
-  return rows.map((row) => row.table_name);
+  return z
+    .array(z.object({ table_name: z.string() }))
+    .parse(result.rows)
+    .map((row) => row.table_name);
 };
 
 describe("migrate", () => {
   it("creates content and authentication tables plus its own bookkeeping", async () => {
-    const { client, db } = freshDb();
-    const ran = await migrate(db, (script) => client.exec(script));
+    const { db, exec, close } = await freshDb();
+    const ran = await migrate(db, exec);
 
-    expect(ran).toEqual([
-      "001_init",
-      "002_markdown_pages",
-      "003_auth",
-      "004_github_sessions",
-    ]);
+    expect(ran).toEqual(ALL);
     expect(await tableNames(db)).toEqual([
       "auth_account",
       "auth_session",
@@ -58,64 +55,92 @@ describe("migrate", () => {
       "categories",
       "change_events",
       "content_pages",
-      "forms",
       "schema_migrations",
+      "search_chunks",
     ]);
-    await client.close();
+    await close();
   });
 
   it("runs a second time without error and applies nothing", async () => {
-    const { client, db } = freshDb();
-    await migrate(db, (script) => client.exec(script));
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
 
-    const again = await migrate(db, (script) => client.exec(script));
+    const again = await migrate(db, exec);
 
     expect(again).toEqual([]);
-    await client.close();
+    await close();
   });
 
   it("is idempotent even if the bookkeeping row is lost", async () => {
     // Exactly the revert scenario: the schema is there, the record that it
     // ran is not. The DDL itself has to tolerate being replayed.
-    const { client, db } = freshDb();
-    await migrate(db, (script) => client.exec(script));
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
     await db.execute(sql`delete from schema_migrations`);
 
-    await expect(migrate(db, (script) => client.exec(script))).resolves.toEqual(
-      ["001_init", "002_markdown_pages", "003_auth", "004_github_sessions"],
-    );
-    await client.close();
+    await expect(migrate(db, exec)).resolves.toEqual(ALL);
+    await close();
   });
 
   it("moves a database already holding block documents onto markdown", async () => {
     // A laptop that booted the block-document api_v2 has 001 applied and
     // seeded pages whose NOT NULL body the new columns cannot fill. 002
     // clears them rather than failing, and the seed refills the estate.
-    const { client, db } = freshDb();
-    await client.exec(readMigration("001_init"));
-    await client.exec(
+    const { db, exec, close } = await freshDb();
+    await exec(readMigration("001_init"));
+    await exec(
       `insert into content_pages (url, slug, schema_name, document_type, title, body)
        values ('/x', 'x', 'answer', 'answer', 'X',
                '{"version":1,"blocks":[],"refs":{}}'::jsonb)`,
     );
-    await client.exec(
+    await exec(
       `create table schema_migrations (name text primary key, applied_at timestamptz not null default now());
        insert into schema_migrations (name) values ('001_init');`,
     );
 
-    await expect(migrate(db, (script) => client.exec(script))).resolves.toEqual(
-      ["002_markdown_pages", "003_auth", "004_github_sessions"],
-    );
-    const pages = await client.query(
-      "select count(*)::int as n from content_pages",
-    );
+    await expect(migrate(db, exec)).resolves.toEqual([
+      "002_markdown_pages",
+      "003_auth",
+      "004_github_sessions",
+      "005_hierarchy_and_search",
+    ]);
+    const pages = await exec("select count(*)::int as n from content_pages");
     expect(pages.rows).toEqual([{ n: 0 }]);
-    await client.close();
+    await close();
+  });
+
+  it("clears the unstructured seed corpus the first time 005 runs, and only then", async () => {
+    // Pages seeded before the hierarchy have no parent, so every /start step
+    // would list as a service. 005 clears them and the seed refills them.
+    const { db, exec, close } = await freshDb();
+    for (const name of ALL.slice(0, 4)) await exec(readMigration(name));
+    await exec(
+      `create table schema_migrations (name text primary key, applied_at timestamptz not null default now());
+       insert into schema_migrations (name) values ('001_init'), ('002_markdown_pages'), ('003_auth'), ('004_github_sessions');
+       insert into categories (slug, title) values ('c', 'C');
+       insert into content_pages (url, slug, title, body_markdown) values ('/c/x', 'x', 'X', '');`,
+    );
+
+    await expect(migrate(db, exec)).resolves.toEqual([
+      "005_hierarchy_and_search",
+    ]);
+    await exec(
+      `insert into categories (slug, title) values ('c', 'C');
+       insert into content_pages (url, slug, title, body_markdown) values ('/c/x', 'x', 'X', '');
+       delete from schema_migrations where name = '005_hierarchy_and_search';`,
+    );
+    await migrate(db, exec);
+
+    const counts = await exec(
+      "select (select count(*)::int from content_pages) as pages, (select count(*)::int from categories) as categories",
+    );
+    expect(counts.rows).toEqual([{ pages: 1, categories: 1 }]);
+    await close();
   });
 
   it("keeps change_events append-only", async () => {
-    const { client, db } = freshDb();
-    await migrate(db, (script) => client.exec(script));
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
 
     await db.execute(
       sql`insert into change_events (entity_kind, entity_id, version_no, action, snapshot)
@@ -137,13 +162,13 @@ describe("migrate", () => {
     if (!(refused instanceof Error))
       throw new Error("Expected trigger rejection");
     expect(String(refused.cause)).toMatch(/append-only/);
-    await client.close();
+    await close();
   });
 
   it("revokes legacy sessions while preserving users and admitted GitHub sessions", async () => {
-    const { client, db } = freshDb();
-    await migrate(db, (script) => client.exec(script));
-    await client.exec(`
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+    await exec(`
       delete from schema_migrations where name = '004_github_sessions';
       insert into auth_user (id, name, email, "emailVerified") values
         ('legacy', 'Legacy user', 'employee@govtech.bb', true),
@@ -155,19 +180,16 @@ describe("migrate", () => {
         ('legacy-session', 'old-token', 'legacy', now() + interval '1 hour', now()),
         ('member-session', 'new-token', 'member', now() + interval '1 hour', now());
     `);
-    expect(await migrate(db, (script) => client.exec(script))).toEqual([
-      "004_github_sessions",
-    ]);
-    expect((await client.query("select id from auth_session")).rows).toEqual([
+    expect(await migrate(db, exec)).toEqual(["004_github_sessions"]);
+    expect((await exec("select id from auth_session")).rows).toEqual([
       { id: "member-session" },
     ]);
     expect(
-      (await client.query("select count(*)::int as count from auth_user")).rows,
+      (await exec("select count(*)::int as count from auth_user")).rows,
     ).toEqual([{ count: 2 }]);
     expect(
-      (await client.query("select count(*)::int as count from auth_account"))
-        .rows,
+      (await exec("select count(*)::int as count from auth_account")).rows,
     ).toEqual([{ count: 2 }]);
-    await client.close();
+    await close();
   });
 });

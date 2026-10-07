@@ -37,6 +37,7 @@ For local development only, `AUTH_BYPASS=true` skips sign-in. BetterAuth is not 
 | `BETTER_AUTH_SECRET`                               | Required secret of at least 32 characters                                      |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`         | Required server-side GitHub OAuth credentials                                  |
 | `AUTH_BYPASS`                                      | Local development only: `true` skips sign-in (see above)                       |
+| `PREVIEW_SECRET`                                   | Optional; the site's preview token. Unset, every preview read is refused       |
 
 Production requires HTTPS API/editor origins on the same site, such as separate subdomains of the same organizational domain. Cookies are host-only, HttpOnly, Secure on HTTPS, and SameSite=Lax; API requests from the editor include credentials. Do not enable broad cookie domains or permissive CORS. Register the production API's exact `/api/auth/callback/github` URI in GitHub. Forwarded Host headers do not determine callback URLs; the configured origin does. This change does not configure hosting, DNS, or a reverse proxy.
 
@@ -50,25 +51,37 @@ Migration `003_auth` adds BetterAuth's four core tables: `auth_user`, `auth_sess
 
 ## HTTP surface
 
-| Method   | Path            | Access                                                             |
-| -------- | --------------- | ------------------------------------------------------------------ |
-| GET      | `/pages?url=…`  | Public citizen page resolution                                     |
-| GET      | `/openapi.json` | Public API documentation                                           |
-| GET      | `/pages/:id`    | Employee; includes drafts and previews                             |
-| GET      | `/services`     | Employee service index, grouped from page urls                     |
-| GET      | `/version`      | Employee change token                                              |
-| POST     | `/pages`        | Employee create                                                    |
-| PUT      | `/pages/:id`    | Employee save; existing optional `if-updated-at` concurrency check |
-| DELETE   | `/pages/:id`    | Employee delete                                                    |
-| GET/POST | `/api/auth/*`   | BetterAuth's GitHub/session protocol                               |
+| Method   | Path                 | Access                                                             |
+| -------- | -------------------- | ------------------------------------------------------------------ |
+| GET      | `/pages?url=…`       | Site page resolution (public, or preview with the token)           |
+| GET      | `/categories`        | Site category tree                                                 |
+| GET      | `/categories/:slug`  | A category's subcategories and root pages                          |
+| GET      | `/categories/:c/:s`  | A subcategory's root pages                                         |
+| GET      | `/catalog`           | Every visible page (sitemap, service lists)                        |
+| GET      | `/search/documents`  | Every visible page with its search text in chunks                  |
+| GET      | `/docs`              | Public API reference (Scalar)                                      |
+| GET      | `/docs/openapi.json` | Public OpenAPI document                                            |
+| GET      | `/pages/:id`         | Employee; includes drafts and previews                             |
+| GET      | `/services`          | Employee service index, grouped by `parent_id`                     |
+| GET      | `/version`           | Employee change token                                              |
+| POST     | `/pages`             | Employee create                                                    |
+| PUT      | `/pages/:id`         | Employee save; existing optional `if-updated-at` concurrency check |
+| DELETE   | `/pages/:id`         | Employee delete                                                    |
+| GET/POST | `/api/auth/*`        | BetterAuth's GitHub/session protocol                               |
 
 Missing, expired, or revoked sessions produce JSON 401 responses; disallowed employees or write origins produce 403; unavailable session verification produces 503. The API does not redirect protected content requests to GitHub—the editor handles navigation. Authenticated writes require `Origin: <EDITOR_ORIGIN>`. Auth/session/editor responses use `Cache-Control: no-store` and do not receive ETags. Create/save audit rows record the authenticated user ID, never a caller-supplied actor. Existing deletion and audit transaction behavior is unchanged.
 
-Public page responses retain `public, max-age=60, stale-while-revalidate=300, stale-if-error=86400`; unknown public URLs retain `public, max-age=10`. ETags and 304s remain available for public reads. These routes do not look up or refresh employee sessions.
+Public site reads (`/pages?url=`, `/categories…`, `/catalog`, `/search/documents`) send `public, max-age=60, stale-while-revalidate=300, stale-if-error=86400`; unknown public URLs send `public, max-age=10`. ETags and 304s remain available for public reads. These routes do not look up or refresh employee sessions.
 
-`GET /pages?url=` returns `{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs}`. It preserves ancestor visibility, form visibility, unique bare-slug redirects, and the full breadcrumb trail. The API serves markdown as written; `landing_v2` owns sanitization and rendering. A missing form counts as hidden. Editor writes still return field-specific 422s for invalid references or duplicates, 409 for a stale supplied version, and stamp `published_at` only on first publication.
+Preview: the site's server sends its `PREVIEW_SECRET` as `x-preview-token`, and the same reads then include `preview` content. Those responses are `no-store` with no ETag, so preview content never enters a shared cache. A wrong token, or any token when `PREVIEW_SECRET` is unset here, is a 401 rather than a quiet fall-back to the public view. `draft` content is only ever served to the editor.
 
-The seed is a committed snapshot of legacy markdown, categories, and form visibility. Inserts are additive and idempotent and never replace authored changes. Regenerate it with `pnpm seed-data` when intentionally updating the snapshot.
+The hierarchy is `parent_id`, not the url. A page is served only when it and every page above it are visible; its breadcrumbs are its category (and parent category, for a subcategory), then the pages above it; a category lists only the pages at its root (`parent_id` null), so `start` steps and sub-pages never appear in a listing. A sub-page must share its parent's category (moving the parent moves its sub-pages), a page cannot sit beneath itself, and a page with sub-pages cannot be deleted: each is a field-specific 422.
+
+`GET /pages?url=` returns `{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs}`. `hide_start_links` is true when the page's `start` sub-page is hidden from the viewer. Whether a form is open is the forms API's to say: `form_id` is a name, and the site asks the forms API for the form's status. The API serves markdown as written; the site owns sanitization and rendering. Editor writes return field-specific 422s for invalid references or duplicates, 409 for a stale supplied version, and stamp `published_at` only on first publication.
+
+`search_chunks` holds each page's body split at its headings, as plain text, rewritten in the same transaction as every save. Rejoined, a page's chunks are exactly the text landing's search indexes today (`search-text.test.ts` checks every seeded page), so moving search onto the API does not move its ranking. The generated `tsv` column and its GIN index are there for server-side search and are not read yet.
+
+The seed is a committed snapshot of legacy markdown and the category taxonomy, subcategories included, with each sub-page's parent. Inserts are additive and idempotent and never replace authored changes. Regenerate it with `pnpm seed-data` when intentionally updating the snapshot.
 
 ## Operations and tests
 
@@ -81,6 +94,6 @@ pnpm exec nx run api_v2:test
 DB_HOST=localhost pnpm exec nx run api_v2:e2e
 ```
 
-Unit/integration tests use PGlite without a database service. PostgreSQL e2e creates and drops uniquely named scratch databases and exercises the compiled Node process, migrations, cookie sessions, session expiry/revocation, origin protection, audit identity, pool recovery and shutdown. Test sessions are created through the real BetterAuth internal adapter in test code; no production login bypass exists. Database tests skip when `DB_HOST` is unset. OAuth provider admission and the sign-in handshake are tested without live GitHub credentials; deployment still requires a real GitHub sign-in and TLS smoke check.
+Unit/integration tests run against PostgreSQL (`DB_HOST` etc., defaulting to `localhost:5432` as `postgres`/`postgres`): the global setup migrates one template database per run and each test clones it, dropping it afterwards. There is no skip; with no database the run fails and says so. CI's Test job provides a `postgres` service. PostgreSQL e2e creates and drops uniquely named scratch databases and exercises the compiled Node process, migrations, cookie sessions, session expiry/revocation, origin protection, audit identity, pool recovery and shutdown. Test sessions are created through the real BetterAuth internal adapter in test code; no production login bypass exists. Database tests skip when `DB_HOST` is unset. OAuth provider admission and the sign-in handshake are tested without live GitHub credentials; deployment still requires a real GitHub sign-in and TLS smoke check.
 
-`openapi.json` is generated from the same schemas used to register routes. Update it with `pnpm openapi`; the drift/route-coverage tests keep the committed document accurate.
+`openapi.json` is generated from the same schemas used to register routes and is served at `/docs/openapi.json`, with a browsable reference at `/docs`. Update it with `pnpm openapi`; the drift/route-coverage tests keep the committed document accurate.

@@ -23,7 +23,6 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.3.11",
     "@govtech-bb/content": "workspace:*",
     "@types/node": "^24.0.0",
     "@types/pg": "^8.20.0",

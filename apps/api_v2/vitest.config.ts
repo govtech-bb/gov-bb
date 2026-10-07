@@ -3,9 +3,8 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     include: ["src/**/*.test.ts"],
-    // PGlite compiles WASM on first use; the suite creates one database per
-    // file, which is slower than a unit test and far cheaper than requiring a
-    // live Postgres to run the tests at all.
+    // One migrated template per run; each test clones it (see test-db.ts).
+    globalSetup: ["src/test-global-setup.ts"],
     testTimeout: 30_000,
     hookTimeout: 30_000,
   },

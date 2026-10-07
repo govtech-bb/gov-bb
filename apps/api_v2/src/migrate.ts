@@ -10,9 +10,7 @@
  * The runner takes an `exec` rather than using `db.execute`, because a
  * migration is a *script* and `db.execute` sends one statement through the
  * extended query protocol — a multi-statement file fails there with 42601.
- * Each driver supplies its own simple-query path: `pool.query` for
- * node-postgres, `client.exec` for PGlite. That difference is real, so it is
- * a parameter rather than something hidden behind a clever helper.
+ * The caller supplies the simple-query path: `pool.query`.
  */
 
 import { sql } from "drizzle-orm";
@@ -21,6 +19,7 @@ import { SQL as INIT_SQL } from "./migrations/001_init";
 import { SQL as MARKDOWN_PAGES_SQL } from "./migrations/002_markdown_pages";
 import { SQL as AUTH_SQL } from "./migrations/003_auth";
 import { SQL as GITHUB_SESSIONS_SQL } from "./migrations/004_github_sessions";
+import { SQL as HIERARCHY_SQL } from "./migrations/005_hierarchy_and_search";
 import type { Database } from "./store";
 
 const SCRIPTS: Record<string, string> = {
@@ -28,14 +27,16 @@ const SCRIPTS: Record<string, string> = {
   "002_markdown_pages": MARKDOWN_PAGES_SQL,
   "003_auth": AUTH_SQL,
   "004_github_sessions": GITHUB_SESSIONS_SQL,
+  "005_hierarchy_and_search": HIERARCHY_SQL,
 };
 
-/** Content and authentication migrations in deployment order. */
+/** Content, then authentication, then the page hierarchy and search text. */
 export const MIGRATIONS = [
   "001_init",
   "002_markdown_pages",
   "003_auth",
   "004_github_sessions",
+  "005_hierarchy_and_search",
 ] as const;
 
 /** Runs a whole SQL script, statements and all. */
@@ -57,20 +58,8 @@ export async function migrate(db: Database, exec: Exec): Promise<string[]> {
      )`,
   );
 
-  /*
-   * `execute` is typed per driver — node-postgres hands back a QueryResult
-   * with `.rows`, PGlite hands back the array itself.
-   */
-  const applied: unknown = await db.execute(
-    sql`select name from schema_migrations`,
-  );
-  const rowSchema = z.array(z.object({ name: z.string() }));
-  const rows = z
-    .union([
-      rowSchema,
-      z.object({ rows: rowSchema }).transform((value) => value.rows),
-    ])
-    .parse(applied);
+  const applied = await db.execute(sql`select name from schema_migrations`);
+  const rows = z.array(z.object({ name: z.string() })).parse(applied.rows);
   const done = new Set(rows.map((row) => row.name));
 
   const ran: string[] = [];

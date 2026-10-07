@@ -26,6 +26,8 @@ export interface AuthConfig {
 export interface AppConfig {
   readonly port: number;
   readonly seed: boolean;
+  /** The site's preview token; without it, every preview read is refused. */
+  readonly previewSecret?: Redacted<string>;
   readonly database: DatabaseConfig;
   readonly auth: AuthConfig;
   /**
@@ -77,6 +79,7 @@ const environment = z
     GITHUB_CLIENT_ID: z.string().min(1),
     GITHUB_CLIENT_SECRET: z.string().min(1),
     AUTH_BYPASS: z.enum(["true", "false"]).optional(),
+    PREVIEW_SECRET: z.string().min(1).optional(),
   })
   .superRefine((value, context) => {
     // A bypassed API admits any caller, so it is only for an editor on this machine.
@@ -119,6 +122,9 @@ export function parseConfig(
   return ok({
     port: env.PORT,
     seed: env.SEED !== "false",
+    ...(env.PREVIEW_SECRET
+      ? { previewSecret: new Redacted(env.PREVIEW_SECRET) }
+      : {}),
     database: {
       host: env.DB_HOST,
       port: env.DB_PORT,

@@ -3,435 +3,135 @@
     {
       "slug": "family-birth-relationships",
       "title": "Family, birth and relationships",
-      "description": "Managing key life events and family responsibilities, from registering a birth to caring for others"
+      "description": "Managing key life events and family responsibilities, from registering a birth to caring for others",
+      "parent": null,
+      "position": 0
     },
     {
       "slug": "work-employment",
       "title": "Work and employment",
-      "description": "Find a job, develop skills, or manage employment changes"
+      "description": "Find a job, develop skills, or manage employment changes",
+      "parent": null,
+      "position": 1
     },
     {
       "slug": "money-financial-support",
       "title": "Money and financial support",
-      "description": "Get help with money, benefits, taxes or government payments"
+      "description": "Get help with money, benefits, taxes or government payments",
+      "parent": null,
+      "position": 2
     },
     {
       "slug": "social-empowerment",
       "title": "Social empowerment",
-      "description": "Apply for help at home, financial assistance, and programmes for older people and families, run by the Social Empowerment Agency and the National Assistance Board"
+      "description": "Apply for help at home, financial assistance, and programmes for older people and families, run by the Social Empowerment Agency and the National Assistance Board",
+      "parent": null,
+      "position": 3
     },
     {
       "slug": "pensions-and-gratuities",
       "title": "Pensions and Gratuities",
-      "description": "Estimate your public sector pension and find out about retirement ages and pensionable service"
+      "description": "Estimate your public sector pension and find out about retirement ages and pensionable service",
+      "parent": null,
+      "position": 4
     },
     {
       "slug": "youth-and-community",
       "title": "Youth and Community Programmes",
-      "description": "Programmes, training, workshops and volunteering opportunities for young people in Barbados"
+      "description": "Programmes, training, workshops and volunteering opportunities for young people in Barbados",
+      "parent": null,
+      "position": 5
+    },
+    {
+      "slug": "youth-development-leadership",
+      "title": "Youth development and leadership",
+      "description": "Long-term training, mentorship and leadership pathways for young people.",
+      "parent": "youth-and-community",
+      "position": 0
+    },
+    {
+      "slug": "skills-trades-vocational-training",
+      "title": "Skills, trades and vocational training",
+      "description": "Practical courses and workshops in trades, technology and creative skills.",
+      "parent": "youth-and-community",
+      "position": 1
+    },
+    {
+      "slug": "entrepreneurship-business",
+      "title": "Entrepreneurship and business",
+      "description": "Support for young people starting and growing their own ventures.",
+      "parent": "youth-and-community",
+      "position": 2
+    },
+    {
+      "slug": "arts-culture",
+      "title": "Arts and culture",
+      "description": "Creative programmes, performances and content celebrating Barbadian culture.",
+      "parent": "youth-and-community",
+      "position": 3
+    },
+    {
+      "slug": "children-families-community",
+      "title": "Children, families and the wider community",
+      "description": "Programmes, volunteering opportunities and services for children, families and neighbourhoods.",
+      "parent": "youth-and-community",
+      "position": 4
     },
     {
       "slug": "ministry-of-youth",
       "title": "Ministry of Youth",
-      "description": "Programmes, training and volunteering opportunities run by the Division of Youth Affairs"
+      "description": "Programmes, training and volunteering opportunities run by the Division of Youth Affairs",
+      "parent": null,
+      "position": 6
     },
     {
       "slug": "travel-id-citizenship",
       "title": "Travel, ID and citizenship",
-      "description": "Travel, drive or prove your identity and status"
+      "description": "Travel, drive or prove your identity and status",
+      "parent": null,
+      "position": 7
     },
     {
       "slug": "business-trade",
       "title": "Business and trade",
-      "description": "Start, manage or grow a business, and understand legal and tax obligations"
+      "description": "Start, manage or grow a business, and understand legal and tax obligations",
+      "parent": null,
+      "position": 8
     },
     {
       "slug": "public-safety",
       "title": "Public safety",
-      "description": "Reporting crime, raising a concern and safeguarding"
+      "description": "Reporting crime, raising a concern and safeguarding",
+      "parent": null,
+      "position": 9
     },
     {
       "slug": "education",
       "title": "Education",
-      "description": "Apply for school places and exams, claim education grants, and manage your child’s schooling"
+      "description": "Apply for school places and exams, claim education grants, and manage your child’s schooling",
+      "parent": null,
+      "position": 10
     },
     {
       "slug": "health-and-emergency-services",
       "title": "Health and emergency services",
-      "description": "Prepare for hurricane season, find an emergency shelter, and reach key emergency contacts"
+      "description": "Prepare for hurricane season, find an emergency shelter, and reach key emergency contacts",
+      "parent": null,
+      "position": 11
     },
     {
       "slug": "housing",
       "title": "Housing",
-      "description": "Apply for National Housing Corporation homes and land, use State land, and exercise tenant rights to buy a freehold"
-    }
-  ],
-  "forms": [
-    {
-      "form_id": "application-for-job-letter-ministry-of-education",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "apply-for-conductor-licence",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "apply-for-food-business-licence",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "apply-for-funeral-director-licence",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "apply-for-funeral-embalmer-licence",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "apply-for-funeral-establishment-licence",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "apply-for-hair-salon-licence",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "apply-for-hairdresser-licence",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "apply-for-hotel-licence",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "apply-for-lodging-barracks-licence",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "apply-for-national-summer-camp-programme",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026",
-      "visibility": "public"
-    },
-    {
-      "form_id": "apply-for-offensive-matter-licence",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "apply-for-offensive-waste-licence",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "apply-for-restaurant-licence",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "apply-for-swimming-pool-licence",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "apply-for-temporary-restaurant-permit",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "apply-to-use-a-public-area",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "barbados-secondary-entrance-exam-choice",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "bssee-form-a-pupil-under-11-request",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "bssee-form-b-defer-examination",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "camp-director-application",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "cape-exam-registration-2024",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "chat-feedback",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "community-elder-care-programme-application",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "csec-private-candidate-registration",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "cyber-security-training",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "digital-media-training-programme-application",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "driver-licence-renewal",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "duties-performed-exam-claim",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "exit-survey",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "get-a-primary-school-textbook-grant",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "get-birth-certificate",
-      "visibility": "public"
-    },
-    {
-      "form_id": "get-death-certificate",
-      "visibility": "public"
-    },
-    {
-      "form_id": "get-marriage-certificate",
-      "visibility": "public"
-    },
-    {
-      "form_id": "home-care-programme-services",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "homeschooling-application-2024",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "jobstart-plus-programme",
-      "visibility": "public"
-    },
-    {
-      "form_id": "mission-barbados",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "mohlm-application-use-state-land",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "multiple-birth-benefit-application",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "national-assistance-grant-application",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "national-id-application",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "national-summer-camp",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "national-summer-camp-2025-registration",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "nhc-land-property-application",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "nhc-rental-application",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "nhs-tenants-notice-intention-purchase-freehold",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "non-nationals-secondary-entry",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "pathways-employability-programme-application-2026",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "post-office-redirection-business",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "post-office-redirection-deceased",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "post-office-redirection-individual",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "project-dawn-application",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "project-protege-mentor",
-      "visibility": "public"
-    },
-    {
-      "form_id": "referral-student-support-services",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "request-a-fire-service-inspection",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "request-a-presidential-visit-for-a-centenarian",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "request-an-environmental-health-officer",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "request-assistance-transportation-disabilities",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "reserve-society-name",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "school-registration-fee",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "school-uniform-grant-barbados",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "sell-goods-services-beach-park",
-      "visibility": "public"
-    },
-    {
-      "form_id": "seniors-recreational-activities-programme",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "simple-three-step-form",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "smart-stream-vendor-registration",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "sports-training-programme-form-schema",
-      "visibility": "public"
-    },
-    {
-      "form_id": "statement-of-travelling-form",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "temp-teacher-application-barbados",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "term-leave-application",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "web-design-entrepreneurs",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "yar",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "ydp",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "ydp-performing-arts-registration-2025-2026",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "yes",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "youth-cultural-training-registration-2025",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "youth-leadership-workshop-registration-2026",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "youth-opportunity-barbados-blooming-libraries",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "youth-opportunity-bright-sparks-2",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "youth-opportunity-btu",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "youth-opportunity-byac",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "youth-opportunity-cap",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "youth-opportunity-ceep",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "youth-opportunity-centre-access",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "youth-opportunity-cip",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "youth-opportunity-cmc",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "youth-opportunity-community-canvas",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "youth-opportunity-pathways",
-      "visibility": "preview"
-    },
-    {
-      "form_id": "youth-opportunity-ydp",
-      "visibility": "preview"
+      "description": "Apply for National Housing Corporation homes and land, use State land, and exercise tenant rights to buy a freehold",
+      "parent": null,
+      "position": 12
     }
   ],
   "pages": [
     {
       "url": "/business-trade/apply-for-food-business-licence",
       "category": "business-trade",
+      "parent": null,
       "title": "Apply for a food business licence",
       "description": "Apply for or renew a food business licence from Environmental Health.",
       "visibility": "preview",
@@ -445,6 +145,7 @@
     {
       "url": "/business-trade/apply-for-funeral-director-licence",
       "category": "business-trade",
+      "parent": null,
       "title": "Apply for a funeral directors licence",
       "description": "Apply to Environmental Health for a Funeral Directors Licence. Free application with an annual renewal deadline.",
       "visibility": "preview",
@@ -458,6 +159,7 @@
     {
       "url": "/business-trade/apply-for-funeral-embalmer-licence",
       "category": "business-trade",
+      "parent": null,
       "title": "Apply for an embalmer licence",
       "description": null,
       "visibility": "preview",
@@ -471,6 +173,7 @@
     {
       "url": "/business-trade/apply-for-funeral-establishment-licence",
       "category": "business-trade",
+      "parent": null,
       "title": "Apply for a funeral establishment licence",
       "description": "Apply for a licence to operate a funeral establishment in Barbados.",
       "visibility": "preview",
@@ -484,6 +187,7 @@
     {
       "url": "/business-trade/apply-for-hair-salon-licence",
       "category": "business-trade",
+      "parent": null,
       "title": "Apply for a hairdressing and beautician business licence",
       "description": "Register a new hair, beauty, manicure or pedicure business, or renew your existing registration with Environmental Health.",
       "visibility": "preview",
@@ -497,6 +201,7 @@
     {
       "url": "/business-trade/apply-for-hairdresser-licence",
       "category": "business-trade",
+      "parent": null,
       "title": "Apply for a hairdresser or beautician licence",
       "description": "Apply to Environmental Health for a hairdresser licence to work as a hairdresser or beautician in Barbados.",
       "visibility": "preview",
@@ -510,6 +215,7 @@
     {
       "url": "/business-trade/apply-for-hotel-licence",
       "category": "business-trade",
+      "parent": null,
       "title": "Apply for a hotel licence",
       "description": "Apply for a new hotel licence or renew an existing licence with Environmental Health.",
       "visibility": "preview",
@@ -523,6 +229,7 @@
     {
       "url": "/business-trade/apply-for-lodging-barracks-licence",
       "category": "business-trade",
+      "parent": null,
       "title": "Apply for a barracks or lodging licence with Environmental Health",
       "description": "Apply online to register a property as a lodging house or barracks with Environmental Health.",
       "visibility": "preview",
@@ -536,6 +243,7 @@
     {
       "url": "/business-trade/apply-for-offensive-matter-licence",
       "category": "business-trade",
+      "parent": null,
       "title": "Apply for an offensive matter licence with Environmental Health",
       "description": "Apply online to register or renew a licence to move human waste, rotting animal or plant waste, or other waste that could harm people’s health.",
       "visibility": "preview",
@@ -549,6 +257,7 @@
     {
       "url": "/business-trade/apply-for-offensive-waste-licence",
       "category": "business-trade",
+      "parent": null,
       "title": "Apply for an offensive trade licence with Environmental Health",
       "description": "Apply online to register or renew a licence for business activities that may cause fumes, gases, waste or strong smells that could harm people’s health.",
       "visibility": "preview",
@@ -562,6 +271,7 @@
     {
       "url": "/business-trade/apply-for-restaurant-licence",
       "category": "business-trade",
+      "parent": null,
       "title": "Apply for a restaurant licence",
       "description": "Apply for or renew a restaurant licence from Environmental Health.",
       "visibility": "preview",
@@ -575,6 +285,7 @@
     {
       "url": "/business-trade/apply-for-swimming-pool-licence",
       "category": "business-trade",
+      "parent": null,
       "title": "Apply for a swimming pool licence",
       "description": "Apply for a new swimming pool licence or renew an existing licence with Environmental Health.",
       "visibility": "preview",
@@ -588,6 +299,7 @@
     {
       "url": "/business-trade/apply-for-temporary-restaurant-permit",
       "category": "business-trade",
+      "parent": null,
       "title": "Apply for a temporary restaurant permit",
       "description": "Apply online for a permit to serve food or drink at a temporary event in Barbados, such as a stall, booth or bar operating for up to 30 days. Issued by the Environmental Health Department.",
       "visibility": "preview",
@@ -603,6 +315,7 @@
     {
       "url": "/business-trade/crop-over-permits",
       "category": "business-trade",
+      "parent": null,
       "title": "Find the permits you need for a Crop Over event",
       "description": "Find out which permits you need to run a Crop Over event, which agencies to contact, and in what order.",
       "visibility": "public",
@@ -618,6 +331,7 @@
     {
       "url": "/business-trade/loud-music-permit",
       "category": "business-trade",
+      "parent": null,
       "title": "Get a permit to play loud music",
       "description": "Apply for a permit to play loud music at an event in Barbados. A permit is required before holding events with amplified music.",
       "visibility": "public",
@@ -632,6 +346,7 @@
     {
       "url": "/business-trade/request-an-environmental-health-officer",
       "category": "business-trade",
+      "parent": null,
       "title": "Request an Environmental Health Officer",
       "description": "Event organisers in Barbados can request an Environmental Health Officer to attend an event where food or drink is served to the public.",
       "visibility": "preview",
@@ -647,6 +362,7 @@
     {
       "url": "/business-trade/sell-goods-services-beach-park",
       "category": "business-trade",
+      "parent": null,
       "title": "Apply for a licence to sell goods or services at a beach or park",
       "description": "Apply for a licence to sell goods or services at a beach or park in Barbados. Licences are valid for 1 year and must be renewed annually.",
       "visibility": "public",
@@ -661,6 +377,7 @@
     {
       "url": "/business-trade/sell-goods-services-beach-park/start",
       "category": "business-trade",
+      "parent": "/business-trade/sell-goods-services-beach-park",
       "title": "Apply for a licence to sell goods or services at a beach or park",
       "description": null,
       "visibility": "public",
@@ -674,6 +391,7 @@
     {
       "url": "/business-trade/temporary-restaurants-what-you-need-to-know",
       "category": "business-trade",
+      "parent": null,
       "title": "Temporary restaurants: what you need to know",
       "description": "What counts as a temporary restaurant in Barbados, who must apply for a permit, and what your event needs — including food safety, paying for Environmental Health Officers, and setting up your stall.",
       "visibility": "public",
@@ -688,6 +406,7 @@
     {
       "url": "/education/apply-for-a-school-uniform-grant",
       "category": "education",
+      "parent": null,
       "title": "Apply for a school uniform grant",
       "description": "Apply for a $100 grant towards your child’s school uniform for a Barbadian primary school.",
       "visibility": "draft",
@@ -702,6 +421,7 @@
     {
       "url": "/education/apply-for-a-sixth-form-placement",
       "category": "education",
+      "parent": null,
       "title": "Apply for a sixth form placement",
       "description": "Apply for placement in a public secondary school that offers Sixth Form (CAPE) study.",
       "visibility": "draft",
@@ -715,6 +435,7 @@
     {
       "url": "/education/apply-for-a-special-education-bursary",
       "category": "education",
+      "parent": null,
       "title": "Apply for a special education bursary",
       "description": "Apply for financial help towards your child’s fees at a private special-education provider in Barbados.",
       "visibility": "draft",
@@ -728,6 +449,7 @@
     {
       "url": "/education/apply-for-exemption-from-school-attendance",
       "category": "education",
+      "parent": null,
       "title": "Apply for exemption from school attendance",
       "description": "Apply for a Certificate of Exemption if your child cannot attend school in the usual way.",
       "visibility": "draft",
@@ -741,6 +463,7 @@
     {
       "url": "/education/apply-for-secondary-school-entry-for-a-non-national-child",
       "category": "education",
+      "parent": null,
       "title": "Apply for secondary school entry for a non-national child",
       "description": "Apply for a non-national child, or a child born outside Barbados, to attend a government secondary school.",
       "visibility": "draft",
@@ -754,6 +477,7 @@
     {
       "url": "/education/apply-for-terms-leave",
       "category": "education",
+      "parent": null,
       "title": "Apply for term’s leave",
       "description": "Teachers at public schools in Barbados can apply for extended leave during a school term.",
       "visibility": "preview",
@@ -768,6 +492,7 @@
     {
       "url": "/education/apply-national-science-camp-2026",
       "category": "education",
+      "parent": null,
       "title": "Apply for National Summer Camp Science Programme 2026",
       "description": "Apply for a child to attend Tropical Trails and Tales Science Camp 2026 (13 July to 21 August 2026).",
       "visibility": "public",
@@ -781,6 +506,7 @@
     {
       "url": "/education/apply-to-home-school-your-child",
       "category": "education",
+      "parent": null,
       "title": "Apply to home-school your child",
       "description": "Apply for permission to home-school your child in Barbados.",
       "visibility": "preview",
@@ -795,6 +521,7 @@
     {
       "url": "/education/apply-to-sit-the-bssee-early",
       "category": "education",
+      "parent": null,
       "title": "Apply to sit the BSSEE early",
       "description": "Apply for your child to sit the BSSEE ahead of their year group if they are academically ready.",
       "visibility": "draft",
@@ -808,6 +535,7 @@
     {
       "url": "/education/choose-secondary-schools-for-the-bssee",
       "category": "education",
+      "parent": null,
       "title": "Choose secondary schools for the BSSEE",
       "description": "Rank the secondary schools you would like your child to attend after they sit the BSSEE.",
       "visibility": "preview",
@@ -822,6 +550,7 @@
     {
       "url": "/education/claim-examination-travel-expenses",
       "category": "education",
+      "parent": null,
       "title": "Claim examination travel expenses",
       "description": "Claim reimbursement for travel you made on official examination business as a teacher or exam-centre staff member.",
       "visibility": "preview",
@@ -836,6 +565,7 @@
     {
       "url": "/education/claim-payment-for-examination-duties",
       "category": "education",
+      "parent": null,
       "title": "Claim payment for examination duties",
       "description": "Claim payment for duties you performed during an examination period, such as invigilation, supervision or assessment.",
       "visibility": "preview",
@@ -850,6 +580,7 @@
     {
       "url": "/education/defer-your-childs-bssee-sitting",
       "category": "education",
+      "parent": null,
       "title": "Defer your child’s BSSEE sitting",
       "description": "Ask the Ministry for a one-year deferral if your child is not yet ready to sit the BSSEE.",
       "visibility": "draft",
@@ -863,6 +594,7 @@
     {
       "url": "/education/refer-a-student-for-support",
       "category": "education",
+      "parent": null,
       "title": "Refer a student for support",
       "description": "School staff can refer a student to the Student Support Services Unit for additional help.",
       "visibility": "preview",
@@ -877,6 +609,7 @@
     {
       "url": "/education/register-as-a-private-cape-candidate",
       "category": "education",
+      "parent": null,
       "title": "Register as a private CAPE candidate",
       "description": "Register online to sit the Caribbean Advanced Proficiency Examination (CAPE) as a private candidate.",
       "visibility": "preview",
@@ -891,6 +624,7 @@
     {
       "url": "/education/register-as-a-private-csec-candidate",
       "category": "education",
+      "parent": null,
       "title": "Register as a private CSEC candidate",
       "description": "Register online to sit the Caribbean Secondary Education Certificate (CSEC) as a private candidate.",
       "visibility": "preview",
@@ -905,6 +639,7 @@
     {
       "url": "/education/request-a-bssee-school-reallocation",
       "category": "education",
+      "parent": null,
       "title": "Request a BSSEE school reallocation",
       "description": "Ask the Ministry to change the secondary school your child was allocated after the BSSEE results.",
       "visibility": "draft",
@@ -918,6 +653,7 @@
     {
       "url": "/education/request-a-statement-of-examination-results",
       "category": "education",
+      "parent": null,
       "title": "Request a statement of examination results",
       "description": "Request an official statement of your past examination results from the Ministry of Educational Transformation.",
       "visibility": "draft",
@@ -931,6 +667,7 @@
     {
       "url": "/education/request-special-arrangements-for-the-bssee",
       "category": "education",
+      "parent": null,
       "title": "Request special arrangements for the BSSEE",
       "description": "Ask for access arrangements, such as extra time or a separate room, so your child can sit the BSSEE on equal terms.",
       "visibility": "draft",
@@ -944,6 +681,7 @@
     {
       "url": "/family-birth-relationships/apply-for-a-place-at-a-day-nursery",
       "category": "family-birth-relationships",
+      "parent": null,
       "title": "Apply for a place at a day nursery",
       "description": "Apply for a place at a government-run day nursery in Barbados for young children. Nurseries provide early childhood education and care.",
       "visibility": "public",
@@ -958,6 +696,7 @@
     {
       "url": "/family-birth-relationships/get-birth-certificate",
       "category": "family-birth-relationships",
+      "parent": null,
       "title": "Get a copy of a birth certificate",
       "description": "Apply online to get a certified copy of a birth certificate for anyone whose birth was registered in Barbados. Certificates are issued by the Registration Department.",
       "visibility": "public",
@@ -973,6 +712,7 @@
     {
       "url": "/family-birth-relationships/get-birth-certificate/start",
       "category": "family-birth-relationships",
+      "parent": "/family-birth-relationships/get-birth-certificate",
       "title": "Get a copy of a birth certificate",
       "description": null,
       "visibility": "public",
@@ -986,6 +726,7 @@
     {
       "url": "/family-birth-relationships/get-death-certificate",
       "category": "family-birth-relationships",
+      "parent": null,
       "title": "Get a copy of a death certificate",
       "description": "Apply online to get a certified copy of a death certificate for anyone whose death was registered in Barbados. Certificates are issued by the Registration Department.",
       "visibility": "public",
@@ -1001,6 +742,7 @@
     {
       "url": "/family-birth-relationships/get-death-certificate/start",
       "category": "family-birth-relationships",
+      "parent": "/family-birth-relationships/get-death-certificate",
       "title": "Get a copy of a death certificate",
       "description": null,
       "visibility": "public",
@@ -1014,6 +756,7 @@
     {
       "url": "/family-birth-relationships/get-marriage-certificate",
       "category": "family-birth-relationships",
+      "parent": null,
       "title": "Get a copy of a marriage certificate",
       "description": "Apply online to get a certified copy of a marriage certificate for any couple whose marriage was registered in Barbados. Required for proving legal marital status and name changes on official documents.",
       "visibility": "public",
@@ -1029,6 +772,7 @@
     {
       "url": "/family-birth-relationships/get-marriage-certificate/start",
       "category": "family-birth-relationships",
+      "parent": "/family-birth-relationships/get-marriage-certificate",
       "title": "Get a copy of a marriage certificate",
       "description": null,
       "visibility": "public",
@@ -1042,6 +786,7 @@
     {
       "url": "/family-birth-relationships/register-a-birth",
       "category": "family-birth-relationships",
+      "parent": null,
       "title": "Register a birth",
       "description": "Register a birth in Barbados online. All births must be legally registered within 28 days. A birth registration is required before a birth certificate can be issued.",
       "visibility": "public",
@@ -1056,6 +801,7 @@
     {
       "url": "/family-birth-relationships/request-a-presidential-visit-for-a-centenarian",
       "category": "family-birth-relationships",
+      "parent": null,
       "title": "Request a Presidential Visit for a Centenarian",
       "description": "Ask the President to visit a Barbadian who is turning 100 years old.",
       "visibility": "preview",
@@ -1069,6 +815,7 @@
     {
       "url": "/health-and-emergency-services/find-an-open-pharmacy",
       "category": "health-and-emergency-services",
+      "parent": null,
       "title": "Find a pharmacy and check what Barbados Drug Service benefits it offers",
       "description": "Find a pharmacy that's open now anywhere in Barbados. You can also find pharmacies offering free or subsidised medication through the Barbados Drug Service, and check who qualifies.",
       "visibility": "public",
@@ -1085,6 +832,7 @@
     {
       "url": "/health-and-emergency-services/free-or-subsidised-medication",
       "category": "health-and-emergency-services",
+      "parent": "/health-and-emergency-services/find-an-open-pharmacy",
       "title": "Get free or subsidised medication",
       "description": "Check who can get free or cheaper medication through the Barbados Drug Service, what to bring to the pharmacy, and what it costs.",
       "visibility": "public",
@@ -1109,6 +857,7 @@
     {
       "url": "/health-and-emergency-services/prescription-colours",
       "category": "health-and-emergency-services",
+      "parent": "/health-and-emergency-services/find-an-open-pharmacy",
       "title": "What prescription colours mean",
       "description": "What the different prescription colours mean in Barbados, and how the colour can affect which pharmacy can fill your prescription.",
       "visibility": "public",
@@ -1124,6 +873,7 @@
     {
       "url": "/health-and-emergency-services/stormready",
       "category": "health-and-emergency-services",
+      "parent": null,
       "title": "StormReady Barbados",
       "description": "Get ready for hurricane season with a household preparation checklist and key contacts, and stay up to date with Department of Emergency Management (DEM) alerts.",
       "visibility": "public",
@@ -1137,6 +887,7 @@
     {
       "url": "/housing/apply-for-an-nhc-rental-unit-or-lot",
       "category": "housing",
+      "parent": null,
       "title": "Apply for an NHC rental unit or lot",
       "description": "Use this service to apply to rent a unit or a lot from the National Housing Corporation (NHC). You must have a monthly income of BDS $3,000 or less to apply.",
       "visibility": "preview",
@@ -1152,6 +903,7 @@
     {
       "url": "/housing/apply-to-buy-nhc-land-or-property",
       "category": "housing",
+      "parent": null,
       "title": "Application to Purchase Land or Property",
       "description": "The National Housing Corporation (NHC) sells land and homes to people who do not already own land or property. Use this service to apply to buy an NHC lot or house.",
       "visibility": "preview",
@@ -1167,6 +919,7 @@
     {
       "url": "/housing/apply-to-use-state-land",
       "category": "housing",
+      "parent": null,
       "title": "Apply to use state land",
       "description": "Use this service to apply for permission to use land owned by the Government of Barbados for a specific purpose over a set period, such as an event, a project, or a community use.",
       "visibility": "preview",
@@ -1181,6 +934,7 @@
     {
       "url": "/housing/tenant-notice-to-buy-freehold",
       "category": "housing",
+      "parent": null,
       "title": "Tenant's Notice of Intention to Purchase Freehold",
       "description": "If you rent a lot in a tenantry, the Tenantries Freehold Purchase Act (Cap. 239B) gives you the right to buy the freehold of that lot from your landlord. The first step is to send your landlord a written notice.",
       "visibility": "preview",
@@ -1195,6 +949,7 @@
     {
       "url": "/ministry-of-youth/camp-director-application",
       "category": "ministry-of-youth",
+      "parent": null,
       "title": "Apply to be a Camp Director or Assistant Camp Director",
       "description": "Apply to volunteer as a Camp Director or Assistant Camp Director with the National Summer Camp Programme 2026.",
       "visibility": "preview",
@@ -1209,6 +964,7 @@
     {
       "url": "/money-financial-support/apply-financial-assistance",
       "category": "money-financial-support",
+      "parent": null,
       "title": "Apply for financial assistance",
       "description": "Apply for financial assistance from the Government of Barbados if you need help with food, clothing, utility bills, housing, assistive devices, or other essential needs.",
       "visibility": "public",
@@ -1223,6 +979,7 @@
     {
       "url": "/money-financial-support/calculate-severance-pay",
       "category": "money-financial-support",
+      "parent": null,
       "title": "Find out how much severance payment you are owed",
       "description": "Estimate the severance payment you may be owed under the Severance Payments Act (Cap. 355A) if you were made redundant, your workplace was damaged by a disaster, you were laid off, or your employer died.",
       "visibility": "public",
@@ -1239,6 +996,7 @@
     {
       "url": "/money-financial-support/calculate-severance-pay/start",
       "category": "money-financial-support",
+      "parent": "/money-financial-support/calculate-severance-pay",
       "title": "Find out how much severance payment you are owed",
       "description": null,
       "visibility": "public",
@@ -1252,6 +1010,7 @@
     {
       "url": "/money-financial-support/get-a-primary-school-textbook-grant",
       "category": "money-financial-support",
+      "parent": null,
       "title": "Get a Primary School Textbook Grant",
       "description": "Apply for the annual $100 BDD Primary School Textbook Grant for your child attending a public or private primary school in Barbados.",
       "visibility": "public",
@@ -1267,6 +1026,7 @@
     {
       "url": "/money-financial-support/get-a-primary-school-textbook-grant/start",
       "category": "money-financial-support",
+      "parent": "/money-financial-support/get-a-primary-school-textbook-grant",
       "title": "Get a Primary School Textbook Grant",
       "description": null,
       "visibility": "public",
@@ -1280,6 +1040,7 @@
     {
       "url": "/money-financial-support/get-disaster-relief-assistance",
       "category": "money-financial-support",
+      "parent": null,
       "title": "Get disaster relief assistance",
       "description": "Apply for disaster relief assistance from the Government of Barbados if your home or livelihood has been affected by a natural disaster or emergency.",
       "visibility": "public",
@@ -1294,6 +1055,7 @@
     {
       "url": "/money-financial-support/national-insurance-for-self-employed-workers",
       "category": "money-financial-support",
+      "parent": null,
       "title": "Learn how to pay National Insurance when you work for yourself",
       "description": "When you work for yourself, National Insurance pays you money when you can't work: when you're sick, when you have a baby, and when you stop working in old age. Joining is voluntary, and you contribute based on what you earn.",
       "visibility": "preview",
@@ -1316,6 +1078,7 @@
     {
       "url": "/money-financial-support/national-insurance-for-self-employed-workers/check-your-record",
       "category": "money-financial-support",
+      "parent": "/money-financial-support/national-insurance-for-self-employed-workers",
       "title": "Check your National Insurance record and benefits",
       "description": "Check the National Insurance payments on your record, find out what to do if you missed payments or worked outside Barbados, and see which benefits your contributions may help you qualify for.",
       "visibility": "preview",
@@ -1331,6 +1094,7 @@
     {
       "url": "/money-financial-support/national-insurance-for-self-employed-workers/how-to-get-your-benefits",
       "category": "money-financial-support",
+      "parent": "/money-financial-support/national-insurance-for-self-employed-workers",
       "title": "How to get your benefits",
       "description": "The practical steps for self-employed workers in Barbados to get National Insurance coverage: get your number, register, top up, pay, and check your record. You may also be able to back-pay missed years.",
       "visibility": "preview",
@@ -1346,6 +1110,7 @@
     {
       "url": "/pensions-and-gratuities/calculate-your-pension",
       "category": "pensions-and-gratuities",
+      "parent": null,
       "title": "Calculate your Government pension",
       "description": "Estimate your government or public sector pension. Choose between a full pension or a gratuity and a reduced pension.",
       "visibility": "preview",
@@ -1361,6 +1126,7 @@
     {
       "url": "/pensions-and-gratuities/calculate-your-pension/about-government-pensions",
       "category": "pensions-and-gratuities",
+      "parent": "/pensions-and-gratuities/calculate-your-pension",
       "title": "About Government pensions and gratuities",
       "description": "How your Government pension, reduced pension, and gratuity are calculated, plus the things that affect your pension.",
       "visibility": "preview",
@@ -1376,6 +1142,7 @@
     {
       "url": "/public-safety/get-support-for-a-victim-of-domestic-abuse",
       "category": "public-safety",
+      "parent": null,
       "title": "Get support for a victim of domestic abuse",
       "description": "Find support services available in Barbados for victims of domestic abuse, including who to contact and how to get help.",
       "visibility": "public",
@@ -1390,6 +1157,7 @@
     {
       "url": "/public-safety/report-a-concern-about-a-child",
       "category": "public-safety",
+      "parent": null,
       "title": "Report a concern about a child",
       "description": "Find out how to report a concern about a child's welfare in Barbados, including who to contact and what information you will need.",
       "visibility": "public",
@@ -1404,6 +1172,7 @@
     {
       "url": "/public-safety/report-elderly-abuse",
       "category": "public-safety",
+      "parent": null,
       "title": "Report elderly abuse",
       "description": "Find out how to report suspected abuse, neglect, or exploitation of an elderly person in Barbados.",
       "visibility": "public",
@@ -1418,6 +1187,7 @@
     {
       "url": "/social-empowerment/apply-for-a-national-assistance-grant",
       "category": "social-empowerment",
+      "parent": null,
       "title": "Apply for a National Assistance Grant",
       "description": "Apply for a National Assistance Grant from the Social Empowerment Agency (SEA) if you live in Barbados and need financial help.",
       "visibility": "preview",
@@ -1431,6 +1201,7 @@
     {
       "url": "/social-empowerment/apply-for-community-elder-care",
       "category": "social-empowerment",
+      "parent": null,
       "title": "Apply for the Community Elder Care Programme",
       "description": "Apply for the Community Elder Care Programme run by the National Assistance Board (NAB), for an older person who needs help at home in Barbados.",
       "visibility": "preview",
@@ -1444,6 +1215,7 @@
     {
       "url": "/social-empowerment/apply-for-home-care-programme",
       "category": "social-empowerment",
+      "parent": null,
       "title": "Apply for the Home Care Programme",
       "description": "Apply for help at home through the National Assistance Board (NAB) Home Care Programme, for an older person living in Barbados.",
       "visibility": "preview",
@@ -1457,6 +1229,7 @@
     {
       "url": "/social-empowerment/apply-for-multiple-birth-benefit",
       "category": "social-empowerment",
+      "parent": null,
       "title": "Apply for the Multiple Birth Benefit",
       "description": "Apply for the Multiple Birth Benefit from the Social Empowerment Agency (SEA), for a parent or guardian of twins or triplets.",
       "visibility": "preview",
@@ -1470,6 +1243,7 @@
     {
       "url": "/social-empowerment/register-for-seniors-recreational-activities",
       "category": "social-empowerment",
+      "parent": null,
       "title": "Register for the Seniors' Recreational Activities Programme",
       "description": "Register for the Seniors' Recreational Activities Programme, which runs weekly recreational sessions for older people at community locations around Barbados.",
       "visibility": "preview",
@@ -1483,6 +1257,7 @@
     {
       "url": "/social-empowerment/request-assistance-or-transport-from-sea",
       "category": "social-empowerment",
+      "parent": null,
       "title": "Request assistance or transport from the Social Empowerment Agency",
       "description": "Request assistance, or transport for a person with a disability, from the Social Empowerment Agency (SEA).",
       "visibility": "preview",
@@ -1496,6 +1271,7 @@
     {
       "url": "/terms-conditions",
       "category": null,
+      "parent": null,
       "title": "Terms & Conditions",
       "description": null,
       "visibility": "public",
@@ -1509,6 +1285,7 @@
     {
       "url": "/travel-id-citizenship/get-a-document-notarised",
       "category": "travel-id-citizenship",
+      "parent": null,
       "title": "Get a document notarised",
       "description": "Find out how to get a document notarised in Barbados, including where to go and what to bring.",
       "visibility": "public",
@@ -1523,6 +1300,7 @@
     {
       "url": "/travel-id-citizenship/post-office-redirection-business",
       "category": "travel-id-citizenship",
+      "parent": null,
       "title": "Redirect my business mail",
       "description": "Tell the Barbados Post Office to redirect your business mail to a new address when your business relocates.",
       "visibility": "public",
@@ -1538,6 +1316,7 @@
     {
       "url": "/travel-id-citizenship/post-office-redirection-business/start",
       "category": "travel-id-citizenship",
+      "parent": "/travel-id-citizenship/post-office-redirection-business",
       "title": "Redirect my business mail",
       "description": "",
       "visibility": "public",
@@ -1551,6 +1330,7 @@
     {
       "url": "/travel-id-citizenship/post-office-redirection-deceased",
       "category": "travel-id-citizenship",
+      "parent": null,
       "title": "Tell the Post Office someone has died",
       "description": "Tell the Barbados Post Office that someone has died and arrange for their mail to be redirected to a different address.",
       "visibility": "public",
@@ -1566,6 +1346,7 @@
     {
       "url": "/travel-id-citizenship/post-office-redirection-deceased/start",
       "category": "travel-id-citizenship",
+      "parent": "/travel-id-citizenship/post-office-redirection-deceased",
       "title": "Tell the Post Office someone has died",
       "description": "",
       "visibility": "public",
@@ -1579,6 +1360,7 @@
     {
       "url": "/travel-id-citizenship/post-office-redirection-individual",
       "category": "travel-id-citizenship",
+      "parent": null,
       "title": "Redirect my personal mail",
       "description": "Tell the Barbados Post Office to redirect your personal mail to a new address. You must complete one redirection notice per household.",
       "visibility": "public",
@@ -1594,6 +1376,7 @@
     {
       "url": "/travel-id-citizenship/post-office-redirection-individual/start",
       "category": "travel-id-citizenship",
+      "parent": "/travel-id-citizenship/post-office-redirection-individual",
       "title": "Redirect my personal mail",
       "description": "",
       "visibility": "public",
@@ -1607,6 +1390,7 @@
     {
       "url": "/what-we-mean-by-alpha",
       "category": null,
+      "parent": null,
       "title": "What we mean by alpha",
       "description": "We’re testing ideas and learning what works before building the full service.",
       "visibility": "public",
@@ -1618,6 +1402,7 @@
     {
       "url": "/whats-changing",
       "category": null,
+      "parent": null,
       "title": "What's changing?",
       "description": null,
       "visibility": "public",
@@ -1629,6 +1414,7 @@
     {
       "url": "/work-employment/apply-for-a-position-as-a-temporary-teacher",
       "category": "work-employment",
+      "parent": null,
       "title": "Apply to be a temporary teacher",
       "description": "Apply for a temporary teaching position in the Government of Barbados school system.",
       "visibility": "preview",
@@ -1644,6 +1430,7 @@
     {
       "url": "/work-employment/apply-for-conductor-licence",
       "category": "work-employment",
+      "parent": null,
       "title": "Apply for a conductor's licence",
       "description": "Apply for a conductor's licence to work on a Public Service Vehicle (PSV) in Barbados. You must be 18 years or older to apply.",
       "visibility": "public",
@@ -1658,6 +1445,7 @@
     {
       "url": "/work-employment/apply-for-conductor-licence/start",
       "category": "work-employment",
+      "parent": "/work-employment/apply-for-conductor-licence",
       "title": "Apply for a conductor's licence",
       "description": null,
       "visibility": "public",
@@ -1671,6 +1459,7 @@
     {
       "url": "/work-employment/apply-to-be-a-project-protege-mentor",
       "category": "work-employment",
+      "parent": null,
       "title": "Apply to be a Project Protégé mentor",
       "description": "Apply to become a volunteer mentor for a young person aged 13 to 17 in the Government of Barbados Project Protégé programme.",
       "visibility": "public",
@@ -1686,6 +1475,7 @@
     {
       "url": "/work-employment/apply-to-be-a-project-protege-mentor/start",
       "category": "work-employment",
+      "parent": "/work-employment/apply-to-be-a-project-protege-mentor",
       "title": "Apply to be a Project Protégé mentor",
       "description": null,
       "visibility": "public",
@@ -1699,6 +1489,7 @@
     {
       "url": "/work-employment/apply-to-jobstart-plus-programme",
       "category": "work-employment",
+      "parent": null,
       "title": "Register for Job Start Plus",
       "description": "Register for the Job Start Plus training programme in Barbados — a government initiative offering career guidance, skills training, and workplace placements for young people.",
       "visibility": "public",
@@ -1714,6 +1505,7 @@
     {
       "url": "/work-employment/apply-to-jobstart-plus-programme/start",
       "category": "work-employment",
+      "parent": "/work-employment/apply-to-jobstart-plus-programme",
       "title": "Register for Job Start Plus",
       "description": null,
       "visibility": "public",
@@ -1727,6 +1519,7 @@
     {
       "url": "/work-employment/apply-to-the-barbados-youthadvance-corps",
       "category": "work-employment",
+      "parent": null,
       "title": "Apply to the Barbados YouthADVANCE Corps (BYAC)",
       "description": "Apply to join the Barbados YouthADVANCE Corps (BYAC), a government programme supporting young people through skills development and community service.",
       "visibility": "public",
@@ -1741,6 +1534,7 @@
     {
       "url": "/work-employment/apply-to-volunteer-at-a-sports-camp",
       "category": "work-employment",
+      "parent": null,
       "title": "Apply to volunteer at a sports camp",
       "description": "Apply to volunteer at a government-run sports camp in Barbados for children and young people.",
       "visibility": "public",
@@ -1755,6 +1549,7 @@
     {
       "url": "/work-employment/register-for-community-sports-training-programme",
       "category": "work-employment",
+      "parent": null,
       "title": "Register for a Youth Development Programme (YDP) Community Sports Training programme",
       "description": "Register for a government-run Youth Development Programme (YDP) community sports training programme in Barbados. Open to residents aged 30 and under.",
       "visibility": "public",
@@ -1770,6 +1565,7 @@
     {
       "url": "/work-employment/register-for-community-sports-training-programme/start",
       "category": "work-employment",
+      "parent": "/work-employment/register-for-community-sports-training-programme",
       "title": "Register for a Youth Development Programme (YDP) Community Sports Training Programme",
       "description": null,
       "visibility": "public",
@@ -1783,6 +1579,7 @@
     {
       "url": "/work-employment/register-summer-camp",
       "category": "work-employment",
+      "parent": null,
       "title": "Register for a summer camp",
       "description": "Register your child for a free government summer camp in Barbados, available for children aged 4 to 15. Camps cover sports, arts, culture, entrepreneurship, and special needs.",
       "visibility": "public",
@@ -1797,7 +1594,8 @@
     },
     {
       "url": "/youth-and-community/arts-culture/community-canvas",
-      "category": "youth-and-community",
+      "category": "arts-culture",
+      "parent": null,
       "title": "Community Canvas",
       "description": "A 10-episode YouTube series showcasing the activities, classes and people at community Resource Centres across Barbados.",
       "visibility": "preview",
@@ -1805,14 +1603,14 @@
       "published_at": "2026-05-20T00:00:00.000Z",
       "body_markdown": "A 10-episode YouTube series showcasing the activities, classes and people at community Resource Centres across Barbados.\n\n## Overview\n\nVideo/TV series on YouTube featuring activities and programs at Resource Centres island-wide. 10 episodes covering balloon artistry, senior fitness, vocational training, and more.\n\n## Who can apply\n\n- Interest in arts, community\n\n## How to apply\n\nComplete the short application form to register your interest. Your progress is saved automatically.\n\n<a data-start-link>Start now</a>\n\n## More information\n\n[Go to the official site for Community Canvas](https://comdev.gov.bb/canvas/)",
       "frontmatter": {
-        "subcategory": "arts-culture",
         "stage": "alpha",
         "service_type": "digital"
       }
     },
     {
       "url": "/youth-and-community/arts-culture/yar",
-      "category": "youth-and-community",
+      "category": "arts-culture",
+      "parent": null,
       "title": "Youth Achieving Results (YAR)",
       "description": "An arts-focused initiative for young people aged 17 to 30, run under the Youth Development Programme.",
       "visibility": "preview",
@@ -1820,14 +1618,14 @@
       "published_at": "2026-05-20T00:00:00.000Z",
       "body_markdown": "An arts-focused initiative for young people aged 17 to 30, run under the Youth Development Programme.\n\n## Overview\n\nArts-focused initiative under the Youth Development Programme.\n\n## Who can apply\n\n- Ages 17–30\n- Interest in arts, creative\n\n## How to apply\n\nComplete the short application form to register your interest. Your progress is saved automatically.\n\n<a data-start-link>Start now</a>\n\n## More information\n\n[Go to the official site for Youth Achieving Results (YAR)](https://youthaffairs.gov.bb/programme-channels/youth-development-programme/)",
       "frontmatter": {
-        "subcategory": "arts-culture",
         "stage": "alpha",
         "service_type": "digital"
       }
     },
     {
       "url": "/youth-and-community/children-families-community/barbados-blooming-libraries",
-      "category": "youth-and-community",
+      "category": "children-families-community",
+      "parent": null,
       "title": "Barbados is Blooming (Little Libraries)",
       "description": "Donate new or lightly used children's books at participating Massy Stores and Farm and Garden to stock free little libraries across the island.",
       "visibility": "preview",
@@ -1835,14 +1633,14 @@
       "published_at": "2026-05-20T00:00:00.000Z",
       "body_markdown": "Donate new or lightly used children's books at participating Massy Stores and Farm and Garden to stock free little libraries across the island.\n\n## Overview\n\nFree little libraries placed across the island to revive reading post-COVID. Donate new or lightly used children's books at Massy Stores (Sunset Crest, Holetown, Warrens) and Farm and Garden in Salters, St. George. Partners: Prince Godwill D. Fomusoh Foundation, Massy Foundation, CDD.\n\n## Who can apply\n\n- Interest in community, education, reading\n\n## How to apply\n\nComplete the short application form to register your interest. Your progress is saved automatically.\n\n<a data-start-link>Start now</a>\n\n## More information\n\n[Go to the official site for Barbados is Blooming (Little Libraries)](https://comdev.gov.bb/programmes/libraries/)",
       "frontmatter": {
-        "subcategory": "children-families-community",
         "stage": "alpha",
         "service_type": "digital"
       }
     },
     {
       "url": "/youth-and-community/children-families-community/ceep",
-      "category": "youth-and-community",
+      "category": "children-families-community",
+      "parent": null,
       "title": "Community Engagement and Educational Programme (CEEP)",
       "description": "Free workshops on taxes, social security and managing your money, delivered with partners like the BRA, NISSS, Sagicor and BPWCCUL.",
       "visibility": "preview",
@@ -1850,14 +1648,14 @@
       "published_at": "2026-05-20T00:00:00.000Z",
       "body_markdown": "Free workshops on taxes, social security and managing your money, delivered with partners like the BRA, NISSS, Sagicor and BPWCCUL.\n\n## Overview\n\nEducation and assistance with tax, NIS/social security, and financial services. Partners: Barbados Revenue Authority, NISSS, Sagicor, BPWCCUL.\n\n## Who can apply\n\n- 18+ years\n- Interest in finance, tax, education\n\n## How to apply\n\nComplete the short application form to register your interest. Your progress is saved automatically.\n\n<a data-start-link>Start now</a>\n\n## More information\n\n[Go to the official site for Community Engagement and Educational Programme (CEEP)](https://comdev.gov.bb/registration-ceep/)",
       "frontmatter": {
-        "subcategory": "children-families-community",
         "stage": "alpha",
         "service_type": "digital"
       }
     },
     {
       "url": "/youth-and-community/children-families-community/centre-access",
-      "category": "youth-and-community",
+      "category": "children-families-community",
+      "parent": null,
       "title": "Community Centre Access",
       "description": "Book a community centre near you to host an event, class or community activity.",
       "visibility": "preview",
@@ -1865,14 +1663,14 @@
       "published_at": "2026-05-20T00:00:00.000Z",
       "body_markdown": "Book a community centre near you to host an event, class or community activity.\n\n## Overview\n\nAccess community centres for events and activities.\n\n## Who can apply\n\n- Interest in community\n\n## How to apply\n\nComplete the short application form to register your interest. Your progress is saved automatically.\n\n<a data-start-link>Start now</a>\n\n## More information\n\n[Go to the official site for Community Centre Access](https://comdev.gov.bb/programmes/centre-access/)",
       "frontmatter": {
-        "subcategory": "children-families-community",
         "stage": "alpha",
         "service_type": "digital"
       }
     },
     {
       "url": "/youth-and-community/children-families-community/cmc",
-      "category": "youth-and-community",
+      "category": "children-families-community",
+      "parent": null,
       "title": "Centre Management Committees (CMC)",
       "description": "Volunteer with a Centre Management Committee to help review programme proposals and run your local community centre.",
       "visibility": "preview",
@@ -1880,14 +1678,14 @@
       "published_at": "2026-05-20T00:00:00.000Z",
       "body_markdown": "Volunteer with a Centre Management Committee to help review programme proposals and run your local community centre.\n\n## Overview\n\nVolunteer to review requests for use of community centres, review programme proposals, and facilitate extended centre access. Must show desire for positive socio-economic change, deep understanding of the community, and credible knowledge of relevant skill sets.\n\n## Who can apply\n\n- Interest in volunteer, community, leadership\n\n## How to apply\n\nComplete the short application form to register your interest. Your progress is saved automatically.\n\n<a data-start-link>Start now</a>\n\n## More information\n\n[Go to the official site for Centre Management Committees (CMC)](https://docs.google.com/forms/d/e/1FAIpQLSeWEt-xl67n-xNcPJs0PI2GzS06jWpzHIGzbp4_3UfwBC4ksA/viewform)",
       "frontmatter": {
-        "subcategory": "children-families-community",
         "stage": "alpha",
         "service_type": "digital"
       }
     },
     {
       "url": "/youth-and-community/children-families-community/mission-barbados",
-      "category": "youth-and-community",
+      "category": "children-families-community",
+      "parent": null,
       "title": "Mission Barbados",
       "description": "A national initiative inviting individuals and organisations to take part in six 2030 missions, from sustainability to digital transformation.",
       "visibility": "preview",
@@ -1895,14 +1693,14 @@
       "published_at": "2026-05-20T00:00:00.000Z",
       "body_markdown": "A national initiative inviting individuals and organisations to take part in six 2030 missions, from sustainability to digital transformation.\n\n## Overview\n\nNational initiative around six 2030 missions: sustainability, social cohesion, food/water security, public health & safety, worker empowerment, digital transformation. Open to individuals and organisations.\n\n## Who can apply\n\n- Interest in sustainability, community, health, digital\n\n## How to apply\n\nComplete the short application form to register your interest. Your progress is saved automatically.\n\n<a data-start-link>Start now</a>\n\n## More information\n\n[Go to the official site for Mission Barbados](https://control.missionbarbados.gov.bb/group-registrations/register)",
       "frontmatter": {
-        "subcategory": "children-families-community",
         "stage": "alpha",
         "service_type": "digital"
       }
     },
     {
       "url": "/youth-and-community/children-families-community/national-summer-camp",
-      "category": "youth-and-community",
+      "category": "children-families-community",
+      "parent": null,
       "title": "National Summer Camp Programme",
       "description": "Summer camps for children aged 5 to 16, hosted in 46 locations across Barbados.",
       "visibility": "preview",
@@ -1910,14 +1708,14 @@
       "published_at": "2026-05-20T00:00:00.000Z",
       "body_markdown": "Summer camps for children aged 5 to 16, hosted in 46 locations across Barbados.\n\n## Overview\n\nSummer camps across 46 locations island-wide. Hosted by the Ministry of Youth, Sports and Community Empowerment.\n\n## Who can apply\n\n- Ages 5–16\n- Interest in recreation, summer-camp, sports\n\n## How to apply\n\nComplete the short application form to register your interest. Your progress is saved automatically.\n\n<a data-start-link>Start now</a>\n\n## More information\n\n[Go to the official site for National Summer Camp Programme](https://linktr.ee/myscebb)",
       "frontmatter": {
-        "subcategory": "children-families-community",
         "stage": "alpha",
         "service_type": "digital"
       }
     },
     {
       "url": "/youth-and-community/entrepreneurship-business/yes",
-      "category": "youth-and-community",
+      "category": "entrepreneurship-business",
+      "parent": null,
       "title": "Youth Entrepreneurship Scheme (YES)",
       "description": "One-to-one support and access to funding to help young people turn a business idea into a working enterprise.",
       "visibility": "preview",
@@ -1925,14 +1723,14 @@
       "published_at": "2026-05-20T00:00:00.000Z",
       "body_markdown": "One-to-one support and access to funding to help young people turn a business idea into a working enterprise.\n\n## Overview\n\nFrom idea to enterprise. Direct technical assistance from Youth Enterprise Officers and consultants, plus access to financial assistance via partnerships.\n\n## Who can apply\n\n- Interest in business, entrepreneurship\n\n## How to apply\n\nComplete the short application form to register your interest. Your progress is saved automatically.\n\n<a data-start-link>Start now</a>\n\n## More information\n\n[Go to the official site for Youth Entrepreneurship Scheme (YES)](https://youthaffairs.gov.bb/programme-channels/yes-2/)",
       "frontmatter": {
-        "subcategory": "entrepreneurship-business",
         "stage": "alpha",
         "service_type": "digital"
       }
     },
     {
       "url": "/youth-and-community/skills-trades-vocational-training/btu",
-      "category": "youth-and-community",
+      "category": "skills-trades-vocational-training",
+      "parent": null,
       "title": "Block Transformation Unit (BTU)",
       "description": "Free vocational training in over 20 trades — from motor vehicle engineering and cookery to construction and healthcare — through Project Dawn.",
       "visibility": "preview",
@@ -1940,14 +1738,14 @@
       "published_at": "2026-05-20T00:00:00.000Z",
       "body_markdown": "Free vocational training in over 20 trades — from motor vehicle engineering and cookery to construction and healthcare — through Project Dawn.\n\n## Overview\n\nCommunity development unit under the Division of Youth and Culture. Focused on transforming neighbourhood blocks through youth-led engagement.\n\n## Who can apply\n\n- Interest in community, development\n\n## Sub-programmes\n\n### Project Dawn\n\nFree vocational training in 20+ courses: Motor Vehicle Engineering, Professional Housekeeping, Basic Trade Cookery, Bar Operations, hospitality, beauty, construction, healthcare.\n\n## How to apply\n\nComplete the short application form to register your interest. Your progress is saved automatically.\n\n<a data-start-link>Start now</a>\n\n## More information\n\n[Go to the official site for Block Transformation Unit (BTU)](https://youthaffairs.gov.bb/about/about-the-block-transformation-unit/)",
       "frontmatter": {
-        "subcategory": "skills-trades-vocational-training",
         "stage": "alpha",
         "service_type": "digital"
       }
     },
     {
       "url": "/youth-and-community/skills-trades-vocational-training/cap",
-      "category": "youth-and-community",
+      "category": "skills-trades-vocational-training",
+      "parent": null,
       "title": "Community Arts Programme (CAP)",
       "description": "Structured creative training to help you build a career in art, design and animation.",
       "visibility": "preview",
@@ -1955,14 +1753,14 @@
       "published_at": "2026-05-20T00:00:00.000Z",
       "body_markdown": "Structured creative training to help you build a career in art, design and animation.\n\n## Overview\n\nStructured instruction in airbrushing, animation, automotive painting, basic bodywork, computer graphics, drawing & illustration, painting & colour theory, sign making, technical drawing. Build a career in the creative sector.\n\n## Who can apply\n\n- 14+ years\n- Interest in arts, design, animation, creative\n\n## How to apply\n\nComplete the short application form to register your interest. Your progress is saved automatically.\n\n<a data-start-link>Start now</a>\n\n## More information\n\n[Go to the official site for Community Arts Programme (CAP)](https://comdev.gov.bb/registration-cap/)",
       "frontmatter": {
-        "subcategory": "skills-trades-vocational-training",
         "stage": "alpha",
         "service_type": "digital"
       }
     },
     {
       "url": "/youth-and-community/skills-trades-vocational-training/cip",
-      "category": "youth-and-community",
+      "category": "skills-trades-vocational-training",
+      "parent": null,
       "title": "Community Impact Programme (CIP)",
       "description": "Short, hands-on training courses in trades, creative work and wellness, run two sessions a week at community centres across Barbados.",
       "visibility": "preview",
@@ -1970,14 +1768,14 @@
       "published_at": "2026-05-20T00:00:00.000Z",
       "body_markdown": "Short, hands-on training courses in trades, creative work and wellness, run two sessions a week at community centres across Barbados.\n\n## Overview\n\nPractical demand-driven skill training in 25+ courses across trades, creative services, and wellness. Two sessions/week, 2-3 hours, morning/midday/afternoon/evening slots at community and resource centres island-wide.\n\n## Who can apply\n\n- 16+ years\n- Interest in trades, wellness, creative, community, training\n\n## How to apply\n\nComplete the short application form to register your interest. Your progress is saved automatically.\n\n<a data-start-link>Start now</a>\n\n## More information\n\n[Go to the official site for Community Impact Programme (CIP)](https://comdev.gov.bb/programmes/cip/)",
       "frontmatter": {
-        "subcategory": "skills-trades-vocational-training",
         "stage": "alpha",
         "service_type": "digital"
       }
     },
     {
       "url": "/youth-and-community/skills-trades-vocational-training/cyber-security-training",
-      "category": "youth-and-community",
+      "category": "skills-trades-vocational-training",
+      "parent": null,
       "title": "Cyber Security Training Workshop",
       "description": "A workshop teaching young people the fundamentals of staying safe online and the basics of cyber security.",
       "visibility": "preview",
@@ -1985,14 +1783,14 @@
       "published_at": "2026-05-20T00:00:00.000Z",
       "body_markdown": "A workshop teaching young people the fundamentals of staying safe online and the basics of cyber security.\n\n## Overview\n\nCyber security training under the Youth Development Programme.\n\n## Who can apply\n\n- Ages 9–29\n- Interest in tech, cybersecurity\n\n## How to apply\n\nComplete the short application form to register your interest. Your progress is saved automatically.\n\n<a data-start-link>Start now</a>\n\n## More information\n\n[Go to the official site for Cyber Security Training Workshop](https://youthaffairs.gov.bb/programme-channels/youth-development-programme/)",
       "frontmatter": {
-        "subcategory": "skills-trades-vocational-training",
         "stage": "alpha",
         "service_type": "digital"
       }
     },
     {
       "url": "/youth-and-community/skills-trades-vocational-training/web-design-entrepreneurs",
-      "category": "youth-and-community",
+      "category": "skills-trades-vocational-training",
+      "parent": null,
       "title": "Web Page Design and Maintenance for Entrepreneurs",
       "description": "A practical workshop where young entrepreneurs learn to design and maintain their own business websites.",
       "visibility": "preview",
@@ -2000,14 +1798,14 @@
       "published_at": "2026-05-20T00:00:00.000Z",
       "body_markdown": "A practical workshop where young entrepreneurs learn to design and maintain their own business websites.\n\n## Overview\n\nWorkshop teaching young entrepreneurs to design and maintain their own websites.\n\n## Who can apply\n\n- Ages 9–29\n- Interest in tech, design, business, entrepreneurship\n\n## How to apply\n\nComplete the short application form to register your interest. Your progress is saved automatically.\n\n<a data-start-link>Apply now</a>\n\n## More information\n\n[Go to the official site for Web Page Design and Maintenance for Entrepreneurs](https://youthaffairs.gov.bb/programme-channels/youth-development-programme/)",
       "frontmatter": {
-        "subcategory": "skills-trades-vocational-training",
         "stage": "alpha",
         "service_type": "digital"
       }
     },
     {
       "url": "/youth-and-community/youth-development-leadership/bright-sparks-2",
-      "category": "youth-and-community",
+      "category": "youth-development-leadership",
+      "parent": null,
       "title": "Bright Sparks Educational Project 2.0",
       "description": "An educational project for young people aged 9 to 29, run under the Youth Development Programme.",
       "visibility": "preview",
@@ -2015,14 +1813,14 @@
       "published_at": "2026-05-20T00:00:00.000Z",
       "body_markdown": "An educational project for young people aged 9 to 29, run under the Youth Development Programme.\n\n## Overview\n\nEducational project under the Youth Development Programme.\n\n## Who can apply\n\n- Ages 9–29\n- Interest in education\n\n## How to apply\n\nComplete the short application form to register your interest. Your progress is saved automatically.\n\n<a data-start-link>Start now</a>\n\n## More information\n\n[Go to the official site for Bright Sparks Educational Project 2.0](https://youthaffairs.gov.bb/programme-channels/youth-development-programme/)",
       "frontmatter": {
-        "subcategory": "youth-development-leadership",
         "stage": "alpha",
         "service_type": "digital"
       }
     },
     {
       "url": "/youth-and-community/youth-development-leadership/byac",
-      "category": "youth-and-community",
+      "category": "youth-development-leadership",
+      "parent": null,
       "title": "Barbados YouthADVANCE Corps (BYAC)",
       "description": "A two-year programme for young people aged 16 to 20, combining residential vocational training with job attachments and community service.",
       "visibility": "preview",
@@ -2030,14 +1828,14 @@
       "published_at": "2026-05-20T00:00:00.000Z",
       "body_markdown": "A two-year programme for young people aged 16 to 20, combining residential vocational training with job attachments and community service.\n\n## Overview\n\nTwo-year developmental training. Year 1: 10 weeks residential technical/vocational training. Year 2: job attachments, apprenticeships, internships, community service. Adventure, Discipline, Values, Acumen, New Skills, Charity, Empowerment.\n\n## Who can apply\n\n- Ages 16–20\n- Interest in leadership, training, vocational, employment\n\n## How to apply\n\nComplete the short application form to register your interest. Your progress is saved automatically.\n\n<a data-start-link>Start now</a>\n\n## More information\n\n[Go to the official site for Barbados YouthADVANCE Corps (BYAC)](https://youthaffairs.gov.bb/programme-channels/barbados-youthadvance-corps-2/)",
       "frontmatter": {
-        "subcategory": "youth-development-leadership",
         "stage": "alpha",
         "service_type": "digital"
       }
     },
     {
       "url": "/youth-and-community/youth-development-leadership/pathways",
-      "category": "youth-and-community",
+      "category": "youth-development-leadership",
+      "parent": null,
       "title": "Pathways Employability Programme",
       "description": "A job-attachment and mentorship programme for unemployed young people aged 16 to 24, with support from social workers and counsellors.",
       "visibility": "preview",
@@ -2045,14 +1843,14 @@
       "published_at": "2026-05-20T00:00:00.000Z",
       "body_markdown": "A job-attachment and mentorship programme for unemployed young people aged 16 to 24, with support from social workers and counsellors.\n\n## Overview\n\nJob attachment and mentorship programme. Life and job skills, work ethic, employment opportunities. Includes psycho-social support from social workers and counsellors. Targets unemployed youth not in full-time education.\n\n## Who can apply\n\n- Ages 16–24\n- Interest in employment, mentorship, career\n\n## How to apply\n\nComplete the short application form to register your interest. Your progress is saved automatically.\n\n<a data-start-link>Start now</a>\n\n## More information\n\n[Go to the official site for Pathways Employability Programme](https://youthaffairs.gov.bb/programme-channels/pathways/)",
       "frontmatter": {
-        "subcategory": "youth-development-leadership",
         "stage": "alpha",
         "service_type": "digital"
       }
     },
     {
       "url": "/youth-and-community/youth-development-leadership/ydp",
-      "category": "youth-and-community",
+      "category": "youth-development-leadership",
+      "parent": null,
       "title": "Youth Development Programme",
       "description": "An umbrella of workshops, projects and learning initiatives for young people aged 9 to 29 in communities across the island.",
       "visibility": "preview",
@@ -2060,7 +1858,6 @@
       "published_at": "2026-05-20T00:00:00.000Z",
       "body_markdown": "An umbrella of workshops, projects and learning initiatives for young people aged 9 to 29 in communities across the island.\n\n## Overview\n\nProgramming channel of the Division of Youth Affairs to engage and empower youth across communities. Hosts initiatives like Bridge to the Future, Youth Achieving Results, Web Design for Entrepreneurs, Cyber Security Training, and Bright Sparks Educational Project.\n\n## Who can apply\n\n- Ages 9–29\n- Interest in community, education, skills\n\n## How to apply\n\nComplete the short application form to register your interest. Your progress is saved automatically.\n\n<a data-start-link>Start now</a>\n\n## More information\n\n[Go to the official site for Youth Development Programme](https://linktr.ee/myscebb)",
       "frontmatter": {
-        "subcategory": "youth-development-leadership",
         "stage": "alpha",
         "service_type": "digital"
       }

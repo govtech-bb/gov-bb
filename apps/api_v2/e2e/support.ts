@@ -2,14 +2,13 @@
  * The end-to-end harness: a scratch database, the built server as its own
  * process, and requests over a socket.
  *
- * Everything in `src/*.test.ts` runs through `app.inject` against PGlite,
- * which is fast, needs nothing installed and exercises the real router, the
- * real handlers and real SQL. What it cannot exercise is the process: whether
- * `node dist/src/main.js` boots at all, whether the migration runs on a real
- * server, whether the node-postgres driver round-trips `timestamptz(3)` the
- * way WASM happened to, and whether an unreachable database is a loud non-zero
- * exit rather than a server answering with empty arrays. Those only show up
- * when the thing actually runs, so this suite runs it.
+ * Everything in `src/*.test.ts` runs through `app.inject` against Postgres,
+ * which exercises the real router, the real handlers and real SQL. What it
+ * cannot exercise is the process: whether `node dist/src/main.js` boots at
+ * all, whether its own pool and migration run, and whether an unreachable
+ * database is a loud non-zero exit rather than a server answering with empty
+ * arrays. Those only show up when the thing actually runs, so this suite
+ * runs it.
  *
  * It needs a Postgres and says so by skipping rather than failing when there
  * is not one: a red suite on a laptop with nothing running teaches people to
@@ -196,7 +195,7 @@ async function waitForHealthy(server: Server, child: ChildProcess) {
       );
     }
     try {
-      const response = await fetch(`${server.url}/openapi.json`);
+      const response = await fetch(`${server.url}/docs/openapi.json`);
       if (response.ok) return;
     } catch {
       // Not listening yet.

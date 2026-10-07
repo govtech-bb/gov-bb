@@ -1,18 +1,25 @@
 /**
  * GET /pages?url= row by row against the table it is specified by — 400,
- * 301, the two 404s, and the 200 with its Start link flagged hidden when it
- * leads nowhere public — plus the editor's writes and the behaviours it depends
- * on: optimistic concurrency, a 422 per field, and published_at.
+ * 301, the two 404s, and the 200 with its Start link flagged hidden when its
+ * `start` sub-page is — the site's category, catalog and search reads, with
+ * and without the preview token, plus the editor's writes and the behaviours
+ * they depend on: optimistic concurrency, a 422 per field, and published_at.
  *
  * `app.inject` rather than a live socket: Fastify dispatches the real router,
  * the real handlers and the real error handler, against a real database.
  */
 
+import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import pino from "pino";
 import { IF_UPDATED_AT, PUBLIC_READ } from "./app";
-import { categories, changeEvents, forms, type Visibility } from "./schema";
+import {
+  categories,
+  changeEvents,
+  searchChunks,
+  type Visibility,
+} from "./schema";
 import {
   aPage,
   createTestApp,
@@ -22,6 +29,7 @@ import {
   TEST_HTTP_CONFIG,
 } from "./test-db";
 import { AuthUnavailable, Forbidden } from "./modules/auth";
+import { Redacted } from "./modules/redacted";
 import { err, ok } from "./modules/result";
 import { ApiStore, type Database } from "./store";
 
@@ -47,9 +55,6 @@ const inject = (options: InjectOptions) =>
 
 const seedPage = async (overrides: Record<string, unknown> = {}) =>
   await store.create(aPage(overrides), TEST_EMPLOYEE.id);
-
-const seedForm = async (formId: string, visibility: Visibility) =>
-  await db.insert(forms).values({ formId, visibility });
 
 const seedCategory = async () =>
   (
@@ -89,7 +94,7 @@ describe("GET /pages?url=", () => {
 
   it("serves the page as url, frontmatter, markdown and breadcrumbs", async () => {
     const category = await seedCategory();
-    await seedPage({
+    const created = await seedPage({
       category_id: category.id,
       description: "Estimate what you are owed.",
       frontmatter: { stage: "alpha", keywords: ["redundancy pay"] },
@@ -120,20 +125,64 @@ describe("GET /pages?url=", () => {
           url: ENTRY,
         },
       ],
+      published_at: created.published_at,
+      updated_at: created.updated_at,
     });
   });
 
-  it("names each crumb from the page filed at that level", async () => {
-    await seedCategory();
-    await seedPage();
-    await seedPage({ url: START, title: "Before you start" });
+  it("dates a page that has never been public with a null published_at", async () => {
+    const created = await seedPage({ visibility: "preview" });
+    const app = await createTestApp(db, {
+      previewSecret: new Redacted("secret"),
+    });
 
-    const response = await read(START);
+    const response = await app.inject({
+      url: `/pages?url=${ENTRY}`,
+      headers: { "x-preview-token": "secret" },
+    });
+
+    expect(response.json()).toMatchObject({
+      published_at: null,
+      updated_at: created.updated_at,
+    });
+    await app.close();
+  });
+
+  it("names a crumb for each page above it, by parent rather than by url", async () => {
+    // The pharmacy pages sit beside their parent in the url but beneath it in
+    // the hierarchy; the trail follows the hierarchy.
+    const category = await seedCategory();
+    const parent = await seedPage({ category_id: category.id });
+    const child = "/money-financial-support/severance-explained";
+    await seedPage({
+      url: child,
+      title: "Severance explained",
+      category_id: category.id,
+      parent_id: parent.id,
+    });
+
+    const response = await read(child);
 
     expect(response.json().breadcrumbs).toEqual([
       { name: "Money and financial support", url: "/money-financial-support" },
       { name: "Find out how much severance payment you are owed", url: ENTRY },
-      { name: "Before you start", url: START },
+      { name: "Severance explained", url: child },
+    ]);
+  });
+
+  it("names the parent category before a subcategory", async () => {
+    const parent = await seedCategory();
+    const [sub] = await db
+      .insert(categories)
+      .values({ slug: "arts-culture", title: "Arts", parentId: parent.id })
+      .returning();
+    const url = "/money-financial-support/arts-culture/canvas";
+    await seedPage({ url, title: "Canvas", category_id: sub.id });
+
+    expect((await read(url)).json().breadcrumbs).toEqual([
+      { name: "Money and financial support", url: "/money-financial-support" },
+      { name: "Arts", url: "/money-financial-support/arts-culture" },
+      { name: "Canvas", url },
     ]);
   });
 
@@ -173,26 +222,27 @@ describe("GET /pages?url=", () => {
     expect((await read(ENTRY)).statusCode).toBe(404);
   });
 
-  it("404s a public page under a page that is not", async () => {
-    // Effective visibility: hiding a service hides its sub-pages.
-    await seedPage({ visibility: "draft" });
-    await seedPage({ url: START });
-    expect((await read(START)).statusCode).toBe(404);
+  it("404s a public page beneath a page that is not", async () => {
+    // Effective visibility: hiding a service hides its sub-pages, wherever
+    // their urls are.
+    const parent = await seedPage({ visibility: "draft" });
+    await seedPage({ url: "/elsewhere", parent_id: parent.id });
+    expect((await read("/elsewhere")).statusCode).toBe(404);
   });
 
-  it.each(["preview", "draft"] as const)(
-    "404s a /start page whose form is %s",
-    async (visibility) => {
-      await seedForm("severance", visibility);
-      await seedPage({ url: START, form_id: "severance" });
-      expect((await read(START)).statusCode).toBe(404);
-    },
-  );
+  it("serves a public page whose url sits under a hidden page it is not beneath", async () => {
+    // The url is only an address; the hierarchy is parent_id.
+    await seedPage({ visibility: "draft" });
+    await seedPage({ url: `${ENTRY}/notes` });
+    expect((await read(`${ENTRY}/notes`)).statusCode).toBe(200);
+  });
 
-  it("serves a /start page whose form is public, naming the form", async () => {
-    await seedForm("severance", "public");
+  it("serves a start page naming its form, whatever the form's status", async () => {
+    // Whether the form is open is the forms API's to say, not this one's.
+    const parent = await seedPage();
     await seedPage({
       url: START,
+      parent_id: parent.id,
       form_id: "severance",
       body_markdown: "<a data-start-link>Start now</a>",
     });
@@ -206,26 +256,16 @@ describe("GET /pages?url=", () => {
     });
   });
 
-  it("keeps the Start link when the /start page and its form are public", async () => {
-    await seedForm("severance", "public");
-    await seedPage({ form_id: "severance", body_markdown: ENTRY_MARKDOWN });
-    await seedPage({ url: START, form_id: "severance" });
+  it("keeps the Start link when the start sub-page is public", async () => {
+    const parent = await seedPage({ body_markdown: ENTRY_MARKDOWN });
+    await seedPage({ url: START, parent_id: parent.id });
 
     expect((await read(ENTRY)).json().hide_start_links).toBe(false);
   });
 
-  it("hides the Start link when the /start page is hidden", async () => {
-    await seedForm("severance", "public");
-    await seedPage({ form_id: "severance", body_markdown: ENTRY_MARKDOWN });
-    await seedPage({ url: START, form_id: "severance", visibility: "preview" });
-
-    expect((await read(ENTRY)).json().hide_start_links).toBe(true);
-  });
-
-  it("hides the Start link when the form is hidden", async () => {
-    await seedForm("severance", "preview");
-    await seedPage({ form_id: "severance", body_markdown: ENTRY_MARKDOWN });
-    await seedPage({ url: START, form_id: "severance" });
+  it("hides the Start link when the start sub-page is hidden", async () => {
+    const parent = await seedPage({ body_markdown: ENTRY_MARKDOWN });
+    await seedPage({ url: START, parent_id: parent.id, visibility: "preview" });
 
     expect((await read(ENTRY)).json().hide_start_links).toBe(true);
   });
@@ -269,16 +309,19 @@ describe("GET /pages/:id", () => {
 describe("GET /services", () => {
   it("groups each entry page with the pages below it, ordered by title", async () => {
     const category = await seedCategory();
-    await seedForm("severance-pay", "public");
-    await seedPage({ category_id: category.id });
-    await seedPage({
+    const entry = await seedPage({ category_id: category.id });
+    const start = await seedPage({
       category_id: category.id,
       url: START,
+      parent_id: entry.id,
       form_id: "severance-pay",
     });
+    // Below the start page, and at a url outside the service's: the group
+    // follows parent_id all the way down, not the url.
     const supporting = await seedPage({
       category_id: category.id,
-      url: `${ENTRY}/how-it-is-worked-out`,
+      url: "/money-financial-support/how-severance-is-worked-out",
+      parent_id: start.id,
       title: "How severance pay is worked out",
     });
     await seedPage({
@@ -333,19 +376,51 @@ describe("POST /pages", () => {
     expect((await read(ENTRY)).json().body_markdown).toBe("Hello **there**");
   });
 
-  it("422s an unknown form id, naming the field", async () => {
+  it("422s an unknown parent, naming the field", async () => {
     const response = await inject({
       method: "POST",
       url: "/pages",
-      payload: aPage({ form_id: "no-such-form" }),
+      payload: aPage({ parent_id: "22222222-2222-4222-8222-222222222222" }),
     });
 
     expect(response.statusCode).toBe(422);
     expect(response.headers["cache-control"]).toBe("no-store");
     expect(response.json()).toMatchObject({
       error: "validation_failed",
-      errors: [{ field: "form_id" }],
+      errors: [{ field: "parent_id", message: "No page with that id." }],
     });
+  });
+
+  it("422s a sub-page in a different category from its parent", async () => {
+    const category = await seedCategory();
+    const parent = await seedPage();
+    const response = await inject({
+      method: "POST",
+      url: "/pages",
+      payload: aPage({
+        url: "/x",
+        parent_id: parent.id,
+        category_id: category.id,
+      }),
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json().errors).toEqual([
+      {
+        field: "parent_id",
+        message: "A sub-page must be in the same category as its parent page.",
+      },
+    ]);
+  });
+
+  it("takes any form id: form status is the forms API's", async () => {
+    const response = await inject({
+      method: "POST",
+      url: "/pages",
+      payload: aPage({ form_id: "any-form" }),
+    });
+
+    expect(response.statusCode).toBe(201);
   });
 
   it("422s a url another page already has", async () => {
@@ -461,6 +536,84 @@ describe("PUT /pages/:id", () => {
       "updated",
     ]);
   });
+
+  it("422s a page placed beneath its own sub-page", async () => {
+    const parent = await seedPage();
+    const child = await seedPage({ url: START, parent_id: parent.id });
+
+    const response = await inject({
+      method: "PUT",
+      url: `/pages/${parent.id}`,
+      payload: { ...parent, parent_id: child.id },
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json().errors).toEqual([
+      { field: "parent_id", message: "A page cannot be its own sub-page." },
+    ]);
+  });
+
+  it("keeps the parent when a save leaves parent_id out", async () => {
+    // PUT replaces the page, but a client that does not know about the
+    // hierarchy must not detach a sub-page (and so publish it) by omission.
+    const parent = await seedPage({ visibility: "draft" });
+    const child = await seedPage({ url: START, parent_id: parent.id });
+
+    const response = await inject({
+      method: "PUT",
+      url: `/pages/${child.id}`,
+      payload: aPage({ url: START, title: "Renamed" }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().parent_id).toBe(parent.id);
+    expect((await read(START)).statusCode).toBe(404);
+  });
+
+  it("files a sub-page under its parent's category when it names none", async () => {
+    const category = await seedCategory();
+    const parent = await seedPage({ category_id: category.id });
+
+    const response = await inject({
+      method: "POST",
+      url: "/pages",
+      payload: aPage({ url: START, parent_id: parent.id }),
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json().category_id).toBe(category.id);
+  });
+
+  it("answers for a page whose parents loop, rather than recursing forever", async () => {
+    // Belt and braces: writes refuse cycles, but a read must still end if
+    // one ever got in.
+    const a = await seedPage({ url: "/a" });
+    const b = await seedPage({ url: "/b", parent_id: a.id });
+    await seedPage({ url: "/c", parent_id: b.id });
+    await db.execute(
+      sql`update content_pages set parent_id = ${b.id} where id = ${a.id}`,
+    );
+
+    expect((await read("/c")).statusCode).toBe(200);
+  });
+
+  it("re-cuts the page's search chunks from the saved body", async () => {
+    const created = await seedPage({ body_markdown: "Old text" });
+    await inject({
+      method: "PUT",
+      url: `/pages/${created.id}`,
+      payload: { ...created, body_markdown: "Intro\n\n## Fees\n\nTen dollars" },
+    });
+
+    const rows = await db
+      .select({ heading: searchChunks.heading, body: searchChunks.body })
+      .from(searchChunks)
+      .orderBy(searchChunks.ordinal);
+    expect(rows).toEqual([
+      { heading: null, body: "Intro" },
+      { heading: "Fees", body: "Ten dollars" },
+    ]);
+  });
 });
 
 describe("DELETE /pages/:id", () => {
@@ -473,6 +626,20 @@ describe("DELETE /pages/:id", () => {
 
     expect(response.statusCode).toBe(204);
     expect(await store.get(created.id)).toBeNull();
+  });
+
+  it("422s a page that still has sub-pages, and keeps it", async () => {
+    const parent = await seedPage();
+    await seedPage({ url: START, parent_id: parent.id });
+
+    const response = await inject({
+      method: "DELETE",
+      url: `/pages/${parent.id}`,
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json().errors[0].field).toBe("id");
+    expect(await store.get(parent.id)).not.toBeNull();
   });
 });
 
@@ -723,7 +890,9 @@ describe("employee access", () => {
     expect(page.statusCode).toBe(200);
     expect(page.headers["cache-control"]).toBe(PUBLIC_READ);
     expect(page.headers.etag).toBeDefined();
-    expect((await app.inject({ url: "/openapi.json" })).statusCode).toBe(200);
+    expect((await app.inject({ url: "/docs/openapi.json" })).statusCode).toBe(
+      200,
+    );
   });
 });
 

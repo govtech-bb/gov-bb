@@ -2,11 +2,17 @@
   "openapi": "3.0.3",
   "info": {
     "title": "api_v2",
-    "description": "Public markdown content and employee-authenticated editor operations. Editor reads, writes, and the version token require a GitHub-authenticated govtech-bb organization member session.",
+    "description": "Public markdown content, categories and search text, and employee-authenticated editor operations. Editor reads, writes, and the version token require a GitHub-authenticated govtech-bb organization member session.",
     "version": "0.0.0"
   },
   "components": {
     "securitySchemes": {
+      "previewToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-preview-token",
+        "description": "The site's PREVIEW_SECRET, sent server to server. Optional on site reads; with it, `preview` content is served too."
+      },
       "editorSession": {
         "type": "apiKey",
         "in": "cookie",
@@ -21,7 +27,7 @@
       "get": {
         "summary": "Get a public page by its url",
         "tags": ["pages"],
-        "description": "The site's read. A page is served only when it and every page above it in the url are public; a `/start` page also needs its form to be public. `hide_start_links` is set when the page's `/start` sub-page or form is not public. A bare `/<slug>` with no page of its own redirects (301) to the one public page with that slug.",
+        "description": "The site's read. A page is served only when it and every page above it (by `parent_id`) are visible: public, or preview too with the preview token. `hide_start_links` is set when the page's `start` sub-page is not. A bare `/<slug>` with no page of its own redirects (301) to the one visible page with that slug.",
         "parameters": [
           {
             "schema": {
@@ -31,6 +37,12 @@
             "in": "query",
             "name": "url",
             "required": true
+          }
+        ],
+        "security": [
+          {},
+          {
+            "previewToken": []
           }
         ],
         "responses": {
@@ -55,9 +67,6 @@
                           "type": "string"
                         },
                         "lede": {
-                          "type": "string"
-                        },
-                        "subcategory": {
                           "type": "string"
                         },
                         "stage": {
@@ -92,15 +101,15 @@
                     "form_id": {
                       "type": "string",
                       "nullable": true,
-                      "description": "The form a Start link with no href of its own opens, or null."
+                      "description": "The form a Start link with no href of its own opens, or null. Whether the form is open is the forms API's to say."
                     },
                     "hide_start_links": {
                       "type": "boolean",
-                      "description": "True when the page's `/start` sub-page or form is not public: the site removes the Start link and counts \"There are N ways…\" down."
+                      "description": "True when the page's `start` sub-page is hidden from this viewer: the site removes the Start link and counts \"There are N ways…\" down."
                     },
                     "breadcrumbs": {
                       "type": "array",
-                      "description": "The full trail, current page included, Home not. A level of the url with no category or page of its own has no crumb.",
+                      "description": "The full trail, current page included, Home not: the category (and its parent, for a subcategory), then the pages above this one.",
                       "items": {
                         "type": "object",
                         "properties": {
@@ -114,6 +123,17 @@
                         "required": ["name", "url"],
                         "additionalProperties": false
                       }
+                    },
+                    "published_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true,
+                      "description": "When the page first went public (seeded from landing's `publish_date`); null until it has."
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The page's last save, visibility changes included: the site's \"Last updated\" line."
                     }
                   },
                   "required": [
@@ -122,7 +142,9 @@
                     "body_markdown",
                     "form_id",
                     "hide_start_links",
-                    "breadcrumbs"
+                    "breadcrumbs",
+                    "published_at",
+                    "updated_at"
                   ],
                   "additionalProperties": false
                 }
@@ -147,6 +169,26 @@
             }
           },
           "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
             "description": "Default Response",
             "content": {
               "application/json": {
@@ -212,6 +254,11 @@
                     "format": "uuid",
                     "nullable": true
                   },
+                  "parent_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "nullable": true
+                  },
                   "title": {
                     "type": "string",
                     "minLength": 1
@@ -235,9 +282,6 @@
                     "type": "object",
                     "properties": {
                       "lede": {
-                        "type": "string"
-                      },
-                      "subcategory": {
                         "type": "string"
                       },
                       "stage": {
@@ -301,6 +345,12 @@
                       "format": "uuid",
                       "nullable": true
                     },
+                    "parent_id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "nullable": true,
+                      "description": "The page this one sits beneath, in the same category; null for a page at the root of its category, which is what the category lists."
+                    },
                     "title": {
                       "type": "string"
                     },
@@ -323,9 +373,6 @@
                       "type": "object",
                       "properties": {
                         "lede": {
-                          "type": "string"
-                        },
-                        "subcategory": {
                           "type": "string"
                         },
                         "stage": {
@@ -373,6 +420,7 @@
                     "url",
                     "slug",
                     "category_id",
+                    "parent_id",
                     "title",
                     "description",
                     "visibility",
@@ -488,6 +536,654 @@
         }
       }
     },
+    "/categories": {
+      "get": {
+        "summary": "The categories the site lists",
+        "tags": ["categories"],
+        "description": "In order, each with its subcategories. A category is listed when it or one of its subcategories has a visible page at its root.",
+        "security": [
+          {},
+          {
+            "previewToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "categories": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "slug": {
+                            "type": "string"
+                          },
+                          "url": {
+                            "type": "string",
+                            "description": "`/<category>`, or `/<category>/<subcategory>`."
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "subcategories": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "slug": {
+                                  "type": "string"
+                                },
+                                "url": {
+                                  "type": "string",
+                                  "description": "`/<category>`, or `/<category>/<subcategory>`."
+                                },
+                                "title": {
+                                  "type": "string"
+                                },
+                                "description": {
+                                  "type": "string",
+                                  "nullable": true
+                                }
+                              },
+                              "required": [
+                                "slug",
+                                "url",
+                                "title",
+                                "description"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "slug",
+                          "url",
+                          "title",
+                          "description",
+                          "subcategories"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": ["categories"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/{slug}": {
+      "get": {
+        "summary": "A category and what it lists",
+        "tags": ["categories"],
+        "description": "Its subcategories and the visible pages at its root. 404 when it lists nothing.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "slug",
+            "required": true
+          }
+        ],
+        "security": [
+          {},
+          {
+            "previewToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "category": {
+                      "type": "object",
+                      "properties": {
+                        "slug": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "type": "string",
+                          "description": "`/<category>`, or `/<category>/<subcategory>`."
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": ["slug", "url", "title", "description"],
+                      "additionalProperties": false
+                    },
+                    "parent": {
+                      "type": "object",
+                      "properties": {
+                        "slug": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "type": "string",
+                          "description": "`/<category>`, or `/<category>/<subcategory>`."
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": ["slug", "url", "title", "description"],
+                      "additionalProperties": false,
+                      "nullable": true,
+                      "description": "The category this is a subcategory of, or null."
+                    },
+                    "subcategories": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "slug": {
+                            "type": "string"
+                          },
+                          "url": {
+                            "type": "string",
+                            "description": "`/<category>`, or `/<category>/<subcategory>`."
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        },
+                        "required": ["slug", "url", "title", "description"],
+                        "additionalProperties": false
+                      },
+                      "description": "Those with something to list, in order."
+                    },
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "digital": {
+                            "type": "boolean",
+                            "description": "It has a form, or its frontmatter says it is digital."
+                          }
+                        },
+                        "required": ["url", "title", "description", "digital"],
+                        "additionalProperties": false
+                      },
+                      "description": "The pages at the category's root, A to Z."
+                    }
+                  },
+                  "required": ["category", "parent", "subcategories", "pages"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/{category}/{slug}": {
+      "get": {
+        "summary": "A subcategory and what it lists",
+        "tags": ["categories"],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "category",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "slug",
+            "required": true
+          }
+        ],
+        "security": [
+          {},
+          {
+            "previewToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "category": {
+                      "type": "object",
+                      "properties": {
+                        "slug": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "type": "string",
+                          "description": "`/<category>`, or `/<category>/<subcategory>`."
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": ["slug", "url", "title", "description"],
+                      "additionalProperties": false
+                    },
+                    "parent": {
+                      "type": "object",
+                      "properties": {
+                        "slug": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "type": "string",
+                          "description": "`/<category>`, or `/<category>/<subcategory>`."
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": ["slug", "url", "title", "description"],
+                      "additionalProperties": false,
+                      "nullable": true,
+                      "description": "The category this is a subcategory of, or null."
+                    },
+                    "subcategories": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "slug": {
+                            "type": "string"
+                          },
+                          "url": {
+                            "type": "string",
+                            "description": "`/<category>`, or `/<category>/<subcategory>`."
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        },
+                        "required": ["slug", "url", "title", "description"],
+                        "additionalProperties": false
+                      },
+                      "description": "Those with something to list, in order."
+                    },
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "digital": {
+                            "type": "boolean",
+                            "description": "It has a form, or its frontmatter says it is digital."
+                          }
+                        },
+                        "required": ["url", "title", "description", "digital"],
+                        "additionalProperties": false
+                      },
+                      "description": "The pages at the category's root, A to Z."
+                    }
+                  },
+                  "required": ["category", "parent", "subcategories", "pages"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog": {
+      "get": {
+        "summary": "Every visible page",
+        "tags": ["pages"],
+        "description": "Sub-pages included, `start` steps not, A to Z: for the sitemap and service lists.",
+        "security": [
+          {},
+          {
+            "previewToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "digital": {
+                            "type": "boolean",
+                            "description": "It has a form, or its frontmatter says it is digital."
+                          },
+                          "stage": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "url",
+                          "title",
+                          "description",
+                          "digital",
+                          "stage"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": ["pages"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search/documents": {
+      "get": {
+        "summary": "What search indexes",
+        "tags": ["search"],
+        "description": "Every page the catalog lists, with its keywords and its body as plain-text chunks.",
+        "security": [
+          {},
+          {
+            "previewToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "documents": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "digital": {
+                            "type": "boolean",
+                            "description": "It has a form, or its frontmatter says it is digital."
+                          },
+                          "keywords": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "chunks": {
+                            "type": "array",
+                            "description": "The body as plain text, split at its headings, in order. Joined with spaces (heading, then body, skipping empties) they are the whole body's text.",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "heading": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "body": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["heading", "body"],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "url",
+                          "title",
+                          "description",
+                          "digital",
+                          "keywords",
+                          "chunks"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": ["documents"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{id}": {
       "get": {
         "summary": "Get a page by id",
@@ -533,6 +1229,12 @@
                       "format": "uuid",
                       "nullable": true
                     },
+                    "parent_id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "nullable": true,
+                      "description": "The page this one sits beneath, in the same category; null for a page at the root of its category, which is what the category lists."
+                    },
                     "title": {
                       "type": "string"
                     },
@@ -555,9 +1257,6 @@
                       "type": "object",
                       "properties": {
                         "lede": {
-                          "type": "string"
-                        },
-                        "subcategory": {
                           "type": "string"
                         },
                         "stage": {
@@ -605,6 +1304,7 @@
                     "url",
                     "slug",
                     "category_id",
+                    "parent_id",
                     "title",
                     "description",
                     "visibility",
@@ -726,6 +1426,11 @@
                     "format": "uuid",
                     "nullable": true
                   },
+                  "parent_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "nullable": true
+                  },
                   "title": {
                     "type": "string",
                     "minLength": 1
@@ -749,9 +1454,6 @@
                     "type": "object",
                     "properties": {
                       "lede": {
-                        "type": "string"
-                      },
-                      "subcategory": {
                         "type": "string"
                       },
                       "stage": {
@@ -834,6 +1536,12 @@
                       "format": "uuid",
                       "nullable": true
                     },
+                    "parent_id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "nullable": true,
+                      "description": "The page this one sits beneath, in the same category; null for a page at the root of its category, which is what the category lists."
+                    },
                     "title": {
                       "type": "string"
                     },
@@ -856,9 +1564,6 @@
                       "type": "object",
                       "properties": {
                         "lede": {
-                          "type": "string"
-                        },
-                        "subcategory": {
                           "type": "string"
                         },
                         "stage": {
@@ -906,6 +1611,7 @@
                     "url",
                     "slug",
                     "category_id",
+                    "parent_id",
                     "title",
                     "description",
                     "visibility",
@@ -1068,7 +1774,7 @@
       "delete": {
         "summary": "Delete a page",
         "tags": ["pages"],
-        "description": "Requires an employee session and the editor's Origin header.",
+        "description": "Requires an employee session and the editor's Origin header. A page with sub-pages is refused (422) until they are moved or deleted.",
         "parameters": [
           {
             "schema": {
@@ -1128,6 +1834,43 @@
               }
             }
           },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": ["validation_failed"]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["field", "message"],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": ["error", "errors"],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
           "503": {
             "description": "Default Response",
             "content": {
@@ -1155,7 +1898,7 @@
       "get": {
         "summary": "List services",
         "tags": ["pages"],
-        "description": "The editor's index, ordered by title. The schema has no service, so one is read from the urls: a categorised page with no page above it is an entry, and every page below it belongs to it.",
+        "description": "The editor's index, ordered by title. A categorised page at the root of its category is an entry, and every page beneath it by `parent_id` belongs to it.",
         "security": [
           {
             "editorSession": []
@@ -1439,6 +2182,14 @@
     {
       "name": "pages",
       "description": "Content pages, stored as markdown"
+    },
+    {
+      "name": "categories",
+      "description": "The categories and subcategories the site lists"
+    },
+    {
+      "name": "search",
+      "description": "The text search indexes"
     },
     {
       "name": "meta",
