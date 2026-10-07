@@ -1,10 +1,10 @@
 import logo from "@govtech-bb/frontend/assets/images/govbb-logo.svg?raw";
 import { Link, useBlocker, useNavigate, useParams, useRouterState } from "@tanstack/react-router";
 import { CaretRight, PencilSimpleLine } from "@phosphor-icons/react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ApiFailure, type EditorApi } from "../api/client";
-import { serviceQuery } from "../api/queries";
+import { serviceQuery, versionQuery } from "../api/queries";
 import { ApiPagePane } from "./api-page";
 import { serviceDocuments } from "./api-pages";
 import { ApiServiceNav } from "./api-service";
@@ -143,6 +143,10 @@ function Workspace({
   const service = index.services.find((item) => item.id === location?.serviceId);
   const selected = service?.documents.find((item) => item.id === location?.documentId);
   const current = panes.find((pane) => pane.document.id === selected?.id);
+
+  const client = useQueryClient();
+
+  useQuery({ ...versionQuery(api, client), notifyOnChangeProps: [] });
 
   const remote = useQuery({
     ...serviceQuery(api, location?.serviceId ?? ""),
