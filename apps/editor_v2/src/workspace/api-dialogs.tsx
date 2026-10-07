@@ -6,6 +6,7 @@ import { pageQuery, taxonomyQuery } from "../api/queries";
 import { Button } from "../ui/button";
 import { fieldLabel } from "./api-pages";
 import { inputClass, WorkspaceDialog } from "./dialogs";
+import { documentLabel, type PageDocument } from "./model";
 
 /** Create a page as a draft, then hand its id over once the API has it. */
 function useCreatePage(api: EditorApi, done: (id: string) => void) {
@@ -21,8 +22,8 @@ function useCreatePage(api: EditorApi, done: (id: string) => void) {
   });
 }
 
-/** Why the API refused a new page, as messages an author can act on. */
-function refusals(error: Error | null) {
+/** Why the API refused a change, as messages an author can act on. */
+function refusals(error: Error | null, otherwise: string) {
   if (!error) return [];
 
   if (!(error instanceof ApiFailure) || error.status === 0)
@@ -30,7 +31,7 @@ function refusals(error: Error | null) {
 
   if (error.status === 401) return ["Your session has ended. Sign in again, then try again."];
 
-  if (error.errors.length === 0) return ["The page could not be created. Try again."];
+  if (error.errors.length === 0) return [otherwise];
 
   return error.errors.map((item) => `${fieldLabel(item.field)}: ${item.message}`);
 }
@@ -148,7 +149,12 @@ export function ApiServiceDialog({
           ))}
         </select>
         <PathField id={`${id}-path`} value={path} onChange={setEdited} />
-        <Problems messages={[...problems, ...refusals(create.error)]} />
+        <Problems
+          messages={[
+            ...problems,
+            ...refusals(create.error, "The page could not be created. Try again."),
+          ]}
+        />
         <div className="mt-5 flex gap-2">
           <Button type="submit" variant="accent" size="lg" disabled={create.isPending}>
             Create service
@@ -233,7 +239,12 @@ export function ApiPageDialog({
           onChange={(event) => setTitle(event.target.value)}
         />
         <PathField id={`${id}-path`} value={path} onChange={setEdited} readOnly={start} />
-        <Problems messages={[...problems, ...refusals(create.error)]} />
+        <Problems
+          messages={[
+            ...problems,
+            ...refusals(create.error, "The page could not be created. Try again."),
+          ]}
+        />
         <div className="mt-5 flex gap-2">
           <Button type="submit" variant="accent" size="lg" disabled={create.isPending}>
             Add page
@@ -243,6 +254,52 @@ export function ApiPageDialog({
           </Button>
         </div>
       </form>
+    </WorkspaceDialog>
+  );
+}
+
+/** Remove a page from the content API, once its author confirms. */
+export function DeletePageDialog({
+  api,
+  page,
+  close,
+  done,
+}: {
+  api: EditorApi;
+  page: PageDocument;
+  close: () => void;
+  done: () => void;
+}) {
+  const client = useQueryClient();
+
+  const remove = useMutation({
+    mutationFn: () => api.deletePage(page.id),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["content"] });
+      done();
+    },
+  });
+
+  return (
+    <WorkspaceDialog
+      title="Delete this page"
+      description={`${documentLabel(page)} is removed from the content API and, if it is public, from the site. Its draft in this browser is kept.`}
+      close={close}
+    >
+      <Problems messages={refusals(remove.error, "The page could not be deleted. Try again.")} />
+      <div className="mt-5 flex gap-2">
+        <Button
+          variant="accent"
+          size="lg"
+          disabled={remove.isPending}
+          onClick={() => remove.mutate()}
+        >
+          Delete page
+        </Button>
+        <Button size="lg" onClick={close}>
+          Cancel
+        </Button>
+      </div>
     </WorkspaceDialog>
   );
 }

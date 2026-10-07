@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ApiFailure, type EditorApi } from "../api/client";
 import { serviceQuery, versionQuery } from "../api/queries";
-import { ApiPageDialog, ApiServiceDialog } from "./api-dialogs";
+import { ApiPageDialog, ApiServiceDialog, DeletePageDialog } from "./api-dialogs";
 import { ApiPagePane } from "./api-page";
 import { serviceDocuments } from "./api-pages";
 import { ApiServiceNav } from "./api-service";
@@ -139,7 +139,7 @@ function Workspace({
   );
 
   const [dialog, setDialog] = useState<
-    "service" | "rename" | "document" | "api-service" | "api-page"
+    "service" | "rename" | "document" | "api-service" | "api-page" | "api-delete"
   >();
 
   const [error, setError] = useState("");
@@ -223,7 +223,9 @@ function Workspace({
 
   const navigate = (next: WorkspaceLocation) => routerNavigate(workspaceLink(next));
 
-  const openDialog = (next: "service" | "rename" | "document" | "api-service" | "api-page") => {
+  const openDialog = (
+    next: "service" | "rename" | "document" | "api-service" | "api-page" | "api-delete",
+  ) => {
     try {
       flushDocument(current?.store);
       setDialog(next);
@@ -328,6 +330,7 @@ function Workspace({
             documents={remoteDocuments}
             selectedId={remoteSelected?.id}
             onAdd={() => openDialog("api-page")}
+            onDelete={() => openDialog("api-delete")}
           />
         )}
         {service && (
@@ -543,6 +546,23 @@ function Workspace({
           done={(id) => {
             setDialog(undefined);
             navigate({ serviceId: location.serviceId, documentId: id });
+          }}
+        />
+      )}
+      {dialog === "api-delete" && remoteSelected && location && (
+        <DeletePageDialog
+          api={api}
+          page={remoteSelected}
+          close={() => setDialog(undefined)}
+          done={() => {
+            const deleted = remoteSelected.id;
+            setDialog(undefined);
+            setApiPanes((previous) => previous.filter((id) => id !== deleted));
+            navigate(
+              deleted === location.serviceId
+                ? undefined
+                : { serviceId: location.serviceId, documentId: location.serviceId },
+            );
           }}
         />
       )}

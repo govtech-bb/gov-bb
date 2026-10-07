@@ -137,6 +137,7 @@ const FIELD_LABELS = new Map([
   ["publish_date", "Publication date"],
   ["lede", "Introduction"],
   ["parent_id", "Parent page"],
+  ["id", "Page"],
 ]);
 
 /** How the editor names a field the API refused. */

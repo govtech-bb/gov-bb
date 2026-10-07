@@ -8,11 +8,13 @@ export function ApiServiceNav({
   documents,
   selectedId,
   onAdd,
+  onDelete,
 }: {
   serviceId: string;
   documents: readonly PageDocument[];
   selectedId: string | undefined;
   onAdd: () => void;
+  onDelete: () => void;
 }) {
   return (
     <aside className="border-e border-line bg-white px-4 py-5 max-lg:border-e-0 max-lg:border-b">
@@ -37,6 +39,9 @@ export function ApiServiceNav({
           <div className="mt-5 flex flex-wrap gap-2">
             <Button variant="secondary" onClick={onAdd}>
               Add document
+            </Button>
+            <Button disabled={!selectedId} onClick={onDelete}>
+              Delete page
             </Button>
           </div>
         </nav>
