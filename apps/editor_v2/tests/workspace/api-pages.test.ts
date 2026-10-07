@@ -5,9 +5,10 @@ import {
   type SaveFields,
   type ServiceDetail,
 } from "../../src/api/client";
-import { pageToMarkdown } from "../../src/api/page-markdown";
+import { markdownToSaveFields, pageToMarkdown } from "../../src/api/page-markdown";
 import {
   parseServerBase,
+  restoredMarkdown,
   savePage,
   seedApiPage,
   serverBaseKey,
@@ -221,5 +222,29 @@ describe("saving a page", () => {
     );
 
     expect(outcome).toEqual(expected);
+  });
+});
+
+describe("restoring a version", () => {
+  it("brings back its content and keeps the page's path and visibility", () => {
+    const current: ApiPage = { ...newer, url: "/money/moved", visibility: "draft" };
+
+    const old = {
+      ...page,
+      url: "/money/old",
+      title: "Old title",
+      body_markdown: "Old body",
+      frontmatter: { lede: "Old introduction" },
+    };
+
+    const restored = markdownToSaveFields(restoredMarkdown(current, old, []), current, []);
+
+    expect(restored.ok && restored.value).toMatchObject({
+      url: "/money/moved",
+      visibility: "draft",
+      title: "Old title",
+      body_markdown: "Old body",
+      frontmatter: { lede: "Old introduction" },
+    });
   });
 });

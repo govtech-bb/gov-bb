@@ -3,6 +3,7 @@ import {
   type ApiPage,
   type EditorApi,
   type FieldError,
+  type PageSnapshot,
   type ServiceDetail,
   type TaxonomyCategory,
 } from "../api/client";
@@ -142,3 +143,26 @@ const FIELD_LABELS = new Map([
 
 /** How the editor names a field the API refused. */
 export const fieldLabel = (field: string) => FIELD_LABELS.get(field) ?? field;
+
+/**
+ * A past version's content over the page as it stands. Its path, category,
+ * parent and visibility stay as they are: restoring an old visibility could
+ * unpublish a live page.
+ */
+export function restoredMarkdown(
+  current: ApiPage,
+  version: PageSnapshot,
+  categories: readonly TaxonomyCategory[],
+) {
+  return pageToMarkdown(
+    {
+      ...current,
+      title: version.title,
+      description: version.description,
+      form_id: version.form_id,
+      body_markdown: version.body_markdown,
+      frontmatter: version.frontmatter,
+    },
+    categories,
+  );
+}

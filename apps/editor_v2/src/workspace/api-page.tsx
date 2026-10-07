@@ -9,6 +9,7 @@ import { PageDraftEditor } from "../host/page-editor";
 import { download } from "../host/source-ui";
 import { readPageMetadata } from "../pages";
 import { Button } from "../ui/button";
+import { PageHistoryDialog } from "./api-history";
 import {
   apiPageDocument,
   parseServerBase,
@@ -108,6 +109,7 @@ function ApiPageEditor({ api, page, active }: { api: EditorApi; page: ApiPage; a
   const categories = useQuery(taxonomyQuery(api)).data ?? [];
   const server = useQuery(pageQuery(api, page.id)).data ?? page;
   const [failure, setFailure] = useState("");
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const save = useMutation({
     mutationFn: (current: { base: ServerBase; markdown: string }) =>
@@ -267,13 +269,18 @@ function ApiPageEditor({ api, page, active }: { api: EditorApi; page: ApiPage; a
                 : "saved"
         }
         tools={
-          <Button
-            variant="accent"
-            disabled={!unsaved || stale || blocked || save.isPending || outcome?.kind === "missing"}
-            onClick={saveDraft}
-          >
-            {visibility === "public" ? "Publish changes" : "Save"}
-          </Button>
+          <>
+            <Button onClick={() => setHistoryOpen(true)}>History</Button>
+            <Button
+              variant="accent"
+              disabled={
+                !unsaved || stale || blocked || save.isPending || outcome?.kind === "missing"
+              }
+              onClick={saveDraft}
+            >
+              {visibility === "public" ? "Publish changes" : "Save"}
+            </Button>
+          </>
         }
         notice={notice}
         details={{
@@ -285,6 +292,20 @@ function ApiPageEditor({ api, page, active }: { api: EditorApi; page: ApiPage; a
           errors: Object.fromEntries(errors.map((error) => [error.field, error.message])),
         }}
       />
+      {historyOpen && (
+        <PageHistoryDialog
+          api={api}
+          current={server}
+          categories={categories}
+          canRestore={!blocked}
+          close={() => setHistoryOpen(false)}
+          restore={(markdown) => {
+            store.edit(markdown);
+            store.apply();
+            setHistoryOpen(false);
+          }}
+        />
+      )}
     </>
   );
 }
