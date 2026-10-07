@@ -267,11 +267,6 @@
 .page-lede-input::placeholder {
   color: var(--color-subtle);
 }
-.page-title-input:focus-visible,
-.page-lede-input:focus-visible {
-  outline: 2px solid var(--color-ink);
-  outline-offset: 0.4rem;
-}
 .page-document-paused {
   padding: 1rem 1.5rem;
   border-block-end: 1px solid var(--color-line);

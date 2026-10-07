@@ -1,6 +1,6 @@
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
-import { CaretRight, X } from "@phosphor-icons/react";
+import { CaretDown, CaretRight, X } from "@phosphor-icons/react";
 import {
   HISTORIC_TAG,
   HISTORY_MERGE_TAG,
@@ -14,6 +14,7 @@ import {
   useLayoutEffect,
   useRef,
   useSyncExternalStore,
+  type ComponentProps,
   type KeyboardEvent,
   type ReactNode,
 } from "react";
@@ -123,7 +124,7 @@ export function PageTitleField({ error }: { error?: string }) {
           ref={title}
           aria-label="Page title"
           rows={1}
-          className="page-title-input"
+          className="page-title-input outline-none"
           value={metadata.title ?? ""}
           readOnly={!editable}
           placeholder="Untitled page"
@@ -139,7 +140,7 @@ export function PageTitleField({ error }: { error?: string }) {
         ref={lede}
         aria-label="Introduction"
         rows={1}
-        className="page-lede-input"
+        className="page-lede-input outline-none"
         value={metadata.lede ?? ""}
         readOnly={!editable}
         placeholder="Add an introduction (optional)"
@@ -159,33 +160,70 @@ export type PageCategory = {
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink focus-visible:ring-4 focus-visible:ring-focus";
 
+// A value reads as text until it is used: hovering tints it, and editing raises a white box,
+// which is its focus indicator in place of the global ring (outline-none opts out of that).
 const control = cn(
-  "block w-full min-w-0 min-h-9 rounded-sm border border-line-strong bg-tint px-2.5 py-1.75 text-14 leading-normal text-ink placeholder:text-placeholder focus-visible:bg-white disabled:cursor-default [&[readonly]]:cursor-default [&:not(:disabled,[readonly])]:hover:border-ink @max-[30rem]:min-h-11 @max-[30rem]:text-16 pointer-coarse:min-h-11",
-  focusRing,
+  "block w-full min-w-0 min-h-8 rounded-sm bg-transparent px-2 py-1 text-14 leading-normal text-ink outline-none placeholder:text-subtle disabled:cursor-default [&[readonly]]:cursor-default [&:not(:disabled,[readonly])]:hover:bg-tint focus:bg-white focus:shadow-sheet focus:ring-1 focus:ring-line-strong @max-[30rem]:min-h-11 @max-[30rem]:text-16 pointer-coarse:min-h-11",
 );
 
-const selectControl = cn(control, "cursor-pointer appearance-auto");
+const codeControl = cn(control, "font-mono text-13 @max-[30rem]:text-16");
 
-const labelClass = "py-2 leading-normal text-muted @max-[30rem]:py-0";
+const labelClass = "py-1 leading-normal text-muted @max-[30rem]:py-0";
 
-const hintClass = "py-2 text-13 leading-normal wrap-anywhere text-muted";
+const hintClass = "px-2 py-1 text-13 leading-normal wrap-anywhere text-muted";
+
+/** A select that reads as its chosen value, optionally led by a coloured dot. */
+function PropertySelect({ dot, className, ...props }: ComponentProps<"select"> & { dot?: string }) {
+  return (
+    <span className="relative block max-w-80">
+      {dot && (
+        <span
+          aria-hidden="true"
+          className={cn(
+            "pointer-events-none absolute start-2.5 top-1/2 size-1.5 -translate-y-1/2 rounded-full",
+            dot,
+          )}
+        />
+      )}
+      <select
+        {...props}
+        className={cn(control, "cursor-pointer appearance-none pe-7", dot && "ps-6", className)}
+      />
+      <CaretDown
+        aria-hidden="true"
+        className="pointer-events-none absolute end-2 top-1/2 size-3.5 -translate-y-1/2 text-muted"
+      />
+    </span>
+  );
+}
+
+// Live is green, link-only is amber, draft is grey; the label always travels with the colour.
+const visibilityDots = new Map([
+  ["", "bg-green-80"],
+  ["public", "bg-green-80"],
+  ["preview", "bg-yellow-80"],
+  ["draft", "bg-grey-60"],
+]);
 
 function PageDetail({
   id,
   label,
   children,
   unsupported = false,
+  plain = false,
   error,
 }: {
   id: string;
   label: string;
   children: ReactNode;
   unsupported?: boolean;
+  /** The value is text to read, with no control for a label to name. */
+  plain?: boolean;
   error?: string;
 }) {
   return (
     <div className="grid grid-cols-[9rem_minmax(0,1fr)] items-start gap-x-4 gap-y-1.5 @max-[30rem]:grid-cols-1">
-      {unsupported ? (
+      {unsupported || plain ? (
         <span className={labelClass}>{label}</span>
       ) : (
         <label className={labelClass} htmlFor={id}>
@@ -198,7 +236,7 @@ function PageDetail({
         ) : (
           children
         )}
-        {error && <p className="pt-1 text-13 text-error">{error}</p>}
+        {error && <p className="px-2 pt-1 text-13 text-error">{error}</p>}
       </div>
     </div>
   );
@@ -304,7 +342,7 @@ export function PageDetailsFields({
         <span className="min-w-0 truncate group-open/metadata:hidden">{summary}</span>
       </summary>
       <fieldset
-        className="mt-3 grid min-w-0 gap-2.5 @max-[30rem]:gap-4"
+        className="mt-3 grid min-w-0 gap-0.5 @max-[30rem]:gap-4"
         disabled={!editable}
         {...historyKeys}
       >
@@ -318,7 +356,7 @@ export function PageDetailsFields({
           >
             <input
               id={`${id}-url`}
-              className={control}
+              className={codeControl}
               value={metadata.url ?? ""}
               spellCheck={false}
               autoCapitalize="off"
@@ -331,7 +369,7 @@ export function PageDetailsFields({
             id={`${id}-description`}
             className={cn(
               control,
-              "min-h-17 resize-y supports-[field-sizing:content]:field-sizing-content @max-[30rem]:min-h-17 pointer-coarse:min-h-17",
+              "resize-none supports-[field-sizing:content]:field-sizing-content",
             )}
             rows={2}
             value={metadata.description ?? ""}
@@ -346,35 +384,54 @@ export function PageDetailsFields({
             unsupported={unsupported("category") || unsupported("categories")}
             error={errors.category ?? errors.category_id}
           >
-            <div className="flex flex-wrap gap-1.5">
-              {selected.map((slug) => {
-                const title = categories.find((category) => category.slug === slug)?.title ?? slug;
+            {single ? (
+              <PropertySelect
+                id={`${id}-category`}
+                value={selected[0] ?? ""}
+                onChange={(event) =>
+                  changeCategories(event.target.value ? [event.target.value] : [])
+                }
+              >
+                <option value="">Choose a category</option>
+                {selected[0] && !categories.some((category) => category.slug === selected[0]) && (
+                  <option value={selected[0]}>{selected[0]} (from Markdown)</option>
+                )}
+                {categories.map((category) => (
+                  <option key={category.slug} value={category.slug}>
+                    {category.title}
+                  </option>
+                ))}
+              </PropertySelect>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {selected.map((slug) => {
+                  const title =
+                    categories.find((category) => category.slug === slug)?.title ?? slug;
 
-                return (
-                  <span
-                    className="inline-flex min-h-9 max-w-full items-center rounded-sm bg-blue-10 ps-2.5 leading-normal text-ink"
-                    key={slug}
-                  >
-                    <span className="min-w-0 wrap-anywhere">{title}</span>
-                    <button
-                      type="button"
-                      aria-label={`Remove ${title}`}
-                      className={cn(
-                        "grid min-w-9 flex-none cursor-pointer place-items-center self-stretch rounded-sm hover:bg-tint hover:text-ink pointer-fine:active:scale-[0.97] @max-[30rem]:min-h-11 @max-[30rem]:min-w-11 pointer-coarse:min-h-11 pointer-coarse:min-w-11",
-                        focusRing,
-                      )}
-                      onClick={() => changeCategories(selected.filter((value) => value !== slug))}
+                  return (
+                    <span
+                      className="inline-flex min-h-9 max-w-full items-center rounded-sm bg-blue-10 ps-2.5 leading-normal text-ink"
+                      key={slug}
                     >
-                      <X className="size-3.5" aria-hidden="true" />
-                    </button>
-                  </span>
-                );
-              })}
-              {!(single && selected.length > 0) && (
-                <select
+                      <span className="min-w-0 wrap-anywhere">{title}</span>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${title}`}
+                        className={cn(
+                          "grid min-w-9 flex-none cursor-pointer place-items-center self-stretch rounded-sm hover:bg-tint hover:text-ink pointer-fine:active:scale-[0.97] @max-[30rem]:min-h-11 @max-[30rem]:min-w-11 pointer-coarse:min-h-11 pointer-coarse:min-w-11",
+                          focusRing,
+                        )}
+                        onClick={() => changeCategories(selected.filter((value) => value !== slug))}
+                      >
+                        <X className="size-3.5" aria-hidden="true" />
+                      </button>
+                    </span>
+                  );
+                })}
+                <PropertySelect
                   id={`${id}-category`}
                   aria-label="Add category"
-                  className={cn(selectControl, "w-[min(100%,20rem)]")}
+                  className="w-[min(100%,20rem)]"
                   disabled={categories.length === 0}
                   value=""
                   onChange={(event) => {
@@ -393,9 +450,9 @@ export function PageDetailsFields({
                           </option>,
                         ],
                   )}
-                </select>
-              )}
-            </div>
+                </PropertySelect>
+              </div>
+            )}
           </PageDetail>
         )}
         {(subcategories.length > 0 || document.has("subcategory")) && (
@@ -405,9 +462,8 @@ export function PageDetailsFields({
             unsupported={unsupported("subcategory")}
             error={errors.subcategory}
           >
-            <select
+            <PropertySelect
               id={`${id}-subcategory`}
-              className={cn(selectControl, shortControl)}
               value={metadata.subcategory ?? ""}
               onChange={(event) => update({ subcategory: event.target.value || undefined }, true)}
             >
@@ -423,7 +479,7 @@ export function PageDetailsFields({
                   {item.title}
                 </option>
               ))}
-            </select>
+            </PropertySelect>
           </PageDetail>
         )}
         <PageDetail
@@ -432,9 +488,9 @@ export function PageDetailsFields({
           unsupported={unsupported("visibility")}
           error={errors.visibility}
         >
-          <select
+          <PropertySelect
             id={`${id}-visibility`}
-            className={cn(selectControl, shortControl)}
+            dot={visibilityDots.get(visibility) ?? "bg-grey-60"}
             value={visibility === "public" ? "" : visibility}
             onChange={(event) => update({ visibility: event.target.value || undefined }, true)}
           >
@@ -444,22 +500,19 @@ export function PageDetailsFields({
               </option>
             ))}
             {unusualVisibility && <option value={visibility}>{visibility} (from Markdown)</option>}
-          </select>
+          </PropertySelect>
         </PageDetail>
         <PageDetail
           id={`${id}-date`}
           label="Publication date"
           unsupported={unsupported("publish_date")}
+          plain={publishedAt !== undefined}
           error={errors.publish_date}
         >
           {publishedAt !== undefined ? (
-            <input
-              id={`${id}-date`}
-              className={cn(control, shortControl)}
-              value={date ? dateFormat.format(parsedDate) : ""}
-              placeholder="Set when the page is first made public"
-              readOnly
-            />
+            <p className={cn("px-2 py-1 leading-normal", date ? "text-ink" : "text-subtle")}>
+              {date ? dateFormat.format(parsedDate) : "Set when the page is first made public"}
+            </p>
           ) : unusualDate ? (
             <>
               <input
@@ -486,7 +539,7 @@ export function PageDetailsFields({
         <PageDetail id={`${id}-form`} label="Form ID" error={errors.form_id}>
           <input
             id={`${id}-form`}
-            className={cn(control, shortControl)}
+            className={cn(codeControl, shortControl)}
             value={metadata.form_id ?? ""}
             placeholder="No form linked"
             spellCheck={false}
