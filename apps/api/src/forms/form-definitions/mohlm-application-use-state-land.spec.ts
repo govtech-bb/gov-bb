@@ -193,14 +193,30 @@ it("asks for the end date only when known, and not before the start", async () =
   });
 });
 
-it("keeps the National Registration Number optional but still format-checked", async () => {
+// Same NRN-or-passport show/hide as the other services: the NRN is required
+// until the applicant switches to a passport number, which is then required.
+it("asks for a National Registration Number, or a passport number instead", async () => {
+  const toggleGate = {
+    type: "optionalIf",
+    targetFieldId: "passport-toggle",
+    operator: "equal",
+    value: true,
+  };
   const nrn = await field("your-details", "national-id-number");
-
-  expect(nrn.validations?.required).toMatchObject({ value: false });
+  expect(nrn.validations?.required).toMatchObject({ value: true });
+  expect(nrn.behaviours).toContainEqual(expect.objectContaining(toggleGate));
   expect(
     nrn.validations?.pattern,
     "the registry's 870315-1234 format check was lost",
   ).toBeDefined();
+
+  await field("your-details", "passport-toggle");
+
+  const passport = await field("your-details", "applicant-passport-number");
+  expect(passport.validations?.required).toMatchObject({ value: true });
+  expect(passport.behaviours).toContainEqual(
+    expect.objectContaining({ ...toggleGate, type: "fieldConditionalOn" }),
+  );
 });
 
 it("asks no sex or gender, and no address or ID for the contact person", async () => {

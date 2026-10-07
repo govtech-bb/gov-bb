@@ -186,7 +186,49 @@
             "hint": "You can find this on your Barbados national ID card. For example, 870315-1234.",
             "validations": {
               "required": {
-                "value": false
+                "value": true,
+                "error": "National Registration Number is required"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "optionalIf",
+                "targetFieldId": "passport-toggle",
+                "operator": "equal",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "fieldId": "passport-toggle",
+            "label": "Use passport number instead",
+            "hint": "If you don't have a National Registration Number, you can use your passport number instead."
+          }
+        },
+        {
+          "ref": "components/passport-number",
+          "overrides": {
+            "fieldId": "applicant-passport-number",
+            "label": "Passport number",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "passport-toggle",
+                "operator": "equal",
+                "value": true
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Passport number is required"
+              },
+              "minLength": {
+                "value": 6,
+                "error": "Passport number must be at least 6 characters"
               }
             }
           }
@@ -800,5 +842,5 @@
     }
   ],
   "createdAt": "2026-06-16T15:46:40.151Z",
-  "updatedAt": "2026-10-07T13:55:38.000Z"
+  "updatedAt": "2026-10-07T14:24:08.000Z"
 }

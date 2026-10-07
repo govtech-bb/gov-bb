@@ -30,7 +30,8 @@
  *  - `no-permission` shows only for organisation + no permission. Its one
  *    field is disabled and always fails validation, so Continue never leaves
  *    it — the applicant has to go back.
- *  - Yourself → `your-details` (name, optional National Registration Number,
+ *  - Yourself → `your-details` (name, National Registration Number — or a
+ *    passport number via the `passport-toggle` show/hide, left off here —
  *    address). Organisation → `organisation-details` then `contact-person`.
  *    Both address blocks show `parish` for Barbados and a "State or region"
  *    text field (`*-town`) for any other country.
@@ -123,7 +124,10 @@ test.describe("Apply to use state land — Live Smoke", () => {
     await selectDropdown(page, step, "applicant-title", "ms");
     await fillField(page, step, "applicant-first-name", "Smoke");
     await fillField(page, step, "applicant-last-name", "Applicant");
-    // National Registration Number is optional — left blank.
+    await fillField(page, step, "national-id-number", "870315-1234");
+    await expect(
+      page.locator(`[id="${step}_applicant-passport-number"]`),
+    ).toBeHidden();
     await fillField(page, step, "applicant-address-line-1", "12 Bay Street");
     await selectDropdown(page, step, "applicant-country", "barbados");
     await selectDropdown(page, step, "applicant-parish", "st-michael");

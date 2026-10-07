@@ -31,6 +31,7 @@ The Ministry decides if you can use the land and for how long.
 
 You will need:
 
+- your National Registration Number or passport number, if you are applying for yourself
 - the location of the land you want to use
 - details of what you want to use the land for
 - when and for how long you plan to use the land
