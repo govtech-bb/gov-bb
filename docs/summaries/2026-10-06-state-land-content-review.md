@@ -57,6 +57,10 @@ any build started.
   because the hide-online-route plugin depends on those, not on the heading.
   A `keywords: [state land]` entry keeps the search-relevance case for "state
   land" passing after the retitle.
+- **NRN or passport, using the services' standard show/hide.** The review
+  made the NRN optional pending the Ministry; the team then settled it the
+  way other services do: NRN required unless the applicant ticks "Use
+  passport number instead", which makes a passport number required.
 - **Middle name is back, optional, on both people.** It was dropped to match
   the builder spec; content asked to keep it with the standard pattern.
 - **Postal code is plain text**, because the registry postcode only accepts
@@ -72,8 +76,8 @@ any build started.
 
 ## Open questions
 
-- MDA: an identifier for applicants without a Barbados NRN; whether an
-  organisation registration number is needed. No fields added.
+- MDA: whether an organisation registration number is needed. No field
+  added.
 - Content: whether the photo upload stays; the paper form's download URL.
 - Platform limits left as they are: no calculated duration; Check your
   answers groups by page with one Change link per section; Change doesn't
