@@ -4,12 +4,9 @@ The markdown content API uses Node, Fastify, Drizzle and its own PostgreSQL data
 
 ## Run locally
 
-Create `gov_bb_v2`, then copy `.env.example` to `.env` and fill in the authentication settings. The process reads its environment; it does not load `.env` automatically. From this directory:
+Create `gov_bb_v2`, then copy `.env.example` to `.env` and fill in the authentication settings. `pnpm dev` loads `.env` when it exists; the built server (`pnpm start`) reads only its environment. From this directory:
 
 ```sh
-set -a
-. ./.env
-set +a
 pnpm dev
 ```
 

@@ -1,3 +1,4 @@
+import { betterAuth } from "better-auth";
 import { Pool } from "pg";
 import pino from "pino";
 import {
@@ -9,13 +10,15 @@ import {
   it,
   vi,
 } from "vitest";
-import { parseConfig } from "../config";
-import { createBetterAuth, type AuthRuntime } from "./better-auth";
+import { parseConfig, type AuthConfig } from "../config";
+import { betterAuthOptions } from "./better-auth";
 
 const pool = new Pool();
-let auth: AuthRuntime;
+const authWith = (config: AuthConfig) =>
+  betterAuth(betterAuthOptions(pool, config, pino({ enabled: false })));
+let auth: ReturnType<typeof authWith>;
 
-beforeAll(async () => {
+beforeAll(() => {
   const config = parseConfig({
     BETTER_AUTH_URL: "http://localhost:3020",
     EDITOR_ORIGIN: "http://localhost:3000",
@@ -24,11 +27,7 @@ beforeAll(async () => {
     GITHUB_CLIENT_SECRET: "test-client-secret",
   });
   if (!config.ok) throw config.error;
-  auth = await createBetterAuth(
-    pool,
-    config.value.auth,
-    pino({ enabled: false }),
-  );
+  auth = authWith(config.value.auth);
 });
 afterEach(() => vi.unstubAllGlobals());
 afterAll(() => pool.end());
@@ -71,11 +70,10 @@ describe("GitHub provider boundary", () => {
         },
       );
       vi.stubGlobal("fetch", fetch);
-      const identity =
-        await auth.instance.options.socialProviders.github.getUserInfo({
-          accessToken: "test-token",
-          tokenType: "bearer",
-        });
+      const identity = await auth.options.socialProviders.github.getUserInfo({
+        accessToken: "test-token",
+        tokenType: "bearer",
+      });
       expect(identity?.user).toMatchObject({
         email: "member@example.com",
         emailVerified: verified,
@@ -86,7 +84,7 @@ describe("GitHub provider boundary", () => {
         "sign-in",
         "link-account",
       ] as const) {
-        const result = auth.instance.options.user.validateUserInfo({
+        const result = auth.options.user.validateUserInfo({
           user: {
             email: identity.user.email ?? undefined,
             emailVerified: identity.user.emailVerified,
@@ -106,7 +104,7 @@ describe("GitHub provider boundary", () => {
   );
 
   it("requests email and org access with PKCE and the GitHub callback", async () => {
-    const context = await auth.instance.$context;
+    const context = await auth.$context;
     const provider = context.socialProviders.find(
       (provider) => provider.id === "github",
     );

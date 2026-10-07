@@ -17,15 +17,15 @@
 
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { Client, Pool } from "pg";
 import { createHmac, randomUUID } from "node:crypto";
 import pino from "pino";
-import { createBetterAuth } from "../src/adapters/better-auth";
+import { betterAuth } from "better-auth";
+import { betterAuthOptions } from "../src/adapters/better-auth";
 import { parseConfig } from "../src/config";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const root = join(__dirname, "..");
 
 /** The suite is skipped unless a Postgres has been pointed at. */
 export const HAS_DATABASE = Boolean(process.env.DB_HOST);
@@ -253,12 +253,9 @@ export async function createEmployeeSession(
   if (!config.ok) throw config.error;
   const pool = new Pool({ ...DB, database });
   try {
-    const runtime = await createBetterAuth(
-      pool,
-      config.value.auth,
-      pino({ enabled: false }),
-    );
-    const context = await runtime.instance.$context;
+    const context = await betterAuth(
+      betterAuthOptions(pool, config.value.auth, pino({ enabled: false })),
+    ).$context;
     const userId = randomUUID();
     // The GitHub identity check is tested separately. Here the fixture inserts
     // a verified employee and asks BetterAuth itself to mint and store a session.

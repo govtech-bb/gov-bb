@@ -3,8 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "tsx watch src/main.ts",
-    "build": "tsc -b",
+    "dev": "tsx watch --env-file-if-exists=.env src/main.ts",
     "start": "node dist/src/main.js",
     "test": "vitest run",
     "e2e": "vitest run --config vitest.e2e.config.ts",

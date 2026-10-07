@@ -37,6 +37,14 @@ function viewerOf(
     : null;
 }
 
+/** Whether an `If-None-Match` list names this entity tag, compared weakly as RFC 9110 asks. */
+function matches(ifNoneMatch: string | undefined, etag: string): boolean {
+  return (ifNoneMatch ?? "")
+    .split(",")
+    .map((tag) => tag.trim().replace(/^W\//, ""))
+    .some((tag) => tag === "*" || tag === etag);
+}
+
 /** The public's reads are shared-cacheable; a reviewer's are never stored. */
 const found = (viewer: Viewer) =>
   viewer === "preview" ? EDITOR_READ : PUBLIC_READ;
@@ -66,6 +74,20 @@ export const siteRoutes: FastifyPluginAsyncZod<{
         .send({ error: "invalid_preview_token" });
     }
     request.setDecorator("viewer", viewer);
+  });
+  // Only what a shared cache may keep is worth validating by ETag.
+  site.addHook("onSend", async (request, reply, payload) => {
+    if (
+      reply.statusCode !== 200 ||
+      typeof payload !== "string" ||
+      reply.getHeader("Cache-Control") !== PUBLIC_READ
+    )
+      return payload;
+    const etag = `"${createHash("sha1").update(payload).digest("base64url")}"`;
+    reply.header("ETag", etag);
+    if (!matches(request.headers["if-none-match"], etag)) return payload;
+    reply.code(304);
+    return null;
   });
 
   /** The viewer the onRequest hook admitted; every site route runs after it. */

@@ -2,11 +2,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Pool } from "pg";
 import pino from "pino";
 import { z } from "zod";
-import {
-  createBetterAuth,
-  type AuthRuntime,
-} from "../src/adapters/better-auth";
-import { parseConfig } from "../src/config";
+import { betterAuth } from "better-auth";
+import { getMigrations } from "better-auth/db/migration";
+import { betterAuthOptions } from "../src/adapters/better-auth";
+import { parseConfig, type AuthConfig } from "../src/config";
 import {
   AUTH_ENV,
   DB,
@@ -27,7 +26,9 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
   let server: Server;
   let employee: EmployeeSession;
   let pool: Pool;
-  let auth: AuthRuntime;
+  const authFor = (config: AuthConfig) =>
+    betterAuth(betterAuthOptions(pool, config, pino({ enabled: false })));
+  let auth: ReturnType<typeof authFor>;
 
   beforeAll(async () => {
     database = await createScratchDatabase();
@@ -36,11 +37,7 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
     pool = new Pool({ ...DB, database });
     const config = parseConfig({ ...AUTH_ENV, BETTER_AUTH_URL: server.url });
     if (!config.ok) throw config.error;
-    auth = await createBetterAuth(
-      pool,
-      config.value.auth,
-      pino({ enabled: false }),
-    );
+    auth = authFor(config.value.auth);
   });
   afterAll(async () => {
     await pool?.end();
@@ -61,8 +58,7 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
   };
 
   it("matches the installed BetterAuth schema without another migration", async () => {
-    const { getMigrations } = await import("better-auth/db/migration");
-    const expected = await getMigrations(auth.instance.options);
+    const expected = await getMigrations(auth.options);
     expect(expected.toBeCreated).toEqual([]);
     expect(expected.toBeAdded).toEqual([]);
     expect(expected.toBeAddedIndexes).toEqual([]);
@@ -70,7 +66,7 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
   });
 
   it("applies the configured GitHub admission hook on provisioning and returning sign-in", () => {
-    const check = auth.instance.options.user.validateUserInfo;
+    const check = auth.options.user.validateUserInfo;
     for (const action of ["create-user", "sign-in", "link-account"] as const) {
       const claims = {
         email: "employee@example.com",
@@ -115,7 +111,7 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
   });
 
   it("discards GitHub tokens before creating and updating account rows", async () => {
-    const context = await auth.instance.$context;
+    const context = await auth.$context;
     const tokens = {
       accessToken: "unused-github-access-token",
       refreshToken: "unused-github-refresh-token",
@@ -169,12 +165,7 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
       EDITOR_ORIGIN: "https://editor.govtech.bb",
     });
     if (!config.ok) throw config.error;
-    const productionAuth = await createBetterAuth(
-      pool,
-      config.value.auth,
-      pino({ enabled: false }),
-    );
-    const context = await productionAuth.instance.$context;
+    const context = await authFor(config.value.auth).$context;
     expect(context.authCookies.sessionToken.attributes).toMatchObject({
       secure: true,
       httpOnly: true,
@@ -276,7 +267,7 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
   });
 
   it("uses an absolute eight-hour session without refreshing it on reads", async () => {
-    const context = await auth.instance.$context;
+    const context = await auth.$context;
     expect(context.authCookies.sessionToken.attributes).toMatchObject({
       httpOnly: true,
       sameSite: "lax",

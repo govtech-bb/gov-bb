@@ -1,10 +1,11 @@
-import { createHash } from "node:crypto";
 import { STATUS_CODES } from "node:http";
 import Fastify, {
   LogController,
   type FastifyBaseLogger,
   type FastifyError,
   type FastifyInstance,
+  type FastifyReply,
+  type FastifyRequest,
 } from "fastify";
 import cors from "@fastify/cors";
 import swagger from "@fastify/swagger";
@@ -17,9 +18,8 @@ import { OPENAPI_DOCUMENT } from "./openapi";
 import type { Redacted } from "./modules/redacted";
 import { authRoutes, type AuthHandler } from "./routes/auth";
 import { editorRoutes, IF_UPDATED_AT } from "./routes/pages";
-import { EDITOR_READ } from "./routes/responses";
 import { siteRoutes } from "./routes/site";
-import type { EditorAccess } from "./services/editor-access";
+import type { EmployeeGate } from "./services/editor-access";
 import type { EditorIndex } from "./services/editor-index";
 import type { PageEditing } from "./services/page-editing";
 import type { PageResolution } from "./services/page-resolution";
@@ -53,7 +53,7 @@ export interface AppOptions {
   readonly navigation: SiteNavigation;
   readonly editing: PageEditing;
   readonly index: EditorIndex;
-  readonly access: Pick<EditorAccess, "requireEmployee">;
+  readonly access: EmployeeGate;
   readonly auth: AuthHandler;
   readonly config: {
     readonly apiOrigin: string;
@@ -65,32 +65,45 @@ export interface AppOptions {
   readonly logger?: FastifyBaseLogger;
 }
 
-/** Construct HTTP transport around explicit application capabilities. */
-export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
-  const { logger, config } = options;
-  const app = Fastify({
-    logController: new LogController({ disableRequestLogging: true }),
-    ...(logger ? { loggerInstance: logger } : {}),
-  });
-  app.setValidatorCompiler(validatorCompiler);
-  app.setSerializerCompiler(serializerCompiler);
-  app.addHook("onResponse", async (request, reply) => {
+/**
+ * Fastify's request log, minus the incoming line and the url: its query can
+ * carry OAuth codes, so a request is identified by its route pattern.
+ */
+class RequestLog extends LogController {
+  override incomingRequest(): void {}
+
+  override requestCompleted(
+    _error: Error | null | undefined,
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ): void {
     request.log.info(
       {
         method: request.method,
         route: request.routeOptions.url,
         statusCode: reply.statusCode,
+        responseTime: reply.elapsedTime,
       },
       "request completed",
     );
+  }
+}
+
+/** Construct HTTP transport around explicit application capabilities. */
+export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
+  const { logger, config } = options;
+  const app = Fastify({
+    logController: new RequestLog(),
+    ...(logger ? { loggerInstance: logger } : {}),
   });
+  app.setValidatorCompiler(validatorCompiler);
+  app.setSerializerCompiler(serializerCompiler);
   await app.register(cors, {
     origin: (origin, callback) =>
       callback(null, !origin || origin === config.editorOrigin),
     credentials: true,
     methods: ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", IF_UPDATED_AT, "If-None-Match"],
-    exposedHeaders: [IF_UPDATED_AT, "ETag"],
   });
   // Swagger must load before routes so its onRoute hook sees their schemas.
   await app.register(swagger, {
@@ -103,28 +116,6 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   app.get("/docs", { schema: { hide: true } }, async (_request, reply) =>
     reply.type("text/html; charset=utf-8").send(DOCS_HTML),
   );
-
-  app.addHook("onSend", async (request, reply, payload) => {
-    if (reply.getHeader("Cache-Control") === EDITOR_READ) {
-      reply.removeHeader("ETag");
-      return payload;
-    }
-    if (
-      request.method !== "GET" ||
-      typeof payload !== "string" ||
-      reply.statusCode !== 200
-    )
-      return payload;
-    const etag = `"${createHash("sha1").update(payload).digest("base64url")}"`;
-    reply.header("ETag", etag);
-    if (!reply.hasHeader("Cache-Control"))
-      reply.header("Cache-Control", "no-cache");
-    if (request.headers["if-none-match"] === etag) {
-      reply.code(304);
-      return "";
-    }
-    return payload;
-  });
 
   app.setErrorHandler((error: FastifyError, request, reply) => {
     // Fastify's own refusals (invalid JSON, wrong content type, too large,

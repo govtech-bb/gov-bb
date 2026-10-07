@@ -10,7 +10,7 @@ import { ok, type Result } from "../modules/result";
 /** The change log's size and newest timestamp. */
 export const EstateVersion = z.object({
   count: z.int(),
-  latest: z.string().nullable(),
+  latest: z.iso.datetime().nullable(),
 });
 
 /** The change log's size and newest timestamp. */

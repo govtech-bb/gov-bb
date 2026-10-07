@@ -818,6 +818,21 @@ describe("Cache-Control", () => {
     expect(second.headers["cache-control"]).toBe(PUBLIC_READ);
   });
 
+  it("matches a weak or listed If-None-Match, as browsers and caches send them", async () => {
+    await seedPage();
+    const etag = (await read(ENTRY)).headers.etag;
+    if (typeof etag !== "string") throw new Error("Expected a public ETag");
+
+    for (const ifNoneMatch of [`W/${etag}`, `"stale", ${etag}`]) {
+      const response = await inject({
+        url: `/pages?url=${encodeURIComponent(ENTRY)}`,
+        headers: { "if-none-match": ifNoneMatch },
+      });
+      expect(response.statusCode, ifNoneMatch).toBe(304);
+      expect(response.body).toBe("");
+    }
+  });
+
   // #2835: without a policy every hit for an unknown url reached Postgres.
   it("sends a ten-second policy on the public by-url 404", async () => {
     const response = await inject({ url: "/pages?url=/nope" });

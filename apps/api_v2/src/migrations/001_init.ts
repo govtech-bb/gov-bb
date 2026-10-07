@@ -24,13 +24,10 @@
  * work here. It is also unavailable in some PGlite builds, which is how the
  * redundancy surfaced — the tests could not create a database at all.
  *
- * The DDL is a TypeScript string rather than a `.sql` file read at runtime
- * because this app compiles to CommonJS and its tests run as ESM: the two
- * spell "the directory this file is in" differently (`__dirname` against
- * `import.meta.url`) and only one of them exists at a time. A string has no
- * directory, so it is the same migration in the build, in the tests and
- * under `tsx`. `schema.test.ts` is what keeps it honest against the Drizzle
- * definition.
+ * The DDL is a TypeScript string rather than a `.sql` file because `tsc`
+ * copies only TypeScript into `dist`, so a string ships with the build, the
+ * tests and `tsx` alike. `schema.test.ts` is what keeps it honest against the
+ * Drizzle definition.
  */
 
 export const SQL = `

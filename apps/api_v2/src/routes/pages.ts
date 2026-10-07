@@ -2,7 +2,7 @@ import type { FastifyRequest } from "fastify";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { Employee } from "../modules/auth";
 import { Redacted } from "../modules/redacted";
-import type { EditorAccess } from "../services/editor-access";
+import type { EmployeeGate } from "../services/editor-access";
 import type { EditorIndex } from "../services/editor-index";
 import type { PageEditing } from "../services/page-editing";
 import { SCHEMAS } from "./contracts";
@@ -15,7 +15,7 @@ export const IF_UPDATED_AT = "if-updated-at";
 export const editorRoutes: FastifyPluginAsyncZod<{
   editing: PageEditing;
   index: EditorIndex;
-  access: Pick<EditorAccess, "requireEmployee">;
+  access: EmployeeGate;
   editorOrigin: string;
 }> = async (editor, { editing, index, access, editorOrigin }) => {
   editor.decorateRequest("employee", null);

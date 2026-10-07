@@ -1,14 +1,16 @@
 /** The runtime owns configuration, concrete dependencies, and their cleanup. */
+import { once } from "node:events";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import pino from "pino";
 import { buildApp } from "./app";
 import { createBetterAuth } from "./adapters/better-auth";
 import { PostgresPages } from "./adapters/postgres-pages";
 import { parseConfig } from "./config";
-import { connect, createPool } from "./db";
+import { connect, createPool, type DatabaseFailure } from "./db";
 import { migrate } from "./migrate";
 import { authBypass } from "./adapters/auth-bypass";
-import { EditorAccess } from "./services/editor-access";
+import type { AuthHandler } from "./routes/auth";
+import { EditorAccess, type EmployeeGate } from "./services/editor-access";
 import { EditorIndex } from "./services/editor-index";
 import { PageEditing } from "./services/page-editing";
 import { PageResolution } from "./services/page-resolution";
@@ -17,9 +19,6 @@ import { seed } from "./seed";
 
 const logger = pino({
   redact: [
-    "req.headers.cookie",
-    "req.headers.authorization",
-    "res.headers['set-cookie']",
     "password",
     "*.password",
     "*.accessToken",
@@ -37,6 +36,15 @@ const logger = pino({
   },
 });
 
+/** A database that cannot be configured or reached stops startup with a message safe to log. */
+function refuseToStart(error: DatabaseFailure): void {
+  logger.error(
+    { error: error._tag, operation: error.operation },
+    error.message,
+  );
+  process.exitCode = 1;
+}
+
 async function main(): Promise<void> {
   const parsed = parseConfig(process.env);
   if (!parsed.ok) {
@@ -50,40 +58,20 @@ async function main(): Promise<void> {
   }
   const config = parsed.value;
   const created = createPool(config.database, logger);
-  if (!created.ok) {
-    logger.error(
-      { error: created.error._tag, operation: created.error.operation },
-      created.error.message,
-    );
-    process.exitCode = 1;
-    return;
-  }
+  if (!created.ok) return refuseToStart(created.error);
 
   const pool = created.value;
   let app: FastifyInstance | undefined;
-  let stopping = false;
-  let finish: (() => void) | undefined;
-  const stopped = new Promise<void>((resolve) => {
-    finish = resolve;
-  });
-  const stop = () => {
-    stopping = true;
-    finish?.();
-  };
+  // Startup checks it between steps; once listening, it is what the process waits on.
+  const shutdown = new AbortController();
+  const stop = () => shutdown.abort();
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
   let operation = "connect";
 
   try {
     const connected = await connect(pool, config.database);
-    if (!connected.ok) {
-      logger.error(
-        { error: connected.error._tag, operation: connected.error.operation },
-        connected.error.message,
-      );
-      process.exitCode = 1;
-      return;
-    }
+    if (!connected.ok) return refuseToStart(connected.error);
     const db = connected.value;
     operation = "migrate";
     const ran = await migrate(db, (script) => pool.query(script));
@@ -94,15 +82,20 @@ async function main(): Promise<void> {
       if (counts.documents + counts.categories > 0)
         logger.info(counts, "seeded the estate");
     }
-    if (stopping) return;
+    if (shutdown.signal.aborted) return;
     operation = "auth";
-    const betterAuth = config.authBypass
-      ? undefined
-      : await createBetterAuth(pool, config.auth, logger);
-    if (!betterAuth)
+    let access: EmployeeGate;
+    let auth: AuthHandler;
+    if (config.authBypass) {
       logger.warn(
         "AUTH_BYPASS is on: every editor request runs as a local developer without signing in",
       );
+      ({ access, auth } = authBypass);
+    } else {
+      const github = await createBetterAuth(pool, config.auth, logger);
+      access = new EditorAccess(github);
+      auth = github;
+    }
     operation = "http";
     const pages = new PostgresPages(db);
     app = await buildApp({
@@ -110,8 +103,8 @@ async function main(): Promise<void> {
       navigation: new SiteNavigation(pages),
       editing: new PageEditing(pages, () => new Date()),
       index: new EditorIndex(pages),
-      access: betterAuth ? new EditorAccess(betterAuth) : authBypass.access,
-      auth: betterAuth ?? authBypass.auth,
+      access,
+      auth,
       config: {
         apiOrigin: config.auth.apiOrigin,
         editorOrigin: config.auth.editorOrigin,
@@ -119,9 +112,9 @@ async function main(): Promise<void> {
       ...(config.previewSecret ? { previewSecret: config.previewSecret } : {}),
       logger,
     });
-    if (stopping) return;
+    if (shutdown.signal.aborted) return;
     await app.listen({ port: config.port, host: "0.0.0.0" });
-    await stopped;
+    if (!shutdown.signal.aborted) await once(shutdown.signal, "abort");
   } catch (error) {
     const code =
       error instanceof Error &&
@@ -133,7 +126,7 @@ async function main(): Promise<void> {
     process.exitCode = 1;
   } finally {
     // In-flight requests may still need the pool until Fastify has closed.
-    // Repeated signals during cleanup resolve the same promise harmlessly.
+    // Repeated signals during cleanup abort an aborted signal harmlessly.
     try {
       try {
         await app?.close();

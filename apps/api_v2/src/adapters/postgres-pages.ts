@@ -8,7 +8,16 @@
  * clause, so a loop that got into the data ends a read rather than hanging it.
  */
 
-import { and, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  count,
+  eq,
+  inArray,
+  isNull,
+  max,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { z } from "zod";
 import type { Database } from "../db";
 import type { IndexedPage } from "../modules/estate-services";
@@ -584,12 +593,12 @@ export class PostgresPages
   changeLogVersion(): Promise<Result<EstateVersion, ContentStoreUnavailable>> {
     return attempt("changeLogVersion", async () => {
       const [row] = await this.db
-        .select({
-          count: sql<number>`count(*)::int`,
-          latest: sql<string | null>`max(${changeEvents.occurredAt})::text`,
-        })
+        .select({ count: count(), latest: max(changeEvents.occurredAt) })
         .from(changeEvents);
-      return { count: Number(row?.count ?? 0), latest: row?.latest ?? null };
+      return {
+        count: row?.count ?? 0,
+        latest: row?.latest?.toISOString() ?? null,
+      };
     });
   }
 }

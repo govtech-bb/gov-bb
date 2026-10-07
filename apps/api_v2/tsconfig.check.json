@@ -1,10 +1,9 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
     "noEmit": true,
     "incremental": false,
+    // The seed builder reads the category taxonomy from packages/content's source.
     "rootDir": "../.."
   },
   "include": [

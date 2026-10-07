@@ -15,8 +15,16 @@ export interface SessionReader {
   ): Promise<Result<Employee | null, Forbidden | AuthUnavailable>>;
 }
 
+/** Decides whether a browser credential belongs to an admitted employee. */
+export interface EmployeeGate {
+  /** The admitted employee, or why the credential does not admit one. */
+  requireEmployee(
+    credential: Redacted<string> | undefined,
+  ): Promise<Result<Employee, Unauthenticated | Forbidden | AuthUnavailable>>;
+}
+
 /** Applies employee access policy independently of HTTP and the auth provider SDK. */
-export class EditorAccess {
+export class EditorAccess implements EmployeeGate {
   /** The root supplies the concrete session adapter once for the process. */
   constructor(private readonly sessions: SessionReader) {}
 

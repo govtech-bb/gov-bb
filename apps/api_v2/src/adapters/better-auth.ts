@@ -1,3 +1,5 @@
+import { betterAuth, type BetterAuthOptions } from "better-auth";
+import { github } from "better-auth/social-providers";
 import type { Pool } from "pg";
 import type { Logger } from "pino";
 import type { AuthConfig } from "../config";
@@ -11,16 +13,15 @@ import {
 } from "../modules/auth";
 import type { Redacted } from "../modules/redacted";
 import { err, ok, type Result } from "../modules/result";
+import type { AuthHandler } from "../routes/auth";
+import type { SessionReader } from "../services/editor-access";
 
-/** Build the provider boundary once, using the process's existing Postgres pool. */
-export async function createBetterAuth(
+/** BetterAuth's configuration: GitHub sign-in admitted by organization membership, sessions in Postgres. */
+export function betterAuthOptions(
   pool: Pool,
   config: AuthConfig,
   logger: Pick<Logger, "error" | "warn">,
 ) {
-  // Native import keeps this CommonJS application's compiled entrypoint compatible with Better Auth's ESM package.
-  const { betterAuth } = await import("better-auth");
-  const { github } = await import("better-auth/social-providers");
   const githubOptions = {
     clientId: config.githubClientId,
     clientSecret: config.githubClientSecret.reveal(),
@@ -38,7 +39,7 @@ export async function createBetterAuth(
       refreshTokenExpiresAt: null,
     },
   });
-  const instance = betterAuth({
+  return {
     appName: "GovBB service editor",
     baseURL: config.apiOrigin,
     basePath: "/api/auth",
@@ -131,10 +132,18 @@ export async function createBetterAuth(
           );
       },
     },
-  });
+  } satisfies BetterAuthOptions;
+}
+
+/** Build the provider boundary once, using the process's existing Postgres pool. */
+export async function createBetterAuth(
+  pool: Pool,
+  config: AuthConfig,
+  logger: Pick<Logger, "error" | "warn">,
+): Promise<AuthHandler & SessionReader> {
+  const instance = betterAuth(betterAuthOptions(pool, config, logger));
   await instance.$context;
   return {
-    instance,
     /** Delegate the auth protocol without exposing unexpected provider failures. */
     async handle(request: Request): Promise<Response> {
       try {
@@ -158,6 +167,3 @@ export async function createBetterAuth(
     },
   };
 }
-
-/** The concrete runtime remains confined to adapters, roots, and integration tests. */
-export type AuthRuntime = Awaited<ReturnType<typeof createBetterAuth>>;
