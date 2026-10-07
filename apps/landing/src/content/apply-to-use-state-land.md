@@ -15,8 +15,6 @@ Use this service to ask to use land owned by the Government of Barbados.
 
 This land is managed by the Ministry of Housing, Lands and Maintenance.
 
-## Who can apply
-
 You can apply for yourself or for an organisation.
 
 You can apply to use government land for things like:
@@ -42,7 +40,7 @@ GPS coordinates are numbers that show the exact location of a place. You can usu
 
 <!-- MDA NOTE: Confirm whether any supporting documents are required (for example site plans, public liability insurance, organisation registration), and whether the photo of the land is still needed. Confirm any minimum notice period before the requested start date. -->
 
-## Complete the form
+## How to apply
 
 There are 2 ways to apply. You can:
 
@@ -71,7 +69,7 @@ If your application is approved, you may have to pay to use the land. The Minist
 
 <!-- MDA NOTE: Confirm whether a security deposit is required once permission is granted. -->
 
-## What happens after you apply
+## What happens next
 
 After you submit your application:
 
