@@ -1,7 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
-import { createEditorApi, servicesQuery, type ServiceSummary } from "../../src/api/services";
+import { createEditorApi, type ServiceSummary } from "../../src/api/client";
+import { servicesQuery } from "../../src/api/queries";
 import { ServicesList } from "../../src/workspace/services-list";
 
 const service = (n: number): ServiceSummary => ({

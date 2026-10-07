@@ -25,6 +25,7 @@
     "dist/**",
     "out/**",
     "src/routeTree.gen.ts",
+    "src/api/openapi.d.ts",
     ".tanstack/**"
   ]
 }

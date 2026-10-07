@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
-import { createEditorApi } from "./api/services";
+import { ApiFailure, createEditorApi } from "./api/client";
 import { createEditorAuth } from "./auth/better-auth-client";
 import { bypassAuth } from "./auth/bypass";
 import { parseApiOrigin } from "./auth/session";
@@ -19,7 +19,17 @@ export function getRouter() {
       : createEditorAuth(origin.value, Date.now);
 
   const api = createEditorApi(origin.value, import.meta.env.VITE_LANDING_ORIGIN);
-  const queryClient = new QueryClient();
+
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        // A refusal answers the same way however often it is asked.
+        retry: (failures, error) =>
+          failures < 3 &&
+          !(error instanceof ApiFailure && error.status >= 400 && error.status < 500),
+      },
+    },
+  });
 
   return createRouter({
     routeTree,

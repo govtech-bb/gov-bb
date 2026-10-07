@@ -17,7 +17,8 @@ import {
 } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { servicesQuery, type EditorApi, type ServiceSummary } from "../api/services";
+import type { EditorApi, ServiceSummary } from "../api/client";
+import { servicesQuery } from "../api/queries";
 import { cn } from "../cn";
 import { visibilityLabels } from "../pages";
 import { Button } from "../ui/button";

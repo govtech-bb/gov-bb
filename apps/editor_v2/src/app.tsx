@@ -3,7 +3,7 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { TipProvider } from "./ui/tooltip";
 import { ServiceWorkspace } from "./workspace/workspace";
-import type { EditorApi } from "./api/services";
+import type { EditorApi } from "./api/client";
 import { localReturnPath, type EditorAuth, type EmployeeSession } from "./auth/session";
 
 const icons = { weight: "bold" as const };

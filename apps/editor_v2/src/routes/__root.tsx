@@ -7,7 +7,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import type { EditorApi } from "../api/services";
+import type { EditorApi } from "../api/client";
 import type { EditorAuth } from "../auth/session";
 import stylesheet from "../../index.css?url";
 

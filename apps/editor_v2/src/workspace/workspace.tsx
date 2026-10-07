@@ -2,7 +2,7 @@ import logo from "@govtech-bb/frontend/assets/images/govbb-logo.svg?raw";
 import { Link, useBlocker, useNavigate, useParams, useRouterState } from "@tanstack/react-router";
 import { CaretRight, PencilSimpleLine } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
-import type { EditorApi } from "../api/services";
+import type { EditorApi } from "../api/client";
 import { workspaceLink } from "./navigation";
 import { Button } from "../ui/button";
 import { browserDraftStorage } from "../host/govbb-draft";
