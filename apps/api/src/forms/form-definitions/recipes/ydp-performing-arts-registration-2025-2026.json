@@ -122,18 +122,16 @@
         {
           "ref": "components/home-telephone",
           "overrides": {
-            "label": "Home Telephone Number",
             "fieldId": "home-telephone"
           }
         },
         {
           "ref": "components/mobile-telephone",
           "overrides": {
-            "label": "Cell / Mobile Number",
             "fieldId": "mobile-telephone",
             "validations": {
               "required": {
-                "error": "Please enter a mobile number",
+                "error": "Mobile telephone is required",
                 "value": true
               }
             }
@@ -142,7 +140,6 @@
         {
           "ref": "components/work-telephone",
           "overrides": {
-            "label": "Work Telephone Number",
             "fieldId": "work-telephone"
           }
         },
@@ -577,7 +574,13 @@
               }
             },
             "telephone": {
-              "label": "Emergency Contact Work Telephone"
+              "label": "Emergency contact work telephone",
+              "validations": {
+                "required": {
+                  "value": true,
+                  "error": "Emergency contact work telephone is required"
+                }
+              }
             },
             "first-name": {
               "label": "Emergency Contact First Name",
@@ -589,10 +592,10 @@
               }
             },
             "home-telephone": {
-              "label": "Emergency Contact Home Telephone",
+              "label": "Emergency contact home telephone",
               "validations": {
                 "required": {
-                  "error": "Please enter the emergency contact's home telephone number",
+                  "error": "Emergency contact home telephone is required",
                   "value": true
                 }
               }
@@ -602,7 +605,7 @@
         {
           "ref": "components/mobile-telephone",
           "overrides": {
-            "label": "Emergency Contact Cell / Mobile Number",
+            "label": "Emergency contact cell / mobile number",
             "fieldId": "emergency-contact-mobile"
           }
         },
@@ -661,7 +664,7 @@
   "title": "Youth Development Programme – Performing Arts Registration 2025–2026",
   "formId": "ydp-performing-arts-registration-2025-2026",
   "createdAt": "2025-01-01T00:00:00Z",
-  "updatedAt": "2026-09-17T13:49:39.000Z",
+  "updatedAt": "2026-10-05T22:01:06.000Z",
   "processors": [
     {
       "type": "email",

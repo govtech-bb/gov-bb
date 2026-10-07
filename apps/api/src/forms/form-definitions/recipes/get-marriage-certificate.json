@@ -251,7 +251,6 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Telephone number",
             "fieldId": "applicant-telephone",
             "validations": {
               "required": {
@@ -743,7 +742,7 @@
     }
   ],
   "createdAt": "2026-06-08T21:16:00.486Z",
-  "updatedAt": "2026-09-18T18:21:48.000Z",
+  "updatedAt": "2026-10-05T17:20:45.000Z",
   "meta": {
     "visibility": "public"
   }

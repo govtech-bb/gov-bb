@@ -190,7 +190,6 @@
           "ref": "components/telephone",
           "overrides": {
             "fieldId": "applicant-telephone-number",
-            "label": "Telephone number",
             "validations": {
               "required": {
                 "error": "Telephone number is required",
@@ -823,7 +822,7 @@
     }
   ],
   "createdAt": "2026-06-04T20:58:01.397Z",
-  "updatedAt": "2026-09-18T18:21:48.000Z",
+  "updatedAt": "2026-10-05T17:20:45.000Z",
   "meta": {
     "visibility": "maintenance"
   }

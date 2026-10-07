@@ -3,7 +3,7 @@
   "title": "Apply for a permit to operate a temporary restaurant",
   "description": "Apply for a permit to serve food or drink at a temporary event, such as a stall, booth or bar operating for up to 30 days.",
   "createdAt": "2026-07-23T00:00:00Z",
-  "updatedAt": "2026-09-10T00:19:08.000Z",
+  "updatedAt": "2026-10-05T22:01:06.000Z",
   "processors": [
     {
       "type": "email",
@@ -103,7 +103,6 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "hint": "We will use this to contact you about your application. For example, (246) 249 1234.",
             "behaviours": [
               {
                 "type": "fieldArray",
@@ -215,7 +214,6 @@
           "overrides": {
             "label": "Organiser's phone number",
             "fieldId": "organiser-phone",
-            "hint": "For example, (246) 249 1234.",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -233,10 +231,6 @@
             "validations": {
               "required": {
                 "value": false
-              },
-              "phone": {
-                "value": true,
-                "error": "Please enter a valid phone number"
               }
             }
           }
@@ -888,9 +882,8 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "label": "Their phone number",
+            "label": "Caterer or cook telephone number",
             "fieldId": "caterer-phone",
-            "hint": "For example, (246) 249 1234.",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -902,11 +895,7 @@
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter the phone number of the caterer or cook"
-              },
-              "phone": {
-                "value": true,
-                "error": "Please enter a valid phone number"
+                "error": "Caterer or cook telephone number is required"
               }
             }
           }

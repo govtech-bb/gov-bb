@@ -65,15 +65,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "hint": "A local Barbados number, for example 246-418-1234.",
-            "label": "Phone number",
-            "fieldId": "applicant-phone",
-            "validations": {
-              "required": {
-                "error": "Phone number is required",
-                "value": true
-              }
-            }
+            "fieldId": "applicant-phone"
           }
         },
         {
@@ -229,7 +221,7 @@
   "title": "Apply for Community Centre Access",
   "formId": "youth-opportunity-centre-access",
   "createdAt": "2026-05-21T00:00:00Z",
-  "updatedAt": "2026-08-06T11:46:18.000Z",
+  "updatedAt": "2026-10-05T18:32:56.000Z",
   "processors": [
     {
       "type": "email",

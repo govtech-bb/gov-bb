@@ -72,15 +72,8 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Contact No",
             "fieldId": "contact-no",
-            "columnWidth": "50%",
-            "validations": {
-              "required": {
-                "error": "Contact No is required",
-                "value": true
-              }
-            }
+            "columnWidth": "50%"
           }
         },
         {
@@ -293,5 +286,5 @@
     }
   ],
   "createdAt": "2026-06-03T00:00:00.000Z",
-  "updatedAt": "2026-09-18T18:21:48.000Z"
+  "updatedAt": "2026-10-05T18:32:56.000Z"
 }

@@ -292,15 +292,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "hint": "Please provide both your landline and cell numbers if available",
-            "label": "Telephone Number (Landline and Cell)",
-            "fieldId": "applicant-telephone",
-            "validations": {
-              "required": {
-                "error": "Enter your telephone number",
-                "value": true
-              }
-            }
+            "fieldId": "applicant-telephone"
           }
         },
         {
@@ -754,11 +746,11 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Emergency Contact Telephone Numbers (Landline & Cell)",
+            "label": "Emergency contact telephone number",
             "fieldId": "emergency-telephone",
             "validations": {
               "required": {
-                "error": "Enter the emergency contact's telephone number",
+                "error": "Emergency contact telephone number is required",
                 "value": true
               }
             }
@@ -919,7 +911,7 @@
   "title": "Pathways Employability Programme: Application Form (2026)",
   "formId": "pathways-employability-programme-application-2026",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-08-20T18:45:33.000Z",
+  "updatedAt": "2026-10-05T18:32:56.000Z",
   "processors": [
     {
       "type": "email",

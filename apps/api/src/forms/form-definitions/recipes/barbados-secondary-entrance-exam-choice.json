@@ -196,7 +196,6 @@
           "ref": "components/telephone",
           "overrides": {
             "type": "tel",
-            "label": "Phone",
             "fieldId": "parent-phone"
           }
         }
@@ -398,5 +397,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:24:07.446Z",
-  "updatedAt": "2026-08-06T11:46:18.000Z"
+  "updatedAt": "2026-10-05T17:20:45.000Z"
 }

@@ -231,12 +231,10 @@
         {
           "ref": "components/home-telephone",
           "overrides": {
-            "hint": "Example: 433-1234",
-            "label": "Home Telephone Number",
             "fieldId": "guardian-home-telephone",
             "validations": {
               "required": {
-                "error": "Please enter at least one telephone number",
+                "error": "Home telephone is required",
                 "value": true
               }
             }
@@ -245,16 +243,12 @@
         {
           "ref": "components/work-telephone",
           "overrides": {
-            "hint": "Example: 535-1234",
-            "label": "Work Telephone Number",
             "fieldId": "guardian-work-telephone"
           }
         },
         {
           "ref": "components/mobile-telephone",
           "overrides": {
-            "hint": "Example: 249-1234",
-            "label": "Cell / Mobile Number",
             "fieldId": "guardian-mobile-telephone"
           }
         },
@@ -697,12 +691,11 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "hint": "Enter one or more emergency contact numbers",
-            "label": "Emergency Telephone Number(s)",
+            "label": "Emergency telephone number",
             "fieldId": "emergency-telephone",
             "validations": {
               "required": {
-                "error": "Please enter an emergency telephone number",
+                "error": "Emergency telephone number is required",
                 "value": true
               }
             }
@@ -899,7 +892,7 @@
   "title": "National Summer Camp Programme 2025: Camper Registration Form",
   "formId": "national-summer-camp-2025-registration",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-08-20T18:45:33.000Z",
+  "updatedAt": "2026-10-05T18:32:56.000Z",
   "processors": [
     {
       "type": "email",

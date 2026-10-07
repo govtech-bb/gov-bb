@@ -149,7 +149,6 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Telephone number",
             "fieldId": "applicant-telephone",
             "validations": {
               "required": {
@@ -525,7 +524,7 @@
     }
   ],
   "createdAt": "2026-06-04T22:01:37.244Z",
-  "updatedAt": "2026-08-20T18:45:33.000Z",
+  "updatedAt": "2026-10-05T17:20:45.000Z",
   "meta": {
     "visibility": "maintenance"
   }
