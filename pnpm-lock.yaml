@@ -1409,7 +1409,11 @@ importers:
         specifier: workspace:*
         version: link:../form-validation
 
-  packages/umami-analytics: {}
+  packages/umami-analytics:
+    dependencies:
+      '@govtech-bb/analytics':
+        specifier: workspace:*
+        version: link:../analytics
 
 packages:
 

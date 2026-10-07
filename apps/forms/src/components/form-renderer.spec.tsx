@@ -1585,3 +1585,72 @@ describe("FormRenderer — conditional confirmation markdown (#2068)", () => {
     expect(node).not.toHaveTextContent("{inspection}");
   });
 });
+
+// Funnel-emission guard (#2682). Two live forms recorded a Start but zero
+// step-views, so their funnels were empty and nobody knew until a dashboard was
+// read. The per-step funnel is driven entirely by a `form-step-view` event that
+// carries the step's id in its `step` property (see form-renderer.tsx). If that
+// event stops firing, or stops carrying the real stepId, every numbered step
+// silently drops to zero. These tests fail loudly if that regresses, for any
+// form — so it's caught by the suite rather than by someone reading analytics.
+describe("form-step-view funnel emission (#2682)", () => {
+  it("emits form-step-view carrying the mounted step's stepId (not a positional label)", () => {
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={
+          makeMeta({ formId: "request-an-environmental-health-officer" }) as any
+        }
+        stepId="operating-restaurant"
+        visibleSteps={[
+          makeStep("operating-restaurant"),
+          makeStep("applicant-details"),
+        ]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+
+    // The `step` property MUST be the recipe stepId — the dashboard funnel
+    // matches these values against the live recipe's step ids.
+    expect(mockTrackEvent).toHaveBeenCalledWith(
+      "form-step-view",
+      expect.objectContaining({
+        form: "request-an-environmental-health-officer",
+        step: "operating-restaurant",
+      }),
+    );
+  });
+
+  it("keys the event to the current step so each step in the funnel is recorded", () => {
+    // currentIndex drives which visible step is active; a later step must emit
+    // its own stepId, not the first step's.
+    mockUseStepGuard.mockReturnValue({
+      navigateToStep: mockNavigateToStep,
+      completeAndContinue: mockCompleteAndContinue,
+      currentIndex: 1,
+    });
+
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={
+          makeMeta({ formId: "apply-for-temporary-restaurant-permit" }) as any
+        }
+        stepId="food-safety"
+        visibleSteps={[makeStep("documents"), makeStep("food-safety")]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+
+    const stepViews = mockTrackEvent.mock.calls.filter(
+      ([event]) => event === "form-step-view",
+    );
+    expect(stepViews).toHaveLength(1);
+    expect(stepViews[0][1]).toMatchObject({
+      form: "apply-for-temporary-restaurant-permit",
+      step: "food-safety",
+    });
+  });
+});
