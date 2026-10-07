@@ -1,6 +1,7 @@
 /**
  * Loads the live estate's categories and markdown pages — the snapshot in
- * `seed-data/estate.json` — with each new page's search chunks.
+ * `seed-data/estate.json` — with each new page's search chunks and the first
+ * entry in its history.
  *
  * Every insert is `on conflict do nothing`, so this is additive and
  * idempotent: it inserts what is missing and never overwrites what an author
@@ -9,7 +10,11 @@
  */
 
 import { eq } from "drizzle-orm";
-import { writeSearchChunks } from "./adapters/postgres-pages";
+import {
+  toDocument,
+  writeChange,
+  writeSearchChunks,
+} from "./adapters/postgres-pages";
 import type { Database } from "./db";
 import { chunkMarkdown } from "./modules/search-text";
 import { categories, contentPages } from "./schema";
@@ -89,13 +94,19 @@ export async function seed(db: Database): Promise<{
             publishedAt: published,
           })
           .onConflictDoNothing()
-          .returning({ id: contentPages.id });
-        if (row)
+          .returning();
+        if (row) {
           await writeSearchChunks(
             tx,
             row.id,
             chunkMarkdown(page.body_markdown),
           );
+          await writeChange(tx, {
+            page: toDocument(row),
+            action: "created",
+            actorId: "seed",
+          });
+        }
         return row;
       });
       if (inserted) {

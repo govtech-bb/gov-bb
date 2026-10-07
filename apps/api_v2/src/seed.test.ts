@@ -26,6 +26,10 @@ describe("seed", () => {
       documents: ESTATE.pages.length,
     });
     expect(await seed(db)).toEqual({ categories: 0, documents: 0 });
+    // Each page's history starts where the seed left it, and only once.
+    expect(expectOk(await createTestServices(db).index.version()).count).toBe(
+      ESTATE.pages.length,
+    );
 
     await close();
   }, 60_000);

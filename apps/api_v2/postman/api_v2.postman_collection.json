@@ -739,6 +739,59 @@
           ]
         },
         {
+          "name": "Page history",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "better-auth.session_token={{sessionToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/pages/{{pageId}}/history"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 with versions, newest first', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const [latest] = pm.response.json().versions;",
+                  "  pm.expect(latest.version).to.be.above(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "The page as its first version left it",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "better-auth.session_token={{sessionToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/pages/{{pageId}}/history/1"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 with the created title', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().title).to.equal('Postman test page');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Create without Origin (403)",
           "request": {
             "method": "POST",

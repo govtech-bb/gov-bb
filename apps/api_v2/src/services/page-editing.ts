@@ -16,6 +16,11 @@ import {
   type PageValues,
   type SaveFields,
 } from "../modules/page";
+import {
+  readSnapshot,
+  type PageSnapshot,
+  type PageVersion,
+} from "../modules/page-history";
 import { err, ok, type Result } from "../modules/result";
 import { chunkMarkdown, type SearchChunk } from "../modules/search-text";
 
@@ -96,6 +101,15 @@ export interface PageRecords {
   appendChange(
     change: PageChange,
   ): Promise<Result<void, ContentStoreUnavailable>>;
+  /** A page's change log, newest first; empty when nothing is recorded. */
+  versionsOf(
+    id: PageId,
+  ): Promise<Result<PageVersion[], ContentStoreUnavailable>>;
+  /** The page as a change recorded it, unparsed, or null when there is no such version. */
+  snapshotAt(
+    id: PageId,
+    version: number,
+  ): Promise<Result<unknown, ContentStoreUnavailable>>;
 }
 
 /** The editor's page operations: reads of any visibility, and writes that commit with their search text and audit entry or not at all. */
@@ -111,6 +125,26 @@ export class PageEditing {
     id: PageId,
   ): Promise<Result<PageDocument | null, ContentStoreUnavailable>> {
     return this.records.find(id);
+  }
+
+  /** A page's change log, newest first, or null when there is no such page and never was. */
+  async history(
+    id: PageId,
+  ): Promise<Result<PageVersion[] | null, ContentStoreUnavailable>> {
+    const versions = await this.records.versionsOf(id);
+    if (!versions.ok || versions.value.length > 0) return versions;
+    const page = await this.records.find(id);
+    if (!page.ok) return page;
+    return ok(page.value === null ? null : []);
+  }
+
+  /** The page as a change left it, or null when there is no such version or it can no longer be read. */
+  async snapshot(
+    id: PageId,
+    version: number,
+  ): Promise<Result<PageSnapshot | null, ContentStoreUnavailable>> {
+    const recorded = await this.records.snapshotAt(id, version);
+    return recorded.ok ? ok(readSnapshot(recorded.value)) : recorded;
   }
 
   /** Create a page where it belongs, stamping publication when it starts public, and index and audit it. */

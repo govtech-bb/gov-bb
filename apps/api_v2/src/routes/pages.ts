@@ -79,6 +79,44 @@ export const editorRoutes: FastifyPluginAsyncZod<{
   });
   editor.route({
     method: "GET",
+    url: "/pages/:id/history",
+    schema: SCHEMAS.getPageHistory,
+    handler: async (request, reply) => {
+      const versions = await editing.history(request.params.id);
+      if (!versions.ok)
+        return reply
+          .status(500)
+          .send(storageFailed(request.log, versions.error));
+      return versions.value === null
+        ? reply.status(404).send({
+            error: "not_found",
+            message: `No page with id ${request.params.id}`,
+          })
+        : { versions: versions.value };
+    },
+  });
+  editor.route({
+    method: "GET",
+    url: "/pages/:id/history/:version",
+    schema: SCHEMAS.getPageVersion,
+    handler: async (request, reply) => {
+      const { id, version } = request.params;
+      const snapshot = await editing.snapshot(id, version);
+      if (!snapshot.ok)
+        return reply
+          .status(500)
+          .send(storageFailed(request.log, snapshot.error));
+      return (
+        snapshot.value ??
+        reply.status(404).send({
+          error: "not_found",
+          message: `No version ${version} of page ${id}`,
+        })
+      );
+    },
+  });
+  editor.route({
+    method: "GET",
     url: "/services",
     schema: SCHEMAS.listServices,
     handler: async (request, reply) => {

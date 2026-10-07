@@ -17,7 +17,8 @@ import { IF_UPDATED_AT } from "./routes/pages";
 import { PUBLIC_READ } from "./routes/responses";
 import type { Database } from "./db";
 import { withDefaults, type Visibility } from "./modules/page";
-import { categories, changeEvents, searchChunks } from "./schema";
+import { BYPASS_EMPLOYEE } from "./adapters/auth-bypass";
+import { categories, changeEvents, contentPages, searchChunks } from "./schema";
 import {
   aPage,
   createTestApp,
@@ -730,6 +731,30 @@ describe("PUT /pages/:id", () => {
     expect((await read(START)).statusCode).toBe(404);
   });
 
+  it("moves only the page when its url changes, and its old url 404s", async () => {
+    const parent = await seedPage();
+    await seedPage({
+      url: START,
+      parent_id: parent.id,
+      title: "Before you start",
+    });
+    const moved = "/money-financial-support/severance-pay";
+
+    const response = await inject({
+      method: "PUT",
+      url: `/pages/${parent.id}`,
+      payload: { ...parent, url: moved },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().slug).toBe("severance-pay");
+    expect((await read(ENTRY)).statusCode).toBe(404);
+    expect((await read(START)).json().breadcrumbs).toEqual([
+      { name: parent.title, url: moved },
+      { name: "Before you start", url: START },
+    ]);
+  });
+
   it("files a sub-page under its parent's category when it names none", async () => {
     const category = await seedCategory();
     const parent = await seedPage({ category_id: category.id });
@@ -825,6 +850,173 @@ describe("PUT /pages/:id", () => {
       { heading: null, body: "Intro" },
       { heading: "Fees", body: "Ten dollars" },
     ]);
+  });
+});
+
+describe("GET /pages/:id/history", () => {
+  it("lists each change newest first, naming who made it", async () => {
+    await db.execute(
+      sql`insert into auth_user (id, name, email, "emailVerified")
+          values (${TEST_EMPLOYEE.id}, ${TEST_EMPLOYEE.name}, ${TEST_EMPLOYEE.email}, true)`,
+    );
+    const draft = await seedPage({ visibility: "draft" });
+    expectOk(
+      await services.editing.save(
+        draft.id,
+        { ...draft, visibility: "public" },
+        null,
+        BYPASS_EMPLOYEE,
+      ),
+    );
+
+    const response = await inject({ url: `/pages/${draft.id}/history` });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.json().versions).toMatchObject([
+      {
+        version: 2,
+        action: "published",
+        actor: { id: BYPASS_EMPLOYEE.id, name: null, email: null },
+      },
+      {
+        version: 1,
+        action: "created",
+        actor: TEST_EMPLOYEE,
+      },
+    ]);
+  });
+
+  it("keeps a deleted page's history readable", async () => {
+    const page = await seedPage();
+    await inject({ method: "DELETE", url: `/pages/${page.id}` });
+
+    const response = await inject({ url: `/pages/${page.id}/history` });
+
+    expect(response.statusCode).toBe(200);
+    expect(
+      response
+        .json()
+        .versions.map((version: { action: string }) => version.action),
+    ).toEqual(["deleted", "created"]);
+  });
+
+  it("404s a page that never existed, and lists nothing for one nothing has recorded", async () => {
+    const [unrecorded] = await db
+      .insert(contentPages)
+      .values({
+        url: "/unrecorded",
+        slug: "unrecorded",
+        title: "Unrecorded",
+        bodyMarkdown: "",
+      })
+      .returning();
+    if (!unrecorded) throw new Error("The page was not inserted");
+
+    expect(
+      (
+        await inject({
+          url: "/pages/22222222-2222-4222-8222-222222222222/history",
+        })
+      ).statusCode,
+    ).toBe(404);
+    expect(
+      (await inject({ url: `/pages/${unrecorded.id}/history` })).json(),
+    ).toEqual({ versions: [] });
+  });
+});
+
+describe("GET /pages/:id/history/:version", () => {
+  it("serves the page as that change left it", async () => {
+    const created = await seedPage();
+    await inject({
+      method: "PUT",
+      url: `/pages/${created.id}`,
+      payload: { ...created, title: "Renamed" },
+    });
+
+    const response = await inject({ url: `/pages/${created.id}/history/1` });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(created);
+  });
+
+  it("restores a version by saving it over the page with the page's current updated_at", async () => {
+    const created = await seedPage();
+    const renamed = (
+      await inject({
+        method: "PUT",
+        url: `/pages/${created.id}`,
+        payload: { ...created, title: "Renamed" },
+      })
+    ).json();
+    const first = (
+      await inject({ url: `/pages/${created.id}/history/1` })
+    ).json();
+
+    const stale = await inject({
+      method: "PUT",
+      url: `/pages/${created.id}`,
+      headers: { [IF_UPDATED_AT]: first.updated_at },
+      payload: first,
+    });
+    const restored = await inject({
+      method: "PUT",
+      url: `/pages/${created.id}`,
+      headers: { [IF_UPDATED_AT]: renamed.updated_at },
+      payload: first,
+    });
+
+    expect(stale.statusCode).toBe(409);
+    expect(restored.statusCode).toBe(200);
+    expect(restored.json().title).toBe(created.title);
+  });
+
+  it("serves an entry from before pages had parents without a parent_id, rather than a null one", async () => {
+    const created = await seedPage();
+    const { parent_id, ...unparented } = created;
+    await db.insert(changeEvents).values({
+      entityKind: "content_page",
+      entityId: created.id,
+      versionNo: 2,
+      action: "updated",
+      snapshot: unparented,
+      actor: "spike",
+    });
+
+    const response = await inject({ url: `/pages/${created.id}/history/2` });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).not.toHaveProperty("parent_id");
+  });
+
+  it("404s a version that does not exist, or one recorded before pages were markdown", async () => {
+    const created = await seedPage();
+    await db.insert(changeEvents).values({
+      entityKind: "content_page",
+      entityId: created.id,
+      versionNo: 2,
+      action: "updated",
+      snapshot: { id: created.id, doc: { type: "root", children: [] } },
+      actor: "spike",
+    });
+
+    for (const version of [2, 3]) {
+      const response = await inject({
+        url: `/pages/${created.id}/history/${version}`,
+      });
+      expect(response.statusCode, String(version)).toBe(404);
+    }
+  });
+
+  it("400s a version that is not a positive whole number", async () => {
+    const created = await seedPage();
+    for (const version of ["0", "abc", "1.5", "99999999999"]) {
+      const response = await inject({
+        url: `/pages/${created.id}/history/${version}`,
+      });
+      expect(response.statusCode, version).toBe(400);
+    }
   });
 });
 
@@ -1083,6 +1275,8 @@ describe("employee access", () => {
     ["GET", "/services/not-a-uuid"],
     ["GET", "/taxonomy"],
     ["GET", "/version"],
+    ["GET", "/pages/not-a-uuid/history"],
+    ["GET", "/pages/not-a-uuid/history/1"],
     ["POST", "/pages"],
     ["PUT", "/pages/not-a-uuid"],
     ["DELETE", "/pages/not-a-uuid"],

@@ -11,6 +11,7 @@
 import {
   and,
   count,
+  desc,
   eq,
   inArray,
   isNull,
@@ -31,10 +32,12 @@ import {
   type PageId,
   type Visibility,
 } from "../modules/page";
+import type { PageVersion } from "../modules/page-history";
 import type { Ancestor, ResolvablePage } from "../modules/page-visibility";
 import { err, ok, type Result } from "../modules/result";
 import type { SearchChunk } from "../modules/search-text";
 import {
+  authUsers,
   categories,
   changeEvents,
   contentPages,
@@ -52,7 +55,7 @@ import type { NavigationReads } from "../services/site-navigation";
 
 type PageRow = typeof contentPages.$inferSelect;
 
-const toDocument = (row: PageRow): PageDocument => ({
+export const toDocument = (row: PageRow): PageDocument => ({
   id: row.id,
   url: row.url,
   slug: row.slug,
@@ -152,6 +155,32 @@ export async function writeSearchChunks(
   await db
     .insert(searchChunks)
     .values(chunks.map((chunk, ordinal) => ({ pageId, ordinal, ...chunk })));
+}
+
+/** Append an entry to a page's change log, numbered after its last. */
+export async function writeChange(
+  db: Database,
+  change: PageChange,
+): Promise<void> {
+  const [next] = await db
+    .select({
+      versionNo: sql<number>`coalesce(max(${changeEvents.versionNo}), 0) + 1`,
+    })
+    .from(changeEvents)
+    .where(
+      and(
+        eq(changeEvents.entityKind, "content_page"),
+        eq(changeEvents.entityId, change.page.id),
+      ),
+    );
+  await db.insert(changeEvents).values({
+    entityKind: "content_page",
+    entityId: change.page.id,
+    versionNo: Number(next?.versionNo ?? 1),
+    action: change.action,
+    actor: change.actorId,
+    snapshot: change.page,
+  });
 }
 
 /** Pages, categories, search text and the change log, in the content database. */
@@ -533,27 +562,62 @@ export class PostgresPages
   appendChange(
     change: PageChange,
   ): Promise<Result<void, ContentStoreUnavailable>> {
-    return attempt("appendChange", async () => {
-      const [next] = await this.db
+    return attempt("appendChange", () => writeChange(this.db, change));
+  }
+
+  /** A page's change log, newest first, naming each actor who has an account. */
+  async versionsOf(
+    id: PageId,
+  ): Promise<Result<PageVersion[], ContentStoreUnavailable>> {
+    const rows = await attempt("versionsOf", () =>
+      this.db
         .select({
-          versionNo: sql<number>`coalesce(max(${changeEvents.versionNo}), 0) + 1`,
+          version: changeEvents.versionNo,
+          action: changeEvents.action,
+          actorId: changeEvents.actor,
+          name: authUsers.name,
+          email: authUsers.email,
+          occurredAt: changeEvents.occurredAt,
         })
+        .from(changeEvents)
+        .leftJoin(authUsers, eq(authUsers.id, changeEvents.actor))
+        .where(
+          and(
+            eq(changeEvents.entityKind, "content_page"),
+            eq(changeEvents.entityId, id),
+          ),
+        )
+        .orderBy(desc(changeEvents.versionNo)),
+    );
+    if (!rows.ok) return rows;
+    return ok(
+      rows.value.map((row) => ({
+        version: row.version,
+        action: row.action,
+        actor: { id: row.actorId, name: row.name, email: row.email },
+        occurred_at: row.occurredAt.toISOString(),
+      })),
+    );
+  }
+
+  /** The page as a change recorded it, or null when it has no such version. */
+  async snapshotAt(
+    id: PageId,
+    version: number,
+  ): Promise<Result<unknown, ContentStoreUnavailable>> {
+    const rows = await attempt("snapshotAt", () =>
+      this.db
+        .select({ snapshot: changeEvents.snapshot })
         .from(changeEvents)
         .where(
           and(
             eq(changeEvents.entityKind, "content_page"),
-            eq(changeEvents.entityId, change.page.id),
+            eq(changeEvents.entityId, id),
+            eq(changeEvents.versionNo, version),
           ),
-        );
-      await this.db.insert(changeEvents).values({
-        entityKind: "content_page",
-        entityId: change.page.id,
-        versionNo: Number(next?.versionNo ?? 1),
-        action: change.action,
-        actor: change.actorId,
-        snapshot: change.page,
-      });
-    });
+        ),
+    );
+    return rows.ok ? ok(rows.value[0]?.snapshot ?? null) : rows;
   }
 
   /** Every page with its category, for the service index. */
