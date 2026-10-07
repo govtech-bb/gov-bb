@@ -8,8 +8,10 @@ import Fastify, {
 import cors from "@fastify/cors";
 import swagger from "@fastify/swagger";
 import { OPENAPI_DOCUMENT } from "./openapi";
+import type { Redacted } from "./modules/redacted";
 import { registerAuthRoutes, type AuthHandler } from "./routes/auth";
-import { EDITOR_READ, IF_UPDATED_AT, registerPageRoutes } from "./routes/pages";
+import { IF_UPDATED_AT, registerPageRoutes } from "./routes/pages";
+import { EDITOR_READ, registerSiteRoutes } from "./routes/site";
 import type { EditorAccess } from "./services/editor-access";
 import {
   ConflictError,
@@ -18,12 +20,26 @@ import {
   type ApiStore,
 } from "./store";
 
-export {
-  EDITOR_READ,
-  IF_UPDATED_AT,
-  NOT_FOUND_READ,
-  PUBLIC_READ,
-} from "./routes/pages";
+export { IF_UPDATED_AT } from "./routes/pages";
+export { EDITOR_READ, NOT_FOUND_READ, PUBLIC_READ } from "./routes/site";
+
+/** A Scalar reference page over the generated spec. */
+const DOCS_HTML = `<!doctype html>
+<html>
+  <head>
+    <title>api_v2</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <script id="api-reference" data-url="/docs/openapi.json"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.73.0/dist/browser/standalone.js"
+      integrity="sha384-OKyMdsDX84ypSZEhVun8YElXk5c2GQaH3EXPOc6ItmVcLDUAvKHYwvDLvAgsqVtB"
+      crossorigin="anonymous"
+    ></script>
+  </body>
+</html>`;
 
 /** HTTP dependencies are constructed once by the process composition root. */
 export interface AppOptions {
@@ -31,6 +47,8 @@ export interface AppOptions {
   access: Pick<EditorAccess, "requireEmployee">;
   auth: AuthHandler;
   config: { apiOrigin: string; editorOrigin: string };
+  /** The site's preview token; without it, preview reads are refused. */
+  previewSecret?: Redacted<string>;
   /** The root logger shared with database and authentication adapters. */
   logger?: FastifyBaseLogger;
 }
@@ -62,8 +80,11 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   });
   // Swagger must load before routes so its onRoute hook sees their schemas.
   await app.register(swagger, { openapi: OPENAPI_DOCUMENT });
-  app.get("/openapi.json", { schema: { hide: true } }, async () =>
+  app.get("/docs/openapi.json", { schema: { hide: true } }, async () =>
     app.swagger(),
+  );
+  app.get("/docs", { schema: { hide: true } }, async (_request, reply) =>
+    reply.type("text/html; charset=utf-8").send(DOCS_HTML),
   );
 
   app.addHook("onSend", async (request, reply, payload) => {
@@ -122,6 +143,8 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     options.store,
     options.access,
     config.editorOrigin,
+    options.previewSecret,
   );
+  registerSiteRoutes(app, options.store, options.previewSecret);
   return app;
 }

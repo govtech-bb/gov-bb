@@ -1,6 +1,6 @@
 /**
- * Loads the live estate's categories, forms and markdown pages — the
- * snapshot in `seed-data/estate.json`.
+ * Loads the live estate's categories and markdown pages — the snapshot in
+ * `seed-data/estate.json` — with each new page's search chunks.
  *
  * Every insert is `on conflict do nothing`, so this is additive and
  * idempotent: it inserts what is missing and never overwrites what an author
@@ -8,68 +8,102 @@
  * mean a newly added page never reached a database seeded before it, silently.
  */
 
-import { sql } from "drizzle-orm";
-import { categories, contentPages, forms } from "./schema";
+import { eq, sql } from "drizzle-orm";
+import { categories, contentPages } from "./schema";
 import { ESTATE } from "./seed-data";
-import type { Database } from "./store";
+import { writeSearchChunks, type Database } from "./store";
 
 export async function seed(db: Database): Promise<{
   categories: number;
-  forms: number;
   documents: number;
 }> {
-  const counts = { categories: 0, forms: 0, documents: 0 };
+  const counts = { categories: 0, documents: 0 };
 
+  // The taxonomy lists a category before its subcategories.
+  const categoryIds = new Map<string, string>();
+  const idOf = async (slug: string) => {
+    if (!categoryIds.has(slug)) {
+      const [row] = await db
+        .select({ id: categories.id })
+        .from(categories)
+        .where(eq(categories.slug, slug));
+      if (row) categoryIds.set(slug, row.id);
+    }
+    return categoryIds.get(slug) ?? null;
+  };
   for (const category of ESTATE.categories) {
     const result = await db
       .insert(categories)
-      .values(category)
+      .values({
+        slug: category.slug,
+        title: category.title,
+        description: category.description,
+        position: category.position,
+        parentId: category.parent ? await idOf(category.parent) : null,
+      })
       .onConflictDoNothing()
       .returning({ id: categories.id });
     counts.categories += result.length;
   }
 
-  for (const form of ESTATE.forms) {
-    const result = await db
-      .insert(forms)
-      .values({ formId: form.form_id, visibility: form.visibility })
-      .onConflictDoNothing()
-      .returning({ formId: forms.formId });
-    counts.forms += result.length;
-  }
-
-  const categoryIds = new Map(
+  // Parents before their sub-pages: each pass inserts the pages whose parent
+  // is already in.
+  const pageIds = new Map(
     (
       await db
-        .select({ id: categories.id, slug: categories.slug })
-        .from(categories)
-    ).map((row) => [row.slug, row.id]),
+        .select({ id: contentPages.id, url: contentPages.url })
+        .from(contentPages)
+    ).map((row) => [row.url, row.id]),
   );
-
-  for (const page of ESTATE.pages) {
-    const published =
-      page.visibility === "public"
-        ? new Date(page.published_at ?? Date.now())
-        : null;
-    const result = await db
-      .insert(contentPages)
-      .values({
-        url: page.url,
-        slug: page.url.split("/").at(-1) ?? "",
-        categoryId: page.category
-          ? (categoryIds.get(page.category) ?? null)
-          : null,
-        title: page.title,
-        description: page.description,
-        visibility: page.visibility,
-        formId: page.form_id,
-        bodyMarkdown: page.body_markdown,
-        frontmatter: page.frontmatter,
-        publishedAt: published,
-      })
-      .onConflictDoNothing()
-      .returning({ id: contentPages.id });
-    counts.documents += result.length;
+  let pending = ESTATE.pages.filter((page) => !pageIds.has(page.url));
+  while (pending.length > 0) {
+    const ready = pending.filter(
+      (page) => page.parent === null || pageIds.has(page.parent),
+    );
+    if (ready.length === 0) {
+      throw new Error(
+        `Seed pages with no parent in the estate: ${pending.map((page) => page.url).join(", ")}`,
+      );
+    }
+    for (const page of ready) {
+      const published =
+        page.visibility === "public"
+          ? new Date(page.published_at ?? Date.now())
+          : null;
+      const inserted = await db.transaction(async (tx) => {
+        const [row] = await tx
+          .insert(contentPages)
+          .values({
+            url: page.url,
+            slug: page.url.split("/").at(-1) ?? "",
+            categoryId: page.category ? await idOf(page.category) : null,
+            parentId: page.parent ? pageIds.get(page.parent)! : null,
+            title: page.title,
+            description: page.description,
+            visibility: page.visibility,
+            formId: page.form_id,
+            bodyMarkdown: page.body_markdown,
+            frontmatter: page.frontmatter,
+            publishedAt: published,
+          })
+          .onConflictDoNothing()
+          .returning({ id: contentPages.id });
+        if (row) await writeSearchChunks(tx, row.id, page.body_markdown);
+        return row;
+      });
+      if (inserted) {
+        pageIds.set(page.url, inserted.id);
+        counts.documents += 1;
+      } else {
+        // Another instance seeded it first; its children still need its id.
+        const [existing] = await db
+          .select({ id: contentPages.id })
+          .from(contentPages)
+          .where(eq(contentPages.url, page.url));
+        if (existing) pageIds.set(page.url, existing.id);
+      }
+    }
+    pending = pending.filter((page) => !ready.includes(page));
   }
 
   return counts;
@@ -77,9 +111,8 @@ export async function seed(db: Database): Promise<{
 
 /** True when the estate is empty, so boot can say something useful. */
 export async function isEmpty(db: Database): Promise<boolean> {
-  const result = (await db.execute(
+  const { rows } = await db.execute<{ count: number }>(
     sql`select count(*)::int as count from content_pages`,
-  )) as { rows?: Array<{ count: number }> } | Array<{ count: number }>;
-  const rows = Array.isArray(result) ? result : (result.rows ?? []);
+  );
   return (rows[0]?.count ?? 0) === 0;
 }

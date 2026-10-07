@@ -8,17 +8,14 @@
  * this again to pick up content changes.
  *
  * - pages: every `.md` under `apps/landing/src/content`, at the url landing's
- *   registry gives it — primary category, then subcategory, then leaf, with
- *   a sub-page such as `<service>/start` hanging off its parent's url and,
- *   when it names none, taking its parent's category. A second category is
- *   dropped: a page has one `category_id`.
- * - categories: `CATEGORY_TAXONOMY`, without the subcategory tree, which the
- *   ERD has no table for.
- * - forms: every recipe in the forms API, with its `meta.visibility`
- *   (`preview` when it sets none, as the forms API defaults it; `maintenance`
- *   is not public, so it becomes `preview`) — the file's value, before any
- *   `service_status` override the forms API applies at runtime — plus a `draft` row for any form_id a page names
- *   that no recipe defines, so the FK holds.
+ *   registry gives it — primary category, then subcategory, then leaf. A
+ *   page is filed under its subcategory when it names one. A sub-page such
+ *   as `<service>/start` hangs off its parent's url, takes its parent's
+ *   category and records the parent; so do the pages landing nests without
+ *   nesting their url (`NESTED_WITHOUT_URL`). A second category is dropped:
+ *   a page has one `category_id`.
+ * - categories: `CATEGORY_TAXONOMY` in its order, each subcategory a
+ *   category with a parent.
  */
 
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -26,25 +23,15 @@ import { join, relative } from "node:path";
 import { execFileSync } from "node:child_process";
 import matter from "gray-matter";
 import { CATEGORY_TAXONOMY } from "@govtech-bb/content/categories";
-import type { Frontmatter, Visibility } from "../src/schema";
+import type { Frontmatter } from "../src/schema";
 import type { SeedEstate, SeedPage } from "../src/seed-data";
 
 const root = join(__dirname, "..", "..", "..");
 const contentDir = join(root, "apps", "landing", "src", "content");
-const recipesDir = join(
-  root,
-  "apps",
-  "api",
-  "src",
-  "forms",
-  "form-definitions",
-  "recipes",
-);
 const target = join(__dirname, "..", "src", "seed-data", "estate.json");
 
 const FRONTMATTER_KEYS = [
   "lede",
-  "subcategory",
   "stage",
   "featured",
   "section",
@@ -116,7 +103,8 @@ const parsed: Parsed[] = markdownFiles(contentDir).map((path) => {
     path: slug,
     ownUrl: `/${[primary, subcategory, leaf].filter(Boolean).join("/")}`,
     page: {
-      category: primary ?? null,
+      category: subcategory ?? primary ?? null,
+      parent: null,
       title: data.title ?? titleFromSlug(slug),
       description: data.description ?? null,
       visibility: data.visibility ?? "public",
@@ -141,43 +129,59 @@ const categoryOf = (page: Parsed): string | null =>
     ? categoryOf(bySlug.get(parentSlug(page.path)!)!)
     : null);
 
+/**
+ * Pages beneath a parent their url does not nest under: landing's
+ * `PARENT_PATHS` (`apps/landing/src/lib/breadcrumb-hierarchy.ts`), copied
+ * rather than imported so this script does not reach into another app and
+ * survives landing deleting it once it reads `parent_id`. Child url → parent.
+ */
+const NESTED_WITHOUT_URL: Record<string, string> = {
+  "/health-and-emergency-services/free-or-subsidised-medication":
+    "/health-and-emergency-services/find-an-open-pharmacy",
+  "/health-and-emergency-services/prescription-colours":
+    "/health-and-emergency-services/find-an-open-pharmacy",
+};
+const nestedUrls = new Map(Object.entries(NESTED_WITHOUT_URL));
+
+const parentUrlOf = (page: Parsed): string | null => {
+  const parent = bySlug.get(parentSlug(page.path) ?? "");
+  return parent ? urlOf(parent) : (nestedUrls.get(urlOf(page)) ?? null);
+};
+
 const pages: SeedPage[] = parsed
   .map((entry) => ({
     url: urlOf(entry),
     ...entry.page,
     category: categoryOf(entry),
+    parent: parentUrlOf(entry),
   }))
   .sort((a, b) => a.url.localeCompare(b.url));
 
-const recipeVisibility = (value: unknown): Visibility =>
-  value === "public" || value === "draft" ? value : "preview";
-
-const formVisibility = new Map<string, Visibility>(
-  readdirSync(recipesDir)
-    .filter((name) => name.endsWith(".json"))
-    .map((name) => {
-      const recipe = JSON.parse(readFileSync(join(recipesDir, name), "utf8"));
-      return [
-        recipe.formId,
-        recipeVisibility(recipe.meta?.visibility),
-      ] as const;
-    }),
-);
+// A sub-page takes its parent's category: the database requires it.
+const byUrl = new Map(pages.map((page) => [page.url, page]));
 for (const page of pages) {
-  if (page.form_id && !formVisibility.has(page.form_id)) {
-    formVisibility.set(page.form_id, "draft");
-  }
+  let parent = page.parent ? byUrl.get(page.parent) : undefined;
+  while (parent?.parent) parent = byUrl.get(parent.parent);
+  if (parent) page.category = parent.category;
 }
 
 const estate: SeedEstate = {
-  categories: CATEGORY_TAXONOMY.map(({ slug, title, description }) => ({
-    slug,
-    title,
-    description: description ?? null,
-  })),
-  forms: [...formVisibility]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([form_id, visibility]) => ({ form_id, visibility })),
+  categories: CATEGORY_TAXONOMY.flatMap((category, position) => [
+    {
+      slug: category.slug,
+      title: category.title,
+      description: category.description ?? null,
+      parent: null,
+      position,
+    },
+    ...(category.subcategories ?? []).map((sub, subPosition) => ({
+      slug: sub.slug,
+      title: sub.title,
+      description: sub.description ?? null,
+      parent: category.slug,
+      position: subPosition,
+    })),
+  ]),
   pages,
 };
 
@@ -185,6 +189,6 @@ writeFileSync(target, `${JSON.stringify(estate, null, 2)}\n`);
 // Formatted as lint-staged would, so committing it changes nothing.
 execFileSync("pnpm", ["exec", "prettier", "--write", target], { cwd: root });
 console.log(
-  `Wrote ${pages.length} pages, ${estate.categories.length} categories and ` +
-    `${estate.forms.length} forms to ${target}`,
+  `Wrote ${pages.length} pages and ${estate.categories.length} categories ` +
+    `to ${target}`,
 );

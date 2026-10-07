@@ -34,7 +34,7 @@ describe.skipIf(!HAS_DATABASE)("process resource ownership", () => {
         "select count(*)::int as count from pg_stat_activity where datname = current_database() and pid <> pg_backend_pid()",
       );
       expect(remaining).toEqual([{ count: 0 }]);
-      await expect(fetch(`${server.url}/openapi.json`)).rejects.toThrow();
+      await expect(fetch(`${server.url}/docs/openapi.json`)).rejects.toThrow();
     });
   }
 

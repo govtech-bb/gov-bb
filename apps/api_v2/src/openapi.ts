@@ -28,7 +28,6 @@ const visibility = {
 /** The frontmatter fields that did not become columns. */
 const frontmatterProperties = {
   lede: { type: "string" },
-  subcategory: { type: "string" },
   stage: { type: "string" },
   featured: { type: "boolean" },
   section: { type: "string" },
@@ -69,25 +68,41 @@ const pageResponse = {
       type: "string",
       nullable: true,
       description:
-        "The form a Start link with no href of its own opens, or null.",
+        "The form a Start link with no href of its own opens, or null. " +
+        "Whether the form is open is the forms API's to say.",
     },
     hide_start_links: {
       type: "boolean",
       description:
-        "True when the page's `/start` sub-page or form is not public: the " +
-        'site removes the Start link and counts "There are N ways…" down.',
+        "True when the page's `start` sub-page is hidden from this viewer: " +
+        'the site removes the Start link and counts "There are N ways…" down.',
     },
     breadcrumbs: {
       type: "array",
       description:
-        "The full trail, current page included, Home not. A level of the " +
-        "url with no category or page of its own has no crumb.",
+        "The full trail, current page included, Home not: the category " +
+        "(and its parent, for a subcategory), then the pages above this one.",
       items: {
         type: "object",
         properties: { name: { type: "string" }, url: { type: "string" } },
         required: ["name", "url"],
         additionalProperties: false,
       },
+    },
+    published_at: {
+      type: "string",
+      format: "date-time",
+      nullable: true,
+      description:
+        "When the page first went public (seeded from landing's " +
+        "`publish_date`); null until it has.",
+    },
+    updated_at: {
+      type: "string",
+      format: "date-time",
+      description:
+        "The page's last save, visibility changes included: the site's " +
+        '"Last updated" line.',
     },
   },
   required: [
@@ -97,6 +112,8 @@ const pageResponse = {
     "form_id",
     "hide_start_links",
     "breadcrumbs",
+    "published_at",
+    "updated_at",
   ],
   additionalProperties: false,
 } as const;
@@ -108,6 +125,14 @@ const pageDocument = {
     url: { type: "string", description: "The site's routing key." },
     slug: { type: "string", description: "The url's last segment." },
     category_id: { type: "string", format: "uuid", nullable: true },
+    parent_id: {
+      type: "string",
+      format: "uuid",
+      nullable: true,
+      description:
+        "The page this one sits beneath, in the same category; null for a " +
+        "page at the root of its category, which is what the category lists.",
+    },
     title: { type: "string" },
     description: { type: "string", nullable: true },
     visibility,
@@ -134,6 +159,7 @@ const pageDocument = {
     "url",
     "slug",
     "category_id",
+    "parent_id",
     "title",
     "description",
     "visibility",
@@ -201,6 +227,7 @@ const pageInput = {
     id: { type: "string", format: "uuid" },
     url: { type: "string", pattern: "^/[^?#]*[^/?#]$" },
     category_id: { type: "string", format: "uuid", nullable: true },
+    parent_id: { type: "string", format: "uuid", nullable: true },
     title: { type: "string", minLength: 1 },
     description: { type: "string", nullable: true },
     visibility,
@@ -210,6 +237,154 @@ const pageInput = {
   },
   required: ["url", "title", "body_markdown"],
   additionalProperties: false,
+} as const;
+
+const categoryRef = {
+  type: "object",
+  properties: {
+    slug: { type: "string" },
+    url: {
+      type: "string",
+      description: "`/<category>`, or `/<category>/<subcategory>`.",
+    },
+    title: { type: "string" },
+    description: { type: "string", nullable: true },
+  },
+  required: ["slug", "url", "title", "description"],
+  additionalProperties: false,
+} as const;
+
+const pageSummaryProperties = {
+  url: { type: "string" },
+  title: { type: "string" },
+  description: { type: "string", nullable: true },
+  digital: {
+    type: "boolean",
+    description: "It has a form, or its frontmatter says it is digital.",
+  },
+} as const;
+
+const pageSummary = {
+  type: "object",
+  properties: pageSummaryProperties,
+  required: ["url", "title", "description", "digital"],
+  additionalProperties: false,
+} as const;
+
+const categoryTree = {
+  type: "object",
+  properties: {
+    categories: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          ...categoryRef.properties,
+          subcategories: { type: "array", items: categoryRef },
+        },
+        required: [...categoryRef.required, "subcategories"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["categories"],
+  additionalProperties: false,
+} as const;
+
+const categoryListing = {
+  type: "object",
+  properties: {
+    category: categoryRef,
+    parent: {
+      ...categoryRef,
+      nullable: true,
+      description: "The category this is a subcategory of, or null.",
+    },
+    subcategories: {
+      type: "array",
+      items: categoryRef,
+      description: "Those with something to list, in order.",
+    },
+    pages: {
+      type: "array",
+      items: pageSummary,
+      description: "The pages at the category's root, A to Z.",
+    },
+  },
+  required: ["category", "parent", "subcategories", "pages"],
+  additionalProperties: false,
+} as const;
+
+const catalog = {
+  type: "object",
+  properties: {
+    pages: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          ...pageSummaryProperties,
+          stage: { type: "string", nullable: true },
+        },
+        required: [...pageSummary.required, "stage"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["pages"],
+  additionalProperties: false,
+} as const;
+
+const searchDocuments = {
+  type: "object",
+  properties: {
+    documents: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          ...pageSummaryProperties,
+          keywords: { type: "array", items: { type: "string" } },
+          chunks: {
+            type: "array",
+            description:
+              "The body as plain text, split at its headings, in order. " +
+              "Joined with spaces (heading, then body, skipping empties) " +
+              "they are the whole body's text.",
+            items: {
+              type: "object",
+              properties: {
+                heading: { type: "string", nullable: true },
+                body: { type: "string" },
+              },
+              required: ["heading", "body"],
+              additionalProperties: false,
+            },
+          },
+        },
+        required: [...pageSummary.required, "keywords", "chunks"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["documents"],
+  additionalProperties: false,
+} as const;
+
+/** Site reads: the public's view, or a reviewer's with the preview token. */
+const siteRead = {
+  headers: {
+    type: "object",
+    properties: {
+      "x-preview-token": {
+        type: "string",
+        description:
+          "The site's PREVIEW_SECRET. With it, `preview` content is served " +
+          "too, uncached (`no-store`); a wrong one is a 401.",
+      },
+    },
+  },
+  security: [{}, { previewToken: [] }],
 } as const;
 
 const error = {
@@ -270,12 +445,12 @@ export const SCHEMAS = {
     summary: "Get a public page by its url",
     description:
       "The site's read. A page is served only when it and every page above " +
-      "it in the url are public; a `/start` page also needs its form to be " +
-      "public. `hide_start_links` is set when the page's `/start` sub-page " +
-      "or form is not public. A bare `/<slug>` with no " +
-      "page of its own redirects (301) to the one public page with that " +
-      "slug.",
+      "it (by `parent_id`) are visible: public, or preview too with the " +
+      "preview token. `hide_start_links` is set when the page's `start` " +
+      "sub-page is not. A bare `/<slug>` with no page of its own redirects " +
+      "(301) to the one visible page with that slug.",
     tags: ["pages"],
+    ...siteRead,
     querystring: {
       type: "object",
       properties: { url: { type: "string", minLength: 1 } },
@@ -291,8 +466,69 @@ export const SCHEMAS = {
         additionalProperties: false,
       },
       400: error,
+      401: error,
       404: error,
     },
+  },
+
+  getCategories: {
+    summary: "The categories the site lists",
+    description:
+      "In order, each with its subcategories. A category is listed when it " +
+      "or one of its subcategories has a visible page at its root.",
+    tags: ["categories"],
+    ...siteRead,
+    response: { 200: categoryTree, 401: error },
+  },
+
+  getCategory: {
+    summary: "A category and what it lists",
+    description:
+      "Its subcategories and the visible pages at its root. 404 when it " +
+      "lists nothing.",
+    tags: ["categories"],
+    ...siteRead,
+    params: {
+      type: "object",
+      properties: { slug: { type: "string" } },
+      required: ["slug"],
+    },
+    response: { 200: categoryListing, 401: error, 404: error },
+  },
+
+  getSubcategory: {
+    summary: "A subcategory and what it lists",
+    tags: ["categories"],
+    ...siteRead,
+    params: {
+      type: "object",
+      properties: {
+        category: { type: "string" },
+        slug: { type: "string" },
+      },
+      required: ["category", "slug"],
+    },
+    response: { 200: categoryListing, 401: error, 404: error },
+  },
+
+  getCatalog: {
+    summary: "Every visible page",
+    description:
+      "Sub-pages included, `start` steps not, A to Z: for the sitemap and " +
+      "service lists.",
+    tags: ["pages"],
+    ...siteRead,
+    response: { 200: catalog, 401: error },
+  },
+
+  getSearchDocuments: {
+    summary: "What search indexes",
+    description:
+      "Every page the catalog lists, with its keywords and its body as " +
+      "plain-text chunks.",
+    tags: ["search"],
+    ...siteRead,
+    response: { 200: searchDocuments, 401: error },
   },
 
   getPage: {
@@ -346,19 +582,21 @@ export const SCHEMAS = {
 
   deletePage: {
     summary: "Delete a page",
-    description: "Requires an employee session and the editor's Origin header.",
+    description:
+      "Requires an employee session and the editor's Origin header. A page " +
+      "with sub-pages is refused (422) until they are moved or deleted.",
     tags: ["pages"],
     params: idParams,
     security: editorSecurity,
-    response: { 204: { type: "null" }, ...authErrors },
+    response: { 204: { type: "null" }, 422: validationFailed, ...authErrors },
   },
 
   listServices: {
     summary: "List services",
     description:
-      "The editor's index, ordered by title. The schema has no service, so " +
-      "one is read from the urls: a categorised page with no page above it " +
-      "is an entry, and every page below it belongs to it.",
+      "The editor's index, ordered by title. A categorised page at the root " +
+      "of its category is an entry, and every page beneath it by " +
+      "`parent_id` belongs to it.",
     tags: ["pages"],
     security: editorSecurity,
     response: {
@@ -393,6 +631,27 @@ export const SCHEMAS = {
 /** Route identity is shared without constructing a database or auth bypass. */
 export const ROUTES = {
   getPageByUrl: { method: "GET", url: "/pages", schema: SCHEMAS.getPageByUrl },
+  getCategories: {
+    method: "GET",
+    url: "/categories",
+    schema: SCHEMAS.getCategories,
+  },
+  getCategory: {
+    method: "GET",
+    url: "/categories/:slug",
+    schema: SCHEMAS.getCategory,
+  },
+  getSubcategory: {
+    method: "GET",
+    url: "/categories/:category/:slug",
+    schema: SCHEMAS.getSubcategory,
+  },
+  getCatalog: { method: "GET", url: "/catalog", schema: SCHEMAS.getCatalog },
+  getSearchDocuments: {
+    method: "GET",
+    url: "/search/documents",
+    schema: SCHEMAS.getSearchDocuments,
+  },
   getPage: { method: "GET", url: "/pages/:id", schema: SCHEMAS.getPage },
   createPage: { method: "POST", url: "/pages", schema: SCHEMAS.createPage },
   savePage: { method: "PUT", url: "/pages/:id", schema: SCHEMAS.savePage },
@@ -428,12 +687,18 @@ export const OPENAPI_DOCUMENT = {
   info: {
     title: "api_v2",
     description:
-      "Public markdown content and employee-authenticated editor operations. " +
+      "Public markdown content, categories and search text, and " +
+      "employee-authenticated editor operations. " +
       "Editor reads, writes, and the version token require a GitHub-authenticated govtech-bb organization member session.",
     version: "0.0.0",
   },
   tags: [
     { name: "pages", description: "Content pages, stored as markdown" },
+    {
+      name: "categories",
+      description: "The categories and subcategories the site lists",
+    },
+    { name: "search", description: "The text search indexes" },
     { name: "meta", description: "Freshness" },
     {
       name: "auth",
@@ -442,6 +707,14 @@ export const OPENAPI_DOCUMENT = {
   ],
   components: {
     securitySchemes: {
+      previewToken: {
+        type: "apiKey" as const,
+        in: "header" as const,
+        name: "x-preview-token",
+        description:
+          "The site's PREVIEW_SECRET, sent server to server. Optional on " +
+          "site reads; with it, `preview` content is served too.",
+      },
       editorSession: {
         type: "apiKey" as const,
         in: "cookie" as const,

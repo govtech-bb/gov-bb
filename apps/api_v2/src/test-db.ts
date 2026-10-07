@@ -1,19 +1,20 @@
 /**
- * A real Postgres for the tests, in-process.
+ * A real Postgres for the tests: the same server and driver as production.
  *
- * PGlite is Postgres 17 compiled to WASM, so the migration runs unmodified
- * and the constraints, the enums and the append-only trigger are all
- * genuinely exercised — none of which a mock would do. It also means
- * `nx run api-v2:test` needs no database, no docker and no `DB_*` variables,
- * which is what keeps the tests runnable in CI and on a plane.
+ * The global setup migrates one template database per run; each test gets a
+ * clone of it (`create database … template`), which copies files rather than
+ * replaying the migrations, so a fresh database per test stays cheap. Clones
+ * are dropped on close, and the setup's teardown drops whatever a crashed
+ * test left behind.
  *
- * The one thing it does not prove is that the SQL works against RDS over
- * TLS. That is a deploy-time acceptance criterion on #2700 and needs #2707.
+ * `DB_HOST` and friends default to a local Postgres. There is no skip: a
+ * suite that passes because it ran nothing is worse than one that fails.
  */
 
-import { PGlite } from "@electric-sql/pglite";
-import { drizzle } from "drizzle-orm/pglite";
-import { migrate } from "./migrate";
+import { randomUUID } from "node:crypto";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Client, Pool } from "pg";
+import { inject } from "vitest";
 import { buildApp, type AppOptions } from "./app";
 import { type Employee } from "./modules/auth";
 import { ok } from "./modules/result";
@@ -21,16 +22,81 @@ import { EditorAccess, type SessionReader } from "./services/editor-access";
 import { ApiStore, type Database } from "./store";
 import * as schema from "./schema";
 
-/** Compose the real SQL driver and migrations in memory. */
-export async function createTestDb(): Promise<{
+declare module "vitest" {
+  export interface ProvidedContext {
+    /** The migrated database every test database is cloned from. */
+    templateDatabase: string;
+  }
+}
+
+/** Connection settings for the test server, without a database name. */
+export const TEST_SERVER = {
+  host: process.env.DB_HOST ?? "localhost",
+  port: Number(process.env.DB_PORT ?? "5432"),
+  user: process.env.DB_USERNAME ?? "postgres",
+  password: process.env.DB_PASSWORD ?? "postgres",
+};
+
+/** Run one statement against the server's maintenance database. */
+export async function adminQuery(statement: string): Promise<unknown[]> {
+  const client = new Client({
+    ...TEST_SERVER,
+    database: process.env.DB_ADMIN_NAME ?? "postgres",
+  });
+  await client.connect();
+  try {
+    return (await client.query(statement)).rows;
+  } finally {
+    await client.end();
+  }
+}
+
+/** A test database: a drizzle handle, its pool, and how to throw it away. */
+export interface TestDb {
   db: Database;
+  pool: Pool;
+  name: string;
   close: () => Promise<void>;
-}> {
-  const client = new PGlite();
-  const db: Database = drizzle(client, { schema });
-  // PGlite's simple-query path, which is what a multi-statement script needs.
-  await migrate(db, (script) => client.exec(script));
-  return { db, close: () => client.close() };
+}
+
+/** Prefix shared by every database one run creates, so teardown can sweep. */
+export const runPrefix = (run: string) => `api_v2_t_${run}_`;
+
+/**
+ * A new database, empty or cloned from `template`. Names are generated hex,
+ * so interpolating them into DDL (which cannot take parameters) is safe.
+ */
+export async function createDatabase(
+  prefix: string,
+  template?: string,
+): Promise<TestDb> {
+  const name = `${prefix}${randomUUID().replaceAll("-", "").slice(0, 16)}`;
+  await adminQuery(
+    template
+      ? `create database ${name} template ${template} strategy file_copy`
+      : `create database ${name}`,
+  );
+  const pool = new Pool({ ...TEST_SERVER, database: name });
+  return {
+    db: drizzle(pool, { schema }),
+    pool,
+    name,
+    close: async () => {
+      await pool.end();
+      await adminQuery(`drop database if exists ${name} with (force)`);
+    },
+  };
+}
+
+/** A migrated database of the test's own. */
+export async function createTestDb(): Promise<TestDb> {
+  const template = inject("templateDatabase");
+  return createDatabase(template.replace(/template$/, ""), template);
+}
+
+/** An empty, unmigrated database, for tests of the migrations themselves. */
+export async function createEmptyDb(): Promise<TestDb> {
+  return createDatabase(inject("templateDatabase").replace(/template$/, ""));
 }
 
 /** An employee fixture, never accepted by the production session adapter. */
@@ -53,7 +119,9 @@ export const TEST_HEADERS = {
 /** Compose the production HTTP adapter with an explicit session test double. */
 export function createTestApp(
   db: Database,
-  options: Partial<Pick<AppOptions, "auth" | "config" | "logger">> & {
+  options: Partial<
+    Pick<AppOptions, "auth" | "config" | "logger" | "previewSecret">
+  > & {
     sessions?: SessionReader;
   } = {},
 ) {
@@ -68,6 +136,7 @@ export function createTestApp(
     },
     config: options.config ?? TEST_HTTP_CONFIG,
     ...(options.logger ? { logger: options.logger } : {}),
+    ...(options.previewSecret ? { previewSecret: options.previewSecret } : {}),
   });
 }
 

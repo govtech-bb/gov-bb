@@ -82,9 +82,9 @@ async function main(): Promise<void> {
     if (config.seed) {
       operation = "seed";
       const counts = await seed(db);
-      if (counts.documents + counts.categories + counts.forms > 0) {
+      if (counts.documents + counts.categories > 0) {
         console.log(
-          `api_v2: seeded ${counts.documents} pages, ${counts.categories} categories, ${counts.forms} forms`,
+          `api_v2: seeded ${counts.documents} pages, ${counts.categories} categories`,
         );
       }
     }
@@ -103,6 +103,7 @@ async function main(): Promise<void> {
       access: betterAuth ? new EditorAccess(betterAuth) : authBypass.access,
       auth: betterAuth ?? authBypass.auth,
       config: config.auth,
+      ...(config.previewSecret ? { previewSecret: config.previewSecret } : {}),
       logger,
     });
     if (stopping) return;

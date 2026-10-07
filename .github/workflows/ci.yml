@@ -474,6 +474,20 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # api_v2's tests run against a real Postgres: one migrated template per
+    # run, cloned per test (apps/api_v2/src/test-db.ts).
+    services:
+      postgres:
+        image: postgres:17.9@sha256:2a0d0fe14825b0939f78a8cad5cd4e6aa68bf94d0e5dd96e24b6d23af4315545 # 17.9
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:

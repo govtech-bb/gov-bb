@@ -1,5 +1,5 @@
 /**
- * The seed corpus: the live estate's markdown, categories and forms, as
+ * The seed corpus: the live estate's markdown and categories, as
  * `scripts/build-seed-data.ts` snapshotted them into `estate.json`.
  *
  * A committed snapshot rather than a read of `apps/landing` at boot, because
@@ -13,17 +13,17 @@ export interface SeedCategory {
   slug: string;
   title: string;
   description: string | null;
-}
-
-export interface SeedForm {
-  form_id: string;
-  visibility: Visibility;
+  /** The parent category's slug, for a subcategory. */
+  parent: string | null;
+  position: number;
 }
 
 export interface SeedPage {
   url: string;
   /** A category slug, resolved to `category_id` at seed time. */
   category: string | null;
+  /** The parent page's url, resolved to `parent_id` at seed time. */
+  parent: string | null;
   title: string;
   description: string | null;
   visibility: Visibility;
@@ -36,7 +36,6 @@ export interface SeedPage {
 
 export interface SeedEstate {
   categories: SeedCategory[];
-  forms: SeedForm[];
   pages: SeedPage[];
 }
 

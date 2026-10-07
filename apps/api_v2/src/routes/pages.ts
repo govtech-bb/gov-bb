@@ -4,42 +4,35 @@ import { Redacted } from "../modules/redacted";
 import { ROUTES } from "../openapi";
 import type { EditorAccess } from "../services/editor-access";
 import type { ApiStore, PageInput } from "../store";
+import { siteRead } from "./site";
 
 /** The editor sends the exact millisecond timestamp from its last read. */
 export const IF_UPDATED_AT = "if-updated-at";
-/** Public content may be shared by the site and its caches. */
-export const PUBLIC_READ =
-  "public, max-age=60, stale-while-revalidate=300, stale-if-error=86400";
-/** Authenticated responses must never enter a browser or shared cache. */
-export const EDITOR_READ = "no-store";
-/** A short negative cache keeps missing public URLs inexpensive. */
-export const NOT_FOUND_READ = "public, max-age=10";
-
-/** Public page resolution and authenticated editor operations. */
+/** Page resolution for the site, and authenticated editor operations. */
 export async function registerPageRoutes(
   app: FastifyInstance,
   store: ApiStore,
   access: Pick<EditorAccess, "requireEmployee">,
   editorOrigin: string,
+  previewSecret?: Redacted<string>,
 ): Promise<void> {
   app.route<{ Querystring: { url: string } }>({
     ...ROUTES.getPageByUrl,
     handler: async (request, reply) => {
       const { url } = request.query;
-      const resolved = await store.resolve(url);
-      if (resolved.kind === "not_found") {
-        return reply
-          .header("Cache-Control", NOT_FOUND_READ)
-          .status(404)
-          .send({ error: "not_found", message: `No page at ${url}` });
-      }
-      reply.header("Cache-Control", PUBLIC_READ);
-      if (resolved.kind === "redirect")
-        return reply
-          .status(301)
-          .header("Location", resolved.url)
-          .send({ redirect: resolved.url });
-      return resolved.page;
+      return siteRead(
+        request,
+        reply,
+        previewSecret,
+        async (viewer) => {
+          const resolved = await store.resolve(url, viewer);
+          if (resolved.kind === "not_found") return null;
+          if (resolved.kind === "page") return resolved.page;
+          reply.status(301).header("Location", resolved.url);
+          return { redirect: resolved.url };
+        },
+        `No page at ${url}`,
+      );
     },
   });
 

@@ -103,6 +103,9 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
       name: "Money and financial support",
       url: "/money-financial-support",
     });
+    // The seed carries landing's publish_date over as published_at.
+    expect(body.published_at).toBe("2026-05-12T00:00:00.000Z");
+    expect(z.iso.datetime().parse(body.updated_at)).toBeTruthy();
   });
 
   it("redirects a bare slug to its canonical url", async () => {
@@ -140,7 +143,7 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
   });
 
   it("serves its own OpenAPI document", async () => {
-    const { status, body } = await get("/openapi.json");
+    const { status, body } = await get("/docs/openapi.json");
 
     expect(status).toBe(200);
     expect(body.openapi).toBe("3.0.3");
@@ -190,12 +193,14 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
   it("names the field a refused page is wrong in", async () => {
     const page = await createPage("/e2e/refused");
 
-    const response = await put(page, { form_id: "no-such-form" });
+    const response = await put(page, {
+      parent_id: "22222222-2222-4222-8222-222222222222",
+    });
 
     expect(response.status).toBe(422);
     const { errors } = objectSchema.parse(await response.json());
     expect(errors).toEqual([
-      { field: "form_id", message: "No form with that id." },
+      { field: "parent_id", message: "No page with that id." },
     ]);
   });
 
