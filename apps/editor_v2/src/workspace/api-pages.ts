@@ -1,5 +1,12 @@
-import type { ApiPage, ServiceDetail, TaxonomyCategory } from "../api/client";
-import { pageToMarkdown } from "../api/page-markdown";
+import {
+  ApiFailure,
+  type ApiPage,
+  type EditorApi,
+  type FieldError,
+  type ServiceDetail,
+  type TaxonomyCategory,
+} from "../api/client";
+import { markdownToSaveFields, pageToMarkdown } from "../api/page-markdown";
 import type { DraftStorage } from "../persistence/types";
 import { documentKeys, type PageDocument, type PageRole } from "./model";
 
@@ -19,6 +26,10 @@ export function parseServerBase(source: string | null, id: string): ServerBase |
   } catch {
     return undefined;
   }
+}
+
+export function writeServerBase(storage: DraftStorage, base: ServerBase) {
+  storage.setItem(serverBaseKey(base.page.id), JSON.stringify(base));
 }
 
 /**
@@ -46,7 +57,7 @@ export function seedApiPage(
   if (followsServer) storage.setItem(keys.committed, server.markdown);
 
   if (!followsServer && base) return base;
-  storage.setItem(serverBaseKey(page.id), JSON.stringify(server));
+  writeServerBase(storage, server);
 
   return server;
 }
@@ -74,4 +85,42 @@ export function roleOf(page: ApiPage): PageRole {
   if (page.parent_id === null) return "entry";
 
   return page.slug === "start" ? "start" : "supporting";
+}
+
+export type SaveOutcome =
+  | { kind: "saved"; base: ServerBase }
+  | { kind: "invalid"; errors: readonly FieldError[] }
+  | { kind: "conflict" | "missing" | "signed-out" | "failed" };
+
+/** Save a draft over the version it was edited from; the API refuses it if that version has moved on. */
+export async function savePage(
+  api: Pick<EditorApi, "savePage">,
+  base: ServerBase,
+  markdown: string,
+  categories: readonly TaxonomyCategory[],
+): Promise<SaveOutcome> {
+  const fields = markdownToSaveFields(markdown, base.page, categories);
+
+  if (!fields.ok) return { kind: "invalid", errors: fields.errors };
+
+  try {
+    const page = await api.savePage(base.page.id, fields.value, base.page.updated_at);
+
+    return { kind: "saved", base: { page, markdown } };
+  } catch (error) {
+    if (!(error instanceof ApiFailure)) throw error;
+
+    switch (error.status) {
+      case 422:
+        return { kind: "invalid", errors: error.errors };
+      case 409:
+        return { kind: "conflict" };
+      case 404:
+        return { kind: "missing" };
+      case 401:
+        return { kind: "signed-out" };
+      default:
+        return { kind: "failed" };
+    }
+  }
 }

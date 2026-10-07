@@ -2,7 +2,7 @@
 
 Page and form authoring for GovBB services. The workspace groups entry pages, supporting content and an application form or calculator, with a separate draft and undo history for each document.
 
-Pages use Markdown with YAML frontmatter. Forms use native v2 JSON for import/export and versioned Markdown for drafts. Drafts are saved in the browser; publishing and application submission are not connected.
+Pages use Markdown with YAML frontmatter. Forms use native v2 JSON for import/export and versioned Markdown for drafts. Drafts are saved in the browser. Pages from the content API are saved back to it when the author chooses Save; forms stay in the browser, and application submission is not connected.
 
 ## Run locally
 
@@ -23,7 +23,7 @@ For local development without GitHub, run `vite dev` with `VITE_AUTH_BYPASS=true
 
 `VITE_LANDING_ORIGIN` is the optional public site origin. When set, each service's path in the Services list links to its page there.
 
-Authentication gates the workspace; it does not publish or synchronize drafts. Signing out preserves local drafts and is blocked if the current draft cannot be safely saved. Browser storage remains local to this origin and is not separated by account.
+Authentication gates the workspace, and saving a page sends it to the content API with the session; drafts themselves stay in the browser. Signing out preserves local drafts and is blocked if the current draft cannot be safely saved. Browser storage remains local to this origin and is not separated by account.
 
 ## Checks
 

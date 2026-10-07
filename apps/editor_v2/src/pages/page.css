@@ -203,7 +203,8 @@
   font-size: 0.8125rem;
 }
 .page-save-status [title="Saved"],
-.page-save-status [title="Saving…"] {
+.page-save-status [title="Saving…"],
+.page-save-status [title="Unsaved changes"] {
   color: var(--color-muted);
 }
 .page-document-actions,

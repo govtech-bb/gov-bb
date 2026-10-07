@@ -110,7 +110,7 @@ function useAutoHeight(value: string | undefined) {
   return input;
 }
 
-export function PageTitleField() {
+export function PageTitleField({ error }: { error?: string }) {
   const { editor, metadata, editable, update, historyKeys } = useMetadataUpdate();
   const title = useAutoHeight(metadata.title);
   const lede = useAutoHeight(metadata.lede);
@@ -131,8 +131,10 @@ export function PageTitleField() {
           onKeyDown={(event) => {
             if (event.key === "Enter") event.preventDefault();
           }}
+          aria-invalid={error ? true : undefined}
         />
       </label>
+      {error && <p className="text-14 text-error">{error}</p>}
       <textarea
         ref={lede}
         aria-label="Introduction"
@@ -173,11 +175,13 @@ function PageDetail({
   label,
   children,
   unsupported = false,
+  error,
 }: {
   id: string;
   label: string;
   children: ReactNode;
   unsupported?: boolean;
+  error?: string;
 }) {
   return (
     <div className="grid grid-cols-[9rem_minmax(0,1fr)] items-start gap-x-4 gap-y-1.5 @max-[30rem]:grid-cols-1">
@@ -194,6 +198,7 @@ function PageDetail({
         ) : (
           children
         )}
+        {error && <p className="pt-1 text-13 text-error">{error}</p>}
       </div>
     </div>
   );
@@ -216,12 +221,15 @@ export type PageDetailsOptions = {
   single?: boolean;
   /** When the server dates publication, its date shown read-only; null until the page first goes public. */
   publishedAt?: string | null;
+  /** Why the host refused each field, keyed by field name. */
+  errors?: Readonly<Record<string, string>>;
 };
 
 export function PageDetailsFields({
   categories = [],
   single = false,
   publishedAt,
+  errors = {},
 }: PageDetailsOptions) {
   const { metadata, yaml, editable, update, historyKeys } = useMetadataUpdate();
   const id = useId();
@@ -302,7 +310,12 @@ export function PageDetailsFields({
       >
         <legend className="sr-only">Page details</legend>
         {document.has("url") && (
-          <PageDetail id={`${id}-url`} label="Path" unsupported={unsupported("url")}>
+          <PageDetail
+            id={`${id}-url`}
+            label="Path"
+            unsupported={unsupported("url")}
+            error={errors.url}
+          >
             <input
               id={`${id}-url`}
               className={control}
@@ -313,7 +326,7 @@ export function PageDetailsFields({
             />
           </PageDetail>
         )}
-        <PageDetail id={`${id}-description`} label="Description">
+        <PageDetail id={`${id}-description`} label="Description" error={errors.description}>
           <textarea
             id={`${id}-description`}
             className={cn(
@@ -331,6 +344,7 @@ export function PageDetailsFields({
             id={`${id}-category`}
             label="Categories"
             unsupported={unsupported("category") || unsupported("categories")}
+            error={errors.category ?? errors.category_id}
           >
             <div className="flex flex-wrap gap-1.5">
               {selected.map((slug) => {
@@ -389,6 +403,7 @@ export function PageDetailsFields({
             id={`${id}-subcategory`}
             label="Subcategory"
             unsupported={unsupported("subcategory")}
+            error={errors.subcategory}
           >
             <select
               id={`${id}-subcategory`}
@@ -415,6 +430,7 @@ export function PageDetailsFields({
           id={`${id}-visibility`}
           label="Visibility"
           unsupported={unsupported("visibility")}
+          error={errors.visibility}
         >
           <select
             id={`${id}-visibility`}
@@ -434,6 +450,7 @@ export function PageDetailsFields({
           id={`${id}-date`}
           label="Publication date"
           unsupported={unsupported("publish_date")}
+          error={errors.publish_date}
         >
           {publishedAt !== undefined ? (
             <input
@@ -466,7 +483,7 @@ export function PageDetailsFields({
             />
           )}
         </PageDetail>
-        <PageDetail id={`${id}-form`} label="Form ID">
+        <PageDetail id={`${id}-form`} label="Form ID" error={errors.form_id}>
           <input
             id={`${id}-form`}
             className={cn(control, shortControl)}

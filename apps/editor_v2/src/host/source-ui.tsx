@@ -60,7 +60,7 @@ export function useDraft() {
   return { store, ...snapshot };
 }
 
-function download(text: string, name = "form-source.md") {
+export function download(text: string, name = "form-source.md") {
   const url = URL.createObjectURL(
     new Blob([text], {
       type: name.endsWith(".json") ? "application/json" : "text/markdown;charset=utf-8",
@@ -382,26 +382,43 @@ export function SourceEditor({
   );
 }
 
-export function DraftStatus() {
+/** Where a draft stands against the host's own store, once the browser copy is safe. */
+export type ServerSaveStatus = "saved" | "unsaved" | "saving" | "failed";
+
+const serverText = {
+  saved: ["Saved", "Saved"],
+  unsaved: ["Unsaved changes", "Unsaved"],
+  saving: ["Saving…", "Saving…"],
+  failed: ["Not saved", "Unsaved"],
+} as const;
+
+export function DraftStatus({ server }: { server?: ServerSaveStatus }) {
   const draft = useDraft();
 
-  const text = {
-    saving: "Saving…",
-    saved: "Saved",
-    source: "Source changes",
-    conflict: "Draft conflict",
-    recovery: "Recover draft",
-    error: "Not saved",
-  }[draft.status];
+  // A browser-side problem outranks the host's status: it is the one to fix first.
+  const hosted = server && (draft.status === "saved" || draft.status === "saving");
 
-  const compactText = {
-    saving: "Saving…",
-    saved: "Saved",
-    source: "Edited",
-    conflict: "Conflict",
-    recovery: "Recover",
-    error: "Unsaved",
-  }[draft.status];
+  const text = hosted
+    ? serverText[server][0]
+    : {
+        saving: "Saving…",
+        saved: "Saved",
+        source: "Source changes",
+        conflict: "Draft conflict",
+        recovery: "Recover draft",
+        error: "Not saved",
+      }[draft.status];
+
+  const compactText = hosted
+    ? serverText[server][1]
+    : {
+        saving: "Saving…",
+        saved: "Saved",
+        source: "Edited",
+        conflict: "Conflict",
+        recovery: "Recover",
+        error: "Unsaved",
+      }[draft.status];
 
   return (
     <span
@@ -409,7 +426,7 @@ export function DraftStatus() {
       title={draft.error ?? text}
       className="flex items-center gap-1.5 text-14 whitespace-nowrap text-blue-20 [&>svg]:size-4"
     >
-      {draft.status === "saved" && <Check />}
+      {(hosted ? server === "saved" : draft.status === "saved") && <Check />}
       <span className="max-sm:sr-only">{text}</span>
       <span aria-hidden="true" className="sm:hidden">
         {compactText}

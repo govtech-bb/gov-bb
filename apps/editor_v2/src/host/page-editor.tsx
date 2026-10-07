@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Eye, FileText, PencilSimple } from "@phosphor-icons/react";
 import { EditorComposer } from "../editor";
 import {
@@ -18,25 +18,30 @@ import {
   DraftStatus,
   SourceEditor,
   useDraft,
+  type ServerSaveStatus,
 } from "./source-ui";
+
+/** What a host adds around a page draft: its own save controls, notices and status. */
+type PageHost = {
+  details?: PageDetailsOptions;
+  tools?: ReactNode;
+  notice?: ReactNode;
+  saveStatus?: ServerSaveStatus;
+};
 
 export function PageDraftEditor({
   store,
   active = true,
-  details,
-}: {
-  store: DraftStore;
-  active?: boolean;
-  details?: PageDetailsOptions;
-}) {
+  ...host
+}: { store: DraftStore; active?: boolean } & PageHost) {
   return (
     <DraftProvider store={store}>
-      <PageDraft active={active} details={details} />
+      <PageDraft active={active} {...host} />
     </DraftProvider>
   );
 }
 
-function PageDraft({ active, details }: { active: boolean; details?: PageDetailsOptions }) {
+function PageDraft({ active, details, tools, notice, saveStatus }: { active: boolean } & PageHost) {
   const draft = useDraft();
   const [preview, setPreview] = useState(false);
 
@@ -48,9 +53,11 @@ function PageDraft({ active, details }: { active: boolean; details?: PageDetails
             <FileText aria-hidden="true" /> Page source
           </span>
           <span className="page-save-status">
-            <DraftStatus />
+            <DraftStatus server={saveStatus} />
           </span>
+          {tools && <div className="page-document-actions">{tools}</div>}
         </div>
+        {notice}
         <div className="page-source-document">
           <h1>Edit this page in Markdown</h1>
           <p>
@@ -77,7 +84,7 @@ function PageDraft({ active, details }: { active: boolean; details?: PageDetails
             <FileText aria-hidden="true" /> {preview ? "Preview" : "Page editor"}
           </span>
           <span className="page-save-status">
-            <DraftStatus />
+            <DraftStatus server={saveStatus} />
           </span>
           <div className="page-document-actions">
             <PageHistoryControls />
@@ -94,8 +101,15 @@ function PageDraft({ active, details }: { active: boolean; details?: PageDetails
                 <SourceEditor documentLabel="page" fileName="page.md" />
               </span>
             )}
+            {tools && (
+              <>
+                <span className="page-tools-divider" aria-hidden="true" />
+                {tools}
+              </>
+            )}
           </div>
         </div>
+        {active && notice}
         {paused && active && (
           <p className="page-document-paused" role="status">
             Page editing is paused. Open Markdown to apply or discard source changes, or resolve the
@@ -104,7 +118,7 @@ function PageDraft({ active, details }: { active: boolean; details?: PageDetails
         )}
         <div className="page-document-canvas">
           <div hidden={preview} inert={paused || preview} className="page-document-writing">
-            <PageTitleField />
+            <PageTitleField error={details?.errors?.title} />
             <PageDetailsFields {...details} />
             <PageEditor label="Page content" />
           </div>

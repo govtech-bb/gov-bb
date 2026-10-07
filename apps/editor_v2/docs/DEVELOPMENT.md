@@ -76,6 +76,10 @@ The original form draft uses these keys:
 | Original input before native migration | `govbb-editor:draft:native-original` |
 | Interrupted JSON replacement | `govbb-editor:draft:replacement` |
 
+A page from the content API keeps its browser draft under its page id, beside `govbb-editor:documents:<id>:server`: the server version it was last loaded or saved as, and the Markdown that stood for it. The draft has unsaved changes while its Markdown differs from that version's, and Save sends that version's `updated_at` as `if-updated-at`.
+
+The API's types in `src/api/openapi.d.ts` are generated from `apps/api_v2/openapi.json`; when the API's spec changes, regenerate them with `pnpm exec vitest run src/api/openapi.test.ts -u`.
+
 Keep these keys stable when changing persistence. Unapplied source must survive reload, failed imports must retain the original input, and JSON replacement must retain the previous draft until recovery completes. Apply validates before replacing editor state. A storage failure must leave the unsaved work available for retry; conflicts between tabs require an explicit choice.
 
 Native IDs, answer keys, option values and Markdown anchors have different roles. Copying content remaps references and identities while retaining submitted values and opaque strings. See [Converters](CONVERTERS.md) for the preservation rules.
