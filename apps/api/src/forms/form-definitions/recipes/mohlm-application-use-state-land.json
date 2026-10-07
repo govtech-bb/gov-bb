@@ -144,7 +144,7 @@
           "value": "no"
         }
       ],
-      "markdownContent": "You can only apply for an organisation if it has given you permission.\n\nIf you get permission, you can come back and apply.\n\nYou can also go back and apply for yourself instead."
+      "markdownContent": "You can only continue if the organisation has given you permission."
     },
     {
       "stepId": "your-details",
@@ -160,6 +160,17 @@
           "ref": "components/first-name",
           "overrides": {
             "fieldId": "applicant-first-name"
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "fieldId": "applicant-middle-name",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -410,6 +421,17 @@
           }
         },
         {
+          "ref": "components/middle-name",
+          "overrides": {
+            "fieldId": "contact-middle-name",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
           "ref": "components/last-name",
           "overrides": {
             "fieldId": "contact-last-name"
@@ -428,7 +450,7 @@
     },
     {
       "stepId": "how-should-we-contact-you",
-      "title": "How should we contact you?",
+      "title": "Contact details",
       "elements": [
         {
           "ref": "components/email"
@@ -778,5 +800,5 @@
     }
   ],
   "createdAt": "2026-06-16T15:46:40.151Z",
-  "updatedAt": "2026-10-06T18:18:50.000Z"
+  "updatedAt": "2026-10-07T13:55:38.000Z"
 }

@@ -203,13 +203,11 @@ it("keeps the National Registration Number optional but still format-checked", a
   ).toBeDefined();
 });
 
-it("asks no sex, gender or middle name, and no address or ID for the contact person", async () => {
+it("asks no sex or gender, and no address or ID for the contact person", async () => {
   const steps = await hydratedSteps();
   const fieldIds = steps.flatMap((s) => s.elements.map((e) => e.fieldId));
 
-  expect(fieldIds.filter((id) => /sex|gender|middle-name/.test(id))).toEqual(
-    [],
-  );
+  expect(fieldIds.filter((id) => /sex|gender/.test(id))).toEqual([]);
 
   const contactIds = (await step("contact-person")).elements.map(
     (e) => e.fieldId,
@@ -219,4 +217,15 @@ it("asks no sex, gender or middle name, and no address or ID for the contact per
       /address|parish|country|town|postal|national-id/.test(id),
     ),
   ).toEqual([]);
+});
+
+// Content (#2914, 7 Oct): keep middle name, optional, on both people we ask
+// about. The registry component sets no `required`, so the recipe must say
+// `false` explicitly or a later registry default could make it mandatory.
+it.each([
+  ["your-details", "applicant-middle-name"],
+  ["contact-person", "contact-middle-name"],
+])("asks %s for an optional middle name", async (stepId, fieldId) => {
+  const middle = await field(stepId, fieldId);
+  expect(middle.validations?.required).toMatchObject({ value: false });
 });
