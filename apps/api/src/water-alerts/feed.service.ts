@@ -103,11 +103,13 @@ export class FeedService {
     }
     const parsed = rssSchema.parse(this.parser.parse(xml, true));
     const rawItems = parsed.rss.channel.item;
+    // Only a missing <item> means no notices: the parser turns an empty one
+    // into "", which must still count (and fail) as a notice.
     const items: unknown[] = Array.isArray(rawItems)
       ? rawItems
-      : rawItems
-        ? [rawItems]
-        : [];
+      : rawItems === undefined
+        ? []
+        : [rawItems];
 
     // Skip (never serve) a notice that is malformed or unsafe, and log it.
     const outages: Outage[] = [];
@@ -164,8 +166,10 @@ export class FeedService {
 /** The notice's guid or link, quoted and clipped, so a log line can trace it. */
 function noticeRef(raw: unknown): string {
   const item = (raw ?? {}) as Record<string, unknown>;
-  const ref = item.guid ?? item.link;
-  return typeof ref === "string" ? JSON.stringify(clip(ref, 200)) : "(no ID)";
+  const ref = [item.guid, item.link].find(
+    (v): v is string => typeof v === "string" && v.trim() !== "",
+  );
+  return ref ? JSON.stringify(clip(ref.trim(), 200)) : "(no ID)";
 }
 
 /** One-line reason a notice was skipped (Zod errors are otherwise JSON). */

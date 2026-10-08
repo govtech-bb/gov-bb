@@ -32,7 +32,11 @@ function makeHttp(returnValue: unknown): HttpService {
 }
 
 describe("FeedService", () => {
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    // Restore Logger spies even when an assertion fails mid-test.
+    vi.restoreAllMocks();
+  });
 
   it("parses the BWA feed into tagged outages", async () => {
     const service = new FeedService(makeHttp(of({ data: SAMPLE_FEED })));
@@ -105,11 +109,13 @@ describe("FeedService", () => {
         "<title><b>Nested</b></title>",
       ),
       "notice-1",
+      '"notice-2"',
     ],
     [
       "an invalid date",
       SAMPLE_FEED.replace("Mon, 22 Jun 2026 08:00:00 +0000", "not a date"),
       "notice-2",
+      '"notice-1"',
     ],
     [
       "a javascript: link",
@@ -118,6 +124,7 @@ describe("FeedService", () => {
         "javascript:alert(1)",
       ),
       "notice-2",
+      '"notice-1"',
     ],
     [
       "a data: link",
@@ -126,6 +133,7 @@ describe("FeedService", () => {
         "data:text/html,hello",
       ),
       "notice-2",
+      '"notice-1"',
     ],
     [
       "no link",
@@ -134,6 +142,7 @@ describe("FeedService", () => {
         "",
       ),
       "notice-2",
+      '"notice-1"',
     ],
     [
       "an over-long ID",
@@ -142,39 +151,60 @@ describe("FeedService", () => {
         `https://barbadoswaterauthority.com/${"x".repeat(512)}`,
       ),
       "notice-2",
+      // No guid, so the (clipped) link identifies it.
+      '"https://barbadoswaterauthority.com/xxx',
     ],
-  ])("skips a notice with %s and keeps the rest", async (_, xml, keptId) => {
-    const warn = vi
-      .spyOn(Logger.prototype, "warn")
-      .mockImplementation(() => undefined);
-    const service = new FeedService(makeHttp(of({ data: xml })));
-
-    const { outages } = await service.fetchOutages();
-
-    expect(outages.map((o) => o.id)).toEqual([keptId]);
-    expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn.mock.calls[0][0]).toMatch(/^Skipped invalid BWA notice/);
-    warn.mockRestore();
-  });
-
-  it("rejects the feed when it has notices but none are valid", async () => {
-    // An empty list here would tell residents there are no outages when the
-    // feed format has really changed, so fail honestly instead.
-    vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
-    const service = new FeedService(
-      makeHttp(
-        of({
-          data: SAMPLE_FEED.replaceAll(
-            /<pubDate>[^<]*<\/pubDate>/g,
-            "<pubDate>not a date</pubDate>",
-          ),
-        }),
+    [
+      "an empty guid",
+      SAMPLE_FEED.replace("<guid>notice-1</guid>", "<guid></guid>").replace(
+        "https://barbadoswaterauthority.com/notice-1",
+        "javascript:alert(1)",
       ),
-    );
+      "notice-2",
+      // An empty guid must not hide the link that identifies the notice.
+      '"javascript:alert(1)"',
+    ],
+  ])(
+    "skips a notice with %s and keeps the rest",
+    async (_, xml, keptId, loggedRef) => {
+      const warn = vi
+        .spyOn(Logger.prototype, "warn")
+        .mockImplementation(() => undefined);
+      const service = new FeedService(makeHttp(of({ data: xml })));
+
+      const { outages } = await service.fetchOutages();
+
+      expect(outages.map((o) => o.id)).toEqual([keptId]);
+      expect(warn).toHaveBeenCalledTimes(1);
+      // Logged with the skipped notice's guid (or link), so ops can trace it.
+      expect(warn.mock.calls[0][0]).toContain(
+        `Skipped invalid BWA notice ${loggedRef}`,
+      );
+    },
+  );
+
+  // An empty list here would tell residents there are no outages when the
+  // feed format has really changed, so fail honestly instead.
+  it.each([
+    [
+      "every notice is invalid",
+      SAMPLE_FEED.replaceAll(
+        /<pubDate>[^<]*<\/pubDate>/g,
+        "<pubDate>not a date</pubDate>",
+      ),
+    ],
+    // The parser turns a lone empty <item> into "", not an object.
+    ["its only notice is <item/>", "<rss><channel><item/></channel></rss>"],
+    [
+      "its only notice is empty",
+      "<rss><channel><item>  </item></channel></rss>",
+    ],
+  ])("rejects the feed when %s", async (_, xml) => {
+    vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+    const service = new FeedService(makeHttp(of({ data: xml })));
     await expect(service.fetchOutages()).rejects.toThrow(
       "No valid notices in BWA RSS feed",
     );
-    vi.restoreAllMocks();
   });
 
   it("accepts an empty RSS channel and keeps numeric GUIDs as strings", async () => {
