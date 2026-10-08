@@ -219,6 +219,14 @@ describe("AI system prompt", () => {
     );
   });
 
+  it("gates eligibility on the question, never on a disabled-field stop step", () => {
+    expect(prompt).toContain("## Eligibility Stops");
+    expect(prompt).toContain('"pattern": {"value": "^yes$"');
+    expect(prompt).toContain(
+      'NEVER build a separate "you are not eligible" step',
+    );
+  });
+
   it("explains step-level behaviours live in a behaviours array on the step", () => {
     // The lead-in must distinguish step-level from field-level placement.
     expect(prompt).toContain("STEP-level");

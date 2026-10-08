@@ -129,8 +129,37 @@
               "required": {
                 "error": "Select whether you have a disability",
                 "value": true
+              },
+              "pattern": {
+                "value": "^yes$",
+                "error": "You are not eligible to continue this application"
               }
             }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "ineligible-notice",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "applicant-details",
+                "targetFieldId": "applicant-dob",
+                "operator": "gte",
+                "value": "25",
+                "transform": "yearsSince"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "applicant-details",
+                "targetFieldId": "disability-eligibility",
+                "operator": "equal",
+                "value": "no"
+              }
+            ],
+            "content": "You are eligible to sign up if you meet both of the 2 criteria:\n\n- You are 16 to 24 years old (or between 16 and 34 if you are a person with a disability).\n- You are not currently employed or enrolled in a training institution.\n\nCurrently, you do not meet one or more of the above criteria, and therefore are not eligible to complete this form.",
+            "variant": "warning"
           }
         },
         {
@@ -287,41 +316,6 @@
         }
       ],
       "behaviours": []
-    },
-    {
-      "stepId": "ineligble-step",
-      "title": "You are ineligible",
-      "elements": [
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "isDisabled": true,
-            "validations": {
-              "equal": {
-                "error": "You are not eligible to continue this application"
-              },
-              "required": {
-                "value": true,
-                "error": "You are not eligible to continue this application"
-              }
-            },
-            "ui": {
-              "width": "short",
-              "hideLabel": true
-            }
-          }
-        }
-      ],
-      "behaviours": [
-        {
-          "type": "stepConditionalOn",
-          "targetStepId": "applicant-details",
-          "targetFieldId": "disability-eligibility",
-          "operator": "equal",
-          "value": "no"
-        }
-      ],
-      "markdownContent": "## Apply to Job Start Plus Programme Eligibility\n\n\nYou are eligible to sign up if you meet both of the 2 criteria:\n\n- You are 16 to 24 years old (or between 16 and 34 if you are a person with a disability).\n- You are not currently employed or enrolled in a training institution.\n\nCurrently, you do not meet one or more of the above criteria, and therefore are not eligible to complete this form."
     },
     {
       "stepId": "disability-support",
@@ -1428,5 +1422,5 @@
     }
   ],
   "createdAt": "2026-06-09T17:09:06.077Z",
-  "updatedAt": "2026-09-18T18:21:48.000Z"
+  "updatedAt": "2026-10-08T15:53:24.000Z"
 }
