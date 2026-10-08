@@ -311,16 +311,30 @@ describe("AI system prompt", () => {
     expect(prompt).toContain('"fieldId": "end-year"');
   });
 
-  it("pins the declaration step to exactly one element: the declaration-confirmed checkbox", () => {
-    // Rule 17 + the Declaration Checkbox Pattern: one confirmation checkbox,
-    // fixed fieldId/label, required — and nothing else in the step.
+  it("pins the declaration step to the declaration-confirmed checkbox", () => {
+    // Rule 17 + the Declaration Checkbox Pattern: one standard confirmation
+    // checkbox with fixed fieldId/label/statement, required. Only a
+    // service-specific acknowledgement checkbox may sit beside it (#2957).
     expect(prompt).toContain(
-      "The declaration step contains EXACTLY ONE element",
+      "The declaration step contains the standard declaration checkbox",
     );
     expect(prompt).toContain('"fieldId": "declaration-confirmed"');
     expect(prompt).toContain('"label": "Declaration"');
     // No worked example may place an extra field inside the declaration step.
     expect(prompt).not.toContain('"fieldId": "declaration-date"');
+  });
+
+  it("gives the standard declaration statement verbatim, with no placeholder (#2957)", () => {
+    expect(prompt).not.toContain("Full declaration statement text");
+    const pattern = prompt.slice(
+      prompt.indexOf("## Declaration Checkbox Pattern"),
+    );
+    expect(pattern).toContain(
+      '"label": "I confirm that the information I have provided is true and correct to the best of my knowledge."',
+    );
+    // Existing forms carry service-specific acknowledgements beside the
+    // standard checkbox; an edit must keep them, never fold them into it.
+    expect(prompt).toMatch(/keep any existing acknowledgement/i);
   });
 
   it("documents minYear/maxYear with literal value or currentYear, never a reference", () => {

@@ -20,6 +20,24 @@ const STANDARD = {
 /** chat-feedback is a feedback survey, not an application. */
 const EXEMPT = new Set(["chat-feedback"]);
 
+/**
+ * Service-specific acknowledgements kept beside the standard checkbox when
+ * #2957 moved each form to it. Pinned so a builder or AI edit can't drop them
+ * quietly; remove an entry only when the service no longer needs the clause.
+ */
+const ACKNOWLEDGEMENTS: Record<string, string> = {
+  "apply-for-food-business-licence": "authority-confirmed",
+  "apply-for-national-summer-camp-programme": "parent-guardian-confirmed",
+  "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026":
+    "parent-guardian-confirmed",
+  "apply-for-temporary-restaurant-permit": "regulations-acknowledged",
+  "bssee-form-b-defer-examination": "one-opportunity-acknowledged",
+  "camp-director-application": "suitability-check-consent",
+  "request-a-presidential-visit-for-a-centenarian": "request-terms-confirmed",
+  "request-an-environmental-health-officer": "regulations-acknowledged",
+  "youth-leadership-workshop-registration-2026": "responses-use-consent",
+};
+
 type Element = { ref?: string; fieldId?: string; overrides?: Element } & {
   options?: { label: string }[];
   validations?: { required?: { error?: string } };
@@ -59,6 +77,18 @@ describe("standard declaration wording (#2957)", () => {
         option: [STANDARD.option],
         error: STANDARD.error,
       });
+    },
+  );
+
+  it.each(Object.entries(ACKNOWLEDGEMENTS))(
+    "%s keeps its %s acknowledgement on the declaration step",
+    (formId, fieldId) => {
+      const step = declarations.find((d) => d.formId === formId)?.step;
+      const ack = step?.elements?.find(
+        (el) => (el.overrides ?? el).fieldId === fieldId,
+      );
+      expect(ack?.ref).toBe("components/confirmation");
+      expect((ack?.overrides ?? ack)?.validations?.required).toBeDefined();
     },
   );
 });
