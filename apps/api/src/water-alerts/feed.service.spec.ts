@@ -90,6 +90,26 @@ describe("FeedService", () => {
     await expect(service.fetchOutages()).rejects.toThrow("feed down");
   });
 
+  it("does not cache a feed with no valid notices, so the next fetch recovers", async () => {
+    // Caching the failure (or caching before parsing) would keep the page on
+    // "unavailable" for ten minutes after BWA fixes the feed.
+    vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+    const http = makeHttp(
+      of({
+        data: SAMPLE_FEED.replaceAll(
+          /<pubDate>[^<]*<\/pubDate>/g,
+          "<pubDate>not a date</pubDate>",
+        ),
+      }),
+    );
+    const service = new FeedService(http);
+    await expect(service.fetchOutages()).rejects.toThrow("No valid notices");
+
+    vi.mocked(http.get).mockReturnValue(of({ data: SAMPLE_FEED }));
+    expect((await service.fetchOutages()).outages).toHaveLength(2);
+    expect(http.get).toHaveBeenCalledTimes(2);
+  });
+
   it.each([
     "<html><body>Maintenance</body></html>",
     "<rss><channel><title>Unclosed feed</title></rss>",
