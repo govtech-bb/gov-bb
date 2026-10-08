@@ -23,6 +23,11 @@ const FeedbackSchema = z
         message:
           'Enter an email address in the correct format, like name@example.com',
       })
+      // Mirror the API's RFC 5321 bound so an over-long address shows a field
+      // error here, not a generic "could not send" after the API rejects it.
+      .refine((v) => v.length <= 254, {
+        message: 'Email address must be 254 characters or fewer',
+      })
       .transform((v) => (v === '' ? undefined : v)),
   })
   .refine((d) => d.visitReason.trim() || d.whatWentWrong.trim(), {

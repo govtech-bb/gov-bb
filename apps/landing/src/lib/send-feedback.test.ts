@@ -117,6 +117,21 @@ describe('postFeedback', () => {
     expect(fetchImpl).not.toHaveBeenCalled()
   })
 
+  it('returns a field error and never calls the API for an over-long email', async () => {
+    const fetchImpl = okFetch()
+    const longEmail = `${'a'.repeat(250)}@example.com` // 262 chars, valid format
+    const result = await postFeedback(
+      { ...VALID, email: longEmail },
+      { apiBase: 'https://api.example', fetchImpl },
+    )
+
+    expect(result.fieldErrors?.email).toBe(
+      'Email address must be 254 characters or fewer',
+    )
+    expect(result.success).toBeUndefined()
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
   it('still rejects an email on its own when both feedback fields are blank', async () => {
     const fetchImpl = okFetch()
     const result = await postFeedback(

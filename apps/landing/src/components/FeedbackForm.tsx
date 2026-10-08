@@ -76,7 +76,12 @@ export function FeedbackForm() {
           </Button>
         </div>
       ) : (
-        <form ref={formRef} onSubmit={onSubmit} className="space-y-6">
+        <form
+          ref={formRef}
+          onSubmit={onSubmit}
+          noValidate
+          className="space-y-6"
+        >
           {errorItems.length > 0 && (
             <ErrorSummary
               errors={errorItems}
