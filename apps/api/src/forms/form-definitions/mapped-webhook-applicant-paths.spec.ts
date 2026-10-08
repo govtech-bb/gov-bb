@@ -1,8 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { serviceContractRecipeSchema } from "@govtech-bb/form-types";
-import { BUILTIN_REGISTRY } from "@govtech-bb/registry";
-import { hydrateForm, type Resolver } from "../../registry/resolution";
+import { getCatalog, hydrateForm } from "@govtech-bb/form-builder";
 
 // `webhook-recipe-guards.ts` checks that a mapping's applicant paths are
 // well-formed and name a real *step*, but says so explicitly: field-level
@@ -13,12 +12,6 @@ import { hydrateForm, type Resolver } from "../../registry/resolution";
 // path is also dropped from `form_data`, so the answer reaches CaMS nowhere at
 // all; nothing goes red. Hydrate every mapped recipe and resolve the paths.
 const RECIPES_DIR = path.resolve(__dirname, "recipes");
-
-const resolver: Resolver = async (ref) => {
-  const entry = BUILTIN_REGISTRY[ref as keyof typeof BUILTIN_REGISTRY];
-  if (!entry) throw new Error(`unresolvable ref "${ref}"`);
-  return entry;
-};
 
 interface MappedRecipe {
   formId: string;
@@ -53,7 +46,7 @@ async function mappedRecipes(): Promise<MappedRecipe[]> {
 
     const { name, email, phone } = mapping.applicant;
     const routing = recipe.catchmentRouting;
-    const hydrated = await hydrateForm(recipe, resolver);
+    const hydrated = await hydrateForm(recipe, getCatalog());
     mapped.push({
       formId: recipe.formId,
       applicantPaths: [...(Array.isArray(name) ? name : [name]), email, phone],

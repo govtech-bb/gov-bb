@@ -1,12 +1,11 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { serviceContractRecipeSchema } from "@govtech-bb/form-types";
-import { BUILTIN_REGISTRY } from "@govtech-bb/registry";
 import {
   interpolateConfirmationMarkdown,
   resolveConditionalMarkdown,
 } from "@govtech-bb/form-conditions";
-import { hydrateForm, type Resolver } from "../../registry/resolution";
+import { getCatalog, hydrateForm } from "@govtech-bb/form-builder";
 
 // The confirmation copy follows two answers (#2068): whether an inspection is
 // certain, and whether submitting this form raised an officer request. Both are
@@ -23,12 +22,7 @@ const RECIPE_PATH = path.resolve(
 async function confirmationStep() {
   const raw = JSON.parse(await fs.readFile(RECIPE_PATH, "utf8"));
   const recipe = serviceContractRecipeSchema.parse(raw);
-  const resolver: Resolver = async (ref) => {
-    const entry = BUILTIN_REGISTRY[ref as keyof typeof BUILTIN_REGISTRY];
-    if (!entry) throw new Error(`unresolvable ref "${ref}"`);
-    return entry;
-  };
-  const hydrated = await hydrateForm(recipe, resolver);
+  const hydrated = await hydrateForm(recipe, getCatalog());
   const step = hydrated.steps.find(
     (s) => s.stepId === "submission-confirmation",
   );

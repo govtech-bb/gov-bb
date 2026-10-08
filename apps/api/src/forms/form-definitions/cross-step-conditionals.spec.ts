@@ -1,8 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { serviceContractRecipeSchema } from "@govtech-bb/form-types";
-import { BUILTIN_REGISTRY } from "@govtech-bb/registry";
-import { hydrateForm, type Resolver } from "../../registry/resolution";
+import { getCatalog, hydrateForm } from "@govtech-bb/form-builder";
 
 // A condition that names a field on ANOTHER step must say so with
 // `targetStepId`. The client defaults an absent `targetStepId` to the field's
@@ -34,12 +33,6 @@ const TARGETING_BEHAVIOURS = new Set([
   "stepConditionalOn",
   "optionalIf",
 ]);
-
-const resolver: Resolver = async (ref) => {
-  const entry = BUILTIN_REGISTRY[ref as keyof typeof BUILTIN_REGISTRY];
-  if (!entry) throw new Error(`unresolvable ref "${ref}"`);
-  return entry;
-};
 
 type Behaviour = {
   type: string;
@@ -125,7 +118,7 @@ async function hydratedRecipes(): Promise<
         await fs.readFile(path.join(RECIPES_DIR, file), "utf8"),
       );
       const recipe = serviceContractRecipeSchema.parse(raw);
-      const hydrated = await hydrateForm(recipe, resolver);
+      const hydrated = await hydrateForm(recipe, getCatalog());
       return {
         formId: file.replace(/\.json$/, ""),
         steps: hydrated.steps as unknown as HydratedStep[],

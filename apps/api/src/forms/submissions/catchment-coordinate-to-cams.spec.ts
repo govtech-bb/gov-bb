@@ -4,12 +4,11 @@ import {
   serviceContractRecipeSchema,
   type WebhookMapping,
 } from "@govtech-bb/form-types";
-import { BUILTIN_REGISTRY } from "@govtech-bb/registry";
 import {
   PARISH_ROUTING_POINTS,
   fillParishRoutingCoordinate,
 } from "@/catchment/parish-routing-point";
-import { hydrateForm, type Resolver } from "../../registry/resolution";
+import { getCatalog, hydrateForm } from "@govtech-bb/form-builder";
 import { buildMappedCasePayload } from "./processors/webhook-mapping";
 import type { SubmissionValues } from "./submissions.types";
 
@@ -40,12 +39,6 @@ import type { SubmissionValues } from "./submissions.types";
  * existing form to it.
  */
 const RECIPES_DIR = path.resolve(__dirname, "../form-definitions/recipes");
-
-const resolver: Resolver = async (ref) => {
-  const entry = BUILTIN_REGISTRY[ref as keyof typeof BUILTIN_REGISTRY];
-  if (!entry) throw new Error(`unresolvable ref "${ref}"`);
-  return entry;
-};
 
 const GEOCODED = "13.0975,-59.6167";
 const PARISH = "st-michael";
@@ -134,7 +127,7 @@ async function routedRecipes(): Promise<RoutedRecipe[]> {
     // vacuously if that ever changed.
     if (!mapping) throw new Error(`${recipe.formId}: routed with no mapping`);
 
-    const hydrated = await hydrateForm(recipe, resolver);
+    const hydrated = await hydrateForm(recipe, getCatalog());
     const coordinateStepId = routing.coordinatesField.split(".")[0];
 
     // The address lookup whose `geocodeTargets` writes the routing coordinate —

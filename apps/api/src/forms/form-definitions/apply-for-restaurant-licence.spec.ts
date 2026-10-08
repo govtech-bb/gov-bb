@@ -5,8 +5,7 @@ import {
   type Primitive,
 } from "@govtech-bb/form-types";
 import { validateField } from "@govtech-bb/form-validation";
-import { BUILTIN_REGISTRY } from "@govtech-bb/registry";
-import { hydrateForm, type Resolver } from "../../registry/resolution";
+import { getCatalog, hydrateForm } from "@govtech-bb/form-builder";
 
 // This recipe leans on FIELD-level behaviours: opening hours are one weekly
 // `opening-hours` field whose format rule reaches the contract through
@@ -37,14 +36,7 @@ type HydratedStep = {
 async function hydratedStep(stepId: string): Promise<HydratedStep> {
   const raw = JSON.parse(await fs.readFile(RECIPE_PATH, "utf8"));
   const recipe = serviceContractRecipeSchema.parse(raw);
-  // Every ref in this recipe is a builtin, so a miss is a bug in the recipe,
-  // not a DB-backed custom component — fail loudly rather than returning null.
-  const resolver: Resolver = async (ref) => {
-    const entry = BUILTIN_REGISTRY[ref as keyof typeof BUILTIN_REGISTRY];
-    if (!entry) throw new Error(`unresolvable ref "${ref}"`);
-    return entry;
-  };
-  const hydrated = await hydrateForm(recipe, resolver);
+  const hydrated = await hydrateForm(recipe, getCatalog());
   const step = hydrated.steps.find((s) => s.stepId === stepId);
   expect(step, `step "${stepId}" is missing from the recipe`).toBeDefined();
   return step! as unknown as HydratedStep;

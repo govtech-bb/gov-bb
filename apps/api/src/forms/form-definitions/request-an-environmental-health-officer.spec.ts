@@ -1,8 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { serviceContractRecipeSchema } from "@govtech-bb/form-types";
-import { BUILTIN_REGISTRY } from "@govtech-bb/registry";
-import { hydrateForm, type Resolver } from "../../registry/resolution";
+import { getCatalog, hydrateForm } from "@govtech-bb/form-builder";
 
 // The food steps are the only conditional STEPS in the recipe set, and a
 // step-level property that hydrateForm does not carry through is dropped
@@ -20,15 +19,7 @@ const GATED_STEP_IDS = ["food-details", "food-safety"];
 async function hydratedSteps() {
   const raw = JSON.parse(await fs.readFile(RECIPE_PATH, "utf8"));
   const recipe = serviceContractRecipeSchema.parse(raw);
-  // Resolver = (ref: string) => Promise<RegistryEntry | null>. Every ref in
-  // this recipe is a builtin, so a miss is a bug in the recipe, not a
-  // DB-backed custom component — fail loudly rather than returning null.
-  const resolver: Resolver = async (ref) => {
-    const entry = BUILTIN_REGISTRY[ref as keyof typeof BUILTIN_REGISTRY];
-    if (!entry) throw new Error(`unresolvable ref "${ref}"`);
-    return entry;
-  };
-  const hydrated = await hydrateForm(recipe, resolver);
+  const hydrated = await hydrateForm(recipe, getCatalog());
   return hydrated.steps as unknown as {
     stepId: string;
     behaviours?: {

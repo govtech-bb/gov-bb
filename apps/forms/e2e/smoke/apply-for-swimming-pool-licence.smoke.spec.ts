@@ -96,7 +96,7 @@
  *    premises address on a plain step. Do not move it back inside the
  *    repeatable step without changing the platform first.
  *  - The confirmation screen's "What happens next" copy is asserted. It lives in
- *    `markdownContent`, which `hydrateStep` (apps/api/src/registry/resolution.ts)
+ *    `markdownContent`, which `hydrateForm` (packages/form-builder/src/resolution.ts)
  *    carries into the served contract; `nextSteps` — where the #2451 rebuild put
  *    it — is deliberately NOT carried, so the copy rendered nothing until #2507
  *    moved it back. NOTE the ordering: this assertion only passes once that
