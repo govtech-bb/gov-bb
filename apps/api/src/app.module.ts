@@ -14,6 +14,7 @@ import { FeedbackModule } from "./feedback/feedback.module";
 import { ServiceStatusModule } from "./services/service-status.module";
 import { ContentModule } from "./content/content.module";
 import { GeocodeModule } from "./geocode/geocode.module";
+import { CatchmentGeometryModule } from "./catchment/catchment-geometry.module";
 import { WaterAlertsModule } from "./water-alerts/water-alerts.module";
 import { MonitoringModule } from "./monitoring/monitoring.module";
 import { TelemetryModule } from "./telemetry/telemetry.module";
@@ -54,6 +55,7 @@ import { envValidationSchema } from "./config/env.validation";
     ServiceStatusModule,
     ContentModule,
     GeocodeModule,
+    CatchmentGeometryModule,
     WaterAlertsModule,
     MonitoringModule,
   ],
