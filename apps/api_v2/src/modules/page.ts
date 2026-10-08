@@ -201,6 +201,21 @@ export function cycleOf(
     : null;
 }
 
+/**
+ * A page keeps its path once it has been published, even after it is
+ * unpublished: links to it are already out in the world.
+ */
+export function pathChangeOf(
+  current: PageDocument,
+  fields: Pick<PageFields, "url">,
+): PageRejected | null {
+  return current.published_at !== null && fields.url !== current.url
+    ? new PageRejected([
+        { field: "url", message: "Published pages keep their path" },
+      ])
+    : null;
+}
+
 /** What creating a page writes: published now if it starts public. */
 export function creationOf(
   id: PageId | undefined,

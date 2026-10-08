@@ -4,6 +4,7 @@ import {
   cycleOf,
   PageConflict,
   PageNotFound,
+  pathChangeOf,
   placedUnder,
   revisionOf,
   withDefaults,
@@ -199,6 +200,8 @@ export class PageEditing {
         current.updated_at !== expectedUpdatedAt.toISOString()
       )
         return err(new PageConflict(id));
+      const moved = pathChangeOf(current, fields);
+      if (moved) return err(moved);
 
       // Null moves the page to its category's root; only leaving it out keeps the parent.
       const placed = await place(records, id, {
