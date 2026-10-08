@@ -1,5 +1,4 @@
 import type { ApiPage, FieldError, SaveFields } from "../api/client";
-import { urlProblem } from "../api/page-markdown";
 
 /** A page's details as the content API keeps them: everything a save sends except the body. */
 export type PageDetails = Omit<SaveFields, "body_markdown" | "parent_id">;
@@ -40,23 +39,11 @@ export function withLede(details: PageDetails, lede: string): PageDetails {
   return { ...details, frontmatter };
 }
 
-/** Every detail the content API would refuse, so the author can fix it before saving. */
+/**
+ * A service's entry page is filed under a category. That is the editor's rule,
+ * since the content API also keeps pages that are not services; the API
+ * words every other refusal itself.
+ */
 export function detailsProblems(details: PageDetails, entry: boolean): FieldError[] {
-  const errors: FieldError[] = [];
-
-  if (!details.title) errors.push({ field: "title", message: "Enter a title" });
-  else if (details.title.length > 300)
-    errors.push({ field: "title", message: "Enter a title of 300 characters or fewer" });
-
-  const badUrl = details.url ? urlProblem(details.url) : "Enter a path";
-
-  if (badUrl) errors.push({ field: "url", message: badUrl });
-
-  if (details.form_id && details.form_id.length > 100)
-    errors.push({ field: "form_id", message: "Enter a form ID of 100 characters or fewer" });
-
-  if (entry && !details.category_id)
-    errors.push({ field: "category", message: "Choose a category" });
-
-  return errors;
+  return entry && !details.category_id ? [{ field: "category", message: "Choose a category" }] : [];
 }

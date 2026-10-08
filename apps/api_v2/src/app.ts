@@ -10,6 +10,7 @@ import Fastify, {
 import cors from "@fastify/cors";
 import swagger from "@fastify/swagger";
 import {
+  hasZodFastifySchemaValidationErrors,
   jsonSchemaTransform,
   serializerCompiler,
   validatorCompiler,
@@ -118,6 +119,20 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   );
 
   app.setErrorHandler((error: FastifyError, request, reply) => {
+    // A body the schema refuses is the author's to fix, so it is a 422 per
+    // field, worded by the schema, like the rules' own refusals.
+    if (
+      hasZodFastifySchemaValidationErrors(error) &&
+      error.validationContext === "body"
+    )
+      return reply.status(422).send({
+        error: "validation_failed",
+        message: error.message,
+        errors: error.validation.map((issue) => ({
+          field: issue.instancePath.slice(1).replaceAll("/", "."),
+          message: issue.message,
+        })),
+      });
     // Fastify's own refusals (invalid JSON, wrong content type, too large,
     // schema validation) carry their 4xx status; only failures are 500s.
     const status = error.statusCode ?? 500;

@@ -40,12 +40,16 @@ export type PageId = z.infer<typeof PageId>;
 
 /** Parses a page's url: a path with no trailing slash, query or fragment. */
 export const PageUrl = z
-  .string()
-  .max(512)
-  .regex(/^\/[^?#]*[^/?#]$/)
+  .string({ error: "Enter a path" })
+  .min(1, { error: "Enter a path", abort: true })
+  .max(512, "Enter a path of 512 characters or fewer")
+  .regex(
+    /^\/[^?#]*[^/?#]$/,
+    "Enter a path that starts with / and does not end with /",
+  )
   .refine(
     (url) => (segmentsOf(url).at(-1) ?? "").length <= 200,
-    "The url's last segment, its slug, can be at most 200 characters.",
+    "Enter a last path segment of 200 characters or fewer",
   )
   .describe("The site's routing key.");
 
@@ -57,10 +61,16 @@ export const PageFields = z.object({
     "The page this one sits beneath, in the same category; null for a " +
       "page at the root of its category, which is what the category lists.",
   ),
-  title: z.string().min(1).max(300),
+  title: z
+    .string({ error: "Enter a title" })
+    .min(1, "Enter a title")
+    .max(300, "Enter a title of 300 characters or fewer"),
   description: z.string().nullable(),
   visibility: Visibility,
-  form_id: z.string().max(100).nullable(),
+  form_id: z
+    .string()
+    .max(100, "Enter a form ID of 100 characters or fewer")
+    .nullable(),
   body_markdown: z.string(),
   frontmatter: Frontmatter,
 });

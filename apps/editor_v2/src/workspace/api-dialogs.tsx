@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import { ApiFailure, type EditorApi, type NewPage, type ServiceDetail } from "../api/client";
-import { suggestedUrl, urlProblem } from "../api/page-markdown";
+import { suggestedUrl } from "../api/page-markdown";
 import { pageQuery, taxonomyQuery } from "../api/queries";
 import { Button } from "../ui/button";
 import { fieldLabel } from "./api-pages";
@@ -103,12 +103,9 @@ export function ApiServiceDialog({
         onSubmit={(event) => {
           event.preventDefault();
 
-          const badPath = urlProblem(path);
-
           const found = [
             ...(title.trim() ? [] : ["Enter a service name"]),
             ...(category ? [] : ["Choose a category"]),
-            ...(badPath ? [badPath] : []),
           ];
 
           setProblems(found);
@@ -202,8 +199,7 @@ export function ApiPageDialog({
         onSubmit={(event) => {
           event.preventDefault();
 
-          const badPath = urlProblem(path);
-          const found = [...(name ? [] : ["Enter a page title"]), ...(badPath ? [badPath] : [])];
+          const found = name ? [] : ["Enter a page title"];
 
           setProblems(found);
 

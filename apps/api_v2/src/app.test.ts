@@ -578,14 +578,38 @@ describe("POST /pages", () => {
     ]);
   });
 
-  it("400s a page with no title", async () => {
+  it("422s a page with no title, worded for its author", async () => {
     const response = await inject({
       method: "POST",
       url: "/pages",
       payload: aPage({ title: undefined }),
     });
-    expect(response.statusCode).toBe(400);
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toMatchObject({
+      error: "validation_failed",
+      errors: [{ field: "title", message: "Enter a title" }],
+    });
     expect(response.headers["cache-control"]).toBe("no-store");
+  });
+
+  it.each([
+    ["", "Enter a path"],
+    [
+      "money/severance",
+      "Enter a path that starts with / and does not end with /",
+    ],
+    [
+      `/money/${"s".repeat(201)}`,
+      "Enter a last path segment of 200 characters or fewer",
+    ],
+  ])("422s the path %j with one message", async (url, message) => {
+    const response = await inject({
+      method: "POST",
+      url: "/pages",
+      payload: aPage({ url }),
+    });
+    expect(response.statusCode).toBe(422);
+    expect(response.json().errors).toEqual([{ field: "url", message }]);
   });
 });
 
@@ -626,7 +650,7 @@ describe("PUT /pages/:id", () => {
     );
   });
 
-  it("400s a save that leaves a field out, rather than resetting it", async () => {
+  it("422s a save that leaves a field out, rather than resetting it", async () => {
     const created = await seedPage({ form_id: "severance-calculator" });
     const { form_id, ...partial } = created;
 
@@ -636,7 +660,10 @@ describe("PUT /pages/:id", () => {
       payload: partial,
     });
 
-    expect(response.statusCode).toBe(400);
+    expect(response.statusCode).toBe(422);
+    expect(
+      response.json().errors.map((error: { field: string }) => error.field),
+    ).toEqual(["form_id"]);
     expect(expectOk(await services.editing.get(created.id))?.form_id).toBe(
       "severance-calculator",
     );
@@ -1086,15 +1113,24 @@ describe("client errors", () => {
   });
 
   it.each([
-    ["a title over 300 characters", { title: "x".repeat(301) }],
-    ["a url over 512 characters", { url: `/${"x".repeat(512)}/pay` }],
-  ])("400s a page with %s", async (_name, overrides) => {
+    [
+      "a title over 300 characters",
+      { title: "x".repeat(301) },
+      { field: "title", message: "Enter a title of 300 characters or fewer" },
+    ],
+    [
+      "a url over 512 characters",
+      { url: `/${"x".repeat(512)}/pay` },
+      { field: "url", message: "Enter a path of 512 characters or fewer" },
+    ],
+  ])("422s a page with %s", async (_name, overrides, error) => {
     const response = await inject({
       method: "POST",
       url: "/pages",
       payload: aPage(overrides),
     });
-    expect(response.statusCode).toBe(400);
+    expect(response.statusCode).toBe(422);
+    expect(response.json().errors).toEqual([error]);
   });
 
   it("400s a read of a url over 512 characters", async () => {

@@ -285,6 +285,7 @@
                 "properties": {
                   "url": {
                     "type": "string",
+                    "minLength": 1,
                     "maxLength": 512,
                     "pattern": "^\\/[^?#]*[^/?#]$",
                     "description": "The site's routing key."
@@ -386,6 +387,7 @@
                   "properties": {
                     "url": {
                       "type": "string",
+                      "minLength": 1,
                       "maxLength": 512,
                       "pattern": "^\\/[^?#]*[^/?#]$",
                       "description": "The site's routing key."
@@ -1518,6 +1520,7 @@
                   "properties": {
                     "url": {
                       "type": "string",
+                      "minLength": 1,
                       "maxLength": 512,
                       "pattern": "^\\/[^?#]*[^/?#]$",
                       "description": "The site's routing key."
@@ -1788,6 +1791,7 @@
                 "properties": {
                   "url": {
                     "type": "string",
+                    "minLength": 1,
                     "maxLength": 512,
                     "pattern": "^\\/[^?#]*[^/?#]$",
                     "description": "The site's routing key."
@@ -1912,6 +1916,7 @@
                   "properties": {
                     "url": {
                       "type": "string",
+                      "minLength": 1,
                       "maxLength": 512,
                       "pattern": "^\\/[^?#]*[^/?#]$",
                       "description": "The site's routing key."
@@ -2709,6 +2714,7 @@
                   "properties": {
                     "url": {
                       "type": "string",
+                      "minLength": 1,
                       "maxLength": 512,
                       "pattern": "^\\/[^?#]*[^/?#]$",
                       "description": "The site's routing key."
