@@ -13,15 +13,19 @@ blockExoticSubdeps: true
 # image builds, Amplify) abort instead of prompting. Restore v10 behavior.
 confirmModulesPurge: false
 
-# Upstream pins or ranges still select vulnerable releases without these.
+# ponytail: Accept GHSA-w5hq-g745-h8pq for ExcelJS 4.4.0's uuid 8: it only
+# calls v4(), unaffected by the v3/v5/v6 buffer bug. Reassess when ExcelJS
+# or UUID callers change; direct UUID dependencies already require >=11.1.1.
+# Remove each override when its parent accepts a patched release without it.
 overrides:
-  uuid@<11.1.1: ^11.1.1 # exceljs
   js-yaml@>=4.0.0 <4.3.2: ^4.3.2 # @nestjs/swagger
   esbuild@<0.28.1: ^0.28.1 # @esbuild-kit/core-utils (via drizzle-kit)
-  axios@>=1.0.0 <1.18.0: ^1.18.1 # nx
-  brace-expansion@>=5.0.0 <5.0.9: ^5.0.9 # nx
-  multer@<2.3.0: ^2.3.0 # @nestjs/platform-express
-  qs@<6.16.0: ^6.16.0 # express 4, body-parser 1
+  axios@>=1.0.0 <1.20.0: ^1.20.0 # nx pins 1.18.1
+  brace-expansion@>=5.0.0 <5.0.12: ^5.0.12 # nx pins 5.0.8
+  nx>smol-toml@<1.9.0: ^1.9.0 # nx 22 pins 1.6.1
+  "@tailwindcss/typography>postcss-selector-parser@<7.1.6": ^7.1.6 # pins 6.0.10
+  # ponytail: paired with the engine patch until gray-matter replaces js-yaml 3 and its vulnerable CLI deps.
+  gray-matter@4.0.3>js-yaml: ^4.3.2
 
 # pnpm blocks dependency build scripts by default; allowBuilds is the
 # reviewed decision list. true = must run (fetch/verify native binaries).
@@ -62,29 +66,9 @@ catalog:
   typescript: "^5.9.3"
   vite: "^8.0.14"
 
-minimumReleaseAgeExclude:
-  - esbuild@0.28.1
-  - tmp@0.2.7
-  - form-data@4.0.6
-  - js-yaml@4.1.2
-  - js-yaml@3.15.0
-  - "@opentelemetry/core@2.8.0"
-  - multer@2.2.0
-  - undici@7.28.0
-  - nodemailer@9.0.1
-  - "@govtech-bb/design@1.0.0-alpha.17"
-  - "@govtech-bb/react@1.0.0-alpha.17||1.0.0-alpha.18||1.0.0-alpha.19||1.0.0-alpha.20||1.0.0-alpha.21||1.0.0-alpha.24||1.0.0-alpha.25||1.0.0-alpha.26||1.0.0-alpha.27||1.0.0-alpha.29"
-  - "@govtech-bb/styles@1.0.0-alpha.17"
-  - "@tanstack/ai-client@0.19.1"
-  - "@tanstack/ai-react@0.16.1"
-  - "@tanstack/ai@0.39.0"
-  - "@tanstack/ai-bedrock@0.1.0"
-  - "@tanstack/openai-base@0.9.6"
-  - "@govtech-bb/frontend@1.0.0-alpha.18||1.0.0-alpha.19||1.0.0-alpha.20||1.0.0-alpha.21||1.0.0-alpha.24||1.0.0-alpha.25||1.0.0-alpha.26||1.0.0-alpha.27||1.0.0-alpha.29"
-  - brace-expansion@2.1.4
-
-# Docker contexts install workspace subsets; only the builder API uses this patch.
+# Docker contexts install workspace subsets that may not use every patch.
 allowUnusedPatches: true
 
 patchedDependencies:
-  '@tanstack/ai-bedrock@0.3.7': patches/@tanstack__ai-bedrock@0.3.7.patch
+  "@tanstack/ai-bedrock@0.3.7": patches/@tanstack__ai-bedrock@0.3.7.patch
+  "gray-matter@4.0.3": patches/gray-matter@4.0.3.patch

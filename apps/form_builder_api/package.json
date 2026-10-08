@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "TSX_TSCONFIG_PATH=tsconfig.dev.json tsx watch src/main.ts",
-    "build": "tsc && tsc-alias",
+    "build": "tsc",
     "start": "node dist/main.js",
     "test": "vitest run"
   },
@@ -18,7 +18,7 @@
     "@tanstack/ai": "^0.53.0",
     "@tanstack/ai-bedrock": "0.3.7",
     "cors": "^2.8.5",
-    "dotenv": "17.4.2",
+    "dotenv": "^17.4.2",
     "express": "^5.1.0",
     "express-rate-limit": "^8.5.2",
     "reflect-metadata": "^0.2.0",
@@ -34,7 +34,6 @@
     "@types/node": "^24.0.0",
     "@types/supertest": "^7.2.0",
     "supertest": "^7.2.2",
-    "tsc-alias": "^1.8.10",
     "tsx": "^4.22.3",
     "typescript": "catalog:"
   }
