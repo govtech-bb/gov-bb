@@ -11,6 +11,12 @@
         "cwd": "apps/form_builder_api"
       },
       "dependsOn": ["^build"]
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["apps/form_builder_api/**/*.ts"]
+      }
     }
   }
 }
