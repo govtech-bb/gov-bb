@@ -1,4 +1,5 @@
 import type { HttpService } from "@nestjs/axios";
+import { Logger } from "@nestjs/common";
 import { of, throwError } from "rxjs";
 import { buildAlertEmail } from "./emails";
 import { FeedService } from "./feed.service";
@@ -89,30 +90,91 @@ describe("FeedService", () => {
     "<html><body>Maintenance</body></html>",
     "<rss><channel><title>Unclosed feed</title></rss>",
     "<!DOCTYPE rss [<!ENTITY notice 'expanded'>]><rss><channel><title>&notice;</title></channel></rss>",
-    SAMPLE_FEED.replace(
-      "<title>General notice</title>",
-      "<title><b>Nested</b></title>",
-    ),
-    SAMPLE_FEED.replace("Mon, 22 Jun 2026 08:00:00 +0000", "not a date"),
-    SAMPLE_FEED.replace(
-      "https://barbadoswaterauthority.com/notice-1",
-      "javascript:alert(1)",
-    ),
-    SAMPLE_FEED.replace(
-      "https://barbadoswaterauthority.com/notice-1",
-      "data:text/html,hello",
-    ),
-    SAMPLE_FEED.replace(
-      "<link>https://barbadoswaterauthority.com/notice-1</link>",
-      "",
-    ),
-    SAMPLE_FEED.replace("<guid>notice-1</guid>", "").replace(
-      "https://barbadoswaterauthority.com/notice-1",
-      `https://barbadoswaterauthority.com/${"x".repeat(512)}`,
-    ),
-  ])("rejects malformed or unsafe upstream content (%#)", async (xml) => {
+  ])("rejects a malformed or unsafe feed (%#)", async (xml) => {
     const service = new FeedService(makeHttp(of({ data: xml })));
     await expect(service.fetchOutages()).rejects.toThrow();
+  });
+
+  // One bad notice must not take down every other notice (#2969): it is
+  // skipped — never served — and logged, and the valid notice is kept.
+  it.each([
+    [
+      "a nested-HTML title",
+      SAMPLE_FEED.replace(
+        "<title>General notice</title>",
+        "<title><b>Nested</b></title>",
+      ),
+      "notice-1",
+    ],
+    [
+      "an invalid date",
+      SAMPLE_FEED.replace("Mon, 22 Jun 2026 08:00:00 +0000", "not a date"),
+      "notice-2",
+    ],
+    [
+      "a javascript: link",
+      SAMPLE_FEED.replace(
+        "https://barbadoswaterauthority.com/notice-1",
+        "javascript:alert(1)",
+      ),
+      "notice-2",
+    ],
+    [
+      "a data: link",
+      SAMPLE_FEED.replace(
+        "https://barbadoswaterauthority.com/notice-1",
+        "data:text/html,hello",
+      ),
+      "notice-2",
+    ],
+    [
+      "no link",
+      SAMPLE_FEED.replace(
+        "<link>https://barbadoswaterauthority.com/notice-1</link>",
+        "",
+      ),
+      "notice-2",
+    ],
+    [
+      "an over-long ID",
+      SAMPLE_FEED.replace("<guid>notice-1</guid>", "").replace(
+        "https://barbadoswaterauthority.com/notice-1",
+        `https://barbadoswaterauthority.com/${"x".repeat(512)}`,
+      ),
+      "notice-2",
+    ],
+  ])("skips a notice with %s and keeps the rest", async (_, xml, keptId) => {
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => undefined);
+    const service = new FeedService(makeHttp(of({ data: xml })));
+
+    const { outages } = await service.fetchOutages();
+
+    expect(outages.map((o) => o.id)).toEqual([keptId]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toMatch(/^Skipped invalid BWA notice/);
+    warn.mockRestore();
+  });
+
+  it("rejects the feed when it has notices but none are valid", async () => {
+    // An empty list here would tell residents there are no outages when the
+    // feed format has really changed, so fail honestly instead.
+    vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+    const service = new FeedService(
+      makeHttp(
+        of({
+          data: SAMPLE_FEED.replaceAll(
+            /<pubDate>[^<]*<\/pubDate>/g,
+            "<pubDate>not a date</pubDate>",
+          ),
+        }),
+      ),
+    );
+    await expect(service.fetchOutages()).rejects.toThrow(
+      "No valid notices in BWA RSS feed",
+    );
+    vi.restoreAllMocks();
   });
 
   it("accepts an empty RSS channel and keeps numeric GUIDs as strings", async () => {

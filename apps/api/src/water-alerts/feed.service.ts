@@ -1,5 +1,5 @@
 import { HttpService } from "@nestjs/axios";
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { XMLParser } from "fast-xml-parser";
 import { firstValueFrom } from "rxjs";
 import { z } from "zod";
@@ -31,10 +31,12 @@ const rssItemSchema = z.object({
   "content:encoded": z.string().optional(),
   guid: z.string().trim().max(512).optional(),
 });
+// Only the feed's structure is checked here. Items are validated one at a time
+// in parse(), so a single bad notice can't fail every other notice (#2969).
 const rssSchema = z.object({
   rss: z.object({
     channel: z.object({
-      item: z.union([rssItemSchema, z.array(rssItemSchema)]).optional(),
+      item: z.unknown().optional(),
     }),
   }),
 });
@@ -57,6 +59,7 @@ export interface OutagesFeed {
  */
 @Injectable()
 export class FeedService {
+  private readonly logger = new Logger(FeedService.name);
   private readonly parser = new XMLParser({
     ignoreAttributes: true,
     parseTagValue: false,
@@ -100,12 +103,29 @@ export class FeedService {
     }
     const parsed = rssSchema.parse(this.parser.parse(xml, true));
     const rawItems = parsed.rss.channel.item;
-    const items = Array.isArray(rawItems)
+    const items: unknown[] = Array.isArray(rawItems)
       ? rawItems
       : rawItems
         ? [rawItems]
         : [];
-    return items.map((item) => this.toOutage(item));
+
+    // Skip (never serve) a notice that is malformed or unsafe, and log it.
+    const outages: Outage[] = [];
+    for (const raw of items) {
+      try {
+        outages.push(this.toOutage(rssItemSchema.parse(raw)));
+      } catch (err) {
+        this.logger.warn(
+          `Skipped invalid BWA notice ${noticeRef(raw)}: ${reason(err)}`,
+        );
+      }
+    }
+    // Notices exist but none are usable: the feed format has likely changed.
+    // An empty list would wrongly tell residents there are no outages.
+    if (items.length > 0 && outages.length === 0) {
+      throw new Error("No valid notices in BWA RSS feed");
+    }
+    return outages;
   }
 
   private toOutage(item: z.infer<typeof rssItemSchema>): Outage {
@@ -139,4 +159,21 @@ export class FeedService {
       endsAt,
     };
   }
+}
+
+/** The notice's guid or link, quoted and clipped, so a log line can trace it. */
+function noticeRef(raw: unknown): string {
+  const item = (raw ?? {}) as Record<string, unknown>;
+  const ref = item.guid ?? item.link;
+  return typeof ref === "string" ? JSON.stringify(clip(ref, 200)) : "(no ID)";
+}
+
+/** One-line reason a notice was skipped (Zod errors are otherwise JSON). */
+function reason(err: unknown): string {
+  if (err instanceof z.ZodError) {
+    return err.issues
+      .map((i) => `${i.path.join(".") || "item"}: ${i.message}`)
+      .join("; ");
+  }
+  return (err as Error).message;
 }
