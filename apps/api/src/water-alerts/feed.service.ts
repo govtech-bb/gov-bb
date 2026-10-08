@@ -151,9 +151,11 @@ export class FeedService {
     // An untitled notice is still a real outage, so keep it and title it from
     // its body. The ID below never uses the title, so a later retitle by BWA
     // doesn't look like a new notice and re-send the alert.
-    const title =
-      stripHtml(item.title ?? "") || clip(body, 80) || "BWA service notice";
-    const haystack = `${title} ${body}`;
+    const givenTitle = stripHtml(item.title ?? "");
+    const title = givenTitle || clip(body, 80) || "BWA service notice";
+    // Search the body alone when the title was cut from it: the cut can split a
+    // date from its year ("August 1…"), and dates are read from the first match.
+    const haystack = givenTitle ? `${givenTitle} ${body}` : body;
     const published = new Date(item.pubDate).toISOString();
     const id = item.guid || link.href;
     if (id.length > 512) throw new Error("Invalid BWA notice identifier");

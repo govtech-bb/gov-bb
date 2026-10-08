@@ -344,6 +344,19 @@ describe("FeedService", () => {
       );
     });
 
+    it("reads an untitled notice's dates from its body, not its clipped title", async () => {
+      // The 80-char title cut lands between "August 1," and "2026". Reading the
+      // title first found "August 1" with no year and guessed 2027.
+      const outage = await onlyOutage(
+        untitledFeed(
+          "<title></title>",
+          "Low pressure in St. Lucy continues after repairs to a main that began August 1, 2026, the BWA said.",
+        ),
+      );
+      expect(outage.title).toMatch(/August 1…$/);
+      expect(outage.eventDay).toBe("2026-08-01");
+    });
+
     it("falls back to a generic title when the body is empty too", async () => {
       const outage = await onlyOutage(untitledFeed("<title></title>", ""));
       expect(outage.title).toBe("BWA service notice");
