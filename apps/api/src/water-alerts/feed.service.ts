@@ -21,6 +21,9 @@ const DEFAULT_FEED_URL =
 // we never serve a stale copy once it expires — a failed refresh throws.
 const FEED_TTL_MS = 10 * 60 * 1000;
 const MAX_FEED_BYTES = 2 * 1024 * 1024;
+// BWA's WordPress feed serves 10 notices. The cap bounds the per-notice work a
+// hostile feed could force on the shared API (thousands of tiny bad items).
+const MAX_FEED_ITEMS = 100;
 
 const rssItemSchema = z.object({
   // BWA has published untitled notices (#2969); toOutage gives them a title.
@@ -105,22 +108,29 @@ export class FeedService {
     const rawItems = parsed.rss.channel.item;
     // Only a missing <item> means no notices: the parser turns an empty one
     // into "", which must still count (and fail) as a notice.
-    const items: unknown[] = Array.isArray(rawItems)
-      ? rawItems
-      : rawItems === undefined
-        ? []
-        : [rawItems];
+    const items: unknown[] = (
+      Array.isArray(rawItems)
+        ? rawItems
+        : rawItems === undefined
+          ? []
+          : [rawItems]
+    ).slice(0, MAX_FEED_ITEMS);
 
-    // Skip (never serve) a notice that is malformed or unsafe, and log it.
+    // Skip (never serve) a notice that is malformed or unsafe. Log the skips
+    // as one line per fetch so a feed of many bad notices can't flood the logs.
     const outages: Outage[] = [];
+    const skipped: string[] = [];
     for (const raw of items) {
       try {
         outages.push(this.toOutage(rssItemSchema.parse(raw)));
       } catch (err) {
-        this.logger.warn(
-          `Skipped invalid BWA notice ${noticeRef(raw)}: ${reason(err)}`,
-        );
+        skipped.push(`${noticeRef(raw)} (${reason(err)})`);
       }
+    }
+    if (skipped.length > 0) {
+      this.logger.warn(
+        `Skipped ${skipped.length} invalid BWA notice(s): ${skipped.slice(0, 5).join(" | ")}`,
+      );
     }
     // Notices exist but none are usable: the feed format has likely changed.
     // An empty list would wrongly tell residents there are no outages.

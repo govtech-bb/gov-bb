@@ -29,8 +29,9 @@ size, notice fields, URLs, email addresses, parish values and tokens are checked
 
 Notices are validated one at a time, so one bad notice can't take the feed down
 (#2969). A notice with an invalid or unsafe link, an unparseable date or an
-over-long ID is skipped and logged as `Skipped invalid BWA notice` with its
-guid/link; it is never served. An untitled notice is kept, because it is still
+over-long ID is skipped and never served. Skips are logged once per fetch as
+`Skipped N invalid BWA notice(s)`, with the guid/link and reason of the first
+five. Only the first 100 notices are read; BWA's feed serves 10. An untitled notice is kept, because it is still
 a real outage, and titled from up to 80 characters of its body, cut at a word
 boundary (or "BWA service notice" when the body is empty too). The feed shows
 the unavailable state only when its structure is broken or it has notices but

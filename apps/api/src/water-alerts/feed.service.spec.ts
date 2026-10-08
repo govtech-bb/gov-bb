@@ -178,10 +178,32 @@ describe("FeedService", () => {
       expect(warn).toHaveBeenCalledTimes(1);
       // Logged with the skipped notice's guid (or link), so ops can trace it.
       expect(warn.mock.calls[0][0]).toContain(
-        `Skipped invalid BWA notice ${loggedRef}`,
+        `Skipped 1 invalid BWA notice(s): ${loggedRef}`,
       );
     },
   );
+
+  it("reads at most 100 notices and logs every skip in one line", async () => {
+    // A hostile feed of many bad notices must not flood the logs or hold the
+    // event loop: one summary line per fetch, not one line per notice.
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => undefined);
+    const xml = SAMPLE_FEED.replace(
+      "</channel>",
+      `${"<item><link>x</link></item>".repeat(200)}</channel>`,
+    );
+    const service = new FeedService(makeHttp(of({ data: xml })));
+
+    const { outages } = await service.fetchOutages();
+
+    expect(outages.map((o) => o.id)).toEqual(["notice-1", "notice-2"]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    // 100 read, 2 valid: 98 skipped, and only the first 5 are listed.
+    expect(warn.mock.calls[0][0]).toMatch(
+      /^Skipped 98 invalid BWA notice\(s\): "x" \(.*\)( \| "x" \(.*\)){4}$/,
+    );
+  });
 
   // An empty list here would tell residents there are no outages when the
   // feed format has really changed, so fail honestly instead.
