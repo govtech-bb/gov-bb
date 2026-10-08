@@ -1,5 +1,5 @@
 import { HttpService } from "@nestjs/axios";
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { XMLParser } from "fast-xml-parser";
 import { firstValueFrom } from "rxjs";
 import { z } from "zod";
@@ -21,19 +21,27 @@ const DEFAULT_FEED_URL =
 // we never serve a stale copy once it expires — a failed refresh throws.
 const FEED_TTL_MS = 10 * 60 * 1000;
 const MAX_FEED_BYTES = 2 * 1024 * 1024;
+// BWA's WordPress feed serves 10 notices. The cap bounds the per-notice work a
+// hostile feed could force on the shared API (thousands of tiny bad items).
+// Accepted edge: 100 invalid notices before any valid one cut the valid ones
+// off and the feed 503s — no worse than a broken feed.
+const MAX_FEED_ITEMS = 100;
 
 const rssItemSchema = z.object({
-  title: z.string().trim().min(1),
+  // BWA has published untitled notices (#2969); toOutage gives them a title.
+  title: z.string().optional(),
   link: z.string().trim().min(1),
   pubDate: z.string().min(1),
   description: z.string().optional(),
   "content:encoded": z.string().optional(),
   guid: z.string().trim().max(512).optional(),
 });
+// Only the feed's structure is checked here. Items are validated one at a time
+// in parse(), so a single bad notice can't fail every other notice (#2969).
 const rssSchema = z.object({
   rss: z.object({
     channel: z.object({
-      item: z.union([rssItemSchema, z.array(rssItemSchema)]).optional(),
+      item: z.unknown().optional(),
     }),
   }),
 });
@@ -56,6 +64,7 @@ export interface OutagesFeed {
  */
 @Injectable()
 export class FeedService {
+  private readonly logger = new Logger(FeedService.name);
   private readonly parser = new XMLParser({
     ignoreAttributes: true,
     parseTagValue: false,
@@ -99,16 +108,41 @@ export class FeedService {
     }
     const parsed = rssSchema.parse(this.parser.parse(xml, true));
     const rawItems = parsed.rss.channel.item;
-    const items = Array.isArray(rawItems)
-      ? rawItems
-      : rawItems
-        ? [rawItems]
-        : [];
-    return items.map((item) => this.toOutage(item));
+    // Only a missing <item> means no notices: the parser turns an empty one
+    // into "", which must still count (and fail) as a notice.
+    const items: unknown[] = (
+      Array.isArray(rawItems)
+        ? rawItems
+        : rawItems === undefined
+          ? []
+          : [rawItems]
+    ).slice(0, MAX_FEED_ITEMS);
+
+    // Skip (never serve) a notice that is malformed or unsafe. Log the skips
+    // as one line per fetch so a feed of many bad notices can't flood the logs.
+    const outages: Outage[] = [];
+    const skipped: string[] = [];
+    for (const raw of items) {
+      try {
+        outages.push(this.toOutage(rssItemSchema.parse(raw)));
+      } catch (err) {
+        skipped.push(`${noticeRef(raw)} (${reason(err)})`);
+      }
+    }
+    if (skipped.length > 0) {
+      this.logger.warn(
+        `Skipped ${skipped.length} invalid BWA notice(s): ${skipped.slice(0, 5).join(" | ")}`,
+      );
+    }
+    // Notices exist but none are usable: the feed format has likely changed.
+    // An empty list would wrongly tell residents there are no outages.
+    if (items.length > 0 && outages.length === 0) {
+      throw new Error("No valid notices in BWA RSS feed");
+    }
+    return outages;
   }
 
   private toOutage(item: z.infer<typeof rssItemSchema>): Outage {
-    const title = stripHtml(item.title);
     const link = new URL(decodeEntities(item.link));
     if (!["https:", "http:"].includes(link.protocol)) {
       throw new Error("Invalid BWA notice link");
@@ -116,7 +150,14 @@ export class FeedService {
     const body = stripHtml(
       `${item.description ?? ""} ${item["content:encoded"] ?? ""}`,
     );
-    const haystack = `${title} ${body}`;
+    // An untitled notice is still a real outage, so keep it and title it from
+    // its body. The ID below never uses the title, so a later retitle by BWA
+    // doesn't look like a new notice and re-send the alert.
+    const givenTitle = stripHtml(item.title ?? "");
+    const title = givenTitle || clip(body, 80) || "BWA service notice";
+    // Search the body alone when the title was cut from it: the cut can split a
+    // date from its year ("August 1…"), and dates are read from the first match.
+    const haystack = givenTitle ? `${givenTitle} ${body}` : body;
     const published = new Date(item.pubDate).toISOString();
     const id = item.guid || link.href;
     if (id.length > 512) throw new Error("Invalid BWA notice identifier");
@@ -134,4 +175,23 @@ export class FeedService {
       endsAt,
     };
   }
+}
+
+/** The notice's guid or link, quoted and clipped, so a log line can trace it. */
+function noticeRef(raw: unknown): string {
+  const item = (raw ?? {}) as Record<string, unknown>;
+  const ref = [item.guid, item.link].find(
+    (v): v is string => typeof v === "string" && v.trim() !== "",
+  );
+  return ref ? JSON.stringify(clip(ref.trim(), 200)) : "(no ID)";
+}
+
+/** One-line reason a notice was skipped (Zod errors are otherwise JSON). */
+function reason(err: unknown): string {
+  if (err instanceof z.ZodError) {
+    return err.issues
+      .map((i) => `${i.path.join(".") || "item"}: ${i.message}`)
+      .join("; ");
+  }
+  return err instanceof Error ? err.message : String(err);
 }
