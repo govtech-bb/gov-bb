@@ -189,4 +189,60 @@ describe("FeedService", () => {
     );
     await expect(service.fetchOutages()).rejects.toThrow("ECONNREFUSED");
   });
+
+  // #2969: BWA published a notice with an empty <title>, which used to fail
+  // the whole feed — taking down the public page and every alert.
+  describe("untitled notices", () => {
+    const GOLDEN_RIDGE_BODY =
+      "The Barbados Water Authority (BWA) advises residents and businesses in parts of St. Andrew, St. Thomas and St. Joseph that the large-diameter main in Golden Ridge Village, St. George, has ruptured again today.";
+
+    function untitledFeed(titleXml: string, description = GOLDEN_RIDGE_BODY) {
+      return `<rss><channel><item>
+        ${titleXml}
+        <link>https://barbadoswaterauthority.com/14535-2/</link>
+        <guid>https://barbadoswaterauthority.com/?p=14535</guid>
+        <pubDate>Sun, 04 Oct 2026 19:02:25 +0000</pubDate>
+        <description>${description}</description>
+      </item></channel></rss>`;
+    }
+
+    async function onlyOutage(xml: string) {
+      const service = new FeedService(makeHttp(of({ data: xml })));
+      const { outages } = await service.fetchOutages();
+      expect(outages).toHaveLength(1);
+      return outages[0];
+    }
+
+    it.each([
+      ["an empty title", "<title></title>"],
+      ["no title element", ""],
+      ["a whitespace-only title", "<title>   </title>"],
+      ["an HTML-only title", "<title><![CDATA[<p> </p>]]></title>"],
+    ])("keeps a notice with %s, titled from its body", async (_, titleXml) => {
+      const outage = await onlyOutage(untitledFeed(titleXml));
+
+      expect(outage.title).toBe(
+        "The Barbados Water Authority (BWA) advises residents and businesses in parts of…",
+      );
+      // Still matched to parishes, so subscribers there are alerted.
+      expect(outage.parishes).toEqual(
+        expect.arrayContaining(["saint-andrew", "saint-thomas"]),
+      );
+    });
+
+    it("falls back to a generic title when the body is empty too", async () => {
+      const outage = await onlyOutage(untitledFeed("<title></title>", ""));
+      expect(outage.title).toBe("BWA service notice");
+    });
+
+    it("keeps the notice ID independent of the fallback title", async () => {
+      // A later retitle by BWA must not look like a new notice (no re-send).
+      const untitled = await onlyOutage(untitledFeed("<title></title>"));
+      const titled = await onlyOutage(
+        untitledFeed("<title>Golden Ridge main ruptured</title>"),
+      );
+      expect(untitled.id).toBe("https://barbadoswaterauthority.com/?p=14535");
+      expect(titled.id).toBe(untitled.id);
+    });
+  });
 });

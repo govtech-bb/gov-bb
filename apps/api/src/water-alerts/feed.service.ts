@@ -23,7 +23,8 @@ const FEED_TTL_MS = 10 * 60 * 1000;
 const MAX_FEED_BYTES = 2 * 1024 * 1024;
 
 const rssItemSchema = z.object({
-  title: z.string().trim().min(1),
+  // BWA has published untitled notices (#2969); toOutage gives them a title.
+  title: z.string().optional(),
   link: z.string().trim().min(1),
   pubDate: z.string().min(1),
   description: z.string().optional(),
@@ -108,7 +109,6 @@ export class FeedService {
   }
 
   private toOutage(item: z.infer<typeof rssItemSchema>): Outage {
-    const title = stripHtml(item.title);
     const link = new URL(decodeEntities(item.link));
     if (!["https:", "http:"].includes(link.protocol)) {
       throw new Error("Invalid BWA notice link");
@@ -116,6 +116,11 @@ export class FeedService {
     const body = stripHtml(
       `${item.description ?? ""} ${item["content:encoded"] ?? ""}`,
     );
+    // An untitled notice is still a real outage, so keep it and title it from
+    // its body. The ID below never uses the title, so a later retitle by BWA
+    // doesn't look like a new notice and re-send the alert.
+    const title =
+      stripHtml(item.title ?? "") || clip(body, 80) || "BWA service notice";
     const haystack = `${title} ${body}`;
     const published = new Date(item.pubDate).toISOString();
     const id = item.guid || link.href;
