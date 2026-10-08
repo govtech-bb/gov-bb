@@ -29,6 +29,8 @@ vi.mock("@tanstack/react-router", () => ({
   // RouteComponent calls useNavigate to strip the ?preview= token after load,
   // and to move to a step the server reported a validation error on.
   useNavigate: () => mockNavigate,
+  // The loader throws a redirect when a feedback form arrives unattributed.
+  redirect: (options: unknown) => ({ redirect: options }),
 }));
 
 vi.mock("@tanstack/react-form", () => ({
@@ -111,6 +113,7 @@ import {
   storeSubmissionState,
 } from "../../../lib/session-storage";
 import { trackEvent } from "../../../lib/analytics";
+import { LANDING_URL } from "../../../config/landing";
 
 const mockUseForm = useForm as Mock;
 const mockUseStore = useStore as Mock;
@@ -561,17 +564,74 @@ describe("Route.loader", () => {
   });
 });
 
-describe("Route.loaderDeps", () => {
-  it("extracts the preview and draft tokens from search when present", () => {
-    const result = Route.loaderDeps({
-      search: { preview: "s3cret", draft: "d-s3cret" },
+describe("Route.loader on a feedback form", () => {
+  const feedbackFormMeta = {
+    ...mockFormMeta,
+    formId: "exit-survey",
+    steps: [
+      {
+        stepId: "difficulty-rating",
+        title: "Rating",
+        fields: [
+          {
+            id: "difficulty-rating_referring-service",
+            fieldId: "referring-service",
+          },
+        ],
+        behaviours: [],
+      },
+    ],
+  };
+  const loadFeedbackForm = (source?: string) =>
+    Route.loader({
+      params: { formId: "exit-survey" },
+      context: {
+        queryClient: {
+          ensureQueryData: vi.fn().mockResolvedValue(feedbackFormMeta),
+        },
+      },
+      deps: { preview: undefined, draft: undefined, source },
     } as any);
-    expect(result).toEqual({ preview: "s3cret", draft: "d-s3cret" });
+
+  it("sends a citizen who arrived without a referring form to the homepage", async () => {
+    await expect(loadFeedbackForm()).rejects.toEqual({
+      redirect: { href: LANDING_URL },
+    });
   });
 
-  it("returns preview and draft as undefined when not present in search", () => {
+  it("serves the form when ?source= names the referring form", async () => {
+    await expect(loadFeedbackForm("get-birth-certificate")).resolves.toBe(
+      feedbackFormMeta,
+    );
+  });
+
+  it("serves the form when the referring form was saved earlier in the session", async () => {
+    mockGetFormData.mockReturnValue({
+      "difficulty-rating_referring-service": "get-birth-certificate",
+    });
+    await expect(loadFeedbackForm()).resolves.toBe(feedbackFormMeta);
+  });
+});
+
+describe("Route.loaderDeps", () => {
+  it("extracts the preview and draft tokens and source from search when present", () => {
+    const result = Route.loaderDeps({
+      search: { preview: "s3cret", draft: "d-s3cret", source: "some-form" },
+    } as any);
+    expect(result).toEqual({
+      preview: "s3cret",
+      draft: "d-s3cret",
+      source: "some-form",
+    });
+  });
+
+  it("returns preview, draft and source as undefined when not present in search", () => {
     const result = Route.loaderDeps({ search: {} } as any);
-    expect(result).toEqual({ preview: undefined, draft: undefined });
+    expect(result).toEqual({
+      preview: undefined,
+      draft: undefined,
+      source: undefined,
+    });
   });
 });
 
