@@ -61,7 +61,7 @@ it("blocks a 'No' to the disability question and accepts a 'Yes'", async () => {
   expect(field, "disability-eligibility is missing").toBeDefined();
 
   expect(validateField(field as Primitive, "no", {})).toEqual([
-    "You are not eligible to continue this application",
+    "You can only apply if you are under 25 or have a disability or long-term health condition",
   ]);
   expect(validateField(field as Primitive, "yes", {})).toEqual([]);
 });
@@ -71,11 +71,11 @@ it("asks, blocks and warns only from age 25", async () => {
 
   const over = activeApplicantFields(contract, 30);
   expect(over?.has("disability-eligibility")).toBe(true);
-  expect(over?.has("ineligible-notice")).toBe(true);
+  expect(over?.has("disability-ineligible-notice")).toBe(true);
 
   const under = activeApplicantFields(contract, 21);
   expect(under?.has("disability-eligibility")).toBe(false);
-  expect(under?.has("ineligible-notice")).toBe(false);
+  expect(under?.has("disability-ineligible-notice")).toBe(false);
 });
 
 // The old stop step held a disabled required field that could never be

@@ -132,7 +132,7 @@
               },
               "pattern": {
                 "value": "^yes$",
-                "error": "You are not eligible to continue this application"
+                "error": "You can only apply if you are under 25 or have a disability or long-term health condition"
               }
             }
           }
@@ -140,7 +140,7 @@
         {
           "ref": "components/content",
           "overrides": {
-            "fieldId": "ineligible-notice",
+            "fieldId": "disability-ineligible-notice",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -158,7 +158,7 @@
                 "value": "no"
               }
             ],
-            "content": "You are eligible to sign up if you meet both of the 2 criteria:\n\n- You are 16 to 24 years old (or between 16 and 34 if you are a person with a disability).\n- You are not currently employed or enrolled in a training institution.\n\nCurrently, you do not meet one or more of the above criteria, and therefore are not eligible to complete this form.",
+            "content": "If you are 25 or older, you can only apply for JobStart Plus if you have a disability or long-term health condition.",
             "variant": "warning"
           }
         },
@@ -1422,5 +1422,5 @@
     }
   ],
   "createdAt": "2026-06-09T17:09:06.077Z",
-  "updatedAt": "2026-10-08T15:53:24.000Z"
+  "updatedAt": "2026-10-08T21:19:46.000Z"
 }
