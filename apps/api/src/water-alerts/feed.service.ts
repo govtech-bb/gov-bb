@@ -23,6 +23,8 @@ const FEED_TTL_MS = 10 * 60 * 1000;
 const MAX_FEED_BYTES = 2 * 1024 * 1024;
 // BWA's WordPress feed serves 10 notices. The cap bounds the per-notice work a
 // hostile feed could force on the shared API (thousands of tiny bad items).
+// Accepted edge: 100 invalid notices before any valid one cut the valid ones
+// off and the feed 503s — no worse than a broken feed.
 const MAX_FEED_ITEMS = 100;
 
 const rssItemSchema = z.object({
@@ -191,5 +193,5 @@ function reason(err: unknown): string {
       .map((i) => `${i.path.join(".") || "item"}: ${i.message}`)
       .join("; ");
   }
-  return (err as Error).message;
+  return err instanceof Error ? err.message : String(err);
 }
