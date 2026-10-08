@@ -27,6 +27,15 @@ fetched. Expired cache failures and malformed feeds show an unavailable state;
 sample notices are never served as live data. Requests have timeouts, and feed
 size, notice fields, URLs, email addresses, parish values and tokens are checked.
 
+Notices are validated one at a time, so one bad notice can't take the feed down
+(#2969). A notice with an invalid or unsafe link, an unparseable date or an
+over-long ID is skipped and logged as `Skipped invalid BWA notice` with its
+guid/link; it is never served. An untitled notice is kept and titled from the
+first 80 characters of its body (or "BWA service notice"), because it is still a
+real outage. The feed shows the unavailable state only when its structure is
+broken or it has notices but none are valid — an empty list there would wrongly
+say there are no outages. A skipped notice is only visible in the API logs.
+
 The prototype's public demo endpoint is intentionally omitted: it sent simulated
 alerts to every confirmed subscriber. Tests use local fixtures and mocked email
 clients. No Next.js app, Neon database, Drizzle migration, SMTP credentials, or
