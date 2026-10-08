@@ -122,6 +122,10 @@ export const Route = createFileRoute('/$')({
       ? ({ kind: 'miss' } as const)
       : await getApiV2Page({ data: `/${splat}` })
     if (v2.kind === 'redirect') throw redirect({ href: v2.to, statusCode: 301 })
+    // api_v2 has withdrawn this page, so no older static copy may stand in for
+    // the public. Reviewers still get the static copy: api_v2 only shows them
+    // what it shows everyone.
+    if (v2.kind === 'withdrawn' && level === 'public') throw notFound()
     const v2Page = v2.kind === 'page' ? v2.page : undefined
     const page = v2Page ?? findPage(splat)
     if (page) {

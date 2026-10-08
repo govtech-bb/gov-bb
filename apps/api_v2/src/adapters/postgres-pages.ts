@@ -228,15 +228,16 @@ export class PostgresPages
         url: string;
         title: string;
         visibility: Visibility;
+        published: boolean;
       }>(sql`
         with recursive chain as (
-          select id, parent_id, url, title, visibility, 0 as depth
+          select id, parent_id, url, title, visibility, published_at, 0 as depth
             from content_pages where id = ${pageId}
           union all
-          select p.id, p.parent_id, p.url, p.title, p.visibility, chain.depth + 1
+          select p.id, p.parent_id, p.url, p.title, p.visibility, p.published_at, chain.depth + 1
             from content_pages p join chain on p.id = chain.parent_id
         ) cycle id set is_cycle using path
-        select url, title, visibility from chain
+        select url, title, visibility, published_at is not null as published from chain
           where not is_cycle order by depth desc`),
     );
     return rows.ok ? ok(rows.value.rows) : rows;

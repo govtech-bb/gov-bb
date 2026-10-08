@@ -1,6 +1,6 @@
 /**
  * GET /pages?url= row by row against the table it is specified by — 400,
- * 301, the two 404s, and the 200 with its Start link flagged hidden when its
+ * 301, the two 404s, the 410s, and the 200 with its Start link flagged hidden when its
  * `start` sub-page is — the site's category, catalog and search reads, with
  * and without the preview token, plus the editor's writes and the behaviours
  * they depend on: optimistic concurrency, a 422 per field, and published_at.
@@ -219,17 +219,48 @@ describe("GET /pages?url=", () => {
     });
   });
 
-  it.each(["preview", "draft"])("404s a %s page", async (visibility) => {
-    await seedPage({ visibility });
-    expect((await read(ENTRY)).statusCode).toBe(404);
-  });
+  const withdraw = (page: { id: string }, visibility: Visibility) =>
+    inject({
+      method: "PUT",
+      url: `/pages/${page.id}`,
+      payload: { ...page, visibility },
+    });
 
-  it("404s a public page beneath a page that is not", async () => {
+  it.each(["preview", "draft"])(
+    "404s a %s page that has never been published, as if it were absent",
+    async (visibility) => {
+      await seedPage({ visibility });
+      expect((await read(ENTRY)).statusCode).toBe(404);
+    },
+  );
+
+  it.each(["preview", "draft"] as const)(
+    "410s a page withdrawn to %s, so the site never serves an older copy of it",
+    async (visibility) => {
+      await withdraw(await seedPage(), visibility);
+      const response = await read(ENTRY);
+
+      expect(response.statusCode).toBe(410);
+      expect(response.json()).toEqual({
+        error: "gone",
+        message: `The page at ${ENTRY} is no longer published`,
+      });
+    },
+  );
+
+  it("404s a public page beneath a page that has never been published", async () => {
     // Effective visibility: hiding a service hides its sub-pages, wherever
-    // their urls are.
+    // their urls are, and the site never showed this one.
     const parent = await seedPage({ visibility: "draft" });
     await seedPage({ url: "/elsewhere", parent_id: parent.id });
     expect((await read("/elsewhere")).statusCode).toBe(404);
+  });
+
+  it("410s a public page beneath a page that was withdrawn", async () => {
+    const parent = await seedPage();
+    await seedPage({ url: "/elsewhere", parent_id: parent.id });
+    await withdraw(parent, "draft");
+    expect((await read("/elsewhere")).statusCode).toBe(410);
   });
 
   it("serves a public page whose url sits under a hidden page it is not beneath", async () => {

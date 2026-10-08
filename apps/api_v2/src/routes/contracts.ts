@@ -72,7 +72,10 @@ export const SCHEMAS = {
       "it (by `parent_id`) are visible: public, or preview too with the " +
       "preview token. `hide_start_links` is set when the page's `start` " +
       "sub-page is not. A bare `/<slug>` with no page of its own redirects " +
-      "(301) to the one visible page with that slug.",
+      "(301) to the one visible page with that slug. A page the site has " +
+      "published before, with everything above it, and hides now answers " +
+      "410, so the site never falls back to an older copy of it. A hidden " +
+      "page that was never published answers 404, as if it were absent.",
     tags: ["pages"],
     ...siteRead,
     querystring: z.object({ url: z.string().min(1).max(512) }),
@@ -82,6 +85,7 @@ export const SCHEMAS = {
       400: error,
       401: error,
       404: error,
+      410: error,
       500: error,
     },
   },

@@ -11,7 +11,7 @@ export interface paths {
         };
         /**
          * Get a public page by its url
-         * @description The site's read. A page is served only when it and every page above it (by `parent_id`) are visible: public, or preview too with the preview token. `hide_start_links` is set when the page's `start` sub-page is not. A bare `/<slug>` with no page of its own redirects (301) to the one visible page with that slug.
+         * @description The site's read. A page is served only when it and every page above it (by `parent_id`) are visible: public, or preview too with the preview token. `hide_start_links` is set when the page's `start` sub-page is not. A bare `/<slug>` with no page of its own redirects (301) to the one visible page with that slug. A page the site has published before, with everything above it, and hides now answers 410, so the site never falls back to an older copy of it. A hidden page that was never published answers 404, as if it were absent.
          */
         get: {
             parameters: {
@@ -109,6 +109,20 @@ export interface paths {
                 };
                 /** @description Default Response */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                410: {
                     headers: {
                         [name: string]: unknown;
                     };

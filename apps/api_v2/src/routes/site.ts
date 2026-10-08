@@ -116,6 +116,15 @@ export const siteRoutes: FastifyPluginAsyncZod<{
           .status(404)
           .send({ error: "not_found", message: `No page at ${url}` });
       }
+      if (outcome.kind === "withdrawn") {
+        return reply
+          .header("Cache-Control", missing(viewer))
+          .status(410)
+          .send({
+            error: "gone",
+            message: `The page at ${url} is no longer published`,
+          });
+      }
       reply.header("Cache-Control", found(viewer));
       if (outcome.kind === "redirect")
         return reply
