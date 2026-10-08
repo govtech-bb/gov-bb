@@ -94,20 +94,22 @@ describe("FeedService", () => {
     // Caching the failure (or caching before parsing) would keep the page on
     // "unavailable" for ten minutes after BWA fixes the feed.
     vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
-    const http = makeHttp(
-      of({
-        data: SAMPLE_FEED.replaceAll(
-          /<pubDate>[^<]*<\/pubDate>/g,
-          "<pubDate>not a date</pubDate>",
-        ),
-      }),
-    );
-    const service = new FeedService(http);
-    await expect(service.fetchOutages()).rejects.toThrow("No valid notices");
+    const get = vi
+      .fn()
+      .mockReturnValueOnce(
+        of({
+          data: SAMPLE_FEED.replaceAll(
+            /<pubDate>[^<]*<\/pubDate>/g,
+            "<pubDate>not a date</pubDate>",
+          ),
+        }),
+      )
+      .mockReturnValueOnce(of({ data: SAMPLE_FEED }));
+    const service = new FeedService({ get } as unknown as HttpService);
 
-    vi.mocked(http.get).mockReturnValue(of({ data: SAMPLE_FEED }));
+    await expect(service.fetchOutages()).rejects.toThrow("No valid notices");
     expect((await service.fetchOutages()).outages).toHaveLength(2);
-    expect(http.get).toHaveBeenCalledTimes(2);
+    expect(get).toHaveBeenCalledTimes(2);
   });
 
   it.each([
