@@ -442,6 +442,40 @@ describe("renderStartPageMarkdown with a new category", () => {
 });
 
 describe("parseContentMarkdown", () => {
+  it("preserves YAML dates, arrays, unknown fields and multiline content when editing", () => {
+    const original = parseContentMarkdown(`---
+reviewed_at: 2026-06-10
+source_date: '2026-06-10'
+categories: [housing, health]
+custom:
+  retained: true
+notes: |
+  First line.
+  Second line.
+---
+## Information
+
+Keep this paragraph.
+`);
+    expect(original.frontmatter).toEqual({
+      reviewed_at: new Date("2026-06-10T00:00:00.000Z"),
+      source_date: "2026-06-10",
+      categories: ["housing", "health"],
+      custom: { retained: true },
+      notes: "First line.\nSecond line.\n",
+    });
+
+    const edited = parseContentMarkdown(
+      renderStartPageMarkdown(
+        { ...base, body: original.body, linkType: "none" },
+        { baseFrontmatter: original.frontmatter },
+      ),
+    );
+
+    expect(edited.frontmatter).toMatchObject(original.frontmatter);
+    expect(edited.body).toBe(original.body);
+  });
+
   it("round-trips rendered output back to frontmatter + body", () => {
     const { frontmatter, body } = parseContentMarkdown(
       renderStartPageMarkdown(base),

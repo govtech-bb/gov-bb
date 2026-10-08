@@ -7,7 +7,7 @@
       "executor": "nx:run-commands",
       "outputs": ["{projectRoot}/dist"],
       "options": {
-        "commands": ["pnpm exec tsc", "pnpm exec tsc-alias"],
+        "commands": ["pnpm exec tsc"],
         "cwd": "apps/form_builder_api"
       },
       "dependsOn": ["^build"]
