@@ -14,7 +14,7 @@ any build started.
 
 - Rebuilt `mohlm-application-use-state-land.json` around "Who are you applying
   for?" with route-specific Your details / Organisation details + Contact
-  person, a no-permission stop step, a shared "Contact details"
+  person, a permission gate on the first step, a shared "Contact details"
   step, land with or without an address, and an optional end date. Pinned it
   with `mohlm-application-use-state-land.spec.ts`.
 - Rewrote `apply-to-use-state-land.md` (title, routes, cost, next steps).
@@ -37,13 +37,18 @@ any build started.
   processor change (API work) or accepting the noise. This departs from the
   builder layout.
 - **Route condition repeated on downstream gates.** Hidden answers are never
-  cleared, so a stale "No" to permission would strand a self-route applicant
-  on the stop step. `no-permission` and `relationship-to-organisation` also
-  require `applying-for = organisation`. The server drops hidden steps'
+  cleared, so a stale "No" to permission would show a self-route applicant
+  the permission warning. `no-permission-notice` and
+  `relationship-to-organisation` also require `applying-for = organisation`. The server drops hidden steps'
   values, so nothing stale is stored or emailed.
-- **Renderer fix over a recipe workaround.** The smoke walk showed the stop
-  step never appeared: the client kept one watched field per target step, so
-  `has-permission` was overwritten by `applying-for`. Moving permission to its
+- **Permission gate on the question, not a stop step.** "No" to
+  `has-permission` fails a `^yes$` pattern and reveals a warning, the same
+  pattern `nhc-rental-application` uses for income. This replaced a separate
+  `no-permission` step holding a disabled required field (the jobstart
+  workaround), which needed an extra page just to trap the applicant.
+- **Renderer fix over a recipe workaround.** The smoke walk showed the
+  original stop step never appeared: the client kept one watched field per
+  target step, so `has-permission` was overwritten by `applying-for`. Moving permission to its
   own page would have dodged it, but left the bug for the next form and added
   a page the spec didn't have. The server's own evaluation was never affected.
 - **Start page headings are the service's, not the platform's.** We first
@@ -81,8 +86,8 @@ any build started.
 - Content: whether the photo upload stays; the paper form's download URL.
 - Platform limits left as they are: no calculated duration; Check your
   answers groups by page with one Change link per section; Change doesn't
-  return to Check your answers (#2812); stop pages use the jobstart workaround
-  (#2618).
+  return to Check your answers (#2812); there is still no first-class
+  ineligibility stop, so the permission gate traps rather than routes (#2618).
 - The recipe has no MDA notification processor (true before this change too).
 - Pre-existing renderer quirks: conditions with no `targetStepId` are never
   watched, and the change key joins values with `|`.

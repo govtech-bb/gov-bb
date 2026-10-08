@@ -61,6 +61,10 @@
               "required": {
                 "value": true,
                 "error": "Select whether you have permission to apply for the organisation"
+              },
+              "pattern": {
+                "value": "^yes$",
+                "error": "You need permission from the organisation to continue"
               }
             },
             "behaviours": [
@@ -71,6 +75,28 @@
                 "value": "organisation"
               }
             ]
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "no-permission-notice",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-for",
+                "operator": "equal",
+                "value": "organisation"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "has-permission",
+                "operator": "equal",
+                "value": "no"
+              }
+            ],
+            "content": "You can only continue if the organisation has given you permission.",
+            "variant": "warning"
           }
         },
         {
@@ -102,49 +128,6 @@
         }
       ],
       "behaviours": []
-    },
-    {
-      "stepId": "no-permission",
-      "title": "You need permission to apply for this organisation",
-      "elements": [
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "permission-needed",
-            "label": "You need permission from the organisation to continue",
-            "isDisabled": true,
-            "ui": {
-              "hideLabel": true
-            },
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "You need permission from the organisation to continue"
-              },
-              "equal": {
-                "error": "You need permission from the organisation to continue"
-              }
-            }
-          }
-        }
-      ],
-      "behaviours": [
-        {
-          "type": "stepConditionalOn",
-          "targetStepId": "who-are-you-applying-for",
-          "targetFieldId": "applying-for",
-          "operator": "equal",
-          "value": "organisation"
-        },
-        {
-          "type": "stepConditionalOn",
-          "targetStepId": "who-are-you-applying-for",
-          "targetFieldId": "has-permission",
-          "operator": "equal",
-          "value": "no"
-        }
-      ],
-      "markdownContent": "You can only continue if the organisation has given you permission."
     },
     {
       "stepId": "your-details",
@@ -842,5 +825,5 @@
     }
   ],
   "createdAt": "2026-06-16T15:46:40.151Z",
-  "updatedAt": "2026-10-07T14:24:08.000Z"
+  "updatedAt": "2026-10-08T15:52:12.000Z"
 }

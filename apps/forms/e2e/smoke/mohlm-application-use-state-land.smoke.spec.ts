@@ -26,10 +26,9 @@
  * The form's routes:
  *  - `who-are-you-applying-for` → `applying-for` (yourself | organisation).
  *    On "organisation" it reveals `has-permission`, and on "yes" to that,
- *    `relationship-to-organisation`.
- *  - `no-permission` shows only for organisation + no permission. Its one
- *    field is disabled and always fails validation, so Continue never leaves
- *    it — the applicant has to go back.
+ *    `relationship-to-organisation`. "No" to permission reveals the
+ *    `no-permission-notice` warning and fails the field's `^yes$` pattern, so
+ *    Continue never leaves the step.
  *  - Yourself → `your-details` (name, National Registration Number — or a
  *    passport number via the `passport-toggle` show/hide, left off here —
  *    address). Organisation → `organisation-details` then `contact-person`.
@@ -47,7 +46,7 @@
  *
  * Test 1 walks the self route with a land address; test 2 walks the
  * organisation route with an overseas organisation and no land address; test 3
- * checks that the no-permission step blocks.
+ * checks that "No" to permission blocks the first step.
  *
  * `title`, `country` and `parish` are native <select>s — use the option value
  * (slug), not the label. Phone numbers are fixed, known-assignable Barbados
@@ -239,17 +238,17 @@ test.describe("Apply to use state land — Live Smoke", () => {
     await expect(
       page.locator(`[id="${first}_relationship-to-organisation"]`),
     ).toBeHidden();
-    await advance(page, first);
-
-    const step = expectStep(page, "no-permission", { exact: true });
-    await expect(page.locator("h1")).toContainText(
-      "You need permission to apply for this organisation",
+    // The warning variant renders no id (`div.govbb-warning-text`), so the
+    // notice is located by class.
+    await expect(page.locator(".govbb-warning-text")).toContainText(
+      "You can only continue if the organisation has given you permission.",
     );
+
     await page.getByRole("button", { name: /^Continue$/ }).click();
     await expect(page.locator(".govbb-error-summary")).toContainText(
       "You need permission from the organisation to continue",
       { timeout: STEP_TIMEOUT },
     );
-    expectStep(page, step, { exact: true });
+    expectStep(page, first, { exact: true });
   });
 });

@@ -8,7 +8,7 @@ import { hydrateForm, type Resolver } from "../../registry/resolution";
 // way it can go wrong is SILENT: validate-recipes and recipe-invariants.spec.ts
 // only check that ids are unique and refs resolve, not that the right steps
 // show on the right route. A wrong gate shows the self route the
-// organisation's steps (or stops it at the no-permission page), an email
+// organisation's steps (or blocks it at the permission question), an email
 // processor pointed at a route-specific step finds no recipient on the other
 // route and the applicant never gets a confirmation, and a registry default
 // (required National Registration Number, "after today" start date) quietly
@@ -77,7 +77,6 @@ it("asks the steps in the reviewed order", async () => {
 
   expect(steps.map((s) => s.stepId)).toEqual([
     "who-are-you-applying-for",
-    "no-permission",
     "your-details",
     "organisation-details",
     "contact-person",
@@ -107,15 +106,54 @@ describe("route gates", () => {
     ]);
   });
 
+  // "No" to permission is not a valid answer, so Continue never leaves the
+  // first step on the organisation route without permission. The question is
+  // hidden on the self route, and a hidden field is not validated, so the rule
+  // cannot stop someone applying for themselves.
+  it("stops the organisation route without permission, and only that route", async () => {
+    const permission = await field(
+      "who-are-you-applying-for",
+      "has-permission",
+    );
+
+    expect(permission.behaviours).toEqual([
+      {
+        type: "fieldConditionalOn",
+        targetFieldId: "applying-for",
+        operator: "equal",
+        value: "organisation",
+      },
+    ]);
+    const pattern = permission.validations?.pattern as {
+      value: string;
+      error: string;
+    };
+    expect(pattern.error).toBe(
+      "You need permission from the organisation to continue",
+    );
+    expect(new RegExp(pattern.value).test("yes")).toBe(true);
+    expect(new RegExp(pattern.value).test("no")).toBe(false);
+  });
+
   // Gate values are not cleared when a field is hidden, so a "No" left behind
   // after switching to "Yourself" would still match `has-permission = no`. The
-  // route condition stops that stale answer stranding the self route.
-  it("stops the organisation route without permission, and only that route", async () => {
-    expect(stepGates(await step("no-permission"))).toEqual([
-      onRoute("organisation"),
+  // route condition stops that stale answer showing the warning on the self
+  // route.
+  it("explains the permission rule only on the organisation route", async () => {
+    const notice = await field(
+      "who-are-you-applying-for",
+      "no-permission-notice",
+    );
+
+    expect(notice.behaviours).toEqual([
       {
-        type: "stepConditionalOn",
-        targetStepId: "who-are-you-applying-for",
+        type: "fieldConditionalOn",
+        targetFieldId: "applying-for",
+        operator: "equal",
+        value: "organisation",
+      },
+      {
+        type: "fieldConditionalOn",
         targetFieldId: "has-permission",
         operator: "equal",
         value: "no",
