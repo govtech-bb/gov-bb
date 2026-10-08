@@ -20,7 +20,7 @@ import {
   $insertGeneratedNodes,
 } from "@lexical/clipboard";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
-import { govbbPageCodec, govbbPageEditor } from "../../src/presets/govbb-page";
+import { govbbPageBodyCodec, govbbPageCodec, govbbPageEditor } from "../../src/presets/govbb-page";
 import { $pageMetadata, $setPageMetadata } from "../../src/pages/metadata";
 import { PagePreview } from "../../src/pages/preview";
 import { PageComponentNode } from "../../src/pages/nodes";
@@ -111,6 +111,45 @@ describe("current GovBB landing content", () => {
     test(path, () => {
       checkPagePreservation(path, readFileSync(new URL(path, directory), "utf8"));
     });
+});
+
+describe("content API page bodies", () => {
+  const directory = new URL("../../../landing/src/content/", import.meta.url);
+
+  const paths = readdirSync(directory, { recursive: true, encoding: "utf8" })
+    .filter((path) => path.endsWith(".md"))
+    .sort();
+
+  // The content API keeps a landing page's frontmatter as fields and the rest as its body.
+  const bodyOf = (source: string) => source.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, "").trim();
+
+  for (const path of paths)
+    test(path, () => {
+      const prepared = govbbPageBodyCodec.prepare(
+        bodyOf(readFileSync(new URL(path, directory), "utf8")),
+      );
+
+      expect(prepared.mode ?? "visual").toBe(sourceOnly.has(path) ? "source" : "visual");
+
+      if (prepared.mode === "source") return;
+      const body = govbbPageBodyCodec.encode(prepared.state);
+      const reopened = govbbPageBodyCodec.prepare(body);
+
+      if (reopened.mode === "source")
+        throw new Error(`${path}: ${reopened.diagnostics[0]?.message}`);
+      expect(govbbPageBodyCodec.encode(reopened.state)).toBe(body);
+    });
+
+  test("a separator at the start of a body is not page metadata", () => {
+    const prepared = govbbPageBodyCodec.prepare("---\ntitle: Not metadata\n---\n\nBody\n");
+
+    if (prepared.mode === "source") throw new Error(prepared.diagnostics[0]?.message);
+    expect(prepared.state.root.children.map((node) => node.type)).toEqual([
+      "page-rule",
+      "heading",
+      "paragraph",
+    ]);
+  });
 });
 
 test("birth instructions keep headings, paragraphs and Start actions inside their numbered items", () => {

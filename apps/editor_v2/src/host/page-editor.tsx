@@ -7,9 +7,8 @@ import {
   PageHistoryControls,
   PageTitleField,
   PagePreview,
-  type PageDetailsOptions,
 } from "../pages";
-import { govbbPageEditor } from "../presets/govbb-page";
+import { govbbPageBodyEditor, govbbPageEditor } from "../presets/govbb-page";
 import type { DraftStore } from "../persistence/draft-store";
 import { Button } from "../ui/button";
 import {
@@ -21,9 +20,13 @@ import {
   type ServerSaveStatus,
 } from "./source-ui";
 
+/** A page's heading when its details are kept outside its Markdown. */
+type PageHeading = { title: string; lede?: string };
+
 /** What a host adds around a page draft: its own save controls, notices and status. */
 type PageHost = {
-  details?: PageDetailsOptions;
+  /** Details the host keeps as fields, shown above the body; the page's Markdown is then its body alone. */
+  fields?: PageHeading & { panel: ReactNode };
   tools?: ReactNode;
   notice?: ReactNode;
   saveStatus?: ServerSaveStatus;
@@ -41,7 +44,7 @@ export function PageDraftEditor({
   );
 }
 
-function PageDraft({ active, details, tools, notice, saveStatus }: { active: boolean } & PageHost) {
+function PageDraft({ active, fields, tools, notice, saveStatus }: { active: boolean } & PageHost) {
   const draft = useDraft();
   const [preview, setPreview] = useState(false);
 
@@ -59,6 +62,7 @@ function PageDraft({ active, details, tools, notice, saveStatus }: { active: boo
         </div>
         {notice}
         <div className="page-source-document">
+          {fields?.panel}
           <h1>Edit this page in Markdown</h1>
           <p>
             This page contains content the visual editor cannot edit. Its Markdown is preserved, and
@@ -73,7 +77,7 @@ function PageDraft({ active, details, tools, notice, saveStatus }: { active: boo
 
   return (
     <EditorComposer
-      definition={govbbPageEditor}
+      definition={fields ? govbbPageBodyEditor : govbbPageEditor}
       initialState={draft.state}
       readOnly={preview || !active}
     >
@@ -118,11 +122,15 @@ function PageDraft({ active, details, tools, notice, saveStatus }: { active: boo
         )}
         <div className="page-document-canvas">
           <div hidden={preview} inert={paused || preview} className="page-document-writing">
-            <PageTitleField error={details?.errors?.title} />
-            <PageDetailsFields {...details} />
+            {fields?.panel ?? (
+              <>
+                <PageTitleField />
+                <PageDetailsFields />
+              </>
+            )}
             <PageEditor label="Page content" />
           </div>
-          {preview && <PagePreviewSurface source={draft.committed} />}
+          {preview && <PagePreviewSurface source={draft.committed} heading={fields} />}
         </div>
       </div>
     </EditorComposer>
@@ -130,7 +138,7 @@ function PageDraft({ active, details, tools, notice, saveStatus }: { active: boo
 }
 
 /** A read-only page preview whose links don't navigate away from the editor. */
-export function PagePreviewSurface({ source }: { source: string }) {
+export function PagePreviewSurface({ source, heading }: { source: string; heading?: PageHeading }) {
   return (
     <div
       className="page-document-preview"
@@ -142,7 +150,16 @@ export function PagePreviewSurface({ source }: { source: string }) {
           event.preventDefault();
       }}
     >
-      <PagePreview source={source} definition={govbbPageEditor} />
+      {heading ? (
+        <PagePreview
+          source={source}
+          definition={govbbPageBodyEditor}
+          title={heading.title}
+          lede={heading.lede}
+        />
+      ) : (
+        <PagePreview source={source} definition={govbbPageEditor} />
+      )}
     </div>
   );
 }

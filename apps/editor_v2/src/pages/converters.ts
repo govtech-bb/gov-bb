@@ -23,9 +23,8 @@ export function readPageMetadata(source: string) {
   return pageMetadataFromYaml(frontmatter?.type === "yaml" ? frontmatter.value : "");
 }
 
-function $encode(definition: PageEditorDefinition) {
+function $body(definition: PageEditorDefinition) {
   const context = pageConversion(definition);
-  const metadata = $pageMetadataNode();
 
   const body: Root = {
     type: "root",
@@ -37,8 +36,13 @@ function $encode(definition: PageEditorDefinition) {
     ),
   };
 
+  return stringifyPageMarkdown(body);
+}
+
+function $encode(definition: PageEditorDefinition) {
+  const metadata = $pageMetadataNode();
   const yaml = metadata.getYaml();
-  const canonical = `${yaml ? `---\n${yaml.trimEnd()}\n---\n\n` : ""}${stringifyPageMarkdown(body)}`;
+  const canonical = `${yaml ? `---\n${yaml.trimEnd()}\n---\n\n` : ""}${$body(definition)}`;
 
   return { metadata, canonical };
 }
@@ -47,25 +51,26 @@ export function pageMarkdownToLexical(
   source: string,
   definition: PageEditorDefinition,
 ): PreparedSource {
-  const root = parsePageMarkdown(source);
+  const root = parsePageMarkdown(source, definition.frontmatter);
   const first = root.children[0];
   const yaml = first?.type === "yaml" ? first.value : "";
 
-  try {
-    if (/^\uFEFF?---\r?\n/.test(source) && first?.type !== "yaml")
-      throw new Error("Close the page metadata with a second --- line");
-    validateMetadata(yaml);
-  } catch (error) {
-    throw new SourceError("Correct the page metadata before applying changes", [
-      {
-        code: "page-metadata",
-        severity: "fatal",
-        message: error instanceof Error ? error.message : String(error),
-        line: first?.position?.start.line ?? 1,
-        column: 1,
-      },
-    ]);
-  }
+  if (definition.frontmatter)
+    try {
+      if (/^\uFEFF?---\r?\n/.test(source) && first?.type !== "yaml")
+        throw new Error("Close the page metadata with a second --- line");
+      validateMetadata(yaml);
+    } catch (error) {
+      throw new SourceError("Correct the page metadata before applying changes", [
+        {
+          code: "page-metadata",
+          severity: "fatal",
+          message: error instanceof Error ? error.message : String(error),
+          line: first?.position?.start.line ?? 1,
+          column: 1,
+        },
+      ]);
+    }
 
   const editor = createHeadlessEditor(definition, undefined, { prepare: false });
 
@@ -73,22 +78,25 @@ export function pageMarkdownToLexical(
     editor.update(
       () => {
         const context = pageConversion(definition);
-        const metadata = new PageMetadataNode(yaml);
-        $getRoot().append(metadata);
+
+        if (definition.frontmatter) $getRoot().append(new PageMetadataNode(yaml));
 
         for (const node of root.children) {
           if (node === first && node.type === "yaml") continue;
           $getRoot().append(...context.$import(node));
         }
 
-        if ($getRoot().getChildrenSize() === 1) $getRoot().append($createParagraphNode());
+        if ($getRoot().getChildrenSize() === (definition.frontmatter ? 1 : 0))
+          $getRoot().append($createParagraphNode());
       },
       { discrete: true },
     );
+
     // Adjacent text nodes are normalized when the import update commits.
-    editor.update(() => $pageMetadataNode().setOriginal(source, $encode(definition).canonical), {
-      discrete: true,
-    });
+    if (definition.frontmatter)
+      editor.update(() => $pageMetadataNode().setOriginal(source, $encode(definition).canonical), {
+        discrete: true,
+      });
 
     return { mode: "visual", state: editor.getEditorState().toJSON(), source, diagnostics: [] };
   } catch (error) {
@@ -121,6 +129,7 @@ export function lexicalToPageMarkdown(
   try {
     return editor.getEditorState().read(
       () => {
+        if (!definition.frontmatter) return $body(definition);
         const { metadata, canonical } = $encode(definition);
 
         return canonical === metadata.__fingerprint ? metadata.__original : canonical;
@@ -164,4 +173,10 @@ export function createEmptyPage(title = ""): SerializedEditorState {
   ];
 
   return { root: { type: "root", version: 1, direction: null, format: "", indent: 0, children } };
+}
+
+export function createEmptyBody(): SerializedEditorState {
+  const page = createEmptyPage();
+
+  return { root: { ...page.root, children: page.root.children.slice(1) } };
 }

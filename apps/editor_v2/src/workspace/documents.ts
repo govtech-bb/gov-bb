@@ -4,8 +4,8 @@ import { serializedToNativeForm } from "../forms/editor/native-bindings";
 import { nativeState } from "../forms/editor/native-state";
 import { createRegistryForm } from "../forms/editor/registry";
 import { govbbFormCodec, govbbFormEditor } from "../presets/govbb-form";
-import { govbbPageCodec } from "../presets/govbb-page";
-import { createEmptyPage } from "../pages";
+import { govbbPageBodyCodec, govbbPageCodec } from "../presets/govbb-page";
+import { createEmptyBody, createEmptyPage } from "../pages";
 import { DraftStore, initialDraft } from "../persistence/draft-store";
 import type { DraftKeys, DraftStorage } from "../persistence/types";
 import { createGovbbDraft } from "../host/govbb-draft";
@@ -86,6 +86,16 @@ export function openDocument(document: WorkspaceDocument, storage: DraftStorage)
     storage,
     initialDraft(storage, () => createEmptyPage(document.title), govbbPageCodec, document.keys),
     govbbPageCodec,
+    document.keys,
+  );
+}
+
+/** A page from the content API: its draft is the body alone, with its details kept as fields. */
+export function openBodyDocument(document: PageDocument, storage: DraftStorage) {
+  return new DraftStore(
+    storage,
+    initialDraft(storage, createEmptyBody, govbbPageBodyCodec, document.keys),
+    govbbPageBodyCodec,
     document.keys,
   );
 }

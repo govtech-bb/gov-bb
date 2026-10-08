@@ -28,6 +28,8 @@ export function definePageEditor(modules: readonly PageModule[]) {
   return Object.freeze({
     ...definition,
     pageHandlers: Object.freeze(modules.flatMap((module) => module.markdown ?? [])),
+    // Without the metadata module, a page is its Markdown body alone.
+    frontmatter: definition.moduleKeys.includes("page-metadata"),
   });
 }
 

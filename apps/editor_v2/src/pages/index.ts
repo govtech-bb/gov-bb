@@ -12,6 +12,7 @@ export {
   lexicalToPageMarkdown,
   createPageDraftCodec,
   createEmptyPage,
+  createEmptyBody,
   readPageMetadata,
 } from "./converters";
 
@@ -21,10 +22,19 @@ export { PageEditor, PageHistoryControls } from "./editor";
 
 export {
   PageTitleField,
+  PageHeadingFields,
   PageDetailsFields,
+  PageDetailsSection,
+  PageDetail,
+  PropertySelect,
+  useAutoHeight,
   visibilityLabels,
-  type PageCategory,
-  type PageDetailsOptions,
+  visibilityDots,
+  detailControl,
+  detailCodeControl,
+  detailHint,
+  detailDateFormat,
+  detailShortControl,
 } from "./metadata-fields";
 
 export { PagePreview } from "./preview";

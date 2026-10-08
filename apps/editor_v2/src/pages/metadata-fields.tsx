@@ -79,7 +79,7 @@ function useMetadataUpdate() {
   return { editor, yaml, metadata, editable, update, historyKeys };
 }
 
-function useAutoHeight(value: string | undefined) {
+export function useAutoHeight(value: string | undefined) {
   const input = useRef<HTMLTextAreaElement>(null);
 
   useLayoutEffect(() => {
@@ -111,24 +111,40 @@ function useAutoHeight(value: string | undefined) {
   return input;
 }
 
-export function PageTitleField({ error }: { error?: string }) {
-  const { editor, metadata, editable, update, historyKeys } = useMetadataUpdate();
-  const title = useAutoHeight(metadata.title);
-  const lede = useAutoHeight(metadata.lede);
+/** The page title and introduction, written above the body. */
+export function PageHeadingFields({
+  title,
+  lede,
+  readOnly = false,
+  error,
+  onTitle,
+  onLede,
+  ledeProps,
+}: {
+  title: string;
+  lede: string;
+  readOnly?: boolean;
+  error?: string;
+  onTitle: (value: string) => void;
+  onLede: (value: string) => void;
+  ledeProps?: ComponentProps<"textarea">;
+}) {
+  const titleInput = useAutoHeight(title);
+  const ledeInput = useAutoHeight(lede);
 
   return (
     <div className="page-document-heading">
       <label className="page-title-label">
         <span className="sr-only">Page title</span>
         <textarea
-          ref={title}
+          ref={titleInput}
           aria-label="Page title"
           rows={1}
           className="page-title-input outline-none"
-          value={metadata.title ?? ""}
-          readOnly={!editable}
+          value={title}
+          readOnly={readOnly}
           placeholder="Untitled page"
-          onChange={(event) => editor.update(() => $setPageMetadata({ title: event.target.value }))}
+          onChange={(event) => onTitle(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter") event.preventDefault();
           }}
@@ -137,17 +153,32 @@ export function PageTitleField({ error }: { error?: string }) {
       </label>
       {error && <p className="text-14 text-error">{error}</p>}
       <textarea
-        ref={lede}
+        ref={ledeInput}
         aria-label="Introduction"
         rows={1}
         className="page-lede-input outline-none"
-        value={metadata.lede ?? ""}
-        readOnly={!editable}
+        value={lede}
+        readOnly={readOnly}
         placeholder="Add an introduction (optional)"
-        onChange={(event) => update({ lede: event.target.value || undefined })}
-        {...historyKeys}
+        onChange={(event) => onLede(event.target.value)}
+        {...ledeProps}
       />
     </div>
+  );
+}
+
+export function PageTitleField() {
+  const { editor, metadata, editable, update, historyKeys } = useMetadataUpdate();
+
+  return (
+    <PageHeadingFields
+      title={metadata.title ?? ""}
+      lede={metadata.lede ?? ""}
+      readOnly={!editable}
+      onTitle={(title) => editor.update(() => $setPageMetadata({ title }))}
+      onLede={(lede) => update({ lede: lede || undefined })}
+      ledeProps={historyKeys}
+    />
   );
 }
 
@@ -172,8 +203,20 @@ const labelClass = "py-1 leading-normal text-muted @max-[30rem]:py-0";
 
 const hintClass = "px-2 py-1 text-13 leading-normal wrap-anywhere text-muted";
 
+export {
+  control as detailControl,
+  codeControl as detailCodeControl,
+  hintClass as detailHint,
+  dateFormat as detailDateFormat,
+  shortControl as detailShortControl,
+};
+
 /** A select that reads as its chosen value, optionally led by a coloured dot. */
-function PropertySelect({ dot, className, ...props }: ComponentProps<"select"> & { dot?: string }) {
+export function PropertySelect({
+  dot,
+  className,
+  ...props
+}: ComponentProps<"select"> & { dot?: string }) {
   return (
     <span className="relative block max-w-80">
       {dot && (
@@ -198,14 +241,14 @@ function PropertySelect({ dot, className, ...props }: ComponentProps<"select"> &
 }
 
 // Live is green, link-only is amber, draft is grey; the label always travels with the colour.
-const visibilityDots = new Map([
+export const visibilityDots = new Map([
   ["", "bg-green-80"],
   ["public", "bg-green-80"],
   ["preview", "bg-yellow-80"],
   ["draft", "bg-grey-60"],
 ]);
 
-function PageDetail({
+export function PageDetail({
   id,
   label,
   children,
@@ -255,20 +298,9 @@ const shortControl = "max-w-80";
 
 export type PageDetailsOptions = {
   categories?: readonly PageCategory[];
-  /** A page files under one category, so the picker hides once one is chosen. */
-  single?: boolean;
-  /** When the server dates publication, its date shown read-only; null until the page first goes public. */
-  publishedAt?: string | null;
-  /** Why the host refused each field, keyed by field name. */
-  errors?: Readonly<Record<string, string>>;
 };
 
-export function PageDetailsFields({
-  categories = [],
-  single = false,
-  publishedAt,
-  errors = {},
-}: PageDetailsOptions) {
+export function PageDetailsFields({ categories = [] }: PageDetailsOptions) {
   const { metadata, yaml, editable, update, historyKeys } = useMetadataUpdate();
   const id = useId();
   const document = parseDocument(yaml);
@@ -287,8 +319,7 @@ export function PageDetailsFields({
   const visibility = metadata.visibility ?? "";
   const unusualVisibility = !["", "public", "preview", "draft"].includes(visibility);
 
-  const date =
-    (publishedAt === undefined ? metadata.publish_date : publishedAt?.slice(0, 10)) ?? "";
+  const date = metadata.publish_date ?? "";
 
   const parsedDate = new Date(date);
 
@@ -328,6 +359,176 @@ export function PageDetailsFields({
   };
 
   return (
+    <PageDetailsSection summary={summary} disabled={!editable} {...historyKeys}>
+      {document.has("url") && (
+        <PageDetail id={`${id}-url`} label="Path" unsupported={unsupported("url")}>
+          <input
+            id={`${id}-url`}
+            className={codeControl}
+            value={metadata.url ?? ""}
+            spellCheck={false}
+            autoCapitalize="off"
+            onChange={(event) => update({ url: event.target.value })}
+          />
+        </PageDetail>
+      )}
+      <PageDetail id={`${id}-description`} label="Description">
+        <textarea
+          id={`${id}-description`}
+          className={cn(
+            control,
+            "resize-none supports-[field-sizing:content]:field-sizing-content",
+          )}
+          rows={2}
+          value={metadata.description ?? ""}
+          placeholder="Short summary for listings and search"
+          onChange={(event) => update({ description: event.target.value || undefined })}
+        />
+      </PageDetail>
+      {(categories.length > 0 || document.has("category") || document.has("categories")) && (
+        <PageDetail
+          id={`${id}-category`}
+          label="Categories"
+          unsupported={unsupported("category") || unsupported("categories")}
+        >
+          <div className="flex flex-wrap gap-1.5">
+            {selected.map((slug) => {
+              const title = categories.find((category) => category.slug === slug)?.title ?? slug;
+
+              return (
+                <span
+                  className="inline-flex min-h-9 max-w-full items-center rounded-sm bg-blue-10 ps-2.5 leading-normal text-ink"
+                  key={slug}
+                >
+                  <span className="min-w-0 wrap-anywhere">{title}</span>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${title}`}
+                    className={cn(
+                      "grid min-w-9 flex-none cursor-pointer place-items-center self-stretch rounded-sm hover:bg-tint hover:text-ink pointer-fine:active:scale-[0.97] @max-[30rem]:min-h-11 @max-[30rem]:min-w-11 pointer-coarse:min-h-11 pointer-coarse:min-w-11",
+                      focusRing,
+                    )}
+                    onClick={() => changeCategories(selected.filter((value) => value !== slug))}
+                  >
+                    <X className="size-3.5" aria-hidden="true" />
+                  </button>
+                </span>
+              );
+            })}
+            <PropertySelect
+              id={`${id}-category`}
+              aria-label="Add category"
+              className="w-[min(100%,20rem)]"
+              disabled={categories.length === 0}
+              value=""
+              onChange={(event) => {
+                if (event.target.value) changeCategories([...selected, event.target.value]);
+              }}
+            >
+              <option value="">
+                {categories.length ? "Add category…" : "No categories available"}
+              </option>
+              {categories.flatMap((category) =>
+                selected.includes(category.slug)
+                  ? []
+                  : [
+                      <option key={category.slug} value={category.slug}>
+                        {category.title}
+                      </option>,
+                    ],
+              )}
+            </PropertySelect>
+          </div>
+        </PageDetail>
+      )}
+      {(subcategories.length > 0 || document.has("subcategory")) && (
+        <PageDetail
+          id={`${id}-subcategory`}
+          label="Subcategory"
+          unsupported={unsupported("subcategory")}
+        >
+          <PropertySelect
+            id={`${id}-subcategory`}
+            value={metadata.subcategory ?? ""}
+            onChange={(event) => update({ subcategory: event.target.value || undefined }, true)}
+          >
+            <option value="">None</option>
+            {metadata.subcategory &&
+              !subcategories.some((item) => item.slug === metadata.subcategory) && (
+                <option value={metadata.subcategory}>{metadata.subcategory} (from Markdown)</option>
+              )}
+            {subcategories.map((item) => (
+              <option key={item.slug} value={item.slug}>
+                {item.title}
+              </option>
+            ))}
+          </PropertySelect>
+        </PageDetail>
+      )}
+      <PageDetail
+        id={`${id}-visibility`}
+        label="Visibility"
+        unsupported={unsupported("visibility")}
+      >
+        <PropertySelect
+          id={`${id}-visibility`}
+          dot={visibilityDots.get(visibility) ?? "bg-grey-60"}
+          value={visibility === "public" ? "" : visibility}
+          onChange={(event) => update({ visibility: event.target.value || undefined }, true)}
+        >
+          {["", "preview", "draft"].map((value) => (
+            <option key={value} value={value}>
+              {visibilityLabels.get(value)}
+            </option>
+          ))}
+          {unusualVisibility && <option value={visibility}>{visibility} (from Markdown)</option>}
+        </PropertySelect>
+      </PageDetail>
+      <PageDetail
+        id={`${id}-date`}
+        label="Publication date"
+        unsupported={unsupported("publish_date")}
+      >
+        {unusualDate ? (
+          <>
+            <input id={`${id}-date`} className={cn(control, shortControl)} value={date} readOnly />
+            <p className={hintClass}>This date is preserved. Edit it in Markdown.</p>
+          </>
+        ) : (
+          <input
+            id={`${id}-date`}
+            className={cn(control, shortControl)}
+            type="date"
+            value={date}
+            onChange={(event) => {
+              if (event.target.validity.valid)
+                update({ publish_date: event.target.value || undefined }, true);
+            }}
+          />
+        )}
+      </PageDetail>
+      <PageDetail id={`${id}-form`} label="Form ID">
+        <input
+          id={`${id}-form`}
+          className={cn(codeControl, shortControl)}
+          value={metadata.form_id ?? ""}
+          placeholder="No form linked"
+          spellCheck={false}
+          autoCapitalize="off"
+          onChange={(event) => update({ form_id: event.target.value || undefined })}
+        />
+      </PageDetail>
+    </PageDetailsSection>
+  );
+}
+
+/** The collapsed Page details section: a one-line summary that opens onto its rows. */
+export function PageDetailsSection({
+  summary,
+  children,
+  ...fieldset
+}: ComponentProps<"fieldset"> & { summary: string }) {
+  return (
     <details className="page-metadata-details group/metadata @container -mt-2 mb-8 text-14 open:border-b open:border-line open:pb-6">
       <summary
         className={cn(
@@ -341,212 +542,9 @@ export function PageDetailsFields({
         </span>
         <span className="min-w-0 truncate group-open/metadata:hidden">{summary}</span>
       </summary>
-      <fieldset
-        className="mt-3 grid min-w-0 gap-0.5 @max-[30rem]:gap-4"
-        disabled={!editable}
-        {...historyKeys}
-      >
+      <fieldset className="mt-3 grid min-w-0 gap-0.5 @max-[30rem]:gap-4" {...fieldset}>
         <legend className="sr-only">Page details</legend>
-        {document.has("url") && (
-          <PageDetail
-            id={`${id}-url`}
-            label="Path"
-            unsupported={unsupported("url")}
-            error={errors.url}
-          >
-            <input
-              id={`${id}-url`}
-              className={codeControl}
-              value={metadata.url ?? ""}
-              spellCheck={false}
-              autoCapitalize="off"
-              onChange={(event) => update({ url: event.target.value })}
-            />
-          </PageDetail>
-        )}
-        <PageDetail id={`${id}-description`} label="Description" error={errors.description}>
-          <textarea
-            id={`${id}-description`}
-            className={cn(
-              control,
-              "resize-none supports-[field-sizing:content]:field-sizing-content",
-            )}
-            rows={2}
-            value={metadata.description ?? ""}
-            placeholder="Short summary for listings and search"
-            onChange={(event) => update({ description: event.target.value || undefined })}
-          />
-        </PageDetail>
-        {(categories.length > 0 || document.has("category") || document.has("categories")) && (
-          <PageDetail
-            id={`${id}-category`}
-            label="Categories"
-            unsupported={unsupported("category") || unsupported("categories")}
-            error={errors.category ?? errors.category_id}
-          >
-            {single ? (
-              <PropertySelect
-                id={`${id}-category`}
-                value={selected[0] ?? ""}
-                onChange={(event) =>
-                  changeCategories(event.target.value ? [event.target.value] : [])
-                }
-              >
-                <option value="">Choose a category</option>
-                {selected[0] && !categories.some((category) => category.slug === selected[0]) && (
-                  <option value={selected[0]}>{selected[0]} (from Markdown)</option>
-                )}
-                {categories.map((category) => (
-                  <option key={category.slug} value={category.slug}>
-                    {category.title}
-                  </option>
-                ))}
-              </PropertySelect>
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {selected.map((slug) => {
-                  const title =
-                    categories.find((category) => category.slug === slug)?.title ?? slug;
-
-                  return (
-                    <span
-                      className="inline-flex min-h-9 max-w-full items-center rounded-sm bg-blue-10 ps-2.5 leading-normal text-ink"
-                      key={slug}
-                    >
-                      <span className="min-w-0 wrap-anywhere">{title}</span>
-                      <button
-                        type="button"
-                        aria-label={`Remove ${title}`}
-                        className={cn(
-                          "grid min-w-9 flex-none cursor-pointer place-items-center self-stretch rounded-sm hover:bg-tint hover:text-ink pointer-fine:active:scale-[0.97] @max-[30rem]:min-h-11 @max-[30rem]:min-w-11 pointer-coarse:min-h-11 pointer-coarse:min-w-11",
-                          focusRing,
-                        )}
-                        onClick={() => changeCategories(selected.filter((value) => value !== slug))}
-                      >
-                        <X className="size-3.5" aria-hidden="true" />
-                      </button>
-                    </span>
-                  );
-                })}
-                <PropertySelect
-                  id={`${id}-category`}
-                  aria-label="Add category"
-                  className="w-[min(100%,20rem)]"
-                  disabled={categories.length === 0}
-                  value=""
-                  onChange={(event) => {
-                    if (event.target.value) changeCategories([...selected, event.target.value]);
-                  }}
-                >
-                  <option value="">
-                    {categories.length ? "Add category…" : "No categories available"}
-                  </option>
-                  {categories.flatMap((category) =>
-                    selected.includes(category.slug)
-                      ? []
-                      : [
-                          <option key={category.slug} value={category.slug}>
-                            {category.title}
-                          </option>,
-                        ],
-                  )}
-                </PropertySelect>
-              </div>
-            )}
-          </PageDetail>
-        )}
-        {(subcategories.length > 0 || document.has("subcategory")) && (
-          <PageDetail
-            id={`${id}-subcategory`}
-            label="Subcategory"
-            unsupported={unsupported("subcategory")}
-            error={errors.subcategory}
-          >
-            <PropertySelect
-              id={`${id}-subcategory`}
-              value={metadata.subcategory ?? ""}
-              onChange={(event) => update({ subcategory: event.target.value || undefined }, true)}
-            >
-              <option value="">None</option>
-              {metadata.subcategory &&
-                !subcategories.some((item) => item.slug === metadata.subcategory) && (
-                  <option value={metadata.subcategory}>
-                    {metadata.subcategory} (from Markdown)
-                  </option>
-                )}
-              {subcategories.map((item) => (
-                <option key={item.slug} value={item.slug}>
-                  {item.title}
-                </option>
-              ))}
-            </PropertySelect>
-          </PageDetail>
-        )}
-        <PageDetail
-          id={`${id}-visibility`}
-          label="Visibility"
-          unsupported={unsupported("visibility")}
-          error={errors.visibility}
-        >
-          <PropertySelect
-            id={`${id}-visibility`}
-            dot={visibilityDots.get(visibility) ?? "bg-grey-60"}
-            value={visibility === "public" ? "" : visibility}
-            onChange={(event) => update({ visibility: event.target.value || undefined }, true)}
-          >
-            {["", "preview", "draft"].map((value) => (
-              <option key={value} value={value}>
-                {visibilityLabels.get(value)}
-              </option>
-            ))}
-            {unusualVisibility && <option value={visibility}>{visibility} (from Markdown)</option>}
-          </PropertySelect>
-        </PageDetail>
-        <PageDetail
-          id={`${id}-date`}
-          label="Publication date"
-          unsupported={unsupported("publish_date")}
-          plain={publishedAt !== undefined}
-          error={errors.publish_date}
-        >
-          {publishedAt !== undefined ? (
-            <p className={cn("px-2 py-1 leading-normal", date ? "text-ink" : "text-subtle")}>
-              {date ? dateFormat.format(parsedDate) : "Set when the page is first made public"}
-            </p>
-          ) : unusualDate ? (
-            <>
-              <input
-                id={`${id}-date`}
-                className={cn(control, shortControl)}
-                value={date}
-                readOnly
-              />
-              <p className={hintClass}>This date is preserved. Edit it in Markdown.</p>
-            </>
-          ) : (
-            <input
-              id={`${id}-date`}
-              className={cn(control, shortControl)}
-              type="date"
-              value={date}
-              onChange={(event) => {
-                if (event.target.validity.valid)
-                  update({ publish_date: event.target.value || undefined }, true);
-              }}
-            />
-          )}
-        </PageDetail>
-        <PageDetail id={`${id}-form`} label="Form ID" error={errors.form_id}>
-          <input
-            id={`${id}-form`}
-            className={cn(codeControl, shortControl)}
-            value={metadata.form_id ?? ""}
-            placeholder="No form linked"
-            spellCheck={false}
-            autoCapitalize="off"
-            onChange={(event) => update({ form_id: event.target.value || undefined })}
-          />
-        </PageDetail>
+        {children}
       </fieldset>
     </details>
   );

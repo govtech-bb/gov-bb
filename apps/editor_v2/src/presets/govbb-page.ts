@@ -10,8 +10,7 @@ import { PageListsModule } from "../pages/modules/lists";
 import { PageTablesModule } from "../pages/modules/tables";
 import { createPageDraftCodec } from "../pages/converters";
 
-export const govbbPageEditor = definePageEditor([
-  PageMetadataModule(),
+const bodyModules = () => [
   HistoryModule(),
   PageComponentsModule(),
   PageTextModule(),
@@ -19,6 +18,14 @@ export const govbbPageEditor = definePageEditor([
   PageListsModule(),
   PageTablesModule(),
   FormattingModule({ isValidLink: isSupportedLinkUrl }),
-]);
+];
+
+/** A page drafted in this browser: YAML frontmatter, then its body. */
+export const govbbPageEditor = definePageEditor([PageMetadataModule(), ...bodyModules()]);
 
 export const govbbPageCodec = createPageDraftCodec(govbbPageEditor);
+
+/** A page from the content API, whose details are fields: its Markdown is the body alone. */
+export const govbbPageBodyEditor = definePageEditor(bodyModules());
+
+export const govbbPageBodyCodec = createPageDraftCodec(govbbPageBodyEditor);
