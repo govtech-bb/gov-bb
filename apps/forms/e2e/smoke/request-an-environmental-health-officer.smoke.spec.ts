@@ -68,6 +68,7 @@ import {
   submitAndConfirm,
   tickCheckbox,
   uploadOne,
+  mockGeocoder,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
 
@@ -273,6 +274,8 @@ export async function fillGateApplicantAndEvent(
   await expectLeadTimeWarningIsAdvisory(page, step, data.start);
   await advance(page, step);
 }
+
+test.beforeEach(({ page }) => mockGeocoder(page));
 
 test.describe("Request an Environmental Health Officer — Live Smoke", () => {
   test("submits the serving-food branch end-to-end and reaches the confirmation screen", async ({

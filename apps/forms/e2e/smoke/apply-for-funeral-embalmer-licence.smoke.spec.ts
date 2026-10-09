@@ -137,6 +137,7 @@ import {
   submitAndConfirm,
   tickCheckbox,
   uploadOne,
+  mockGeocoder,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
 
@@ -456,6 +457,8 @@ async function confirmAndSubmit(page: Page): Promise<void> {
   // the header note.
   await expect(page.getByText(/Environmental Health/).first()).toBeVisible();
 }
+
+test.beforeEach(({ page }) => mockGeocoder(page));
 
 test.describe("Funeral Embalmer Licence Application — Live Smoke", () => {
   test("submits a renewal, with the first-licence statutory evidence gated off", async ({

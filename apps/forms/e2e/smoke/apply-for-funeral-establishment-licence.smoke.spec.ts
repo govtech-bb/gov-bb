@@ -77,6 +77,7 @@ import {
   selectDropdown,
   submitAndConfirm,
   uploadOne,
+  mockGeocoder,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
 
@@ -268,6 +269,8 @@ async function confirmAndSubmit(page: Page): Promise<void> {
   // the header note.
   await expect(page.getByText(/Environmental Health/).first()).toBeVisible();
 }
+
+test.beforeEach(({ page }) => mockGeocoder(page));
 
 test.describe("Funeral Establishment Licence — Live Smoke", () => {
   test("submits a complete application with an embalmer list", async ({

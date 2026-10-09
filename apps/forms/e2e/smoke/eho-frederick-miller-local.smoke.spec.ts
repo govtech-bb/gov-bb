@@ -30,6 +30,7 @@ import {
   expectStep,
   fillDate,
   fillField,
+  mockGeocoder,
   selectDropdown,
   selectRadio,
   submitAndConfirm,
@@ -119,6 +120,8 @@ function buildData() {
     wasteDisposal: "Bagged and collected daily",
   };
 }
+
+test.beforeEach(({ page }) => mockGeocoder(page));
 
 test("routes a Frederick Miller event to St. Philip and mints an MOH-EHO reference", async ({
   page,

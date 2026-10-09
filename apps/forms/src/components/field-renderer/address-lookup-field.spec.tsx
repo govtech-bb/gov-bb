@@ -18,6 +18,16 @@ vi.mock("../../lib/api/geocode", () => ({
   searchAddresses: vi.fn(),
 }));
 
+// Leaflet needs a real layout engine; stand the map in with a button that
+// places the pin the way a drag, tap or arrow key would.
+vi.mock("./location-pin-map", () => ({
+  default: ({ onChange }: { onChange: (lat: number, lon: number) => void }) => (
+    <button type="button" onClick={() => onChange(13.1, -59.6)}>
+      Place pin
+    </button>
+  ),
+}));
+
 import { searchAddresses } from "../../lib/api/geocode";
 
 const mockSearch = searchAddresses as Mock;
@@ -53,7 +63,13 @@ const mockForm = {
   setFieldValue,
 };
 
-function addressLookupField(): ClientPrimitive {
+function addressLookupField(
+  geocodeTargets: ClientPrimitive["geocodeTargets"] = {
+    line2FieldId: "event-address-line-2",
+    parishFieldId: "event-parish",
+    coordinatesFieldId: "event-address-coordinates",
+  },
+): ClientPrimitive {
   return {
     id: "step-1.event-address-line-1",
     fieldId: "event-address-line-1",
@@ -65,21 +81,13 @@ function addressLookupField(): ClientPrimitive {
     hidden: false,
     conditionallyHidden: false,
     behaviours: [],
-    geocodeTargets: {
-      line2FieldId: "event-address-line-2",
-      parishFieldId: "event-parish",
-      coordinatesFieldId: "event-address-coordinates",
-    },
+    geocodeTargets,
   } as ClientPrimitive;
 }
 
-function renderField() {
+function renderField(field = addressLookupField()) {
   return render(
-    <FieldRenderer
-      form={mockForm}
-      field={addressLookupField()}
-      validationProperties={{}}
-    />,
+    <FieldRenderer form={mockForm} field={field} validationProperties={{}} />,
   );
 }
 
@@ -259,9 +267,9 @@ describe("AddressLookupField", () => {
     );
   });
 
-  it("shows a non-blocking notice when the lookup fails", async () => {
+  it("shows a non-blocking notice when the lookup fails on a field with no coordinate", async () => {
     mockSearch.mockRejectedValue(new Error("network down"));
-    renderField();
+    renderField(addressLookupField({ line2FieldId: "event-address-line-2" }));
 
     await userEvent.type(screen.getByRole("combobox"), "Bridgetown");
 
@@ -270,5 +278,59 @@ describe("AddressLookupField", () => {
     ).toHaveAttribute("role", "status");
     // Input still usable.
     expect(screen.getByRole("combobox")).toBeTruthy();
+  });
+
+  describe("when address suggestions are unavailable", () => {
+    const failLookup = async () => {
+      mockSearch.mockRejectedValue(new Error("geocode request failed: 503"));
+      renderField();
+      await userEvent.type(screen.getByRole("combobox"), "Bridgetown");
+      return screen.findByRole("button", { name: "Place pin" });
+    };
+
+    it("offers a map pin with plain guidance instead of an error", async () => {
+      await failLookup();
+
+      const guidance = screen.getByText(
+        /Type your address, then move the pin on the map to where it is/,
+      );
+      expect(guidance).toHaveAttribute("role", "status");
+      expect(guidance.textContent).not.toMatch(
+        /google|nominatim|error|503|try again|later/i,
+      );
+      // The applicant can still type the address.
+      expect(screen.getByRole("combobox")).toBeEnabled();
+    });
+
+    it("writes the placed pin to the routing coordinate", async () => {
+      await userEvent.click(await failLookup());
+
+      expect(setFieldValue).toHaveBeenCalledWith(
+        "step-1.event-address-coordinates",
+        "13.100000,-59.600000",
+      );
+    });
+
+    it("keeps the placed pin when the address is edited afterwards", async () => {
+      await userEvent.click(await failLookup());
+      setFieldValue.mockClear();
+
+      await userEvent.type(screen.getByRole("combobox"), " Road");
+
+      expect(setFieldValue).not.toHaveBeenCalledWith(
+        "step-1.event-address-coordinates",
+        "",
+      );
+    });
+
+    it("keeps the map up when a later lookup succeeds", async () => {
+      await failLookup();
+      mockSearch.mockResolvedValue([]);
+
+      await userEvent.type(screen.getByRole("combobox"), "X");
+      await waitFor(() => expect(mockSearch).toHaveBeenCalledTimes(2));
+
+      expect(screen.getByRole("button", { name: "Place pin" })).toBeTruthy();
+    });
   });
 });
