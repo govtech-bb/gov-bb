@@ -136,18 +136,30 @@ single most common anti-pattern in old recipes. `date-of-birth` already
 validates the date is in the past; for forward-looking dates override the
 validation accordingly.
 
-**Declaration step** (last data step before submission): a single
-`components/confirmation` element. It ships with one option
-`{ label: "I confirm", value: "confirmed" }` and `required`. Override the label
-with the form's declaration wording; keep the single `confirmed` option.
+**Declaration step** (the last data step before submission): titled "Confirm
+and submit your application". It contains one `components/confirmation` with
+`fieldId` `declaration-confirmed` and the standard text. Do not change the text.
+A service-specific point goes in a separate required `components/confirmation`
+on the same step (ADR 0077).
 
 ```json
 {
   "ref": "components/confirmation",
   "overrides": {
     "fieldId": "declaration-confirmed",
-    "label": "I confirm that my information is correct and may be verified.",
-    "options": [{ "label": "<declaration wording>", "value": "confirmed" }]
+    "label": "Declaration",
+    "options": [
+      {
+        "label": "I confirm that the information I have provided is true and correct to the best of my knowledge.",
+        "value": "confirmed"
+      }
+    ],
+    "validations": {
+      "required": {
+        "value": true,
+        "error": "You must confirm the declaration to continue."
+      }
+    }
   }
 }
 ```
@@ -161,7 +173,7 @@ with the form's declaration wording; keep the single `confirmed` option.
 ```
 1..n  data steps (identity, details, uploads, …)
       → check-your-answers      ← auto-injected by the renderer; do NOT author it
-      declaration               ← single components/confirmation checkbox
+      declaration               ← standard declaration checkbox, plus optional service-specific acknowledgements
       submission-confirmation   ← explicit terminal step, elements: []
 ```
 
@@ -231,7 +243,7 @@ which already follows every rule above.
 - [ ] All labels are sentence case, descriptive, citizen-facing.
 - [ ] `address` is followed by `parish`; phone/email/ID/date use named components.
 - [ ] Named selects/radios reference the component without re-declaring options.
-- [ ] The `declaration` step holds a single `components/confirmation` (one `confirmed` option); no empty declaration step, no handwritten signature/date.
+- [ ] The `declaration` step holds the standard `declaration-confirmed` checkbox (ADR 0077), plus any service-specific acknowledgements as separate `components/confirmation` elements; no empty declaration step, no handwritten signature/date.
 - [ ] Every element has a unique `fieldId`; no `disabled`/`conditional`/`type` hacks; no hidden+required.
 - [ ] Build still compiles: `pnpm exec nx run-many -t build --exclude=landing`.
 - [ ] If the form has a live smoke spec under `apps/forms/e2e/smoke/`, run it
