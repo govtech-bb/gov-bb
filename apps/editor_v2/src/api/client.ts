@@ -11,6 +11,15 @@ export type NewPage = Json<paths["/pages"]["post"]["requestBody"]>;
 /** What saving a page sends: every field, with `parent_id` left out to keep the parent. */
 export type SaveFields = Json<paths["/pages/{id}"]["put"]["requestBody"]>;
 
+/** A page's working copy, kept by the content API until it is published. */
+export type PageDraft = Json<paths["/pages/{id}/draft"]["get"]["responses"][200]>;
+
+/** What saving a draft sends: every field a save does, not yet held to the page's rules, and the page version it was edited from. */
+export type DraftFields = Json<paths["/pages/{id}/draft"]["put"]["requestBody"]>;
+
+/** The versions a write was made against, so the API can refuse one over changes it never saw. */
+type Versions = { ifUpdatedAt?: string; ifDraftUpdatedAt?: string };
+
 /** One row of the services list. */
 export type ServiceSummary = Json<paths["/services"]["get"]["responses"][200]>[number];
 
@@ -61,8 +70,8 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
   async function send(
     method: "GET" | "POST" | "PUT" | "DELETE",
     path: string,
-    body?: NewPage | SaveFields,
-    ifUpdatedAt?: string,
+    body?: NewPage | SaveFields | DraftFields,
+    { ifUpdatedAt, ifDraftUpdatedAt }: Versions = {},
   ) {
     const headers = new Headers();
 
@@ -75,6 +84,8 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
     }
 
     if (ifUpdatedAt) headers.set("if-updated-at", ifUpdatedAt);
+
+    if (ifDraftUpdatedAt) headers.set("if-draft-updated-at", ifDraftUpdatedAt);
 
     let response: Response;
 
@@ -103,8 +114,30 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
       read<PageSnapshot>(`/pages/${id}/history/${version}`),
     createPage: async (page: NewPage): Promise<ApiPage> =>
       (await send("POST", "/pages", page)).json(),
-    savePage: async (id: string, fields: SaveFields, ifUpdatedAt: string): Promise<ApiPage> =>
-      (await send("PUT", `/pages/${id}`, fields, ifUpdatedAt)).json(),
+    /** Save a page over the version last read; saving discards the draft, so that is the one last read too. */
+    savePage: async (
+      id: string,
+      fields: SaveFields,
+      ifUpdatedAt: string,
+      ifDraftUpdatedAt?: string,
+    ): Promise<ApiPage> =>
+      (await send("PUT", `/pages/${id}`, fields, { ifUpdatedAt, ifDraftUpdatedAt })).json(),
+    /** The page's working copy, or null when it has none. */
+    draft: async (id: string): Promise<PageDraft | null> => {
+      try {
+        return await read<PageDraft>(`/pages/${id}/draft`);
+      } catch (error) {
+        if (error instanceof ApiFailure && error.status === 404) return null;
+        throw error;
+      }
+    },
+    /** Replace the draft last read (none when left out). */
+    saveDraft: async (id: string, draft: DraftFields, ifUpdatedAt?: string): Promise<PageDraft> =>
+      (await send("PUT", `/pages/${id}/draft`, draft, { ifUpdatedAt })).json(),
+    /** Discard the draft last read (none when left out). */
+    discardDraft: async (id: string, ifUpdatedAt?: string) => {
+      await send("DELETE", `/pages/${id}/draft`, undefined, { ifUpdatedAt });
+    },
     deletePage: async (id: string) => {
       await send("DELETE", `/pages/${id}`);
     },

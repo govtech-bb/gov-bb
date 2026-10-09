@@ -383,10 +383,11 @@ export function SourceEditor({
 }
 
 /** Where a draft stands against the host's own store, once the browser copy is safe. */
-export type ServerSaveStatus = "saved" | "unsaved" | "saving" | "failed";
+export type ServerSaveStatus = "saved" | "drafted" | "unsaved" | "saving" | "failed";
 
 const serverText = {
   saved: ["Saved", "Saved"],
+  drafted: ["Draft saved", "Draft"],
   unsaved: ["Unsaved changes", "Unsaved"],
   saving: ["Saving…", "Saving…"],
   failed: ["Not saved", "Unsaved"],

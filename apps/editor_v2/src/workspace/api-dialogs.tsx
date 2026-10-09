@@ -279,7 +279,7 @@ export function DeletePageDialog({
   return (
     <WorkspaceDialog
       title="Delete this page"
-      description={`${documentLabel(page)} is removed from the content API and, if it is public, from the site. Its draft in this browser is kept.`}
+      description={`${documentLabel(page)} is removed from the content API and, if it is public, from the site, with its draft.`}
       close={close}
     >
       <Problems messages={refusals(remove.error, "The page could not be deleted. Try again.")} />

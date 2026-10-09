@@ -1,4 +1,4 @@
-import type { ApiPage, FieldError, SaveFields } from "../api/client";
+import type { ApiPage, DraftFields, FieldError, SaveFields } from "../api/client";
 
 /** A page's details as the content API keeps them: everything a save sends except the body. */
 export type PageDetails = Omit<SaveFields, "body_markdown" | "parent_id">;
@@ -15,6 +15,25 @@ export function detailsOf(page: ApiPage): PageDetails {
     frontmatter: page.frontmatter,
   };
 }
+
+/** The details a saved draft holds. */
+export const detailsOfDraft = ({
+  url,
+  category_id,
+  title,
+  description,
+  visibility,
+  form_id,
+  frontmatter,
+}: DraftFields): PageDetails => ({
+  url,
+  category_id,
+  title,
+  description,
+  visibility,
+  form_id,
+  frontmatter,
+});
 
 const byKey = <Value>([a]: [string, Value], [b]: [string, Value]) => a.localeCompare(b);
 
