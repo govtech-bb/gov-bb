@@ -1,0 +1,136 @@
+name: Deploy editor_v2 to Sandbox
+
+# Builds apps/editor_v2 and uploads it to the gov-bb-editor-v2-sandbox Amplify
+# app (https://editor-v2.sandbox.alpha.gov.bb). Infrastructure: alpha-infra
+# environments/sandbox/modular-forms-sandbox/amplify-editor-v2.tf (gov-bb#2962).
+#
+# editor_v2 builds to static files (TanStack Start in SPA mode), so the Amplify
+# app has no repository connection: this job builds the site and uploads a zip
+# with Amplify's manual-deploy API. VITE_API_ORIGIN is baked in at build time.
+#
+# Same deploy role as deploy-api-v2-sandbox.yml. It trusts gov-bb v2-rewrite
+# and main only, and for Amplify it can deploy to this app's sandbox branch
+# and nothing else.
+
+on:
+  push:
+    branches: [v2-rewrite]
+    paths:
+      - "apps/editor_v2/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - ".github/workflows/deploy-editor-v2-sandbox.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write # assume the deploy role via OIDC
+  contents: read
+
+concurrency:
+  group: deploy-editor-v2-sandbox
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ca-central-1
+  AWS_ROLE_ARN: arn:aws:iam::672203047922:role/api-v2-github-actions-sandbox
+  AMPLIFY_APP_NAME: gov-bb-editor-v2-sandbox
+  AMPLIFY_BRANCH: sandbox
+  VITE_API_ORIGIN: https://api-v2.sandbox.alpha.gov.bb
+
+jobs:
+  deploy:
+    name: Build & Deploy editor_v2
+    runs-on: ubuntu-latest
+    # No `environment:` here: it would change the OIDC subject to
+    # repo:...:environment:<name>, which the deploy role does not trust.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --filter @govtech-bb/editor-v2...
+
+      - name: Build
+        run: pnpm --filter @govtech-bb/editor-v2 run build
+
+      # The SPA shell is emitted as _shell.html. Amplify serves index.html at
+      # "/", and the app's 404-200 rewrite points there for deep links.
+      - name: Package
+        run: |
+          cd apps/editor_v2/dist/client
+          test -f _shell.html
+          grep -q "$VITE_API_ORIGIN" assets/*.js
+          cp _shell.html index.html
+          zip -qr "$GITHUB_WORKSPACE/editor-v2.zip" .
+          ls -la "$GITHUB_WORKSPACE/editor-v2.zip"
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # CreateDeployment returns a pre-signed upload URL; it is masked and never
+      # printed.
+      - name: Upload and deploy
+        id: deploy
+        run: |
+          APP_ID=$(aws amplify list-apps \
+            --query "apps[?name=='$AMPLIFY_APP_NAME'].appId | [0]" --output text)
+          if [ -z "$APP_ID" ] || [ "$APP_ID" = "None" ]; then
+            echo "::error::No Amplify app named $AMPLIFY_APP_NAME. Has alpha-infra amplify-editor-v2.tf been applied?"
+            exit 1
+          fi
+          echo "app_id=$APP_ID" >> "$GITHUB_OUTPUT"
+
+          read -r JOB_ID UPLOAD_URL < <(aws amplify create-deployment \
+            --app-id "$APP_ID" --branch-name "$AMPLIFY_BRANCH" \
+            --query '[jobId, zipUploadUrl]' --output text)
+          echo "::add-mask::$UPLOAD_URL"
+          echo "Job $JOB_ID"
+
+          curl --fail --silent --show-error -X PUT \
+            -H "Content-Type: application/zip" \
+            --upload-file editor-v2.zip "$UPLOAD_URL"
+
+          aws amplify start-deployment \
+            --app-id "$APP_ID" --branch-name "$AMPLIFY_BRANCH" --job-id "$JOB_ID" \
+            --query 'jobSummary.status' --output text
+
+          for _ in $(seq 1 60); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$APP_ID" --branch-name "$AMPLIFY_BRANCH" --job-id "$JOB_ID" \
+              --query 'job.summary.status' --output text)
+            echo "Status: $STATUS"
+            case "$STATUS" in
+              SUCCEED) exit 0 ;;
+              FAILED|CANCELLED) echo "::error::Amplify job $JOB_ID $STATUS"; exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "::error::Amplify job $JOB_ID did not finish in 10 minutes"
+          exit 1
+
+      # The amplifyapp.com URL works before the editor-v2 DNS record exists.
+      # A deep link proves the SPA rewrite.
+      - name: Smoke test
+        env:
+          APP_ID: ${{ steps.deploy.outputs.app_id }}
+        run: |
+          BASE="https://$AMPLIFY_BRANCH.$APP_ID.amplifyapp.com"
+          for path in / /services; do
+            status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$BASE$path")
+            echo "$BASE$path -> $status"
+            if [ "$status" != "200" ]; then
+              echo "::error::$BASE$path returned $status"
+              exit 1
+            fi
+          done
