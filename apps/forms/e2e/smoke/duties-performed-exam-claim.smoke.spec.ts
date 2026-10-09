@@ -165,6 +165,10 @@ test.describe("Duties Performed Exam Claim — Live Smoke", () => {
 
     // ─── Declaration ─────────────────────────────────────────────────────────
     expectStep(page, "declaration", { exact: true });
+    await page
+      .locator(`fieldset[id="declaration_declaration-confirmed"]`)
+      .getByRole("checkbox")
+      .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
     await submitAndConfirm(page, {
