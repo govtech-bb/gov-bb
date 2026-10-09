@@ -15,6 +15,7 @@ import { buildConfirmEmail } from "./emails";
 import { landingOrigin } from "./origins";
 import { areaLabelFor } from "./parishes";
 import { WaterSubscriberRepository } from "./water-subscriber.repository";
+import { redactEmailsIn, redactPii } from "@/common/log-sanitize";
 
 // Public route the confirm/unsubscribe links resolve to (a landing page that
 // calls the API back). Built onto LANDING_BASE_URL.
@@ -155,8 +156,10 @@ export class SubscriptionService {
       await this.mailer.sendSimple({ to, subject, html, text });
       return true;
     } catch (err) {
+      // Never log a resident's address (#1640, #2971); the SES error is
+      // redacted too, as a rejection can name the address it rejected.
       this.logger.warn(
-        `Confirm email not sent to ${to}: ${(err as Error).message}`,
+        `Confirm email not sent to ${redactPii(to)} (area ${area}): ${redactEmailsIn((err as Error).message)}`,
       );
       return false;
     }

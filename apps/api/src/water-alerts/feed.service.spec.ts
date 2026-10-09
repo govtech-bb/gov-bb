@@ -1,4 +1,7 @@
-import type { HttpService } from "@nestjs/axios";
+import { HttpService } from "@nestjs/axios";
+import axios from "axios";
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import { Logger } from "@nestjs/common";
 import { of, throwError } from "rxjs";
 import { buildAlertEmail } from "./emails";
@@ -393,5 +396,80 @@ describe("FeedService", () => {
       expect(untitled.id).toBe("https://barbadoswaterauthority.com/?p=14535");
       expect(titled.id).toBe(untitled.id);
     });
+  });
+});
+
+describe("FeedService redirects (#2971)", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  const close = (server: Server) =>
+    new Promise<void>((resolve) => {
+      server.closeAllConnections();
+      server.close(() => resolve());
+    });
+
+  const listen = (server: Server) =>
+    new Promise<number>((resolve) =>
+      server.listen(0, "127.0.0.1", () =>
+        resolve((server.address() as AddressInfo).port),
+      ),
+    );
+
+  it("does not follow a redirect from the feed host to an internal address", async () => {
+    // Stands in for e.g. ECS task metadata at 169.254.170.2: a compromised or
+    // spoofed feed host 302s the API there (blind SSRF). Real axios, real HTTP.
+    let internalHits = 0;
+    const internal = createServer((_req, res) => {
+      internalHits++;
+      res.end("credentials");
+    });
+    const internalPort = await listen(internal);
+    const feedHost = createServer((_req, res) => {
+      res.writeHead(302, {
+        Location: `http://127.0.0.1:${internalPort}/v2/credentials`,
+      });
+      res.end();
+    });
+    const feedPort = await listen(feedHost);
+    vi.stubEnv("BWA_FEED_URL", `http://127.0.0.1:${feedPort}/feed/`);
+
+    try {
+      // proxy: false so an HTTP_PROXY on the runner can't route around the
+      // local servers and make this pass without testing anything.
+      const service = new FeedService(
+        new HttpService(axios.create({ proxy: false })),
+      );
+      await expect(service.fetchOutages()).rejects.toThrow();
+      expect(internalHits).toBe(0);
+    } finally {
+      await Promise.all([close(internal), close(feedHost)]);
+    }
+  });
+});
+
+describe("FeedService skip log (#2971)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("can't carry line separators or bidi overrides from a notice's guid into the log", async () => {
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => undefined);
+    const RLO = String.fromCodePoint(0x202e);
+    const LS = String.fromCodePoint(0x2028);
+    const xml = SAMPLE_FEED.replace(
+      "<guid>notice-1</guid>",
+      `<guid>evil${LS}[ERROR] forged${RLO}gnp.exe</guid>`,
+    ).replace(
+      "https://barbadoswaterauthority.com/notice-1",
+      "javascript:alert(1)",
+    );
+    const service = new FeedService(makeHttp(of({ data: xml })));
+
+    await service.fetchOutages();
+
+    const line = warn.mock.calls[0][0] as string;
+    expect(line).not.toContain(RLO);
+    expect(line).not.toContain(LS);
+    expect(line).toContain('"evil [ERROR] forged gnp.exe"');
   });
 });

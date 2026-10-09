@@ -14,6 +14,7 @@ import {
   WaterSentAlertRepository,
 } from "./water-sent-alert.repository";
 import { WaterSubscriberRepository } from "./water-subscriber.repository";
+import { redactEmailsIn } from "@/common/log-sanitize";
 
 // Public path the unsubscribe body-link resolves to (a landing page).
 const WATER_OUTAGES_PATH = "/health-and-emergency-services/water-outages";
@@ -196,12 +197,18 @@ export class CheckerService {
       api && `${api}/water-alerts/unsubscribe/${row.unsubscribeToken}`;
 
     const content = buildAlertEmail(areaLabel, notice, bodyUnsubUrl);
-    return this.sendAlert(row.email, content, oneClickUnsubUrl);
+    return this.sendAlert(
+      row.email,
+      row.subscriberId,
+      content,
+      oneClickUnsubUrl,
+    );
   }
 
   /** Sends an alert with RFC 8058 one-click unsubscribe headers. Never throws. */
   private async sendAlert(
     to: string,
+    subscriberId: string,
     content: EmailContent,
     oneClickUnsubUrl: string | undefined,
   ): Promise<boolean> {
@@ -238,8 +245,11 @@ export class CheckerService {
       );
       return true;
     } catch (err) {
+      // Never log a resident's address (#1640, #2971), not even masked: the
+      // subscriber ID is enough to look them up. The SES error is redacted
+      // too, as a rejection can name the address it rejected.
       this.logger.warn(
-        `Alert email to ${to} failed: ${(err as Error).message}`,
+        `Alert email to subscriber ${subscriberId} failed: ${redactEmailsIn((err as Error).message)}`,
       );
       return false;
     }

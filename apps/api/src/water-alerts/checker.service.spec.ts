@@ -1,3 +1,4 @@
+import { Logger } from "@nestjs/common";
 import type { DataSource } from "typeorm";
 import type { SesMailer } from "../email/ses-mailer";
 import { CheckerService } from "./checker.service";
@@ -289,5 +290,37 @@ describe("CheckerService.scheduled", () => {
     await service.scheduled();
     expect(mailer.sendSimple).not.toHaveBeenCalled();
     expect(runner.release).toHaveBeenCalledOnce();
+  });
+});
+
+describe("CheckerService send-failure log (#2971)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("logs the subscriber ID, never the address itself", async () => {
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => undefined);
+    const { service } = makeDeps({
+      pendingUnsent: vi
+        .fn()
+        .mockResolvedValue([{ ...PENDING_ROW, email: "jane@example.com" }]),
+      // SES rejections can name the address they rejected.
+      send: vi
+        .fn()
+        .mockRejectedValue(
+          new Error(
+            "MessageRejected: identities failed the check: jane@example.com",
+          ),
+        ),
+    });
+
+    await service.runAlertCheck({ notices: [outage()] });
+
+    const line = warn.mock.calls.map(([m]) => String(m)).join("\n");
+    expect(line).toContain("subscriber s1");
+    // The ID is enough to look the subscriber up; even a masked address next
+    // to it can be near-identifying on a small domain.
+    expect(line).not.toContain("(j***@");
+    expect(line).not.toContain("jane@");
   });
 });
