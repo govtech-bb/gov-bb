@@ -413,8 +413,35 @@ describe("FeedService.fetchOutagesWithSkips (#2970)", () => {
 
     expect(feed.outages.map((o) => o.id)).toEqual(["notice-2"]);
     expect(skipped).toEqual([
-      { ref: '"notice-1"', reason: expect.stringMatching(/^[^\n]+$/) },
+      {
+        key: expect.stringMatching(/^[0-9a-f]{64}$/),
+        ref: '"notice-1"',
+        reason: expect.stringMatching(/^[^\n]+$/),
+      },
     ]);
+  });
+
+  it("keys each skipped notice stably and distinctly, even without a guid or link", async () => {
+    // The display ref is clipped and "(no ID)" for ID-less notices, so it
+    // can't be the key: two different notices would be reported as one.
+    quietLogs();
+    const twoWithoutIds = SAMPLE_FEED.replace(
+      "</channel>",
+      "<item><title>A</title></item><item><title>B</title></item></channel>",
+    );
+    const fetchSkips = async () =>
+      (
+        await new FeedService(
+          makeHttp(of({ data: twoWithoutIds })),
+        ).fetchOutagesWithSkips()
+      ).skipped;
+
+    const first = await fetchSkips();
+    const again = await fetchSkips();
+
+    expect(first.map((s) => s.ref)).toEqual(["(no ID)", "(no ID)"]);
+    expect(new Set(first.map((s) => s.key)).size).toBe(2);
+    expect(again.map((s) => s.key)).toEqual(first.map((s) => s.key));
   });
 
   it("keeps skips out of the public feed, which GET /water-alerts/outages returns as-is", async () => {

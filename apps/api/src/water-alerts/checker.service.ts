@@ -81,7 +81,8 @@ export class CheckerService {
             `${summary.failed} alert send(s) failed`,
             JSON.stringify(summary, null, 2),
           );
-        } else {
+        } else if (summary.attempted > 0) {
+          // Only a run that actually sent shows SES works again.
           await this.opsAlerts.recovered("send-failures");
         }
         await this.opsAlerts.newSkippedNotices(skipped);

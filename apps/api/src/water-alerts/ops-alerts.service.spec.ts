@@ -9,6 +9,7 @@ function setup() {
     recordFailure: vi.fn().mockResolvedValue(null),
     recordRecovery: vi.fn().mockResolvedValue(null),
     claimNew: vi.fn().mockResolvedValue([]),
+    releaseClaims: vi.fn().mockResolvedValue(undefined),
   };
   const mailer = { sendSimple: vi.fn().mockResolvedValue(undefined) };
   const service = new OpsAlertService(
@@ -120,19 +121,19 @@ describe("OpsAlertService", () => {
 
   describe("newSkippedNotices", () => {
     const skipped = [
-      { ref: '"notice-1"', reason: "link: Invalid url" },
-      { ref: '"notice-9"', reason: "pubDate: Required" },
+      { key: "k1", ref: '"notice-1"', reason: "link: Invalid url" },
+      { key: "k9", ref: '"notice-9"', reason: "pubDate: Required" },
     ];
 
     it("emails only the notices it hasn't reported before, in one email", async () => {
       const { repo, mailer, service } = setup();
-      repo.claimNew.mockResolvedValue(['skipped-notice:"notice-9"']);
+      repo.claimNew.mockResolvedValue(["skipped-notice:k9"]);
 
       await service.newSkippedNotices(skipped);
 
       expect(repo.claimNew).toHaveBeenCalledWith([
-        'skipped-notice:"notice-1"',
-        'skipped-notice:"notice-9"',
+        "skipped-notice:k1",
+        "skipped-notice:k9",
       ]);
       const [mail] = sent(mailer);
       expect(mail.subject).toBe("Wuh Water Doing: 1 BWA notice(s) skipped");
@@ -147,6 +148,16 @@ describe("OpsAlertService", () => {
       await service.newSkippedNotices(skipped);
 
       expect(mailer.sendSimple).not.toHaveBeenCalled();
+    });
+
+    it("releases its claims when the email fails, so the next run retries", async () => {
+      const { repo, mailer, service } = setup();
+      repo.claimNew.mockResolvedValue(["skipped-notice:k9"]);
+      mailer.sendSimple.mockRejectedValue(new Error("SES down"));
+
+      await service.newSkippedNotices(skipped);
+
+      expect(repo.releaseClaims).toHaveBeenCalledWith(["skipped-notice:k9"]);
     });
 
     it("does nothing for no skipped notices", async () => {

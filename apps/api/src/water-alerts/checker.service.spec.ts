@@ -36,7 +36,7 @@ function makeDeps(
       .mockResolvedValue({ outages: [], checkedAt: new Date().toISOString() }),
     // The checker's view of the same cached feed: tests set fetchOutages,
     // and skipped notices through `skipped`.
-    skipped: [] as Array<{ ref: string; reason: string }>,
+    skipped: [] as Array<{ key: string; ref: string; reason: string }>,
     fetchOutagesWithSkips: vi.fn(async () => ({
       feed: await feed.fetchOutages(),
       skipped: feed.skipped,
@@ -289,6 +289,26 @@ describe("CheckerService.scheduled", () => {
     expect(runner.release).toHaveBeenCalledOnce();
   });
 
+  it("reports send-failures recovered only after a run that actually sent", async () => {
+    const runner = {
+      connect: vi.fn(),
+      query: vi.fn().mockResolvedValue([{ pg_try_advisory_lock: true }]),
+      release: vi.fn(),
+    };
+    const { service, feed, opsAlerts } = makeDeps({
+      dataSource: { createQueryRunner: () => runner } as unknown as DataSource,
+      pendingUnsent: vi.fn().mockResolvedValue([PENDING_ROW]),
+    });
+    feed.fetchOutages.mockResolvedValue({
+      outages: [outage()],
+      checkedAt: new Date().toISOString(),
+    });
+
+    await service.scheduled();
+
+    expect(opsAlerts.recovered).toHaveBeenCalledWith("send-failures");
+  });
+
   it("reports a crash as the checker-crash signal with a one-line summary first", async () => {
     const runner = {
       connect: vi.fn(),
@@ -342,7 +362,9 @@ describe("CheckerService.scheduled", () => {
     const { service, feed, opsAlerts } = makeDeps({
       dataSource: { createQueryRunner: () => runner } as unknown as DataSource,
     });
-    feed.skipped = [{ ref: '"notice-9"', reason: "pubDate: Required" }];
+    feed.skipped = [
+      { key: "k9", ref: '"notice-9"', reason: "pubDate: Required" },
+    ];
 
     await service.scheduled();
 
@@ -364,7 +386,8 @@ describe("CheckerService.scheduled", () => {
     expect(mailer.sendSimple).not.toHaveBeenCalled();
     expect(opsAlerts.failure).not.toHaveBeenCalled();
     expect(opsAlerts.recovered).toHaveBeenCalledWith("checker-crash");
-    expect(opsAlerts.recovered).toHaveBeenCalledWith("send-failures");
+    // Nothing was sent, so this run says nothing about whether SES works.
+    expect(opsAlerts.recovered).not.toHaveBeenCalledWith("send-failures");
     expect(runner.release).toHaveBeenCalledOnce();
   });
 });

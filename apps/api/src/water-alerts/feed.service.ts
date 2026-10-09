@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { HttpService } from "@nestjs/axios";
 import { Injectable, Logger } from "@nestjs/common";
 import { XMLParser } from "fast-xml-parser";
@@ -54,7 +55,9 @@ export interface OutagesFeed {
 
 /** A notice left out of the feed, for the alert checker's ops email (#2970). */
 export interface SkippedNotice {
-  /** The notice's guid or link, quoted (see noticeRef). */
+  /** Stable identity: sha256 of the full guid/link, or of the item if it has none. */
+  key: string;
+  /** The notice's guid or link, quoted and clipped, for display (see noticeRef). */
   ref: string;
   reason: string;
 }
@@ -155,7 +158,11 @@ export class FeedService {
       try {
         outages.push(this.toOutage(rssItemSchema.parse(raw)));
       } catch (err) {
-        skipped.push({ ref: noticeRef(raw), reason: reason(err) });
+        skipped.push({
+          key: noticeKey(raw),
+          ref: noticeRef(raw),
+          reason: reason(err),
+        });
       }
     }
     if (skipped.length > 0) {
@@ -208,6 +215,20 @@ export class FeedService {
       endsAt,
     };
   }
+}
+
+/**
+ * A stable identity for a skipped notice, so ops are told about each one once.
+ * Not noticeRef: that is clipped, and "(no ID)" for every ID-less notice.
+ */
+function noticeKey(raw: unknown): string {
+  const item = (raw ?? {}) as Record<string, unknown>;
+  const id = [item.guid, item.link].find(
+    (v): v is string => typeof v === "string" && v.trim() !== "",
+  );
+  return createHash("sha256")
+    .update(id ? `id:${id.trim()}` : `item:${JSON.stringify(raw)}`)
+    .digest("hex");
 }
 
 /** The notice's guid or link, quoted and clipped, so a log line can trace it. */

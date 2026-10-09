@@ -8,9 +8,11 @@ import { WaterOpsAlertRepository } from "./water-ops-alert.repository";
 export type OpsSignal = "checker-crash" | "send-failures";
 
 const SUBJECT_PREFIX = "Wuh Water Doing";
-// While a failure lasts, remind the team this often (#2970).
-const REMIND_AFTER_MS = 6 * 60 * 60 * 1000;
-const REMIND_AFTER = "6 hours";
+// While a failure lasts, remind the team this often (#2970). Also the most
+// often a flapping failure is emailed.
+const REMIND_AFTER_HOURS = 6;
+const REMIND_AFTER_MS = REMIND_AFTER_HOURS * 60 * 60 * 1000;
+const REMIND_AFTER = `${REMIND_AFTER_HOURS} hours`;
 
 const WORDING: Record<
   OpsSignal,
@@ -30,8 +32,10 @@ const WORDING: Record<
 
 /**
  * Emails the ops team about the alert checker without flooding them (#2970):
- * once when a failure starts, a reminder every 6 hours while it lasts, and
- * once when it recovers. Whether to email is decided by WaterOpsAlertRepository
+ * when a failure starts, a reminder every 6 hours while it lasts, and once
+ * when it recovers. A key is never emailed more than once per 6 hours, so a
+ * failure that flaps (fail, recover, fail…) can't flood either: a failure
+ * inside that window is recorded but not emailed, and then recovers silently. Whether to email is decided by WaterOpsAlertRepository
  * in one atomic statement, so several API tasks reporting the same failure
  * send one email. Claim, then send: if the ops email itself fails, that alert
  * waits for the next reminder rather than risking two tasks both sending.
@@ -79,7 +83,7 @@ export class OpsAlertService {
       await this.send(
         to,
         wording.first,
-        `${summary}\n\nThe ops-alert state could not be read, so this task will remind you at most every 6 hours and can't tell you when it recovers.\n\nDetails:\n${details}`,
+        `${summary}\n\nThe ops-alert state could not be read, so this task will remind you at most every ${REMIND_AFTER} and can't tell you when it recovers.\n\nDetails:\n${details}`,
       );
       return;
     }
@@ -89,7 +93,7 @@ export class OpsAlertService {
     const subject = alert.kind === "first" ? wording.first : wording.reminder;
     const status =
       alert.kind === "first"
-        ? `Failing since ${since}. You'll get a reminder every 6 hours while this continues, and one email when it recovers.`
+        ? `Failing since ${since}. You'll get a reminder every ${REMIND_AFTER} while this continues, and one email when it recovers.`
         : `Still failing since ${since}.`;
     await this.send(
       to,
@@ -130,7 +134,7 @@ export class OpsAlertService {
   async newSkippedNotices(skipped: SkippedNotice[]): Promise<void> {
     const to = this.recipient;
     if (!to || skipped.length === 0) return;
-    const byKey = new Map(skipped.map((n) => [`skipped-notice:${n.ref}`, n]));
+    const byKey = new Map(skipped.map((n) => [`skipped-notice:${n.key}`, n]));
 
     let fresh: string[];
     try {
@@ -147,11 +151,22 @@ export class OpsAlertService {
       const notice = byKey.get(key)!;
       return `- ${notice.ref}: ${notice.reason}`;
     });
-    await this.send(
+    const delivered = await this.send(
       to,
       `${fresh.length} BWA notice(s) skipped`,
       `These notices failed validation, so they are not shown on the site or sent to subscribers. Each notice is reported once.\n\n${lines.join("\n")}`,
     );
+    // These have no reminder, so a lost email would hide them for good:
+    // un-claim them and let the next run try again.
+    if (!delivered) {
+      await this.state
+        .releaseClaims(fresh)
+        .catch((err: Error) =>
+          this.logger.warn(
+            `Could not release ops alert claims: ${err.message}`,
+          ),
+        );
+    }
   }
 
   /** True when this task hasn't alerted `key` within the reminder interval. */
@@ -163,8 +178,12 @@ export class OpsAlertService {
     return true;
   }
 
-  /** Never throws: a failed ops email is logged, not escalated. */
-  private async send(to: string, subject: string, text: string): Promise<void> {
+  /** Never throws: a failed ops email is logged and reported as false. */
+  private async send(
+    to: string,
+    subject: string,
+    text: string,
+  ): Promise<boolean> {
     try {
       await this.mailer.sendSimple({
         to,
@@ -172,8 +191,10 @@ export class OpsAlertService {
         html: `<pre>${Handlebars.escapeExpression(text)}</pre>`,
         text,
       });
+      return true;
     } catch (err) {
       this.logger.warn(`Ops alert not sent: ${(err as Error).message}`);
+      return false;
     }
   }
 }
