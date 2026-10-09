@@ -1,9 +1,10 @@
 /**
  * apply-for-offensive-matter-licence.smoke.spec.ts
  *
- * Live, on-demand smoke test for the offensive matter carriage licence service
- * (formId `apply-for-offensive-matter-licence`, titled "Apply for a licence to
- * carry offensive matter").
+ * Live, on-demand smoke test for the offensive matter licence service
+ * (formId `apply-for-offensive-matter-licence`, titled "Apply to Environmental
+ * Health for an offensive matter licence to move sewage and other harmful
+ * waste").
  *
  * Drives the REAL form, fills every step with valid @faker-js/faker data,
  * SUBMITS FOR REAL, and asserts the confirmation screen is reached with a
@@ -32,54 +33,41 @@
  *   FAKER_SEED       fix faker's RNG for a reproducible data set.
  *
  * Form-specific notes:
- *  - Four authored steps: `personal-and-contact-details`, `application-type`,
- *    `business-address-details` and `vehicle-details`, then the platform's
- *    `check-your-answers` / `declaration` / `submission-confirmation`. This is
- *    the shortest of the Environmental Health licences — there are no uploads
- *    and no conditional steps, only one conditional FIELD.
- *  - `applicant-telephone` is a `fieldArray` (min 1, max 3), not a plain field.
- *    Row 0 keeps the unsuffixed id (`…_applicant-telephone`); rows 1+ are
- *    index-suffixed (`…_applicant-telephone-1`), and a row is added by clicking
- *    the "Add Another Telephone number" button. The first test leaves it at one
- *    row; the second adds a second number and asserts BOTH reach the review, so
- *    a regression that drops the extra rows fails here. Same shape as the
- *    `telephone` fieldArray on request-an-environmental-health-officer.
+ *  - Steps: `applying-for`, `personal-and-contact-details`, then ONE of
+ *    `person-details` (applying-for = another-person) or `business-details`
+ *    (= business), then `operator-address` and the repeatable
+ *    `vehicle-details`, then the platform's `check-your-answers` /
+ *    `declaration` / `submission-confirmation`. One test per `applying-for`
+ *    answer, so each conditional step is walked once.
+ *  - `has-permission` sits on the `applying-for` step and only shows for
+ *    another person or a business. It is gated with `pattern: ^yes$`, so "No"
+ *    blocks the step; the business test asserts that before answering "Yes".
+ *  - `operator-address` is the step the catchment routes on, for every branch
+ *    (`catchmentRouting` = `operator-address.operator-address-coordinates` /
+ *    `operator-parish`). Its line 1 is the address-lookup (geocoder), so it
+ *    cannot take a free-text faker address: we pick from a pool of
+ *    known-geocodable locations, select the first suggestion, then assert the
+ *    hidden coordinates filled. That field renders as an `input[type=hidden]`,
+ *    so assert its VALUE — never its visibility.
+ *  - New or renewal is asked PER VEHICLE on `vehicle-details`. `current-licence`
+ *    is revealed by `application-type` = "renew" with no `targetStepId`, so the
+ *    condition is local to each vehicle instance: the two-vehicle test renews
+ *    vehicle 1 and applies new for vehicle 2, and asserts the licence number
+ *    field is hidden on vehicle 2. The value is "renew", not "renewal" as on
+ *    the sibling offensive-waste recipe.
  *  - `vehicle-details` is a repeatable step (min 1, max 20) with no
  *    sharedFields, so the base step IS vehicle 1 and carries the injected
  *    `addAnother` radio. Vehicle 2 lands on `vehicle-details~1`. The step sets
- *    `instanceLabel: "Vehicle"`, so instance 2's heading reads "Vehicle 2" —
- *    match the h1 loosely rather than exactly.
- *  - The ONE conditional is `current-licence` on `application-type`, revealed by
- *    `application-type` = "renew". Note the option value is **"renew"**, not
- *    "renewal" as on the sibling offensive-waste recipe — the two forms differ.
- *  - The business address on `business-address-details` is the address-lookup
- *    (geocoder) field, so it cannot take a free-text faker address: the
- *    geocoder must return a real Barbados match to populate the hidden
- *    coordinates the catchment router reads (`catchmentRouting.coordinatesField`
- *    = `business-address-details.business-address-coordinates`). We faker-pick
- *    from a pool of known-geocodable locations, select the first suggestion,
- *    then assert the coordinates filled. That field renders as an
- *    `input[type=hidden]`, so assert its VALUE — never its visibility.
- *  - Picking a suggestion fills `business-parish`, and SOMETIMES
- *    `business-address-line-2` (Holetown resolves with it empty). Line 2 is
- *    optional, so we overwrite it with faker data for a deterministic record;
- *    `business-parish` is asserted rather than overwritten, since that value is
- *    the catchment router's fallback (`catchmentRouting.parishField`).
- *  - The business NAME field kept its un-overridden default field id, so it is
- *    addressed as `generic-text` — not `business-name`. Its label is
- *    "Business Name".
- *  - The applicant address on `personal-and-contact-details` is a plain
- *    `components/address` — free-text faker data is fine, nothing routes on it.
- *  - `applicant-telephone` is `components/telephone`, which validates with
- *    libphonenumber-js, so every row needs a real Barbados exchange — a random
- *    `246 NNN NNNN` is rejected.
- *  - The confirmation step's `markdownContent` opens with the `{polyclinic}`
- *    placeholder, substituted with the catchment resolved from the geocoded
- *    BUSINESS address. We assert the resolved Environmental Health copy rather
- *    than a specific polyclinic name — which polyclinic depends on the address
- *    faker picked — and assert the generic "your local polyclinic" fallback is
- *    absent, because that fallback means resolution failed and the MDA's copy of
- *    the application went nowhere.
+ *    `instanceLabel: "Vehicle"`, so match the h1 loosely.
+ *  - `applicant-telephone` is a `fieldArray` (min 1, max 3). Row 0 keeps the
+ *    unsuffixed id; rows 1+ are index-suffixed (`…_applicant-telephone-1`) and
+ *    added with the "Add Another Telephone number" button. It validates with
+ *    libphonenumber-js, so every row needs a real Barbados exchange.
+ *  - The confirmation `markdownContent` carries `{polyclinic}`, substituted
+ *    with the catchment resolved from the operator address. We assert a real
+ *    polyclinic name and that the "your local polyclinic" fallback is absent,
+ *    because that fallback means the MDA's copy of the application went
+ *    nowhere.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect, type Page } from "@playwright/test";
@@ -88,6 +76,7 @@ import {
   openSmokeForm,
   advance,
   expectStep,
+  fillDate,
   fillField,
   fillGeocodedAddress,
   selectDropdown,
@@ -115,7 +104,7 @@ const PARISH_VALUES = [
 /**
  * Real, geocodable Barbados locations. A free-text faker address won't resolve,
  * and the catchment router needs the hidden coordinates the geocoder writes when
- * a suggestion is picked — so the BUSINESS address is chosen from this pool.
+ * a suggestion is picked — so the OPERATOR address is chosen from this pool.
  */
 const GEOCODABLE_ADDRESSES = [
   "Jemmotts Lane, Bridgetown",
@@ -173,19 +162,26 @@ export function buildData() {
     phone: bbPhoneNumber(),
     secondPhone: bbPhoneNumber(),
 
-    currentLicence: `OM/${faker.string.numeric(5)}`,
+    personFirstName: faker.person.firstName(),
+    personLastName: faker.person.lastName(),
 
     // Timestamped so the resulting submission is easy to find in the target env.
     businessName: `Smoke Test Carrier ${new Date().toISOString()}`,
-    // The BUSINESS address is the one the catchment routes on, so it has to be
-    // geocodable — a free-text address would resolve to no polyclinic.
-    businessAddress: faker.helpers.arrayElement(GEOCODABLE_ADDRESSES),
-    businessAddressLine2: faker.location.street(),
+    businessRelationship: "Manager",
 
+    // The OPERATOR address is the one the catchment routes on, so it has to be
+    // geocodable — a free-text address would resolve to no polyclinic.
+    operatorAddress: faker.helpers.arrayElement(GEOCODABLE_ADDRESSES),
+    operatorAddressLine2: faker.location.street(),
+
+    currentLicence: `OM/${faker.string.numeric(5)}`,
     firstVehicle: vehicleRegistration(),
     secondVehicle: vehicleRegistration(),
   };
 }
+
+type Data = ReturnType<typeof buildData>;
+type ApplyingFor = "yourself" | "another-person" | "business";
 
 /** Open the form at its first step, carrying the preview token when supplied. */
 export async function openForm(page: Page): Promise<void> {
@@ -196,35 +192,61 @@ export async function openForm(page: Page): Promise<void> {
 }
 
 /**
- * Step 1 — the applicant. `applicant-telephone` is a fieldArray: row 0 keeps
+ * Step 1 — who the licence is for. `has-permission` only shows for another
+ * person or a business, and its `^yes$` pattern blocks a "No". With
+ * `checkRefusal`, assert that block before answering "Yes".
+ */
+export async function fillApplyingFor(
+  page: Page,
+  applyingFor: ApplyingFor,
+  opts: { checkRefusal?: boolean } = {},
+): Promise<void> {
+  const step = expectStep(page, "applying-for");
+  await expect(page.locator("h1")).toContainText("Who are you applying for?");
+
+  const permission = page.locator(`fieldset[id="${step}_has-permission"]`);
+  await expect(permission).toBeHidden();
+
+  await selectRadio(page, step, "applying-for", applyingFor);
+
+  if (applyingFor === "yourself") {
+    await expect(permission).toBeHidden();
+  } else {
+    await expect(permission).toBeVisible({ timeout: STEP_TIMEOUT });
+    if (opts.checkRefusal) {
+      await selectRadio(page, step, "has-permission", "no");
+      await page.getByRole("button", { name: "Continue" }).click();
+      await expect(
+        page
+          .getByText(
+            "You need permission from the person or business before you can apply.",
+          )
+          .first(),
+      ).toBeVisible({ timeout: STEP_TIMEOUT });
+      expectStep(page, "applying-for");
+    }
+    await selectRadio(page, step, "has-permission", "yes");
+  }
+
+  await advance(page, step);
+}
+
+/**
+ * Step 2 — the applicant. `applicant-telephone` is a fieldArray: row 0 keeps
  * the unsuffixed id, and `secondPhone` (when given) clicks "Add Another
  * Telephone number" and fills the `-1` row.
  */
-export async function fillPersonalAndContactDetails(
+export async function fillYourDetails(
   page: Page,
-  data: ReturnType<typeof buildData>,
+  data: Data,
   opts: { secondPhone?: boolean } = {},
 ): Promise<void> {
   const step = expectStep(page, "personal-and-contact-details");
-  await expect(page.locator("h1")).toContainText("Tell us about yourself");
+  await expect(page.locator("h1")).toContainText("Your details");
 
   await fillField(page, step, "applicant-first-name", data.firstName);
   await fillField(page, step, "applicant-middle-name", data.middleName);
   await fillField(page, step, "applicant-last-name", data.lastName);
-  await fillField(
-    page,
-    step,
-    "applicant-address-line-1",
-    data.applicantAddress,
-  );
-  await fillField(
-    page,
-    step,
-    "applicant-address-line-2",
-    data.applicantAddressLine2,
-  );
-  await selectDropdown(page, step, "applicant-parish", data.applicantParish);
-  await fillField(page, step, "applicant-email", data.email);
 
   // fieldArray row 0 keeps the unsuffixed id — see the header note.
   await fillField(page, step, "applicant-telephone", data.phone);
@@ -238,76 +260,91 @@ export async function fillPersonalAndContactDetails(
     await secondRow.fill(data.secondPhone);
   }
 
+  await fillField(page, step, "applicant-email", data.email);
+  await expect(
+    page.getByRole("heading", { name: "Your address" }),
+  ).toBeVisible();
+  await fillField(
+    page,
+    step,
+    "applicant-address-line-1",
+    data.applicantAddress,
+  );
+  await fillField(
+    page,
+    step,
+    "applicant-address-line-2",
+    data.applicantAddressLine2,
+  );
+  await selectDropdown(page, step, "applicant-parish", data.applicantParish);
+
   await advance(page, step);
 }
 
-/**
- * Step 2 — new or renew. The ONLY conditional field on the form:
- * `current-licence` is revealed by "renew". Note the value is "renew", not
- * "renewal" — the sibling offensive-waste recipe uses the other spelling.
- */
-export async function fillApplicationType(
+/** Step 3a — only when applying for another person. */
+export async function fillPersonDetails(page: Page, data: Data): Promise<void> {
+  const step = expectStep(page, "person-details");
+  await expect(page.locator("h1")).toContainText(
+    "Tell us about the person you are applying for",
+  );
+  await fillField(page, step, "person-first-name", data.personFirstName);
+  await fillField(page, step, "person-last-name", data.personLastName);
+  await advance(page, step);
+}
+
+/** Step 3b — only when applying for a business. */
+export async function fillBusinessDetails(
   page: Page,
-  data: ReturnType<typeof buildData>,
-  applicationType: "new" | "renew",
+  data: Data,
 ): Promise<void> {
-  const step = expectStep(page, "application-type");
-  await expect(page.locator("h1")).toContainText("Application type");
-
-  const currentLicence = page.locator(`[id="${step}_current-licence"]`);
-  await expect(currentLicence).toBeHidden();
-
-  await selectRadio(page, step, "application-type", applicationType);
-
-  if (applicationType === "renew") {
-    await expect(currentLicence).toBeVisible({ timeout: STEP_TIMEOUT });
-    await currentLicence.fill(data.currentLicence);
-  } else {
-    // The gate's whole purpose: a first-time applicant has no licence number.
-    await expect(currentLicence).toBeHidden();
-  }
-
+  const step = expectStep(page, "business-details");
+  await expect(page.locator("h1")).toContainText("Tell us about the business");
+  await fillField(page, step, "business-name", data.businessName);
+  await fillField(
+    page,
+    step,
+    "business-relationship",
+    data.businessRelationship,
+  );
   await advance(page, step);
 }
 
 /**
- * Step 3 — the business address. This is the step the catchment routes on, so
- * the geocoder MUST resolve: the helper asserts the hidden coordinates filled
- * rather than soft-skipping, because an empty one means the submission reaches
- * no polyclinic at all.
+ * Step 4 — where the business or operator is located. This is the step the
+ * catchment routes on for every branch, so the geocoder MUST resolve: the
+ * helper asserts the hidden coordinates filled rather than soft-skipping,
+ * because an empty one means the submission reaches no polyclinic at all.
  */
-export async function fillBusinessAddressDetails(
+export async function fillOperatorAddress(
   page: Page,
-  data: ReturnType<typeof buildData>,
+  data: Data,
 ): Promise<string> {
-  const step = expectStep(page, "business-address-details");
-  await expect(page.locator("h1")).toContainText("Your business address");
-
-  // The business NAME kept its default field id — `generic-text`, not
-  // `business-name`. See the header note.
-  await fillField(page, step, "generic-text", data.businessName);
+  const step = expectStep(page, "operator-address");
+  await expect(page.locator("h1")).toContainText(
+    "Where is the business or operator located?",
+  );
 
   const coordinates = await fillGeocodedAddress(
     page,
     step,
     {
-      lineFieldId: "business-address-line-1",
-      coordinatesFieldId: "business-address-coordinates",
+      lineFieldId: "operator-address-line-1",
+      coordinatesFieldId: "operator-address-coordinates",
     },
-    data.businessAddress,
+    data.operatorAddress,
   );
   // Line 2 is optional and a suggestion does not always carry one (Holetown
   // resolves with it empty) — overwrite so the submitted record is deterministic.
   await fillField(
     page,
     step,
-    "business-address-line-2",
-    data.businessAddressLine2,
+    "operator-address-line-2",
+    data.operatorAddressLine2,
   );
   // The geocoder fills the parish from the picked suggestion; assert rather than
   // overwrite, since that value is the catchment router's fallback.
   await expect(
-    page.locator(`select[id="${step}_business-parish"]`),
+    page.locator(`select[id="${step}_operator-parish"]`),
   ).not.toHaveValue("");
 
   await advance(page, step);
@@ -315,28 +352,64 @@ export async function fillBusinessAddressDetails(
 }
 
 /**
- * Step 4 — one instance of the repeatable vehicle step.
- *
- * `stepId` is passed in rather than derived, because vehicle 2 lives on
- * `vehicle-details~1`. The heading carries the step's `instanceLabel`, so
- * instance 2 reads "Vehicle 2" — matched loosely.
+ * Step 5 — one instance of the repeatable vehicle step, with its own new or
+ * renewal answer. `stepId` is passed in rather than derived, because vehicle 2
+ * lives on `vehicle-details~1`.
  */
 export async function fillVehicleDetails(
   page: Page,
   stepId: string,
-  registration: string,
+  vehicle: {
+    registration: string;
+    applicationType: "new" | "renew";
+    currentLicence?: string;
+  },
   addAnother: "yes" | "no",
 ): Promise<void> {
-  await expect(page.locator("h1")).toContainText("Vehicle");
-  await fillField(page, stepId, "vehicle-registration-number", registration);
+  await expect(page.locator("h1")).toContainText("Tell us about the vehicle");
+
+  const currentLicence = page.locator(`[id="${stepId}_current-licence"]`);
+  await expect(currentLicence).toBeHidden();
+
+  await selectRadio(page, stepId, "application-type", vehicle.applicationType);
+  if (vehicle.applicationType === "renew") {
+    await expect(currentLicence).toBeVisible({ timeout: STEP_TIMEOUT });
+    if (vehicle.currentLicence)
+      await currentLicence.fill(vehicle.currentLicence);
+  } else {
+    // Instance-local: another vehicle's "renew" must not reveal it here.
+    await expect(currentLicence).toBeHidden();
+  }
+
+  await fillField(
+    page,
+    stepId,
+    "vehicle-registration-number",
+    vehicle.registration,
+  );
   await selectRadio(page, stepId, "addAnother", addAnother);
   await advance(page, stepId);
 }
 
-/** Tick the single declaration checkbox and submit for real. */
-async function confirmAndSubmit(page: Page): Promise<void> {
+/** Fill "Your agreement" and submit for real. */
+async function agreeAndSubmit(page: Page, data: Data): Promise<void> {
   const step = expectStep(page, "declaration");
-  await expect(page.locator("h1")).toContainText("Declaration");
+  await expect(page.locator("h1")).toContainText("Your agreement");
+  await fillField(
+    page,
+    step,
+    "declaration-full-name",
+    `${data.firstName} ${data.lastName}`,
+  );
+  const today = new Date();
+  await fillDate(
+    page,
+    step,
+    "declaration-date",
+    today.getDate(),
+    today.getMonth() + 1,
+    today.getFullYear(),
+  );
   await page
     .locator(`fieldset[id="${step}_declaration-confirmed"]`)
     .getByRole("checkbox")
@@ -347,12 +420,11 @@ async function confirmAndSubmit(page: Page): Promise<void> {
     referenceLabel: "Submission ID",
   });
 
-  // The recipe's "What happens next" copy, carried in `markdownContent`.
   await expect(
     page.getByRole("heading", { name: "What happens next" }),
   ).toBeVisible();
   // `{polyclinic}` is substituted with the catchment resolved from the geocoded
-  // business address. The generic "your local polyclinic" fallback means
+  // operator address. The generic "your local polyclinic" fallback means
   // resolution failed, which would also mean the polyclinic never got its copy
   // of the application — so assert a real name rather than just the copy.
   await expect(page.getByText(/Environmental Health/).first()).toBeVisible();
@@ -360,83 +432,134 @@ async function confirmAndSubmit(page: Page): Promise<void> {
   await expect(page.getByText("your local polyclinic")).toHaveCount(0);
 }
 
-test.describe("Offensive Matter Carriage Licence — Live Smoke", () => {
-  test("submits a new licence for one vehicle on one telephone number", async ({
+/** Pass "Check your answers", logging the routed coordinate when asked. */
+async function passCheckYourAnswers(
+  page: Page,
+  coordinates: string,
+): Promise<void> {
+  const step = expectStep(page, "check-your-answers");
+  await expect(page.locator("h1")).toContainText("Check your answers");
+  if (process.env.SMOKE_LOG_DATA)
+    console.log("[smoke-data] operator coordinates:", coordinates);
+  if (process.env.SMOKE_HOLD_CYA) await page.pause();
+  await advance(page, step);
+}
+
+function logData(data: Data): void {
+  if (process.env.SMOKE_LOG_DATA)
+    console.log("[smoke-data]", JSON.stringify(data, null, 2));
+}
+
+test.describe("Offensive Matter Licence — Live Smoke", () => {
+  test("applying for yourself: a new licence for one vehicle", async ({
     page,
   }) => {
     const data = buildData();
-    if (process.env.SMOKE_LOG_DATA)
-      console.log("[smoke-data]", JSON.stringify(data, null, 2));
+    logData(data);
 
     await openForm(page);
-    await fillPersonalAndContactDetails(page, data);
-    // "new" — the licence number stays hidden.
-    await fillApplicationType(page, data, "new");
-    const coordinates = await fillBusinessAddressDetails(page, data);
+    await fillApplyingFor(page, "yourself");
+    await fillYourDetails(page, data);
+    // Neither conditional step is shown for "yourself".
+    const coordinates = await fillOperatorAddress(page, data);
 
     const vehicleStep = expectStep(page, "vehicle-details");
-    await fillVehicleDetails(page, vehicleStep, data.firstVehicle, "no");
+    await fillVehicleDetails(
+      page,
+      vehicleStep,
+      { registration: data.firstVehicle, applicationType: "new" },
+      "no",
+    );
 
-    // ─── Check your answers ─────────────────────────────────────────────────
-    const step = expectStep(page, "check-your-answers");
-    await expect(page.locator("h1")).toContainText("Check your answers");
-    await expect(page.getByText(data.businessName).first()).toBeVisible();
     await expect(page.getByText(data.firstVehicle).first()).toBeVisible();
-    // A first-time applicant was never asked for a licence number.
+    // A new licence was never asked for a licence number.
     await expect(page.getByText(data.currentLicence)).toHaveCount(0);
-    // Only one vehicle was added, so the second must be nowhere on the review.
     await expect(page.getByText(data.secondVehicle)).toHaveCount(0);
-    // The coordinate the catchment routes on was resolved from the BUSINESS
-    // address. Logged so a real run can be traced to a polyclinic.
-    if (process.env.SMOKE_LOG_DATA)
-      console.log("[smoke-data] business coordinates:", coordinates);
-    if (process.env.SMOKE_HOLD_CYA) await page.pause();
-    await advance(page, step);
+    await passCheckYourAnswers(page, coordinates);
 
-    await confirmAndSubmit(page);
-
+    await agreeAndSubmit(page, data);
     if (process.env.SMOKE_HOLD) await page.pause();
   });
 
-  test("submits a renewal for two vehicles with a second telephone number", async ({
+  test("applying for another person: one renewal and one new vehicle", async ({
     page,
   }) => {
     const data = buildData();
-    if (process.env.SMOKE_LOG_DATA)
-      console.log("[smoke-data]", JSON.stringify(data, null, 2));
+    logData(data);
 
     await openForm(page);
+    await fillApplyingFor(page, "another-person");
     // A second fieldArray row — both numbers must survive to the review.
-    await fillPersonalAndContactDetails(page, data, { secondPhone: true });
-    await fillApplicationType(page, data, "renew");
-    const coordinates = await fillBusinessAddressDetails(page, data);
+    await fillYourDetails(page, data, { secondPhone: true });
+    await fillPersonDetails(page, data);
+    const coordinates = await fillOperatorAddress(page, data);
 
     // ─── Vehicles — "yes" to addAnother materialises a second instance ──────
     const firstVehicleStep = expectStep(page, "vehicle-details");
-    await fillVehicleDetails(page, firstVehicleStep, data.firstVehicle, "yes");
+    await fillVehicleDetails(
+      page,
+      firstVehicleStep,
+      {
+        registration: data.firstVehicle,
+        applicationType: "renew",
+        currentLicence: data.currentLicence,
+      },
+      "yes",
+    );
 
     const secondVehicleStep = expectStep(page, "vehicle-details");
     expect(
       secondVehicleStep,
       "answering yes to addAnother must open a new vehicle instance",
     ).not.toBe(firstVehicleStep);
-    await fillVehicleDetails(page, secondVehicleStep, data.secondVehicle, "no");
+    await fillVehicleDetails(
+      page,
+      secondVehicleStep,
+      { registration: data.secondVehicle, applicationType: "new" },
+      "no",
+    );
 
-    const step = expectStep(page, "check-your-answers");
-    await expect(page.locator("h1")).toContainText("Check your answers");
+    await expect(page.getByText(data.personLastName).first()).toBeVisible();
     await expect(page.getByText(data.currentLicence).first()).toBeVisible();
-    // Both fieldArray rows and both repeat instances reached the review.
     await expect(page.getByText(data.phone).first()).toBeVisible();
     await expect(page.getByText(data.secondPhone).first()).toBeVisible();
     await expect(page.getByText(data.firstVehicle).first()).toBeVisible();
     await expect(page.getByText(data.secondVehicle).first()).toBeVisible();
-    if (process.env.SMOKE_LOG_DATA)
-      console.log("[smoke-data] business coordinates:", coordinates);
-    if (process.env.SMOKE_HOLD_CYA) await page.pause();
-    await advance(page, step);
+    await passCheckYourAnswers(page, coordinates);
 
-    await confirmAndSubmit(page);
+    await agreeAndSubmit(page, data);
+    if (process.env.SMOKE_HOLD) await page.pause();
+  });
 
+  test("applying for a business: permission is required, then a renewal", async ({
+    page,
+  }) => {
+    const data = buildData();
+    logData(data);
+
+    await openForm(page);
+    await fillApplyingFor(page, "business", { checkRefusal: true });
+    await fillYourDetails(page, data);
+    await fillBusinessDetails(page, data);
+    const coordinates = await fillOperatorAddress(page, data);
+
+    const vehicleStep = expectStep(page, "vehicle-details");
+    await fillVehicleDetails(
+      page,
+      vehicleStep,
+      {
+        registration: data.firstVehicle,
+        applicationType: "renew",
+        currentLicence: data.currentLicence,
+      },
+      "no",
+    );
+
+    await expect(page.getByText(data.businessName).first()).toBeVisible();
+    await expect(page.getByText(data.currentLicence).first()).toBeVisible();
+    await passCheckYourAnswers(page, coordinates);
+
+    await agreeAndSubmit(page, data);
     if (process.env.SMOKE_HOLD) await page.pause();
   });
 });
