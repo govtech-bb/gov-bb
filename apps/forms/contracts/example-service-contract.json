@@ -549,7 +549,7 @@
       "title": "Confirm and submit your application",
       "elements": [
         {
-          "fieldId": "confirmation",
+          "fieldId": "declaration-confirmed",
           "label": "Declaration",
           "htmlType": "checkbox",
           "options": [
@@ -562,22 +562,6 @@
             "required": {
               "value": true,
               "error": "You must confirm the declaration to continue."
-            }
-          }
-        },
-        {
-          "fieldId": "date",
-          "label": "Date of declaration",
-          "placeholder": "",
-          "htmlType": "date",
-          "validations": {
-            "required": {
-              "value": true,
-              "error": "Date is required"
-            },
-            "pastOrToday": {
-              "value": true,
-              "error": "Date of declaration must be today or earlier"
             }
           }
         }
