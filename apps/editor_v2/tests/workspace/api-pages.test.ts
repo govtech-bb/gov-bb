@@ -216,7 +216,7 @@ describe("saving a page", () => {
     });
   });
 
-  it("sends nothing when the draft cannot be saved", async () => {
+  it("sends nothing when a service's entry page has no category", async () => {
     let called = false;
 
     const outcome = await savePage(
@@ -227,15 +227,15 @@ describe("saving a page", () => {
           return page;
         },
       },
-      base,
-      { ...details, title: "" },
+      { page: { ...page, parent_id: null }, body },
+      { ...details, category_id: null },
       body,
     );
 
     expect(called).toBe(false);
     expect(outcome).toEqual({
       kind: "invalid",
-      errors: [{ field: "title", message: "Enter a title" }],
+      errors: [{ field: "category", message: "Choose a category" }],
     });
   });
 

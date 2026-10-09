@@ -94,24 +94,10 @@ describe("page details", () => {
     expect(fields[0]).toMatchObject({ title: "A new title", body_markdown: page.body_markdown });
   });
 
-  it("asks for what the content API would refuse", () => {
+  it("asks only for a service's category, leaving every other rule to the content API", () => {
     const details = detailsOf(pages.find((page) => page.parent_id === null && page.category_id)!);
 
-    expect(detailsProblems({ ...details, title: "" }, true)).toEqual([
-      { field: "title", message: "Enter a title" },
-    ]);
-    expect(detailsProblems({ ...details, title: "x".repeat(301) }, true)).toEqual([
-      { field: "title", message: "Enter a title of 300 characters or fewer" },
-    ]);
-    expect(detailsProblems({ ...details, url: "" }, true)).toEqual([
-      { field: "url", message: "Enter a path" },
-    ]);
-    expect(detailsProblems({ ...details, url: "money/" }, true)).toEqual([
-      { field: "url", message: "Enter a path that starts with / and does not end with /" },
-    ]);
-    expect(detailsProblems({ ...details, form_id: "f".repeat(101) }, true)).toEqual([
-      { field: "form_id", message: "Enter a form ID of 100 characters or fewer" },
-    ]);
+    expect(detailsProblems({ ...details, title: "", url: "money/" }, true)).toEqual([]);
     expect(detailsProblems({ ...details, category_id: null }, true)).toEqual([
       { field: "category", message: "Choose a category" },
     ]);
