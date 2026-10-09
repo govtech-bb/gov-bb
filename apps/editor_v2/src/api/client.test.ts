@@ -123,6 +123,19 @@ describe("editor API client", () => {
     expect(await failureOf(api.version())).toMatchObject({ status: 500, errors: [] });
   });
 
+  it("reads a page with no draft as null, and any other refusal as a failure", async () => {
+    const api = createEditorApi(origin);
+    status = 404;
+    response = JSON.stringify({ error: "not_found", message: "Page page-1 has no draft" });
+
+    expect(await api.draft("page-1")).toBeNull();
+    expect(requests.at(-1)).toMatchObject({ url: "/pages/page-1/draft", method: "GET" });
+
+    status = 500;
+    response = "{}";
+    expect(await failureOf(api.draft("page-1"))).toMatchObject({ status: 500 });
+  });
+
   it("reports an API it could not reach as status 0", async () => {
     const failure = await failureOf(createEditorApi("http://127.0.0.1:1").services());
     expect(failure?.status).toBe(0);
