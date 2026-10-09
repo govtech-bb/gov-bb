@@ -1,4 +1,4 @@
-import { redactPii, sanitizeForLog } from "./log-sanitize";
+import { redactEmailsIn, redactPii, sanitizeForLog } from "./log-sanitize";
 
 const ESC = String.fromCharCode(0x1b); // ANSI escape
 const NUL = String.fromCharCode(0); // null byte
@@ -87,5 +87,29 @@ describe("redactPii", () => {
     expect(masked).not.toContain(NUL);
     expect(masked).not.toContain(ESC);
     expect(masked.startsWith("j***@evil.com")).toBe(true);
+  });
+});
+
+describe("redactEmailsIn (#2971)", () => {
+  it("masks every address inside free text, such as a delivery error", () => {
+    const message =
+      "MessageRejected: Email address is not verified. The following identities failed the check in region EU-WEST-1: jane@example.com, bob.smith@gov.bb";
+    const cleaned = redactEmailsIn(message);
+    expect(cleaned).toContain("j***@example.com");
+    expect(cleaned).toContain("b***@gov.bb");
+    expect(cleaned).not.toContain("jane@");
+    expect(cleaned).not.toContain("bob.smith");
+  });
+
+  it("leaves text without an address as it was", () => {
+    expect(redactEmailsIn("Throttling: Maximum sending rate exceeded.")).toBe(
+      "Throttling: Maximum sending rate exceeded.",
+    );
+  });
+
+  it("is still log-safe: control characters stripped, length bounded", () => {
+    const cleaned = redactEmailsIn(`a\n${"x".repeat(500)}`);
+    expect(cleaned).not.toContain("\n");
+    expect(cleaned.length).toBeLessThanOrEqual(201);
   });
 });

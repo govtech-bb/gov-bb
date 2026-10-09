@@ -82,3 +82,20 @@ export function redactPii(value: unknown): string {
   // bounding length, exactly as every other user-influenced log value is.
   return sanitizeForLog(`${value[0]}***@${domain}`);
 }
+
+// An email-shaped run: no whitespace, brackets, quotes or list separators on
+// either side of the "@", so "…check: jane@x.com, bob@y.org" yields two.
+const EMAIL_IN_TEXT = /[^\s@<>()[\]"',;:]+@[^\s@<>()[\]"',;:]+/g;
+
+/**
+ * Makes free text — typically a delivery error message — safe to log when it
+ * may name a person's email address: every email-shaped substring is masked
+ * with {@link redactPii}, then the whole text goes through
+ * {@link sanitizeForLog}. Use it where the text comes from a third party (an
+ * SES rejection can name the address it rejected), not just for a value you
+ * already know is an email (#2971).
+ */
+export function redactEmailsIn(text: unknown): string {
+  const str = typeof text === "string" ? text : String(text);
+  return sanitizeForLog(str.replace(EMAIL_IN_TEXT, (m) => redactPii(m)));
+}
