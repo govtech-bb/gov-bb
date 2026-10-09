@@ -39,6 +39,13 @@ export function withLede(details: PageDetails, lede: string): PageDetails {
   return { ...details, frontmatter };
 }
 
+/** A published page keeps its path, so whatever path a draft holds gives way to the stored one. */
+export function keepPublishedPath(details: PageDetails, page: ApiPage): PageDetails {
+  return page.published_at !== null && details.url !== page.url
+    ? { ...details, url: page.url }
+    : details;
+}
+
 /**
  * A service's entry page is filed under a category. That is the editor's rule,
  * since the content API also keeps pages that are not services; the API

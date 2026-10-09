@@ -758,8 +758,8 @@ describe("PUT /pages/:id", () => {
     expect((await read(START)).statusCode).toBe(404);
   });
 
-  it("moves only the page when its url changes, and its old url 404s", async () => {
-    const parent = await seedPage();
+  it("moves only the page when an unpublished page's url changes, and its old url 404s", async () => {
+    const parent = await seedPage({ visibility: "draft" });
     await seedPage({
       url: START,
       parent_id: parent.id,
@@ -770,7 +770,7 @@ describe("PUT /pages/:id", () => {
     const response = await inject({
       method: "PUT",
       url: `/pages/${parent.id}`,
-      payload: { ...parent, url: moved },
+      payload: { ...parent, url: moved, visibility: "public" },
     });
 
     expect(response.statusCode).toBe(200);
@@ -781,6 +781,36 @@ describe("PUT /pages/:id", () => {
       { name: "Before you start", url: START },
     ]);
   });
+
+  it.each(["public", "draft"] as const)(
+    "keeps the path of a published page, %s now, so links to it keep working",
+    async (visibility) => {
+      const created = await seedPage();
+      const unpublished = expectOk(
+        await services.editing.save(
+          created.id,
+          { ...created, visibility },
+          null,
+          TEST_EMPLOYEE,
+        ),
+      );
+
+      const response = await inject({
+        method: "PUT",
+        url: `/pages/${created.id}`,
+        payload: {
+          ...unpublished,
+          url: "/money-financial-support/severance-pay",
+        },
+      });
+
+      expect(response.statusCode).toBe(422);
+      expect(response.json().errors).toEqual([
+        { field: "url", message: "Published pages keep their path" },
+      ]);
+      expect(expectOk(await services.editing.get(created.id))?.url).toBe(ENTRY);
+    },
+  );
 
   it("files a sub-page under its parent's category when it names none", async () => {
     const category = await seedCategory();

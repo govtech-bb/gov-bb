@@ -26,7 +26,7 @@ import {
 } from "./api-pages";
 import { openBodyDocument } from "./documents";
 import { flushDocument } from "./model";
-import { detailsOf, sameDetails, type PageDetails } from "./page-details";
+import { detailsOf, keepPublishedPath, sameDetails, type PageDetails } from "./page-details";
 import { ApiPageDetails } from "./page-details-panel";
 
 const storedListeners = new Set<() => void>();
@@ -119,8 +119,8 @@ function ApiPageEditor({ api, page, active }: { api: EditorApi; page: ApiPage; a
   const storedDetails = useStoredItem(detailsKey(page.id));
 
   const details = useMemo(
-    () => parseDetails(storedDetails) ?? detailsOf(base?.page ?? page),
-    [storedDetails, base, page],
+    () => keepPublishedPath(parseDetails(storedDetails) ?? detailsOf(base?.page ?? page), server),
+    [storedDetails, base, page, server],
   );
 
   const save = useMutation({
@@ -314,6 +314,7 @@ function ApiPageEditor({ api, page, active }: { api: EditorApi; page: ApiPage; a
               categories={categories}
               entry={server.parent_id === null}
               publishedAt={server.published_at}
+              pathLocked={server.published_at ? "Published pages keep their path." : undefined}
               errors={Object.fromEntries(errors.map((error) => [error.field, error.message]))}
             />
           ),

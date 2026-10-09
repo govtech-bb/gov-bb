@@ -9,6 +9,7 @@ import {
   detailCodeControl,
   detailControl,
   detailDateFormat,
+  detailHint,
   detailShortControl,
   visibilityDots,
   visibilityLabels,
@@ -24,6 +25,7 @@ export function ApiPageDetails({
   categories,
   entry,
   publishedAt,
+  pathLocked,
   errors,
 }: {
   details: PageDetails;
@@ -33,6 +35,8 @@ export function ApiPageDetails({
   entry: boolean;
   /** When the page first went public; null until it has. */
   publishedAt: string | null;
+  /** Why the path cannot change, when it cannot. */
+  pathLocked: string | undefined;
   errors: Readonly<Record<string, string>>;
 }) {
   const id = useId();
@@ -66,10 +70,17 @@ export function ApiPageDetails({
             id={`${id}-url`}
             className={detailCodeControl}
             value={details.url}
+            readOnly={!!pathLocked}
+            aria-describedby={pathLocked ? `${id}-url-locked` : undefined}
             spellCheck={false}
             autoCapitalize="off"
             onChange={(event) => set({ url: event.target.value })}
           />
+          {pathLocked && (
+            <p id={`${id}-url-locked`} className={detailHint}>
+              {pathLocked}
+            </p>
+          )}
         </PageDetail>
         <PageDetail id={`${id}-description`} label="Description" error={errors.description}>
           <textarea

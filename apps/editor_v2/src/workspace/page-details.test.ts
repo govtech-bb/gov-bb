@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import estate from "../../../api_v2/src/seed-data/estate.json";
 import type { ApiPage, SaveFields } from "../api/client";
 import { canonicalBody, savePage } from "./api-pages";
-import { detailsOf, detailsProblems, sameDetails, withLede } from "./page-details";
+import {
+  detailsOf,
+  detailsProblems,
+  keepPublishedPath,
+  sameDetails,
+  withLede,
+} from "./page-details";
 
 const VISIBILITIES = ["public", "preview", "draft"] as const;
 
@@ -111,5 +117,16 @@ describe("page details", () => {
     expect(sameDetails(details, reordered)).toBe(true);
     expect(sameDetails(details, withLede(details, "Changed"))).toBe(false);
     expect(withLede(details, "").frontmatter).toEqual({ stage: "alpha" });
+  });
+
+  it("keeps a published page's stored path, whatever the draft holds", () => {
+    const page = pages[0]!;
+    const moved = { ...detailsOf(page), url: "/somewhere-else" };
+    const published = { ...page, published_at: "2026-10-07T12:00:00.000Z" };
+
+    expect(keepPublishedPath(moved, published).url).toBe(page.url);
+    expect(keepPublishedPath(moved, { ...page, published_at: null })).toBe(moved);
+    const unchanged = detailsOf(published);
+    expect(keepPublishedPath(unchanged, published)).toBe(unchanged);
   });
 });
