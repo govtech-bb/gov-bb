@@ -61,6 +61,7 @@ function makeDeps(
     failure: vi.fn().mockResolvedValue(undefined),
     recovered: vi.fn().mockResolvedValue(undefined),
     newSkippedNotices: vi.fn().mockResolvedValue(undefined),
+    cleared: vi.fn().mockResolvedValue(undefined),
   };
   const service = new CheckerService(
     over.dataSource ?? ({} as DataSource),
@@ -307,6 +308,7 @@ describe("CheckerService.scheduled", () => {
     await service.scheduled();
 
     expect(opsAlerts.recovered).toHaveBeenCalledWith("send-failures");
+    expect(opsAlerts.cleared).not.toHaveBeenCalled();
   });
 
   it("reports a crash as the checker-crash signal with a one-line summary first", async () => {
@@ -386,8 +388,11 @@ describe("CheckerService.scheduled", () => {
     expect(mailer.sendSimple).not.toHaveBeenCalled();
     expect(opsAlerts.failure).not.toHaveBeenCalled();
     expect(opsAlerts.recovered).toHaveBeenCalledWith("checker-crash");
-    // Nothing was sent, so this run says nothing about whether SES works.
+    // Nothing was sent, so this run says nothing about whether SES works:
+    // no "recovered" email, but nothing is outstanding either, so a stale
+    // send-failures state is cleared rather than left failing for weeks.
     expect(opsAlerts.recovered).not.toHaveBeenCalledWith("send-failures");
+    expect(opsAlerts.cleared).toHaveBeenCalledWith("send-failures");
     expect(runner.release).toHaveBeenCalledOnce();
   });
 });

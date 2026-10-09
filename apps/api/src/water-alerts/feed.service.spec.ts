@@ -421,6 +421,32 @@ describe("FeedService.fetchOutagesWithSkips (#2970)", () => {
     ]);
   });
 
+  it("keys by the full guid: stable across reasons, distinct past the clipped ref", async () => {
+    quietLogs();
+    const longA = `${"g".repeat(250)}-a`;
+    const longB = `${"g".repeat(250)}-b`;
+    const feedWith = (guid: string, link: string) =>
+      SAMPLE_FEED.replace(
+        "<guid>notice-1</guid>",
+        `<guid>${guid}</guid>`,
+      ).replace("https://barbadoswaterauthority.com/notice-1", link);
+    const skipsOf = async (xml: string) =>
+      (
+        await new FeedService(
+          makeHttp(of({ data: xml })),
+        ).fetchOutagesWithSkips()
+      ).skipped;
+
+    const [a] = await skipsOf(feedWith(longA, "javascript:alert(1)"));
+    const [aOtherReason] = await skipsOf(feedWith(longA, "not a url"));
+    const [b] = await skipsOf(feedWith(longB, "javascript:alert(1)"));
+
+    expect(aOtherReason.reason).not.toBe(a.reason);
+    expect(aOtherReason.key).toBe(a.key);
+    expect(b.ref).toBe(a.ref); // both clipped to the same display ref
+    expect(b.key).not.toBe(a.key);
+  });
+
   it("keys each skipped notice stably and distinctly, even without a guid or link", async () => {
     // The display ref is clipped and "(no ID)" for ID-less notices, so it
     // can't be the key: two different notices would be reported as one.

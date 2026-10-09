@@ -131,3 +131,26 @@ describe("WaterOpsAlertRepository.claimNew", () => {
     expect(query).not.toHaveBeenCalled();
   });
 });
+
+describe("WaterOpsAlertRepository.markHealthy", () => {
+  it("marks a signal healthy without reporting a recovery", async () => {
+    const query = vi.fn().mockResolvedValue([[], 1]);
+    await repositoryWith(query).markHealthy("send-failures");
+
+    const [sql, params] = query.mock.calls[0];
+    expect(sql).toContain('SET "failing_since" = NULL');
+    expect(sql).not.toContain("RETURNING");
+    expect(params).toEqual(["send-failures"]);
+  });
+});
+
+describe("WaterOpsAlertRepository.forgetAlert", () => {
+  it("forgets that a failure was alerted, so the next run alerts again", async () => {
+    const query = vi.fn().mockResolvedValue([[], 1]);
+    await repositoryWith(query).forgetAlert("checker-crash");
+
+    const [sql, params] = query.mock.calls[0];
+    expect(sql).toContain('SET "last_alerted_at" = NULL');
+    expect(params).toEqual(["checker-crash"]);
+  });
+});

@@ -84,6 +84,11 @@ export class CheckerService {
         } else if (summary.attempted > 0) {
           // Only a run that actually sent shows SES works again.
           await this.opsAlerts.recovered("send-failures");
+        } else {
+          // Nothing outstanding: any failed sends belonged to notices that
+          // have ended. Clear without a "recovered" email, so a later failure
+          // starts fresh instead of "failing since weeks ago".
+          await this.opsAlerts.cleared("send-failures");
         }
         await this.opsAlerts.newSkippedNotices(skipped);
       } finally {

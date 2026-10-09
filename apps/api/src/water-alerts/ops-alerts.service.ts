@@ -79,10 +79,11 @@ export class OpsAlertService {
       this.logger.warn(
         `Ops alert state unavailable, throttling in memory: ${(err as Error).message}`,
       );
-      if (!this.claimInMemory(signal)) return;
+      const claim = this.claimInMemory(signal);
+      if (!claim) return;
       await this.send(
         to,
-        wording.first,
+        claim === "first" ? wording.first : wording.reminder,
         `${summary}\n\nThe ops-alert state could not be read, so this task will remind you at most every ${REMIND_AFTER} and can't tell you when it recovers.\n\nDetails:\n${details}`,
       );
       return;
@@ -95,28 +96,54 @@ export class OpsAlertService {
       alert.kind === "first"
         ? `Failing since ${since}. You'll get a reminder every ${REMIND_AFTER} while this continues, and one email when it recovers.`
         : `Still failing since ${since}.`;
-    await this.send(
+    const delivered = await this.send(
       to,
       subject,
       `${summary}\n\n${status}\n\nDetails:\n${details}`,
     );
+    // Not delivered: forget the alert so the next run tries again, and so a
+    // recovery before then stays silent (ops were never told it failed).
+    if (!delivered) {
+      await this.state
+        .forgetAlert(signal)
+        .catch((err: Error) =>
+          this.logger.warn(`Could not reset ops alert: ${err.message}`),
+        );
+    }
+  }
+
+  /**
+   * Mark `signal` healthy without emailing: the failure no longer applies, but
+   * nothing proved it fixed (e.g. the failed sends' notice has ended).
+   */
+  async cleared(signal: OpsSignal): Promise<void> {
+    if (!this.recipient) return;
+    try {
+      await this.state.markHealthy(signal);
+    } catch (err) {
+      this.logger.warn(
+        `Ops alert state unavailable: ${(err as Error).message}`,
+      );
+    }
   }
 
   /** Report that `signal` succeeded this run; emails only if it was failing. */
   async recovered(signal: OpsSignal): Promise<void> {
     const to = this.recipient;
     if (!to) return;
-    this.fallbackLastAlerted.delete(signal);
 
     let since: Date | null;
     try {
       since = await this.state.recordRecovery(signal);
     } catch (err) {
+      // Keep any in-memory throttle: if the table is what's unreachable, a
+      // flapping failure must not email on every failed run.
       this.logger.warn(
         `Ops alert state unavailable: ${(err as Error).message}`,
       );
       return;
     }
+    this.fallbackLastAlerted.delete(signal);
     if (!since) return;
     await this.send(
       to,
@@ -127,7 +154,8 @@ export class OpsAlertService {
 
   /**
    * Report notices the feed skipped as invalid. Each is emailed once (keyed by
-   * its guid or link), all new ones in a single email. If the state table
+   * a hash of its guid or link, see SkippedNotice.key), all new ones in a
+   * single email. If the state table
    * can't be reached this does nothing: skips are low-urgency and the feed
    * service already logs them on every fetch.
    */
@@ -169,13 +197,16 @@ export class OpsAlertService {
     }
   }
 
-  /** True when this task hasn't alerted `key` within the reminder interval. */
-  private claimInMemory(key: string): boolean {
+  /**
+   * In-memory stand-in for recordFailure: "first" or "reminder" when this task
+   * hasn't alerted `key` within the reminder interval, otherwise null.
+   */
+  private claimInMemory(key: string): "first" | "reminder" | null {
     const now = Date.now();
     const last = this.fallbackLastAlerted.get(key);
-    if (last !== undefined && now - last < REMIND_AFTER_MS) return false;
+    if (last !== undefined && now - last < REMIND_AFTER_MS) return null;
     this.fallbackLastAlerted.set(key, now);
-    return true;
+    return last === undefined ? "first" : "reminder";
   }
 
   /** Never throws: a failed ops email is logged and reported as false. */

@@ -84,6 +84,29 @@ export class WaterOpsAlertRepository extends BaseRepository<WaterOpsAlertEntity>
     return row?.alerted ? row.failingSince : null;
   }
 
+  /**
+   * Mark `key` healthy without a recovery. For when the failure simply no
+   * longer applies (e.g. the failed sends belonged to a notice that ended),
+   * so a later failure starts fresh instead of "failing since weeks ago".
+   */
+  async markHealthy(key: string): Promise<void> {
+    await this.manager.query(
+      `UPDATE "water_ops_alerts" SET "failing_since" = NULL WHERE "key" = $1`,
+      [key],
+    );
+  }
+
+  /**
+   * Forget that `key`'s failure was alerted, because the email didn't go out:
+   * the next run alerts again, and if it recovers first, it does so silently.
+   */
+  async forgetAlert(key: string): Promise<void> {
+    await this.manager.query(
+      `UPDATE "water_ops_alerts" SET "last_alerted_at" = NULL WHERE "key" = $1`,
+      [key],
+    );
+  }
+
   /** Forget claims whose email failed, so the next run reports them again. */
   async releaseClaims(keys: string[]): Promise<void> {
     if (keys.length === 0) return;
