@@ -17,25 +17,48 @@ const STANDARD = {
   error: "You must confirm the declaration to continue.",
 };
 
-/** chat-feedback is a feedback survey, not an application. */
-const EXEMPT = new Set(["chat-feedback"]);
+/** Forms that do not use the standard declaration, each with its reason. */
+const EXEMPT: Record<string, string> = {
+  "chat-feedback":
+    "Feedback survey. The chat confirms the declaration automatically (ADR 0049).",
+  "national-id-application":
+    "Not moved yet: uses the shared blocks/applicant-declaration block, see #2992.",
+};
 
 /**
  * Service-specific acknowledgements kept beside the standard checkbox when
  * #2957 moved each form to it. Pinned so a builder or AI edit can't drop them
  * quietly; remove an entry only when the service no longer needs the clause.
  */
-const ACKNOWLEDGEMENTS: Record<string, string> = {
-  "apply-for-food-business-licence": "authority-confirmed",
-  "apply-for-national-summer-camp-programme": "parent-guardian-confirmed",
+const ACKNOWLEDGEMENTS: Record<string, string[]> = {
+  "apply-for-food-business-licence": ["authority-confirmed"],
+  "apply-for-national-summer-camp-programme": ["parent-guardian-confirmed"],
   "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026":
-    "parent-guardian-confirmed",
-  "apply-for-temporary-restaurant-permit": "regulations-acknowledged",
-  "bssee-form-b-defer-examination": "one-opportunity-acknowledged",
-  "camp-director-application": "suitability-check-consent",
-  "request-a-presidential-visit-for-a-centenarian": "request-terms-confirmed",
-  "request-an-environmental-health-officer": "regulations-acknowledged",
-  "youth-leadership-workshop-registration-2026": "responses-use-consent",
+    ["parent-guardian-confirmed"],
+  "apply-for-temporary-restaurant-permit": [
+    "regulations-acknowledged",
+    "overtime-costs-acknowledged",
+  ],
+  "bssee-form-b-defer-examination": ["one-opportunity-acknowledged"],
+  "camp-director-application": ["suitability-check-consent"],
+  "national-summer-camp-2025-registration": ["camp-rules-agreed"],
+  "request-a-presidential-visit-for-a-centenarian": ["request-terms-confirmed"],
+  "request-an-environmental-health-officer": [
+    "regulations-acknowledged",
+    "overtime-costs-acknowledged",
+  ],
+  "youth-leadership-workshop-registration-2026": ["responses-use-consent"],
+};
+
+/**
+ * Non-confirmation elements that already sat on these declaration steps
+ * before #2957. Listed so anything new on the step is a deliberate change.
+ */
+const OTHER_ELEMENTS: Record<string, string[]> = {
+  "apply-for-national-summer-camp-programme": ["camp-rules"],
+  "csec-private-candidate-registration": ["important-notices"],
+  "jobstart-plus-programme": ["declaration-date"],
+  "statement-of-travelling-form": ["important-notices"],
 };
 
 type Element = { ref?: string; fieldId?: string; overrides?: Element } & {
@@ -44,34 +67,58 @@ type Element = { ref?: string; fieldId?: string; overrides?: Element } & {
 };
 type Step = { stepId: string; title: string; elements?: Element[] };
 
-const declarations = fs
+const recipes = fs
   .readdirSync(RECIPES_DIR)
   .filter((f) => f.endsWith(".json"))
-  .flatMap((file) => {
-    const recipe = JSON.parse(
-      fs.readFileSync(path.join(RECIPES_DIR, file), "utf8"),
-    ) as { formId: string; steps: Step[] };
-    return recipe.steps.flatMap((step) =>
-      (step.elements ?? [])
-        .map((el) => el.overrides ?? el)
-        .filter((el) => el.fieldId === "declaration-confirmed")
-        .map((el) => ({ formId: recipe.formId, step, el })),
-    );
-  })
-  .filter(({ formId }) => !EXEMPT.has(formId));
+  .map(
+    (file) =>
+      JSON.parse(fs.readFileSync(path.join(RECIPES_DIR, file), "utf8")) as {
+        formId: string;
+        steps: Step[];
+      },
+  );
+
+const declarationSteps = recipes
+  .filter(({ formId }) => !(formId in EXEMPT))
+  .flatMap((recipe) =>
+    recipe.steps
+      .filter((step) => step.stepId === "declaration")
+      .map((step) => ({ formId: recipe.formId, step })),
+  );
+
+const fieldsOf = (step: Step) =>
+  (step.elements ?? []).map((el) => ({ el, field: el.overrides ?? el }));
 
 describe("standard declaration wording (#2957)", () => {
   it("finds declarations to check", () => {
-    expect(declarations.length).toBeGreaterThan(70);
+    expect(declarationSteps.length).toBeGreaterThan(80);
   });
 
-  it.each(declarations.map((d) => [d.formId, d] as const))(
+  it("keeps declaration-confirmed on the declaration step", () => {
+    const offStep = recipes.flatMap((recipe) =>
+      recipe.steps
+        .filter((step) => step.stepId !== "declaration")
+        .filter((step) =>
+          fieldsOf(step).some(
+            ({ field }) => field.fieldId === "declaration-confirmed",
+          ),
+        )
+        .map((step) => `${recipe.formId}/${step.stepId}`),
+    );
+    expect(offStep).toEqual([]);
+  });
+
+  it.each(declarationSteps.map((d) => [d.formId, d] as const))(
     "%s uses the standard heading, checkbox and error",
-    (_formId, { step, el }) => {
+    (_formId, { step }) => {
+      const el = fieldsOf(step).find(
+        ({ field }) => field.fieldId === "declaration-confirmed",
+      )?.field;
+      expect(el).toBeDefined(); // fails for an empty step or a different fieldId
       expect({
         title: step.title,
-        option: el.options?.map((o) => o.label),
-        error: el.validations?.required?.error,
+        option: el?.options?.map((o) => o.label),
+        error: el?.validations?.required?.error,
       }).toEqual({
         title: STANDARD.title,
         option: [STANDARD.option],
@@ -80,15 +127,35 @@ describe("standard declaration wording (#2957)", () => {
     },
   );
 
-  it.each(Object.entries(ACKNOWLEDGEMENTS))(
+  it.each(declarationSteps.map((d) => [d.formId, d] as const))(
+    "%s has nothing else on the declaration step unless listed",
+    (formId, { step }) => {
+      expect(
+        fieldsOf(step)
+          .map(({ field }) => field.fieldId)
+          .sort(),
+      ).toEqual(
+        [
+          "declaration-confirmed",
+          ...(ACKNOWLEDGEMENTS[formId] ?? []),
+          ...(OTHER_ELEMENTS[formId] ?? []),
+        ].sort(),
+      );
+    },
+  );
+
+  it.each(
+    Object.entries(ACKNOWLEDGEMENTS).flatMap(([formId, ids]) =>
+      ids.map((fieldId) => [formId, fieldId] as const),
+    ),
+  )(
     "%s keeps its %s acknowledgement on the declaration step",
     (formId, fieldId) => {
-      const step = declarations.find((d) => d.formId === formId)?.step;
-      const ack = step?.elements?.find(
-        (el) => (el.overrides ?? el).fieldId === fieldId,
-      );
-      expect(ack?.ref).toBe("components/confirmation");
-      expect((ack?.overrides ?? ack)?.validations?.required).toBeDefined();
+      const step = declarationSteps.find((d) => d.formId === formId)?.step;
+      const ack =
+        step && fieldsOf(step).find(({ field }) => field.fieldId === fieldId);
+      expect(ack?.el.ref).toBe("components/confirmation");
+      expect(ack?.field.validations?.required).toBeDefined();
     },
   );
 });
