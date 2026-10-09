@@ -2,7 +2,10 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { afterEach, describe, expect, it, beforeAll, vi } from "vitest";
 import { Logger } from "@nestjs/common";
-import { POLYCLINIC_CONTACTS } from "@govtech-bb/form-conditions";
+import {
+  POLYCLINIC_CONTACTS,
+  interpolateConfirmationMarkdown,
+} from "@govtech-bb/form-conditions";
 import { CatchmentRoutingService } from "./catchment-routing.service";
 import { CatchmentGeometryService } from "./catchment-geometry.service";
 import {
@@ -225,6 +228,8 @@ describe("CatchmentRoutingService", () => {
     // from the shared `POLYCLINIC_CONTACTS`, which also derives the
     // all-clinics fallback, so the two can't carry different digits; what this
     // pins is that the key the router resolves by agrees with the row's text.
+    // The row names the clinic as `{polyclinic}` renders it, which can differ
+    // from the key (David Thompson's "&" renders "and", #2856).
     for (const clinic of Object.keys(POINT_IN)) {
       const r = svc.resolve({
         formId: PERMIT_FORM,
@@ -233,8 +238,11 @@ describe("CatchmentRoutingService", () => {
       });
       expect(r?.polyclinic, clinic).toBe(clinic);
       expect(r?.polyclinicContact, clinic).toBe(POLYCLINIC_CONTACTS[clinic]);
+      const shown = interpolateConfirmationMarkdown("{polyclinic}", {
+        polyclinic: clinic,
+      }) as string;
       expect(r?.polyclinicContact, clinic).toMatch(
-        new RegExp(`^${clinic.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} - `),
+        new RegExp(`^${shown.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} - `),
       );
     }
 

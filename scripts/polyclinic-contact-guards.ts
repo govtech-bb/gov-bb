@@ -71,10 +71,12 @@ export const SUPERSEDED_POLYCLINIC_NAMES: readonly {
     canonical: "St. Philip",
     pattern: /St\. Phillip/g,
   },
+  // Reversed by #2856: Environmental Health asked for "and". The routing key
+  // keeps "&", but no page or recipe should.
   {
-    superseded: "Health and Social Services Complex",
-    canonical: "Health & Social Services Complex",
-    pattern: /Health and Social Services Complex/g,
+    superseded: "Health & Social Services Complex",
+    canonical: "Health and Social Services Complex",
+    pattern: /Health & Social Services Complex/g,
   },
 ];
 

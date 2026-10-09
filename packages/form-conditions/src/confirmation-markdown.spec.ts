@@ -22,6 +22,16 @@ describe("interpolateConfirmationMarkdown", () => {
     ).toBe("Warrens Polyclinic — see Warrens Polyclinic.");
   });
 
+  // The routing key keeps "&"; applicants read "and" (#2856), matching the
+  // clinic's contact line.
+  it("renders David Thompson's routing key with 'and'", () => {
+    expect(
+      interpolateConfirmationMarkdown("Sent to {polyclinic}.", {
+        polyclinic: "David Thompson Health & Social Services Complex",
+      }),
+    ).toBe("Sent to David Thompson Health and Social Services Complex.");
+  });
+
   it("falls back to the shared phrase when the value is undefined", () => {
     expect(
       interpolateConfirmationMarkdown("Visit {polyclinic}.", {

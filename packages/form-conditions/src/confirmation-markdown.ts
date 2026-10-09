@@ -38,15 +38,17 @@ type TokenSpec = {
  * Order is alphabetical and is the order the fallback list renders in.
  *
  * NOTE: these names normalise the authored copy ("Randall", "Winston Scott",
- * "St. Phillip", "… and …") to the routing/GeoJSON spellings ("Randal", "Sir
- * Winston Scott", "St. Philip", "… & …") so the contact section always agrees
- * with the `{polyclinic}` name in the same confirmation body (#254).
+ * "St. Phillip") to the routing/GeoJSON spellings ("Randal", "Sir Winston
+ * Scott", "St. Philip") so the contact section always agrees with the
+ * `{polyclinic}` name in the same confirmation body (#254). David Thompson is
+ * the one split: its key keeps the routing "&" while its line reads "and"
+ * (#2856) — see `POLYCLINIC_DISPLAY_NAMES`.
  */
 export const POLYCLINIC_CONTACTS: Record<string, string> = {
   "Branford Taitt Polyclinic":
     "Branford Taitt Polyclinic - [(246) 536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)",
   "David Thompson Health & Social Services Complex":
-    "David Thompson Health & Social Services Complex - [(246) 536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)",
+    "David Thompson Health and Social Services Complex - [(246) 536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)",
   "Eunice Gibson Polyclinic":
     "Eunice Gibson Polyclinic - [(246) 536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)",
   "Maurice Byer Polyclinic":
@@ -57,6 +59,19 @@ export const POLYCLINIC_CONTACTS: Record<string, string> = {
     "Sir Winston Scott Polyclinic - [(246) 536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)",
   "St. Philip Polyclinic":
     "St. Philip Polyclinic - [(246) 536-4240](tel:+12465364240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)",
+};
+
+/**
+ * Citizen-facing spelling for a resolved catchment name that differs from its
+ * routing key. The key ("… & …") is the GeoJSON name, the `catchment_contact`
+ * row each environment holds and the value queued SQS messages carry, so it
+ * stays; Environmental Health asked for "and" in what applicants read (#2856).
+ * Applied by the `{polyclinic}` token so the name agrees with the contact line
+ * above on both confirmation surfaces.
+ */
+const POLYCLINIC_DISPLAY_NAMES: Record<string, string> = {
+  "David Thompson Health & Social Services Complex":
+    "David Thompson Health and Social Services Complex",
 };
 
 /**
@@ -74,7 +89,10 @@ export const ALL_POLYCLINIC_CONTACTS_MARKDOWN = Object.values(
 const TOKENS = {
   // Coordinate-routed forms name the resolved polyclinic; non-routed forms and
   // unresolved submissions read the generic phrase instead.
-  polyclinic: { fallback: "your local polyclinic" },
+  polyclinic: {
+    fallback: "your local polyclinic",
+    normalise: (value) => POLYCLINIC_DISPLAY_NAMES[value] ?? value,
+  },
 
   // Coordinate-routed forms list only the resolved clinic's contact line;
   // non-routed forms and unresolved submissions read the full list so the

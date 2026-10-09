@@ -255,10 +255,12 @@ describe("checkNoSupersededNames", () => {
 // this holds.
 describe("SUPERSEDED_POLYCLINIC_NAMES", () => {
   it.each(SUPERSEDED_POLYCLINIC_NAMES)(
-    'recommends "$canonical", which is still part of a POLYCLINIC_CONTACTS name',
+    'recommends "$canonical", which is still part of a POLYCLINIC_CONTACTS line',
     ({ canonical }) => {
-      const names = Object.keys(POLYCLINIC_CONTACTS);
-      expect(names.some((name) => name.includes(canonical))).toBe(true);
+      // The lines, not the keys: a key is a routing name and may keep a
+      // spelling applicants no longer read (David Thompson's "&", #2856).
+      const lines = Object.values(POLYCLINIC_CONTACTS);
+      expect(lines.some((line) => line.includes(canonical))).toBe(true);
     },
   );
 });
