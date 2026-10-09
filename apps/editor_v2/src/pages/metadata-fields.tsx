@@ -162,8 +162,9 @@ const focusRing =
 
 // A value reads as text until it is used: hovering tints it, and editing raises a white box,
 // which is its focus indicator in place of the global ring (outline-none opts out of that).
+// The ink ring carries it: white on the white page doesn't, and a lighter line falls short of 3:1.
 const control = cn(
-  "block w-full min-w-0 min-h-8 rounded-sm bg-transparent px-2 py-1 text-14 leading-normal text-ink outline-none placeholder:text-subtle disabled:cursor-default [&[readonly]]:cursor-default [&:not(:disabled,[readonly])]:hover:bg-tint focus:bg-white focus:shadow-sheet focus:ring-1 focus:ring-line-strong @max-[30rem]:min-h-11 @max-[30rem]:text-16 pointer-coarse:min-h-11",
+  "block w-full min-w-0 min-h-8 rounded-sm bg-transparent px-2 py-1 text-14 leading-normal text-ink outline-none placeholder:text-subtle disabled:cursor-default [&[readonly]]:cursor-default [&:not(:disabled,[readonly])]:hover:bg-tint focus:bg-white focus:shadow-sheet focus:ring-1 focus:ring-ink @max-[30rem]:min-h-11 @max-[30rem]:text-16 pointer-coarse:min-h-11",
 );
 
 const codeControl = cn(control, "font-mono text-13 @max-[30rem]:text-16");
