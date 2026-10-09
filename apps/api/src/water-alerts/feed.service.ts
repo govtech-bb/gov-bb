@@ -186,8 +186,11 @@ function noticeRef(raw: unknown): string {
   return ref ? JSON.stringify(clip(ref.trim(), 200)) : "(no ID)";
 }
 
-/** One-line reason a notice was skipped (Zod errors are otherwise JSON). */
-function reason(err: unknown): string {
+/**
+ * One-line reason for an error (Zod errors are otherwise JSON). Used for a
+ * skipped notice, and to lead the checker's ops alert email (#2970).
+ */
+export function reason(err: unknown): string {
   if (err instanceof z.ZodError) {
     return err.issues
       .map((i) => `${i.path.join(".") || "item"}: ${i.message}`)

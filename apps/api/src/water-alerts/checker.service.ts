@@ -1,11 +1,11 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { SendEmailCommand } from "@aws-sdk/client-sesv2";
-import Handlebars from "handlebars";
 import { DataSource } from "typeorm";
 import { SesMailer } from "../email/ses-mailer";
 import { type AlertNotice, buildAlertEmail, type EmailContent } from "./emails";
-import { FeedService } from "./feed.service";
+import { FeedService, reason } from "./feed.service";
+import { OpsAlertService } from "./ops-alerts.service";
 import { isPast, type Outage } from "./outages.domain";
 import { apiOrigin, landingOrigin } from "./origins";
 import { areaLabelFor } from "./parishes";
@@ -52,6 +52,7 @@ export class CheckerService {
     private readonly subscribers: WaterSubscriberRepository,
     private readonly sentAlerts: WaterSentAlertRepository,
     private readonly mailer: SesMailer,
+    private readonly opsAlerts: OpsAlertService,
   ) {}
 
   /** The scheduled run: single-flight across API tasks via an advisory lock. */
@@ -68,20 +69,27 @@ export class CheckerService {
       try {
         const summary = await this.runAlertCheck({});
         this.logger.log(`alert check: ${JSON.stringify(summary)}`);
+        // Each signal is emailed once when it starts, reminded, and once when
+        // it recovers — not every run (#2970).
+        await this.opsAlerts.recovered("checker-crash");
         if (summary.failed > 0) {
-          await this.sendOpsAlert(
-            `Wuh Water Doing: ${summary.failed} alert send(s) failed`,
+          await this.opsAlerts.failure(
+            "send-failures",
+            `${summary.failed} alert send(s) failed`,
             JSON.stringify(summary, null, 2),
           );
+        } else {
+          await this.opsAlerts.recovered("send-failures");
         }
       } finally {
         await runner.query(`SELECT pg_advisory_unlock($1)`, [CHECK_LOCK_KEY]);
       }
     } catch (err) {
       this.logger.error("alert checker crashed", err as Error);
-      await this.sendOpsAlert(
-        "Wuh Water Doing: alert checker crashed",
-        String(err),
+      await this.opsAlerts.failure(
+        "checker-crash",
+        reason(err),
+        (err as Error)?.stack ?? String(err),
       );
     } finally {
       await runner.release();
@@ -242,22 +250,6 @@ export class CheckerService {
         `Alert email to ${to} failed: ${(err as Error).message}`,
       );
       return false;
-    }
-  }
-
-  /** Ops alert to the team. No-op if WATER_OPS_RECIPIENT is unset. */
-  private async sendOpsAlert(subject: string, text: string): Promise<void> {
-    const to = process.env.WATER_OPS_RECIPIENT;
-    if (!to) return;
-    try {
-      await this.mailer.sendSimple({
-        to,
-        subject,
-        html: `<pre>${Handlebars.escapeExpression(text)}</pre>`,
-        text,
-      });
-    } catch (err) {
-      this.logger.warn(`Ops alert not sent: ${(err as Error).message}`);
     }
   }
 }

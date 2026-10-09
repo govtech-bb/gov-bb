@@ -2,6 +2,7 @@ import type { DataSource } from "typeorm";
 import type { SesMailer } from "../email/ses-mailer";
 import { CheckerService } from "./checker.service";
 import type { FeedService } from "./feed.service";
+import type { OpsAlertService } from "./ops-alerts.service";
 import type { Outage } from "./outages.domain";
 import type { WaterSentAlertRepository } from "./water-sent-alert.repository";
 import type { WaterSubscriberRepository } from "./water-subscriber.repository";
@@ -48,14 +49,19 @@ function makeDeps(
     configurationSet: over.configurationSet,
     sendSimple: vi.fn(),
   };
+  const opsAlerts = {
+    failure: vi.fn().mockResolvedValue(undefined),
+    recovered: vi.fn().mockResolvedValue(undefined),
+  };
   const service = new CheckerService(
     over.dataSource ?? ({} as DataSource),
     feed as unknown as FeedService,
     subscribers as unknown as WaterSubscriberRepository,
     sentAlerts as unknown as WaterSentAlertRepository,
     mailer as unknown as SesMailer,
+    opsAlerts as unknown as OpsAlertService,
   );
-  return { service, feed, subscribers, sentAlerts, send, mailer };
+  return { service, feed, subscribers, sentAlerts, send, mailer, opsAlerts };
 }
 
 const PENDING_ROW = {
@@ -209,11 +215,13 @@ describe("CheckerService.scheduled", () => {
       query: vi.fn().mockResolvedValue([{ pg_try_advisory_lock: false }]),
       release: vi.fn(),
     };
-    const { service, feed } = makeDeps({
+    const { service, feed, opsAlerts } = makeDeps({
       dataSource: { createQueryRunner: () => runner } as unknown as DataSource,
     });
     await service.scheduled();
     expect(feed.fetchOutages).not.toHaveBeenCalled();
+    expect(opsAlerts.failure).not.toHaveBeenCalled();
+    expect(opsAlerts.recovered).not.toHaveBeenCalled();
     expect(runner.query).toHaveBeenCalledOnce();
     expect(runner.release).toHaveBeenCalledOnce();
   });
@@ -236,46 +244,82 @@ describe("CheckerService.scheduled", () => {
     expect(runner.release).toHaveBeenCalledOnce();
   });
 
-  it.each([false, true])(
-    "reports failed sends and releases the lock even if ops delivery fails (%s)",
-    async (opsFails) => {
-      vi.stubEnv("WATER_OPS_RECIPIENT", "ops@example.test");
-      const runner = {
-        connect: vi.fn(),
-        query: vi.fn().mockResolvedValue([{ pg_try_advisory_lock: true }]),
-        release: vi.fn(),
-      };
-      const { service, feed, mailer, sentAlerts } = makeDeps({
-        dataSource: {
-          createQueryRunner: () => runner,
-        } as unknown as DataSource,
-        pendingUnsent: vi.fn().mockResolvedValue([PENDING_ROW]),
-        send: vi.fn().mockRejectedValue(new Error("SES rejected alert")),
-      });
-      feed.fetchOutages.mockResolvedValue({
-        outages: [outage()],
-        checkedAt: new Date().toISOString(),
-      });
-      if (opsFails)
-        mailer.sendSimple.mockRejectedValue(new Error("ops unavailable"));
+  it("reports failed sends as the send-failures signal and still releases the lock", async () => {
+    const runner = {
+      connect: vi.fn(),
+      query: vi.fn().mockResolvedValue([{ pg_try_advisory_lock: true }]),
+      release: vi.fn(),
+    };
+    const { service, feed, sentAlerts, opsAlerts } = makeDeps({
+      dataSource: {
+        createQueryRunner: () => runner,
+      } as unknown as DataSource,
+      pendingUnsent: vi.fn().mockResolvedValue([PENDING_ROW]),
+      send: vi.fn().mockRejectedValue(new Error("SES rejected alert")),
+    });
+    feed.fetchOutages.mockResolvedValue({
+      outages: [outage()],
+      checkedAt: new Date().toISOString(),
+    });
 
-      await expect(service.scheduled()).resolves.toBeUndefined();
+    await expect(service.scheduled()).resolves.toBeUndefined();
 
-      expect(mailer.sendSimple).toHaveBeenCalledWith(
-        expect.objectContaining({
-          to: "ops@example.test",
-          subject: "Wuh Water Doing: 1 alert send(s) failed",
-          text: expect.stringContaining('"failed": 1'),
-        }),
-      );
-      expect(sentAlerts.markManySent).toHaveBeenCalledWith([], []);
-      expect(runner.query).toHaveBeenLastCalledWith(
-        "SELECT pg_advisory_unlock($1)",
-        [91442],
-      );
-      expect(runner.release).toHaveBeenCalledOnce();
-    },
-  );
+    expect(opsAlerts.failure).toHaveBeenCalledWith(
+      "send-failures",
+      "1 alert send(s) failed",
+      expect.stringContaining('"failed": 1'),
+    );
+    // The run itself completed, so the checker is not crashing.
+    expect(opsAlerts.recovered).toHaveBeenCalledWith("checker-crash");
+    expect(opsAlerts.recovered).not.toHaveBeenCalledWith("send-failures");
+    expect(sentAlerts.markManySent).toHaveBeenCalledWith([], []);
+    expect(runner.query).toHaveBeenLastCalledWith(
+      "SELECT pg_advisory_unlock($1)",
+      [91442],
+    );
+    expect(runner.release).toHaveBeenCalledOnce();
+  });
+
+  it("reports a crash as the checker-crash signal with a one-line summary first", async () => {
+    const runner = {
+      connect: vi.fn(),
+      query: vi.fn().mockResolvedValue([{ pg_try_advisory_lock: true }]),
+      release: vi.fn(),
+    };
+    const { service, feed, opsAlerts } = makeDeps({
+      dataSource: { createQueryRunner: () => runner } as unknown as DataSource,
+    });
+    feed.fetchOutages.mockRejectedValue(new Error("feed down"));
+
+    await service.scheduled();
+
+    expect(opsAlerts.failure).toHaveBeenCalledWith(
+      "checker-crash",
+      "feed down",
+      expect.stringContaining("Error: feed down"),
+    );
+    expect(opsAlerts.recovered).not.toHaveBeenCalled();
+  });
+
+  it("summarises a Zod error on one line instead of raw JSON", async () => {
+    const { z } = await import("zod");
+    const runner = {
+      connect: vi.fn(),
+      query: vi.fn().mockResolvedValue([{ pg_try_advisory_lock: true }]),
+      release: vi.fn(),
+    };
+    const { service, feed, opsAlerts } = makeDeps({
+      dataSource: { createQueryRunner: () => runner } as unknown as DataSource,
+    });
+    const zodError = z.object({ rss: z.string() }).safeParse({}).error;
+    feed.fetchOutages.mockRejectedValue(zodError);
+
+    await service.scheduled();
+
+    const [, summary] = opsAlerts.failure.mock.calls[0];
+    expect(summary).toMatch(/^rss: /);
+    expect(summary).not.toContain("\n");
+  });
 
   it("finishes a successful scheduled check without sending an ops alert", async () => {
     const runner = {
@@ -283,11 +327,14 @@ describe("CheckerService.scheduled", () => {
       query: vi.fn().mockResolvedValue([{ pg_try_advisory_lock: true }]),
       release: vi.fn(),
     };
-    const { service, mailer } = makeDeps({
+    const { service, mailer, opsAlerts } = makeDeps({
       dataSource: { createQueryRunner: () => runner } as unknown as DataSource,
     });
     await service.scheduled();
     expect(mailer.sendSimple).not.toHaveBeenCalled();
+    expect(opsAlerts.failure).not.toHaveBeenCalled();
+    expect(opsAlerts.recovered).toHaveBeenCalledWith("checker-crash");
+    expect(opsAlerts.recovered).toHaveBeenCalledWith("send-failures");
     expect(runner.release).toHaveBeenCalledOnce();
   });
 });
