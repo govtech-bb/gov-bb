@@ -43,6 +43,20 @@ describe("stripHtml", () => {
   it("removes tags, decodes entities and collapses whitespace", () => {
     expect(stripHtml("<p>Water   &amp;<br/> pipes</p>")).toBe("Water & pipes");
   });
+
+  it("keeps a stray '<' and the text after it", () => {
+    expect(stripHtml("pressure < normal <i>today</i>")).toBe(
+      "pressure < normal today",
+    );
+  });
+
+  it("strips in linear time when the feed has many unclosed '<'", () => {
+    // CDATA lets raw '<' through the XML parser. A tag pattern that can run
+    // past another '<' backtracks quadratically (~1h of CPU for a 2 MB body).
+    const start = performance.now();
+    stripHtml("<".repeat(200_000));
+    expect(performance.now() - start).toBeLessThan(1000);
+  });
 });
 
 describe("clip", () => {

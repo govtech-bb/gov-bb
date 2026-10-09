@@ -19,6 +19,12 @@
         "command": "vitest run",
         "cwd": "packages/content"
       }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["packages/content/**/*.ts"]
+      }
     }
   },
   "tags": []

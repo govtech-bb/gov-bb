@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, beforeAll, vi } from "vitest";
 import { Logger } from "@nestjs/common";
 import { POLYCLINIC_CONTACTS } from "@govtech-bb/form-conditions";
 import { CatchmentRoutingService } from "./catchment-routing.service";
+import { CatchmentGeometryService } from "./catchment-geometry.service";
 import {
   CATCHMENT_CONTACT,
   CATCHMENT_SUFFIX,
@@ -19,7 +20,7 @@ const OFFICER_CODE = "ENV_HEALTH_OFFICER";
 describe("CatchmentRoutingService", () => {
   let svc: CatchmentRoutingService;
   beforeAll(() => {
-    svc = new CatchmentRoutingService();
+    svc = new CatchmentRoutingService(new CatchmentGeometryService());
     svc.onModuleInit();
   });
 
@@ -462,7 +463,7 @@ describe("programme codes are unchanged by composition (golden)", () => {
     return code;
   }
 
-  const svc = new CatchmentRoutingService();
+  const svc = new CatchmentRoutingService(new CatchmentGeometryService());
   svc.onModuleInit();
 
   for (const [formId, byCatchment] of Object.entries(EXPECTED)) {
@@ -511,7 +512,7 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
     vi.resetModules();
     const { CatchmentRoutingService: Svc } =
       await import("./catchment-routing.service");
-    const svc = new Svc();
+    const svc = new Svc(new CatchmentGeometryService());
     expect(() => svc.onModuleInit()).toThrow(/Sir Winston Scott Polyclinic/);
   });
 
@@ -528,7 +529,7 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
     vi.resetModules();
     const { CatchmentRoutingService: Svc } =
       await import("./catchment-routing.service");
-    const svc = new Svc();
+    const svc = new Svc(new CatchmentGeometryService());
     expect(() => svc.onModuleInit()).toThrow(/Not A Real Polyclinic/);
   });
 
@@ -548,7 +549,7 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
     vi.resetModules();
     const { CatchmentRoutingService: Svc } =
       await import("./catchment-routing.service");
-    const svc = new Svc();
+    const svc = new Svc(new CatchmentGeometryService());
     expect(() => svc.onModuleInit()).toThrow(/Frederick Miller Polyclinic/);
   });
 
@@ -565,7 +566,7 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
     vi.resetModules();
     const { CatchmentRoutingService: Svc } =
       await import("./catchment-routing.service");
-    const svc = new Svc();
+    const svc = new Svc(new CatchmentGeometryService());
     expect(() => svc.onModuleInit()).toThrow(/PARISH_DEFAULTS/);
   });
 
@@ -582,7 +583,7 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
     vi.resetModules();
     const { CatchmentRoutingService: Svc } =
       await import("./catchment-routing.service");
-    const svc = new Svc();
+    const svc = new Svc(new CatchmentGeometryService());
     expect(() => svc.onModuleInit()).toThrow(/Not A Real Polyclinic/);
   });
 
@@ -598,7 +599,7 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
     vi.resetModules();
     const { CatchmentRoutingService: Svc } =
       await import("./catchment-routing.service");
-    const svc = new Svc();
+    const svc = new Svc(new CatchmentGeometryService());
     expect(() => svc.onModuleInit()).toThrow(/Not A Real Polyclinic/);
   });
 
@@ -615,7 +616,7 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
     vi.resetModules();
     const { CatchmentRoutingService: Svc } =
       await import("./catchment-routing.service");
-    const svc = new Svc();
+    const svc = new Svc(new CatchmentGeometryService());
     expect(() => svc.onModuleInit()).toThrow(/chains are not followed/);
   });
 
@@ -631,7 +632,7 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
     vi.resetModules();
     const { CatchmentRoutingService: Svc } =
       await import("./catchment-routing.service");
-    const svc = new Svc();
+    const svc = new Svc(new CatchmentGeometryService());
     expect(() => svc.onModuleInit()).toThrow(/Sir Winston Scott Polyclinic/);
   });
 
@@ -648,121 +649,7 @@ describe("CatchmentRoutingService boot validation (mocked data)", () => {
     vi.resetModules();
     const { CatchmentRoutingService: Svc } =
       await import("./catchment-routing.service");
-    const svc = new Svc();
+    const svc = new Svc(new CatchmentGeometryService());
     expect(() => svc.onModuleInit()).toThrow(/Not A Serving Catchment/);
-  });
-});
-
-describe("CatchmentRoutingService polygon geometry (mocked GeoJSON)", () => {
-  afterEach(() => {
-    vi.doUnmock("node:fs");
-    vi.doUnmock("./polyclinic-routing");
-    vi.resetModules();
-  });
-
-  // Outer ring: a 2x2 square centred on the origin. Hole: a 1x1 square cut
-  // out of its centre. GeoJSON coordinates are [lng, lat]; the service's
-  // input string is "lat,lng".
-  const outerRing = [
-    [-1, -1],
-    [-1, 1],
-    [1, 1],
-    [1, -1],
-    [-1, -1],
-  ];
-  const holeRing = [
-    [-0.5, -0.5],
-    [-0.5, 0.5],
-    [0.5, 0.5],
-    [0.5, -0.5],
-    [-0.5, -0.5],
-  ];
-
-  async function mockGeojsonFeature(feature: {
-    properties: { name: string };
-    geometry: { type: string; coordinates: unknown };
-  }) {
-    vi.doMock("node:fs", async () => {
-      const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
-      return {
-        ...actual,
-        readFileSync: vi.fn(() => JSON.stringify({ features: [feature] })),
-      };
-    });
-    vi.resetModules();
-  }
-
-  function mockRouting(catchment: string, suffix: string) {
-    vi.doMock("./polyclinic-routing", () => ({
-      CATCHMENT_SUFFIX: { [catchment]: suffix },
-      CATCHMENT_CONTACT: { [catchment]: `${catchment} - [x](tel:1)` },
-      PARISH_DEFAULTS: {},
-      SERVING_CATCHMENT: {},
-    }));
-    vi.resetModules();
-  }
-
-  it("excludes points inside a polygon's hole but resolves points inside the outer ring", async () => {
-    await mockGeojsonFeature({
-      properties: { name: "Test Catchment With Hole" },
-      geometry: { type: "Polygon", coordinates: [outerRing, holeRing] },
-    });
-    mockRouting("Test Catchment With Hole", "HOLE");
-    const { CatchmentRoutingService: Svc } =
-      await import("./catchment-routing.service");
-    const svc = new Svc();
-    svc.onModuleInit();
-
-    // lat=0, lng=0 — inside the hole, so no catchment (and no parish given).
-    expect(
-      svc.resolve({
-        formId: "test-form",
-        programmeCode: "TEST",
-        coordinates: "0,0",
-      }),
-    ).toBeNull();
-
-    // lat=0, lng=0.9 — inside the outer ring, outside the hole.
-    const hit = svc.resolve({
-      formId: "test-form",
-      programmeCode: "TEST",
-      coordinates: "0,0.9",
-    });
-    expect(hit?.polyclinic).toBe("Test Catchment With Hole");
-    expect(hit?.programmeCode).toBe("TEST_HOLE");
-  });
-
-  it("throws on boot for an unsupported geometry type", async () => {
-    await mockGeojsonFeature({
-      properties: { name: "Test Point Catchment" },
-      geometry: { type: "Point", coordinates: [0, 0] },
-    });
-    mockRouting("Test Point Catchment", "POINT");
-    const { CatchmentRoutingService: Svc } =
-      await import("./catchment-routing.service");
-    const svc = new Svc();
-    expect(() => svc.onModuleInit()).toThrow(
-      /unsupported geometry type "Point"/,
-    );
-  });
-
-  it("treats a Polygon with no rings as never matching", async () => {
-    await mockGeojsonFeature({
-      properties: { name: "Test Empty Catchment" },
-      geometry: { type: "Polygon", coordinates: [] },
-    });
-    mockRouting("Test Empty Catchment", "EMPTY");
-    const { CatchmentRoutingService: Svc } =
-      await import("./catchment-routing.service");
-    const svc = new Svc();
-    svc.onModuleInit();
-
-    expect(
-      svc.resolve({
-        formId: "test-form",
-        programmeCode: "TEST",
-        coordinates: "0,0",
-      }),
-    ).toBeNull();
   });
 });

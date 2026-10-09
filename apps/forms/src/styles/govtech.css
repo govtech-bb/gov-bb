@@ -21,6 +21,14 @@
   gap: var(--govbb-space-s);
 }
 
+/* The package's radio fieldset is a flex column with `align-items:
+   flex-start`, which shrink-wraps a revealed option to its content. A field
+   with no intrinsic width — the file upload — collapsed to a thin strip
+   (#2915). Stretch the reveal to the fieldset's width instead. */
+.govbb-radio-item__conditional {
+  align-self: stretch;
+}
+
 /* Space multiple fields within a revealed checkbox option. */
 .govbb-checkbox-item:has(> .govbb-checkbox:checked)
   + .govbb-checkbox-item__conditional {
@@ -255,15 +263,25 @@
  * field's own type, not its container, so a short field inside a show-hide
  * inset renders the same as a standalone one — percentage widths compounded
  * against every wrapper (two-thirds column × inset padding × 33%) and
- * left inset fields tiny. The package's form group supplies `width: 100%`,
- * so fields still shrink inside containers narrower than the cap.
- * `long` (or no hint) stays unstyled: full width of the form column. */
+ * left inset fields tiny. The package's controls supply `width: 100%`, so
+ * fields still shrink inside containers narrower than the cap.
+ * `long` (or no hint) stays unstyled: full width of the form column.
+ * The cap sits on the control, not the form group, so the label, hint and
+ * error message keep the full column width (#2923). Caveat: a select's group
+ * can carry a width hint and contains its `.govbb-select__conditional` inset,
+ * so the descendant selector reaches revealed fields. No width-hinted select
+ * reveals a field today. If one does, a revealed field with no hint inherits
+ * the select's cap, and a `short` field under a `medium` select gets 38ch
+ * (equal specificity, `medium` wins by source order) — add rules scoped to
+ * `.govbb-select__conditional .govbb-form-group[...]` then. */
 @media (min-width: 768px) {
-  .govbb-form-group[data-field-width="short"] {
+  .govbb-form-group[data-field-width="short"]
+    :is(.govbb-input, .govbb-select, .govbb-textarea, .govbb-combobox) {
     max-width: 24ch;
   }
 
-  .govbb-form-group[data-field-width="medium"] {
+  .govbb-form-group[data-field-width="medium"]
+    :is(.govbb-input, .govbb-select, .govbb-textarea, .govbb-combobox) {
     max-width: 38ch;
   }
 }

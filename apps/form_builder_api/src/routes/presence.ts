@@ -20,7 +20,14 @@ const FRESH = `last_activity_at > NOW() - INTERVAL '${PRESENCE_TTL_MINUTES} minu
 // EntityManager satisfy it, so holdsFreshClaim works standalone (presence
 // routes) and inside the save/publish transaction (write enforcement).
 interface Queryable {
-  query(sql: string, params?: unknown[]): Promise<any[]>;
+  query(sql: string, params?: unknown[]): Promise<PresenceRow[]>;
+}
+
+/** Columns every presence query selects (the upsert RETURNING them too). */
+interface PresenceRow {
+  user_login: string;
+  claimed_at: string;
+  last_activity_at: string;
 }
 
 interface PresenceHolder {
@@ -29,11 +36,7 @@ interface PresenceHolder {
   lastActivityAt: string;
 }
 
-function toHolder(row: {
-  user_login: string;
-  claimed_at: string;
-  last_activity_at: string;
-}): PresenceHolder {
+function toHolder(row: PresenceRow): PresenceHolder {
   return {
     userLogin: row.user_login,
     claimedAt: row.claimed_at,

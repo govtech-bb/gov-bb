@@ -133,7 +133,7 @@
     },
     {
       "stepId": "property-owner-details",
-      "title": "Property ownership and owner details",
+      "title": "Property ownership",
       "behaviours": [],
       "elements": [
         {
@@ -248,7 +248,13 @@
               }
             ]
           }
-        },
+        }
+      ]
+    },
+    {
+      "stepId": "owner-details",
+      "title": "Property owner's details",
+      "elements": [
         {
           "ref": "components/first-name",
           "overrides": {
@@ -261,13 +267,6 @@
               }
             },
             "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "is-property-owner",
-                "targetStepId": "property-owner-details",
-                "operator": "equal",
-                "value": "no"
-              },
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "owner-type",
@@ -292,13 +291,6 @@
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "is-property-owner",
-                "targetStepId": "property-owner-details",
-                "operator": "equal",
-                "value": "no"
-              },
-              {
-                "type": "fieldConditionalOn",
                 "targetFieldId": "owner-type",
                 "targetStepId": "property-owner-details",
                 "operator": "equal",
@@ -319,13 +311,6 @@
               }
             },
             "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "is-property-owner",
-                "targetStepId": "property-owner-details",
-                "operator": "equal",
-                "value": "no"
-              },
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "owner-type",
@@ -350,13 +335,6 @@
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "is-property-owner",
-                "targetStepId": "property-owner-details",
-                "operator": "equal",
-                "value": "no"
-              },
-              {
-                "type": "fieldConditionalOn",
                 "targetFieldId": "owner-type",
                 "targetStepId": "property-owner-details",
                 "operator": "equal",
@@ -375,16 +353,7 @@
                 "error": "Property owner's address is required",
                 "value": true
               }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "is-property-owner",
-                "targetStepId": "property-owner-details",
-                "operator": "equal",
-                "value": "no"
-              }
-            ]
+            }
           }
         },
         {
@@ -396,16 +365,7 @@
               "required": {
                 "value": false
               }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "is-property-owner",
-                "targetStepId": "property-owner-details",
-                "operator": "equal",
-                "value": "no"
-              }
-            ]
+            }
           }
         },
         {
@@ -418,17 +378,17 @@
                 "error": "Property owner's parish is required",
                 "value": true
               }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "is-property-owner",
-                "targetStepId": "property-owner-details",
-                "operator": "equal",
-                "value": "no"
-              }
-            ]
+            }
           }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "property-owner-details",
+          "targetFieldId": "is-property-owner",
+          "operator": "equal",
+          "value": "no"
         }
       ]
     },
@@ -1010,8 +970,8 @@
           "ref": "components/content",
           "overrides": {
             "fieldId": "swimming-pool-licence-applied-notice",
-            "content": "You can continue now. You must apply for the swimming pool licence before this licence can be granted.",
-            "variant": "inset",
+            "content": "You can continue with this application. You must apply for the swimming pool licence before the lodging house or barracks licence can be granted.",
+            "variant": "warning",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -1067,8 +1027,8 @@
           "ref": "components/content",
           "overrides": {
             "fieldId": "food-business-licence-applied-notice",
-            "content": "You can continue now. You must apply for the food business licence before this licence can be granted.",
-            "variant": "inset",
+            "content": "You can continue with this application. You must apply for the food business licence before the lodging house or barracks licence can be granted.",
+            "variant": "warning",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -1124,8 +1084,8 @@
           "ref": "components/content",
           "overrides": {
             "fieldId": "restaurant-licence-applied-notice",
-            "content": "You can continue now. You must apply for the restaurant licence before this licence can be granted.",
-            "variant": "inset",
+            "content": "You can continue with this application. You must apply for the restaurant licence before the lodging house or barracks licence can be granted.",
+            "variant": "warning",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -1181,8 +1141,8 @@
           "ref": "components/content",
           "overrides": {
             "fieldId": "hair-salon-registration-applied-notice",
-            "content": "You can continue now. You must apply to register the hair salon before this licence can be granted.",
-            "variant": "inset",
+            "content": "You can continue with this application. You must apply to register the hair salon before the lodging house or barracks licence can be granted.",
+            "variant": "warning",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -1238,8 +1198,8 @@
           "ref": "components/content",
           "overrides": {
             "fieldId": "spa-registration-applied-notice",
-            "content": "You can continue now. You must apply to register the spa before this licence can be granted.",
-            "variant": "inset",
+            "content": "You can continue with this application. You must apply to register the spa before the lodging house or barracks licence can be granted.",
+            "variant": "warning",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -1295,8 +1255,8 @@
           "ref": "components/content",
           "overrides": {
             "fieldId": "nail-salon-registration-applied-notice",
-            "content": "You can continue now. You must apply to register the nail salon before this licence can be granted.",
-            "variant": "inset",
+            "content": "You can continue with this application. You must apply to register the nail salon before the lodging house or barracks licence can be granted.",
+            "variant": "warning",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -1455,7 +1415,7 @@
     },
     {
       "stepId": "declaration",
-      "title": "Declaration",
+      "title": "Confirm and submit your application",
       "behaviours": [],
       "elements": [
         {
@@ -1471,7 +1431,7 @@
             },
             "options": [
               {
-                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+                "label": "I confirm that the information I have provided is true and correct to the best of my knowledge.",
                 "value": "confirmed"
               }
             ]
@@ -1531,7 +1491,7 @@
     }
   ],
   "createdAt": "2026-08-24T23:54:14.187Z",
-  "updatedAt": "2026-09-24T20:19:32.000Z",
+  "updatedAt": "2026-10-05T18:13:27.000Z",
   "meta": {
     "visibility": "preview"
   },

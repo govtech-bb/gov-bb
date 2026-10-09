@@ -86,15 +86,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "applicant-phone",
-            "label": "Phone number",
-            "hint": "A local Barbados number, for example 246-418-1234.",
-            "validations": {
-              "required": {
-                "error": "Phone number is required",
-                "value": true
-              }
-            }
+            "fieldId": "applicant-phone"
           }
         },
         {
@@ -256,5 +248,5 @@
     }
   ],
   "createdAt": "2026-06-03T16:06:55.813Z",
-  "updatedAt": "2026-08-06T11:46:18.000Z"
+  "updatedAt": "2026-10-05T18:32:56.000Z"
 }

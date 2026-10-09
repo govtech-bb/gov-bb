@@ -195,14 +195,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Telephone Number (Landline and Cell)",
-            "fieldId": "applicant-telephone",
-            "validations": {
-              "required": {
-                "error": "Enter your telephone number",
-                "value": true
-              }
-            }
+            "fieldId": "applicant-telephone"
           }
         },
         {
@@ -278,14 +271,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Telephone Numbers (Landline & Cell)",
-            "fieldId": "emergency-telephone",
-            "validations": {
-              "required": {
-                "error": "Enter the emergency contact's telephone number",
-                "value": true
-              }
-            }
+            "fieldId": "emergency-telephone"
           }
         },
         {
@@ -343,7 +329,7 @@
   "title": "Youth Leadership Workshop: Registration Form 2026",
   "formId": "youth-leadership-workshop-registration-2026",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-06-23T12:44:11.000Z",
+  "updatedAt": "2026-10-05T18:32:56.000Z",
   "processors": [
     {
       "type": "email",

@@ -5,7 +5,11 @@ import { useState } from "react";
 import { Dialog } from "../ui/dialog";
 import { Banner } from "../ui/banner";
 import { Delete02Icon, Rocket01Icon } from "hugeicons-react";
-import { CONTENT_ROOT, VISIBILITY_LEVELS } from "../../lib/content";
+import {
+  CONTENT_ROOT,
+  PAGE_VISIBILITY_HINT,
+  VISIBILITY_LEVELS,
+} from "../../lib/content";
 import type { OpenContentPR } from "../../server/content";
 import type { EditorState } from "./use-editor-state";
 
@@ -159,6 +163,7 @@ export function DeployModal({
             ?.label ?? ed.state.visibility}
         </dd>
       </dl>
+      <p className="text-[12px] text-ui-subtle">{PAGE_VISIBILITY_HINT}</p>
       <Collapsible.Root className="rounded-lg border border-ui-hairline px-4 py-3 text-sm">
         <Collapsible.DefaultTrigger className="cursor-pointer font-medium">
           Publication details

@@ -1,6 +1,7 @@
 // Pure aggregation for the Umami analytics report. No I/O — every function
 // takes raw Umami response data and returns a view model, so it is unit-tested
 // against fixtures with no network.
+import { canonicalEvent, stepFromEvent } from "@govtech-bb/analytics";
 import type {
   EventDataValue,
   ExpandedRow,
@@ -15,25 +16,6 @@ import type {
   SearchReport,
   SourceRow,
 } from "./types";
-
-const NUMBER_WORDS = [
-  "one",
-  "two",
-  "three",
-  "four",
-  "five",
-  "six",
-  "seven",
-  "eight",
-  "nine",
-  "ten",
-] as const;
-
-/** Reverse of stepNumberToWord: "one" → 1, "three" → 3, else null. */
-function stepWordToNumber(word: string): number | null {
-  const i = NUMBER_WORDS.indexOf(word as (typeof NUMBER_WORDS)[number]);
-  return i === -1 ? null : i + 1;
-}
 
 /**
  * Split a prefixed event name into its form id and base event.
@@ -64,14 +46,15 @@ export function aggregateFormEvents(
     const parsed = parseEventName(row.x);
     if (!parsed) continue;
     const entry = out.get(parsed.formId) ?? { counts: {}, steps: [] };
-    const stepWord = parsed.event.startsWith("form-step-")
-      ? parsed.event.slice("form-step-".length)
-      : null;
-    const stepNum = stepWord ? stepWordToNumber(stepWord) : null;
+    // #2682: long-id forms emit compact codes (`s3`, `fconf`, …) because the
+    // full name would overflow Umami's 50-char limit. Classify via the shared
+    // helpers so both the full names and the compact codes land the same way.
+    const stepNum = stepFromEvent(parsed.event);
     if (stepNum !== null) {
       entry.steps.push({ step: stepNum, count: row.y });
     } else {
-      entry.counts[parsed.event] = (entry.counts[parsed.event] ?? 0) + row.y;
+      const canonical = canonicalEvent(parsed.event);
+      entry.counts[canonical] = (entry.counts[canonical] ?? 0) + row.y;
     }
     out.set(parsed.formId, entry);
   }

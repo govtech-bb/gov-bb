@@ -1,4 +1,4 @@
-import { Button, ErrorSummary, Text, TextArea } from '@govtech-bb/react'
+import { Button, ErrorSummary, Input, Text, TextArea } from '@govtech-bb/react'
 import type { ErrorSummaryItem } from '@govtech-bb/react'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { sendFeedback } from '../lib/send-feedback'
@@ -76,7 +76,12 @@ export function FeedbackForm() {
           </Button>
         </div>
       ) : (
-        <form ref={formRef} onSubmit={onSubmit} className="space-y-6">
+        <form
+          ref={formRef}
+          onSubmit={onSubmit}
+          noValidate
+          className="space-y-6"
+        >
           {errorItems.length > 0 && (
             <ErrorSummary
               errors={errorItems}
@@ -97,6 +102,16 @@ export function FeedbackForm() {
             label="What went wrong?"
             name="whatWentWrong"
             rows={4}
+          />
+          <Input
+            autoComplete="email"
+            description="Only if you would like a reply. We will only use it to respond to this feedback."
+            error={fieldErrors.email}
+            id="email"
+            inputMode="email"
+            label="Email address (optional)"
+            name="email"
+            type="email"
           />
           <input name="referrer" readOnly type="hidden" value={referrer} />
           <Button className="w-full" type="submit" variant="primary">

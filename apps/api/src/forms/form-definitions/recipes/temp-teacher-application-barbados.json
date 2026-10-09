@@ -234,7 +234,7 @@
           "ref": "components/telephone",
           "overrides": {
             "fieldId": "tel-home",
-            "label": "Tel Home",
+            "label": "Home telephone",
             "validations": {
               "required": {
                 "value": false
@@ -246,15 +246,11 @@
           "ref": "components/telephone",
           "overrides": {
             "fieldId": "tel-cell",
-            "label": "Tel Cell",
+            "label": "Mobile telephone",
             "validations": {
               "required": {
-                "error": "Tel Cell is required",
+                "error": "Mobile telephone is required",
                 "value": true
-              },
-              "minLength": {
-                "error": "Tel Cell must be at least 2 characters",
-                "value": 2
               }
             }
           }
@@ -712,14 +708,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "ref1-contact",
-            "label": "Contact No",
-            "validations": {
-              "required": {
-                "error": "Contact No is required",
-                "value": true
-              }
-            }
+            "fieldId": "ref1-contact"
           }
         },
         {
@@ -795,14 +784,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "ref2-contact",
-            "label": "Contact No",
-            "validations": {
-              "required": {
-                "error": "Contact No is required",
-                "value": true
-              }
-            }
+            "fieldId": "ref2-contact"
           }
         },
         {
@@ -937,5 +919,5 @@
     }
   ],
   "createdAt": "2026-06-02T14:40:22.941Z",
-  "updatedAt": "2026-08-26T09:37:23.000Z"
+  "updatedAt": "2026-10-05T18:32:56.000Z"
 }

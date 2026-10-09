@@ -84,11 +84,9 @@
           "ref": "components/generic-tel",
           "overrides": {
             "fieldId": "telephone-number",
-            "label": "Telephone number",
-            "hint": "Enter at least one telephone number.",
             "validations": {
               "required": {
-                "error": "Enter at least one telephone number.",
+                "error": "Telephone number is required",
                 "value": true
               }
             }
@@ -521,7 +519,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:33:15.101Z",
-  "updatedAt": "2026-09-23T13:04:17.000Z",
+  "updatedAt": "2026-10-05T18:32:56.000Z",
   "meta": {
     "visibility": "preview"
   },

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { canDropPreviewToken } from "../../../lib/preview-url";
 import {
   getVisibleSteps,
@@ -42,6 +42,7 @@ import {
   FormValidationError,
 } from "@forms/form-api";
 import { trackEvent } from "../../../lib/analytics";
+import { LANDING_URL } from "../../../config/landing";
 import { resolveServerFieldErrors } from "../../../lib/server-field-errors";
 import { resolveConditionalMarkdown } from "@govtech-bb/form-conditions";
 import { buildStepScopedValues } from "../../../lib/form-builder/helpers/value-tree";
@@ -85,7 +86,7 @@ export const Route = createFileRoute("/forms/$formId/")({
 
     // Tier 2: get or build the FormMeta for this specific
     // (version, preview, draft) combination.
-    return queryClient.ensureQueryData(
+    const formMeta = await queryClient.ensureQueryData(
       formMetaQueryOptions(
         params.formId,
         clientContract,
@@ -93,10 +94,23 @@ export const Route = createFileRoute("/forms/$formId/")({
         deps.draft,
       ),
     );
+
+    // A feedback form (one declaring `referring-service`, e.g. the exit survey)
+    // is only reachable from another form's "Give feedback" link, which sets
+    // `?source=`. Later steps may drop it from the URL, so the value saved
+    // earlier in the session also counts. Anyone landing on it directly has no
+    // service to give feedback about, so send them home.
+    const fieldId = findReferringServiceFieldId(formMeta);
+    if (fieldId && !deps.source && !getFormData(formMeta.formId)?.[fieldId]) {
+      throw redirect({ href: LANDING_URL });
+    }
+
+    return formMeta;
   },
   loaderDeps: ({ search }: { search: FormSearchParams }) => ({
     preview: search.preview,
     draft: search.draft,
+    source: search.source,
   }),
   validateSearch: (search): FormSearchParams =>
     formSearchParamSchema.parse(search),
@@ -260,9 +274,7 @@ function FormView() {
   // convention rather than hard-coding a step id: any recipe that declares a
   // `referring-service` field captures it; forms that don't are unaffected.
   const referringServiceFieldId = source
-    ? formMeta.steps
-        .flatMap((formStep) => formStep.fields)
-        .find((field) => field.fieldId === "referring-service")?.id
+    ? findReferringServiceFieldId(formMeta)
     : undefined;
   const sourceDefaults =
     source && referringServiceFieldId
@@ -477,4 +489,10 @@ function FormView() {
       draftToken={draft}
     />
   );
+}
+
+function findReferringServiceFieldId(formMeta: FormMeta): string | undefined {
+  return formMeta.steps
+    .flatMap((formStep) => formStep.fields)
+    .find((field) => field.fieldId === "referring-service")?.id;
 }

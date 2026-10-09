@@ -10,6 +10,9 @@ rate-limiting tiers — see [SPEC.md](./SPEC.md). For how recipes are authored a
 served see the root [FORM-CREATION-GUIDE.md](../../FORM-CREATION-GUIDE.md) and
 [docs/form-recipes.md](../../docs/form-recipes.md).
 
+For shared catchment boundaries, coordinate lookup, and Leaflet integration, see
+[Catchment API integration](../../docs/catchment-api.md).
+
 ## Stack
 
 NestJS 11 · TypeORM + PostgreSQL · AWS SDK (S3, SES v2, SQS) · OpenTelemetry ·

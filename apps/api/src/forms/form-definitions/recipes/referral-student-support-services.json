@@ -169,7 +169,6 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Telephone number",
             "fieldId": "mother-telephone"
           }
         },
@@ -342,7 +341,6 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Telephone number",
             "fieldId": "father-telephone"
           }
         },
@@ -515,7 +513,6 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Telephone number",
             "fieldId": "guardian-telephone"
           }
         },
@@ -707,7 +704,13 @@
             "type": "tel",
             "label": "School telephone number",
             "hint": "Enter the main telephone number the Student Support Services Unit can use to contact the school",
-            "fieldId": "school-telephone"
+            "fieldId": "school-telephone",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "School telephone number is required"
+              }
+            }
           }
         }
       ],
@@ -1005,5 +1008,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:34:16.771Z",
-  "updatedAt": "2026-09-17T13:49:39.000Z"
+  "updatedAt": "2026-10-05T22:01:06.000Z"
 }

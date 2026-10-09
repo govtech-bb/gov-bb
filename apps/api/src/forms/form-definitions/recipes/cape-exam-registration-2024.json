@@ -120,7 +120,6 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Telephone number",
             "fieldId": "telephone-no",
             "validations": {
               "required": {
@@ -265,5 +264,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:39:29.964Z",
-  "updatedAt": "2026-08-06T11:46:18.000Z"
+  "updatedAt": "2026-10-05T17:20:45.000Z"
 }

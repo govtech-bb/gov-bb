@@ -109,7 +109,7 @@ Semantic components already SHIP their purpose-specific validations centrally (\
 | Trigger | Action |
 |---------|--------|
 | Field uses \`components/generic-email\` | Add \`email\` validation: \`{"value": true, "error": "Enter a valid email address"}\` (semantic \`components/email\` already ships this — do not restate) |
-| Field uses \`components/generic-tel\` | Add \`phone\` validation: \`{"value": true, "error": "Please enter a valid phone number"}\` (defaults to a Barbados number; a leading + allows overseas numbers; the semantic tel components already ship this — do not restate) |
+| Field uses \`components/generic-tel\` or any tel component | Add NO \`phone\` validation: every tel component, \`generic-tel\` included, already ships \`phone\` with the shared "Enter a valid telephone number" message (defaults to a Barbados number; a leading + allows overseas numbers) — never override it. If you change a required tel field's label, set \`required\` to \`{"value": true, "error": "{Label} is required"}\` so the error still names the field |
 | Field description says "required", "must provide", "mandatory", or has asterisk (*) | Add \`required\` validation — unless the component already ships \`required\` (email, tel, parish and most semantic components do), in which case add nothing |
 | Paper form — common required fields (name, first name, last name, email, phone, address line 1, date of birth) | Infer \`required\` validation automatically — but only on generic primitives; the semantic components for these fields already ship \`required\` |
 | "address line 2", "apt", "suite", "unit", or any second/continuation line of a multi-line field | These must be OPTIONAL: set \`"required": {"value": false}\` explicitly. Omitting the rule is NOT enough — generic primitives inherit \`required: true\` from the registry. Add \`required: {"value": true}\` only if the form explicitly marks the line itself as required (asterisk, "mandatory") |
@@ -478,9 +478,9 @@ A checkbox accordion carries its categories in \`groups\`, with the required rul
     },
     {
       "stepId": "declaration",
-      "title": "Declaration",
+      "title": "Confirm and submit your application",
       "elements": [
-        {"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "I confirm that the information provided is true and correct.", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to continue"}}}}
+        {"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "I confirm that the information I have provided is true and correct to the best of my knowledge.", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to continue."}}}}
       ]
     },
     {
@@ -528,7 +528,7 @@ Block overrides are keyed by the element's fieldId within the block, so those ke
 - minLength: {"value": 2, "error": "..."}
 - maxLength: {"value": 100, "error": "..."}
 - email: {"value": true, "error": "..."}
-- phone: {"value": true, "error": "..."} (telephone number — accepts any common format, defaults to a Barbados number, validated with libphonenumber)
+- phone: {"value": true, "error": "..."} (telephone number — accepts any common format, defaults to a Barbados number, validated with libphonenumber; every tel component already ships it, so never override it on a tel field)
 - pastOrToday: {"value": true, "error": "..."} (date must not be in future)
 - futureOrToday: {"value": true, "error": "..."} (date must not be in past)
 - pattern: {"value": "^regex$", "error": "..."}
@@ -705,7 +705,7 @@ Only do this when one answer genuinely covers every item in the common case (ope
 ## Declaration Checkbox Pattern
 The declaration step contains EXACTLY ONE element — this confirmation checkbox, nothing else (Rule 17). The fieldId is always \`declaration-confirmed\`, the label is always \`Declaration\`, and it is always required:
 \`\`\`json
-{"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "Full declaration statement text shown next to checkbox", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to continue"}}}}
+{"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "Full declaration statement text shown next to checkbox", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to continue."}}}}
 \`\`\`
 Put the full statement in options[0].label (shown NEXT TO the checkbox), not in label (which is the heading above). Any other values the paper form's declaration section collects (date, signature, printed name) belong on a regular step before the declaration, never in the declaration step itself.
 

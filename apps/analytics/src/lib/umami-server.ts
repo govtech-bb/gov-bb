@@ -10,6 +10,9 @@ import {
   UmamiClient,
   aggregateFormEvents,
   buildSources,
+  canonicalEvent,
+  eventFormKey,
+  eventName,
   startOfDayInTz,
   tallyFieldErrors,
   tzOffsetMs,
@@ -309,9 +312,9 @@ export function shapeSearch(
 
 export function buildFunnelSteps(formId: string): FunnelStepInput[] {
   return [
-    { type: 'event', value: `${formId}:form-start` },
-    { type: 'event', value: `${formId}:form-review` },
-    { type: 'event', value: `${formId}:form-submit` },
+    { type: 'event', value: eventName(formId, 'form-start') },
+    { type: 'event', value: eventName(formId, 'form-review') },
+    { type: 'event', value: eventName(formId, 'form-submit') },
   ]
 }
 
@@ -327,7 +330,7 @@ export function buildFunnelSteps(formId: string): FunnelStepInput[] {
 export function buildVisitFunnelSteps(formId: string): FunnelStepInput[] {
   return [
     { type: 'path', value: `/forms/${formId}*` },
-    { type: 'event', value: `${formId}:form-start` },
+    { type: 'event', value: eventName(formId, 'form-start') },
   ]
 }
 
@@ -516,7 +519,9 @@ export function humanizeStep(raw: string, qualifyGoal = true): string {
   if (!raw) return ''
   if (!raw.startsWith('/') && raw.includes(':')) {
     const form = raw.slice(0, raw.indexOf(':'))
-    const event = raw.slice(raw.indexOf(':') + 1)
+    // Canonicalise so a long-id form's compact code (#2682, e.g. `fstrt`/`sview`)
+    // resolves to its real event rather than rendering as "Fstrt".
+    const event = canonicalEvent(raw.slice(raw.indexOf(':') + 1))
     if (event === 'form-start')
       return qualifyGoal ? `${humanizeSlug(form)} · Start` : 'Start'
     return humanizeSlug(event)
@@ -558,7 +563,11 @@ export function shapeFlow(
     const labels: string[] = []
     for (const it of j.items) {
       if (!it) continue
-      const isFormStart = it.endsWith(':form-start')
+      // Canonicalise the event suffix so a long-id form's compact start code
+      // (#2682, `…:fstrt`) is still recognised as the Start goal.
+      const isFormStart =
+        !it.startsWith('/') &&
+        canonicalEvent(it.slice(it.indexOf(':') + 1)) === 'form-start'
       if (!(it.startsWith('/') || isFormStart)) continue
       // Entry (column 0) must be a page, not the "Start" event — skip a
       // form-start until at least one page has been recorded.
@@ -1294,42 +1303,42 @@ export async function fetchFormDetailData(
       eventValues(
         client,
         cfg.formsWebsiteId,
-        `${formId}:form-step-view`,
+        eventName(formId, 'form-step-view'),
         'step',
         r,
       ),
       eventValues(
         client,
         cfg.formsWebsiteId,
-        `${formId}:form-submit`,
+        eventName(formId, 'form-submit'),
         'duration_seconds',
         r,
       ),
       eventValues(
         client,
         cfg.formsWebsiteId,
-        `${formId}:form-validation-error`,
+        eventName(formId, 'form-validation-error'),
         'errorCount',
         r,
       ),
       eventValues(
         client,
         cfg.formsWebsiteId,
-        `${formId}:form-validation-error`,
+        eventName(formId, 'form-validation-error'),
         'fieldErrors',
         r,
       ),
       eventValues(
         client,
         cfg.formsWebsiteId,
-        `${formId}:form-submit-error`,
+        eventName(formId, 'form-submit-error'),
         'errors',
         r,
       ),
       eventValues(
         client,
         cfg.formsWebsiteId,
-        `${formId}:payment-returned`,
+        eventName(formId, 'payment-returned'),
         'outcome',
         r,
       ),
@@ -1361,8 +1370,10 @@ export async function fetchFormDetailData(
     }
 
     // Event-count aggregation for the counters and field/reason tables (per-step
-    // distinct isn't available — these are event counts).
-    const entry = aggregateFormEvents(events).get(formId) ?? {
+    // distinct isn't available — these are event counts). A >44-char form id is
+    // emitted under a hashed key (#2682), so aggregateFormEvents groups it there;
+    // look it up by the same key eventName() would derive.
+    const entry = aggregateFormEvents(events).get(eventFormKey(formId)) ?? {
       counts: {},
       steps: [],
     }

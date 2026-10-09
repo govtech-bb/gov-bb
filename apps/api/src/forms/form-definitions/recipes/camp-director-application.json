@@ -265,13 +265,12 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "hint": "For example, 421-1234 for Barbados or +1 876 123 4567 for numbers outside Barbados.",
             "label": "Mobile telephone",
             "fieldId": "mobile-telephone",
             "validations": {
-              "phone": {
-                "error": "Enter a valid phone number",
-                "value": true
+              "required": {
+                "value": true,
+                "error": "Mobile telephone is required"
               }
             }
           }
@@ -279,13 +278,12 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "hint": "For example, 421-1234 for Barbados or +1 876 123 4567 for numbers outside Barbados.",
             "label": "Home telephone",
             "fieldId": "home-telephone",
             "validations": {
-              "phone": {
-                "error": "Enter a valid phone number",
-                "value": true
+              "required": {
+                "value": true,
+                "error": "Home telephone is required"
               }
             }
           }
@@ -401,8 +399,7 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "hint": "For example, 421-1234 for Barbados or +1 876 123 4567 for numbers outside Barbados.",
-            "label": "Work phone number",
+            "label": "Work telephone",
             "fieldId": "work-phone",
             "behaviours": [
               {
@@ -416,9 +413,9 @@
               }
             ],
             "validations": {
-              "phone": {
-                "error": "Enter a valid phone number",
-                "value": true
+              "required": {
+                "value": true,
+                "error": "Work telephone is required"
               }
             }
           }
@@ -532,16 +529,10 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "hint": "For example, 421-1234 for Barbados or +1 876 123 4567 for numbers outside Barbados.",
-            "label": "Phone number",
             "fieldId": "emergency-contact-phone",
             "validations": {
-              "phone": {
-                "error": "Enter a valid phone number",
-                "value": true
-              },
               "required": {
-                "error": "Enter a phone number",
+                "error": "Telephone number is required",
                 "value": true
               }
             }
@@ -1065,16 +1056,10 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "hint": "For example, 421-1234 for Barbados or +1 876 123 4567 for numbers outside Barbados.",
-            "label": "Contact number",
             "fieldId": "employer-contact-number",
             "validations": {
-              "phone": {
-                "error": "Enter a valid phone number",
-                "value": true
-              },
               "required": {
-                "error": "Enter contact number",
+                "error": "Telephone number is required",
                 "value": true
               }
             }
@@ -1244,16 +1229,10 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "hint": "For example, 421-1234 for Barbados or +1 876 123 4567 for numbers outside Barbados.",
-            "label": "Contact number",
             "fieldId": "reference-contact-number",
             "validations": {
-              "phone": {
-                "error": "Enter a valid phone number",
-                "value": true
-              },
               "required": {
-                "error": "Enter contact number",
+                "error": "Telephone number is required",
                 "value": true
               }
             }
@@ -2004,5 +1983,5 @@
     }
   ],
   "createdAt": "2026-06-11T15:00:03.273Z",
-  "updatedAt": "2026-09-18T18:21:48.000Z"
+  "updatedAt": "2026-10-05T22:01:06.000Z"
 }

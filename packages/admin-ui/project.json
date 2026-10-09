@@ -10,6 +10,12 @@
         "command": "vitest run",
         "cwd": "packages/admin-ui"
       }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["packages/admin-ui/**/*.{ts,tsx}"]
+      }
     }
   },
   "tags": []

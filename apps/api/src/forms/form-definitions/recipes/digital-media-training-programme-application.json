@@ -232,11 +232,10 @@
         {
           "ref": "components/home-telephone",
           "overrides": {
-            "label": "Home Telephone Number",
             "fieldId": "applicant-home-telephone",
             "validations": {
               "required": {
-                "error": "Please enter your home telephone number.",
+                "error": "Home telephone is required",
                 "value": true
               }
             }
@@ -245,7 +244,6 @@
         {
           "ref": "components/mobile-telephone",
           "overrides": {
-            "label": "Cell / Mobile Number",
             "fieldId": "applicant-cell-telephone"
           }
         },
@@ -639,11 +637,11 @@
         {
           "ref": "components/home-telephone",
           "overrides": {
-            "label": "Emergency Contact Home Telephone",
+            "label": "Emergency contact home telephone",
             "fieldId": "emergency-home-telephone",
             "validations": {
               "required": {
-                "error": "Please enter the emergency contact's home telephone number.",
+                "error": "Emergency contact home telephone is required",
                 "value": true
               }
             }
@@ -652,7 +650,7 @@
         {
           "ref": "components/mobile-telephone",
           "overrides": {
-            "label": "Emergency Contact Cell Number",
+            "label": "Emergency contact cell number",
             "fieldId": "emergency-cell-telephone"
           }
         },
@@ -705,7 +703,7 @@
   "title": "Digital Media Training Programme – Application Form",
   "formId": "digital-media-training-programme-application",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-08-20T18:45:33.000Z",
+  "updatedAt": "2026-10-05T18:32:56.000Z",
   "processors": [
     {
       "type": "email",
