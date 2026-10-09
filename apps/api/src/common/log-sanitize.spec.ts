@@ -22,6 +22,28 @@ describe("sanitizeForLog", () => {
     expect(sanitizeForLog(`a${ESC}[31mb${NUL}c`)).toBe("a [31mb c");
   });
 
+  // #2971: characters JSON.stringify doesn't escape that some log viewers
+  // render as line breaks or reversed text, so a crafted value can visually
+  // forge part of a log line.
+  it.each([
+    ["line separator U+2028", 0x2028],
+    ["paragraph separator U+2029", 0x2029],
+    ["left-to-right mark U+200E", 0x200e],
+    ["right-to-left mark U+200F", 0x200f],
+    ["right-to-left override U+202E", 0x202e],
+    ["left-to-right embedding U+202A", 0x202a],
+    ["right-to-left isolate U+2067", 0x2067],
+    ["pop directional isolate U+2069", 0x2069],
+    ["next line (C1) U+0085", 0x85],
+    ["control sequence introducer (C1) U+009B", 0x9b],
+  ])("replaces the %s with a space", (_, code) => {
+    expect(sanitizeForLog(`a${String.fromCodePoint(code)}b`)).toBe("a b");
+  });
+
+  it("leaves ordinary non-ASCII text untouched", () => {
+    expect(sanitizeForLog("Café — بربادوس 💧")).toBe("Café — بربادوس 💧");
+  });
+
   it("truncates oversized values", () => {
     const cleaned = sanitizeForLog("x".repeat(500));
     expect(cleaned.length).toBe(201); // 200 chars + ellipsis

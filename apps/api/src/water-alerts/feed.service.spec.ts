@@ -436,3 +436,30 @@ describe("FeedService redirects (#2971)", () => {
     }
   });
 });
+
+describe("FeedService skip log (#2971)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("can't carry line separators or bidi overrides from a notice's guid into the log", async () => {
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => undefined);
+    const RLO = String.fromCodePoint(0x202e);
+    const LS = String.fromCodePoint(0x2028);
+    const xml = SAMPLE_FEED.replace(
+      "<guid>notice-1</guid>",
+      `<guid>evil${LS}[ERROR] forged${RLO}gnp.exe</guid>`,
+    ).replace(
+      "https://barbadoswaterauthority.com/notice-1",
+      "javascript:alert(1)",
+    );
+    const service = new FeedService(makeHttp(of({ data: xml })));
+
+    await service.fetchOutages();
+
+    const line = warn.mock.calls[0][0] as string;
+    expect(line).not.toContain(RLO);
+    expect(line).not.toContain(LS);
+    expect(line).toContain('"evil [ERROR] forged gnp.exe"');
+  });
+});

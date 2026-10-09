@@ -1,12 +1,32 @@
 const MAX_LOGGED_LENGTH = 200;
-const DEL = 0x7f;
 const FIRST_PRINTABLE = 0x20;
 
 /**
- * Sanitizes a value for safe interpolation into a log line. Strips control
- * characters — newlines, carriage returns, terminal escapes — that could
- * otherwise forge or break log entries (log injection, CWE-117), and bounds the
- * length so an oversized value cannot flood the logs.
+ * Characters that can forge or disguise a log line: C0 controls (newlines,
+ * terminal escapes), DEL and the C1 controls, plus Unicode format characters
+ * some log viewers render as line breaks or reversed text: the line and
+ * paragraph separators and the bidi marks, embeddings, overrides and isolates
+ * (#2971).
+ */
+function isLogUnsafe(code: number): boolean {
+  return (
+    code < FIRST_PRINTABLE ||
+    (code >= 0x7f && code <= 0x9f) || // DEL + C1 controls
+    code === 0x200e || // left-to-right mark
+    code === 0x200f || // right-to-left mark
+    code === 0x2028 || // line separator
+    code === 0x2029 || // paragraph separator
+    (code >= 0x202a && code <= 0x202e) || // bidi embeddings and overrides
+    (code >= 0x2066 && code <= 0x2069) // bidi isolates
+  );
+}
+
+/**
+ * Sanitizes a value for safe interpolation into a log line. Replaces control
+ * and Unicode format characters — newlines, terminal escapes, line separators,
+ * bidi overrides (see isLogUnsafe) — that could otherwise forge or disguise log
+ * entries (log injection, CWE-117), and bounds the length so an oversized value
+ * cannot flood the logs.
  *
  * Use this for any user-influenced value (e.g. a submission's formId) before
  * including it in a log message.
@@ -16,7 +36,7 @@ export function sanitizeForLog(value: unknown): string {
 
   const cleaned = Array.from(str, (char) => {
     const code = char.codePointAt(0) ?? 0;
-    return code < FIRST_PRINTABLE || code === DEL ? " " : char;
+    return isLogUnsafe(code) ? " " : char;
   })
     .join("")
     .trim();

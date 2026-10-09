@@ -12,6 +12,7 @@ import {
   parseEventWindow,
   stripHtml,
 } from "./outages.domain";
+import { sanitizeForLog } from "@/common/log-sanitize";
 
 const DEFAULT_FEED_URL =
   "https://barbadoswaterauthority.com/category/service-disruptions/feed/";
@@ -183,13 +184,17 @@ export class FeedService {
   }
 }
 
-/** The notice's guid or link, quoted and clipped, so a log line can trace it. */
+/**
+ * The notice's guid or link, quoted and clipped, so a log line can trace it.
+ * sanitizeForLog (not just JSON.stringify) so a crafted guid can't carry line
+ * separators or bidi overrides that forge the log line (#2971).
+ */
 function noticeRef(raw: unknown): string {
   const item = (raw ?? {}) as Record<string, unknown>;
   const ref = [item.guid, item.link].find(
     (v): v is string => typeof v === "string" && v.trim() !== "",
   );
-  return ref ? JSON.stringify(clip(ref.trim(), 200)) : "(no ID)";
+  return ref ? JSON.stringify(sanitizeForLog(ref)) : "(no ID)";
 }
 
 /** One-line reason a notice was skipped (Zod errors are otherwise JSON). */
