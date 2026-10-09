@@ -43,11 +43,13 @@ The `declaration` step of every form:
   service. Generic consent to verification and generic false-information
   warnings do not qualify.
 - Never contains a declaration date, signature, printed name, witness or
-  similar. These still belong on a regular step before the declaration, as in
-  0041.
+  similar. These still belong on a regular step before the declaration, as in 0041.
 
 `chat-feedback` is exempt. It is a feedback survey, and the chat auto-confirms
 its declaration step (ADR 0049).
+
+`national-id-application` is exempt until #2992 moves it off the shared
+`blocks/applicant-declaration` block.
 
 The contract is held in three places that must agree:
 
