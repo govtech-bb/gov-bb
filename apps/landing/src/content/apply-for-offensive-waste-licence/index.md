@@ -1,67 +1,69 @@
 ---
-title: Apply for an offensive trade licence with Environmental Health
+title: >-
+  Apply to Environmental Health for an offensive trade licence to do work that
+  may cause fumes, smells or waste
 stage: alpha
 publish_date: '2026-09-03'
 visibility: preview
 form_id: apply-for-offensive-waste-licence
 description: >-
-  Apply online to register or renew a licence for business activities that may
-  cause fumes, gases, waste or strong smells that could harm people’s health.
+  Apply for a new offensive trade licence, or renew your licence, if your
+  business does work that may cause fumes, smells or waste.
 category: business-trade
 ---
-Use this service to apply for a new offensive trades licence or renew an existing licence with the Environmental Health Department.
+Use this service to:
+
+* apply for a new licence
+* renew your licence
 
 ## Who is this licence for
 
-You need a licence if you are the owner/operator of an offensive trade, such as a tannery, slaughterhouse (abattoir), or poultry processing plant. “Offensive trade” is the legal name for business activities that may cause fumes, gases, waste or strong smells.
-
 You need this licence if your business does any of the following:
 
-* heat animal blood or organs  
-* heat or crush animal bones  
-* take wool off sheep skins  
-* clean animal guts  
-* make string from animal guts  
-* kill animals for food or other uses  
-* melt animal fat  
-* make leather from animal skins  
-* make chemicals or acids  
-* make glue  
-* make fertiliser from animal waste  
-* make soap by boiling fats or oils
+* kill animals for food or other uses, also called **slaughtering**
+* heat animal blood or organs, also called **blood or offal boiling**
+* heat or crush animal bones, also called **bone boiling or crushing**
+* take wool off sheep skins, also called **fellmongering**
+* clean animal guts, also called **gut scraping**
+* make string from animal guts, also called **gut spinning**
+* melt animal fat, also called **tallow melting**
+* make leather from animal skins, also called **tanning**
+* make chemicals or acids
+* make glue
+* make fertiliser from animal waste, also called **manure manufacturing**
+* make soap by boiling fats or oils, also called **soap boiling**
+
+If your business does not do any of these, contact Environmental Health before you apply. They can tell you if you need this licence.
 
 ## Before you start
 
-You must:
-
-* have a food business licence or application if processing food  
-* apply for a new licence if the place where work is done has changed
-
 You will need:
 
-* the owner/operator's name, phone number and email address  
-* the nature of offensive trade  
-* the address where trade is carried out  
-* the application number from the Planning and Development Department (Town and Country Planning) for the site plans if the business is new.
+* your current licence number, if you are renewing your licence
+* the address where you do the work
+* building plans and specifications, if the licence is new or the building has changed or will change
 
 Read the [Health Services (Offensive Trades) Regulations, 1969](https://oag.gov.bb/attachments/Health%20Services%20\(Offensive%20Trades\)%20Regulations,%201969%20Cap44'V.PDF) for the full legal requirements.
 
 ## When to apply
 
-Your licence expires on December 31st each year. You need to renew it by the first business day in January each year. It is suggested that you submit your application by December 1st.
+Your licence expires on 31 December each year.
+
+You need to renew your licence by the first business day in January.
 
 ## Complete the form
 
-There are 2 ways to apply for an offensive trades licence. You can:
+There are 2 ways to apply for an offensive trade licence. You can:
 
 1. **Apply for a licence online.**
 
-   Allow about 5-10 minutes to complete the form.  
-     
+   Allow about 5 to 10 minutes to complete the form.
+
    <a data-start-link>Start now</a>
 
-2. **Get a paper application from the polyclinic**  
-   You must complete it by hand and submit the application to the polyclinic associated with the district where the business/operator’s address is located. If you require further information or assistance, contact the polyclinic \- information can be found at the bottom of this page.
+2. **Get a paper application from the polyclinic**
+
+   You can get a paper application from your Environmental Health Service office. Complete the form and return it to the Environmental Health Service office for the area where the business is located.
 
 ## Cost
 
@@ -69,11 +71,12 @@ There is neither a cost to apply, nor to receive your licence.
 
 ## What happens after you apply
 
-* Your application goes to the Environmental Health Department associated with the location of the business/operator’s address.   
-* They will review it and may contact you if they need more information.   
-* If your application is approved, you will receive a confirmation email and the Environment Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.
+* Environmental Health will review your application.
+* They may inspect the place where you do the work.
+* They will contact you with the result.
+* If your application is approved, they will tell you how to get your licence.
 
-Submitting an application does not mean that an offensive trades licence has been granted.
+Submitting an application does not mean that an offensive trade licence has been granted.
 
 **During the inspection, you will need to show:**
 
