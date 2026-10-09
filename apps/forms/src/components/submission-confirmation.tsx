@@ -157,17 +157,6 @@ export default function SubmissionConfirmation({
         </div>
       )}
 
-      {/* Print the confirmation (submission ID, next steps, contact) for
-          citizens who need a paper copy. Sits directly after "what happens
-          next" so it's adjacent to the content it prints. The button itself is
-          hidden in the printed output via the `form-page__print` @media print
-          rule in govtech.css. */}
-      <div className="form-page__print">
-        <Button variant="secondary" onClick={() => window.print()}>
-          Print
-        </Button>
-      </div>
-
       {resolvedMarkdown && (
         <div className="form-page__markdown-content govbb-prose wrap-anywhere">
           {/* Recipe-authored copy (e.g. "What you need to know"). react-markdown
@@ -181,6 +170,17 @@ export default function SubmissionConfirmation({
           </ReactMarkdown>
         </div>
       )}
+
+      {/* Print the confirmation (submission ID, next steps, contact) for
+          citizens who need a paper copy. Sits after the recipe's markdown and
+          before the contact details. The button itself is hidden in the
+          printed output via the `form-page__print` @media print rule in
+          govtech.css. */}
+      <div className="form-page__print">
+        <Button variant="secondary" onClick={() => window.print()}>
+          Print
+        </Button>
+      </div>
 
       {contactDetails && (
         <div className="form-page__contact">
