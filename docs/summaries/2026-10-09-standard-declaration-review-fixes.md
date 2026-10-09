@@ -43,6 +43,11 @@ form's acknowledgements to be pinned as a list.
 - **`driver-licence-renewal` and `exit-survey` have no declaration step on
   purpose.** One is a stub with no processors and the other is a survey. They
   are listed in `NO_DECLARATION` so a form that silently loses its step fails.
+- **`apply-for-swimming-pool-licence` is exempt.** #2872 merged mid-review with
+  Environmental Health's "Your agreement" step, which has full name and date
+  fields. That contradicts ADR 0077, but it was an explicit content-review
+  request, so the merge took main's version and exempted the form until #2856
+  B12 settles the standard EH agreement.
 
 ## Open questions
 
