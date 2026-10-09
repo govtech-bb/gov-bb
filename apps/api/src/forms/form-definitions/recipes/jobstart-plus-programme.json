@@ -972,7 +972,6 @@
             "fieldId": "post-sec-end-year-1",
             "validations": {
               "gt": {
-                "targetStepId": "post-secondary",
                 "referenceFieldId": "post-sec-start-year-1"
               },
               "pattern": {
@@ -1428,5 +1427,5 @@
     }
   ],
   "createdAt": "2026-06-09T17:09:06.077Z",
-  "updatedAt": "2026-09-18T18:21:48.000Z"
+  "updatedAt": "2026-10-09T11:35:00.000Z"
 }
