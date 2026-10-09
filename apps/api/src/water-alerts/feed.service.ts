@@ -87,6 +87,12 @@ export class FeedService {
         responseType: "text",
         timeout: 10_000,
         maxContentLength: MAX_FEED_BYTES,
+        // Don't follow redirects (#2971), as timedPost doesn't (#287): a
+        // compromised or spoofed feed host could otherwise 3xx the API to an
+        // internal address such as ECS task metadata. The feed answers 200
+        // directly; if BWA ever moves it, the fetch fails visibly (unavailable
+        // state, ops alert) and BWA_FEED_URL can point at the new address.
+        maxRedirects: 0,
         headers: {
           "User-Agent": "gov.bb-water-alerts/1.0 (https://gov.bb)",
           Accept: "application/rss+xml, application/xml, text/xml",
