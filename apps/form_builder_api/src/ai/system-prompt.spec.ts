@@ -175,6 +175,13 @@ describe("AI system prompt", () => {
     expect(missing).toEqual([]);
   });
 
+  it("steers the declaration step away from blocks/applicant-declaration (ADR 0077)", () => {
+    expect(prompt).not.toContain("Form has a declaration/agreement checkbox");
+    expect(prompt).toContain(
+      "blocks/applicant-declaration` | confirmation | Never for the declaration step",
+    );
+  });
+
   it("uses the resolving contact-telephone ref, not contact-number", () => {
     expect(prompt).not.toContain("components/contact-number");
     expect(prompt).toContain("components/contact-telephone");

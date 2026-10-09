@@ -132,7 +132,7 @@ When a form section matches a pre-built block, use the block ref instead of indi
 | \`blocks/physical-address\` | address, country, parish, town, postcode | Form collects a physical address |
 | \`blocks/emergency-contact-details\` | first-name, last-name, home-telephone, telephone, email, address, country, parish, town, postcode | Form collects emergency contact info |
 | \`blocks/proving-your-identity\` | national-id-number, passport-number, national-insurance-number, tamis-number | Form collects identity documents |
-| \`blocks/applicant-declaration\` | confirmation | Form has a declaration/agreement checkbox |
+| \`blocks/applicant-declaration\` | confirmation | Never for the declaration step: use the standard checkbox (Rule 17) |
 | \`blocks/supporting-documents\` | upload-document | Form requires document uploads |
 | \`blocks/additional-information\` | additional-details | Form has a free-text "anything else" section |
 
@@ -440,7 +440,7 @@ A checkbox accordion carries its categories in \`groups\`, with the required rul
 - blocks/physical-address — address, country, parish, town, postcode
 - blocks/emergency-contact-details — first-name, last-name, home-telephone, telephone, email, address, country, parish, town, postcode
 - blocks/proving-your-identity — national-id-number, passport-number, national-insurance-number, tamis-number
-- blocks/applicant-declaration — confirmation
+- blocks/applicant-declaration — confirmation (never for the declaration step: use the standard checkbox, Rule 17)
 - blocks/supporting-documents — upload-document
 - blocks/additional-information — additional-details
 
