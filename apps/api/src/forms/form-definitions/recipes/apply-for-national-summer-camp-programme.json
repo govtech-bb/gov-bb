@@ -1933,24 +1933,6 @@
       "title": "Confirm and submit your application",
       "elements": [
         {
-          "ref": "components/generic-textarea",
-          "overrides": {
-            "ui": {
-              "width": "long",
-              "hideLabel": false
-            },
-            "label": "Camp rules",
-            "fieldId": "camp-rules",
-            "isHidden": true,
-            "validations": {
-              "required": {
-                "error": "Camp rules are required",
-                "value": true
-              }
-            }
-          }
-        },
-        {
           "ref": "components/confirmation",
           "overrides": {
             "label": "Confirmation",
@@ -2002,5 +1984,5 @@
     }
   ],
   "createdAt": "2026-06-12T11:02:19.069Z",
-  "updatedAt": "2026-10-08T21:50:00.000Z"
+  "updatedAt": "2026-10-09T14:30:00.000Z"
 }

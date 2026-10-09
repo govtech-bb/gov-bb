@@ -50,15 +50,11 @@ const ACKNOWLEDGEMENTS: Record<string, string[]> = {
   "youth-leadership-workshop-registration-2026": ["responses-use-consent"],
 };
 
-/**
- * Non-confirmation elements that already sat on these declaration steps
- * before #2957. Listed so anything new on the step is a deliberate change.
- */
-const OTHER_ELEMENTS: Record<string, string[]> = {
-  "apply-for-national-summer-camp-programme": ["camp-rules"],
-  "csec-private-candidate-registration": ["important-notices"],
-  "jobstart-plus-programme": ["declaration-date"],
-  "statement-of-travelling-form": ["important-notices"],
+/** Forms with no declaration step at all, each with its reason. */
+const NO_DECLARATION: Record<string, string> = {
+  "driver-licence-renewal":
+    "Stub recipe with no processors, not a live application.",
+  "exit-survey": "Feedback survey, not an application.",
 };
 
 type Element = { ref?: string; fieldId?: string; overrides?: Element } & {
@@ -92,6 +88,23 @@ const fieldsOf = (step: Step) =>
 describe("standard declaration wording (#2957)", () => {
   it("finds declarations to check", () => {
     expect(declarationSteps.length).toBeGreaterThan(80);
+  });
+
+  it.each(Object.keys({ ...EXEMPT, ...NO_DECLARATION }))(
+    "%s is still a recipe, so its exemption isn't stale",
+    (formId) => {
+      expect(recipes.map((r) => r.formId)).toContain(formId);
+    },
+  );
+
+  it.each(
+    recipes
+      .filter(({ formId }) => !(formId in EXEMPT))
+      .map((r) => [r.formId, r] as const),
+  )("%s has exactly one declaration step", (formId, recipe) => {
+    expect(
+      recipe.steps.filter((step) => step.stepId === "declaration").length,
+    ).toBe(formId in NO_DECLARATION ? 0 : 1);
   });
 
   it("keeps declaration-confirmed on the declaration step", () => {
@@ -135,11 +148,7 @@ describe("standard declaration wording (#2957)", () => {
           .map(({ field }) => field.fieldId)
           .sort(),
       ).toEqual(
-        [
-          "declaration-confirmed",
-          ...(ACKNOWLEDGEMENTS[formId] ?? []),
-          ...(OTHER_ELEMENTS[formId] ?? []),
-        ].sort(),
+        ["declaration-confirmed", ...(ACKNOWLEDGEMENTS[formId] ?? [])].sort(),
       );
     },
   );

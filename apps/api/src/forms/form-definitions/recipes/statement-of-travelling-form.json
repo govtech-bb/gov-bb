@@ -275,6 +275,14 @@
               }
             }
           }
+        },
+        {
+          "ref": "components/show-hide",
+          "overrides": {
+            "label": "Important notices",
+            "content": "Candidates should inform the CXC Local Registrar of any name changes that have occurred since their last examination sitting.\n\nCandidates should check all timetables before registering to avoid subject clashes with other examination boards.\n\nNo alternative arrangements will be made in respect of clashes.",
+            "fieldId": "important-notices"
+          }
         }
       ],
       "behaviours": []
@@ -283,14 +291,6 @@
       "stepId": "declaration",
       "title": "Confirm and submit your application",
       "elements": [
-        {
-          "ref": "components/show-hide",
-          "overrides": {
-            "label": "Important notices",
-            "content": "Candidates should inform the CXC Local Registrar of any name changes that have occurred since their last examination sitting.\n\nCandidates should check all timetables before registering to avoid subject clashes with other examination boards.\n\nNo alternative arrangements will be made in respect of clashes.",
-            "fieldId": "important-notices"
-          }
-        },
         {
           "ref": "components/confirmation",
           "overrides": {
@@ -323,5 +323,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:43:20.632Z",
-  "updatedAt": "2026-10-08T21:50:00.000Z"
+  "updatedAt": "2026-10-09T14:30:00.000Z"
 }

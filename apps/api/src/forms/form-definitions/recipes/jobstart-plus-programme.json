@@ -1408,14 +1408,6 @@
               }
             }
           }
-        },
-        {
-          "ref": "components/date-of-birth",
-          "overrides": {
-            "label": "Date of declaration",
-            "fieldId": "declaration-date",
-            "isHidden": true
-          }
         }
       ],
       "behaviours": []
@@ -1428,5 +1420,5 @@
     }
   ],
   "createdAt": "2026-06-09T17:09:06.077Z",
-  "updatedAt": "2026-10-08T21:50:00.000Z"
+  "updatedAt": "2026-10-09T14:30:00.000Z"
 }
