@@ -19,7 +19,7 @@ const visibilities = ["public", "preview", "draft"] as const;
 
 const visibilityLabel = (visibility: string) => visibilityLabels.get(visibility) ?? visibility;
 
-// GOV.UK's status tags: live is green, link-only is yellow, draft is grey, and the words carry the meaning.
+// Status tags: live is green, link-only is yellow, draft is grey, and the words carry the meaning.
 const tones = {
   public: "bg-green-10 text-green-80",
   preview: "bg-yellow-20 text-ink",
@@ -116,7 +116,7 @@ const serviceColumns = (api: EditorApi) =>
     }),
   ]);
 
-/** Whitehall-style filters beside the list: search, one category, any of the statuses. */
+/** Filters beside the list: search, one category, any of the statuses. */
 function ServiceFilters({ categories }: { categories: readonly string[] }) {
   const table = useTableContext();
   const id = useId();
