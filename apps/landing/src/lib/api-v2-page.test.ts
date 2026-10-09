@@ -109,6 +109,22 @@ describe('fetchApiV2Page', () => {
     expect(warn).not.toHaveBeenCalled()
   })
 
+  it('treats a 410 as a page api_v2 has withdrawn, without warning', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const response = jsonResponse(410, { error: 'gone' })
+    const cancel = vi.spyOn(response.body!, 'cancel')
+    const result = await fetchApiV2Page(BASE, '/x', stubFetch(response))
+    expect(result).toEqual({ kind: 'withdrawn' })
+    expect(cancel).toHaveBeenCalled()
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('reads as the public, never with the preview secret', async () => {
+    const fetchImpl = stubFetch(jsonResponse(200, pageBody()))
+    await fetchApiV2Page(BASE, '/x', fetchImpl)
+    expect(fetchImpl.mock.calls[0][1].headers).toBeUndefined()
+  })
+
   it('cancels the unread body of a miss so the socket is released', async () => {
     const response = jsonResponse(404, { error: 'not found' })
     const cancel = vi.spyOn(response.body!, 'cancel')
@@ -330,6 +346,16 @@ describe('resolveApiV2Page', () => {
       kind: 'miss',
     })
     expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('passes a withdrawn page through, so the route can refuse its static copy', async () => {
+    expect(
+      await resolveApiV2Page(
+        BASE,
+        '/x',
+        stubFetch(jsonResponse(410, { error: 'gone' })),
+      ),
+    ).toEqual({ kind: 'withdrawn' })
   })
 
   it('compiles a hit into a page', async () => {

@@ -75,9 +75,10 @@ function isPageResponse(body: unknown): body is PageResponse {
 }
 
 /**
- * `GET /pages?url=` without following redirects. A 404 is a silent miss;
- * anything else unexpected (status, network, timeout, bad body) is a logged
- * miss, so the caller falls back to static content.
+ * `GET /pages?url=` without following redirects. A 404 is a silent miss; a
+ * 410 is a page api_v2 published before and has withdrawn; anything else
+ * unexpected (status, network, timeout, bad body) is a logged miss, so the
+ * caller falls back to static content.
  */
 export async function fetchApiV2Page(
   base: string,
@@ -86,6 +87,7 @@ export async function fetchApiV2Page(
 ): Promise<
   | { kind: 'page'; body: PageResponse }
   | { kind: 'redirect'; to: string }
+  | { kind: 'withdrawn' }
   | { kind: 'miss' }
 > {
   const controller = new AbortController()
@@ -95,10 +97,10 @@ export async function fetchApiV2Page(
       `${base}/pages?url=${encodeURIComponent(url)}`,
       { redirect: 'manual', signal: controller.signal },
     )
-    if (response.status === 404) {
+    if (response.status === 404 || response.status === 410) {
       // Release the socket: an unread body pins a keep-alive connection.
       await response.body?.cancel()
-      return { kind: 'miss' }
+      return { kind: response.status === 410 ? 'withdrawn' : 'miss' }
     }
     if (response.status === 301) {
       const body = (await response.json().catch(() => null)) as {
@@ -171,6 +173,7 @@ export async function fromApiV2(body: PageResponse): Promise<ApiV2Page> {
 export type ApiV2Result =
   | { kind: 'page'; page: ApiV2Page }
   | { kind: 'redirect'; to: string }
+  | { kind: 'withdrawn' }
   | { kind: 'miss' }
 
 /**

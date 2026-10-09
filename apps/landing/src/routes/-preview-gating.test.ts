@@ -385,6 +385,42 @@ describe('$ route api_v2 pages (#2944)', () => {
     expect(mocks.isVisible).not.toHaveBeenCalled()
   })
 
+  const loadWithdrawn = (level: string) => {
+    v2Mocks.getApiV2Page.mockResolvedValue({ kind: 'withdrawn' })
+    const staticCopy = {
+      ...fakePage,
+      frontmatter: { ...fakePage.frontmatter, visibility: 'public' as const },
+    }
+    mocks.findPage.mockReturnValue(staticCopy)
+    mocks.isVisible.mockReturnValue(true)
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    return {
+      staticCopy,
+      result: loader({
+        params: { _splat: 'work-employment/unpublished' },
+        context: { level, serviceStatuses: [] },
+      }).catch((e: unknown) => e) as Promise<Record<string, unknown>>,
+    }
+  }
+
+  it('throws notFound for a page api_v2 has withdrawn, never its static copy', async () => {
+    const { result } = loadWithdrawn('public')
+    expect((await result).isNotFound).toBe(true)
+  })
+
+  it.each(['preview', 'draft'])(
+    'gives a %s reviewer the static copy of a page api_v2 has withdrawn',
+    async (level) => {
+      const { staticCopy, result } = loadWithdrawn(level)
+      // A static page is served by its url; only an api_v2 page rides along.
+      expect(await result).toMatchObject({
+        kind: 'page',
+        url: staticCopy.url,
+        page: undefined,
+      })
+    },
+  )
+
   it('301-redirects to the api_v2 redirect target', async () => {
     v2Mocks.getApiV2Page.mockResolvedValue({
       kind: 'redirect',

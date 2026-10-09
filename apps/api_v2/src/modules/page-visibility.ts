@@ -50,6 +50,8 @@ export interface Ancestor {
   readonly url: string;
   readonly title: string;
   readonly visibility: Visibility;
+  /** Whether the site has published it before: its `published_at` is set. */
+  readonly published: boolean;
 }
 
 /** One level of the trail to a page. */
@@ -112,6 +114,8 @@ export type PublicPage = z.infer<typeof PublicPage>;
 export type Resolution =
   | { readonly kind: "page"; readonly page: PublicPage }
   | { readonly kind: "redirect"; readonly url: string }
+  /** The site published the page before and hides it now, so it must not serve an older copy. */
+  | { readonly kind: "withdrawn" }
   | { readonly kind: "not_found" };
 
 /** Effective visibility: a page is as hidden as anything above it. */
@@ -123,6 +127,21 @@ export function hiddenFrom(
   return (
     !canSee(viewer, page.visibility) ||
     ancestors.some((ancestor) => !canSee(viewer, ancestor.visibility))
+  );
+}
+
+/**
+ * Whether the site has published a page, and everything above it, before. A hidden page that
+ * never was reads as absent, so an unreleased url stays unknown and a static page it will
+ * replace keeps serving.
+ */
+export function everPublished(
+  page: ResolvablePage,
+  ancestors: readonly Ancestor[],
+): boolean {
+  return (
+    page.publishedAt !== null &&
+    ancestors.every((ancestor) => ancestor.published)
   );
 }
 

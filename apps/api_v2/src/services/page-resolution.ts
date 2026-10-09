@@ -7,6 +7,7 @@ import {
 } from "../modules/page";
 import {
   canSee,
+  everPublished,
   hiddenFrom,
   toPublicPage,
   type Ancestor,
@@ -39,6 +40,7 @@ export interface PublicPageReads {
 }
 
 const NOT_FOUND: Resolution = { kind: "not_found" };
+const WITHDRAWN: Resolution = { kind: "withdrawn" };
 
 /** The site's read: a url resolved under the hierarchy's visibility rules. */
 export class PageResolution {
@@ -63,7 +65,8 @@ export class PageResolution {
         ? ok([])
         : await this.reads.ancestorsOf(page.parentId);
     if (!ancestors.ok) return ancestors;
-    if (hiddenFrom(viewer, page, ancestors.value)) return ok(NOT_FOUND);
+    if (hiddenFrom(viewer, page, ancestors.value))
+      return ok(everPublished(page, ancestors.value) ? WITHDRAWN : NOT_FOUND);
 
     const start = await this.reads.startStepVisibility(page.id);
     if (!start.ok) return start;
