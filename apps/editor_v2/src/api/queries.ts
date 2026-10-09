@@ -18,6 +18,10 @@ export const taxonomyQuery = (api: EditorApi) =>
 export const historyQuery = (api: EditorApi, id: string) =>
   queryOptions({ queryKey: ["content", "history", id], queryFn: () => api.history(id) });
 
+/** Who is editing a page; a claim changes no version, so whoever needs it reads it again. */
+export const lockQuery = (api: EditorApi, id: string) =>
+  queryOptions({ queryKey: ["content", "lock", id], queryFn: () => api.editor(id) });
+
 /** A past version never changes, so it is fetched once. */
 export const pageVersionQuery = (api: EditorApi, id: string, version: number) =>
   queryOptions({

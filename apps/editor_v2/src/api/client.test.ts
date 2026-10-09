@@ -136,6 +136,33 @@ describe("editor API client", () => {
     expect(await failureOf(api.draft("page-1"))).toMatchObject({ status: 500 });
   });
 
+  it("names who is editing when a write is refused for that, and takes over on request", async () => {
+    const api = createEditorApi(origin);
+
+    const lock = {
+      holder: { id: "employee-other", name: "Other editor", email: "other@govtech.bb" },
+      mine: false,
+      expires_at: "2026-10-07T12:05:00.000Z",
+    };
+
+    status = 423;
+    response = JSON.stringify({
+      error: "locked",
+      message: "Other editor is editing this page.",
+      lock,
+    });
+    expect(
+      await failureOf(
+        api.saveDraft("page-1", { ...fields, base_updated_at: "2026-10-07T12:00:00.000Z" }),
+      ),
+    ).toMatchObject({ status: 423, lock });
+
+    status = 200;
+    response = JSON.stringify({ ...lock, mine: true });
+    await api.claim("page-1", true);
+    expect(requests.at(-1)).toMatchObject({ url: "/pages/page-1/lock?take=true", method: "PUT" });
+  });
+
   it("reports an API it could not reach as status 0", async () => {
     const failure = await failureOf(createEditorApi("http://127.0.0.1:1").services());
     expect(failure?.status).toBe(0);

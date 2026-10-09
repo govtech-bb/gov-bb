@@ -31,6 +31,9 @@ function refusals(error: Error | null, otherwise: string) {
 
   if (error.status === 401) return ["Your session has ended. Sign in again, then try again."];
 
+  // The API names whoever is editing the page.
+  if (error.status === 423) return [error.message];
+
   if (error.errors.length === 0) return [otherwise];
 
   return error.errors.map((item) => `${fieldLabel(item.field)}: ${item.message}`);

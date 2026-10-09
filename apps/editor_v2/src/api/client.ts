@@ -48,7 +48,10 @@ export type EstateVersion = Json<paths["/version"]["get"]["responses"][200]>;
 /** A field the API refused, and what the editor can do about it. */
 export type FieldError = Json<paths["/pages"]["post"]["responses"][422]>["errors"][number];
 
-type FailureBody = { message?: string; errors?: FieldError[] };
+/** Who is editing a page, and whether it is this employee. */
+export type PageLock = Json<paths["/pages/{id}/lock"]["get"]["responses"][200]>;
+
+type FailureBody = { message?: string; errors?: FieldError[]; lock?: PageLock };
 
 /** A request the API refused or never answered: status 0 means it was not reached. */
 export class ApiFailure extends Error {
@@ -56,6 +59,8 @@ export class ApiFailure extends Error {
     readonly status: number,
     readonly errors: readonly FieldError[] = [],
     message = status === 0 ? "The content API could not be reached" : `HTTP ${status}`,
+    /** Who is editing the page, when the write was refused for that. */
+    readonly lock?: PageLock,
   ) {
     super(message);
   }
@@ -97,7 +102,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
 
     if (response.ok) return response;
     const failure: FailureBody | null = await response.json().catch(() => null);
-    throw new ApiFailure(response.status, failure?.errors, failure?.message);
+    throw new ApiFailure(response.status, failure?.errors, failure?.message, failure?.lock);
   }
 
   const read = async <Body>(path: string): Promise<Body> => (await send("GET", path)).json();
@@ -137,6 +142,21 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
     /** Discard the draft last read (none when left out). */
     discardDraft: async (id: string, ifUpdatedAt?: string) => {
       await send("DELETE", `/pages/${id}/draft`, undefined, { ifUpdatedAt });
+    },
+    /** Who is editing the page, or null when nobody is. */
+    editor: async (id: string): Promise<PageLock | null> => {
+      try {
+        return await read<PageLock>(`/pages/${id}/lock`);
+      } catch (error) {
+        if (error instanceof ApiFailure && error.status === 404) return null;
+        throw error;
+      }
+    },
+    /** Start or go on editing the page; `takeOver` takes it from whoever is editing it. */
+    claim: async (id: string, takeOver = false): Promise<PageLock> =>
+      (await send("PUT", `/pages/${id}/lock${takeOver ? "?take=true" : ""}`)).json(),
+    stopEditing: async (id: string) => {
+      await send("DELETE", `/pages/${id}/lock`);
     },
     deletePage: async (id: string) => {
       await send("DELETE", `/pages/${id}`);

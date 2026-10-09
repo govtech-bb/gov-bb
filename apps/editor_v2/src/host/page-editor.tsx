@@ -30,6 +30,8 @@ type PageHost = {
   tools?: ReactNode;
   notice?: ReactNode;
   saveStatus?: ServerSaveStatus;
+  /** Someone else is editing the page, so it can be read here but not changed. */
+  readOnly?: boolean;
 };
 
 export function PageDraftEditor({
@@ -44,7 +46,14 @@ export function PageDraftEditor({
   );
 }
 
-function PageDraft({ active, fields, tools, notice, saveStatus }: { active: boolean } & PageHost) {
+function PageDraft({
+  active,
+  fields,
+  tools,
+  notice,
+  saveStatus,
+  readOnly = false,
+}: { active: boolean } & PageHost) {
   const draft = useDraft();
   const [preview, setPreview] = useState(false);
 
@@ -68,7 +77,9 @@ function PageDraft({ active, fields, tools, notice, saveStatus }: { active: bool
             This page contains content the visual editor cannot edit. Its Markdown is preserved, and
             you can edit and download it here.
           </p>
-          <SourceEditor inline documentLabel="page" fileName="page.md" />
+          <div inert={readOnly}>
+            <SourceEditor inline documentLabel="page" fileName="page.md" />
+          </div>
         </div>
       </div>
     ) : null;
@@ -79,7 +90,7 @@ function PageDraft({ active, fields, tools, notice, saveStatus }: { active: bool
     <EditorComposer
       definition={fields ? govbbPageBodyEditor : govbbPageEditor}
       initialState={draft.state}
-      readOnly={preview || !active}
+      readOnly={preview || !active || readOnly}
     >
       <DraftEditorBinding />
       <div className="page-document-shell">
@@ -100,7 +111,7 @@ function PageDraft({ active, fields, tools, notice, saveStatus }: { active: bool
             >
               {preview ? "Back to editing" : "Preview page"}
             </Button>
-            {active && (
+            {active && !readOnly && (
               <span className="page-source-control">
                 <SourceEditor documentLabel="page" fileName="page.md" />
               </span>
