@@ -11,6 +11,9 @@ import { EDITOR_READ, rejected, storageFailed } from "./responses";
 /** The editor sends the exact millisecond timestamp from its last read. */
 export const IF_UPDATED_AT = "if-updated-at";
 
+/** On a save, the `updated_at` of the draft the editor last read, as saving discards it. */
+export const IF_DRAFT_UPDATED_AT = "if-draft-updated-at";
+
 /** Authenticated editor operations, behind an employee session and the editor's Origin. */
 export const editorRoutes: FastifyPluginAsyncZod<{
   editing: PageEditing;
@@ -195,6 +198,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
         request.params.id,
         request.body,
         request.headers[IF_UPDATED_AT] ?? null,
+        request.headers[IF_DRAFT_UPDATED_AT] ?? null,
         actor(request),
       );
       if (saved.ok) return saved.value;
@@ -217,6 +221,87 @@ export const editorRoutes: FastifyPluginAsyncZod<{
             .send(storageFailed(request.log, saved.error));
         default: {
           const unexpected: never = saved.error;
+          throw unexpected;
+        }
+      }
+    },
+  });
+  editor.route({
+    method: "GET",
+    url: "/pages/:id/draft",
+    schema: SCHEMAS.getPageDraft,
+    handler: async (request, reply) => {
+      const found = await editing.draft(request.params.id);
+      if (!found.ok)
+        return reply.status(500).send(storageFailed(request.log, found.error));
+      return (
+        found.value ??
+        reply.status(404).send({
+          error: "not_found",
+          message: `Page ${request.params.id} has no draft`,
+        })
+      );
+    },
+  });
+  editor.route({
+    method: "PUT",
+    url: "/pages/:id/draft",
+    schema: SCHEMAS.savePageDraft,
+    handler: async (request, reply) => {
+      const { base_updated_at, ...draft } = request.body;
+      const saved = await editing.saveDraft(
+        request.params.id,
+        draft,
+        base_updated_at,
+        request.headers[IF_UPDATED_AT] ?? null,
+        actor(request),
+      );
+      if (saved.ok) return saved.value;
+      switch (saved.error._tag) {
+        case "PageNotFound":
+          return reply
+            .status(404)
+            .send({ error: "not_found", message: saved.error.message });
+        case "PageConflict":
+          return reply.status(409).send({
+            error: "conflict",
+            message: saved.error.message,
+            documentId: saved.error.documentId,
+          });
+        case "ContentStoreUnavailable":
+          return reply
+            .status(500)
+            .send(storageFailed(request.log, saved.error));
+        default: {
+          const unexpected: never = saved.error;
+          throw unexpected;
+        }
+      }
+    },
+  });
+  editor.route({
+    method: "DELETE",
+    url: "/pages/:id/draft",
+    schema: SCHEMAS.discardPageDraft,
+    handler: async (request, reply) => {
+      const discarded = await editing.discardDraft(
+        request.params.id,
+        request.headers[IF_UPDATED_AT] ?? null,
+      );
+      if (discarded.ok) return reply.status(204).send();
+      switch (discarded.error._tag) {
+        case "PageConflict":
+          return reply.status(409).send({
+            error: "conflict",
+            message: discarded.error.message,
+            documentId: discarded.error.documentId,
+          });
+        case "ContentStoreUnavailable":
+          return reply
+            .status(500)
+            .send(storageFailed(request.log, discarded.error));
+        default: {
+          const unexpected: never = discarded.error;
           throw unexpected;
         }
       }

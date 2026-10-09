@@ -13,7 +13,7 @@ import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import pino from "pino";
-import { IF_UPDATED_AT } from "./routes/pages";
+import { IF_DRAFT_UPDATED_AT, IF_UPDATED_AT } from "./routes/pages";
 import { PUBLIC_READ } from "./routes/responses";
 import type { Database } from "./db";
 import { withDefaults, type Visibility } from "./modules/page";
@@ -791,6 +791,7 @@ describe("PUT /pages/:id", () => {
           created.id,
           { ...created, visibility },
           null,
+          null,
           TEST_EMPLOYEE,
         ),
       );
@@ -910,6 +911,183 @@ describe("PUT /pages/:id", () => {
   });
 });
 
+describe("/pages/:id/draft", () => {
+  type Page = Record<string, unknown> & { id: string; updated_at: string };
+
+  /** A draft of `page`, edited from its current version unless `changes` says otherwise. */
+  const draftOf = (page: Page, changes = {}) => {
+    const {
+      id,
+      slug,
+      parent_id,
+      published_at,
+      created_at,
+      updated_at,
+      ...fields
+    } = page;
+    return { ...fields, base_updated_at: updated_at, ...changes };
+  };
+
+  /** Save a draft of `page`, having last read the draft saved at `read` (none when left out). */
+  const putDraft = (page: Page, changes = {}, read?: string) =>
+    inject({
+      method: "PUT",
+      url: `/pages/${page.id}/draft`,
+      headers: read ? { [IF_UPDATED_AT]: read } : {},
+      payload: draftOf(page, changes),
+    });
+
+  const getDraft = (page: Page) => inject({ url: `/pages/${page.id}/draft` });
+
+  it("keeps half-finished work beside the page, off the site, until it is published", async () => {
+    const page = await seedPage();
+    const saved = await putDraft(page, {
+      title: "",
+      body_markdown: "Work in progress",
+    });
+
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json()).toMatchObject({
+      title: "",
+      body_markdown: "Work in progress",
+      base_updated_at: page.updated_at,
+      updated_by: TEST_EMPLOYEE.id,
+    });
+    expect((await read(ENTRY)).json().body_markdown).toBe(page.body_markdown);
+    expect((await getDraft(page)).json()).toEqual(saved.json());
+  });
+
+  it("replaces the draft its writer last read", async () => {
+    const page = await seedPage();
+    const first = (await putDraft(page, { title: "First" })).json();
+    const second = await putDraft(page, { title: "Second" }, first.updated_at);
+
+    expect(second.statusCode).toBe(200);
+    expect((await getDraft(page)).json().title).toBe("Second");
+  });
+
+  it("409s a draft written over one its writer never read, and keeps that one", async () => {
+    const page = await seedPage();
+    await putDraft(page, { title: "Someone else's" });
+
+    expect((await putDraft(page, { title: "Mine" })).statusCode).toBe(409);
+    expect(
+      (await putDraft(page, { title: "Mine" }, page.updated_at)).statusCode,
+    ).toBe(409);
+    expect((await getDraft(page)).json().title).toBe("Someone else's");
+  });
+
+  it("409s a draft of a version that has been published over since", async () => {
+    const page = await seedPage();
+    await inject({
+      method: "PUT",
+      url: `/pages/${page.id}`,
+      payload: { ...page, title: "Published since" },
+    });
+
+    expect((await putDraft(page, { title: "Stale copy" })).statusCode).toBe(
+      409,
+    );
+    expect((await getDraft(page)).statusCode).toBe(404);
+  });
+
+  it("publishes and discards the draft its publisher last read in one save", async () => {
+    const page = await seedPage();
+    const draft = (await putDraft(page, { title: "Severance pay" })).json();
+
+    const published = await inject({
+      method: "PUT",
+      url: `/pages/${page.id}`,
+      headers: {
+        [IF_UPDATED_AT]: page.updated_at,
+        [IF_DRAFT_UPDATED_AT]: draft.updated_at,
+      },
+      payload: { ...page, title: "Severance pay" },
+    });
+
+    expect(published.statusCode).toBe(200);
+    expect((await read(ENTRY)).json().frontmatter.title).toBe("Severance pay");
+    expect((await getDraft(page)).statusCode).toBe(404);
+  });
+
+  it("409s publishing over a draft its publisher never read, and keeps the draft", async () => {
+    const page = await seedPage();
+    await putDraft(page, { title: "Someone else's" });
+
+    const refused = await inject({
+      method: "PUT",
+      url: `/pages/${page.id}`,
+      headers: { [IF_UPDATED_AT]: page.updated_at },
+      payload: { ...page, title: "Mine" },
+    });
+
+    expect(refused.statusCode).toBe(409);
+    expect((await getDraft(page)).json().title).toBe("Someone else's");
+  });
+
+  it("keeps the draft when publishing is refused", async () => {
+    const page = await seedPage();
+    await putDraft(page, { title: "" });
+
+    const refused = await inject({
+      method: "PUT",
+      url: `/pages/${page.id}`,
+      payload: { ...page, title: "" },
+    });
+
+    expect(refused.statusCode).toBe(422);
+    expect((await getDraft(page)).statusCode).toBe(200);
+  });
+
+  it("discards the draft its discarder last read, leaving the page as it was published", async () => {
+    const page = await seedPage();
+    const draft = (await putDraft(page, { title: "Abandoned" })).json();
+
+    const discarded = await inject({
+      method: "DELETE",
+      url: `/pages/${page.id}/draft`,
+      headers: { [IF_UPDATED_AT]: draft.updated_at },
+    });
+
+    expect(discarded.statusCode).toBe(204);
+    expect((await getDraft(page)).statusCode).toBe(404);
+    expect(
+      (await inject({ method: "DELETE", url: `/pages/${page.id}/draft` }))
+        .statusCode,
+    ).toBe(204);
+  });
+
+  it("409s discarding a draft its discarder never read, and keeps it", async () => {
+    const page = await seedPage();
+    await putDraft(page, { title: "Someone else's" });
+
+    for (const headers of [{}, { [IF_UPDATED_AT]: page.updated_at }])
+      expect(
+        (
+          await inject({
+            method: "DELETE",
+            url: `/pages/${page.id}/draft`,
+            headers,
+          })
+        ).statusCode,
+      ).toBe(409);
+    expect((await getDraft(page)).json().title).toBe("Someone else's");
+  });
+
+  it("404s a draft for a page that does not exist, and drops it with its page", async () => {
+    const page = await seedPage();
+    const missing = await putDraft({
+      ...page,
+      id: "00000000-0000-4000-8000-000000000000",
+    });
+    expect(missing.statusCode).toBe(404);
+
+    await putDraft(page);
+    await inject({ method: "DELETE", url: `/pages/${page.id}` });
+    expect((await getDraft(page)).statusCode).toBe(404);
+  });
+});
+
 describe("GET /pages/:id/history", () => {
   it("lists each change newest first, naming who made it", async () => {
     await db.execute(
@@ -921,6 +1099,7 @@ describe("GET /pages/:id/history", () => {
       await services.editing.save(
         draft.id,
         { ...draft, visibility: "public" },
+        null,
         null,
         BYPASS_EMPLOYEE,
       ),
@@ -1346,6 +1525,9 @@ describe("employee access", () => {
     ["POST", "/pages"],
     ["PUT", "/pages/not-a-uuid"],
     ["DELETE", "/pages/not-a-uuid"],
+    ["GET", "/pages/not-a-uuid/draft"],
+    ["PUT", "/pages/not-a-uuid/draft"],
+    ["DELETE", "/pages/not-a-uuid/draft"],
   ] as const)(
     "rejects anonymous %s %s before validation or storage",
     async (method, url) => {

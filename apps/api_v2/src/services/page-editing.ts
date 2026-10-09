@@ -9,8 +9,10 @@ import {
   revisionOf,
   withDefaults,
   type ContentStoreUnavailable,
+  type DraftFields,
   type NewPage,
   type PageDocument,
+  type PageDraft,
   type PageFields,
   type PageId,
   type PageRejected,
@@ -111,6 +113,20 @@ export interface PageRecords {
     id: PageId,
     version: number,
   ): Promise<Result<unknown, ContentStoreUnavailable>>;
+  /** A page's working copy, or null when it has none. */
+  draftOf(
+    id: PageId,
+  ): Promise<Result<PageDraft | null, ContentStoreUnavailable>>;
+  /** Replace a page's working copy, edited from the page's `base` version; refused when there is no such page. */
+  writeDraft(
+    id: PageId,
+    draft: DraftFields,
+    base: Date,
+    actorId: string,
+    at: Date,
+  ): Promise<Result<PageDraft, PageNotFound | ContentStoreUnavailable>>;
+  /** Delete a page's working copy, if it has one. */
+  deleteDraft(id: PageId): Promise<Result<void, ContentStoreUnavailable>>;
 }
 
 /** The editor's page operations: reads of any visibility, and writes that commit with their search text and audit entry or not at all. */
@@ -178,11 +194,14 @@ export class PageEditing {
    * Replace a page's fields. With `expectedUpdatedAt`, a page that has moved
    * on since the caller read it is refused rather than silently discarding
    * whoever wrote first; without it the caller accepts whatever is stored.
+   * Saving discards the page's draft, so a draft other than `expectedDraft`,
+   * the one the caller last read, is refused too.
    */
   save(
     id: PageId,
     fields: SaveFields,
     expectedUpdatedAt: Date | null,
+    expectedDraft: Date | null,
     actor: Employee,
   ): Promise<
     Result<
@@ -199,6 +218,10 @@ export class PageEditing {
         expectedUpdatedAt !== null &&
         current.updated_at !== expectedUpdatedAt.toISOString()
       )
+        return err(new PageConflict(id));
+      const drafted = await records.draftOf(id);
+      if (!drafted.ok) return drafted;
+      if (drafted.value !== null && !draftAsRead(drafted.value, expectedDraft))
         return err(new PageConflict(id));
       const moved = pathChangeOf(current, fields);
       if (moved) return err(moved);
@@ -230,7 +253,67 @@ export class PageEditing {
         action: revision.action,
         actorId: actor.id,
       });
-      return logged.ok ? saved : logged;
+      if (!logged.ok) return logged;
+      // The working copy is now the page.
+      const discarded = await records.deleteDraft(id);
+      return discarded.ok ? saved : discarded;
+    });
+  }
+
+  /** A page's working copy, or null when it has none. */
+  draft(
+    id: PageId,
+  ): Promise<Result<PageDraft | null, ContentStoreUnavailable>> {
+    return this.records.draftOf(id);
+  }
+
+  /**
+   * Keep an editor's working copy; the page, and what the site serves, change only when it is
+   * published. It is refused when the page has been published since `base`, the version the copy
+   * was edited from, or when the stored draft is not `expectedDraft`, the one the caller last read
+   * (null: none), so no editor's copy silently replaces another's.
+   */
+  saveDraft(
+    id: PageId,
+    draft: DraftFields,
+    base: Date,
+    expectedDraft: Date | null,
+    actor: Employee,
+  ): Promise<
+    Result<PageDraft, PageNotFound | PageConflict | ContentStoreUnavailable>
+  > {
+    return this.records.atomically(async (records) => {
+      // The page row serialises every write to a page and its draft.
+      const locked = await records.lock(id);
+      if (!locked.ok) return locked;
+      if (locked.value === null) return err(new PageNotFound(id));
+      if (locked.value.updated_at !== base.toISOString())
+        return err(new PageConflict(id));
+      const drafted = await records.draftOf(id);
+      if (!drafted.ok) return drafted;
+      if (!draftAsRead(drafted.value, expectedDraft))
+        return err(new PageConflict(id));
+      return records.writeDraft(id, draft, base, actor.id, this.clock());
+    });
+  }
+
+  /**
+   * Throw away a page's working copy, leaving the page as it was published. A draft other than
+   * `expectedDraft`, the one the caller last read, is refused rather than thrown away unseen.
+   */
+  discardDraft(
+    id: PageId,
+    expectedDraft: Date | null,
+  ): Promise<Result<void, PageConflict | ContentStoreUnavailable>> {
+    return this.records.atomically(async (records) => {
+      const locked = await records.lock(id);
+      if (!locked.ok) return locked;
+      const drafted = await records.draftOf(id);
+      if (!drafted.ok) return drafted;
+      if (drafted.value === null) return ok(undefined);
+      if (!draftAsRead(drafted.value, expectedDraft))
+        return err(new PageConflict(id));
+      return records.deleteDraft(id);
     });
   }
 
@@ -252,6 +335,10 @@ export class PageEditing {
     });
   }
 }
+
+/** Whether the stored draft is the one a caller last read: the same version, or none for none. */
+const draftAsRead = (draft: PageDraft | null, expected: Date | null) =>
+  (draft?.updated_at ?? null) === (expected?.toISOString() ?? null);
 
 /**
  * Where a write puts a page: beneath its parent and in its parent's category
