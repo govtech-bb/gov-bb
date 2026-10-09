@@ -1,8 +1,172 @@
 {
   "formId": "apply-for-swimming-pool-licence",
-  "title": "Apply for a swimming pool licence with Environmental Health",
+  "title": "Apply to Environmental Health for a swimming pool licence",
   "description": "Apply to Environmental Health for a swimming pool licence",
   "steps": [
+    {
+      "stepId": "about-application",
+      "title": "About your application",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "application-type",
+            "label": "Are you applying for a new licence or renewing a licence?",
+            "validations": {
+              "required": {
+                "error": "Select whether you are applying for a new licence or renewing a licence",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "A new swimming pool licence",
+                "value": "new"
+              },
+              {
+                "label": "Renew a swimming pool licence",
+                "value": "renewal"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "licence-number",
+            "label": "Current swimming pool licence number",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "operator": "equal",
+                "value": "renewal"
+              }
+            ],
+            "ui": {
+              "width": "short"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "applying-for",
+      "title": "Who are you applying for?",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "applying-for",
+            "label": "Who are you applying for?",
+            "validations": {
+              "required": {
+                "error": "Select who you are applying for",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yourself",
+                "value": "yourself"
+              },
+              {
+                "label": "Another person",
+                "value": "another-person"
+              },
+              {
+                "label": "A business or organisation",
+                "value": "business"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "permission",
+      "title": "Permission",
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "applying-for",
+          "targetFieldId": "applying-for",
+          "operator": "in",
+          "value": [
+            "another-person",
+            "business"
+          ]
+        }
+      ],
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "has-permission",
+            "label": "Do you have permission to apply for this swimming pool licence?",
+            "validations": {
+              "required": {
+                "error": "Select whether you have permission to apply for this swimming pool licence",
+                "value": true
+              },
+              "pattern": {
+                "error": "You need permission to apply for this swimming pool licence.",
+                "value": "^yes$"
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "your-role",
+      "title": "Your role",
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "applying-for",
+          "targetFieldId": "applying-for",
+          "operator": "in",
+          "value": [
+            "another-person",
+            "business"
+          ]
+        }
+      ],
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "relationship-to-owner",
+            "label": "What is your relationship to the owner or operator?",
+            "validations": {
+              "required": {
+                "error": "Enter your relationship to the owner or operator",
+                "value": true
+              }
+            },
+            "hint": "For example, manager, employee or attorney."
+          }
+        }
+      ]
+    },
     {
       "stepId": "your-details",
       "title": "Your details",
@@ -12,10 +176,35 @@
           "ref": "components/first-name"
         },
         {
-          "ref": "components/middle-name"
+          "ref": "components/middle-name",
+          "overrides": {
+            "label": "Middle name or names",
+            "hint": "Enter all middle names in order.",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
         },
         {
           "ref": "components/last-name"
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "behaviours": [
+              {
+                "type": "fieldArray",
+                "min": 1,
+                "max": 4
+              }
+            ],
+            "hint": "Enter a Barbados or international number."
+          }
+        },
+        {
+          "ref": "components/email"
         },
         {
           "ref": "components/address",
@@ -44,18 +233,130 @@
         },
         {
           "ref": "components/parish"
-        },
+        }
+      ]
+    },
+    {
+      "stepId": "person-details",
+      "title": "Details of the person you are applying for",
+      "behaviours": [
         {
-          "ref": "components/email"
-        },
+          "type": "stepConditionalOn",
+          "targetStepId": "applying-for",
+          "targetFieldId": "applying-for",
+          "operator": "equal",
+          "value": "another-person"
+        }
+      ],
+      "elements": [
         {
-          "ref": "components/telephone",
+          "ref": "components/first-name",
           "overrides": {
+            "fieldId": "person-first-name",
+            "label": "First name"
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "fieldId": "person-middle-name",
+            "label": "Middle name or names",
+            "hint": "Enter all middle names in order.",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "person-last-name",
+            "label": "Last name"
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "person-same-address",
+            "label": "Is their address the same as your address?",
+            "validations": {
+              "required": {
+                "error": "Select whether their address is the same as your address",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "person-address-line-1",
+            "label": "Address line 1",
+            "validations": {
+              "required": {
+                "error": "Enter their address",
+                "value": true
+              }
+            },
             "behaviours": [
               {
-                "type": "fieldArray",
-                "min": 1,
-                "max": 4
+                "type": "fieldConditionalOn",
+                "targetFieldId": "person-same-address",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "person-address-line-2",
+            "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "person-same-address",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "person-parish",
+            "label": "Parish",
+            "validations": {
+              "required": {
+                "error": "Select the parish for their address",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "person-same-address",
+                "operator": "equal",
+                "value": "no"
               }
             ]
           }
@@ -63,29 +364,112 @@
       ]
     },
     {
-      "stepId": "about-application",
-      "title": "About your application",
-      "behaviours": [],
+      "stepId": "business-details",
+      "title": "Details of the business or organisation",
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "applying-for",
+          "targetFieldId": "applying-for",
+          "operator": "equal",
+          "value": "business"
+        }
+      ],
       "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "business-name",
+            "label": "Business or organisation name",
+            "validations": {
+              "required": {
+                "error": "Enter the name of the business or organisation",
+                "value": true
+              }
+            }
+          }
+        },
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "application-type",
-            "label": "Is this a new application or a renewal?",
+            "fieldId": "business-same-address",
+            "label": "Is the business or organisation at the same address as you?",
             "validations": {
               "required": {
-                "error": "Select whether this is a new application or a renewal",
+                "error": "Select whether the business or organisation is at the same address as you",
                 "value": true
               }
             },
             "options": [
               {
-                "label": "New application",
-                "value": "new"
+                "label": "Yes",
+                "value": "yes"
               },
               {
-                "label": "Renewal",
-                "value": "renewal"
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "business-address-line-1",
+            "label": "Address line 1",
+            "validations": {
+              "required": {
+                "error": "Enter the business or organisation's address",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "business-same-address",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "business-address-line-2",
+            "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "business-same-address",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "business-parish",
+            "label": "Parish",
+            "validations": {
+              "required": {
+                "error": "Select the parish for the business or organisation's address",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "business-same-address",
+                "operator": "equal",
+                "value": "no"
               }
             ]
           }
@@ -94,18 +478,74 @@
     },
     {
       "stepId": "pool-location",
-      "title": "Where is the pool?",
+      "title": "Tell us about the property",
       "behaviours": [],
       "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "property-type",
+            "label": "What kind of property is it?",
+            "validations": {
+              "required": {
+                "error": "Select what kind of property it is",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "A private home",
+                "value": "private-home"
+              },
+              {
+                "label": "A hotel or guest property",
+                "value": "hotel"
+              },
+              {
+                "label": "An apartment building or other shared housing",
+                "value": "apartment"
+              },
+              {
+                "label": "A school",
+                "value": "school"
+              },
+              {
+                "label": "Another type of property",
+                "value": "other"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "property-type-other",
+            "label": "What type of property is it?",
+            "validations": {
+              "required": {
+                "error": "Enter what type of property it is",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "property-type",
+                "operator": "equal",
+                "value": "other"
+              }
+            ]
+          }
+        },
         {
           "ref": "components/address-lookup",
           "overrides": {
             "fieldId": "pool-address-line-1",
             "label": "Address line 1",
-            "hint": "Start typing the address and choose it from the list. If you are applying for more than one pool, give the address of the property they are on.",
+            "hint": "Start typing the address of the property and choose it from the list.",
             "validations": {
               "required": {
-                "error": "Enter the address where the pool is",
+                "error": "Enter the address of the property",
                 "value": true
               }
             },
@@ -135,7 +575,7 @@
             "label": "Parish",
             "validations": {
               "required": {
-                "error": "Select the parish where the pool is",
+                "error": "Select the parish the property is in",
                 "value": true
               }
             }
@@ -160,59 +600,29 @@
     },
     {
       "stepId": "pool-details",
-      "title": "Pool details and maintenance",
+      "title": "Tell us about the pools at this property",
+      "description": "Add details for one pool at a time. You can add another after you finish this one.",
       "behaviours": [
         {
           "type": "repeatable",
           "min": 1,
           "max": 5000,
-          "addAnotherLabel": "Do you want to add another pool?"
+          "addAnotherLabel": "Do you need to add another pool?"
         }
       ],
       "elements": [
         {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "owner-type",
-            "label": "Which best describes your application?",
-            "validations": {
-              "required": {
-                "error": "Select the option that best describes your application",
-                "value": true
-              }
-            },
-            "options": [
-              {
-                "label": "I own the pool for a business or property",
-                "value": "business-owner"
-              },
-              {
-                "label": "I manage or operate the pool for someone else",
-                "value": "manager"
-              }
-            ]
-          }
-        },
-        {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "connection-to-pool",
-            "label": "How are you connected to the pool?",
-            "hint": "For example, manager, employee or authorised representative.",
+            "fieldId": "pool-name",
+            "label": "How can we identify this pool?",
+            "hint": "Enter the pool's name. If it does not have one, describe where it is on the property. For example, main hotel pool, rooftop pool or pool beside Block A.",
             "validations": {
               "required": {
-                "error": "Enter how you are connected to the pool",
+                "error": "Enter how we can identify this pool",
                 "value": true
               }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "owner-type",
-                "operator": "equal",
-                "value": "manager"
-              }
-            ]
+            }
           }
         },
         {
@@ -236,24 +646,10 @@
                 "value": "wading"
               },
               {
-                "label": "Jacuzzi/Hot tub",
+                "label": "Spa pool or hot tub",
                 "value": "jacuzzi"
               }
             ]
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "pool-name",
-            "label": "What is the name of the pool?",
-            "hint": "If the pool does not have a formal name, enter a simple description, such as home pool or hotel pool.",
-            "validations": {
-              "required": {
-                "error": "Enter the name of the pool",
-                "value": true
-              }
-            }
           }
         },
         {
@@ -274,13 +670,13 @@
           }
         },
         {
-          "ref": "components/generic-select",
+          "ref": "components/generic-radio",
           "overrides": {
             "fieldId": "pool-capacity-unit",
-            "label": "What unit is this measured in?",
+            "label": "Is that in:",
             "validations": {
               "required": {
-                "error": "Select a unit",
+                "error": "Select whether that is in gallons or cubic metres",
                 "value": true
               }
             },
@@ -293,71 +689,28 @@
                 "label": "Cubic metres",
                 "value": "cubic-metres"
               }
-            ],
-            "ui": {
-              "width": "short"
-            }
+            ]
           }
         },
         {
-          "ref": "components/generic-checkbox",
+          "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "pool-usage-type",
-            "label": "How is the pool mainly used?",
+            "fieldId": "pool-open-to-public",
+            "label": "Is this pool open to the public?",
             "validations": {
               "required": {
-                "error": "Select how the pool is mainly used",
+                "error": "Select whether this pool is open to the public",
                 "value": true
               }
             },
             "options": [
               {
-                "label": "By guests at a hotel or other accommodation",
-                "value": "hotel"
+                "label": "Yes",
+                "value": "yes"
               },
               {
-                "label": "By residents of an apartment building or residential complex",
-                "value": "apartment"
-              },
-              {
-                "label": "By members of the public",
-                "value": "public"
-              },
-              {
-                "label": "Condominiums",
-                "value": "condo-home"
-              },
-              {
-                "label": "School",
-                "value": "school"
-              },
-              {
-                "label": "Other",
-                "value": "other"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "other-pool",
-            "label": "Describe how is the pool mainly used",
-            "validations": {
-              "required": {
-                "error": "Enter how the pool is mainly used",
-                "value": true
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "pool-usage-type",
-                "targetStepId": "pool-details",
-                "operator": "in",
-                "value": [
-                  "other"
-                ]
+                "label": "No",
+                "value": "no"
               }
             ]
           }
@@ -366,17 +719,17 @@
     },
     {
       "stepId": "supporting-documents",
-      "title": "Supporting documents",
+      "title": "Planning information and documents",
       "behaviours": [],
       "elements": [
         {
           "ref": "components/upload-document",
           "overrides": {
             "fieldId": "town-country-planning-plan",
-            "label": "Town and Country Planning Site Plan",
+            "label": "Planning and Development site plan",
             "validations": {
               "required": {
-                "error": "Upload the Town and Country Planning Site Plan",
+                "error": "Upload the Planning and Development site plan",
                 "value": true
               },
               "fileTypes": {
@@ -404,7 +757,8 @@
                 "operator": "equal",
                 "value": "new"
               }
-            ]
+            ],
+            "hint": "Planning and Development used to be called Town and Country Planning."
           }
         },
         {
@@ -445,7 +799,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "town-text",
-            "label": "Town and Country Planning Application Number",
+            "label": "Planning and Development application number",
             "validations": {
               "required": {
                 "value": false
@@ -459,7 +813,10 @@
                 "operator": "equal",
                 "value": "new"
               }
-            ]
+            ],
+            "ui": {
+              "width": "short"
+            }
           }
         }
       ]
@@ -467,23 +824,49 @@
     {
       "stepId": "check-your-answers",
       "title": "Check your answers",
-      "description": "Review all the information you have provided before submitting your application.",
+      "description": "Review the information you have given before submitting.",
       "behaviours": [],
       "elements": []
     },
     {
       "stepId": "declaration",
-      "title": "Confirm and submit your application",
+      "title": "Your agreement",
       "behaviours": [],
       "elements": [
+        {
+          "ref": "components/name",
+          "overrides": {
+            "fieldId": "declaration-full-name",
+            "label": "Full name",
+            "validations": {
+              "required": {
+                "error": "Enter your full name",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "overrides": {
+            "fieldId": "declaration-date",
+            "label": "Date",
+            "validations": {
+              "required": {
+                "error": "Enter the date",
+                "value": true
+              }
+            }
+          }
+        },
         {
           "ref": "components/confirmation",
           "overrides": {
             "fieldId": "declaration-confirmed",
-            "label": "Declaration",
+            "label": "Agreement",
             "validations": {
               "required": {
-                "error": "You must confirm the declaration to continue.",
+                "error": "Confirm that the information you have provided is true and correct",
                 "value": true
               }
             },
@@ -501,7 +884,7 @@
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "behaviours": [],
-      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n* Environmental Health will review your application and an officer will be assigned to your case.  \n* They must inspect the swimming pool before they can issue a licence. More than one visit may be required before the issuing of a licence.  \n\n**Obtaining your licence:**\n\n* If your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n## Contact\n\nIf you need help, contact your Environmental Health Service office.\n\n{polyclinicContact}",
+      "markdownContent": "We have received your application for a swimming pool licence.\n\nA copy of your application has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\nKeep your reference number in case you need to contact Environmental Health about your application.\n\n## What happens next\n\n- Environmental Health will review your application.\n- An officer will inspect the pool, the area around it and the safety equipment.\n- If your application is approved, Environmental Health will email you. Your licence will be posted to you, or you can collect it from the polyclinic.\n\nSubmitting an application does not mean that the licence has been granted.\n\n## Get help\n\nContact the Environmental Health Service office for your area.\n\n{polyclinicContact}",
       "elements": []
     }
   ],
@@ -549,7 +932,7 @@
     }
   ],
   "createdAt": "2026-08-25T00:10:51.219Z",
-  "updatedAt": "2026-10-08T21:50:00.000Z",
+  "updatedAt": "2026-10-09T14:39:00.000Z",
   "meta": {
     "visibility": "preview"
   },

@@ -21,6 +21,8 @@ const STANDARD = {
 const EXEMPT: Record<string, string> = {
   "chat-feedback":
     "Feedback survey. The chat confirms the declaration automatically (ADR 0049).",
+  "apply-for-swimming-pool-licence":
+    "Environmental Health's content review asked for a 'Your agreement' step with full name and date (#2856 B12), pending a decision on the standard EH agreement.",
   "national-id-application":
     "Not moved yet: uses the shared blocks/applicant-declaration block, see #2992.",
 };

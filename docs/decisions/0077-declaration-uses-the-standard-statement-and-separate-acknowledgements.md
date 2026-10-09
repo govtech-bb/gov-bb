@@ -51,6 +51,10 @@ its declaration step (ADR 0049).
 `national-id-application` is exempt until #2992 moves it off the shared
 `blocks/applicant-declaration` block.
 
+`apply-for-swimming-pool-licence` is exempt while #2856 settles its "Your
+agreement" step. Environmental Health's content review asked for full name and
+date fields there.
+
 The contract is held in three places that must agree:
 
 - **Committed recipes:**
