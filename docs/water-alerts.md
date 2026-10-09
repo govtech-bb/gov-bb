@@ -26,6 +26,15 @@ The BWA feed is cached for ten minutes. `checkedAt` is when that cached feed was
 fetched. Expired cache failures and malformed feeds show an unavailable state;
 sample notices are never served as live data. Requests have timeouts, and feed
 size, notice fields, URLs, email addresses, parish values and tokens are checked.
+The feed request does not follow redirects, so a compromised or spoofed BWA host
+can't bounce the API to an internal address (#2971). The feed answers directly;
+if BWA ever moves it, it shows as unavailable until `BWA_FEED_URL` is updated.
+
+Logs never contain a resident's email address (#2971): a failed alert or
+confirmation email logs the subscriber ID where there is one, the address masked
+by `redactPii` (`j***@example.com`), and the delivery error with any address in
+it masked. Feed values in log lines go through `sanitizeForLog`, which also
+blanks line separators and bidi controls that could disguise a log line.
 
 Notices are validated one at a time, so one bad notice can't take the feed down
 (#2969). A notice with an invalid or unsafe link, an unparseable date or an
