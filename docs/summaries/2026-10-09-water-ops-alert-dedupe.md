@@ -57,9 +57,28 @@ open where the "already alerted" state should live.
   extracted from the source file, including concurrent sessions). The mocks
   alone would never have shown the flapping problem.
 
+- **Stuck send failures (ship gate).** Failed sends are only retried while their
+  notice is active, so once it ended `send-failures` never cleared. A run with
+  nothing outstanding now marks it healthy without a "recovered" email.
+- **`clear` was taken.** The repository extends TypeORM's `Repository`, whose
+  `clear()` TRUNCATEs the table; `tsc -b` refused the override. Renamed
+  `markHealthy`.
+- **The smoke spec poisoned its own pool.** An invalid mutant (dropping the only
+  use of `$2`) failed the race test inside its transaction, and releasing that
+  connection unrolled left every later query "transaction aborted". The spec
+  now rolls back before releasing, and the mutation check uses a valid
+  statement. It also ran against the local dev database configured in
+  `apps/api/.env`, which it is written to leave as it found it.
+- **Two process slips.** One commit landed with spec type errors because the
+  command used `;` rather than `&&` (fixed by amending before any push), and
+  the repository was written before its spec was run red (made up for with a
+  mutation check).
+
 ## Open questions
 
 - A "recovered" email that fails to send is lost (accepted, documented).
+- The SQL smoke spec is skipped in CI (no database there). Running smoke specs
+  in CI needs a Postgres service in `ci.yml`: a separate change.
 - `skipped-notice:*` rows are never pruned; bounded by distinct bad notices.
 - A failed advisory unlock after a successful run still reports a crash. That
   predates this work.
