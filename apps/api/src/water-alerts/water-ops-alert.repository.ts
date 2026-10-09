@@ -21,30 +21,39 @@ export class WaterOpsAlertRepository extends BaseRepository<WaterOpsAlertEntity>
   }
 
   /**
-   * Record that `key` is failing. Returns the alert to send when the failure
-   * is new, or when the last alert is older than `remindAfter` (a Postgres
-   * interval, e.g. "6 hours"); otherwise null. NOW() is fixed per statement,
-   * so a new failure has failing_since = last_alerted_at.
+   * Record that `key` is failing. Returns the alert to send only when the last
+   * alert for this key is older than `remindAfter` (a Postgres interval, e.g.
+   * "6 hours"); otherwise null. That applies to a *new* failure too, so a
+   * failure that flaps (fail, recover, fail…) is emailed at most once per
+   * interval rather than every run. failing_since is always recorded.
+   * NOW() is fixed per transaction, so "alerted" means this statement moved
+   * last_alerted_at, and "first" means this failure started now.
    */
   async recordFailure(
     key: string,
     remindAfter: string,
   ): Promise<FailureAlert | null> {
-    const rows: Array<{ failingSince: Date; first: boolean }> =
-      await this.manager.query(
-        `INSERT INTO "water_ops_alerts" ("key", "failing_since", "last_alerted_at")
+    const rows: Array<{
+      failingSince: Date;
+      alerted: boolean;
+      first: boolean;
+    }> = await this.manager.query(
+      `INSERT INTO "water_ops_alerts" ("key", "failing_since", "last_alerted_at")
          VALUES ($1, NOW(), NOW())
          ON CONFLICT ("key") DO UPDATE SET
            "failing_since" = COALESCE("water_ops_alerts"."failing_since", NOW()),
-           "last_alerted_at" = NOW()
-         WHERE "water_ops_alerts"."failing_since" IS NULL
-            OR "water_ops_alerts"."last_alerted_at" < NOW() - $2::interval
+           "last_alerted_at" = CASE
+             WHEN "water_ops_alerts"."last_alerted_at" IS NULL
+               OR "water_ops_alerts"."last_alerted_at" < NOW() - $2::interval THEN NOW()
+             ELSE "water_ops_alerts"."last_alerted_at"
+           END
          RETURNING "failing_since" AS "failingSince",
-                   ("failing_since" = "last_alerted_at") AS "first"`,
-        [key, remindAfter],
-      );
+                   ("last_alerted_at" = NOW()) AS "alerted",
+                   ("failing_since" = NOW()) AS "first"`,
+      [key, remindAfter],
+    );
     const row = rows[0];
-    if (!row) return null;
+    if (!row?.alerted) return null;
     return {
       kind: row.first ? "first" : "reminder",
       failingSince: row.failingSince,
@@ -53,23 +62,35 @@ export class WaterOpsAlertRepository extends BaseRepository<WaterOpsAlertEntity>
 
   /**
    * Record that `key` works again. Returns when its failure started if it was
-   * failing (so exactly one caller emails "recovered"), otherwise null.
+   * failing *and* the team was told about it (so exactly one caller emails
+   * "recovered"); a failure that was never alerted recovers silently.
    */
   async recordRecovery(key: string): Promise<Date | null> {
     // TypeORM's Postgres driver returns [rows, rowCount] for UPDATE.
-    const [rows]: [Array<{ failingSince: Date }>, number] =
+    const [rows]: [Array<{ failingSince: Date; alerted: boolean }>, number] =
       await this.manager.query(
         `UPDATE "water_ops_alerts" a SET "failing_since" = NULL
          FROM (
-           SELECT "id", "failing_since" FROM "water_ops_alerts"
+           SELECT "id", "failing_since", "last_alerted_at" FROM "water_ops_alerts"
            WHERE "key" = $1 AND "failing_since" IS NOT NULL
            FOR UPDATE
          ) prev
          WHERE a."id" = prev."id"
-         RETURNING prev."failing_since" AS "failingSince"`,
+         RETURNING prev."failing_since" AS "failingSince",
+                   (prev."last_alerted_at" >= prev."failing_since") AS "alerted"`,
         [key],
       );
-    return rows[0]?.failingSince ?? null;
+    const row = rows[0];
+    return row?.alerted ? row.failingSince : null;
+  }
+
+  /** Forget claims whose email failed, so the next run reports them again. */
+  async releaseClaims(keys: string[]): Promise<void> {
+    if (keys.length === 0) return;
+    await this.manager.query(
+      `DELETE FROM "water_ops_alerts" WHERE "key" = ANY($1::text[])`,
+      [keys],
+    );
   }
 
   /** Record one-off signals; returns the keys not recorded before. */
