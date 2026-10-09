@@ -19,7 +19,8 @@ attribution is retained in the location module.
   and an internal cron checker every 30 minutes. Emails reuse the existing SES
   configuration; no separate SMTP service or cron deployment is needed.
 - `packages/database`: TypeORM entities and `CreateWaterAlertsTables1785917644000`
-  add `water_subscribers` and `water_sent_alerts` to the existing Postgres database.
+  add `water_subscribers` and `water_sent_alerts` to the existing Postgres database;
+  `CreateWaterOpsAlerts1791536637000` adds `water_ops_alerts` (see Ops alerts).
   The API runs pending migrations on startup, as it does for other services.
 
 The BWA feed is cached for ten minutes. `checkedAt` is when that cached feed was
@@ -36,7 +37,32 @@ a real outage, and titled from up to 80 characters of its body, cut at a word
 boundary (or "BWA service notice" when the body is empty too). The feed shows
 the unavailable state only when its structure is broken or it has notices but
 none are valid — an empty list there would wrongly say there are no outages. A
-skipped notice is only visible in the API logs until #2970 adds an ops signal.
+skipped notice is also emailed to ops once (see Ops alerts). The public outages
+endpoint returns only `outages` and `checkedAt`, never the skipped notices or
+their reasons.
+
+## Ops alerts
+
+When `WATER_OPS_RECIPIENT` is set, the checker emails the team about three
+signals, without repeating itself every 30-minute run (#2970):
+
+| Signal | Email |
+| --- | --- |
+| The checker crashes | When it starts, a reminder every 6 hours while it lasts, and one "recovered" email |
+| Alert sends fail (SES rejects) | The same: start, 6-hourly reminder, recovered |
+| A feed notice is skipped as invalid | Once per notice (by guid or link), all new ones in one email |
+
+Each email leads with a one-line summary, then the raw error or run summary.
+The logs still record every failed run.
+
+What has been sent lives in `water_ops_alerts`, one row per signal key, because
+several API tasks run the checker and the record must survive restarts and
+deploys. Each "should I email?" decision is a single atomic statement, so tasks
+reporting the same failure send one email. It is claimed before sending: if the
+ops email itself fails, that alert waits for the next reminder. If the table
+can't be reached (for example the database is what's down), each task falls
+back to remembering its own last alert: at most one email per task every 6
+hours, and no "recovered" email for that outage.
 
 The prototype's public demo endpoint is intentionally omitted: it sent simulated
 alerts to every confirmed subscriber. Tests use local fixtures and mocked email
