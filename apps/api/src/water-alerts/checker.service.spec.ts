@@ -1,3 +1,4 @@
+import { Logger } from "@nestjs/common";
 import type { DataSource } from "typeorm";
 import type { SesMailer } from "../email/ses-mailer";
 import { CheckerService } from "./checker.service";
@@ -33,6 +34,13 @@ function makeDeps(
     fetchOutages: vi
       .fn()
       .mockResolvedValue({ outages: [], checkedAt: new Date().toISOString() }),
+    // The checker's view of the same cached feed: tests set fetchOutages,
+    // and skipped notices through `skipped`.
+    skipped: [] as Array<{ ref: string; reason: string }>,
+    fetchOutagesWithSkips: vi.fn(async () => ({
+      feed: await feed.fetchOutages(),
+      skipped: feed.skipped,
+    })),
   };
   const subscribers = {
     matchedRecipients: over.matchedRecipients ?? vi.fn().mockResolvedValue([]),
@@ -52,6 +60,7 @@ function makeDeps(
   const opsAlerts = {
     failure: vi.fn().mockResolvedValue(undefined),
     recovered: vi.fn().mockResolvedValue(undefined),
+    newSkippedNotices: vi.fn().mockResolvedValue(undefined),
   };
   const service = new CheckerService(
     over.dataSource ?? ({} as DataSource),
@@ -319,6 +328,27 @@ describe("CheckerService.scheduled", () => {
     const [, summary] = opsAlerts.failure.mock.calls[0];
     expect(summary).toMatch(/^rss: /);
     expect(summary).not.toContain("\n");
+  });
+
+  it("passes skipped feed notices to ops alerts and keeps them out of the run log", async () => {
+    const log = vi
+      .spyOn(Logger.prototype, "log")
+      .mockImplementation(() => undefined);
+    const runner = {
+      connect: vi.fn(),
+      query: vi.fn().mockResolvedValue([{ pg_try_advisory_lock: true }]),
+      release: vi.fn(),
+    };
+    const { service, feed, opsAlerts } = makeDeps({
+      dataSource: { createQueryRunner: () => runner } as unknown as DataSource,
+    });
+    feed.skipped = [{ ref: '"notice-9"', reason: "pubDate: Required" }];
+
+    await service.scheduled();
+
+    expect(opsAlerts.newSkippedNotices).toHaveBeenCalledWith(feed.skipped);
+    expect(log.mock.calls[0][0]).not.toContain("notice-9");
+    log.mockRestore();
   });
 
   it("finishes a successful scheduled check without sending an ops alert", async () => {

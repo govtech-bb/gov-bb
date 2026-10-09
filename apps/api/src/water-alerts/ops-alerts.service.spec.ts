@@ -118,6 +118,55 @@ describe("OpsAlertService", () => {
     });
   });
 
+  describe("newSkippedNotices", () => {
+    const skipped = [
+      { ref: '"notice-1"', reason: "link: Invalid url" },
+      { ref: '"notice-9"', reason: "pubDate: Required" },
+    ];
+
+    it("emails only the notices it hasn't reported before, in one email", async () => {
+      const { repo, mailer, service } = setup();
+      repo.claimNew.mockResolvedValue(['skipped-notice:"notice-9"']);
+
+      await service.newSkippedNotices(skipped);
+
+      expect(repo.claimNew).toHaveBeenCalledWith([
+        'skipped-notice:"notice-1"',
+        'skipped-notice:"notice-9"',
+      ]);
+      const [mail] = sent(mailer);
+      expect(mail.subject).toBe("Wuh Water Doing: 1 BWA notice(s) skipped");
+      expect(mail.text).toContain('"notice-9": pubDate: Required');
+      expect(mail.text).not.toContain("notice-1");
+    });
+
+    it("stays quiet when every skipped notice was already reported", async () => {
+      const { repo, mailer, service } = setup();
+      repo.claimNew.mockResolvedValue([]);
+
+      await service.newSkippedNotices(skipped);
+
+      expect(mailer.sendSimple).not.toHaveBeenCalled();
+    });
+
+    it("does nothing for no skipped notices", async () => {
+      const { repo, mailer, service } = setup();
+
+      await service.newSkippedNotices([]);
+
+      expect(repo.claimNew).not.toHaveBeenCalled();
+      expect(mailer.sendSimple).not.toHaveBeenCalled();
+    });
+
+    it("never throws when the state table can't be reached", async () => {
+      const { repo, mailer, service } = setup();
+      repo.claimNew.mockRejectedValue(new Error("connection refused"));
+
+      await expect(service.newSkippedNotices(skipped)).resolves.toBeUndefined();
+      expect(mailer.sendSimple).not.toHaveBeenCalled();
+    });
+  });
+
   describe("recovered", () => {
     it("emails once when a failing signal recovers", async () => {
       const { repo, mailer, service } = setup();

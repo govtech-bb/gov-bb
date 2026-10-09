@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import Handlebars from "handlebars";
 import { SesMailer } from "../email/ses-mailer";
+import type { SkippedNotice } from "./feed.service";
 import { WaterOpsAlertRepository } from "./water-ops-alert.repository";
 
 /** A lasting failure the checker can report. */
@@ -117,6 +118,39 @@ export class OpsAlertService {
       to,
       WORDING[signal].recovered,
       `Recovered at ${new Date().toISOString()}, after failing since ${since.toISOString()}.`,
+    );
+  }
+
+  /**
+   * Report notices the feed skipped as invalid. Each is emailed once (keyed by
+   * its guid or link), all new ones in a single email. If the state table
+   * can't be reached this does nothing: skips are low-urgency and the feed
+   * service already logs them on every fetch.
+   */
+  async newSkippedNotices(skipped: SkippedNotice[]): Promise<void> {
+    const to = this.recipient;
+    if (!to || skipped.length === 0) return;
+    const byKey = new Map(skipped.map((n) => [`skipped-notice:${n.ref}`, n]));
+
+    let fresh: string[];
+    try {
+      fresh = await this.state.claimNew([...byKey.keys()]);
+    } catch (err) {
+      this.logger.warn(
+        `Ops alert state unavailable: ${(err as Error).message}`,
+      );
+      return;
+    }
+    if (fresh.length === 0) return;
+
+    const lines = fresh.map((key) => {
+      const notice = byKey.get(key)!;
+      return `- ${notice.ref}: ${notice.reason}`;
+    });
+    await this.send(
+      to,
+      `${fresh.length} BWA notice(s) skipped`,
+      `These notices failed validation, so they are not shown on the site or sent to subscribers. Each notice is reported once.\n\n${lines.join("\n")}`,
     );
   }
 

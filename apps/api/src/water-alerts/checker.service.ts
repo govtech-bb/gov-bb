@@ -4,7 +4,7 @@ import { SendEmailCommand } from "@aws-sdk/client-sesv2";
 import { DataSource } from "typeorm";
 import { SesMailer } from "../email/ses-mailer";
 import { type AlertNotice, buildAlertEmail, type EmailContent } from "./emails";
-import { FeedService, reason } from "./feed.service";
+import { FeedService, reason, type SkippedNotice } from "./feed.service";
 import { OpsAlertService } from "./ops-alerts.service";
 import { isPast, type Outage } from "./outages.domain";
 import { apiOrigin, landingOrigin } from "./origins";
@@ -32,6 +32,8 @@ export interface CheckSummary {
   failed: number;
   dryRun?: boolean;
   plan?: Array<{ notice: string; recipients: string[] }>;
+  /** Notices the feed skipped as invalid, for the ops email (#2970). */
+  skipped?: SkippedNotice[];
 }
 
 /**
@@ -67,7 +69,8 @@ export class CheckerService {
       );
       if (!locked) return; // another task is already running the check.
       try {
-        const summary = await this.runAlertCheck({});
+        const { skipped = [], ...summary } = await this.runAlertCheck({});
+        // Skips are already logged by the feed on each fetch.
         this.logger.log(`alert check: ${JSON.stringify(summary)}`);
         // Each signal is emailed once when it starts, reminded, and once when
         // it recovers — not every run (#2970).
@@ -81,6 +84,7 @@ export class CheckerService {
         } else {
           await this.opsAlerts.recovered("send-failures");
         }
+        await this.opsAlerts.newSkippedNotices(skipped);
       } finally {
         await runner.query(`SELECT pg_advisory_unlock($1)`, [CHECK_LOCK_KEY]);
       }
@@ -110,7 +114,13 @@ export class CheckerService {
     opts: { notices?: Outage[]; dryRun?: boolean } = {},
   ): Promise<CheckSummary> {
     const now = Date.now();
-    const notices = opts.notices ?? (await this.feed.fetchOutages()).outages;
+    let notices = opts.notices;
+    let skipped: SkippedNotice[] = [];
+    if (!notices) {
+      const fetched = await this.feed.fetchOutagesWithSkips();
+      notices = fetched.feed.outages;
+      skipped = fetched.skipped;
+    }
     const active = notices.filter((o) => !isPast(o, now));
     const noticeById = new Map(active.map((n) => [n.id, n]));
 
@@ -181,6 +191,7 @@ export class CheckerService {
       attempted: pending.length,
       sent,
       failed,
+      skipped,
     };
   }
 

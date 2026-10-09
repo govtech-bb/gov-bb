@@ -395,3 +395,46 @@ describe("FeedService", () => {
     });
   });
 });
+
+describe("FeedService.fetchOutagesWithSkips (#2970)", () => {
+  afterEach(() => vi.restoreAllMocks());
+  const ONE_BAD = SAMPLE_FEED.replace(
+    "https://barbadoswaterauthority.com/notice-1",
+    "javascript:alert(1)",
+  );
+  const quietLogs = () =>
+    vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+
+  it("gives the checker each skipped notice's ref and a one-line reason", async () => {
+    quietLogs();
+    const service = new FeedService(makeHttp(of({ data: ONE_BAD })));
+
+    const { feed, skipped } = await service.fetchOutagesWithSkips();
+
+    expect(feed.outages.map((o) => o.id)).toEqual(["notice-2"]);
+    expect(skipped).toEqual([
+      { ref: '"notice-1"', reason: expect.stringMatching(/^[^\n]+$/) },
+    ]);
+  });
+
+  it("keeps skips out of the public feed, which GET /water-alerts/outages returns as-is", async () => {
+    quietLogs();
+    const service = new FeedService(makeHttp(of({ data: ONE_BAD })));
+
+    const feed = await service.fetchOutages();
+
+    expect(Object.keys(feed).sort()).toEqual(["checkedAt", "outages"]);
+  });
+
+  it("shares one cached fetch between the public feed and the checker", async () => {
+    quietLogs();
+    const http = makeHttp(of({ data: ONE_BAD }));
+    const service = new FeedService(http);
+
+    await service.fetchOutages();
+    const { skipped } = await service.fetchOutagesWithSkips();
+
+    expect(http.get).toHaveBeenCalledTimes(1);
+    expect(skipped).toHaveLength(1);
+  });
+});
