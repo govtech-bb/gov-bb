@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { HttpService } from "@nestjs/axios";
 import { Injectable, Logger } from "@nestjs/common";
 import { XMLParser } from "fast-xml-parser";
@@ -52,6 +53,15 @@ export interface OutagesFeed {
   checkedAt: string;
 }
 
+/** A notice left out of the feed, for the alert checker's ops email (#2970). */
+export interface SkippedNotice {
+  /** Stable identity: sha256 of the full guid/link, or of the item if it has none. */
+  key: string;
+  /** The notice's guid or link, quoted and clipped, for display (see noticeRef). */
+  ref: string;
+  reason: string;
+}
+
 /**
  * Reads the Barbados Water Authority "Service Disruptions" RSS feed, parses it,
  * and tags each notice with parishes, type, and dates. Shared by the public
@@ -70,7 +80,11 @@ export class FeedService {
     parseTagValue: false,
     processEntities: false,
   });
-  private cache: { expires: number; feed: OutagesFeed } | null = null;
+  private cache: {
+    expires: number;
+    feed: OutagesFeed;
+    skipped: SkippedNotice[];
+  } | null = null;
 
   constructor(private readonly http: HttpService) {}
 
@@ -78,9 +92,26 @@ export class FeedService {
     return process.env.BWA_FEED_URL ?? DEFAULT_FEED_URL;
   }
 
-  /** Parsed BWA notices, freshest first-parsed order. Throws on feed failure. */
+  /**
+   * Parsed BWA notices, freshest first-parsed order. Throws on feed failure.
+   * This is exactly what the public outages endpoint returns, so it never
+   * carries the skipped notices or their validation reasons.
+   */
   async fetchOutages(): Promise<OutagesFeed> {
-    if (this.cache && this.cache.expires > Date.now()) return this.cache.feed;
+    return (await this.fetchOutagesWithSkips()).feed;
+  }
+
+  /**
+   * The same cached feed, plus the notices that were skipped as invalid —
+   * for the alert checker, which emails ops once per skipped notice (#2970).
+   */
+  async fetchOutagesWithSkips(): Promise<{
+    feed: OutagesFeed;
+    skipped: SkippedNotice[];
+  }> {
+    if (this.cache && this.cache.expires > Date.now()) {
+      return { feed: this.cache.feed, skipped: this.cache.skipped };
+    }
 
     const response = await firstValueFrom(
       this.http.get<string>(this.feedUrl, {
@@ -94,15 +125,16 @@ export class FeedService {
       }),
     );
 
-    const feed = {
-      outages: this.parse(response.data),
-      checkedAt: new Date().toISOString(),
-    };
-    this.cache = { expires: Date.now() + FEED_TTL_MS, feed };
-    return feed;
+    const { outages, skipped } = this.parse(response.data);
+    const feed = { outages, checkedAt: new Date().toISOString() };
+    this.cache = { expires: Date.now() + FEED_TTL_MS, feed, skipped };
+    return { feed, skipped };
   }
 
-  private parse(xml: string): Outage[] {
+  private parse(xml: string): {
+    outages: Outage[];
+    skipped: SkippedNotice[];
+  } {
     if (typeof xml !== "string" || /<!DOCTYPE/i.test(xml)) {
       throw new Error("Invalid BWA RSS feed");
     }
@@ -121,17 +153,25 @@ export class FeedService {
     // Skip (never serve) a notice that is malformed or unsafe. Log the skips
     // as one line per fetch so a feed of many bad notices can't flood the logs.
     const outages: Outage[] = [];
-    const skipped: string[] = [];
+    const skipped: SkippedNotice[] = [];
     for (const raw of items) {
       try {
         outages.push(this.toOutage(rssItemSchema.parse(raw)));
       } catch (err) {
-        skipped.push(`${noticeRef(raw)} (${reason(err)})`);
+        skipped.push({
+          key: noticeKey(raw),
+          ref: noticeRef(raw),
+          reason: reason(err),
+        });
       }
     }
     if (skipped.length > 0) {
+      const listed = skipped
+        .slice(0, 5)
+        .map((s) => `${s.ref} (${s.reason})`)
+        .join(" | ");
       this.logger.warn(
-        `Skipped ${skipped.length} invalid BWA notice(s): ${skipped.slice(0, 5).join(" | ")}`,
+        `Skipped ${skipped.length} invalid BWA notice(s): ${listed}`,
       );
     }
     // Notices exist but none are usable: the feed format has likely changed.
@@ -139,7 +179,7 @@ export class FeedService {
     if (items.length > 0 && outages.length === 0) {
       throw new Error("No valid notices in BWA RSS feed");
     }
-    return outages;
+    return { outages, skipped };
   }
 
   private toOutage(item: z.infer<typeof rssItemSchema>): Outage {
@@ -177,6 +217,20 @@ export class FeedService {
   }
 }
 
+/**
+ * A stable identity for a skipped notice, so ops are told about each one once.
+ * Not noticeRef: that is clipped, and "(no ID)" for every ID-less notice.
+ */
+function noticeKey(raw: unknown): string {
+  const item = (raw ?? {}) as Record<string, unknown>;
+  const id = [item.guid, item.link].find(
+    (v): v is string => typeof v === "string" && v.trim() !== "",
+  );
+  return createHash("sha256")
+    .update(id ? `id:${id.trim()}` : `item:${JSON.stringify(raw)}`)
+    .digest("hex");
+}
+
 /** The notice's guid or link, quoted and clipped, so a log line can trace it. */
 function noticeRef(raw: unknown): string {
   const item = (raw ?? {}) as Record<string, unknown>;
@@ -186,8 +240,11 @@ function noticeRef(raw: unknown): string {
   return ref ? JSON.stringify(clip(ref.trim(), 200)) : "(no ID)";
 }
 
-/** One-line reason a notice was skipped (Zod errors are otherwise JSON). */
-function reason(err: unknown): string {
+/**
+ * One-line reason for an error (Zod errors are otherwise JSON). Used for a
+ * skipped notice, and to lead the checker's ops alert email (#2970).
+ */
+export function reason(err: unknown): string {
   if (err instanceof z.ZodError) {
     return err.issues
       .map((i) => `${i.path.join(".") || "item"}: ${i.message}`)

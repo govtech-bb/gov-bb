@@ -395,3 +395,99 @@ describe("FeedService", () => {
     });
   });
 });
+
+describe("FeedService.fetchOutagesWithSkips (#2970)", () => {
+  afterEach(() => vi.restoreAllMocks());
+  const ONE_BAD = SAMPLE_FEED.replace(
+    "https://barbadoswaterauthority.com/notice-1",
+    "javascript:alert(1)",
+  );
+  const quietLogs = () =>
+    vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+
+  it("gives the checker each skipped notice's ref and a one-line reason", async () => {
+    quietLogs();
+    const service = new FeedService(makeHttp(of({ data: ONE_BAD })));
+
+    const { feed, skipped } = await service.fetchOutagesWithSkips();
+
+    expect(feed.outages.map((o) => o.id)).toEqual(["notice-2"]);
+    expect(skipped).toEqual([
+      {
+        key: expect.stringMatching(/^[0-9a-f]{64}$/),
+        ref: '"notice-1"',
+        reason: expect.stringMatching(/^[^\n]+$/),
+      },
+    ]);
+  });
+
+  it("keys by the full guid: stable across reasons, distinct past the clipped ref", async () => {
+    quietLogs();
+    const longA = `${"g".repeat(250)}-a`;
+    const longB = `${"g".repeat(250)}-b`;
+    const feedWith = (guid: string, link: string) =>
+      SAMPLE_FEED.replace(
+        "<guid>notice-1</guid>",
+        `<guid>${guid}</guid>`,
+      ).replace("https://barbadoswaterauthority.com/notice-1", link);
+    const skipsOf = async (xml: string) =>
+      (
+        await new FeedService(
+          makeHttp(of({ data: xml })),
+        ).fetchOutagesWithSkips()
+      ).skipped;
+
+    const [a] = await skipsOf(feedWith(longA, "javascript:alert(1)"));
+    const [aOtherReason] = await skipsOf(feedWith(longA, "not a url"));
+    const [b] = await skipsOf(feedWith(longB, "javascript:alert(1)"));
+
+    expect(aOtherReason.reason).not.toBe(a.reason);
+    expect(aOtherReason.key).toBe(a.key);
+    expect(b.ref).toBe(a.ref); // both clipped to the same display ref
+    expect(b.key).not.toBe(a.key);
+  });
+
+  it("keys each skipped notice stably and distinctly, even without a guid or link", async () => {
+    // The display ref is clipped and "(no ID)" for ID-less notices, so it
+    // can't be the key: two different notices would be reported as one.
+    quietLogs();
+    const twoWithoutIds = SAMPLE_FEED.replace(
+      "</channel>",
+      "<item><title>A</title></item><item><title>B</title></item></channel>",
+    );
+    const fetchSkips = async () =>
+      (
+        await new FeedService(
+          makeHttp(of({ data: twoWithoutIds })),
+        ).fetchOutagesWithSkips()
+      ).skipped;
+
+    const first = await fetchSkips();
+    const again = await fetchSkips();
+
+    expect(first.map((s) => s.ref)).toEqual(["(no ID)", "(no ID)"]);
+    expect(new Set(first.map((s) => s.key)).size).toBe(2);
+    expect(again.map((s) => s.key)).toEqual(first.map((s) => s.key));
+  });
+
+  it("keeps skips out of the public feed, which GET /water-alerts/outages returns as-is", async () => {
+    quietLogs();
+    const service = new FeedService(makeHttp(of({ data: ONE_BAD })));
+
+    const feed = await service.fetchOutages();
+
+    expect(Object.keys(feed).sort()).toEqual(["checkedAt", "outages"]);
+  });
+
+  it("shares one cached fetch between the public feed and the checker", async () => {
+    quietLogs();
+    const http = makeHttp(of({ data: ONE_BAD }));
+    const service = new FeedService(http);
+
+    await service.fetchOutages();
+    const { skipped } = await service.fetchOutagesWithSkips();
+
+    expect(http.get).toHaveBeenCalledTimes(1);
+    expect(skipped).toHaveLength(1);
+  });
+});
