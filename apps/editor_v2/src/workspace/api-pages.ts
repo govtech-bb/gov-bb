@@ -3,6 +3,7 @@ import {
   type ApiPage,
   type EditorApi,
   type FieldError,
+  type PageLock,
   type PageSnapshot,
   type SaveFields,
   type ServiceDetail,
@@ -53,6 +54,7 @@ export function roleOf(page: ApiPage): PageRole {
 export type SaveOutcome =
   | { kind: "saved"; base: ServerBase }
   | { kind: "invalid"; errors: readonly FieldError[] }
+  | { kind: "locked"; lock: PageLock }
   | { kind: "conflict" | "missing" | "signed-out" | "failed" };
 
 /**
@@ -87,6 +89,8 @@ export async function savePage(
     return { kind: "saved", base: { page, body } };
   } catch (error) {
     if (!(error instanceof ApiFailure)) throw error;
+
+    if (error.status === 423 && error.lock) return { kind: "locked", lock: error.lock };
 
     switch (error.status) {
       case 422:

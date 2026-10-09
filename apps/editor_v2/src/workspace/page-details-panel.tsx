@@ -26,6 +26,7 @@ export function ApiPageDetails({
   entry,
   publishedAt,
   pathLocked,
+  readOnly,
   errors,
 }: {
   details: PageDetails;
@@ -37,6 +38,8 @@ export function ApiPageDetails({
   publishedAt: string | null;
   /** Why the path cannot change, when it cannot. */
   pathLocked: string | undefined;
+  /** Someone else is editing the page. */
+  readOnly: boolean;
   errors: Readonly<Record<string, string>>;
 }) {
   const id = useId();
@@ -61,10 +64,11 @@ export function ApiPageDetails({
         title={details.title}
         lede={details.frontmatter.lede ?? ""}
         error={errors.title}
+        readOnly={readOnly}
         onTitle={(title) => set({ title })}
         onLede={(lede) => change(withLede(details, lede))}
       />
-      <PageDetailsSection summary={summary}>
+      <PageDetailsSection summary={summary} disabled={readOnly}>
         <PageDetail id={`${id}-url`} label="Path" error={errors.url}>
           <input
             id={`${id}-url`}
