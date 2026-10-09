@@ -1,5 +1,6 @@
 import type { FastifyBaseLogger } from "fastify";
 import type { ContentStoreUnavailable, PageRejected } from "../modules/page";
+import type { PageLocked } from "../modules/page-lock";
 
 /** Public content may be shared by the site and its caches. */
 export const PUBLIC_READ =
@@ -19,6 +20,11 @@ export function storageFailed(
     "request failed",
   );
   return { error: "internal_error" };
+}
+
+/** A write refused because someone else is editing the page: who, and until when. */
+export function locked(error: PageLocked) {
+  return { error: "locked" as const, message: error.message, lock: error.lock };
 }
 
 /** A refused write, as the per-field 422 an editor can act on. */

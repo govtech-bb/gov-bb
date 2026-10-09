@@ -1132,6 +1132,32 @@ export interface paths {
                     };
                 };
                 /** @description Default Response */
+                423: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "locked";
+                            message: string;
+                            lock: {
+                                holder: {
+                                    id: string;
+                                    name: string;
+                                    email: string;
+                                };
+                                /** @description Whether the caller holds it. */
+                                mine: boolean;
+                                /** Format: date-time */
+                                expires_at: string;
+                            };
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -1164,7 +1190,7 @@ export interface paths {
         post?: never;
         /**
          * Delete a page
-         * @description Requires an employee session and the editor's Origin header. A page with sub-pages is refused (422) until they are moved or deleted.
+         * @description Requires an employee session and the editor's Origin header. A page with sub-pages is refused (422) until they are moved or deleted, and one someone else is editing (423).
          */
         delete: {
             parameters: {
@@ -1240,6 +1266,32 @@ export interface paths {
                                 field: string;
                                 message: string;
                             }[];
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                423: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "locked";
+                            message: string;
+                            lock: {
+                                holder: {
+                                    id: string;
+                                    name: string;
+                                    email: string;
+                                };
+                                /** @description Whether the caller holds it. */
+                                mine: boolean;
+                                /** Format: date-time */
+                                expires_at: string;
+                            };
                         } & {
                             [key: string]: unknown;
                         };
@@ -2388,6 +2440,32 @@ export interface paths {
                     };
                 };
                 /** @description Default Response */
+                423: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "locked";
+                            message: string;
+                            lock: {
+                                holder: {
+                                    id: string;
+                                    name: string;
+                                    email: string;
+                                };
+                                /** @description Whether the caller holds it. */
+                                mine: boolean;
+                                /** Format: date-time */
+                                expires_at: string;
+                            };
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -2497,6 +2575,408 @@ export interface paths {
                             message: string;
                             /** Format: uuid */
                             documentId: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                423: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "locked";
+                            message: string;
+                            lock: {
+                                holder: {
+                                    id: string;
+                                    name: string;
+                                    email: string;
+                                };
+                                /** @description Whether the caller holds it. */
+                                mine: boolean;
+                                /** Format: date-time */
+                                expires_at: string;
+                            };
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{id}/lock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Who is editing a page
+         * @description The employee whose claim on the page has not lapsed, and whether it is the caller. 404 when nobody is editing it.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            holder: {
+                                id: string;
+                                name: string;
+                                email: string;
+                            };
+                            /** @description Whether the caller holds it. */
+                            mine: boolean;
+                            /** Format: date-time */
+                            expires_at: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        /**
+         * Start or go on editing a page
+         * @description Requires an employee session and the editor's Origin header. Claims the page for the caller, or keeps their claim fresh; a claim lapses five minutes after it was last touched, and every draft or save touches it. While someone else's claim lasts, drafts, saves and deletes of the page are refused with a 423 naming them; `take=true` takes the page over from them.
+         */
+        put: {
+            parameters: {
+                query?: {
+                    /** @description Take the page over from whoever is editing it. */
+                    take?: string;
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            holder: {
+                                id: string;
+                                name: string;
+                                email: string;
+                            };
+                            /** @description Whether the caller holds it. */
+                            mine: boolean;
+                            /** Format: date-time */
+                            expires_at: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                423: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "locked";
+                            message: string;
+                            lock: {
+                                holder: {
+                                    id: string;
+                                    name: string;
+                                    email: string;
+                                };
+                                /** @description Whether the caller holds it. */
+                                mine: boolean;
+                                /** Format: date-time */
+                                expires_at: string;
+                            };
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Stop editing a page
+         * @description Requires an employee session and the editor's Origin header. Drops the caller's claim; anyone else's stays. 204 either way.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
                         } & {
                             [key: string]: unknown;
                         };

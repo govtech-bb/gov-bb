@@ -1,5 +1,5 @@
 /**
- * The Drizzle schema, matching migrations `001_init` to `006_page_drafts`
+ * The Drizzle schema, matching migrations `001_init` to `007_page_locks`
  * applied in order, table for table and column for column.
  *
  * The DDL in `migrations/` stays the source of truth and this file is the
@@ -191,6 +191,20 @@ export const pageDrafts = pgTable("page_drafts", {
   }).notNull(),
   updatedBy: text("updated_by").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true, precision: 3 })
+    .notNull()
+    .defaultNow(),
+});
+
+/** Who is editing each page (migration 007); a claim lapses five minutes after it was last touched. */
+export const pageLocks = pgTable("page_locks", {
+  pageId: uuid("page_id")
+    .primaryKey()
+    .references(() => contentPages.id, { onDelete: "cascade" })
+    .$type<PageId>(),
+  holderId: text("holder_id").notNull(),
+  holderName: text("holder_name").notNull(),
+  holderEmail: text("holder_email").notNull(),
+  touchedAt: timestamp("touched_at", { withTimezone: true, precision: 3 })
     .notNull()
     .defaultNow(),
 });

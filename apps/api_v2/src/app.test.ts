@@ -29,7 +29,7 @@ import {
   TEST_HEADERS,
   TEST_HTTP_CONFIG,
 } from "./test-db";
-import { AuthUnavailable, Forbidden } from "./modules/auth";
+import { AuthUnavailable, Forbidden, type Employee } from "./modules/auth";
 import { Redacted } from "./modules/redacted";
 import { err, ok } from "./modules/result";
 
@@ -911,34 +911,34 @@ describe("PUT /pages/:id", () => {
   });
 });
 
+type Page = Record<string, unknown> & { id: string; updated_at: string };
+
+/** A draft of `page`, edited from its current version unless `changes` says otherwise. */
+const draftOf = (page: Page, changes = {}) => {
+  const {
+    id,
+    slug,
+    parent_id,
+    published_at,
+    created_at,
+    updated_at,
+    ...fields
+  } = page;
+  return { ...fields, base_updated_at: updated_at, ...changes };
+};
+
+/** Save a draft of `page`, having last read the draft saved at `read` (none when left out). */
+const putDraft = (page: Page, changes = {}, read?: string) =>
+  inject({
+    method: "PUT",
+    url: `/pages/${page.id}/draft`,
+    headers: read ? { [IF_UPDATED_AT]: read } : {},
+    payload: draftOf(page, changes),
+  });
+
+const getDraft = (page: Page) => inject({ url: `/pages/${page.id}/draft` });
+
 describe("/pages/:id/draft", () => {
-  type Page = Record<string, unknown> & { id: string; updated_at: string };
-
-  /** A draft of `page`, edited from its current version unless `changes` says otherwise. */
-  const draftOf = (page: Page, changes = {}) => {
-    const {
-      id,
-      slug,
-      parent_id,
-      published_at,
-      created_at,
-      updated_at,
-      ...fields
-    } = page;
-    return { ...fields, base_updated_at: updated_at, ...changes };
-  };
-
-  /** Save a draft of `page`, having last read the draft saved at `read` (none when left out). */
-  const putDraft = (page: Page, changes = {}, read?: string) =>
-    inject({
-      method: "PUT",
-      url: `/pages/${page.id}/draft`,
-      headers: read ? { [IF_UPDATED_AT]: read } : {},
-      payload: draftOf(page, changes),
-    });
-
-  const getDraft = (page: Page) => inject({ url: `/pages/${page.id}/draft` });
-
   it("keeps half-finished work beside the page, off the site, until it is published", async () => {
     const page = await seedPage();
     const saved = await putDraft(page, {
@@ -1085,6 +1085,185 @@ describe("/pages/:id/draft", () => {
     await putDraft(page);
     await inject({ method: "DELETE", url: `/pages/${page.id}` });
     expect((await getDraft(page)).statusCode).toBe(404);
+  });
+});
+
+describe("/pages/:id/lock", () => {
+  const OTHER: Employee = {
+    id: "employee-other",
+    email: "other@govtech.bb",
+    name: "Other editor",
+  };
+  let other: FastifyInstance;
+
+  beforeEach(async () => {
+    other = await createTestApp(db, {
+      sessions: { findSession: async () => ok(OTHER) },
+    });
+    await other.ready();
+  });
+
+  afterEach(async () => {
+    await other.close();
+  });
+
+  const asOther = (options: InjectOptions) =>
+    other.inject({
+      ...options,
+      headers: { ...TEST_HEADERS, ...options.headers },
+    });
+
+  it("claims a page for whoever starts editing it, and tells everyone who", async () => {
+    const page = await seedPage();
+    const claimed = await inject({
+      method: "PUT",
+      url: `/pages/${page.id}/lock`,
+    });
+
+    expect(claimed.statusCode).toBe(200);
+    expect(claimed.json()).toMatchObject({
+      holder: { id: TEST_EMPLOYEE.id, name: TEST_EMPLOYEE.name },
+      mine: true,
+    });
+    expect(
+      (await asOther({ url: `/pages/${page.id}/lock` })).json(),
+    ).toMatchObject({
+      holder: { name: TEST_EMPLOYEE.name },
+      mine: false,
+    });
+  });
+
+  it("refuses anyone else's drafts, saves, deletes and claims while the claim lasts", async () => {
+    const page = await seedPage();
+    await inject({ method: "PUT", url: `/pages/${page.id}/lock` });
+
+    for (const request of [
+      { method: "PUT", url: `/pages/${page.id}/draft`, payload: draftOf(page) },
+      { method: "DELETE", url: `/pages/${page.id}/draft` },
+      {
+        method: "PUT",
+        url: `/pages/${page.id}`,
+        payload: { ...page, title: "Theirs" },
+      },
+      { method: "DELETE", url: `/pages/${page.id}` },
+      { method: "PUT", url: `/pages/${page.id}/lock` },
+    ] as const) {
+      const refused = await asOther(request);
+      expect(refused.statusCode, `${request.method} ${request.url}`).toBe(423);
+      expect(refused.json()).toMatchObject({
+        error: "locked",
+        message: `${TEST_EMPLOYEE.name} is editing this page.`,
+        lock: { holder: { id: TEST_EMPLOYEE.id }, mine: false },
+      });
+    }
+    expect(expectOk(await services.editing.get(page.id))?.title).toBe(
+      page.title,
+    );
+  });
+
+  it("claims the page with a draft, so autosaving keeps it", async () => {
+    const page = await seedPage();
+    await inject({
+      method: "PUT",
+      url: `/pages/${page.id}/draft`,
+      payload: draftOf(page),
+    });
+
+    expect(
+      (
+        await asOther({
+          method: "PUT",
+          url: `/pages/${page.id}/draft`,
+          payload: draftOf(page),
+        })
+      ).statusCode,
+    ).toBe(423);
+  });
+
+  it("lets someone take the page over, refusing the editor they took it from", async () => {
+    const page = await seedPage();
+    await inject({ method: "PUT", url: `/pages/${page.id}/lock` });
+
+    const taken = await asOther({
+      method: "PUT",
+      url: `/pages/${page.id}/lock?take=true`,
+    });
+
+    expect(taken.statusCode).toBe(200);
+    expect(taken.json()).toMatchObject({
+      holder: { id: OTHER.id },
+      mine: true,
+    });
+    expect(
+      (
+        await inject({
+          method: "PUT",
+          url: `/pages/${page.id}/draft`,
+          payload: draftOf(page),
+        })
+      ).statusCode,
+    ).toBe(423);
+    expect(
+      (
+        await inject({
+          method: "PUT",
+          url: `/pages/${page.id}`,
+          payload: { ...page, title: "Mine" },
+        })
+      ).statusCode,
+    ).toBe(423);
+  });
+
+  it("lets the editor holding a page delete it, and its claim goes with it", async () => {
+    const page = await seedPage();
+    await inject({ method: "PUT", url: `/pages/${page.id}/lock` });
+
+    expect(
+      (await inject({ method: "DELETE", url: `/pages/${page.id}` })).statusCode,
+    ).toBe(204);
+    expect((await asOther({ url: `/pages/${page.id}/lock` })).statusCode).toBe(
+      404,
+    );
+  });
+
+  it("lets a claim lapse five minutes after it was last touched", async () => {
+    const page = await seedPage();
+    await inject({ method: "PUT", url: `/pages/${page.id}/lock` });
+    await db.execute(
+      // Past the five minutes by a margin, so the database's clock and the app's need not agree.
+      sql`update page_locks set touched_at = now() - interval '6 minutes'`,
+    );
+
+    expect((await asOther({ url: `/pages/${page.id}/lock` })).statusCode).toBe(
+      404,
+    );
+    expect(
+      (
+        await asOther({
+          method: "PUT",
+          url: `/pages/${page.id}/draft`,
+          payload: draftOf(page),
+        })
+      ).statusCode,
+    ).toBe(200);
+  });
+
+  it("drops only the caller's own claim when they stop editing", async () => {
+    const page = await seedPage();
+    await inject({ method: "PUT", url: `/pages/${page.id}/lock` });
+
+    expect(
+      (await asOther({ method: "DELETE", url: `/pages/${page.id}/lock` }))
+        .statusCode,
+    ).toBe(204);
+    expect(
+      (await asOther({ url: `/pages/${page.id}/lock` })).json().holder.id,
+    ).toBe(TEST_EMPLOYEE.id);
+
+    await inject({ method: "DELETE", url: `/pages/${page.id}/lock` });
+    expect((await asOther({ url: `/pages/${page.id}/lock` })).statusCode).toBe(
+      404,
+    );
   });
 });
 
@@ -1528,6 +1707,9 @@ describe("employee access", () => {
     ["GET", "/pages/not-a-uuid/draft"],
     ["PUT", "/pages/not-a-uuid/draft"],
     ["DELETE", "/pages/not-a-uuid/draft"],
+    ["GET", "/pages/not-a-uuid/lock"],
+    ["PUT", "/pages/not-a-uuid/lock"],
+    ["DELETE", "/pages/not-a-uuid/lock"],
   ] as const)(
     "rejects anonymous %s %s before validation or storage",
     async (method, url) => {
@@ -1569,10 +1751,18 @@ describe("employee access", () => {
   it.each([undefined, "null", "https://evil.example"])(
     "rejects a write from origin %s even with a session",
     async (origin) => {
-      for (const method of ["POST", "PUT", "DELETE"] as const) {
+      for (const [method, url] of [
+        ["POST", "/pages"],
+        ["PUT", "/pages/not-a-uuid"],
+        ["DELETE", "/pages/not-a-uuid"],
+        ["PUT", "/pages/not-a-uuid/draft"],
+        ["DELETE", "/pages/not-a-uuid/draft"],
+        ["PUT", "/pages/not-a-uuid/lock"],
+        ["DELETE", "/pages/not-a-uuid/lock"],
+      ] as const) {
         const response = await app.inject({
           method,
-          url: method === "POST" ? "/pages" : "/pages/not-a-uuid",
+          url,
           payload: aPage(),
           headers: {
             cookie: TEST_HEADERS.cookie,

@@ -25,6 +25,7 @@ import {
   SaveFields,
 } from "../modules/page";
 import { PageSnapshot, PageVersion } from "../modules/page-history";
+import { PageLock } from "../modules/page-lock";
 import { PublicPage } from "../modules/page-visibility";
 import { EstateVersion } from "../services/editor-index";
 
@@ -57,6 +58,12 @@ const validationFailed = z.looseObject({
   error: z.literal("validation_failed"),
   message: z.string().optional(),
   errors: z.array(z.object({ field: z.string(), message: z.string() })),
+});
+
+const locked = z.looseObject({
+  error: z.literal("locked"),
+  message: z.string(),
+  lock: PageLock,
 });
 
 const conflict = z.looseObject({
@@ -240,6 +247,7 @@ export const SCHEMAS = {
       404: error,
       409: conflict,
       422: validationFailed,
+      423: locked,
       500: error,
       ...authErrors,
     },
@@ -291,6 +299,7 @@ export const SCHEMAS = {
       404: error,
       409: conflict,
       422: validationFailed,
+      423: locked,
       500: error,
       ...authErrors,
     },
@@ -316,6 +325,68 @@ export const SCHEMAS = {
       204: z.undefined(),
       400: error,
       409: conflict,
+      423: locked,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  getPageLock: {
+    summary: "Who is editing a page",
+    description:
+      "The employee whose claim on the page has not lapsed, and whether it " +
+      "is the caller. 404 when nobody is editing it.",
+    tags: ["pages"],
+    params: idParams,
+    security: editorSecurity,
+    response: {
+      200: PageLock,
+      400: error,
+      404: error,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  editPage: {
+    summary: "Start or go on editing a page",
+    description:
+      "Requires an employee session and the editor's Origin header. Claims " +
+      "the page for the caller, or keeps their claim fresh; a claim lapses " +
+      "five minutes after it was last touched, and every draft or save " +
+      "touches it. While someone else's claim lasts, drafts, saves and " +
+      "deletes of the page are refused with a 423 naming them; `take=true` " +
+      "takes the page over from them.",
+    tags: ["pages"],
+    params: idParams,
+    querystring: z.object({
+      take: z
+        .stringbool()
+        .optional()
+        .describe("Take the page over from whoever is editing it."),
+    }),
+    security: editorSecurity,
+    response: {
+      200: PageLock,
+      400: error,
+      404: error,
+      423: locked,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  stopEditingPage: {
+    summary: "Stop editing a page",
+    description:
+      "Requires an employee session and the editor's Origin header. Drops " +
+      "the caller's claim; anyone else's stays. 204 either way.",
+    tags: ["pages"],
+    params: idParams,
+    security: editorSecurity,
+    response: {
+      204: z.undefined(),
+      400: error,
       500: error,
       ...authErrors,
     },
@@ -364,7 +435,8 @@ export const SCHEMAS = {
     summary: "Delete a page",
     description:
       "Requires an employee session and the editor's Origin header. A page " +
-      "with sub-pages is refused (422) until they are moved or deleted.",
+      "with sub-pages is refused (422) until they are moved or deleted, and " +
+      "one someone else is editing (423).",
     tags: ["pages"],
     params: idParams,
     security: editorSecurity,
@@ -372,6 +444,7 @@ export const SCHEMAS = {
       204: z.undefined(),
       400: error,
       422: validationFailed,
+      423: locked,
       500: error,
       ...authErrors,
     },

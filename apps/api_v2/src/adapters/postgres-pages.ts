@@ -35,7 +35,9 @@ import {
   type PageId,
   type Visibility,
 } from "../modules/page";
+import type { Employee } from "../modules/auth";
 import type { PageVersion } from "../modules/page-history";
+import type { StoredLock } from "../modules/page-lock";
 import type { Ancestor, ResolvablePage } from "../modules/page-visibility";
 import { err, ok, type Result } from "../modules/result";
 import type { SearchChunk } from "../modules/search-text";
@@ -45,6 +47,7 @@ import {
   changeEvents,
   contentPages,
   pageDrafts,
+  pageLocks,
   searchChunks,
 } from "../schema";
 import type { EstateVersion, IndexReads } from "../services/editor-index";
@@ -58,6 +61,11 @@ import type { PublicPageReads } from "../services/page-resolution";
 import type { NavigationReads } from "../services/site-navigation";
 
 type PageRow = typeof contentPages.$inferSelect;
+
+const toLock = (row: typeof pageLocks.$inferSelect): StoredLock => ({
+  holder: { id: row.holderId, name: row.holderName, email: row.holderEmail },
+  touchedAt: row.touchedAt,
+});
 
 const toDraft = (row: typeof pageDrafts.$inferSelect): PageDraft => ({
   ...row.draft,
@@ -664,6 +672,56 @@ export class PostgresPages
   ): Promise<Result<void, ContentStoreUnavailable>> {
     const deleted = await attempt("deleteDraft", () =>
       this.db.delete(pageDrafts).where(eq(pageDrafts.pageId, id)),
+    );
+    return deleted.ok ? ok(undefined) : deleted;
+  }
+
+  /** A page's edit claim, lapsed or not, or null. */
+  async lockOf(
+    id: PageId,
+  ): Promise<Result<StoredLock | null, ContentStoreUnavailable>> {
+    const rows = await attempt("lockOf", () =>
+      this.db.select().from(pageLocks).where(eq(pageLocks.pageId, id)),
+    );
+    if (!rows.ok) return rows;
+    const [row] = rows.value;
+    return ok(row ? toLock(row) : null);
+  }
+
+  /** Give a page's claim to `holder`, as of `at`. */
+  async writeLock(
+    id: PageId,
+    holder: Employee,
+    at: Date,
+  ): Promise<Result<StoredLock, ContentStoreUnavailable>> {
+    const values = {
+      holderId: holder.id,
+      holderName: holder.name,
+      holderEmail: holder.email,
+      touchedAt: at,
+    };
+    const rows = await attempt("writeLock", () =>
+      this.db
+        .insert(pageLocks)
+        .values({ pageId: id, ...values })
+        .onConflictDoUpdate({ target: pageLocks.pageId, set: values })
+        .returning(),
+    );
+    if (!rows.ok) return rows;
+    const [row] = rows.value;
+    if (!row) throw new Error("A lock write returned no row");
+    return ok(toLock(row));
+  }
+
+  /** Drop a page's claim if `holderId` holds it. */
+  async deleteLock(
+    id: PageId,
+    holderId: string,
+  ): Promise<Result<void, ContentStoreUnavailable>> {
+    const deleted = await attempt("deleteLock", () =>
+      this.db
+        .delete(pageLocks)
+        .where(and(eq(pageLocks.pageId, id), eq(pageLocks.holderId, holderId))),
     );
     return deleted.ok ? ok(undefined) : deleted;
   }

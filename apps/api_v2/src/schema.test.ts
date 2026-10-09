@@ -18,6 +18,7 @@ import {
   changeEvents,
   contentPages,
   pageDrafts,
+  pageLocks,
   searchChunks,
 } from "./schema";
 import { createTestDb } from "./test-db";
@@ -46,6 +47,7 @@ const TABLES = {
   content_pages: contentPages,
   change_events: changeEvents,
   page_drafts: pageDrafts,
+  page_locks: pageLocks,
   search_chunks: searchChunks,
 };
 
