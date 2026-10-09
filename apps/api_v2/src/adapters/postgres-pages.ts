@@ -25,10 +25,13 @@ import type { IndexedPage } from "../modules/estate-services";
 import type { CategoryRecord, ListablePage } from "../modules/navigation";
 import {
   ContentStoreUnavailable,
+  PageNotFound,
   PageRejected,
+  type DraftFields,
   type FieldError,
   type Frontmatter,
   type PageDocument,
+  type PageDraft,
   type PageId,
   type Visibility,
 } from "../modules/page";
@@ -41,6 +44,7 @@ import {
   categories,
   changeEvents,
   contentPages,
+  pageDrafts,
   searchChunks,
 } from "../schema";
 import type { EstateVersion, IndexReads } from "../services/editor-index";
@@ -54,6 +58,13 @@ import type { PublicPageReads } from "../services/page-resolution";
 import type { NavigationReads } from "../services/site-navigation";
 
 type PageRow = typeof contentPages.$inferSelect;
+
+const toDraft = (row: typeof pageDrafts.$inferSelect): PageDraft => ({
+  ...row.draft,
+  base_updated_at: row.baseUpdatedAt.toISOString(),
+  updated_by: row.updatedBy,
+  updated_at: row.updatedAt.toISOString(),
+});
 
 export const toDocument = (row: PageRow): PageDocument => ({
   id: row.id,
@@ -598,6 +609,63 @@ export class PostgresPages
         occurred_at: row.occurredAt.toISOString(),
       })),
     );
+  }
+
+  /** A page's working copy, or null when it has none. */
+  async draftOf(
+    id: PageId,
+  ): Promise<Result<PageDraft | null, ContentStoreUnavailable>> {
+    const rows = await attempt("draftOf", () =>
+      this.db.select().from(pageDrafts).where(eq(pageDrafts.pageId, id)),
+    );
+    if (!rows.ok) return rows;
+    const [row] = rows.value;
+    return ok(row ? toDraft(row) : null);
+  }
+
+  /** Replace a page's working copy; the foreign key refuses a page that does not exist. */
+  async writeDraft(
+    id: PageId,
+    draft: DraftFields,
+    base: Date,
+    actorId: string,
+    at: Date,
+  ): Promise<Result<PageDraft, PageNotFound | ContentStoreUnavailable>> {
+    const values = {
+      draft,
+      baseUpdatedAt: base,
+      updatedBy: actorId,
+      updatedAt: at,
+    };
+    const rows = await attempt(
+      "writeDraft",
+      () =>
+        this.db
+          .insert(pageDrafts)
+          .values({ pageId: id, ...values })
+          .onConflictDoUpdate({ target: pageDrafts.pageId, set: values })
+          .returning(),
+      (error) => {
+        const broken = violation.safeParse(error);
+        return broken.success && broken.data.cause.code === "23503"
+          ? new PageNotFound(id)
+          : null;
+      },
+    );
+    if (!rows.ok) return rows;
+    const [row] = rows.value;
+    if (!row) throw new Error("A draft write returned no row");
+    return ok(toDraft(row));
+  }
+
+  /** Delete a page's working copy, if it has one. */
+  async deleteDraft(
+    id: PageId,
+  ): Promise<Result<void, ContentStoreUnavailable>> {
+    const deleted = await attempt("deleteDraft", () =>
+      this.db.delete(pageDrafts).where(eq(pageDrafts.pageId, id)),
+    );
+    return deleted.ok ? ok(undefined) : deleted;
   }
 
   /** The page as a change recorded it, or null when it has no such version. */

@@ -16,7 +16,14 @@ import {
   SearchDocument,
   TaxonomyEntry,
 } from "../modules/navigation";
-import { NewPage, PageDocument, PageId, SaveFields } from "../modules/page";
+import {
+  DraftWrite,
+  NewPage,
+  PageDocument,
+  PageDraft,
+  PageId,
+  SaveFields,
+} from "../modules/page";
 import { PageSnapshot, PageVersion } from "../modules/page-history";
 import { PublicPage } from "../modules/page-visibility";
 import { EstateVersion } from "../services/editor-index";
@@ -59,6 +66,14 @@ const conflict = z.looseObject({
 });
 
 const idParams = z.object({ id: PageId });
+
+/** A draft's `updated_at` as a header, so a write over a draft the caller never read is refused. */
+const draftStamp = (description: string) =>
+  z.iso
+    .datetime({ offset: true })
+    .transform((value) => new Date(value))
+    .optional()
+    .describe(description);
 
 const editorSecurity = [{ editorSession: [] }];
 const authErrors = { 401: error, 403: error, 503: error };
@@ -198,7 +213,8 @@ export const SCHEMAS = {
       "moves this page alone: its sub-pages keep their urls and stay beneath " +
       "it by `parent_id`, and nothing redirects from the old url. A page " +
       "that has ever been published keeps its url: changing it is refused " +
-      "with a 422 on `url`, even after the page is unpublished.",
+      "with a 422 on `url`, even after the page is unpublished. Saving " +
+      "publishes the page's draft, if it has one, and discards it.",
     tags: ["pages"],
     params: idParams,
     headers: z.object({
@@ -210,6 +226,11 @@ export const SCHEMAS = {
           "The `updated_at` this client last read. Omit to accept " +
             "whatever is stored.",
         ),
+      "if-draft-updated-at": draftStamp(
+        "The `updated_at` of the page's draft this client last read. Omit " +
+          "when it read none: a save discards the draft, so a different one " +
+          "is refused with a 409.",
+      ),
     }),
     body: SaveFields,
     security: editorSecurity,
@@ -219,6 +240,82 @@ export const SCHEMAS = {
       404: error,
       409: conflict,
       422: validationFailed,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  getPageDraft: {
+    summary: "A page's draft",
+    description:
+      "The working copy an editor has saved and not yet published: every " +
+      "field a save sends, and who saved it last, when. 404 when the page " +
+      "has no draft.",
+    tags: ["pages"],
+    params: idParams,
+    security: editorSecurity,
+    response: {
+      200: PageDraft,
+      400: error,
+      404: error,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  savePageDraft: {
+    summary: "Save a page's draft",
+    description:
+      "Requires an employee session and the editor's Origin header. " +
+      "Replaces the page's working copy. The page, and what the site serves, " +
+      "change only when the draft is published with `PUT /pages/{id}`. A " +
+      "draft is typed but not held to the page's rules until then, so " +
+      "half-finished work saves. Send the page's `updated_at` the copy was " +
+      "edited from as `base_updated_at`, and the draft you last read in " +
+      "`if-updated-at`: a page published since, or a draft other than " +
+      "that one, is refused with a 409, so no copy silently replaces " +
+      "another. 404 when there is no such page.",
+    tags: ["pages"],
+    params: idParams,
+    headers: z.object({
+      "if-updated-at": draftStamp(
+        "The `updated_at` of the draft this client last read. Omit when it " +
+          "read none.",
+      ),
+    }),
+    body: DraftWrite,
+    security: editorSecurity,
+    response: {
+      200: PageDraft,
+      400: error,
+      404: error,
+      409: conflict,
+      422: validationFailed,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  discardPageDraft: {
+    summary: "Discard a page's draft",
+    description:
+      "Requires an employee session and the editor's Origin header. The " +
+      "page keeps what was last published; 204 whether or not it had a " +
+      "draft. A draft other than the one in `if-updated-at` is refused " +
+      "with a 409 rather than thrown away unseen.",
+    tags: ["pages"],
+    params: idParams,
+    headers: z.object({
+      "if-updated-at": draftStamp(
+        "The `updated_at` of the draft this client last read. Omit when it " +
+          "read none.",
+      ),
+    }),
+    security: editorSecurity,
+    response: {
+      204: z.undefined(),
+      400: error,
+      409: conflict,
       500: error,
       ...authErrors,
     },

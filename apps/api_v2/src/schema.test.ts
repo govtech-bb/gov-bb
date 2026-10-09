@@ -13,7 +13,13 @@
 import { getTableColumns } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { categories, changeEvents, contentPages, searchChunks } from "./schema";
+import {
+  categories,
+  changeEvents,
+  contentPages,
+  pageDrafts,
+  searchChunks,
+} from "./schema";
 import { createTestDb } from "./test-db";
 import type { Database } from "./db";
 
@@ -39,6 +45,7 @@ const TABLES = {
   categories,
   content_pages: contentPages,
   change_events: changeEvents,
+  page_drafts: pageDrafts,
   search_chunks: searchChunks,
 };
 

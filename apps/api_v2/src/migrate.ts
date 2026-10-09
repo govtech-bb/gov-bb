@@ -20,6 +20,7 @@ import { SQL as MARKDOWN_PAGES_SQL } from "./migrations/002_markdown_pages";
 import { SQL as AUTH_SQL } from "./migrations/003_auth";
 import { SQL as GITHUB_SESSIONS_SQL } from "./migrations/004_github_sessions";
 import { SQL as HIERARCHY_SQL } from "./migrations/005_hierarchy_and_search";
+import { SQL as PAGE_DRAFTS_SQL } from "./migrations/006_page_drafts";
 import type { Database } from "./db";
 
 /** The migrations, in the order they apply. Each is idempotent by rule. */
@@ -29,6 +30,7 @@ const MIGRATIONS = [
   ["003_auth", AUTH_SQL],
   ["004_github_sessions", GITHUB_SESSIONS_SQL],
   ["005_hierarchy_and_search", HIERARCHY_SQL],
+  ["006_page_drafts", PAGE_DRAFTS_SQL],
 ] as const;
 
 /** Serialises instances that boot together; released when its transaction ends. */

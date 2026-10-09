@@ -122,6 +122,42 @@ export const SaveFields = PageFields.partial({ parent_id: true });
 /** What a save sends. */
 export type SaveFields = z.infer<typeof SaveFields>;
 
+/**
+ * Parses a page's working copy: every field a save sends, typed but not yet
+ * held to the page's rules. An editor autosaves half-finished work, such as
+ * an empty title; publishing it with `SaveFields` is what checks it.
+ */
+export const DraftFields = z.object({
+  url: z.string(),
+  category_id: z.guid().nullable(),
+  title: z.string(),
+  description: z.string().nullable(),
+  visibility: Visibility,
+  form_id: z.string().nullable(),
+  body_markdown: z.string(),
+  frontmatter: Frontmatter,
+});
+
+/** A page's working copy. */
+export type DraftFields = z.infer<typeof DraftFields>;
+
+/** What saving a draft sends: the working copy, and the page's `updated_at` it was edited from. */
+export const DraftWrite = DraftFields.extend({
+  base_updated_at: z.iso
+    .datetime({ offset: true })
+    .transform((value) => new Date(value)),
+});
+
+/** A page's working copy as the editor reads it back: the version it was edited from, who saved it last, and when. */
+export const PageDraft = DraftFields.extend({
+  base_updated_at: z.iso.datetime(),
+  updated_by: z.string(),
+  updated_at: z.iso.datetime(),
+});
+
+/** A page's working copy, as stored. */
+export type PageDraft = z.infer<typeof PageDraft>;
+
 /** A page's stored values, as a write sets them. */
 export interface PageValues {
   readonly url: string;

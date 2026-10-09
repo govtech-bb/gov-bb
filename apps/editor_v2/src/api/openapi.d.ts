@@ -942,7 +942,7 @@ export interface paths {
         };
         /**
          * Save a page
-         * @description Requires an employee session and the editor's Origin header. Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. A page that has ever been published keeps its url: changing it is refused with a 422 on `url`, even after the page is unpublished.
+         * @description Requires an employee session and the editor's Origin header. Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. A page that has ever been published keeps its url: changing it is refused with a 422 on `url`, even after the page is unpublished. Saving publishes the page's draft, if it has one, and discards it.
          */
         put: {
             parameters: {
@@ -950,6 +950,8 @@ export interface paths {
                 header?: {
                     /** @description The `updated_at` this client last read. Omit to accept whatever is stored. */
                     "if-updated-at"?: string;
+                    /** @description The `updated_at` of the page's draft this client last read. Omit when it read none: a save discards the draft, so a different one is refused with a 409. */
+                    "if-draft-updated-at"?: string;
                 };
                 path: {
                     id: string;
@@ -2071,6 +2073,465 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{id}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A page's draft
+         * @description The working copy an editor has saved and not yet published: every field a save sends, and who saved it last, when. 404 when the page has no draft.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            url: string;
+                            /** Format: uuid */
+                            category_id: string | null;
+                            title: string;
+                            description: string | null;
+                            /** @enum {string} */
+                            visibility: "public" | "preview" | "draft";
+                            form_id: string | null;
+                            body_markdown: string;
+                            frontmatter: {
+                                lede?: string;
+                                stage?: string;
+                                featured?: boolean;
+                                section?: string;
+                                service_type?: string;
+                                keywords?: string[];
+                                source_url?: string;
+                            };
+                            /** Format: date-time */
+                            base_updated_at: string;
+                            updated_by: string;
+                            /** Format: date-time */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        /**
+         * Save a page's draft
+         * @description Requires an employee session and the editor's Origin header. Replaces the page's working copy. The page, and what the site serves, change only when the draft is published with `PUT /pages/{id}`. A draft is typed but not held to the page's rules until then, so half-finished work saves. Send the page's `updated_at` the copy was edited from as `base_updated_at`, and the draft you last read in `if-updated-at`: a page published since, or a draft other than that one, is refused with a 409, so no copy silently replaces another. 404 when there is no such page.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description The `updated_at` of the draft this client last read. Omit when it read none. */
+                    "if-updated-at"?: string;
+                };
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        url: string;
+                        /** Format: uuid */
+                        category_id: string | null;
+                        title: string;
+                        description: string | null;
+                        /** @enum {string} */
+                        visibility: "public" | "preview" | "draft";
+                        form_id: string | null;
+                        body_markdown: string;
+                        frontmatter: {
+                            lede?: string;
+                            stage?: string;
+                            featured?: boolean;
+                            section?: string;
+                            service_type?: string;
+                            keywords?: string[];
+                            source_url?: string;
+                        };
+                        /** Format: date-time */
+                        base_updated_at: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            url: string;
+                            /** Format: uuid */
+                            category_id: string | null;
+                            title: string;
+                            description: string | null;
+                            /** @enum {string} */
+                            visibility: "public" | "preview" | "draft";
+                            form_id: string | null;
+                            body_markdown: string;
+                            frontmatter: {
+                                lede?: string;
+                                stage?: string;
+                                featured?: boolean;
+                                section?: string;
+                                service_type?: string;
+                                keywords?: string[];
+                                source_url?: string;
+                            };
+                            /** Format: date-time */
+                            base_updated_at: string;
+                            updated_by: string;
+                            /** Format: date-time */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "conflict";
+                            message: string;
+                            /** Format: uuid */
+                            documentId: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "validation_failed";
+                            message?: string;
+                            errors: {
+                                field: string;
+                                message: string;
+                            }[];
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Discard a page's draft
+         * @description Requires an employee session and the editor's Origin header. The page keeps what was last published; 204 whether or not it had a draft. A draft other than the one in `if-updated-at` is refused with a 409 rather than thrown away unseen.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description The `updated_at` of the draft this client last read. Omit when it read none. */
+                    "if-updated-at"?: string;
+                };
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "conflict";
+                            message: string;
+                            /** Format: uuid */
+                            documentId: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;

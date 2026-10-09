@@ -1,7 +1,6 @@
 /**
- * The Drizzle schema, matching migrations `001_init` to
- * `005_hierarchy_and_search` applied in order, table for table and column for
- * column.
+ * The Drizzle schema, matching migrations `001_init` to `006_page_drafts`
+ * applied in order, table for table and column for column.
  *
  * The DDL in `migrations/` stays the source of truth and this file is the
  * typed view of it that queries are written against. `schema.test.ts` asserts
@@ -28,7 +27,12 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { VISIBILITIES, type Frontmatter, type PageId } from "./modules/page";
+import {
+  VISIBILITIES,
+  type DraftFields,
+  type Frontmatter,
+  type PageId,
+} from "./modules/page";
 import { CHANGE_ACTIONS } from "./modules/page-history";
 
 export const pageVisibility = pgEnum("page_visibility", VISIBILITIES);
@@ -170,6 +174,26 @@ export const changeEvents = pgTable(
     ),
   ],
 );
+
+/**
+ * Each page's working copy, until it is published or discarded (migration
+ * 006). The site never reads it.
+ */
+export const pageDrafts = pgTable("page_drafts", {
+  pageId: uuid("page_id")
+    .primaryKey()
+    .references(() => contentPages.id, { onDelete: "cascade" })
+    .$type<PageId>(),
+  draft: jsonb("draft").$type<DraftFields>().notNull(),
+  baseUpdatedAt: timestamp("base_updated_at", {
+    withTimezone: true,
+    precision: 3,
+  }).notNull(),
+  updatedBy: text("updated_by").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, precision: 3 })
+    .notNull()
+    .defaultNow(),
+});
 
 /** BetterAuth's users (migration 003), as far as the change log names its actors. */
 export const authUsers = pgTable("auth_user", {
