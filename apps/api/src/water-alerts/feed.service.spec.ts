@@ -1,4 +1,5 @@
 import { HttpService } from "@nestjs/axios";
+import axios from "axios";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { Logger } from "@nestjs/common";
@@ -401,6 +402,12 @@ describe("FeedService", () => {
 describe("FeedService redirects (#2971)", () => {
   afterEach(() => vi.unstubAllEnvs());
 
+  const close = (server: Server) =>
+    new Promise<void>((resolve) => {
+      server.closeAllConnections();
+      server.close(() => resolve());
+    });
+
   const listen = (server: Server) =>
     new Promise<number>((resolve) =>
       server.listen(0, "127.0.0.1", () =>
@@ -427,12 +434,15 @@ describe("FeedService redirects (#2971)", () => {
     vi.stubEnv("BWA_FEED_URL", `http://127.0.0.1:${feedPort}/feed/`);
 
     try {
-      const service = new FeedService(new HttpService());
+      // proxy: false so an HTTP_PROXY on the runner can't route around the
+      // local servers and make this pass without testing anything.
+      const service = new FeedService(
+        new HttpService(axios.create({ proxy: false })),
+      );
       await expect(service.fetchOutages()).rejects.toThrow();
       expect(internalHits).toBe(0);
     } finally {
-      internal.close();
-      feedHost.close();
+      await Promise.all([close(internal), close(feedHost)]);
     }
   });
 });

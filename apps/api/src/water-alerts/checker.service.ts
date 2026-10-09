@@ -14,7 +14,7 @@ import {
   WaterSentAlertRepository,
 } from "./water-sent-alert.repository";
 import { WaterSubscriberRepository } from "./water-subscriber.repository";
-import { redactEmailsIn, redactPii } from "@/common/log-sanitize";
+import { redactEmailsIn } from "@/common/log-sanitize";
 
 // Public path the unsubscribe body-link resolves to (a landing page).
 const WATER_OUTAGES_PATH = "/health-and-emergency-services/water-outages";
@@ -245,11 +245,11 @@ export class CheckerService {
       );
       return true;
     } catch (err) {
-      // Never log a resident's address (#1640, #2971): the subscriber ID is
-      // for correlation, and the SES error is redacted too, as a rejection
-      // can name the address it rejected.
+      // Never log a resident's address (#1640, #2971), not even masked: the
+      // subscriber ID is enough to look them up. The SES error is redacted
+      // too, as a rejection can name the address it rejected.
       this.logger.warn(
-        `Alert email to subscriber ${subscriberId} (${redactPii(to)}) failed: ${redactEmailsIn((err as Error).message)}`,
+        `Alert email to subscriber ${subscriberId} failed: ${redactEmailsIn((err as Error).message)}`,
       );
       return false;
     }

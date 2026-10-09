@@ -35,9 +35,22 @@ describe("sanitizeForLog", () => {
     ["right-to-left isolate U+2067", 0x2067],
     ["pop directional isolate U+2069", 0x2069],
     ["next line (C1) U+0085", 0x85],
+    ["arabic letter mark U+061C", 0x061c],
+    ["zero-width space U+200B", 0x200b],
+    ["zero-width non-joiner U+200C", 0x200c],
+    ["word joiner U+2060", 0x2060],
+    ["invisible plus U+2064", 0x2064],
+    ["zero-width no-break space / BOM U+FEFF", 0xfeff],
+    ["interlinear annotation anchor U+FFF9", 0xfff9],
+    ["interlinear annotation terminator U+FFFB", 0xfffb],
     ["control sequence introducer (C1) U+009B", 0x9b],
   ])("replaces the %s with a space", (_, code) => {
     expect(sanitizeForLog(`a${String.fromCodePoint(code)}b`)).toBe("a b");
+  });
+
+  it("keeps the zero-width joiner, so joined emoji survive", () => {
+    const family = "👨\u200d👩\u200d👧";
+    expect(sanitizeForLog(family)).toBe(family);
   });
 
   it("leaves ordinary non-ASCII text untouched", () => {
@@ -99,6 +112,12 @@ describe("redactEmailsIn (#2971)", () => {
     expect(cleaned).toContain("b***@gov.bb");
     expect(cleaned).not.toContain("jane@");
     expect(cleaned).not.toContain("bob.smith");
+  });
+
+  it("masks the whole local part when it has an apostrophe", () => {
+    const cleaned = redactEmailsIn("rejected: mary.o'connor@example.com");
+    expect(cleaned).toContain("m***@example.com");
+    expect(cleaned).not.toContain("connor");
   });
 
   it("leaves text without an address as it was", () => {

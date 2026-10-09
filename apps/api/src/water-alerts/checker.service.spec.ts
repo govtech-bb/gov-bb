@@ -296,7 +296,7 @@ describe("CheckerService.scheduled", () => {
 describe("CheckerService send-failure log (#2971)", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it("logs the subscriber ID and a masked address, never the address itself", async () => {
+  it("logs the subscriber ID, never the address itself", async () => {
     const warn = vi
       .spyOn(Logger.prototype, "warn")
       .mockImplementation(() => undefined);
@@ -318,7 +318,9 @@ describe("CheckerService send-failure log (#2971)", () => {
 
     const line = warn.mock.calls.map(([m]) => String(m)).join("\n");
     expect(line).toContain("subscriber s1");
-    expect(line).toContain("j***@example.com");
+    // The ID is enough to look the subscriber up; even a masked address next
+    // to it can be near-identifying on a small domain.
+    expect(line).not.toContain("(j***@");
     expect(line).not.toContain("jane@");
   });
 });
