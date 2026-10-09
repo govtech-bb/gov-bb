@@ -129,7 +129,8 @@ function PageDraft({ active, details, tools, notice, saveStatus }: { active: boo
   );
 }
 
-function PagePreviewSurface({ source }: { source: string }) {
+/** A read-only page preview whose links don't navigate away from the editor. */
+export function PagePreviewSurface({ source }: { source: string }) {
   return (
     <div
       className="page-document-preview"

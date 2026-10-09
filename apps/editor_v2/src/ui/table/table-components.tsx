@@ -16,7 +16,7 @@ import { check, list, option, popup } from "../select";
 import { useTableContext } from "./hook";
 
 // The global ring (teal outline over an ink edge) for a label whose visually hidden control has focus.
-const labelFocus =
+export const labelFocus =
   "has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus has-[:focus-visible]:shadow-[0_0_0_2px_var(--color-ink)]";
 
 /** Narrow tables fold secondary columns into the leading cell instead of scrolling them away. */
