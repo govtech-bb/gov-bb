@@ -171,6 +171,17 @@ export default function SubmissionConfirmation({
         </div>
       )}
 
+      {/* Print the confirmation (submission ID, next steps, contact) for
+          citizens who need a paper copy. Sits after the recipe's markdown and
+          before the contact details. The button itself is hidden in the
+          printed output via the `form-page__print` @media print rule in
+          govtech.css. */}
+      <div className="form-page__print">
+        <Button variant="secondary" onClick={() => window.print()}>
+          Print
+        </Button>
+      </div>
+
       {contactDetails && (
         <div className="form-page__contact">
           <Text>If you need help with your application, contact:</Text>
@@ -212,17 +223,6 @@ export default function SubmissionConfirmation({
           </div>
         </div>
       )}
-
-      {/* Print the confirmation (submission ID, next steps, contact) for
-          citizens who need a paper copy. Sits after all the printable content
-          (including the recipe's markdown) and before the feedback invitation.
-          The button itself is hidden in the printed output via the
-          `form-page__print` @media print rule in govtech.css. */}
-      <div className="form-page__print">
-        <Button variant="secondary" onClick={() => window.print()}>
-          Print
-        </Button>
-      </div>
 
       {/* Only invite feedback when a target is provided. The exit survey's own
           confirmation passes no feedbackUrl, so it never links to itself. */}
