@@ -1930,21 +1930,22 @@
     },
     {
       "stepId": "declaration",
-      "title": "Declaration",
+      "title": "Confirm and submit your application",
       "elements": [
         {
-          "ref": "components/generic-textarea",
+          "ref": "components/confirmation",
           "overrides": {
-            "ui": {
-              "width": "long",
-              "hideLabel": false
-            },
-            "label": "Camp rules",
-            "fieldId": "camp-rules",
-            "isHidden": true,
+            "label": "Confirmation",
+            "fieldId": "declaration-confirmed",
+            "options": [
+              {
+                "label": "I confirm that the information I have provided is true and correct to the best of my knowledge.",
+                "value": "confirmed"
+              }
+            ],
             "validations": {
               "required": {
-                "error": "Camp rules are required",
+                "error": "You must confirm the declaration to continue.",
                 "value": true
               }
             }
@@ -1953,18 +1954,21 @@
         {
           "ref": "components/confirmation",
           "overrides": {
-            "label": "Confirmation",
-            "fieldId": "declaration-confirmed",
+            "label": "Parent or guardian confirmation",
+            "fieldId": "parent-guardian-confirmed",
+            "ui": {
+              "hideLabel": true
+            },
             "options": [
               {
-                "label": "I declare that:\n\n* the information I gave is correct\n* I am the child's parent or guardian\n* I understand the information may be checked\n* I have read the camp rules\n* I have talked with the child about the camp rules\n* I understand applying does not mean the child has a place at camp\n* I understand the child may have to leave camp if they break the camp rules or put anyone at risk",
+                "label": "I confirm that:\n\n* I am the child's parent or guardian\n* I understand the information may be checked\n* I have read the camp rules\n* I have talked with the child about the camp rules\n* I understand applying does not mean the child has a place at camp\n* I understand the child may have to leave camp if they break the camp rules or put anyone at risk",
                 "value": "confirmed"
               }
             ],
             "validations": {
               "required": {
-                "error": "You must confirm before submitting the application",
-                "value": true
+                "value": true,
+                "error": "You must confirm the parent or guardian statements to continue."
               }
             }
           }
@@ -1980,5 +1984,5 @@
     }
   ],
   "createdAt": "2026-06-12T11:02:19.069Z",
-  "updatedAt": "2026-10-05T22:01:06.000Z"
+  "updatedAt": "2026-10-09T14:30:00.000Z"
 }

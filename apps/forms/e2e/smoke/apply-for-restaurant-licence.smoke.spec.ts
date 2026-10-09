@@ -508,7 +508,7 @@ export async function fillFloorPlan(
 /** Tick the single declaration checkbox and submit for real. */
 async function confirmAndSubmit(page: Page): Promise<void> {
   const step = expectStep(page, "declaration");
-  await expect(page.locator("h1")).toContainText("Declaration");
+  await expect(page.locator("h1")).toContainText("Confirm and submit");
   await page
     .locator(`fieldset[id="${step}_declaration-confirmed"]`)
     .getByRole("checkbox")

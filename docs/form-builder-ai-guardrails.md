@@ -77,7 +77,7 @@ These guardrail rules define how the AI selects components **deterministically**
 | `blocks/physical-address`          | address, country, parish, town, postcode                                                          | Form collects a physical address             |
 | `blocks/emergency-contact-details` | first-name, last-name, home-telephone, telephone, email, address, country, parish, town, postcode | Form collects emergency contact info         |
 | `blocks/proving-your-identity`     | national-id-number, passport-number, national-insurance-number, tamis-number                      | Form collects identity documents             |
-| `blocks/applicant-declaration`     | confirmation                                                                                      | Form has a declaration checkbox              |
+| `blocks/applicant-declaration`     | confirmation                                                                                      | Never for the declaration step (Rule 17)     |
 | `blocks/supporting-documents`      | upload-document                                                                                   | Form requires document uploads               |
 | `blocks/additional-information`    | additional-details                                                                                | Form has a free-text "anything else" section |
 

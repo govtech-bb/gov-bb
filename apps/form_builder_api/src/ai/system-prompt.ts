@@ -132,7 +132,7 @@ When a form section matches a pre-built block, use the block ref instead of indi
 | \`blocks/physical-address\` | address, country, parish, town, postcode | Form collects a physical address |
 | \`blocks/emergency-contact-details\` | first-name, last-name, home-telephone, telephone, email, address, country, parish, town, postcode | Form collects emergency contact info |
 | \`blocks/proving-your-identity\` | national-id-number, passport-number, national-insurance-number, tamis-number | Form collects identity documents |
-| \`blocks/applicant-declaration\` | confirmation | Form has a declaration/agreement checkbox |
+| \`blocks/applicant-declaration\` | confirmation | Never for the declaration step: use the standard checkbox (Rule 17) |
 | \`blocks/supporting-documents\` | upload-document | Form requires document uploads |
 | \`blocks/additional-information\` | additional-details | Form has a free-text "anything else" section |
 
@@ -330,8 +330,8 @@ The "check-your-answers" step is an auto-managed review screen — the platform 
 ### Rule 16: EVERY id MUST be kebab-case
 Every \`stepId\` and \`fieldId\` MUST be kebab-case: lowercase letters, digits and hyphens only, matching the pattern \`^[a-z][a-z0-9]*(-[a-z0-9]+)*$\` (a leading lowercase letter, then hyphen-separated lowercase/digit segments — e.g. \`applicant-first-name\`, \`step-1\`). \`snake_case\` and \`camelCase\` ids are REJECTED by validation and the recipe will not save. This applies to EVERY id position: \`overrides.fieldId\`, block-override keys (the keys of a block's \`overrides\` object), and behaviour/validation id references (\`targetFieldId\`, \`targetStepId\`, \`referenceFieldId\`). Never emit an underscore or a capital letter in any id — write \`date_of_birth\` as \`date-of-birth\` and \`dateOfBirth\` as \`date-of-birth\`.
 
-### Rule 17: The declaration step contains EXACTLY ONE element
-The \`declaration\` step must contain exactly one element: the \`components/confirmation\` checkbox with fieldId \`declaration-confirmed\`, label \`Declaration\` and a required validation (see Declaration Checkbox Pattern below). Never add any other field to the declaration step — no declaration date, signature, printed name, witness or similar. If the paper form collects such values alongside its declaration, place them on a regular step BEFORE the declaration step.
+### Rule 17: The declaration step contains the standard declaration checkbox
+The \`declaration\` step is titled \`Confirm and submit your application\`. The declaration step contains the standard declaration checkbox: the \`components/confirmation\` checkbox with fieldId \`declaration-confirmed\`, label \`Declaration\`, the standard statement and a required validation (see Declaration Checkbox Pattern below). Never change the standard statement. The only other element allowed on the step is a required \`components/confirmation\` acknowledgement for something genuinely specific to the service (for example, consent to a named check, or a rule the applicant must follow) — never a generic warning about false information or consent to verification. Never add a declaration date, signature, printed name, witness or similar to the declaration step. If the paper form collects such values alongside its declaration, place them on a regular step BEFORE the declaration step.
 
 ### Rule 18: EVERY recipe MUST default to \`meta.visibility: "draft"\`
 Every generated recipe MUST include a top-level \`"meta": {"visibility": "draft"}\` object (as shown in the Recipe JSON Schema). A newly generated form is unreviewed, so it must NOT launch to the public by accident — \`draft\` keeps it hidden behind the operator preview link until a human sets it to \`public\`. Never emit \`"visibility": "public"\` or omit \`meta\`; the only correct value for a generated recipe is \`draft\`.
@@ -440,7 +440,7 @@ A checkbox accordion carries its categories in \`groups\`, with the required rul
 - blocks/physical-address — address, country, parish, town, postcode
 - blocks/emergency-contact-details — first-name, last-name, home-telephone, telephone, email, address, country, parish, town, postcode
 - blocks/proving-your-identity — national-id-number, passport-number, national-insurance-number, tamis-number
-- blocks/applicant-declaration — confirmation
+- blocks/applicant-declaration — confirmation (never for the declaration step: use the standard checkbox, Rule 17)
 - blocks/supporting-documents — upload-document
 - blocks/additional-information — additional-details
 
@@ -703,10 +703,10 @@ The two conditions on a per-item field combine with AND, so it appears only when
 Only do this when one answer genuinely covers every item in the common case (opening hours, a fee per class of licence). When the answers normally differ per item — each child's date of birth, each vehicle's registration number — the gate is a wasted question: author the per-item fields directly.
 
 ## Declaration Checkbox Pattern
-The declaration step contains EXACTLY ONE element — this confirmation checkbox, nothing else (Rule 17). The fieldId is always \`declaration-confirmed\`, the label is always \`Declaration\`, and it is always required:
+Every form uses this standard declaration checkbox, exactly as written (Rule 17). The fieldId is always \`declaration-confirmed\`, the label is always \`Declaration\`, the statement in options[0].label is always the sentence below, and it is always required:
 \`\`\`json
-{"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "Full declaration statement text shown next to checkbox", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to continue."}}}}
+{"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "I confirm that the information I have provided is true and correct to the best of my knowledge.", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to continue."}}}}
 \`\`\`
-Put the full statement in options[0].label (shown NEXT TO the checkbox), not in label (which is the heading above). Any other values the paper form's declaration section collects (date, signature, printed name) belong on a regular step before the declaration, never in the declaration step itself.
+Do not copy the paper form's declaration wording into this statement. If the service genuinely needs an extra acknowledgement, add it as a second required \`components/confirmation\` on the step with its own kebab-case fieldId, \`"ui": {"hideLabel": true}\` and a specific error. When editing an existing form, keep any existing acknowledgement checkbox on the declaration step as it is. Any other values the paper form's declaration section collects (date, signature, printed name) belong on a regular step before the declaration, never in the declaration step itself.
 
 `;

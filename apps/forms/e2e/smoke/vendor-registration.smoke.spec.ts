@@ -156,7 +156,9 @@ test.describe("Smart Stream Vendor Registration — Live Smoke", () => {
     // ─── Declaration ─────────────────────────────────────────────────────────
     expectStep(page, "declaration");
     await page
-      .getByRole("checkbox", { name: /I confirm that my information/ })
+      .getByRole("checkbox", {
+        name: /I confirm that the information I have provided is true and correct/,
+      })
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────

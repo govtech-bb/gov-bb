@@ -811,7 +811,7 @@ Most government forms start with personal information:
 ```json
 {
   "stepId": "declaration",
-  "title": "Declaration",
+  "title": "Confirm and submit your application",
   "elements": [
     {
       "ref": "components/confirmation",
@@ -820,14 +820,14 @@ Most government forms start with personal information:
         "label": "Declaration",
         "options": [
           {
-            "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+            "label": "I confirm that the information I have provided is true and correct to the best of my knowledge.",
             "value": "confirmed"
           }
         ],
         "validations": {
           "required": {
             "value": true,
-            "error": "You must confirm the declaration to continue"
+            "error": "You must confirm the declaration to continue."
           }
         }
       }
@@ -837,6 +837,33 @@ Most government forms start with personal information:
 ```
 
 **Important:** The `label` field becomes the heading above the checkbox. The `options[0].label` is the text shown NEXT TO the checkbox. Put the full declaration statement in `options[0].label`, not in `label`. The renderer will auto-display the applicant name and date above the checkbox.
+
+Do not change the title, the checkbox text or the error. If the service has a legal or operational need for one more point, add a separate `components/confirmation` on the same step. Give it its own `fieldId` and `ui.hideLabel`. Do not add a general consent to verification. Do not add a general warning about false information. Refer to ADR 0077.
+
+For example, an acknowledgement added after the declaration element:
+
+```json
+{
+  "ref": "components/confirmation",
+  "overrides": {
+    "fieldId": "authority-confirmed",
+    "label": "Authority to apply",
+    "options": [
+      {
+        "label": "I confirm that I am authorised to submit this application.",
+        "value": "confirmed"
+      }
+    ],
+    "validations": {
+      "required": {
+        "value": true,
+        "error": "You must confirm you are authorised to submit this application."
+      }
+    },
+    "ui": { "hideLabel": true }
+  }
+}
+```
 
 ### Pattern: Submission Confirmation Step (REQUIRED)
 
@@ -1136,9 +1163,9 @@ VALUES (
       },
       {
         "stepId": "declaration",
-        "title": "Declaration",
+        "title": "Confirm and submit your application",
         "elements": [
-          {"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirm", "label": "Declaration", "options": [{"label": "I declare that the information provided in this application is true and correct to the best of my knowledge.", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to proceed"}}}}
+          {"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "I confirm that the information I have provided is true and correct to the best of my knowledge.", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to continue."}}}}
         ]
       },
       {

@@ -517,12 +517,16 @@ export async function fillFloorPlan(page: Page): Promise<void> {
   await advance(page, step);
 }
 
-/** Tick the single declaration checkbox and submit for real. */
+/** Tick the declaration and authority checkboxes and submit for real. */
 async function confirmAndSubmit(page: Page): Promise<void> {
   const step = expectStep(page, "declaration");
-  await expect(page.locator("h1")).toContainText("Declaration");
+  await expect(page.locator("h1")).toContainText("Confirm and submit");
   await page
     .locator(`fieldset[id="${step}_declaration-confirmed"]`)
+    .getByRole("checkbox")
+    .check();
+  await page
+    .locator(`fieldset[id="${step}_authority-confirmed"]`)
     .getByRole("checkbox")
     .check();
 

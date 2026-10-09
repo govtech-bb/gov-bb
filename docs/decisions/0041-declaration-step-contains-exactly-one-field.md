@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-06-05)
+Superseded by [ADR 0077](./0077-declaration-uses-the-standard-statement-and-separate-acknowledgements.md) (2026-10-08). Accepted (2026-06-05).
 
 ## Context
 
