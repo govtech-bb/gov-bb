@@ -6,7 +6,7 @@ import type { EmployeeGate } from "../services/editor-access";
 import type { EditorIndex } from "../services/editor-index";
 import type { PageEditing } from "../services/page-editing";
 import { SCHEMAS } from "./contracts";
-import { EDITOR_READ, rejected, storageFailed } from "./responses";
+import { EDITOR_READ, locked, rejected, storageFailed } from "./responses";
 
 /** The editor sends the exact millisecond timestamp from its last read. */
 export const IF_UPDATED_AT = "if-updated-at";
@@ -215,6 +215,8 @@ export const editorRoutes: FastifyPluginAsyncZod<{
             message: saved.error.message,
             documentId: saved.error.documentId,
           });
+        case "PageLocked":
+          return reply.status(423).send(locked(saved.error));
         case "ContentStoreUnavailable":
           return reply
             .status(500)
@@ -268,6 +270,8 @@ export const editorRoutes: FastifyPluginAsyncZod<{
             message: saved.error.message,
             documentId: saved.error.documentId,
           });
+        case "PageLocked":
+          return reply.status(423).send(locked(saved.error));
         case "ContentStoreUnavailable":
           return reply
             .status(500)
@@ -287,6 +291,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
       const discarded = await editing.discardDraft(
         request.params.id,
         request.headers[IF_UPDATED_AT] ?? null,
+        actor(request),
       );
       if (discarded.ok) return reply.status(204).send();
       switch (discarded.error._tag) {
@@ -296,6 +301,8 @@ export const editorRoutes: FastifyPluginAsyncZod<{
             message: discarded.error.message,
             documentId: discarded.error.documentId,
           });
+        case "PageLocked":
+          return reply.status(423).send(locked(discarded.error));
         case "ContentStoreUnavailable":
           return reply
             .status(500)
@@ -308,6 +315,66 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     },
   });
   editor.route({
+    method: "GET",
+    url: "/pages/:id/lock",
+    schema: SCHEMAS.getPageLock,
+    handler: async (request, reply) => {
+      const found = await editing.editor(request.params.id, actor(request));
+      if (!found.ok)
+        return reply.status(500).send(storageFailed(request.log, found.error));
+      return (
+        found.value ??
+        reply.status(404).send({
+          error: "not_found",
+          message: `Nobody is editing page ${request.params.id}`,
+        })
+      );
+    },
+  });
+  editor.route({
+    method: "PUT",
+    url: "/pages/:id/lock",
+    schema: SCHEMAS.editPage,
+    handler: async (request, reply) => {
+      const claimed = await editing.edit(
+        request.params.id,
+        actor(request),
+        request.query.take ?? false,
+      );
+      if (claimed.ok) return claimed.value;
+      switch (claimed.error._tag) {
+        case "PageLocked":
+          return reply.status(423).send(locked(claimed.error));
+        case "PageNotFound":
+          return reply
+            .status(404)
+            .send({ error: "not_found", message: claimed.error.message });
+        case "ContentStoreUnavailable":
+          return reply
+            .status(500)
+            .send(storageFailed(request.log, claimed.error));
+        default: {
+          const unexpected: never = claimed.error;
+          throw unexpected;
+        }
+      }
+    },
+  });
+  editor.route({
+    method: "DELETE",
+    url: "/pages/:id/lock",
+    schema: SCHEMAS.stopEditingPage,
+    handler: async (request, reply) => {
+      const released = await editing.stopEditing(
+        request.params.id,
+        actor(request),
+      );
+      return released.ok
+        ? reply.status(204).send()
+        : reply.status(500).send(storageFailed(request.log, released.error));
+    },
+  });
+  editor.route({
     method: "DELETE",
     url: "/pages/:id",
     schema: SCHEMAS.deletePage,
@@ -317,6 +384,8 @@ export const editorRoutes: FastifyPluginAsyncZod<{
       switch (deleted.error._tag) {
         case "PageRejected":
           return reply.status(422).send(rejected(deleted.error));
+        case "PageLocked":
+          return reply.status(423).send(locked(deleted.error));
         case "ContentStoreUnavailable":
           return reply
             .status(500)

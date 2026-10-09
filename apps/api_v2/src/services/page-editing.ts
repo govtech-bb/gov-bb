@@ -24,6 +24,13 @@ import {
   type PageSnapshot,
   type PageVersion,
 } from "../modules/page-history";
+import {
+  describeLock,
+  lockFor,
+  PageLocked,
+  type PageLock,
+  type StoredLock,
+} from "../modules/page-lock";
 import { err, ok, type Result } from "../modules/result";
 import { chunkMarkdown, type SearchChunk } from "../modules/search-text";
 
@@ -127,6 +134,21 @@ export interface PageRecords {
   ): Promise<Result<PageDraft, PageNotFound | ContentStoreUnavailable>>;
   /** Delete a page's working copy, if it has one. */
   deleteDraft(id: PageId): Promise<Result<void, ContentStoreUnavailable>>;
+  /** A page's edit claim, lapsed or not, or null. */
+  lockOf(
+    id: PageId,
+  ): Promise<Result<StoredLock | null, ContentStoreUnavailable>>;
+  /** Give a page's claim to `holder`, as of `at`. */
+  writeLock(
+    id: PageId,
+    holder: Employee,
+    at: Date,
+  ): Promise<Result<StoredLock, ContentStoreUnavailable>>;
+  /** Drop a page's claim if `holderId` holds it. */
+  deleteLock(
+    id: PageId,
+    holderId: string,
+  ): Promise<Result<void, ContentStoreUnavailable>>;
 }
 
 /** The editor's page operations: reads of any visibility, and writes that commit with their search text and audit entry or not at all. */
@@ -206,7 +228,11 @@ export class PageEditing {
   ): Promise<
     Result<
       PageDocument,
-      PageRejected | PageNotFound | PageConflict | ContentStoreUnavailable
+      | PageRejected
+      | PageNotFound
+      | PageConflict
+      | PageLocked
+      | ContentStoreUnavailable
     >
   > {
     return this.records.atomically(async (records) => {
@@ -214,6 +240,8 @@ export class PageEditing {
       if (!locked.ok) return locked;
       const current = locked.value;
       if (current === null) return err(new PageNotFound(id));
+      const claimed = await claim(records, id, actor, this.clock());
+      if (!claimed.ok) return claimed;
       if (
         expectedUpdatedAt !== null &&
         current.updated_at !== expectedUpdatedAt.toISOString()
@@ -271,7 +299,8 @@ export class PageEditing {
    * Keep an editor's working copy; the page, and what the site serves, change only when it is
    * published. It is refused when the page has been published since `base`, the version the copy
    * was edited from, or when the stored draft is not `expectedDraft`, the one the caller last read
-   * (null: none), so no editor's copy silently replaces another's.
+   * (null: none), so no editor's copy silently replaces another's. Saving claims the page, and
+   * someone else's claim refuses it while it lasts.
    */
   saveDraft(
     id: PageId,
@@ -280,20 +309,26 @@ export class PageEditing {
     expectedDraft: Date | null,
     actor: Employee,
   ): Promise<
-    Result<PageDraft, PageNotFound | PageConflict | ContentStoreUnavailable>
+    Result<
+      PageDraft,
+      PageNotFound | PageConflict | PageLocked | ContentStoreUnavailable
+    >
   > {
     return this.records.atomically(async (records) => {
       // The page row serialises every write to a page and its draft.
       const locked = await records.lock(id);
       if (!locked.ok) return locked;
       if (locked.value === null) return err(new PageNotFound(id));
+      const now = this.clock();
+      const claimed = await claim(records, id, actor, now);
+      if (!claimed.ok) return claimed;
       if (locked.value.updated_at !== base.toISOString())
         return err(new PageConflict(id));
       const drafted = await records.draftOf(id);
       if (!drafted.ok) return drafted;
       if (!draftAsRead(drafted.value, expectedDraft))
         return err(new PageConflict(id));
-      return records.writeDraft(id, draft, base, actor.id, this.clock());
+      return records.writeDraft(id, draft, base, actor.id, now);
     });
   }
 
@@ -304,10 +339,16 @@ export class PageEditing {
   discardDraft(
     id: PageId,
     expectedDraft: Date | null,
-  ): Promise<Result<void, PageConflict | ContentStoreUnavailable>> {
+    actor: Employee,
+  ): Promise<
+    Result<void, PageConflict | PageLocked | ContentStoreUnavailable>
+  > {
     return this.records.atomically(async (records) => {
-      const locked = await records.lock(id);
-      if (!locked.ok) return locked;
+      const page = await records.lock(id);
+      if (!page.ok) return page;
+      if (page.value === null) return ok(undefined);
+      const claimed = await claim(records, id, actor, this.clock());
+      if (!claimed.ok) return claimed;
       const drafted = await records.draftOf(id);
       if (!drafted.ok) return drafted;
       if (drafted.value === null) return ok(undefined);
@@ -317,12 +358,57 @@ export class PageEditing {
     });
   }
 
+  /** Who is editing the page, as the caller sees it; null when nobody is. */
+  async editor(
+    id: PageId,
+    actor: Employee,
+  ): Promise<Result<PageLock | null, ContentStoreUnavailable>> {
+    const stored = await this.records.lockOf(id);
+    return stored.ok ? ok(lockFor(stored.value, actor, this.clock())) : stored;
+  }
+
+  /** Start or go on editing the page; someone else's claim refuses it until it lapses, unless the caller takes over. */
+  edit(
+    id: PageId,
+    actor: Employee,
+    takeOver: boolean,
+  ): Promise<
+    Result<PageLock, PageLocked | PageNotFound | ContentStoreUnavailable>
+  > {
+    return this.records.atomically(async (records) => {
+      const page = await records.lock(id);
+      if (!page.ok) return page;
+      if (page.value === null) return err(new PageNotFound(id));
+      const now = this.clock();
+      const written = takeOver
+        ? await records.writeLock(id, actor, now)
+        : await claim(records, id, actor, now);
+      return written.ok ? ok(describeLock(written.value, actor)) : written;
+    });
+  }
+
+  /** Stop editing the page: the caller's claim goes, and anyone else's stays. */
+  stopEditing(
+    id: PageId,
+    actor: Employee,
+  ): Promise<Result<void, ContentStoreUnavailable>> {
+    return this.records.deleteLock(id, actor.id);
+  }
+
   /** Delete a page and audit it; one with sub-pages is refused, and one already gone is not an error. */
   delete(
     id: PageId,
     actor: Employee,
-  ): Promise<Result<void, PageRejected | ContentStoreUnavailable>> {
+  ): Promise<
+    Result<void, PageRejected | PageLocked | ContentStoreUnavailable>
+  > {
     return this.records.atomically(async (records) => {
+      const page = await records.lock(id);
+      if (!page.ok) return page;
+      if (page.value !== null) {
+        const claimed = await claim(records, id, actor, this.clock());
+        if (!claimed.ok) return claimed;
+      }
       const removed = await records.remove(id);
       if (!removed.ok) return removed;
       if (removed.value === null) return ok(undefined);
@@ -339,6 +425,23 @@ export class PageEditing {
 /** Whether the stored draft is the one a caller last read: the same version, or none for none. */
 const draftAsRead = (draft: PageDraft | null, expected: Date | null) =>
   (draft?.updated_at ?? null) === (expected?.toISOString() ?? null);
+
+/**
+ * Claim the page for `actor`, or keep their claim fresh: every write is
+ * editing. Someone else's claim refuses the write while it lasts.
+ */
+async function claim(
+  records: PageRecords,
+  id: PageId,
+  actor: Employee,
+  now: Date,
+): Promise<Result<StoredLock, PageLocked | ContentStoreUnavailable>> {
+  const stored = await records.lockOf(id);
+  if (!stored.ok) return stored;
+  const lock = lockFor(stored.value, actor, now);
+  if (lock && !lock.mine) return err(new PageLocked(lock));
+  return records.writeLock(id, actor, now);
+}
 
 /**
  * Where a write puts a page: beneath its parent and in its parent's category
