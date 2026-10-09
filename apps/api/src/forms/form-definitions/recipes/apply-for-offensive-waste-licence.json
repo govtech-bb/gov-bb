@@ -1,11 +1,303 @@
 {
   "formId": "apply-for-offensive-waste-licence",
-  "title": "Apply for an offensive waste licence with Environmental Health",
-  "description": "Apply for or renew a licence to carry out work that may produce fumes or strong smells.",
+  "title": "Apply to Environmental Health for an offensive trade licence to do work that may cause fumes, smells or waste",
+  "description": "Apply for or renew an offensive trade licence for work that may cause fumes, smells or waste.",
   "steps": [
     {
+      "stepId": "application-type",
+      "title": "About your application",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "application-type",
+            "label": "What are you applying to do?",
+            "validations": {
+              "required": {
+                "error": "Select what you are applying to do.",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Apply for a new licence",
+                "value": "new"
+              },
+              {
+                "label": "Renew your licence",
+                "value": "renewal"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "renewal-check",
+      "title": "Check if you can renew your licence",
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "application-type",
+          "targetFieldId": "application-type",
+          "operator": "equal",
+          "value": "renewal"
+        }
+      ],
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "same-licence-holder",
+            "label": "Is this licence still for the same person, business or organisation?",
+            "validations": {
+              "required": {
+                "error": "Select whether this licence is still for the same person, business or organisation.",
+                "value": true
+              },
+              "pattern": {
+                "error": "You cannot renew this licence if it is now for a different person, business or organisation. Go back and select Apply for a new licence.",
+                "value": "^yes$"
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "address-changed",
+            "label": "Has the address where you do the work changed?",
+            "validations": {
+              "required": {
+                "error": "Select whether the work address has changed.",
+                "value": true
+              },
+              "pattern": {
+                "error": "You cannot renew this licence if the address where you do the work has changed. Go back and select Apply for a new licence.",
+                "value": "^no$"
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "building-changes",
+            "label": "Have you changed the building, or do you plan to?",
+            "validations": {
+              "required": {
+                "error": "Select whether you have changed the building or plan to.",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "building-changes-description",
+            "label": "What changes have you made, or do you plan to make?",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "building-changes",
+                "targetStepId": "renewal-check",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "ui": {
+              "width": "long"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "current-licence",
+      "title": "What is your current licence number?",
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "application-type",
+          "targetFieldId": "application-type",
+          "operator": "equal",
+          "value": "renewal"
+        }
+      ],
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "current-licence-number",
+            "label": "Licence number",
+            "validations": {
+              "required": {
+                "error": "Enter your current licence number.",
+                "value": true
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "applying-for",
+      "title": "Who are you applying for?",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "fieldId": "applying-for",
+            "label": "Who are you applying for?",
+            "validations": {
+              "required": {
+                "error": "Select who you are applying for.",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yourself",
+                "value": "yourself"
+              },
+              {
+                "label": "Another person",
+                "value": "another-person"
+              },
+              {
+                "label": "A business or organisation",
+                "value": "business"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "has-permission",
+            "label": "Do you have permission to apply for this licence?",
+            "validations": {
+              "required": {
+                "error": "Select whether you have permission to apply for this licence.",
+                "value": true
+              },
+              "pattern": {
+                "error": "You need permission from the person, business or organisation before you can apply.",
+                "value": "^yes$"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-for",
+                "targetStepId": "applying-for",
+                "operator": "in",
+                "value": [
+                  "another-person",
+                  "business"
+                ]
+              }
+            ],
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "relationship-to-licence-holder",
+            "label": "What is your relationship to the person or business?",
+            "conditionalLabel": [
+              {
+                "targetStepId": "applying-for",
+                "targetFieldId": "applying-for",
+                "operator": "equal",
+                "value": "another-person",
+                "label": "What is your relationship to the person?"
+              },
+              {
+                "targetStepId": "applying-for",
+                "targetFieldId": "applying-for",
+                "operator": "equal",
+                "value": "business",
+                "label": "What is your relationship to the business or organisation?"
+              }
+            ],
+            "hint": "For example, owner, director, manager, employee or representative.",
+            "validations": {
+              "required": {
+                "error": "Enter your relationship to the person or business.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-for",
+                "targetStepId": "applying-for",
+                "operator": "in",
+                "value": [
+                  "another-person",
+                  "business"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
       "stepId": "your-details",
-      "title": "About you",
+      "title": "Your details",
       "behaviours": [],
       "elements": [
         {
@@ -22,6 +314,7 @@
         {
           "ref": "components/middle-name",
           "overrides": {
+            "hint": "Enter all middle names in order.",
             "validations": {
               "required": {
                 "value": false
@@ -41,32 +334,25 @@
           }
         },
         {
-          "ref": "components/address",
+          "ref": "components/generic-tel",
           "overrides": {
-            "fieldId": "address-line-1",
-            "label": "Street address line 1",
+            "fieldId": "telephone-number",
+            "hint": "Enter a Barbados or international number.",
             "validations": {
               "required": {
-                "error": "Enter street address line 1.",
+                "error": "Telephone number is required",
                 "value": true
               }
-            }
-          }
-        },
-        {
-          "ref": "components/address",
-          "overrides": {
-            "fieldId": "address-line-2",
-            "label": "Street address line 2",
-            "validations": {
-              "required": {
-                "value": false
+            },
+            "behaviours": [
+              {
+                "type": "fieldArray",
+                "min": 1,
+                "max": 4,
+                "addAnotherLabel": "Add another telephone number"
               }
-            }
+            ]
           }
-        },
-        {
-          "ref": "components/parish"
         },
         {
           "ref": "components/email",
@@ -81,43 +367,171 @@
           }
         },
         {
-          "ref": "components/generic-tel",
+          "ref": "components/address",
           "overrides": {
-            "fieldId": "telephone-number",
+            "fieldId": "address-line-1",
+            "label": "Address line 1",
             "validations": {
               "required": {
-                "error": "Telephone number is required",
+                "error": "Enter address line 1.",
                 "value": true
               }
             }
           }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "address-line-2",
+            "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish"
         }
       ]
     },
     {
-      "stepId": "application-type",
-      "title": "Your application",
-      "behaviours": [],
+      "stepId": "licence-holder-person",
+      "title": "Tell us about the person you are applying for",
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "applying-for",
+          "targetFieldId": "applying-for",
+          "operator": "equal",
+          "value": "another-person"
+        }
+      ],
       "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "person-first-name",
+            "label": "First name",
+            "validations": {
+              "required": {
+                "error": "Enter their first name.",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "fieldId": "person-middle-name",
+            "label": "Middle name",
+            "hint": "Enter all middle names in order.",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "person-last-name",
+            "label": "Last name",
+            "validations": {
+              "required": {
+                "error": "Enter their last name.",
+                "value": true
+              }
+            }
+          }
+        },
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "application-type",
-            "label": "Are you applying for a new licence or renewing one?",
+            "fieldId": "person-same-address",
+            "label": "Is their address the same as yours?",
             "validations": {
               "required": {
-                "error": "Select whether you are applying for a new licence or renewing one.",
+                "error": "Select whether their address is the same as yours.",
                 "value": true
               }
             },
             "options": [
               {
-                "label": "Applying for a new licence",
-                "value": "new"
+                "label": "Yes",
+                "value": "yes"
               },
               {
-                "label": "Renewing a licence",
-                "value": "renewal"
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "person-address-line-1",
+            "label": "Address line 1",
+            "validations": {
+              "required": {
+                "error": "Enter their address line 1.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "person-same-address",
+                "targetStepId": "licence-holder-person",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "person-address-line-2",
+            "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "person-same-address",
+                "targetStepId": "licence-holder-person",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "person-parish",
+            "label": "Parish",
+            "validations": {
+              "required": {
+                "error": "Select the parish for their address.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "person-same-address",
+                "targetStepId": "licence-holder-person",
+                "operator": "equal",
+                "value": "no"
               }
             ]
           }
@@ -125,26 +539,26 @@
       ]
     },
     {
-      "stepId": "renewal-details",
-      "title": "Renewal details",
+      "stepId": "licence-holder-business",
+      "title": "Tell us about the business",
       "behaviours": [
         {
           "type": "stepConditionalOn",
-          "targetFieldId": "application-type",
-          "targetStepId": "application-type",
+          "targetStepId": "applying-for",
+          "targetFieldId": "applying-for",
           "operator": "equal",
-          "value": "renewal"
+          "value": "business"
         }
       ],
       "elements": [
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "current-licence-number",
-            "label": "Enter your current licence number",
+            "fieldId": "business-name",
+            "label": "Business or organisation name",
             "validations": {
               "required": {
-                "error": "Current licence number is required",
+                "error": "Enter the business or organisation name.",
                 "value": true
               }
             }
@@ -153,11 +567,11 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "address-changed",
-            "label": "Has the address where you do this work changed since you got your current licence?",
+            "fieldId": "business-same-address",
+            "label": "Is its address the same as yours?",
             "validations": {
               "required": {
-                "error": "Select whether the address where you do the work has changed.",
+                "error": "Select whether its address is the same as yours.",
                 "value": true
               }
             },
@@ -174,41 +588,32 @@
           }
         },
         {
-          "ref": "components/generic-radio",
+          "ref": "components/address",
           "overrides": {
-            "fieldId": "building-changes",
-            "label": "Have you made any changes to the building since you got your last licence, or do you plan to?",
+            "fieldId": "business-address-line-1",
+            "label": "Address line 1",
             "validations": {
               "required": {
-                "error": "Select whether you have made or plan to make changes to the building.",
+                "error": "Enter its address line 1.",
                 "value": true
               }
             },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "address-changed",
+                "targetFieldId": "business-same-address",
+                "targetStepId": "licence-holder-business",
                 "operator": "equal",
-                "value": "no"
-              }
-            ],
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
                 "value": "no"
               }
             ]
           }
         },
         {
-          "ref": "components/generic-textarea",
+          "ref": "components/address",
           "overrides": {
-            "fieldId": "generic-text",
-            "label": "State the changes you have made",
+            "fieldId": "business-address-line-2",
+            "label": "Address line 2",
             "validations": {
               "required": {
                 "value": false
@@ -217,10 +622,32 @@
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "building-changes",
-                "targetStepId": "renewal-details",
+                "targetFieldId": "business-same-address",
+                "targetStepId": "licence-holder-business",
                 "operator": "equal",
-                "value": "yes"
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "business-parish",
+            "label": "Parish",
+            "validations": {
+              "required": {
+                "error": "Select the parish for its address.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "business-same-address",
+                "targetStepId": "licence-holder-business",
+                "operator": "equal",
+                "value": "no"
               }
             ]
           }
@@ -228,30 +655,97 @@
       ]
     },
     {
-      "stepId": "work-address",
-      "title": "Where you will do the work",
+      "stepId": "business-activities",
+      "title": "What does the business do?",
       "behaviours": [],
       "elements": [
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-checkbox",
           "overrides": {
-            "fieldId": "business-name",
-            "label": "Business name",
+            "fieldId": "business-activities",
+            "label": "What does the business do?",
+            "hint": "Select all that apply.",
             "validations": {
               "required": {
-                "value": false
+                "error": "Select what the business does.",
+                "value": true
               }
-            }
+            },
+            "options": [
+              {
+                "label": "Kill animals for food or other uses, also called slaughtering",
+                "value": "slaughtering"
+              },
+              {
+                "label": "Heat animal blood or organs, also called blood or offal boiling",
+                "value": "blood-offal-boiling"
+              },
+              {
+                "label": "Heat or crush animal bones, also called bone boiling or crushing",
+                "value": "bone-boiling-crushing"
+              },
+              {
+                "label": "Take wool off sheep skins, also called fellmongering",
+                "value": "fellmongering"
+              },
+              {
+                "label": "Clean animal guts, also called gut scraping",
+                "value": "gut-scraping"
+              },
+              {
+                "label": "Make string from animal guts, also called gut spinning",
+                "value": "gut-spinning"
+              },
+              {
+                "label": "Melt animal fat, also called tallow melting",
+                "value": "tallow-melting"
+              },
+              {
+                "label": "Make leather from animal skins, also called tanning",
+                "value": "tanning"
+              },
+              {
+                "label": "Make chemicals or acids",
+                "value": "chemicals-acids"
+              },
+              {
+                "label": "Make glue",
+                "value": "glue"
+              },
+              {
+                "label": "Make fertiliser from animal waste, also called manure manufacturing",
+                "value": "manure-manufacturing"
+              },
+              {
+                "label": "Make soap by boiling fats or oils, also called soap boiling",
+                "value": "soap-boiling"
+              }
+            ]
           }
         },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "not-listed-note",
+            "variant": "inset",
+            "content": "If your business does not do any of these, contact Environmental Health before you apply. They can tell you if you need this licence."
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "work-address",
+      "title": "Where do you do the work?",
+      "behaviours": [],
+      "elements": [
         {
           "ref": "components/address-lookup",
           "overrides": {
             "fieldId": "work-address-line-1",
-            "label": "Street address line 1",
+            "label": "Address line 1",
             "validations": {
               "required": {
-                "error": "Enter street address line 1",
+                "error": "Enter address line 1.",
                 "value": true
               }
             },
@@ -266,7 +760,7 @@
           "ref": "components/address",
           "overrides": {
             "fieldId": "work-address-line-2",
-            "label": "Street address line 2",
+            "label": "Address line 2",
             "validations": {
               "required": {
                 "value": false
@@ -305,91 +799,75 @@
       ]
     },
     {
-      "stepId": "business-activities",
-      "title": "What will the business do?",
-      "behaviours": [],
+      "stepId": "building-plans",
+      "title": "Upload your building plans",
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "application-type",
+          "targetFieldId": "application-type",
+          "operator": "equal",
+          "value": "new"
+        }
+      ],
       "elements": [
         {
-          "ref": "components/generic-checkbox",
+          "ref": "components/upload-document",
           "overrides": {
-            "fieldId": "business-activities",
-            "label": "Business activities",
-            "hint": "Select all that apply. We show the legal name in brackets when needed.",
+            "fieldId": "building-plans",
+            "label": "Building plans and specifications",
+            "hint": "Upload the plans and specifications for the building. You can upload more than one file.",
+            "multiple": true,
             "validations": {
               "required": {
-                "error": "Select at least one business activity.",
+                "error": "Upload the building plans and specifications.",
                 "value": true
+              },
+              "fileTypes": {
+                "error": "File must be a PDF, image or document",
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png",
+                  ".doc",
+                  ".docx"
+                ]
+              },
+              "itemMaxSize": {
+                "error": "Each file must be no larger than 5 MB",
+                "value": 5242880
+              },
+              "maxSize": {
+                "error": "Total file size must be no larger than 20 MB",
+                "value": 20971520
               }
             },
-            "options": [
-              {
-                "label": "Heat animal blood or organs (blood or offal boiling)",
-                "value": "blood-offal-boiling"
-              },
-              {
-                "label": "Heat or crush animal bones (bone boiling or crushing)",
-                "value": "bone-boiling-crushing"
-              },
-              {
-                "label": "Take wool off sheep skins (fellmongering)",
-                "value": "fellmongering"
-              },
-              {
-                "label": "Clean animal guts (gut scraping)",
-                "value": "gut-scraping"
-              },
-              {
-                "label": "Make string from animal guts (gut spinning)",
-                "value": "gut-spinning"
-              },
-              {
-                "label": "Kill animals for food or other uses (slaughtering)",
-                "value": "slaughtering"
-              },
-              {
-                "label": "Melt animal fat (tallow melting)",
-                "value": "tallow-melting"
-              },
-              {
-                "label": "Make leather from animal skins (tanning)",
-                "value": "tanning"
-              },
-              {
-                "label": "Make chemicals or acids",
-                "value": "chemicals-acids"
-              },
-              {
-                "label": "Make glue",
-                "value": "glue"
-              },
-              {
-                "label": "Make fertiliser from animal waste (manure manufacturing)",
-                "value": "manure-manufacturing"
-              },
-              {
-                "label": "Make soap by boiling fats or oils (soap boiling)",
-                "value": "soap-boiling"
-              }
-            ]
+            "ui": {
+              "width": "long"
+            }
           }
         }
       ]
     },
     {
-      "stepId": "building-plans",
-      "title": "Upload the plans and details for the building",
+      "stepId": "changed-building-plans",
+      "title": "Upload your building plans",
       "behaviours": [
         {
           "type": "stepConditionalOn",
-          "targetFieldId": "application-type",
           "targetStepId": "application-type",
+          "targetFieldId": "application-type",
           "operator": "equal",
-          "value": "new"
+          "value": "renewal"
         },
         {
           "type": "stepConditionalOn",
+          "targetStepId": "renewal-check",
           "targetFieldId": "building-changes",
-          "targetStepId": "renewal-details",
           "operator": "equal",
           "value": "yes"
         }
@@ -398,16 +876,25 @@
         {
           "ref": "components/upload-document",
           "overrides": {
-            "fieldId": "building-plans",
-            "label": "Plans and details for the building",
-            "hint": "These should show the rooms, work areas and how you will use them. You can upload more than one file.",
+            "fieldId": "changed-building-plans",
+            "label": "Building plans and specifications",
+            "hint": "Upload the plans and specifications for the building. You can upload more than one file.",
+            "multiple": true,
             "validations": {
+              "required": {
+                "error": "Upload the building plans and specifications.",
+                "value": true
+              },
               "fileTypes": {
                 "error": "File must be a PDF, image or document",
                 "value": [
                   "application/pdf",
                   "image/jpeg",
                   "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png",
                   ".doc",
                   ".docx"
                 ]
@@ -431,7 +918,7 @@
     {
       "stepId": "check-your-answers",
       "title": "Check your answers",
-      "description": "Review your answers before you send your application.",
+      "description": "Check the information before you submit your application.",
       "behaviours": [],
       "elements": []
     },
@@ -453,7 +940,7 @@
             },
             "options": [
               {
-                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+                "label": "I confirm that the information I have provided is true and correct to the best of my knowledge.",
                 "value": "confirmed"
               }
             ]
@@ -465,13 +952,7 @@
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "behaviours": [],
-      "markdownContent": "A copy of your request has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- The Environmental Health Department at **{polyclinic}** will review your request.\n- They will review it and may contact you if they need more information. \n- If your application is approved, you will receive a confirmation email and the Environment Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\n**Obtaining your licence:**\n\nIf your application is approved, you will receive a confirmation email and the Environmental Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.\n\nSubmitting an application does not mean that an offensive trades licence has been granted.\n\n## Contact\n\nIf you need help, contact your Environmental Health Service office.\n\n{polyclinicContact}",
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "Environmental Health will review your application. They may contact you for more information or arrange an inspection.\n\nThey will contact you with the result. If your application is approved, they will tell you what to do next to get your licence."
-        }
-      ],
+      "markdownContent": "We have received your application for an offensive trade licence.\n\nKeep your reference number in case you need to contact Environmental Health about your application.\n\nWe have sent a confirmation email to the email address you gave. A copy of your application has been sent to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- Environmental Health will review your application.\n- They may inspect the place where you do the work.\n- They will contact you with the result.\n- If your application is approved, they will tell you how to get your licence.\n\nSubmitting an application does not mean that an offensive trade licence has been granted.\n\n## Contact\n\nIf you need help, contact your Environmental Health Service office.\n\n{polyclinicContact}",
       "elements": []
     }
   ],
@@ -480,14 +961,14 @@
       "type": "email",
       "config": {
         "recipientField": "your-details.email",
-        "subject": "Your offensive waste licence application has been received"
+        "subject": "Your offensive trade licence application has been received"
       }
     },
     {
       "type": "email",
       "config": {
         "recipientField": "catchment.mdaEmail",
-        "subject": "A new offensive waste licence application has been received"
+        "subject": "A new offensive trade licence application has been received"
       }
     },
     {
@@ -519,7 +1000,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:33:15.101Z",
-  "updatedAt": "2026-10-05T18:32:56.000Z",
+  "updatedAt": "2026-10-09T12:00:00.000Z",
   "meta": {
     "visibility": "preview"
   },
