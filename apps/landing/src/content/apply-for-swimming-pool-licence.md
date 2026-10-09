@@ -1,8 +1,7 @@
 ---
-title: Apply for a swimming pool licence
+title: Apply to Environmental Health for a swimming pool licence
 description: >-
-  Apply for a new swimming pool licence or renew an existing licence with
-  Environmental Health.
+  Apply for or renew a swimming pool licence with Environmental Health.
 category: business-trade
 stage: alpha
 publish_date: '2026-08-20'
@@ -10,58 +9,58 @@ visibility: preview
 form_id: apply-for-swimming-pool-licence
 ---
 
-Use this service to apply for a new swimming pool licence or renew an existing licence with the Environmental Health Department.
+Use this service to apply for or renew a swimming pool licence with Environmental Health.
 
 ## Who is this licence for
 
-You need a licence if you are planning to operate a swimming pool, wading pool or spa pool (hot tub) for public use in Barbados.
+You need this licence to operate a swimming pool, wading pool or spa pool in Barbados, including at a private home. A spa pool is sometimes called a hot tub.
 
 ## Before you start
 
 You will need:
 
-- the operator's name, phone number and email address, if you are not the operator
-- the address of the property the pool is on
-- how much water each pool can hold, in gallons or cubic metres
-- new licences: a site plan of the pool, or the application number from the Planning and Development Department (previously called Town and Country Planning)
-- licence renewals: your current swimming pool licence numbers
+- how much water each pool holds, in gallons or cubic metres
+- new licences: a site plan of the pool, and your Planning and Development application number if you have one
+- licence renewals: your current swimming pool licence number
+
+Planning and Development used to be called Town and Country Planning.
 
 Read the [Health Services (Swimming Pools) Regulations, 1970](https://oag.gov.bb/attachments/Health%20Services%20%28Swimming%20Pools%29%20Regulations,%201970%20Cap44'BB.PDF) for the full legal requirements.
 
 ## When to apply
 
-Your licence expires on 31 December each year. You need to renew it by the first business day in January each year. We suggest you submit your application by 1 December.
+Your licence expires on December 31 each year. Renew it by the first business day in January.
 
 ## Complete the form
 
 There are 2 ways to apply for a swimming pool licence. You can:
 
-1. ### Apply for a licence online
+1. **Apply for a licence online**
 
-   Allow about 5-10 minutes to complete the form.
+   The form takes about 5 to 10 minutes to complete.
 
    <a data-start-link>Start now</a>
 
-2. ### Get a paper application from the polyclinic
+2. **Get a paper application from the polyclinic**
 
-   You must complete it by hand and submit the application to the polyclinic associated with the district where the pool is located. If you require further information or assistance, contact the polyclinic - information can be found at the bottom of this page.
+   Complete the form by hand and submit it to the polyclinic for the area where the pool is located.
 
 ## Cost
 
-There is neither a cost to apply, nor to receive your licence.
+There is no cost for this service.
 
 ## What happens after you apply
 
-- Your application goes to the Environmental Health Department associated with the location of the swimming pool.
+- Your application goes to the Environmental Health Department for the area where the pool is located.
 - They will review it and may contact you if they need more information.
-- The pool, surroundings and safety equipment will be inspected before a licence is issued.
-- If your application is approved, you will receive a confirmation email and the Environment Health Office will mail your licence. In addition, you can also request to collect it from your assigned polyclinic.
+- An officer will inspect the pool, the area around it and the safety equipment before a licence is issued.
+- If your application is approved, you will get a confirmation email. Your licence will be posted to you, or you can ask to collect it from the polyclinic.
 
-Submitting an application does not mean that a swimming pool licence has been granted.
+Submitting an application does not mean that the licence has been granted.
 
 ## Contact
 
-If you need help, contact the Environmental Health Service office for your area.
+Contact the Environmental Health Service office for your area.
 
 - Branford Taitt Polyclinic - [(246) 536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)
 - David Thompson Health & Social Services Complex - [(246) 536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)
