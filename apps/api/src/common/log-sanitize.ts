@@ -97,5 +97,10 @@ const EMAIL_IN_TEXT = /[^\s@<>()[\]"',;:]+@[^\s@<>()[\]"',;:]+/g;
  */
 export function redactEmailsIn(text: unknown): string {
   const str = typeof text === "string" ? text : String(text);
-  return sanitizeForLog(str.replace(EMAIL_IN_TEXT, (m) => redactPii(m)));
+  // Cap before matching: the pattern is quadratic on a long run ending in "@"
+  // with no domain (ReDoS on third-party text). Only MAX_LOGGED_LENGTH
+  // characters are logged anyway; keeping twice that means an address
+  // straddling the cut is still matched (and masked) whole.
+  const bounded = str.slice(0, MAX_LOGGED_LENGTH * 2);
+  return sanitizeForLog(bounded.replace(EMAIL_IN_TEXT, (m) => redactPii(m)));
 }

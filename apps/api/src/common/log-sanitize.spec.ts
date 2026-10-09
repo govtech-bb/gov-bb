@@ -107,6 +107,20 @@ describe("redactEmailsIn (#2971)", () => {
     );
   });
 
+  it("stays fast on long hostile text (no regex blow-up)", () => {
+    // An "@" with no domain after a long run made the email pattern retry from
+    // every start position: quadratic, ~43s for 200k characters.
+    const started = Date.now();
+    const cleaned = redactEmailsIn(`${"a".repeat(200_000)}@`);
+    expect(Date.now() - started).toBeLessThan(500);
+    expect(cleaned.length).toBeLessThanOrEqual(201);
+  });
+
+  it("still masks an address that straddles the logged length", () => {
+    const cleaned = redactEmailsIn(`${"x ".repeat(95)}jane.doe@example.com`);
+    expect(cleaned).not.toContain("jane.doe");
+  });
+
   it("is still log-safe: control characters stripped, length bounded", () => {
     const cleaned = redactEmailsIn(`a\n${"x".repeat(500)}`);
     expect(cleaned).not.toContain("\n");
