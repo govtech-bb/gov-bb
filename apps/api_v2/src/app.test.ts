@@ -1060,6 +1060,42 @@ describe("DELETE /pages/:id", () => {
     expect(response.json().errors[0].field).toBe("id");
     expect(expectOk(await services.editing.get(parent.id))).not.toBeNull();
   });
+
+  it("deletes a page that is as the caller last read it", async () => {
+    const created = await seedPage();
+    const response = await inject({
+      method: "DELETE",
+      url: `/pages/${created.id}`,
+      headers: { [IF_UPDATED_AT]: created.updated_at },
+    });
+
+    expect(response.statusCode).toBe(204);
+    expect(expectOk(await services.editing.get(created.id))).toBeNull();
+  });
+
+  it("409s a page saved since the caller read it, and keeps it", async () => {
+    const created = await seedPage();
+    await inject({
+      method: "PUT",
+      url: `/pages/${created.id}`,
+      payload: { ...created, title: "Saved by someone else" },
+    });
+
+    const response = await inject({
+      method: "DELETE",
+      url: `/pages/${created.id}`,
+      headers: { [IF_UPDATED_AT]: created.updated_at },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({
+      error: "conflict",
+      documentId: created.id,
+    });
+    expect(expectOk(await services.editing.get(created.id))?.title).toBe(
+      "Saved by someone else",
+    );
+  });
 });
 
 describe("client errors", () => {
