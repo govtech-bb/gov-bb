@@ -7,9 +7,14 @@ import { pageConversion, parsePageMarkdown } from "./markdown";
 export function PagePreview({
   source,
   definition,
+  title,
+  lede,
 }: {
   source: string;
   definition: PageEditorDefinition;
+  /** The heading of a page whose details are not in its Markdown. */
+  title?: string;
+  lede?: string;
 }) {
   const prepared = useMemo(() => {
     try {
@@ -28,9 +33,13 @@ export function PagePreview({
         Preview is unavailable for this source. {prepared.diagnostics[0]?.message}
       </p>
     );
-  const root = parsePageMarkdown(source);
+  const root = parsePageMarkdown(source, definition.frontmatter);
   const frontmatter = root.children[0];
-  const metadata = pageMetadataFromYaml(frontmatter?.type === "yaml" ? frontmatter.value : "");
+
+  const metadata = definition.frontmatter
+    ? pageMetadataFromYaml(frontmatter?.type === "yaml" ? frontmatter.value : "")
+    : { title, lede };
+
   const context = pageConversion(definition);
 
   return (

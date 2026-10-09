@@ -4,15 +4,16 @@ import {
   type EditorApi,
   type FieldError,
   type PageSnapshot,
+  type SaveFields,
   type ServiceDetail,
-  type TaxonomyCategory,
 } from "../api/client";
-import { markdownToSaveFields, pageToMarkdown } from "../api/page-markdown";
 import type { DraftStorage } from "../persistence/types";
+import { govbbPageBodyCodec } from "../presets/govbb-page";
 import { documentKeys, type PageDocument, type PageRole } from "./model";
+import { detailsOf, detailsProblems, sameDetails, type PageDetails } from "./page-details";
 
-/** The server's copy of a page as this browser last loaded or saved it, and the Markdown that stood for it. */
-export type ServerBase = { page: ApiPage; markdown: string };
+/** The server's copy of a page as this browser last loaded or saved it, and the body Markdown that stood for it. */
+export type ServerBase = { page: ApiPage; body: string };
 
 export const serverBaseKey = (id: string) => `govbb-editor:documents:${id}:server`;
 
@@ -23,7 +24,7 @@ export function parseServerBase(source: string | null, id: string): ServerBase |
   try {
     const base: ServerBase = JSON.parse(source);
 
-    return base.page.id === id && typeof base.markdown === "string" ? base : undefined;
+    return base.page.id === id && typeof base.body === "string" ? base : undefined;
   } catch {
     return undefined;
   }
@@ -33,34 +34,84 @@ export function writeServerBase(storage: DraftStorage, base: ServerBase) {
   storage.setItem(serverBaseKey(base.page.id), JSON.stringify(base));
 }
 
+export const detailsKey = (id: string) => `govbb-editor:documents:${id}:details`;
+
+/** Stored details, or undefined when there are none this browser can read. */
+export function parseDetails(source: string | null): PageDetails | undefined {
+  try {
+    const details: PageDetails | null = JSON.parse(source ?? "null");
+
+    return details && typeof details.title === "string" && typeof details.url === "string"
+      ? details
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const readDetails = (storage: DraftStorage, id: string) =>
+  parseDetails(storage.getItem(detailsKey(id)));
+
+export function writeDetails(storage: DraftStorage, id: string, details: PageDetails) {
+  storage.setItem(detailsKey(id), JSON.stringify(details));
+}
+
+/** A body as the editor writes it, so opening a page never marks it unsaved. */
+export function canonicalBody(body: string) {
+  try {
+    const prepared = govbbPageBodyCodec.prepare(body);
+
+    return prepared.mode === "source" ? body : govbbPageBodyCodec.encode(prepared.state);
+  } catch {
+    return body;
+  }
+}
+
+/** A server copy saved while page details were YAML frontmatter in the draft. */
+function isFrontmatterBase(source: string | null) {
+  try {
+    return source !== null && typeof JSON.parse(source).markdown === "string";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Put the server's copy of a page in front of its draft before the draft
  * opens. A draft with nothing unsaved follows the server; one with unsaved
  * changes is kept, and the editor offers choices once it sees the server has
  * moved on.
  */
-export function seedApiPage(
-  storage: DraftStorage,
-  page: ApiPage,
-  categories: readonly TaxonomyCategory[],
-): ServerBase {
+export function seedApiPage(storage: DraftStorage, page: ApiPage): ServerBase {
   const keys = documentKeys(page.id);
-  const base = parseServerBase(storage.getItem(serverBaseKey(page.id)), page.id);
+  const stored = storage.getItem(serverBaseKey(page.id));
+
+  // Drafts from before details were fields hold YAML in their body. editor_v2 was never deployed with them.
+  if (isFrontmatterBase(stored))
+    for (const key of [keys.committed, keys.working, keys.replacementJournal])
+      if (key) storage.removeItem(key);
+
+  const base = parseServerBase(stored, page.id);
   const local = storage.getItem(keys.committed);
-  const server = { page, markdown: pageToMarkdown(page, categories) };
+  const details = readDetails(storage, page.id);
 
   const followsServer =
     local === null ||
-    (local === base?.markdown &&
+    (!!base &&
+      local === base.body &&
+      (!details || sameDetails(details, detailsOf(base.page))) &&
       storage.getItem(keys.working) === null &&
       !(keys.replacementJournal && storage.getItem(keys.replacementJournal) !== null));
 
-  if (followsServer) storage.setItem(keys.committed, server.markdown);
+  const next = !followsServer && base ? base : { page, body: canonicalBody(page.body_markdown) };
 
-  if (!followsServer && base) return base;
-  writeServerBase(storage, server);
+  if (followsServer) storage.setItem(keys.committed, next.body);
 
-  return server;
+  if (followsServer || !details) writeDetails(storage, page.id, detailsOf(next.page));
+
+  if (next !== base) writeServerBase(storage, next);
+
+  return next;
 }
 
 const ROLE_ORDER: Record<PageRole, number> = { entry: 0, start: 1, supporting: 2 };
@@ -97,17 +148,23 @@ export type SaveOutcome =
 export async function savePage(
   api: Pick<EditorApi, "savePage">,
   base: ServerBase,
-  markdown: string,
-  categories: readonly TaxonomyCategory[],
+  details: PageDetails,
+  body: string,
 ): Promise<SaveOutcome> {
-  const fields = markdownToSaveFields(markdown, base.page, categories);
+  const errors = detailsProblems(details, base.page.parent_id === null);
 
-  if (!fields.ok) return { kind: "invalid", errors: fields.errors };
+  if (errors.length > 0) return { kind: "invalid", errors };
+
+  const fields: SaveFields = {
+    ...details,
+    // An unchanged body goes back exactly as the server sent it.
+    body_markdown: body === base.body ? base.page.body_markdown : body.trim(),
+  };
 
   try {
-    const page = await api.savePage(base.page.id, fields.value, base.page.updated_at);
+    const page = await api.savePage(base.page.id, fields, base.page.updated_at);
 
-    return { kind: "saved", base: { page, markdown } };
+    return { kind: "saved", base: { page, body } };
   } catch (error) {
     if (!(error instanceof ApiFailure)) throw error;
 
@@ -145,24 +202,16 @@ const FIELD_LABELS = new Map([
 export const fieldLabel = (field: string) => FIELD_LABELS.get(field) ?? field;
 
 /**
- * A past version's content over the page as it stands. Its path, category,
- * parent and visibility stay as they are: restoring an old visibility could
- * unpublish a live page.
+ * A past version's details over the draft's. Its path, category and
+ * visibility stay as they are: restoring an old visibility could unpublish a
+ * live page.
  */
-export function restoredMarkdown(
-  current: ApiPage,
-  version: PageSnapshot,
-  categories: readonly TaxonomyCategory[],
-) {
-  return pageToMarkdown(
-    {
-      ...current,
-      title: version.title,
-      description: version.description,
-      form_id: version.form_id,
-      body_markdown: version.body_markdown,
-      frontmatter: version.frontmatter,
-    },
-    categories,
-  );
+export function restoredDetails(current: PageDetails, version: PageSnapshot): PageDetails {
+  return {
+    ...current,
+    title: version.title,
+    description: version.description,
+    form_id: version.form_id,
+    frontmatter: version.frontmatter,
+  };
 }

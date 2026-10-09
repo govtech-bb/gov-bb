@@ -2,15 +2,13 @@ import { Dialog } from "@base-ui/react/dialog";
 import { Check, X } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useId, useRef, useState, type Ref } from "react";
-import type { ApiPage, EditorApi, PageVersion, TaxonomyCategory } from "../api/client";
-import { pageToMarkdown } from "../api/page-markdown";
+import type { ApiPage, EditorApi, PageSnapshot, PageVersion } from "../api/client";
 import { historyQuery, pageVersionQuery } from "../api/queries";
 import { cn } from "../cn";
 import { PagePreviewSurface } from "../host/page-editor";
 import { Button } from "../ui/button";
 import { sectionLabel } from "../ui/item";
 import { labelFocus } from "../ui/table/table-components";
-import { restoredMarkdown } from "./api-pages";
 
 const ACTIONS = {
   created: "Created",
@@ -82,21 +80,28 @@ function VersionOption({
   );
 }
 
+function VersionPreview({ page }: { page: ApiPage | PageSnapshot }) {
+  return (
+    <PagePreviewSurface
+      source={page.body_markdown}
+      heading={{ title: page.title, lede: page.frontmatter.lede }}
+    />
+  );
+}
+
 /** A page's saved versions, newest first, beside a preview of the one chosen; an earlier one can be brought back into the draft. */
 export function PageHistoryDialog({
   api,
   current,
-  categories,
   canRestore,
   close,
   restore,
 }: {
   api: EditorApi;
   current: ApiPage;
-  categories: readonly TaxonomyCategory[];
   canRestore: boolean;
   close: () => void;
-  restore: (markdown: string) => void;
+  restore: (version: PageSnapshot) => void;
 }) {
   const history = useQuery(historyQuery(api, current.id));
   // Undefined is the current version, so the selection follows a newer save.
@@ -135,11 +140,9 @@ export function PageHistoryDialog({
             >
               <div className="mx-auto w-full max-w-226 px-[clamp(1.5rem,4vw,4rem)] pt-[clamp(2rem,4vw,3rem)] pb-16">
                 {selected === undefined ? (
-                  <PagePreviewSurface source={pageToMarkdown(current, categories)} />
+                  <VersionPreview page={current} />
                 ) : snapshot.data ? (
-                  <PagePreviewSurface
-                    source={restoredMarkdown(current, snapshot.data, categories)}
-                  />
+                  <VersionPreview page={snapshot.data} />
                 ) : snapshot.isError ? (
                   <p role="alert">This version can no longer be shown.</p>
                 ) : (
@@ -207,8 +210,7 @@ export function PageHistoryDialog({
                   className="w-full"
                   disabled={!canRestore || selected === undefined || !snapshot.data}
                   onClick={() => {
-                    if (snapshot.data)
-                      restore(restoredMarkdown(current, snapshot.data, categories));
+                    if (snapshot.data) restore(snapshot.data);
                   }}
                 >
                   Restore this version

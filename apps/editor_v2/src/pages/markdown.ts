@@ -13,15 +13,12 @@ declare module "unified" {
   }
 }
 
-const processor = unified()
-  .use(remarkParse)
-  .use(remarkGfm)
-  .use(remarkDirective)
-  .use(remarkFrontmatter, ["yaml"])
-  .freeze();
+const body = unified().use(remarkParse).use(remarkGfm).use(remarkDirective).freeze();
 
-export function parsePageMarkdown(source: string): Root {
-  const root = processor.parse(source);
+const processor = body().use(remarkFrontmatter, ["yaml"]).freeze();
+
+export function parsePageMarkdown(source: string, frontmatter = true): Root {
+  const root = (frontmatter ? processor : body).parse(source);
 
   const visit = (node: Root | MarkdownNode) => {
     if (!("children" in node)) return;

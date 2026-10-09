@@ -2,50 +2,56 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useBlocker, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import type { ApiPage, EditorApi } from "../api/client";
-import { pageToMarkdown, pickerCategories } from "../api/page-markdown";
 import { pageQuery, taxonomyQuery } from "../api/queries";
 import { browserDraftStorage } from "../host/govbb-draft";
 import { PageDraftEditor } from "../host/page-editor";
 import { download } from "../host/source-ui";
-import { readPageMetadata } from "../pages";
 import { Button } from "../ui/button";
 import { PageHistoryDialog } from "./api-history";
 import {
   apiPageDocument,
+  canonicalBody,
+  detailsKey,
+  parseDetails,
   parseServerBase,
+  restoredDetails,
   roleOf,
   savePage,
   seedApiPage,
   serverBaseKey,
+  writeDetails,
   writeServerBase,
   fieldLabel,
   type ServerBase,
 } from "./api-pages";
-import { openDocument } from "./documents";
+import { openBodyDocument } from "./documents";
 import { flushDocument } from "./model";
+import { detailsOf, sameDetails, type PageDetails } from "./page-details";
+import { ApiPageDetails } from "./page-details-panel";
 
-const baseListeners = new Set<() => void>();
+const storedListeners = new Set<() => void>();
 
-/** Tell this tab's readers that a server copy changed; other tabs hear the storage event. */
+/** Tell this tab's readers that a stored copy changed; other tabs hear the storage event. */
 export function notifyServerBase() {
-  for (const listener of baseListeners) listener();
+  for (const listener of storedListeners) listener();
 }
 
-function subscribeServerBase(listener: () => void) {
-  baseListeners.add(listener);
+function subscribeStored(listener: () => void) {
+  storedListeners.add(listener);
   window.addEventListener("storage", listener);
 
   return () => {
-    baseListeners.delete(listener);
+    storedListeners.delete(listener);
     window.removeEventListener("storage", listener);
   };
 }
 
+const useStoredItem = (key: string) =>
+  useSyncExternalStore(subscribeStored, () => window.localStorage.getItem(key));
+
 /** The server copy of a page this browser holds, current across tabs. */
 export function useServerBase(id: string) {
-  const source = useSyncExternalStore(subscribeServerBase, () =>
-    window.localStorage.getItem(serverBaseKey(id)),
-  );
+  const source = useStoredItem(serverBaseKey(id));
 
   return useMemo(() => parseServerBase(source, id), [source, id]);
 }
@@ -58,12 +64,12 @@ export function ApiPagePane({ api, id, active }: { api: EditorApi; id: string; a
   const opened = useQuery({
     queryKey: ["opened", id],
     queryFn: async () => {
-      const [page, categories] = await Promise.all([
+      const [page] = await Promise.all([
         client.fetchQuery(pageQuery(api, id)),
         client.ensureQueryData(taxonomyQuery(api)),
       ]);
 
-      seedApiPage(browserDraftStorage, page, categories);
+      seedApiPage(browserDraftStorage, page);
       notifyServerBase();
 
       return page;
@@ -98,7 +104,7 @@ const noticeClass = "page-document-paused flex flex-wrap items-center gap-x-3 ga
 
 function ApiPageEditor({ api, page, active }: { api: EditorApi; page: ApiPage; active: boolean }) {
   const [store] = useState(() =>
-    openDocument(apiPageDocument({ ...page, role: roleOf(page) }), browserDraftStorage),
+    openBodyDocument(apiPageDocument({ ...page, role: roleOf(page) }), browserDraftStorage),
   );
 
   const client = useQueryClient();
@@ -110,10 +116,16 @@ function ApiPageEditor({ api, page, active }: { api: EditorApi; page: ApiPage; a
   const server = useQuery(pageQuery(api, page.id)).data ?? page;
   const [failure, setFailure] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
+  const storedDetails = useStoredItem(detailsKey(page.id));
+
+  const details = useMemo(
+    () => parseDetails(storedDetails) ?? detailsOf(base?.page ?? page),
+    [storedDetails, base, page],
+  );
 
   const save = useMutation({
-    mutationFn: (current: { base: ServerBase; markdown: string }) =>
-      savePage(api, current.base, current.markdown, categories),
+    mutationFn: (current: { base: ServerBase; details: PageDetails; body: string }) =>
+      savePage(api, current.base, current.details, current.body),
     onSuccess: (outcome) => {
       if (outcome.kind === "saved") {
         rebase(outcome.base);
@@ -151,14 +163,16 @@ function ApiPageEditor({ api, page, active }: { api: EditorApi; page: ApiPage; a
     },
   });
 
-  const visibility = useMemo(
-    () => readPageMetadata(draft.committed).visibility || "public",
-    [draft.committed],
-  );
-
   const outcome = save.isPending ? undefined : save.data;
-  const unsaved = !!base && draft.committed !== base.markdown;
+
+  const unsaved =
+    !!base && (draft.committed !== base.body || !sameDetails(details, detailsOf(base.page)));
+
   const stale = !!base && server.updated_at !== base.page.updated_at;
+
+  // The body alone would lose unsaved details, so the copy is the whole page as a save sends it.
+  const downloadMine = () =>
+    download(JSON.stringify({ ...details, body_markdown: draft.committed }, null, 2), "page.json");
 
   const blocked =
     !draft.valid ||
@@ -175,18 +189,27 @@ function ApiPageEditor({ api, page, active }: { api: EditorApi; page: ApiPage; a
     notifyServerBase();
   };
 
+  const changeDetails = (next: PageDetails) => {
+    writeDetails(browserDraftStorage, page.id, next);
+    notifyServerBase();
+  };
+
   const saveDraft = () => {
     store.flush();
     const snapshot = store.getSnapshot();
 
-    if (base && snapshot.status !== "error") save.mutate({ base, markdown: snapshot.committed });
+    if (base && snapshot.status !== "error")
+      save.mutate({ base, details, body: snapshot.committed });
   };
 
   const loadSaved = () => {
-    const markdown = pageToMarkdown(server, categories);
-    store.edit(markdown);
+    const body = canonicalBody(server.body_markdown);
+    store.edit(body);
 
-    if (store.apply()) rebase({ page: server, markdown });
+    if (store.apply()) {
+      changeDetails(detailsOf(server));
+      rebase({ page: server, body });
+    }
   };
 
   const notice = stale ? (
@@ -195,7 +218,7 @@ function ApiPageEditor({ api, page, active }: { api: EditorApi; page: ApiPage; a
       {unsaved && (
         <Button
           variant="secondary"
-          onClick={() => rebase({ page: server, markdown: pageToMarkdown(server, categories) })}
+          onClick={() => rebase({ page: server, body: canonicalBody(server.body_markdown) })}
         >
           Keep my version
         </Button>
@@ -203,9 +226,7 @@ function ApiPageEditor({ api, page, active }: { api: EditorApi; page: ApiPage; a
       <Button variant="secondary" disabled={blocked} onClick={loadSaved}>
         Load saved version
       </Button>
-      {unsaved && (
-        <Button onClick={() => download(draft.committed, "page.md")}>Download my version</Button>
-      )}
+      {unsaved && <Button onClick={downloadMine}>Download my version</Button>}
     </div>
   ) : outcome?.kind === "invalid" ? (
     <div role="alert" className="page-document-paused">
@@ -238,7 +259,7 @@ function ApiPageEditor({ api, page, active }: { api: EditorApi; page: ApiPage; a
   ) : outcome?.kind === "missing" ? (
     <div role="alert" className={noticeClass}>
       <p className="me-auto">This page is no longer in the content API.</p>
-      <Button onClick={() => download(draft.committed, "page.md")}>Download my version</Button>
+      <Button onClick={downloadMine}>Download my version</Button>
     </div>
   ) : outcome?.kind === "failed" ? (
     <div role="alert" className={noticeClass}>
@@ -278,30 +299,36 @@ function ApiPageEditor({ api, page, active }: { api: EditorApi; page: ApiPage; a
               }
               onClick={saveDraft}
             >
-              {visibility === "public" ? "Publish changes" : "Save"}
+              {details.visibility === "public" ? "Publish changes" : "Save"}
             </Button>
           </>
         }
         notice={notice}
-        details={{
-          ...(server.parent_id === null && {
-            categories: pickerCategories(categories),
-            single: true,
-          }),
-          publishedAt: server.published_at,
-          errors: Object.fromEntries(errors.map((error) => [error.field, error.message])),
+        fields={{
+          title: details.title,
+          lede: details.frontmatter.lede,
+          panel: (
+            <ApiPageDetails
+              details={details}
+              change={changeDetails}
+              categories={categories}
+              entry={server.parent_id === null}
+              publishedAt={server.published_at}
+              errors={Object.fromEntries(errors.map((error) => [error.field, error.message]))}
+            />
+          ),
         }}
       />
       {historyOpen && (
         <PageHistoryDialog
           api={api}
           current={server}
-          categories={categories}
           canRestore={!blocked}
           close={() => setHistoryOpen(false)}
-          restore={(markdown) => {
-            store.edit(markdown);
-            store.apply();
+          restore={(version) => {
+            store.edit(canonicalBody(version.body_markdown));
+
+            if (store.apply()) changeDetails(restoredDetails(details, version));
             setHistoryOpen(false);
           }}
         />
