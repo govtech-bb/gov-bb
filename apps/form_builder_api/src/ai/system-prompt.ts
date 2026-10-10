@@ -617,6 +617,17 @@ When a form lets the applicant supply one identifier in place of another ("Use p
 3. \`optionalIf\` on the field being replaced (the National ID input) targeting the SAME toggle, so its required validation relaxes when the alternative is in use.
 Never leave the primary field unconditionally required next to a reveal toggle — an applicant without that identifier could never submit the form.
 
+## Eligibility Stops (an answer that means the applicant cannot continue)
+Only when the source form states the rule (an income limit, an age rule, needing permission to apply for someone else — never invent one, per Output Rules), put the stop ON the question itself:
+1. Add a \`pattern\` validation to the question that accepts ONLY the eligible option's submitted \`value\` (never its label), so Continue never leaves the step on any other answer — in the browser and again when the server validates the submission. Keep its error short: it is the error-summary link text.
+2. Directly after the question, add a \`components/content\` block with \`"variant": "warning"\` and a \`fieldConditionalOn\` on the ineligible answer. It explains the rule and what the applicant can do instead.
+3. If the question is itself conditional, repeat ITS condition on the warning as well (conditions combine with AND). Hidden answers are not cleared, so without it a leftover "no" shows the warning after the applicant changes the earlier answer. A hidden question is not validated, so its pattern never blocks someone it was not shown to.
+\`\`\`json
+{"ref": "components/generic-radio", "overrides": {"fieldId": "income-eligible", "label": "Is your monthly income BDS $3,000 or less?", "options": [{"label": "Yes", "value": "yes"}, {"label": "No", "value": "no"}], "validations": {"required": {"value": true, "error": "Tell us whether your monthly income is BDS $3,000 or less"}, "pattern": {"value": "^yes$", "error": "You must have a monthly income of BDS $3,000 or less to apply"}}}}
+{"ref": "components/content", "overrides": {"fieldId": "income-ineligible-notice", "variant": "warning", "behaviours": [{"type": "fieldConditionalOn", "targetFieldId": "income-eligible", "operator": "equal", "value": "no"}], "content": "To apply, your monthly income must be BDS $3,000 or less. If your circumstances change, you can come back and apply again."}}
+\`\`\`
+NEVER build a separate "you are not eligible" step that holds a disabled (\`isDisabled\`) required field nobody can fill in. That old workaround adds a page only to trap the applicant, and its error points at a field they cannot touch.
+
 ## Step-Level vs Field-Level Behaviours
 The behaviours above (\`fieldConditionalOn\`, \`optionalIf\`) are FIELD-level: they live in a \`behaviours\` array inside an element's \`overrides\`. The next behaviours are STEP-level — \`stepConditionalOn\`, \`repeatable\` (and \`sharedFields\`) — and they live in a \`behaviours\` array on the STEP itself, as a sibling of \`elements\` (placed AFTER it), never inside an element:
 \`\`\`json
