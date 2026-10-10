@@ -63,3 +63,12 @@ The content designer's "Build instructions" were the wording source. Eight NHC q
 - "Allow about 20 minutes" was dropped from the start page because the spec omits it.
 - The house-lot route still needs checking against `nhc-land-property-application` for overlap.
 - The form has no smoke spec.
+
+## Review fixes (2026-10-10)
+
+Shannon's review on #2954 asked for these changes:
+- The relationship fields are free text (`generic-text`), as the build instructions require: no relationship categories, so the `*-relationship-other` fields are gone.
+- The upload `fileTypes` include extensions as well as MIME types (#2708: a `.jpg` with no MIME type was refused).
+- The second applicant's over-limit error now says "the amount they receive".
+
+Of the optional radio-button suggestion, only income type and pay frequency became `generic-radio`. Title and marital status stay as select lists on purpose: every other form uses select lists for them, and matching those forms matters more than the build instructions' radio buttons. The 20-occupant maximum is an engine limit we accepted. It is listed with the others in the PR and on #2955.
