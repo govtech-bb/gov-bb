@@ -235,40 +235,6 @@ try {
   await body.waitFor();
   await setPageDetailsOpen(false);
 
-  for (const caret of ["Outside list", "Other start"]) {
-    await reset(
-      'Outside list\n\n1. First route\n\n   <a data-start-link href="/first">Other start</a>\n\n2. Second route\n\n   <a data-start-link href="/second">Start now</a>',
-    );
-    const nestedStart = body.locator('ol > li:nth-child(2) [data-page-component="start"]');
-    await body.getByText(caret, { exact: true }).click();
-    await hoverNestedMenu(nestedStart);
-    const destination = page.getByRole("textbox", { name: "Button destination", exact: true });
-    await destination.waitFor({ timeout: 5000 });
-    assert.equal(await destination.inputValue(), "/second");
-    await destination.fill("/edited");
-    await button("Apply settings").click();
-    await page.keyboard.press("Escape");
-    assert.equal(await nestedStart.getAttribute("data-destination"), "/edited");
-    assert.equal(
-      await body
-        .locator('ol > li:first-child [data-page-component="start"]')
-        .getAttribute("data-destination"),
-      "/first",
-    );
-    await nestedStart.click();
-    await page.keyboard.press("End");
-    await page.keyboard.type(" online");
-    const edited = await markdown();
-    assert.match(edited, /<a data-start-link href="\/edited">Start now online<\/a>/);
-    await page.locator('[role="status"][title="Saved"]:visible').waitFor();
-    await page.reload();
-    await nestedStart.waitFor();
-    await setPageDetailsOpen(false);
-    assert.equal(await nestedStart.textContent(), "Start now online");
-    assert.equal(await nestedStart.getAttribute("data-destination"), "/edited");
-  }
-
-  await reset("");
   await body.click();
   await page.keyboard.type("New text");
   await button("Block options").click();
@@ -656,6 +622,39 @@ try {
     false,
   );
 
+  for (const caret of ["Outside list", "Other start"]) {
+    await reset(
+      'Outside list\n\n1. First route\n\n   <a data-start-link href="/first">Other start</a>\n\n2. Second route\n\n   <a data-start-link href="/second">Start now</a>',
+    );
+    const nestedStart = body.locator('ol > li:nth-child(2) [data-page-component="start"]');
+    await body.getByText(caret, { exact: true }).click();
+    await hoverNestedMenu(nestedStart);
+    const destination = page.getByRole("textbox", { name: "Button destination", exact: true });
+    await destination.waitFor({ timeout: 5000 });
+    assert.equal(await destination.inputValue(), "/second");
+    await destination.fill("/edited");
+    await button("Apply settings").click();
+    await page.keyboard.press("Escape");
+    assert.equal(await nestedStart.getAttribute("data-destination"), "/edited");
+    assert.equal(
+      await body
+        .locator('ol > li:first-child [data-page-component="start"]')
+        .getAttribute("data-destination"),
+      "/first",
+    );
+    await nestedStart.click();
+    await page.keyboard.press("End");
+    await page.keyboard.type(" online");
+    const edited = await markdown();
+    assert.match(edited, /<a data-start-link href="\/edited">Start now online<\/a>/);
+    await page.locator('[role="status"][title="Saved"]:visible').waitFor();
+    await page.reload();
+    await nestedStart.waitFor();
+    await setPageDetailsOpen(false);
+    assert.equal(await nestedStart.textContent(), "Start now online");
+    assert.equal(await nestedStart.getAttribute("data-destination"), "/edited");
+  }
+
   await reset('<a data-start-link href="/apply">Start now</a>');
   const startButton = body.locator('[data-page-component="start"]');
   const plainStart = await markdown();
@@ -922,7 +921,7 @@ try {
 
   assert.deepEqual(errors, []);
   console.log(
-    "PASS page writer: nested Start hover settings/edit/reload, hover-only gutter targeting/alignment, insertion keyboard/focus, nested slash, selected table row, native drag preview/destination, grouped drag undo/redo, cancellation/read-only isolation, move/delete undo, component settings and styles, Start label formatting/undo/reload/preview, list hierarchy after reload/outdent, table preview alignment, metadata source validation/preservation, page details editing/undo/reload/preview/keyboard/collapse, toolbar undo typing branches, native reader disclosure styles/keyboard, hidden/preview portals and narrow layouts",
+    "PASS page writer: hover-only gutter targeting/alignment, insertion keyboard/focus, nested slash, selected table row, native drag preview/destination, grouped drag undo/redo, cancellation/read-only isolation, move/delete undo, component settings and styles, Start label formatting/undo/reload/preview, list hierarchy after reload/outdent, table preview alignment, metadata source validation/preservation, page details editing/undo/reload/preview/keyboard/collapse, toolbar undo typing branches, native reader disclosure styles/keyboard, hidden/preview portals and narrow layouts",
   );
 } catch (error) {
   await page.screenshot({ path: "/tmp/page-writer-failure.png", fullPage: true });
