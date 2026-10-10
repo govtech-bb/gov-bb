@@ -1,6 +1,6 @@
 ---
-title: 'Apply for an NHC rental unit or lot'
-description: 'Use this service to apply to rent a unit or a lot from the National Housing Corporation (NHC). You must have a monthly income of BDS $3,000 or less to apply.'
+title: 'Apply for a National Housing Corporation (NHC) rental home or house lot'
+description: 'Apply to the National Housing Corporation (NHC) for a rental home or house lot if you receive BDS $3,000 a month or less.'
 stage: 'alpha'
 featured: false
 publish_date: 2026-04-16
@@ -10,52 +10,66 @@ service_type: digital
 form_id: nhc-rental-application
 ---
 
-Use this service to apply to rent a unit or a lot from the National Housing Corporation (NHC).
+You can apply for either a rental home or a house lot. A house lot is land where you can build a home. You can only apply for one at a time.
 
-## Who can apply
+You can apply on your own or with one other person.
 
-You can apply if you are:
+You must be a Barbadian citizen or permanent resident.
 
-- a Barbadian citizen or permanent resident
-- earning a monthly income of BDS $3,000 or less
+- if you apply on your own, you must receive BDS $3,000 a month or less
+- if 2 people apply, they must receive BDS $3,000 a month or less in total
 
-If your monthly income is more than BDS $3,000, you will not be able to continue with the application.
+NHC will check if you meet the other requirements after you apply.
 
 ## Before you start
 
-You will need:
+For each person applying, you will need:
 
-- your National Identification (ID) Number, which is on your national ID card
-- your TAMIS number, if you have one
-- two recent pay slips
-- your national ID card
-- a job letter from your employer
-- a passport-size photograph
-- co-applicant details, if you are applying jointly
-- details of all the people who will live in the unit
+- their National Registration Number
+- their date of birth and contact details
+- details of their job, self-employed work or pension
+- their National ID to upload
+- a passport-size photo to upload
 
-## Complete the form
+If they are employed, you will also need:
 
-Allow about 20 minutes to complete the form.
+- 2 recent payslips
+- a job letter
 
-You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.
+If you are applying for a rental home, you will also need details of everyone who will live there.
+
+## How to apply
+
+There are 2 ways to apply.
+
+### Apply online
 
 <a data-start-link>Start now</a>
 
+### Apply using a paper form
+
+You can get a paper form from:
+
+National Housing Corporation  
+"The Garden"  
+Country Road  
+St. Michael
+
+Telephone: (246) 536-5300  
+Email: NHC.CustomerService@barbados.gov.bb
+
+Complete the form by hand and return it to the National Housing Corporation at the address above.
+
 ## Cost
 
-There is no cost to apply for an NHC rental unit or lot.
+There is no cost to apply.
 
-## What happens after you apply
+If your application is approved, NHC will tell you the fees for the rental home or house lot.
 
-You will get a reference number and a confirmation email. Keep the reference number in case you need to contact NHC about your application.
+## What happens next
 
-NHC will review your application and contact you within 10 working days.
+NHC will send you an email within 1 to 2 working days to confirm they have received your application.
 
-Submitting an application does not mean that you have been offered a rental unit or lot.
+NHC will check your application. A housing officer may contact you if they need more information.
 
-## Contact
-
-If you need help with your application, contact the National Housing Corporation.
-
-<!-- MDA NOTE: Confirm the telephone number, email address and opening hours for rental enquiries, then add them here. The purchase service lists PBX (246) 536-5300 and nhc.customerservice@barbados.gov.bb for Customer Service (Property Sales), which is likely to be the wrong team for rentals. -->
+If you qualify for a rental home, NHC may put you on a waiting list until a home is available.
