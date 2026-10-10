@@ -8,6 +8,8 @@ import {
   $createTextNode,
   $getRoot,
   $isElementNode,
+  $isTextNode,
+  $nodesOfType,
   HISTORY_PUSH_TAG,
   UNDO_COMMAND,
   REDO_COMMAND,
@@ -136,6 +138,10 @@ test("birth instructions keep headings, paragraphs and Start actions inside thei
           "paragraph",
           "page-component",
         ]);
+        const start = first.getChildren()[2];
+
+        if (!(start instanceof PageComponentNode)) throw new Error("Missing Start button");
+        expect(start.getKind()).toBe("start");
         expect(second.getChildren().map((node) => node.getType())).toEqual([
           "heading",
           "paragraph",
@@ -144,6 +150,69 @@ test("birth instructions keep headings, paragraphs and Start actions inside thei
       },
       { editor },
     );
+  } finally {
+    editor.dispose();
+  }
+});
+
+test("editing a nested Start label and destination preserves its list item through reload and undo", async () => {
+  const original =
+    '1. Apply online\n\n   <a data-start-link href="/apply"><strong>Start now</strong></a>\n\n2. Apply in person\n';
+
+  const editor = createHeadlessEditor(govbbPageEditor, visual(original));
+
+  try {
+    editor.update(
+      () => {
+        const start = $nodesOfType(PageComponentNode).find((node) => node.getKind() === "start");
+        const label = start?.getFirstChild();
+
+        if (!start || !$isTextNode(label)) throw new Error("Missing Start label");
+        start.setAttributes({ href: "/apply?next=online&ready=true" });
+        label.setTextContent("Apply online now");
+      },
+      { discrete: true, tag: HISTORY_PUSH_TAG },
+    );
+    const saved = govbbPageCodec.encode(editor.getEditorState().toJSON());
+    const parsed = parsePageMarkdown(saved).children[0];
+    expect(parsed).toMatchObject({ type: "list", ordered: true });
+
+    if (parsed?.type !== "list") throw new Error("Missing ordered instructions");
+    expect(parsed.children).toHaveLength(2);
+    expect(parsed.children[0]!.children).toHaveLength(2);
+    expect(parsed.children[1]!.children).toMatchObject([
+      { type: "paragraph", children: [{ type: "text", value: "Apply in person" }] },
+    ]);
+    expect(saved).toContain(
+      '<a data-start-link href="/apply?next=online&amp;ready=true"><strong>Apply online now</strong></a>',
+    );
+    const reopened = createHeadlessEditor(govbbPageEditor, visual(saved));
+
+    try {
+      reopened.getEditorState().read(
+        () => {
+          const start = $nodesOfType(PageComponentNode).find((node) => node.getKind() === "start");
+          const item = start?.getParent();
+          const list = item?.getParent();
+          expect(start?.getAttributes()).toEqual({ href: "/apply?next=online&ready=true" });
+          expect(start?.getTextContent()).toBe("Apply online now");
+          expect($isListItemNode(item)).toBe(true);
+          expect($isListNode(list) && list.getListType()).toBe("number");
+          expect(list?.getFirstChild()).toBe(item);
+          expect(start?.getAllTextNodes()[0]?.hasFormat("bold")).toBe(true);
+        },
+        { editor: reopened },
+      );
+    } finally {
+      reopened.dispose();
+    }
+
+    editor.dispatchCommand(UNDO_COMMAND, undefined);
+    await Promise.resolve();
+    expect(govbbPageCodec.encode(editor.getEditorState().toJSON())).toBe(original);
+    editor.dispatchCommand(REDO_COMMAND, undefined);
+    await Promise.resolve();
+    expect(govbbPageCodec.encode(editor.getEditorState().toJSON())).toBe(saved);
   } finally {
     editor.dispose();
   }

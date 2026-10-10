@@ -77,6 +77,18 @@ async function menuAt(locator) {
   await button("Block options").click();
 }
 
+async function hoverNestedMenu(locator) {
+  await locator.hover();
+  const nested = await locator.boundingBox();
+  const rail = await button("Block options").boundingBox();
+  assert.ok(nested);
+  assert.ok(rail);
+  // Cross the list padding, then travel up the gutter to the whole-block handle.
+  await page.mouse.move(rail.x + rail.width / 2, nested.y + nested.height / 2, { steps: 10 });
+  await page.mouse.move(rail.x + rail.width / 2, rail.y + rail.height / 2, { steps: 10 });
+  await page.mouse.click(rail.x + rail.width / 2, rail.y + rail.height / 2);
+}
+
 async function markdown() {
   await page.getByRole("button", { name: /^Markdown/ }).click();
   const value = await source.inputValue();
@@ -609,6 +621,39 @@ try {
     await actionButton.evaluate((element) => element.classList.contains("page-action-secondary")),
     false,
   );
+
+  for (const caret of ["Outside list", "Other start"]) {
+    await reset(
+      'Outside list\n\n1. First route\n\n   <a data-start-link href="/first">Other start</a>\n\n2. Second route\n\n   <a data-start-link href="/second">Start now</a>',
+    );
+    const nestedStart = body.locator('ol > li:nth-child(2) [data-page-component="start"]');
+    await body.getByText(caret, { exact: true }).click();
+    await hoverNestedMenu(nestedStart);
+    const destination = page.getByRole("textbox", { name: "Button destination", exact: true });
+    await destination.waitFor({ timeout: 5000 });
+    assert.equal(await destination.inputValue(), "/second");
+    await destination.fill("/edited");
+    await button("Apply settings").click();
+    await page.keyboard.press("Escape");
+    assert.equal(await nestedStart.getAttribute("data-destination"), "/edited");
+    assert.equal(
+      await body
+        .locator('ol > li:first-child [data-page-component="start"]')
+        .getAttribute("data-destination"),
+      "/first",
+    );
+    await nestedStart.click();
+    await page.keyboard.press("End");
+    await page.keyboard.type(" online");
+    const edited = await markdown();
+    assert.match(edited, /<a data-start-link href="\/edited">Start now online<\/a>/);
+    await page.locator('[role="status"][title="Saved"]:visible').waitFor();
+    await page.reload();
+    await nestedStart.waitFor();
+    await setPageDetailsOpen(false);
+    assert.equal(await nestedStart.textContent(), "Start now online");
+    assert.equal(await nestedStart.getAttribute("data-destination"), "/edited");
+  }
 
   await reset('<a data-start-link href="/apply">Start now</a>');
   const startButton = body.locator('[data-page-component="start"]');
