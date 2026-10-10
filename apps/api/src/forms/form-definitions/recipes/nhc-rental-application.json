@@ -133,7 +133,7 @@
           }
         },
         {
-          "ref": "components/generic-select",
+          "ref": "components/generic-radio",
           "overrides": {
             "fieldId": "income-type",
             "label": "Which of these describes you?",
@@ -164,7 +164,7 @@
           }
         },
         {
-          "ref": "components/generic-select",
+          "ref": "components/generic-radio",
           "overrides": {
             "fieldId": "pay-frequency",
             "label": "How often do you receive this amount?",
@@ -349,7 +349,7 @@
           }
         },
         {
-          "ref": "components/generic-select",
+          "ref": "components/generic-radio",
           "overrides": {
             "fieldId": "co-applicant-income-type",
             "label": "Which of these describes them?",
@@ -389,7 +389,7 @@
           }
         },
         {
-          "ref": "components/generic-select",
+          "ref": "components/generic-radio",
           "overrides": {
             "fieldId": "co-applicant-pay-frequency",
             "label": "How often do they receive this amount?",
@@ -454,7 +454,7 @@
                 "value": 0
               },
               "max": {
-                "error": "You cannot continue with this application. The total amount you receive is more than BDS $3,000 a month.",
+                "error": "You cannot continue with this application. The amount they receive is more than BDS $3,000 a month.",
                 "value": 692.3
               }
             },
@@ -508,7 +508,7 @@
                 "value": 0
               },
               "max": {
-                "error": "You cannot continue with this application. The total amount you receive is more than BDS $3,000 a month.",
+                "error": "You cannot continue with this application. The amount they receive is more than BDS $3,000 a month.",
                 "value": 1500
               }
             },
@@ -562,7 +562,7 @@
                 "value": 0
               },
               "max": {
-                "error": "You cannot continue with this application. The total amount you receive is more than BDS $3,000 a month.",
+                "error": "You cannot continue with this application. The amount they receive is more than BDS $3,000 a month.",
                 "value": 3000
               }
             },
@@ -1098,37 +1098,16 @@
       ],
       "elements": [
         {
-          "ref": "components/relationship",
+          "ref": "components/generic-text",
           "overrides": {
             "fieldId": "co-applicant-relationship",
             "label": "What is their relationship to you?",
             "validations": {
               "required": {
-                "error": "Select their relationship to you",
+                "error": "Enter their relationship to you",
                 "value": true
               }
             }
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "co-applicant-relationship-other",
-            "label": "Tell us their relationship to you",
-            "validations": {
-              "required": {
-                "error": "Tell us their relationship to you",
-                "value": true
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "co-applicant-relationship",
-                "operator": "equal",
-                "value": "other"
-              }
-            ]
           }
         },
         {
@@ -1937,37 +1916,17 @@
           }
         },
         {
-          "ref": "components/relationship",
+          "ref": "components/generic-text",
           "overrides": {
             "fieldId": "occupant-relationship",
             "label": "Relationship to you",
+            "hint": "For example, son, daughter or parent.",
             "validations": {
               "required": {
-                "error": "Relationship to you is required",
+                "error": "Enter their relationship to you",
                 "value": true
               }
             }
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "occupant-relationship-other",
-            "label": "Tell us their relationship to you",
-            "validations": {
-              "required": {
-                "error": "Tell us their relationship to you",
-                "value": true
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "occupant-relationship",
-                "operator": "equal",
-                "value": "other"
-              }
-            ]
           }
         },
         {
@@ -2062,7 +2021,11 @@
                 "value": [
                   "application/pdf",
                   "image/jpeg",
-                  "image/png"
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
                 ]
               },
               "itemMaxSize": {
@@ -2100,7 +2063,11 @@
                 "value": [
                   "application/pdf",
                   "image/jpeg",
-                  "image/png"
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
                 ]
               },
               "itemMaxSize": {
@@ -2125,7 +2092,11 @@
                 "value": [
                   "application/pdf",
                   "image/jpeg",
-                  "image/png"
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
                 ]
               },
               "itemMaxSize": {
@@ -2162,7 +2133,11 @@
                 "value": [
                   "application/pdf",
                   "image/jpeg",
-                  "image/png"
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
                 ]
               },
               "itemMaxSize": {
@@ -2208,7 +2183,11 @@
                 "value": [
                   "application/pdf",
                   "image/jpeg",
-                  "image/png"
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
                 ]
               },
               "itemMaxSize": {
@@ -2253,7 +2232,11 @@
                 "value": [
                   "application/pdf",
                   "image/jpeg",
-                  "image/png"
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
                 ]
               },
               "itemMaxSize": {
@@ -2287,7 +2270,11 @@
                 "value": [
                   "application/pdf",
                   "image/jpeg",
-                  "image/png"
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
                 ]
               },
               "itemMaxSize": {
@@ -2331,7 +2318,11 @@
                 "value": [
                   "application/pdf",
                   "image/jpeg",
-                  "image/png"
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
                 ]
               },
               "itemMaxSize": {
@@ -2438,7 +2429,7 @@
     }
   ],
   "createdAt": "2026-09-03T00:00:00.000Z",
-  "updatedAt": "2026-10-06T20:27:44.000Z",
+  "updatedAt": "2026-10-10T12:08:01.000Z",
   "meta": {
     "visibility": "preview"
   }

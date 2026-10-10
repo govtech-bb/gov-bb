@@ -433,3 +433,64 @@ it("asks a married applicant about their spouse's land or property", async () =>
     }),
   ]);
 });
+
+// --- review fixes (PR #2954) -------------------------------------------------
+
+it.each([
+  ["co-applicant-details", "co-applicant-relationship"],
+  ["occupant-details", "occupant-relationship"],
+])("asks %s.%s as free text", async (stepId, fieldId) => {
+  const f = (await field(stepId, fieldId)) as Field & { htmlType?: string };
+  expect(f.htmlType).toBe("text");
+  expect(f.validations?.required?.error).toBe(
+    "Enter their relationship to you",
+  );
+  expect(await readRaw()).not.toContain(`${fieldId}-other`);
+});
+
+it("gives an example for the occupant's relationship", async () => {
+  const f = (await field(
+    "occupant-details",
+    "occupant-relationship",
+  )) as Field & {
+    hint?: string;
+  };
+  expect(f.hint).toBe("For example, son, daughter or parent.");
+});
+
+it("accepts PDF, JPG and PNG by MIME type and extension on every upload", async () => {
+  const files = (await hydrated()).steps
+    .flatMap((s) => s.elements)
+    .filter((e) => (e as { htmlType?: string }).htmlType === "file");
+  for (const f of files as unknown as Field[]) {
+    expect(f.validations?.fileTypes?.value, f.fieldId).toEqual([
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      ".pdf",
+      ".jpg",
+      ".jpeg",
+      ".png",
+    ]);
+  }
+});
+
+it.each([
+  "income-type",
+  "pay-frequency",
+  "co-applicant-income-type",
+  "co-applicant-pay-frequency",
+])("asks income.%s as radios", async (fieldId) => {
+  const f = (await field("income", fieldId)) as Field & { htmlType?: string };
+  expect(f.htmlType).toBe("radio");
+});
+
+it.each(["weekly", "twice-a-month", "monthly"])(
+  "words the co-applicant %s cap about their amount",
+  async (frequency) => {
+    const f = await field("income", `co-applicant-income-amount-${frequency}`);
+    expect(f.validations?.max?.error).toBe(
+      "You cannot continue with this application. The amount they receive is more than BDS $3,000 a month.",
+    );
+  },
+);
