@@ -245,7 +245,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-to-use-state-land",
-    title: "Apply to use state land",
+    title: "Apply to use land owned by the Government of Barbados",
     category: "housing",
     formId: "mohlm-application-use-state-land",
     visibility: "preview",
