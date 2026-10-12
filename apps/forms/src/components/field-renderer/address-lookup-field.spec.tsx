@@ -18,6 +18,7 @@ vi.mock("../../lib/api/geocode", () => ({
   searchAddresses: vi.fn(),
   resolvePlace: vi.fn(),
   reverseGeocode: vi.fn(),
+  lookupPolyclinic: vi.fn(),
 }));
 
 // Leaflet needs a real layout engine; stand the map in with a button that
@@ -31,6 +32,7 @@ vi.mock("./location-pin-map", () => ({
 }));
 
 import {
+  lookupPolyclinic,
   resolvePlace,
   reverseGeocode,
   searchAddresses,
@@ -39,6 +41,7 @@ import {
 const mockSearch = searchAddresses as Mock;
 const mockResolve = resolvePlace as Mock;
 const mockReverse = reverseGeocode as Mock;
+const mockPolyclinic = lookupPolyclinic as Mock;
 
 let mockState: {
   value: unknown;
@@ -103,28 +106,15 @@ function renderField(field = addressLookupField()) {
   );
 }
 
-/** Answer the confirmation dialog with the named button. */
-const answer = async (name: string) =>
-  userEvent.click(await screen.findByRole("button", { name }));
-
-/**
- * Type into line 1 of a located address: the first keystroke opens the
- * confirmation, which is accepted, then the rest is typed.
- */
-const editLocatedAddress = async (text: string) => {
-  await userEvent.type(screen.getByRole("combobox"), text[0]);
-  await answer("Change the address");
-  if (text.length > 1) {
-    await userEvent.type(screen.getByRole("combobox"), text.slice(1));
-  }
-};
-
 describe("AddressLookupField", () => {
   beforeEach(() => {
     mockState = { value: undefined, meta: { isValid: true, errors: [] } };
     vi.clearAllMocks();
     formValues = {};
     mockReverse.mockRejectedValue(new Error("reverse lookup failed: 503"));
+    mockPolyclinic.mockRejectedValue(
+      new Error("polyclinic lookup failed: 404"),
+    );
   });
 
   it("renders an ARIA combobox input", () => {
@@ -275,7 +265,7 @@ describe("AddressLookupField", () => {
     await userEvent.click(await screen.findByRole("option"));
     setFieldValue.mockClear();
 
-    await editLocatedAddress("X");
+    await userEvent.type(screen.getByRole("combobox"), "X");
 
     expect(setFieldValue).toHaveBeenCalledWith(
       "step-1.event-address-coordinates",
@@ -314,7 +304,6 @@ describe("AddressLookupField", () => {
     setFieldValue.mockClear();
 
     await userEvent.clear(screen.getByRole("combobox"));
-    await answer("Change the address");
 
     expect(setFieldValue).toHaveBeenCalledWith(
       "step-1.event-address-line-2",
@@ -344,53 +333,43 @@ describe("AddressLookupField", () => {
       setFieldValue.mockClear();
     };
 
-    it("asks before an edit, and keeping the address changes nothing", async () => {
+    it("drops the coordinate and the locked parish on an edit, keeping line 2", async () => {
       await pickBay();
 
-      await userEvent.type(screen.getByRole("combobox"), "X");
-      expect(
-        screen.getByRole("dialog", { name: "Change the address?" }),
-      ).toBeTruthy();
-      // The dialog itself takes focus, not a button: the keystroke that opened
-      // it (a space, an Enter) must not also answer it.
-      expect(
-        screen.getByRole("dialog", { name: "Change the address?" }),
-      ).toHaveFocus();
-      await answer("Keep the address");
-
-      expect(screen.queryByRole("dialog")).toBeNull();
-      expect(screen.getByRole("combobox")).toHaveValue("Bay Street");
-      expect(screen.getByRole("combobox")).toHaveFocus();
-      expect(setFieldValue).not.toHaveBeenCalled();
-    });
-
-    it("cannot be dismissed with Escape", async () => {
-      await pickBay();
-
-      await userEvent.type(screen.getByRole("combobox"), "X");
-      await userEvent.keyboard("{Escape}");
-
-      expect(
-        screen.getByRole("dialog", { name: "Change the address?" }),
-      ).toBeTruthy();
-    });
-
-    it("clears line 2, the parish and the coordinate when the edit is confirmed, and asks only once", async () => {
-      await pickBay();
-
-      await editLocatedAddress("XY");
+      await userEvent.type(screen.getByRole("combobox"), "XY");
 
       expect(screen.queryByRole("dialog")).toBeNull();
       expect(screen.getByRole("combobox")).toHaveValue("Bay StreetXY");
-      expect(setFieldValue).toHaveBeenCalledWith(
-        "step-1.event-address-line-2",
-        "",
-      );
       expect(setFieldValue).toHaveBeenCalledWith("step-1.event-parish", "");
       expect(setFieldValue).toHaveBeenCalledWith(
         "step-1.event-address-coordinates",
         "",
       );
+      expect(setFieldValue).not.toHaveBeenCalledWith(
+        "step-1.event-address-line-2",
+        "",
+      );
+    });
+
+    it("says which polyclinic the request will be routed to, until the address changes", async () => {
+      mockPolyclinic.mockResolvedValue("Sir Winston Scott Polyclinic");
+      await pickBay();
+
+      expect(
+        await screen.findByText(
+          "Your request will be routed to Sir Winston Scott Polyclinic.",
+        ),
+      ).toBeTruthy();
+      expect(mockPolyclinic).toHaveBeenCalledWith(13.1, -59.6);
+
+      await userEvent.type(screen.getByRole("combobox"), "X");
+      expect(screen.queryByText(/Your request will be routed to/)).toBeNull();
+    });
+
+    it("says nothing when no polyclinic serves the point", async () => {
+      await pickBay();
+      await waitFor(() => expect(mockPolyclinic).toHaveBeenCalled());
+      expect(screen.queryByText(/Your request will be routed to/)).toBeNull();
     });
   });
 
@@ -509,7 +488,7 @@ describe("AddressLookupField", () => {
       mockResolve.mockReturnValue(new Promise((resolve) => (answer = resolve)));
       await pickOval();
 
-      await editLocatedAddress(" Stand");
+      await userEvent.type(screen.getByRole("combobox"), " Stand");
       answer({ lat: "13.105", lon: "-59.6225", parish: "st-michael" });
       await new Promise((r) => setTimeout(r, 0));
 
@@ -639,11 +618,11 @@ describe("AddressLookupField", () => {
       );
     });
 
-    it("asks before an edit drops the placed pin", async () => {
+    it("an edit drops the placed pin", async () => {
       await userEvent.click(await failLookup());
       setFieldValue.mockClear();
 
-      await editLocatedAddress(" Road");
+      await userEvent.type(screen.getByRole("combobox"), " Road");
 
       expect(setFieldValue).toHaveBeenCalledWith(
         "step-1.event-address-coordinates",
@@ -688,7 +667,7 @@ describe("AddressLookupField", () => {
       await userEvent.click(await failLookup());
       await waitFor(() => expect(mockReverse).toHaveBeenCalled());
 
-      await editLocatedAddress(" Gap");
+      await userEvent.type(screen.getByRole("combobox"), " Gap");
       answer({
         label: "President Kennedy Dr, Bridgetown",
         line1: "President Kennedy Dr",
@@ -769,7 +748,6 @@ describe("AddressLookupField", () => {
       setFieldValue.mockClear();
 
       await userEvent.clear(screen.getByRole("combobox"));
-      await answer("Change the address");
 
       expect(setFieldValue).toHaveBeenCalledWith(
         "step-1.event-address-coordinates",

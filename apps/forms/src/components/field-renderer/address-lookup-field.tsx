@@ -3,13 +3,13 @@ import { FormGroup, Hint, Label } from "@govtech-bb/react";
 import ErrorMessage from "../error-message";
 import {
   GeocodeResult,
+  lookupPolyclinic,
   MIN_QUERY_LENGTH,
   resolvePlace,
   reverseGeocode,
   searchAddresses,
 } from "../../lib/api/geocode";
 import { AddressCombobox } from "./address-combobox";
-import { ConfirmDialog } from "./confirm-dialog";
 import { FieldRenderContext } from "./render-context";
 
 // Leaflet is only needed when address suggestions are down or find nothing, so
@@ -97,8 +97,8 @@ export function AddressLookupField({
   useEffect(() => () => clearTimeout(pinTimer.current), []);
 
   // Whether the address (and its coordinate) came from the lookup — a pick or
-  // the pin. Editing a located address asks first. (Its parish is read-only,
-  // set only from the location — see `filledByAddressLookup`.)
+  // the pin. Editing a located address drops its coordinate and parish. (The
+  // parish is locked, set only from the location — see `filledByAddressLookup`.)
   const located = useRef(
     Boolean(coordinatesFieldId) &&
       ROUTING_COORDINATE.test(
@@ -109,15 +109,27 @@ export function AddressLookupField({
     located.current = true;
   };
 
+  // The polyclinic the application will be routed to, once located. Bumped per
+  // coordinate so only the latest lookup's answer is shown.
+  const [polyclinic, setPolyclinic] = useState<string | null>(null);
+  const polyclinicLookup = useRef(0);
+
   const writeCoordinate = (value: string) => {
     if (!coordinatesFieldId) return;
     form.setFieldValue(siblingId(coordinatesFieldId), value);
+    const lookup = ++polyclinicLookup.current;
+    setPolyclinic(null);
+    if (!value) return;
     // Clear a "find the address" error as soon as it is located.
-    if (value && !f.state.meta.isValid) void f.validate("submit");
+    if (!f.state.meta.isValid) void f.validate("submit");
+    const [lat, lon] = value.split(",").map(Number);
+    lookupPolyclinic(lat, lon)
+      .then((name) => {
+        if (lookup === polyclinicLookup.current) setPolyclinic(name);
+      })
+      // No polyclinic there, or the lookup is down: say nothing.
+      .catch(() => {});
   };
-
-  // An edit to a located address waits on the applicant's answer.
-  const [confirming, setConfirming] = useState<{ next: string } | null>(null);
 
   useEffect(() => {
     if (justSelected.current) {
@@ -171,16 +183,6 @@ export function AddressLookupField({
   };
 
   const update = (next: string) => {
-    // Editing an address the lookup found throws its details away, so ask
-    // first; the edit waits for the answer.
-    if (located.current) {
-      setConfirming({ next });
-      return;
-    }
-    applyEdit(next);
-  };
-
-  const applyEdit = (next: string) => {
     setQuery(next);
     commitChange(next);
     pendingPlace.current = null;
@@ -188,41 +190,18 @@ export function AddressLookupField({
     // The coordinate belongs to the address that was located, and the
     // applicant cannot see it (it is a `ui.hidden` field), so a typed address
     // must never carry one: it would route the application to the polyclinic
-    // serving the OLD address.
-    if (coordinatesFieldId) {
-      form.setFieldValue(siblingId(coordinatesFieldId), "");
+    // serving the OLD address. The locked parish goes with it; line 2 is the
+    // applicant's to keep.
+    if (located.current) {
+      located.current = false;
+      setPin(null);
+      if (field.geocodeTargets?.parishFieldId) {
+        form.setFieldValue(siblingId(field.geocodeTargets.parishFieldId), "");
+      }
     }
+    if (coordinatesFieldId) writeCoordinate("");
     // Clearing the address starts over.
     if (next.trim() === "") clearFoundDetails();
-  };
-
-  // Focus returns once the dialog has gone: while it is open the page behind
-  // it is inert and cannot take focus.
-  const returnFocusTo = useRef<string | null>(null);
-  useEffect(() => {
-    if (confirming || !returnFocusTo.current) return;
-    document.getElementById(returnFocusTo.current)?.focus();
-    returnFocusTo.current = null;
-  }, [confirming]);
-  const focusField = (id: string) => {
-    returnFocusTo.current = id;
-  };
-
-  const confirmChange = () => {
-    const pending = confirming;
-    setConfirming(null);
-    if (!pending) return;
-    located.current = false;
-    pendingPlace.current = null;
-    pinLookup.current += 1;
-    clearFoundDetails();
-    applyEdit(pending.next);
-    focusField(field.id);
-  };
-
-  const cancelChange = () => {
-    setConfirming(null);
-    focusField(field.id);
   };
 
   const select = (result: GeocodeResult) => {
@@ -347,6 +326,15 @@ export function AddressLookupField({
         onPick={select}
         attribution={suggestions.some((result) => result.placeId)}
       />
+      {polyclinic && (
+        <div className="govbb-warning-text" role="status">
+          <span className="govbb-warning-text__icon" aria-hidden="true">
+            !
+          </span>
+          <span className="govbb-visually-hidden">Warning:</span>
+          <p>Your request will be routed to {polyclinic}.</p>
+        </div>
+      )}
       {showPinMap ? (
         <>
           <Hint id={pinHintId} role="status" tabIndex={-1}>
@@ -393,22 +381,6 @@ export function AddressLookupField({
             .
           </Hint>
         )
-      )}
-      {confirming && (
-        <ConfirmDialog
-          open
-          title="Change the address?"
-          confirmLabel="Change the address"
-          cancelLabel="Keep the address"
-          onConfirm={confirmChange}
-          onCancel={cancelChange}
-        >
-          <p>
-            If you change the address, we will clear the details we found for
-            it, including the parish. You will need to find the address again,
-            from the list or on the map.
-          </p>
-        </ConfirmDialog>
       )}
     </FormGroup>
   );

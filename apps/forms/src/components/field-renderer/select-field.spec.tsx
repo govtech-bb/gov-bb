@@ -53,9 +53,6 @@ describe("a parish filled by a located address", () => {
     expect(parish).toBeDisabled();
     expect(parish).toHaveValue("st-michael");
     expect(parish).toHaveAttribute("data-value", "st-michael");
-    expect(parish).toHaveAccessibleDescription(
-      "We fill this in from the address you choose.",
-    );
   });
 
   it("is empty and disabled until the address is located", () => {

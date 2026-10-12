@@ -37,9 +37,6 @@ export function renderSelectField(ctx: FieldRenderContext): JSX.Element {
   // select is shown but disabled. The value stays in form state, which is what
   // is submitted. `data-value` carries it for tests.
   const filledByAddress = field.filledByAddressLookup === true;
-  const addressHintId = filledByAddress
-    ? `${field.id}-from-address`
-    : undefined;
 
   return (
     <FormGroup data-field-width={field.ui?.width}>
@@ -51,11 +48,6 @@ export function renderSelectField(ctx: FieldRenderContext): JSX.Element {
         {field.label}
       </Label>
       {field.hint && <Hint id={hintId}>{field.hint}</Hint>}
-      {filledByAddress && (
-        <Hint id={addressHintId}>
-          We fill this in from the address you choose.
-        </Hint>
-      )}
       <ErrorMessage id={errorId} message={errorMessage} />
       <Select
         {...sharedProps}
@@ -63,10 +55,6 @@ export function renderSelectField(ctx: FieldRenderContext): JSX.Element {
         {...(filledByAddress && {
           disabled: true,
           "data-value": selectValue ?? "",
-          "aria-describedby":
-            [sharedProps["aria-describedby"], addressHintId]
-              .filter(Boolean)
-              .join(" ") || undefined,
         })}
         value={selectValue ?? ""}
         aria-invalid={invalid}

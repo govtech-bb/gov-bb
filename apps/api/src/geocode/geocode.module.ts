@@ -1,5 +1,6 @@
 import { HttpModule, HttpService } from "@nestjs/axios";
 import { Module } from "@nestjs/common";
+import { CatchmentModule } from "@/catchment/catchment.module";
 import { GeocodeController } from "./geocode.controller";
 import {
   buildProviders,
@@ -9,7 +10,7 @@ import {
 
 /** Barbados-locked address-lookup proxy over a configurable provider chain. */
 @Module({
-  imports: [HttpModule],
+  imports: [HttpModule, CatchmentModule],
   controllers: [GeocodeController],
   providers: [
     {

@@ -1,5 +1,12 @@
-import { Controller, Get, Param, Query } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  Query,
+} from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
+import { CatchmentRoutingService } from "@/catchment/catchment-routing.service";
 import {
   GeocodeResult,
   GeocodeService,
@@ -16,7 +23,29 @@ import {
 })
 @Controller("geocode")
 export class GeocodeController {
-  constructor(private readonly geocode: GeocodeService) {}
+  constructor(
+    private readonly geocode: GeocodeService,
+    private readonly routing: CatchmentRoutingService,
+  ) {}
+
+  /**
+   * `GET /geocode/polyclinic?lat=&lon=` — the polyclinic an application at a
+   * located address is routed to, so the address field can say so. 404 for a
+   * point no polyclinic serves.
+   */
+  @Get("polyclinic")
+  polyclinic(
+    @Query("lat") lat?: string,
+    @Query("lon") lon?: string,
+  ): { polyclinic: string } {
+    const polyclinic = this.routing.servingPolyclinicAt(
+      Number(lat),
+      Number(lon),
+    );
+    if (!polyclinic)
+      throw new NotFoundException("No polyclinic serves that point");
+    return { polyclinic };
+  }
 
   /**
    * `GET /geocode?q=&session=` — Barbados-only address suggestions. `session`

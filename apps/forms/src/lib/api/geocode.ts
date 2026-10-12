@@ -85,3 +85,17 @@ export async function reverseGeocode(
   if (!res.ok) throw new Error(`reverse lookup failed: ${res.status}`);
   return (await res.json()) as GeocodeResult;
 }
+
+/**
+ * The polyclinic an application at this point is routed to. Throws when none
+ * serves it (404) or the lookup fails.
+ */
+export async function lookupPolyclinic(
+  lat: number,
+  lon: number,
+): Promise<string> {
+  const params = new URLSearchParams({ lat: String(lat), lon: String(lon) });
+  const res = await fetch(`${API_URL}/geocode/polyclinic?${params}`);
+  if (!res.ok) throw new Error(`polyclinic lookup failed: ${res.status}`);
+  return ((await res.json()) as { polyclinic: string }).polyclinic;
+}
