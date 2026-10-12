@@ -18,7 +18,12 @@
  *   radio/checkbox: fieldset `${stepId}_${fieldId}`, then native option value
  *   file          : `${stepId}_${fieldId}`
  */
-import { expect, type Page, type Response } from "@playwright/test";
+import {
+  expect,
+  type Locator,
+  type Page,
+  type Response,
+} from "@playwright/test";
 
 export const STEP_TIMEOUT = 15_000;
 const UPLOAD_TIMEOUT = 30_000;
@@ -281,6 +286,88 @@ export async function fillGeocodedAddress(
   return (await coordinates.inputValue()).trim();
 }
 
+type UploadFile = { name: string; mimeType: string; buffer: Buffer };
+
+/** The upload flow's API calls, in the order the widget makes them. */
+type UploadCall = "presign-upload" | "confirm-upload";
+
+/** Wait for one upload API call; say which one never happened on timeout. */
+async function uploadResponse(
+  pending: Promise<Response>,
+  call: UploadCall,
+  fileName: string,
+): Promise<Response> {
+  try {
+    return await pending;
+  } catch {
+    throw new Error(
+      `No POST /files/${call} within ${UPLOAD_TIMEOUT / 1000}s while uploading ${fileName}` +
+        (call === "presign-upload"
+          ? " — the upload never started (was the file rejected before upload?)"
+          : ""),
+    );
+  }
+}
+
+/** Fail with the call, its status and (clipped) body when it isn't 2xx. */
+async function expectUploadCallOk(
+  response: Response,
+  call: UploadCall,
+  fileName: string,
+): Promise<void> {
+  if (response.ok()) return;
+  const body = (await response.text().catch(() => "")).slice(0, 300);
+  expect(
+    response.ok(),
+    `POST /files/${call} failed with ${response.status()} while uploading ${fileName}` +
+      (body ? `: ${body}` : ""),
+  ).toBe(true);
+}
+
+/**
+ * Set one file on an upload input and wait until it is CONFIRMED (#2423).
+ * The upload's API calls are watched first, so a throttled or rejected upload
+ * fails at once naming the call and its status — a 429 on confirm-upload, a
+ * 5xx on presign-upload — instead of timing out on a "Remove {name}" button
+ * that never appears. That button is still the final check: it only renders
+ * once the value has committed (see uploadOne). The S3 PUT between the two
+ * calls is not watched; it is the least likely to fail, and a failure there
+ * still surfaces as a missing confirm-upload.
+ */
+async function uploadAndConfirm(
+  page: Page,
+  input: Locator,
+  file: UploadFile,
+): Promise<void> {
+  const call = (name: UploadCall) => (res: Response) =>
+    res.url().includes(`/files/${name}`) && res.request().method() === "POST";
+  const presign = page.waitForResponse(call("presign-upload"), {
+    timeout: UPLOAD_TIMEOUT,
+  });
+  const confirm = page.waitForResponse(call("confirm-upload"), {
+    timeout: UPLOAD_TIMEOUT,
+  });
+  // Whichever wait isn't awaited (a failed presign means no confirm) must not
+  // surface later as an unhandled rejection.
+  presign.catch(() => undefined);
+  confirm.catch(() => undefined);
+
+  await input.setInputFiles(file);
+  await expectUploadCallOk(
+    await uploadResponse(presign, "presign-upload", file.name),
+    "presign-upload",
+    file.name,
+  );
+  await expectUploadCallOk(
+    await uploadResponse(confirm, "confirm-upload", file.name),
+    "confirm-upload",
+    file.name,
+  );
+  await expect(
+    page.getByRole("button", { name: `Remove ${file.name}` }),
+  ).toBeVisible({ timeout: UPLOAD_TIMEOUT });
+}
+
 /**
  * Upload one file to a single-file upload field and wait until the upload is
  * CONFIRMED, not merely pending. The component renders a file's name for both
@@ -293,14 +380,13 @@ export async function uploadOne(
   page: Page,
   stepId: string,
   suffix: string,
-  file: { name: string; mimeType: string; buffer: Buffer },
+  file: UploadFile,
 ): Promise<void> {
-  await page
-    .locator(`input[type=file][id="${stepId}_${suffix}"]`)
-    .setInputFiles(file);
-  await expect(
-    page.getByRole("button", { name: `Remove ${file.name}` }),
-  ).toBeVisible({ timeout: UPLOAD_TIMEOUT });
+  await uploadAndConfirm(
+    page,
+    page.locator(`input[type=file][id="${stepId}_${suffix}"]`),
+    file,
+  );
 }
 
 /**
@@ -318,15 +404,11 @@ export async function uploadMany(
   page: Page,
   stepId: string,
   suffix: string,
-  files: { name: string; mimeType: string; buffer: Buffer }[],
+  files: UploadFile[],
 ): Promise<void> {
+  const input = page.locator(`input[type=file][id="${stepId}_${suffix}"]`);
   for (const file of files) {
-    await page
-      .locator(`input[type=file][id="${stepId}_${suffix}"]`)
-      .setInputFiles(file);
-    await expect(
-      page.getByRole("button", { name: `Remove ${file.name}` }),
-    ).toBeVisible({ timeout: UPLOAD_TIMEOUT });
+    await uploadAndConfirm(page, input, file);
   }
 }
 
