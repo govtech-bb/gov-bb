@@ -166,10 +166,9 @@ export function buildData() {
     nationalIdDigits: nationalIdDigits(),
     address: faker.helpers.arrayElement(GEOCODABLE_ADDRESSES),
     addressLine2: faker.location.street(),
-    // For the free-typed run: a faker street address, which the Barbados-locked
-    // geocoder will not resolve — and which is typed without picking a
-    // suggestion even if it did.
-    freeTypedAddress: faker.location.streetAddress(),
+    // For the map run: a faker street address, which the (mocked) geocoder
+    // will not find, so the applicant has to place it on the map.
+    unfoundAddress: faker.location.streetAddress(),
     homeParish: faker.helpers.arrayElement(PARISH_VALUES),
     // Goes to the monitored test inbox so a real run is verifiable end-to-end.
     email: "testing@govtech.bb",
@@ -261,33 +260,41 @@ export async function fillGeocodedAddress(
 }
 
 /**
- * Type an address WITHOUT picking a suggestion — the citizen behaviour that used
- * to strand the submission: `geocodeTargets` only fires on a pick, so nothing
- * writes the hidden coordinate, and the CMS received an application with no
- * location while the confirmation page said "your local polyclinic".
- *
- * The coordinate is asserted EMPTY here on purpose: this run must reach the
- * server with nothing geocoded, so that the polyclinic named on the confirmation
- * page can only have come from the server-side parish fill. If the client ever
- * starts populating it on free text, this assertion fails and the test stops
- * proving what it claims to.
+ * Give an address the lookup cannot find. A routing address has to be located,
+ * so a typed address alone is refused at Continue; the applicant finds it on
+ * the map instead, and placing the pin writes the hidden coordinate the
+ * catchment router resolves the polyclinic from.
  */
-export async function fillFreeTypedAddress(
+export async function fillAddressOnMap(
   page: Page,
   stepId: string,
   address: string,
-): Promise<void> {
+): Promise<string> {
   const combo = page.locator(`input[id="${stepId}_address-line-1"]`);
   await combo.click();
   await combo.pressSequentially(address, { delay: 20 });
-  // Dismiss any listbox the lookup opened without selecting from it — Escape is
-  // the citizen equivalent of ignoring the suggestions and carrying on.
   await combo.press("Escape");
 
+  // Typed but not located: Continue refuses it and points to the map.
+  await page.getByRole("button", { name: "Continue" }).click();
   await expect(
-    page.locator(`input[id="${stepId}_address-coordinates"]`),
-    "a free-typed address must leave the hidden coordinate empty",
-  ).toHaveValue("");
+    page
+      .getByText("Choose the address from the list, or find it on the map")
+      .first(),
+    "a typed address the lookup cannot find must not be accepted",
+  ).toBeVisible({ timeout: STEP_TIMEOUT });
+
+  await page.getByRole("button", { name: "Find it on the map" }).click();
+  const map = page.locator(".address-pin-map");
+  await expect(map).toBeVisible({ timeout: STEP_TIMEOUT });
+  await map.click();
+
+  const coordinates = page.locator(`input[id="${stepId}_address-coordinates"]`);
+  await expect(
+    coordinates,
+    "placing the pin did not populate the hidden applicant coordinates",
+  ).toHaveValue(/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/, { timeout: STEP_TIMEOUT });
+  return (await coordinates.inputValue()).trim();
 }
 
 /** Step 1 — the applicant, identical on both branches. */
@@ -295,9 +302,9 @@ export async function fillPersonalDetails(
   page: Page,
   data: ReturnType<typeof buildData>,
   // How the applicant gave their address. "geocoded" picks a suggestion (the
-  // coordinate and parish are written for them); "free-typed" types it and
-  // answers the parish by hand, leaving the server to fill the coordinate.
-  addressMode: "geocoded" | "free-typed" = "geocoded",
+  // coordinate and parish are written for them); "map" gives one the lookup
+  // cannot find and places it on the map.
+  addressMode: "geocoded" | "map" = "geocoded",
 ): Promise<void> {
   const step = expectStep(page, "personal-details");
   await expect(page.locator("h1")).toContainText("Tell us about yourself");
@@ -310,26 +317,27 @@ export async function fillPersonalDetails(
     "national-id-number",
     data.nationalIdDigits,
   );
+  const parish = page.locator(`select[id="${step}_home-parish"]`);
   if (addressMode === "geocoded") {
     await fillGeocodedAddress(page, step, data.address);
   } else {
-    await fillFreeTypedAddress(page, step, data.freeTypedAddress);
+    // The parish first: changing it after the pin would drop the pin's
+    // coordinate, as the pin was placed for the old parish.
+    await selectDropdown(page, step, "home-parish", data.homeParish);
+    await fillAddressOnMap(page, step, data.unfoundAddress);
   }
   // Line 2 is optional here (the recipe overrides required:false), but fill
   // it explicitly rather than rely on whatever line 2 the picked suggestion
   // wrote.
   await fillField(page, step, "address-line-2", data.addressLine2);
 
-  const parish = page.locator(`select[id="${step}_home-parish"]`);
   if (addressMode === "geocoded") {
     // The geocoder fills parish from the picked suggestion; assert rather than
     // overwrite, since that value is the catchment router's fallback.
     await expect(parish).not.toHaveValue("");
   } else {
-    // Nothing geocoded, so the parish is the applicant's own answer — and the
-    // only thing the server can route on.
-    await expect(parish).toHaveValue("");
-    await selectDropdown(page, step, "home-parish", data.homeParish);
+    // Chosen before the pin; the address at the pin may have refined it.
+    await expect(parish).not.toHaveValue("");
   }
   await advance(page, step);
 }
@@ -440,14 +448,10 @@ test.describe("Hairdresser Licence Application — Live Smoke", () => {
     if (process.env.SMOKE_HOLD) await page.pause();
   });
 
-  // The condition the coordinate fix exists for: the applicant types their
-  // address and never picks a suggestion, so NOTHING geocodes. The confirmation
-  // page must still name a real polyclinic — which, with the hidden coordinate
-  // asserted empty on the way through, can only have come from the server-side
-  // parish fill. The unit and payload specs cover this shape for every routed
-  // recipe; this is the one run that proves it against a real deploy, browser and
-  // API included.
-  test("submits a free-typed address that never geocodes, and still routes", async ({
+  // An address the lookup cannot find: typing it alone is refused, so the
+  // applicant places it on the map, and the confirmation page must still name a
+  // real polyclinic — routed from the pin's coordinate.
+  test("refuses an unfound typed address, then routes one placed on the map", async ({
     page,
   }) => {
     const data = buildData();
@@ -455,7 +459,7 @@ test.describe("Hairdresser Licence Application — Live Smoke", () => {
       console.log("[smoke-data]", JSON.stringify(data, null, 2));
 
     await openForm(page);
-    await fillPersonalDetails(page, data, "free-typed");
+    await fillPersonalDetails(page, data, "map");
     await fillContactDetails(page, data);
 
     const step = expectStep(page, "workplace-details");
@@ -470,9 +474,8 @@ test.describe("Hairdresser Licence Application — Live Smoke", () => {
     if (process.env.SMOKE_HOLD_CYA) await page.pause();
     await advance(page, cya);
 
-    // confirmAndSubmit asserts "your local polyclinic" is absent — on this run
-    // that assertion IS the test: the fallback would mean the server did not
-    // fill the coordinate from the parish.
+    // confirmAndSubmit asserts "your local polyclinic" is absent: the pin's
+    // coordinate routed the application.
     await confirmAndSubmit(page);
 
     if (process.env.SMOKE_HOLD) await page.pause();

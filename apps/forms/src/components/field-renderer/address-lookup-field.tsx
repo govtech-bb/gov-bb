@@ -1,5 +1,6 @@
 import { JSX, lazy, Suspense, useEffect, useRef, useState } from "react";
 import { FormGroup, Hint, Label } from "@govtech-bb/react";
+import { useStore } from "@tanstack/react-form";
 import ErrorMessage from "../error-message";
 import {
   GeocodeResult,
@@ -21,15 +22,19 @@ const DEBOUNCE_MS = 400;
 // Wait for the pin to settle before looking up its address — arrow keys move it
 // one nudge at a time.
 const PIN_SETTLE_MS = 500;
+// A routing coordinate as the API accepts it (`isRoutingCoordinate`).
+const ROUTING_COORDINATE = /^-?\d+\.\d+,-?\d+\.\d+$/;
+const EDIT_WARNING =
+  "If you change this address, we will clear the address details we found and you will need to find the address again. Do you want to change it?";
 
 /**
  * A single-line address field backed by the Barbados-locked `/geocode` proxy.
  * As the applicant types (past {@link MIN_QUERY_LENGTH}), it offers matching
  * Barbados addresses in an ARIA combobox listbox; picking one stores its
- * formatted-address string. The value is always the string in the box, so free
- * typing works and a lookup outage never blocks the form: the field degrades to
- * plain text entry, and — when it writes a routing coordinate — offers a map
- * the applicant places a pin on instead.
+ * formatted-address string. When the field writes a routing coordinate, the
+ * address has to be located — picked from the list or placed on the map, which
+ * stays available when the lookup finds nothing or is down; a typed address
+ * alone does not pass validation. Without a coordinate, free typing is fine.
  */
 export function AddressLookupField({
   ctx,
@@ -93,6 +98,47 @@ export function AddressLookupField({
   const pinTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(pinTimer.current), []);
 
+  // Whether the address (and its coordinate) came from the lookup — a pick or
+  // the pin — and the parish it was located in. Editing a located address
+  // asks first; changing its parish drops the coordinate.
+  const parishFieldId = field.geocodeTargets?.parishFieldId;
+  const readParish = (): unknown =>
+    parishFieldId ? form.getFieldValue(siblingId(parishFieldId)) : undefined;
+  const located = useRef(
+    Boolean(coordinatesFieldId) &&
+      ROUTING_COORDINATE.test(
+        String(form.getFieldValue(siblingId(coordinatesFieldId ?? "")) ?? ""),
+      ),
+  );
+  const locatedParish = useRef<unknown>(readParish());
+  const [parishChanged, setParishChanged] = useState(false);
+  const markLocated = () => {
+    located.current = true;
+    locatedParish.current = readParish();
+    setParishChanged(false);
+  };
+
+  const writeCoordinate = (value: string) => {
+    if (!coordinatesFieldId) return;
+    form.setFieldValue(siblingId(coordinatesFieldId), value);
+    // Clear a "find the address" error as soon as it is located.
+    if (value && !f.state.meta.isValid) void f.validate("submit");
+  };
+
+  const parish = useStore(form.store, () => readParish());
+  useEffect(() => {
+    if (!located.current || parish === locatedParish.current) return;
+    // The applicant corrected the parish: keep the address lines, but the
+    // coordinate was for the old answer, so it goes and they locate it again.
+    located.current = false;
+    pendingPlace.current = null;
+    pinLookup.current += 1;
+    setPin(null);
+    writeCoordinate("");
+    setParishChanged(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parish]);
+
   useEffect(() => {
     if (justSelected.current) {
       justSelected.current = false;
@@ -130,38 +176,42 @@ export function AddressLookupField({
     };
   }, [query, coordinatesFieldId]);
 
+  // Line 2, the parish and the coordinate (and pin) were found for one
+  // address; once that address changes they go, rather than linger stale.
+  const clearFoundDetails = () => {
+    const targets = field.geocodeTargets;
+    if (targets?.line2FieldId) {
+      form.setFieldValue(siblingId(targets.line2FieldId), "");
+    }
+    if (targets?.parishFieldId) {
+      form.setFieldValue(siblingId(targets.parishFieldId), "");
+    }
+    setPin(null);
+    writeCoordinate("");
+  };
+
   const update = (next: string) => {
+    // Editing an address the lookup found throws its details away, so ask
+    // first; cancelling leaves the field as it was.
+    if (located.current) {
+      if (!window.confirm(EDIT_WARNING)) return;
+      located.current = false;
+      setParishChanged(false);
+      clearFoundDetails();
+    }
     setQuery(next);
     commitChange(next);
     pendingPlace.current = null;
     pinLookup.current += 1;
-    // The coordinate belongs to the suggestion that was picked, and the
-    // applicant cannot see it (it is a `ui.hidden` field), so editing the
-    // address by hand would otherwise send the CMS a precise coordinate for an
-    // address that is no longer on screen — and route the application to the
-    // polyclinic serving the OLD one. Drop it and let the server fill the
-    // coordinate from the parish instead. The parish and line 2 stay: both are
-    // visible fields the applicant can correct themselves. A placed pin is the
-    // applicant's own answer for the location, so it survives the edit.
-    if (coordinatesFieldId && !pin) {
+    // The coordinate belongs to the address that was located, and the
+    // applicant cannot see it (it is a `ui.hidden` field), so a typed address
+    // must never carry one: it would route the application to the polyclinic
+    // serving the OLD address.
+    if (coordinatesFieldId) {
       form.setFieldValue(siblingId(coordinatesFieldId), "");
     }
-
-    // Clearing the address starts over: line 2, the parish and any pin were
-    // filled for the old address, so they go too rather than linger stale.
-    if (next.trim() === "") {
-      const targets = field.geocodeTargets;
-      if (targets?.line2FieldId) {
-        form.setFieldValue(siblingId(targets.line2FieldId), "");
-      }
-      if (targets?.parishFieldId) {
-        form.setFieldValue(siblingId(targets.parishFieldId), "");
-      }
-      if (coordinatesFieldId) {
-        setPin(null);
-        form.setFieldValue(siblingId(coordinatesFieldId), "");
-      }
-    }
+    // Clearing the address starts over.
+    if (next.trim() === "") clearFoundDetails();
   };
 
   const select = (result: GeocodeResult) => {
@@ -179,12 +229,10 @@ export function AddressLookupField({
     if (targets?.parishFieldId && result.parish) {
       form.setFieldValue(siblingId(targets.parishFieldId), result.parish);
     }
-    if (targets?.coordinatesFieldId) {
-      form.setFieldValue(
-        siblingId(targets.coordinatesFieldId),
-        result.lat && result.lon ? `${result.lat},${result.lon}` : "",
-      );
-    }
+    writeCoordinate(
+      result.lat && result.lon ? `${result.lat},${result.lon}` : "",
+    );
+    markLocated();
     // The pick replaces any pin: drop it, close the map, and let no late
     // address-at-the-pin answer overwrite the pick.
     setPin(null);
@@ -202,14 +250,10 @@ export function AddressLookupField({
       .then((place) => {
         if (pendingPlace.current !== result) return;
         pendingPlace.current = null;
-        if (targets?.coordinatesFieldId) {
-          form.setFieldValue(
-            siblingId(targets.coordinatesFieldId),
-            `${place.lat},${place.lon}`,
-          );
-        }
+        writeCoordinate(`${place.lat},${place.lon}`);
         if (targets?.parishFieldId && !result.parish && place.parish) {
           form.setFieldValue(siblingId(targets.parishFieldId), place.parish);
+          markLocated();
         }
       })
       .catch(() => {
@@ -223,10 +267,8 @@ export function AddressLookupField({
   const placePin = (lat: number, lon: number) => {
     if (!coordinatesFieldId) return;
     setPin([lat, lon]);
-    form.setFieldValue(
-      siblingId(coordinatesFieldId),
-      `${lat.toFixed(6)},${lon.toFixed(6)}`,
-    );
+    writeCoordinate(`${lat.toFixed(6)},${lon.toFixed(6)}`);
+    markLocated();
 
     // Fill the address lines with the address at the pin once it settles. The
     // coordinate stays the pin's own: the address is a description of it.
@@ -246,8 +288,9 @@ export function AddressLookupField({
           if (targets?.parishFieldId && found.parish) {
             form.setFieldValue(siblingId(targets.parishFieldId), found.parish);
           }
+          markLocated();
         })
-        // No address there, or the lookup is down: the applicant types it.
+        // No address there, or the lookup is down: the pin still locates it.
         .catch(() => {});
     }, PIN_SETTLE_MS);
   };
@@ -321,16 +364,23 @@ export function AddressLookupField({
           address yourself.
         </Hint>
       ) : (
-        noMatch &&
-        coordinatesFieldId && (
+        // A routing address must be located, so when the list cannot place it
+        // — nothing found, the parish changed, or Continue refused it — the map
+        // is the way on.
+        coordinatesFieldId &&
+        (noMatch || parishChanged || invalid) && (
           <Hint role="status">
-            We cannot find that address. You can type it yourself, or{" "}
+            {noMatch
+              ? "We cannot find that address. "
+              : parishChanged
+                ? "You changed the parish, so we need to check where the address is. "
+                : ""}
             <button
               className="govbb-link address-lookup__map-link"
               onClick={openPinMap}
               type="button"
             >
-              show where it is on a map
+              Find it on the map
             </button>
             .
           </Hint>

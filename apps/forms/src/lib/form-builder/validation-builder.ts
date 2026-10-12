@@ -170,8 +170,43 @@ const formatErrors = (errors: string[], fieldName: string): string[] => {
   return out;
 };
 
+// A routing coordinate as the API accepts it (`isRoutingCoordinate`).
+const ROUTING_COORDINATE = /^-?\d+\.\d+,-?\d+\.\d+$/;
+
 // This allows us to recalculate the methods after restoring from cache.
 export const buildFieldValidationProperties = (
+  field: ClientPrimitive,
+): FieldValidationProperties => {
+  const properties = buildRuleValidationProperties(field);
+  const coordinatesFieldId = field.geocodeTargets?.coordinatesFieldId;
+  if (field.htmlType !== "address-lookup" || !coordinatesFieldId) {
+    return properties;
+  }
+
+  // An address that routes the application must be located — picked from the
+  // suggestions or placed on the map, which writes its coordinate — not just
+  // typed: a typed address the lookup cannot find may not exist.
+  const coordinatesId = `${field.id.slice(0, field.id.length - field.fieldId.length)}${coordinatesFieldId}`;
+  return {
+    ...properties,
+    onDynamic(input) {
+      const errors = properties.onDynamic?.(input);
+      if (errors) return errors;
+      if (typeof input.value !== "string" || !input.value.trim()) {
+        return undefined;
+      }
+      const coordinate = (
+        input.fieldApi?.form?.state?.values as Record<string, unknown>
+      )?.[coordinatesId];
+      return typeof coordinate === "string" &&
+        ROUTING_COORDINATE.test(coordinate)
+        ? undefined
+        : ["Choose the address from the list, or find it on the map"];
+    },
+  };
+};
+
+const buildRuleValidationProperties = (
   field: ClientPrimitive,
 ): FieldValidationProperties => {
   // The show-hide toggle stores a boolean (open/closed state) and never has its

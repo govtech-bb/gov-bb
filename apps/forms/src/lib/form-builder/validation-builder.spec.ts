@@ -841,3 +841,56 @@ describe("buildFieldValidationProperties", () => {
     });
   });
 });
+
+// A routing address (one that writes a coordinate) must be located — picked
+// from the suggestions or placed on the map — not just typed.
+describe("address-lookup field that writes a routing coordinate", () => {
+  const addressField = (
+    geocodeTargets: ClientPrimitive["geocodeTargets"] = {
+      coordinatesFieldId: "event-coordinates",
+    },
+  ) =>
+    makeField("event-address", "event", {
+      htmlType: "address-lookup",
+      geocodeTargets,
+      validations: { required: { value: true, error: "Enter the address" } },
+    });
+
+  it("refuses an address that was typed but not located", () => {
+    const { onDynamic } = buildFieldValidationProperties(addressField());
+    const fieldApi = makeFieldApi({
+      "event_event-address": "Water Hall Tenantry Road",
+      "event_event-coordinates": "",
+    });
+    expect(onDynamic!({ value: "Water Hall Tenantry Road", fieldApi })).toEqual(
+      ["Choose the address from the list, or find it on the map"],
+    );
+  });
+
+  it("accepts a located address", () => {
+    const { onDynamic } = buildFieldValidationProperties(addressField());
+    const fieldApi = makeFieldApi({
+      "event_event-coordinates": "13.104995,-59.622524",
+    });
+    expect(onDynamic!({ value: "Kensington Oval", fieldApi })).toBeUndefined();
+  });
+
+  it("keeps the required message for an empty address", () => {
+    const { onDynamic } = buildFieldValidationProperties(addressField());
+    expect(onDynamic!({ value: "", fieldApi: makeFieldApi() })).toEqual([
+      "Enter the address",
+    ]);
+  });
+
+  it("lets a typed address through when the field writes no coordinate", () => {
+    const { onDynamic } = buildFieldValidationProperties(
+      addressField({ line2FieldId: "event-line-2" }),
+    );
+    expect(
+      onDynamic!({
+        value: "Water Hall Tenantry Road",
+        fieldApi: makeFieldApi(),
+      }),
+    ).toBeUndefined();
+  });
+});

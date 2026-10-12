@@ -5,6 +5,12 @@ import userEvent from "@testing-library/user-event";
 import FieldRenderer from ".";
 import type { ClientPrimitive } from "@forms/types";
 
+vi.mock("@tanstack/react-form", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-form")>()),
+  useStore: (_store: unknown, select: (state: unknown) => unknown) =>
+    select(undefined),
+}));
+
 vi.mock("@forms/lib", () => ({
   checkConditionalOn: vi.fn().mockReturnValue("required"),
   parseDatePart: (raw: string) => {
@@ -57,7 +63,11 @@ const mockFieldApi = {
   validate: vi.fn(),
 };
 
-const setFieldValue = vi.fn();
+// Sibling field values (parish, coordinate, line 2), keyed by field id.
+let formValues: Record<string, unknown> = {};
+const setFieldValue = vi.fn((id: string, value: unknown) => {
+  formValues[id] = value;
+});
 
 const mockForm = {
   Field: ({
@@ -67,8 +77,9 @@ const mockForm = {
     validators?: unknown;
     children: (f: typeof mockFieldApi) => React.ReactNode;
   }) => <>{children(mockFieldApi)}</>,
-  getFieldValue: vi.fn().mockReturnValue(undefined),
+  getFieldValue: (id: string) => formValues[id],
   setFieldValue,
+  store: {},
 };
 
 function addressLookupField(
@@ -94,16 +105,32 @@ function addressLookupField(
 }
 
 function renderField(field = addressLookupField()) {
-  return render(
+  const view = render(
     <FieldRenderer form={mockForm} field={field} validationProperties={{}} />,
   );
+  return {
+    ...view,
+    /** Re-render, so the field sees a sibling value changed by another field. */
+    refresh: () =>
+      view.rerender(
+        <FieldRenderer
+          form={mockForm}
+          field={field}
+          validationProperties={{}}
+        />,
+      ),
+  };
 }
+
+const confirmSpy = vi.spyOn(window, "confirm");
 
 describe("AddressLookupField", () => {
   beforeEach(() => {
     mockState = { value: undefined, meta: { isValid: true, errors: [] } };
     vi.clearAllMocks();
+    formValues = {};
     mockReverse.mockRejectedValue(new Error("reverse lookup failed: 503"));
+    confirmSpy.mockReturnValue(true);
   });
 
   it("renders an ARIA combobox input", () => {
@@ -305,6 +332,81 @@ describe("AddressLookupField", () => {
     );
   });
 
+  describe("once the lookup has filled the address", () => {
+    const BAY = {
+      label: "Bay Street, Bridgetown, Barbados",
+      lat: "13.1",
+      lon: "-59.6",
+      line1: "Bay Street",
+      line2: "Bridgetown",
+      parish: "st-michael",
+    };
+    const pickBay = async () => {
+      mockSearch.mockResolvedValue([BAY]);
+      const view = renderField();
+      await userEvent.type(screen.getByRole("combobox"), "Bay");
+      await userEvent.click(await screen.findByRole("option"));
+      setFieldValue.mockClear();
+      return view;
+    };
+
+    it("asks before an edit, and cancelling keeps everything", async () => {
+      confirmSpy.mockReturnValue(false);
+      await pickBay();
+
+      await userEvent.type(screen.getByRole("combobox"), "X");
+
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("combobox")).toHaveValue("Bay Street");
+      expect(setFieldValue).not.toHaveBeenCalled();
+    });
+
+    it("clears line 2, the parish and the coordinate when the edit is confirmed, and asks only once", async () => {
+      await pickBay();
+
+      await userEvent.type(screen.getByRole("combobox"), "XY");
+
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("combobox")).toHaveValue("Bay StreetXY");
+      expect(setFieldValue).toHaveBeenCalledWith(
+        "step-1.event-address-line-2",
+        "",
+      );
+      expect(setFieldValue).toHaveBeenCalledWith("step-1.event-parish", "");
+      expect(setFieldValue).toHaveBeenCalledWith(
+        "step-1.event-address-coordinates",
+        "",
+      );
+    });
+
+    it("keeps the lines but drops the coordinate when the parish is changed, and offers the map", async () => {
+      const { refresh } = await pickBay();
+
+      formValues["step-1.event-parish"] = "christ-church";
+      refresh();
+
+      expect(setFieldValue).toHaveBeenCalledWith(
+        "step-1.event-address-coordinates",
+        "",
+      );
+      expect(setFieldValue).not.toHaveBeenCalledWith(
+        "step-1.event-address-line-2",
+        "",
+      );
+      expect(screen.getByRole("combobox")).toHaveValue("Bay Street");
+      expect(screen.getByText(/You changed the parish/)).toBeTruthy();
+      expect(
+        screen.getByRole("button", { name: "Find it on the map" }),
+      ).toBeTruthy();
+    });
+
+    it("does not treat its own parish fill as a change", async () => {
+      const { refresh } = await pickBay();
+      refresh();
+      expect(setFieldValue).not.toHaveBeenCalled();
+    });
+  });
+
   it("shows a non-blocking notice when the lookup fails on a field with no coordinate", async () => {
     mockSearch.mockRejectedValue(new Error("network down"));
     renderField(addressLookupField({ line2FieldId: "event-address-line-2" }));
@@ -446,16 +548,17 @@ describe("AddressLookupField", () => {
       renderField();
       await userEvent.type(screen.getByRole("combobox"), "Nowhere Lane");
       return screen.findByRole("button", {
-        name: "show where it is on a map",
+        name: "Find it on the map",
       });
     };
 
     it("says so and offers the map behind a link, not up front", async () => {
       const link = await findNoMatch();
 
-      expect(link.closest("[role=status]")?.textContent).toMatch(
-        /We cannot find that address/,
-      );
+      const hint = link.closest("[role=status]")?.textContent;
+      expect(hint).toMatch(/We cannot find that address/);
+      // A routing address has to be located, so typing it is not offered.
+      expect(hint).not.toMatch(/type it yourself/);
       expect(screen.queryByRole("button", { name: "Place pin" })).toBeNull();
     });
 
@@ -501,7 +604,7 @@ describe("AddressLookupField", () => {
       await screen.findByRole("option");
 
       expect(
-        screen.queryByRole("button", { name: "show where it is on a map" }),
+        screen.queryByRole("button", { name: "Find it on the map" }),
       ).toBeNull();
     });
 
@@ -513,7 +616,7 @@ describe("AddressLookupField", () => {
       await waitFor(() => expect(mockSearch).toHaveBeenCalled());
 
       expect(
-        screen.queryByRole("button", { name: "show where it is on a map" }),
+        screen.queryByRole("button", { name: "Find it on the map" }),
       ).toBeNull();
     });
   });
@@ -549,13 +652,14 @@ describe("AddressLookupField", () => {
       );
     });
 
-    it("keeps the placed pin when the address is edited afterwards", async () => {
+    it("asks before an edit drops the placed pin", async () => {
       await userEvent.click(await failLookup());
       setFieldValue.mockClear();
 
       await userEvent.type(screen.getByRole("combobox"), " Road");
 
-      expect(setFieldValue).not.toHaveBeenCalledWith(
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(setFieldValue).toHaveBeenCalledWith(
         "step-1.event-address-coordinates",
         "",
       );
