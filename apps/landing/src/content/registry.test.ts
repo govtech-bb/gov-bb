@@ -18,7 +18,18 @@ import {
 } from './registry'
 import { CATEGORY_BY_SLUG } from './categories'
 import { search } from '../lib/search'
+import type { Element, ElementContent } from 'hast'
+import { hideStartLinks } from '../utils/markdown/plugins'
+import {
+  isDataStartLink,
+  isWaysParagraph,
+} from '../utils/markdown/plugins/hideStartLinks'
 import type { ViewLevel } from '../lib/frontmatter'
+
+// The tests below walk loosely typed hast; ask the plugin what a start link is
+// rather than restating its predicate.
+const isStartLink = (node: object): boolean =>
+  isDataStartLink(node as ElementContent)
 
 describe('resolveServiceHref', () => {
   it('rewrites a bare service slug to its category-prefixed URL', () => {
@@ -144,13 +155,7 @@ describe('education pages link their published form (#911 Group A)', () => {
     properties?: Record<string, unknown>
     children?: unknown[]
   }): { properties?: Record<string, unknown> } | undefined {
-    if (
-      node.type === 'element' &&
-      node.tagName === 'a' &&
-      node.properties?.dataStartLink !== undefined
-    ) {
-      return node
-    }
+    if (isStartLink(node)) return node
     for (const child of (node.children ?? []) as Array<typeof node>) {
       const hit = findStartLink(child)
       if (hit) return hit
@@ -481,5 +486,91 @@ describe('runtime status overlay (service_status)', () => {
     )
     expect(isCategoryVisible(cat, 'public', overlay)).toBe(false)
     expect(isCategoryVisible(cat, 'preview', overlay)).toBe(true)
+  })
+})
+
+// #2483: rehypeHideStartLinks removes the `<li>` that holds a page's start link
+// and lowers the "There are N ways…" count. A start link outside a list item
+// is removed on its own while the count still drops, leaving the online route's
+// heading and blurb orphaned under a count that no longer matches.
+describe('route lists nest the start link (#2483)', () => {
+  type Node = {
+    type?: string
+    tagName?: string
+    value?: string
+    properties?: Record<string, unknown>
+    children?: Array<Node>
+  }
+
+  const textOf = (n: Node): string =>
+    n.type === 'text'
+      ? (n.value ?? '')
+      : (n.children ?? []).map(textOf).join('')
+
+  /** Start links in the tree, each with whether it sits inside an `<li>`. */
+  const startLinks = (n: Node, inLi = false): Array<boolean> =>
+    isStartLink(n)
+      ? [inLi]
+      : (n.children ?? []).flatMap((c) =>
+          startLinks(c, inLi || (n.type === 'element' && n.tagName === 'li')),
+        )
+
+  // Uses the plugin's own isWaysParagraph, so the guard checks exactly the
+  // paragraphs whose count the plugin rewrites: only those pages can desync.
+  const hasRouteCount = (n: Node): boolean =>
+    (n.type === 'element' && isWaysParagraph(n as unknown as Element)) ||
+    (n.children ?? []).some(hasRouteCount)
+
+  it('every page with a "There are N ways" lead-in nests its start link in a list item', () => {
+    const misshapen = PAGES.filter(
+      (p) =>
+        hasRouteCount(p.hast as Node) &&
+        startLinks(p.hast as Node).some((inLi) => !inLi),
+    ).map((p) => p.url)
+    expect(
+      misshapen,
+      'These pages have a "There are N ways" lead-in but a start link outside a list item. ' +
+        'Hiding the online route would lower the count and orphan its heading. ' +
+        'Write the routes as a numbered list with the <a data-start-link> indented inside ' +
+        'the online item (see apply-for-hotel-licence.md).',
+    ).toEqual([])
+  })
+
+  it('beach-park: both routes are items of one numbered list', () => {
+    const page = findPage('business-trade/sell-goods-services-beach-park')
+    expect(page, 'beach-park page not found').toBeDefined()
+    const findOl = (n: Node): Node | undefined =>
+      n.type === 'element' &&
+      n.tagName === 'ol' &&
+      textOf(n).includes('Complete a paper application form')
+        ? n
+        : (n.children ?? []).map(findOl).find(Boolean)
+    const items = (findOl(page!.hast as Node)?.children ?? []).filter(
+      (c) => c.type === 'element' && c.tagName === 'li',
+    )
+    expect(items).toHaveLength(2)
+    expect(startLinks(items[0])).toEqual([true])
+    // The address and the post/in-person note belong to the paper route.
+    expect(textOf(items[1])).toContain('Codrington Road')
+    expect(textOf(items[1])).toContain(
+      'return a paper application form by post',
+    )
+  })
+
+  it('beach-park: hiding the start link removes the whole online route', () => {
+    const page = findPage('business-trade/sell-goods-services-beach-park')
+    expect(page, 'beach-park page not found').toBeDefined()
+    const tree = structuredClone(page!.hast)
+
+    hideStartLinks({ hideStartLink: true })(tree)
+
+    const text = textOf(tree)
+    expect(startLinks(tree as Node)).toEqual([])
+    expect(text).toContain('There is 1 way to apply for a licence. You can:')
+    expect(text).not.toContain('Complete an application form online')
+    expect(text).not.toContain('You can apply for a licence online')
+    // The paper route, and its NCC address, survive.
+    expect(text).toContain('Complete a paper application form')
+    expect(text).toContain('Codrington Road')
   })
 })
