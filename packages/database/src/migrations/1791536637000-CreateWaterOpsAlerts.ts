@@ -9,8 +9,10 @@ import { MigrationInterface, QueryRunner } from "typeorm";
  */
 export class CreateWaterOpsAlerts1791536637000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // IF NOT EXISTS: a reverted PR leaves the table but drops its migrations
+    // row, so re-merging runs up() again (42P07 would stop the API booting).
     await queryRunner.query(`
-      CREATE TABLE "water_ops_alerts" (
+      CREATE TABLE IF NOT EXISTS "water_ops_alerts" (
         "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
         "created_at" TIMESTAMP NOT NULL DEFAULT NOW(),
         "key" varchar(300) NOT NULL,

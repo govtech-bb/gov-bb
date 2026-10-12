@@ -199,5 +199,18 @@ const HAS_DB = !!process.env.DB_HOST;
 
       expect(await repo.recordRecovery(key)).toBeInstanceOf(Date);
     });
+
+    it("re-runs the migration safely when the table is already there", async () => {
+      // A reverted-then-remerged PR deletes the migrations row but not the
+      // table, so up() runs again against an existing table (#2982 review).
+      const runner = dataSource.createQueryRunner();
+      try {
+        await expect(
+          new CreateWaterOpsAlerts1791536637000().up(runner),
+        ).resolves.toBeUndefined();
+      } finally {
+        await runner.release();
+      }
+    });
   },
 );
