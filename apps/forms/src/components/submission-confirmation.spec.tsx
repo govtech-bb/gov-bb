@@ -1021,6 +1021,29 @@ describe("SubmissionConfirmation — Print button (#2132)", () => {
     expect(btn).toHaveFocus();
   });
 
+  it("sits below the markdown content and above the contact details", () => {
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={baseState}
+        markdownContent="Bring your receipt to the office."
+        contactDetails={{ email: "help@example.com" }}
+      />,
+    );
+    const btn = screen.getByRole("button", { name: "Print" });
+    const markdown = screen.getByText("Bring your receipt to the office.");
+    const contact = screen.getByText(
+      "If you need help with your application, contact:",
+    );
+    expect(
+      markdown.compareDocumentPosition(btn) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      btn.compareDocumentPosition(contact) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("passes an axe audit on a success confirmation with the Print button", async () => {
     const { container } = render(
       <SubmissionConfirmation

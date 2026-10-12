@@ -175,7 +175,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-for-swimming-pool-licence",
-    title: "Apply for a swimming pool licence",
+    title: "Apply to Environmental Health for a swimming pool licence",
     category: "business-trade",
     formId: "apply-for-swimming-pool-licence",
     visibility: "preview",
@@ -245,7 +245,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-to-use-state-land",
-    title: "Apply to use state land",
+    title: "Apply to use land owned by the Government of Barbados",
     category: "housing",
     formId: "mohlm-application-use-state-land",
     visibility: "preview",
