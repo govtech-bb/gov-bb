@@ -223,6 +223,37 @@ it("catchment-routed recipes use {polyclinicContact}, never hardcoded contact de
   expect(problems).toEqual([]);
 });
 
+// `catchmentRouting` names the fields the submission routes on, as
+// "stepId.fieldId". Nothing else checks those paths resolve: a path left
+// pointing at a renamed or deleted step (e.g. a stale form-builder republish
+// restoring an old step, #2409) makes every submission fall back to "your local
+// polyclinic", so the MDA is never emailed, and CI stays green. The step must
+// also be unconditional, or a branch that skips it is never routed (#2857 F18).
+it("catchmentRouting paths point at a field on an unconditional step", async () => {
+  const problems: string[] = [];
+  const recipes = await readRecipeFiles();
+
+  for (const { file, raw } of recipes) {
+    const recipe = raw as {
+      catchmentRouting?: Record<string, string>;
+      steps: (Step & { behaviours?: { type: string }[] })[];
+    };
+    if (!recipe.catchmentRouting) continue;
+
+    for (const fieldPath of Object.values(recipe.catchmentRouting)) {
+      const [stepId, fieldId] = fieldPath.split(".");
+      const step = recipe.steps.find((s) => s.stepId === stepId);
+      if (!step?.elements?.some((el) => el.overrides?.fieldId === fieldId)) {
+        problems.push(`${file}: ${fieldPath} resolves to no field`);
+      } else if (step.behaviours?.some((b) => b.type === "stepConditionalOn")) {
+        problems.push(`${file}: ${fieldPath} is on a conditional step`);
+      }
+    }
+  }
+
+  expect(problems).toEqual([]);
+});
+
 // Telephone questions follow one pattern (#2917): the registry sets the hint
 // and the "not valid" error, and every "required" error reads
 // "{label} is required". The tests below stop recipes drifting from it.
