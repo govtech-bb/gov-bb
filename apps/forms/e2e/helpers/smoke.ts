@@ -368,7 +368,8 @@ async function expectStageOk(
   } catch (err) {
     if (err instanceof errors.TimeoutError) {
       throw new Error(
-        `No ${stage.label} within ${UPLOAD_TIMEOUT / 1000}s while uploading ${fileName}${stage.hintIfMissing}`,
+        // Every stage's clock starts when the file is selected.
+        `No ${stage.label} within ${UPLOAD_TIMEOUT / 1000}s of selecting ${fileName}${stage.hintIfMissing}`,
       );
     }
     throw new Error(

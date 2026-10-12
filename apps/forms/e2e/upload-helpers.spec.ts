@@ -20,6 +20,8 @@ const STEP = "step-4-documents-uploads";
 // once, not after the confirmed-file affordance times out.
 const FAIL_FAST_MS = 10_000;
 
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 async function openUploadStep(form: FormPage): Promise<void> {
   await form.goto();
   await form.fillStep1();
@@ -43,6 +45,30 @@ test.describe("smoke upload helpers name a failed upload's cause (#2423)", () =>
     // Resolving at all means presign, the storage PUT, confirm and the
     // Remove button all checked out.
     await uploadOne(page, STEP, "upload-document", TEST_PNG);
+  });
+
+  test("uploadMany resolves once every file is confirmed", async ({ page }) => {
+    await openUploadStep(new FormPage(page));
+    // The second file's watches start after the first file's requests have
+    // finished, so they must not latch onto those.
+    await uploadMany(page, STEP, "proof-of-address", [TEST_PNG_2, TEST_PNG_3]);
+  });
+
+  test("uploadOne leaves the message bare when the error has no body", async ({
+    page,
+  }) => {
+    await openUploadStep(new FormPage(page));
+    await page.route("**/files/confirm-upload", (route) =>
+      route.fulfill({ status: 503, body: "" }),
+    );
+
+    await expect(
+      uploadOne(page, STEP, "upload-document", TEST_PNG),
+    ).rejects.toThrow(
+      new RegExp(
+        `confirm-upload failed with 503 while uploading ${escapeRegExp(TEST_PNG.name)}$`,
+      ),
+    );
   });
 
   test("uploadOne fails fast with the confirm-upload status and body", async ({
@@ -99,7 +125,12 @@ test.describe("smoke upload helpers name a failed upload's cause (#2423)", () =>
     const started = Date.now();
     await expect(
       uploadOne(page, STEP, "upload-document", TEST_PNG),
-    ).rejects.toThrow(/file storage failed with 403/);
+    ).rejects.toThrow(
+      // Status only: S3 error bodies can echo signing details.
+      new RegExp(
+        `file storage failed with 403 while uploading ${escapeRegExp(TEST_PNG.name)}$`,
+      ),
+    );
     expect(Date.now() - started).toBeLessThan(FAIL_FAST_MS);
   });
 
@@ -138,7 +169,7 @@ test.describe("smoke upload helpers name a failed upload's cause (#2423)", () =>
       uploadMany(page, STEP, "proof-of-address", [TEST_PNG_2, TEST_PNG_3]),
     ).rejects.toThrow(
       new RegExp(
-        `confirm-upload failed with 429.*${TEST_PNG_3.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+        `confirm-upload failed with 429.*${escapeRegExp(TEST_PNG_3.name)}`,
         "s",
       ),
     );
