@@ -7,6 +7,7 @@ import {
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { HttpService } from "@nestjs/axios";
+import { parishAt } from "@/catchment/parish-at";
 import {
   GeocodeProvider,
   GeocodeResult,
@@ -141,7 +142,11 @@ export class GeocodeService {
     if (!isWithinBarbados(Number(place.lat), Number(place.lon))) {
       throw new NotFoundException("Place not found");
     }
-    return place;
+    // Some places carry no parish (Kensington Mall): read it off the map.
+    return {
+      ...place,
+      parish: place.parish || parishAt(Number(place.lat), Number(place.lon)),
+    };
   }
 
   /**
@@ -166,7 +171,7 @@ export class GeocodeService {
       }
       // An empty answer is final, as for search.
       if (!found) throw new NotFoundException("No address at that point");
-      return found;
+      return { ...found, parish: found.parish || parishAt(lat, lon) };
     }
     throw new ServiceUnavailableException("Address lookup is unavailable");
   }

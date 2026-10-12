@@ -188,6 +188,16 @@ describe("GeocodeService", () => {
       expect(google.resolve).toHaveBeenCalledWith("ChIJ-oval", "session-1");
     });
 
+    it("works out the parish from the coordinate when the provider names none", async () => {
+      // Kensington Mall: Google's Place Details carry no parish.
+      const { service } = places(async () => ({
+        lat: "13.105526",
+        lon: "-59.624292",
+        parish: "",
+      }));
+      expect((await service.resolve("ChIJ-mall")).parish).toBe("st-michael");
+    });
+
     it("rejects a malformed place id before calling the provider", async () => {
       const { google, service } = places(async () => ({
         lat: "13.1",
@@ -231,7 +241,10 @@ describe("GeocodeService", () => {
   });
 
   describe("reverse", () => {
-    const AT_OVAL = result("13.105000", "-59.622500", "President Kennedy Dr");
+    const AT_OVAL = {
+      ...result("13.105000", "-59.622500", "President Kennedy Dr"),
+      parish: "st-michael",
+    };
     const reverser = (name: string, reverse: GeocodeProvider["reverse"]) => ({
       ...provider(name, async () => []),
       reverse: vi.fn(reverse),
@@ -252,6 +265,16 @@ describe("GeocodeService", () => {
       expect(
         await new GeocodeService([google, nominatim]).reverse(13.105, -59.6225),
       ).toEqual(AT_OVAL);
+    });
+
+    it("works out the parish from the pin when the provider names none", async () => {
+      const google = reverser("google", async () => ({
+        ...AT_OVAL,
+        parish: "",
+      }));
+      expect(
+        (await new GeocodeService([google]).reverse(13.105, -59.6225)).parish,
+      ).toBe("st-michael");
     });
 
     it("throws 404 when there is no address at the point", async () => {
