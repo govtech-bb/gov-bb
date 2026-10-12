@@ -187,6 +187,52 @@ describe("SubmissionsService", () => {
       );
     });
 
+    it("logs one submission_accepted business line, without values or reference", async () => {
+      const write = vi
+        .spyOn(process.stdout, "write")
+        .mockImplementation(() => true);
+      try {
+        const { service } = makeMocks();
+        await service.submit(BASE_DTO);
+
+        const lines = write.mock.calls
+          .map((c) => String(c[0]))
+          .filter((s) => s.includes('"submission_accepted"'));
+        expect(lines).toHaveLength(1);
+        const line = JSON.parse(lines[0]);
+        expect(line).toMatchObject({
+          log_type: "business_event",
+          event: "submission_accepted",
+          form_id: "test-form",
+          payment_required: false,
+          smoke: false,
+        });
+        expect(line).not.toHaveProperty("values");
+        expect(line).not.toHaveProperty("reference_code");
+      } finally {
+        write.mockRestore();
+      }
+    });
+
+    it("does not log submission_accepted for a replayed key", async () => {
+      const write = vi
+        .spyOn(process.stdout, "write")
+        .mockImplementation(() => true);
+      try {
+        const existing = makeEntity({ status: FormSubmissionStatus.COMPLETE });
+        const { service } = makeMocks({ existingEntity: existing });
+        await service.submit(BASE_DTO);
+
+        expect(
+          write.mock.calls.some((c) =>
+            String(c[0]).includes('"submission_accepted"'),
+          ),
+        ).toBe(false);
+      } finally {
+        write.mockRestore();
+      }
+    });
+
     it("regenerates and retries the reference on a unique-collision (23505)", async () => {
       const created = makeEntity();
       const txRepo = {
