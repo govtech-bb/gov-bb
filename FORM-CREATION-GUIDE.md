@@ -132,7 +132,7 @@ Each element references a registry component and applies overrides:
 | `components/address`                   | text      | Single address line (use twice with different fieldIds for line 1 + line 2)                                                      |
 | `components/town`                      | text      | Town/city name                                                                                                                   |
 | `components/postcode`                  | text      | Postcode/zip (default width: short)                                                                                              |
-| `components/national-id-number`        | text      | National ID number                                                                                                               |
+| `components/national-id-number`        | text      | Barbados National Identification (ID) number                                                                                     |
 | `components/national-insurance-number` | text      | NIS number                                                                                                                       |
 | `components/passport-number`           | text      | Passport number                                                                                                                  |
 | `components/tamis-number`              | text      | TAMIS number                                                                                                                     |
