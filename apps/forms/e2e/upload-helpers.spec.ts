@@ -40,10 +40,9 @@ test.describe("smoke upload helpers name a failed upload's cause (#2423)", () =>
     page,
   }) => {
     await openUploadStep(new FormPage(page));
+    // Resolving at all means presign, the storage PUT, confirm and the
+    // Remove button all checked out.
     await uploadOne(page, STEP, "upload-document", TEST_PNG);
-    await expect(
-      page.getByRole("button", { name: `Remove ${TEST_PNG.name}` }),
-    ).toBeVisible();
   });
 
   test("uploadOne fails fast with the confirm-upload status and body", async ({
@@ -85,6 +84,40 @@ test.describe("smoke upload helpers name a failed upload's cause (#2423)", () =>
     expect(Date.now() - started).toBeLessThan(FAIL_FAST_MS);
   });
 
+  test("uploadOne fails fast when the upload to file storage is rejected", async ({
+    page,
+  }) => {
+    await openUploadStep(new FormPage(page));
+    // The mock's stand-in for the presigned S3 PUT.
+    await page.route("**/__mock_uploads/**", (route) =>
+      route.fulfill({
+        status: 403,
+        body: "<Error><Code>AccessDenied</Code></Error>",
+      }),
+    );
+
+    const started = Date.now();
+    await expect(
+      uploadOne(page, STEP, "upload-document", TEST_PNG),
+    ).rejects.toThrow(/file storage failed with 403/);
+    expect(Date.now() - started).toBeLessThan(FAIL_FAST_MS);
+  });
+
+  test("uploadOne fails fast when presign-upload never gets a response", async ({
+    page,
+  }) => {
+    await openUploadStep(new FormPage(page));
+    await page.route("**/files/presign-upload", (route) =>
+      route.abort("connectionrefused"),
+    );
+
+    const started = Date.now();
+    await expect(
+      uploadOne(page, STEP, "upload-document", TEST_PNG),
+    ).rejects.toThrow(/presign-upload failed: net::ERR_CONNECTION_REFUSED/);
+    expect(Date.now() - started).toBeLessThan(FAIL_FAST_MS);
+  });
+
   test("uploadMany names the failing request for the file it stopped on", async ({
     page,
   }) => {
@@ -100,10 +133,15 @@ test.describe("smoke upload helpers name a failed upload's cause (#2423)", () =>
           }),
     );
 
+    const started = Date.now();
     await expect(
       uploadMany(page, STEP, "proof-of-address", [TEST_PNG_2, TEST_PNG_3]),
     ).rejects.toThrow(
-      new RegExp(`confirm-upload failed with 429.*${TEST_PNG_3.name}`, "s"),
+      new RegExp(
+        `confirm-upload failed with 429.*${TEST_PNG_3.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+        "s",
+      ),
     );
+    expect(Date.now() - started).toBeLessThan(FAIL_FAST_MS);
   });
 });

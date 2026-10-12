@@ -9,8 +9,10 @@
  * shape lives here so each spec carries only its form-specific body (field IDs,
  * step order, masks, repeatables, conditionals).
  *
- * These run ONLY via playwright.smoke.config.ts — never the mocked `test:e2e`
- * suite (see ADR 0027 / 0029).
+ * The smoke SPECS run ONLY via playwright.smoke.config.ts — never the mocked
+ * `test:e2e` suite (see ADR 0027 / 0029). The upload helpers below are also
+ * tested in that mocked suite (e2e/upload-helpers.spec.ts, #2423), so keep
+ * this file free of anything that needs a live environment to import.
  *
  * Field-ID scheme (confirmed against the running renderer):
  *   text/textarea : `${stepId}_${fieldId}`
@@ -19,9 +21,11 @@
  *   file          : `${stepId}_${fieldId}`
  */
 import {
+  errors,
   expect,
   type Locator,
   type Page,
+  type Request,
   type Response,
 } from "@playwright/test";
 
@@ -288,81 +292,127 @@ export async function fillGeocodedAddress(
 
 type UploadFile = { name: string; mimeType: string; buffer: Buffer };
 
-/** The upload flow's API calls, in the order the widget makes them. */
-type UploadCall = "presign-upload" | "confirm-upload";
+/**
+ * The upload's three requests, in the order the widget makes them
+ * (apps/forms/src/lib/api/files.ts `uploadFile`): presign, the PUT of the file
+ * to storage (S3, at a presigned URL), then confirm. `label` names each one in
+ * a failure message; the storage request is never named by its URL, which
+ * carries the presigned signature.
+ */
+const UPLOAD_STAGES = [
+  {
+    label: "POST /files/presign-upload",
+    matches: (req: Request) =>
+      req.method() === "POST" && req.url().includes("/files/presign-upload"),
+    showBody: true,
+    hintIfMissing:
+      " — the upload never started (was the file rejected before upload?)",
+  },
+  {
+    label: "Upload to file storage",
+    // The only PUT the upload widget makes is the file itself.
+    matches: (req: Request) => req.method() === "PUT",
+    // S3 error bodies can echo signing details; the status is enough.
+    showBody: false,
+    hintIfMissing: "",
+  },
+  {
+    label: "POST /files/confirm-upload",
+    matches: (req: Request) =>
+      req.method() === "POST" && req.url().includes("/files/confirm-upload"),
+    showBody: true,
+    hintIfMissing: "",
+  },
+] as const;
 
-/** Wait for one upload API call; say which one never happened on timeout. */
-async function uploadResponse(
-  pending: Promise<Response>,
-  call: UploadCall,
-  fileName: string,
-): Promise<Response> {
-  try {
-    return await pending;
-  } catch {
-    throw new Error(
-      `No POST /files/${call} within ${UPLOAD_TIMEOUT / 1000}s while uploading ${fileName}` +
-        (call === "presign-upload"
-          ? " — the upload never started (was the file rejected before upload?)"
-          : ""),
-    );
-  }
+type UploadStage = (typeof UPLOAD_STAGES)[number];
+
+/**
+ * Settles with the stage's response, or its network failure (connection
+ * refused, reset, …), whichever happens first. Rejects on timeout or if the
+ * page goes away.
+ */
+function watchStage(
+  page: Page,
+  stage: UploadStage,
+): Promise<{ response: Response } | { failure: string }> {
+  const response = page
+    .waitForResponse((res) => stage.matches(res.request()), {
+      timeout: UPLOAD_TIMEOUT,
+    })
+    .then((res) => ({ response: res }));
+  const failure = page
+    .waitForEvent("requestfailed", {
+      predicate: (req) => stage.matches(req),
+      timeout: UPLOAD_TIMEOUT,
+    })
+    .then((req) => ({ failure: req.failure()?.errorText ?? "request failed" }));
+  // The loser of the race (and any wait left unawaited when an earlier stage
+  // fails) must not surface later as an unhandled rejection.
+  response.catch(() => undefined);
+  failure.catch(() => undefined);
+  const outcome = Promise.race([response, failure]);
+  outcome.catch(() => undefined);
+  return outcome;
 }
 
-/** Fail with the call, its status and (clipped) body when it isn't 2xx. */
-async function expectUploadCallOk(
-  response: Response,
-  call: UploadCall,
+/** Throw a message naming the stage, the file and what went wrong. */
+async function expectStageOk(
+  pending: Promise<{ response: Response } | { failure: string }>,
+  stage: UploadStage,
   fileName: string,
 ): Promise<void> {
+  let outcome: { response: Response } | { failure: string };
+  try {
+    outcome = await pending;
+  } catch (err) {
+    if (err instanceof errors.TimeoutError) {
+      throw new Error(
+        `No ${stage.label} within ${UPLOAD_TIMEOUT / 1000}s while uploading ${fileName}${stage.hintIfMissing}`,
+      );
+    }
+    throw new Error(
+      `${stage.label} did not complete while uploading ${fileName}`,
+      {
+        cause: err,
+      },
+    );
+  }
+  if ("failure" in outcome) {
+    throw new Error(
+      `${stage.label} failed: ${outcome.failure} while uploading ${fileName}`,
+    );
+  }
+  const { response } = outcome;
   if (response.ok()) return;
-  const body = (await response.text().catch(() => "")).slice(0, 300);
-  expect(
-    response.ok(),
-    `POST /files/${call} failed with ${response.status()} while uploading ${fileName}` +
+  const body = stage.showBody
+    ? (await response.text().catch(() => "")).slice(0, 300)
+    : "";
+  throw new Error(
+    `${stage.label} failed with ${response.status()} while uploading ${fileName}` +
       (body ? `: ${body}` : ""),
-  ).toBe(true);
+  );
 }
 
 /**
  * Set one file on an upload input and wait until it is CONFIRMED (#2423).
- * The upload's API calls are watched first, so a throttled or rejected upload
- * fails at once naming the call and its status — a 429 on confirm-upload, a
- * 5xx on presign-upload — instead of timing out on a "Remove {name}" button
- * that never appears. That button is still the final check: it only renders
- * once the value has committed (see uploadOne). The S3 PUT between the two
- * calls is not watched; it is the least likely to fail, and a failure there
- * still surfaces as a missing confirm-upload.
+ * Each of the upload's requests is watched before the file is set, so a
+ * throttled, rejected or dropped request fails at once naming the request and
+ * its status or network error (a 429 on confirm-upload, a 5xx on presign, a
+ * 403 from storage, a refused connection) instead of timing out on a
+ * "Remove {name}" button that never appears. That button is still the final
+ * check: it only renders once the value has committed (see uploadOne).
  */
 async function uploadAndConfirm(
   page: Page,
   input: Locator,
   file: UploadFile,
 ): Promise<void> {
-  const call = (name: UploadCall) => (res: Response) =>
-    res.url().includes(`/files/${name}`) && res.request().method() === "POST";
-  const presign = page.waitForResponse(call("presign-upload"), {
-    timeout: UPLOAD_TIMEOUT,
-  });
-  const confirm = page.waitForResponse(call("confirm-upload"), {
-    timeout: UPLOAD_TIMEOUT,
-  });
-  // Whichever wait isn't awaited (a failed presign means no confirm) must not
-  // surface later as an unhandled rejection.
-  presign.catch(() => undefined);
-  confirm.catch(() => undefined);
-
+  const watches = UPLOAD_STAGES.map((stage) => watchStage(page, stage));
   await input.setInputFiles(file);
-  await expectUploadCallOk(
-    await uploadResponse(presign, "presign-upload", file.name),
-    "presign-upload",
-    file.name,
-  );
-  await expectUploadCallOk(
-    await uploadResponse(confirm, "confirm-upload", file.name),
-    "confirm-upload",
-    file.name,
-  );
+  for (const [i, stage] of UPLOAD_STAGES.entries()) {
+    await expectStageOk(watches[i], stage, file.name);
+  }
   await expect(
     page.getByRole("button", { name: `Remove ${file.name}` }),
   ).toBeVisible({ timeout: UPLOAD_TIMEOUT });
