@@ -1,17 +1,13 @@
 import { JSX, lazy, Suspense, useEffect, useRef, useState } from "react";
-import {
-  Autocomplete,
-  Button,
-  FormGroup,
-  Hint,
-  Label,
-} from "@govtech-bb/react";
+import { FormGroup, Hint, Label } from "@govtech-bb/react";
 import ErrorMessage from "../error-message";
 import {
   GeocodeResult,
   MIN_QUERY_LENGTH,
+  resolvePlace,
   searchAddresses,
 } from "../../lib/api/geocode";
+import { AddressCombobox } from "./address-combobox";
 import { FieldRenderContext } from "./render-context";
 
 // Leaflet is only needed when address suggestions are down or find nothing, so
@@ -81,6 +77,12 @@ export function AddressLookupField({
   // The last committed selection — suppresses the lookup that a select would
   // otherwise trigger by changing the input's text.
   const justSelected = useRef(false);
+  // The picked place whose coordinate is still being looked up. Cleared when
+  // the applicant edits the address, so a late answer is not written.
+  const pendingPlace = useRef<GeocodeResult | null>(null);
+  // Groups this applicant's keystrokes and their pick into one billed lookup
+  // session; a pick ends it.
+  const session = useRef<string | null>(null);
 
   useEffect(() => {
     if (justSelected.current) {
@@ -96,7 +98,8 @@ export function AddressLookupField({
 
     const controller = new AbortController();
     const timer = setTimeout(() => {
-      searchAddresses(trimmed, controller.signal)
+      session.current ??= crypto.randomUUID();
+      searchAddresses(trimmed, controller.signal, session.current)
         .then((results) => {
           setSuggestions(results);
           setLookupFailed(false);
@@ -121,6 +124,7 @@ export function AddressLookupField({
   const update = (next: string) => {
     setQuery(next);
     commitChange(next);
+    pendingPlace.current = null;
     // The coordinate belongs to the suggestion that was picked, and the
     // applicant cannot see it (it is a `ui.hidden` field), so editing the
     // address by hand would otherwise send the CMS a precise coordinate for an
@@ -152,12 +156,38 @@ export function AddressLookupField({
     if (targets?.coordinatesFieldId) {
       form.setFieldValue(
         siblingId(targets.coordinatesFieldId),
-        `${result.lat},${result.lon}`,
+        result.lat && result.lon ? `${result.lat},${result.lon}` : "",
       );
     }
     setPin(null);
-
     setSuggestions([]);
+
+    // A place suggestion has no coordinate yet: look it up, in the same
+    // session as the searches (which ends it).
+    const sessionToken = session.current ?? undefined;
+    session.current = null;
+    if (!result.placeId || result.lat) return;
+    pendingPlace.current = result;
+    resolvePlace(result.placeId, sessionToken)
+      .then((place) => {
+        if (pendingPlace.current !== result) return;
+        pendingPlace.current = null;
+        if (targets?.coordinatesFieldId) {
+          form.setFieldValue(
+            siblingId(targets.coordinatesFieldId),
+            `${place.lat},${place.lon}`,
+          );
+        }
+        if (targets?.parishFieldId && !result.parish && place.parish) {
+          form.setFieldValue(siblingId(targets.parishFieldId), place.parish);
+        }
+      })
+      .catch(() => {
+        if (pendingPlace.current !== result) return;
+        pendingPlace.current = null;
+        // No coordinate for the pick: let the applicant place the pin instead.
+        if (coordinatesFieldId) setShowPinMap(true);
+      });
   };
 
   const placePin = (lat: number, lon: number) => {
@@ -185,7 +215,7 @@ export function AddressLookupField({
       </Label>
       {field.hint && <Hint id={hintId}>{field.hint}</Hint>}
       <ErrorMessage id={errorId} message={errorMessage} />
-      <Autocomplete
+      <AddressCombobox
         id={sharedProps.id}
         name={sharedProps.name}
         disabled={sharedProps.disabled}
@@ -193,14 +223,13 @@ export function AddressLookupField({
         aria-describedby={sharedProps["aria-describedby"]}
         {...requiredProps}
         aria-invalid={invalid}
+        listLabel={field.label}
         value={query}
-        onChange={(e) => update(e.target.value)}
+        onValueChange={update}
         onBlur={sharedProps.onBlur}
-        suggestions={suggestions.map((result) => ({
-          value: result.line1 || result.label,
-          label: result.label,
-        }))}
-        onSuggestionSelect={(_, index) => select(suggestions[index])}
+        suggestions={suggestions}
+        onPick={select}
+        attribution={suggestions.some((result) => result.placeId)}
       />
       {showPinMap ? (
         <>
@@ -227,14 +256,13 @@ export function AddressLookupField({
         coordinatesFieldId && (
           <Hint role="status">
             We cannot find that address. You can type it yourself, or{" "}
-            <Button
-              className="underline"
+            <button
+              className="govbb-link address-lookup__map-link"
               onClick={openPinMap}
               type="button"
-              variant="link"
             >
               show where it is on a map
-            </Button>
+            </button>
             .
           </Hint>
         )

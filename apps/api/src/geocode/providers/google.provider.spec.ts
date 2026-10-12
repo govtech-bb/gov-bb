@@ -2,175 +2,201 @@ import type { Mock } from "vitest";
 import { of, throwError } from "rxjs";
 import { GoogleProvider } from "./google.provider";
 
-function makeProvider(get: Mock) {
-  const http = { get } as unknown as ConstructorParameters<
-    typeof GoogleProvider
-  >[0];
-  return new GoogleProvider(http, "test-key");
+function makeProvider(http: { get?: Mock; post?: Mock }) {
+  return new GoogleProvider(
+    http as unknown as ConstructorParameters<typeof GoogleProvider>[0],
+    "test-key",
+  );
 }
 
 const respond = (data: unknown) => vi.fn().mockReturnValue(of({ data }));
 
-const BROAD_STREET = {
-  formatted_address: "Broad St, Bridgetown, St Michael, Barbados",
-  geometry: { location: { lat: 13.0969, lng: -59.6146 } },
-  address_components: [
-    { long_name: "Broad Street", types: ["route"] },
-    { long_name: "Bridgetown", types: ["locality", "political"] },
-    {
-      long_name: "Saint Michael",
-      types: ["administrative_area_level_1", "political"],
+// Shapes taken from live Places API (New) responses for Barbados.
+const KENSINGTON_OVAL = {
+  placePrediction: {
+    placeId: "ChIJ-oval",
+    text: {
+      text: "Kensington Oval, President Kennedy Drive, Bridgetown, Saint Michael, Barbados",
+      matches: [{ endOffset: 10 }],
     },
-    { long_name: "Barbados", types: ["country", "political"] },
-  ],
-  types: ["route"],
+    structuredFormat: {
+      mainText: { text: "Kensington Oval", matches: [{ endOffset: 10 }] },
+      secondaryText: {
+        text: "President Kennedy Drive, Bridgetown, Saint Michael, Barbados",
+      },
+    },
+    types: ["establishment", "point_of_interest", "stadium"],
+  },
+};
+
+const GUN_HILL = {
+  placePrediction: {
+    placeId: "ChIJ-gun-hill",
+    text: { text: "Gun Hill, Saint George Barbados" },
+    structuredFormat: {
+      mainText: {
+        text: "Gun Hill",
+        matches: [{ startOffset: 0, endOffset: 3 }],
+      },
+      secondaryText: { text: "Saint George Barbados" },
+    },
+    types: ["locality", "political"],
+  },
 };
 
 describe("GoogleProvider", () => {
-  it("restricts the query to Barbados and maps the results", async () => {
-    const get = respond({ status: "OK", results: [BROAD_STREET] });
+  describe("search (Places Autocomplete)", () => {
+    it("asks for Barbados-only predictions within the island's bounds", async () => {
+      const post = respond({ suggestions: [] });
 
-    const results = await makeProvider(get).search("Broad Street");
+      await makeProvider({ post }).search("kensin", "session-1");
 
-    expect(results).toEqual([
-      {
-        label: "Broad St, Bridgetown, St Michael, Barbados",
-        lat: "13.0969",
-        lon: "-59.6146",
-        line1: "Broad St",
-        line2: "Bridgetown",
+      const [url, body, config] = post.mock.calls[0];
+      expect(url).toBe("https://places.googleapis.com/v1/places:autocomplete");
+      expect(body).toEqual({
+        input: "kensin",
+        includedRegionCodes: ["bb"],
+        locationRestriction: {
+          rectangle: {
+            low: { latitude: 13.03, longitude: -59.66 },
+            high: { latitude: 13.34, longitude: -59.41 },
+          },
+        },
+        sessionToken: "session-1",
+      });
+      expect(config.headers).toEqual({ "X-Goog-Api-Key": "test-key" });
+    });
+
+    it("leaves the session token out when there is none", async () => {
+      const post = respond({ suggestions: [] });
+      await makeProvider({ post }).search("kensin");
+      expect(post.mock.calls[0][1]).not.toHaveProperty("sessionToken");
+    });
+
+    it("maps a named place: its name is line 1, the street and town line 2", async () => {
+      const post = respond({ suggestions: [KENSINGTON_OVAL] });
+
+      const [result] = await makeProvider({ post }).search("kensin");
+
+      expect(result).toEqual({
+        label:
+          "Kensington Oval, President Kennedy Drive, Bridgetown, Saint Michael, Barbados",
+        placeId: "ChIJ-oval",
+        mainText: "Kensington Oval",
+        secondaryText:
+          "President Kennedy Drive, Bridgetown, Saint Michael, Barbados",
+        matches: [{ start: 0, end: 10 }],
+        line1: "Kensington Oval",
+        line2: "President Kennedy Drive, Bridgetown",
         parish: "st-michael",
-      },
-    ]);
-    const [url, config] = get.mock.calls[0];
-    expect(url).toBe("https://maps.googleapis.com/maps/api/geocode/json");
-    expect(config.params).toEqual({
-      address: "Broad Street",
-      components: "country:BB",
-      bounds: "13.03,-59.66|13.34,-59.41",
-      key: "test-key",
+      });
+      // No coordinate until the applicant picks it.
+      expect(result).not.toHaveProperty("lat");
     });
-  });
 
-  it("takes the parish from administrative_area_level_1 when the address omits it", async () => {
-    const get = respond({
-      status: "OK",
-      results: [
-        {
-          ...BROAD_STREET,
-          formatted_address: "Main Rd, Oistins, Barbados",
-          address_components: [
-            {
-              long_name: "Christ Church",
-              types: ["administrative_area_level_1"],
+    it("keeps Google's run-together parish and country out of line 2", async () => {
+      const post = respond({ suggestions: [GUN_HILL] });
+
+      const [result] = await makeProvider({ post }).search("gun");
+
+      expect(result).toMatchObject({
+        line1: "Gun Hill",
+        line2: "",
+        parish: "st-george",
+        matches: [{ start: 0, end: 3 }],
+      });
+    });
+
+    it("drops a country prediction, whose centroid would mis-route the case", async () => {
+      const post = respond({
+        suggestions: [
+          {
+            placePrediction: {
+              placeId: "ChIJ-barbados",
+              text: { text: "Barbados" },
+              structuredFormat: { mainText: { text: "Barbados" } },
+              types: ["country", "political"],
             },
-          ],
-        },
-      ],
+          },
+          GUN_HILL,
+        ],
+      });
+
+      const results = await makeProvider({ post }).search("barb");
+
+      expect(results.map((r) => r.placeId)).toEqual(["ChIJ-gun-hill"]);
     });
-    const [result] = await makeProvider(get).search("Oistins");
-    expect(result.parish).toBe("christ-church");
+
+    it("skips query predictions, which name no place", async () => {
+      const post = respond({
+        suggestions: [{ queryPrediction: { text: { text: "pizza" } } }],
+      });
+      expect(await makeProvider({ post }).search("pizza")).toEqual([]);
+    });
+
+    it("returns [] when nothing matches", async () => {
+      const post = respond({});
+      expect(await makeProvider({ post }).search("zzzz")).toEqual([]);
+    });
+
+    it("rejects when the call fails (quota, bad key, outage) so the service falls back", async () => {
+      const post = vi
+        .fn()
+        .mockReturnValue(
+          throwError(() => new Error("Request failed with status code 429")),
+        );
+      await expect(makeProvider({ post }).search("gun")).rejects.toThrow("429");
+    });
   });
 
-  // Google runs the parish, postcode and country together with no commas
-  // ("Saint Michael BB120004Barbados"), so they must not land in line 2.
-  it("keeps the run-together parish, postcode and country out of the address lines", async () => {
-    const get = respond({
-      status: "OK",
-      results: [
+  describe("resolve (Place Details)", () => {
+    const OVAL_DETAILS = {
+      location: { latitude: 13.1049948, longitude: -59.6225241 },
+      addressComponents: [
+        { longText: "Bridgetown", types: ["locality", "political"] },
         {
-          formatted_address: "Gun Hill, Saint George Barbados",
-          geometry: { location: { lat: 13.1428139, lng: -59.5599161 } },
-          address_components: [
-            {
-              long_name: "Saint George",
-              types: ["administrative_area_level_1", "political"],
-            },
-          ],
-          types: ["locality", "political"],
+          longText: "Saint Michael",
+          types: ["administrative_area_level_1", "political"],
         },
       ],
-    });
-    const [result] = await makeProvider(get).search("Gun Hill");
-    expect(result).toMatchObject({
-      line1: "Gun Hill",
-      line2: "",
-      parish: "st-george",
-    });
-  });
+    };
 
-  it("keeps the typed place name as line 1 and moves the street to line 2", async () => {
-    const get = respond({
-      status: "OK",
-      results: [
-        {
-          formatted_address:
-            "493G+XXX, President Kennedy Dr, Bridgetown, Saint Michael BB120004Barbados",
-          geometry: { location: { lat: 13.1049948, lng: -59.6225241 } },
-          address_components: [
-            {
-              long_name: "Saint Michael",
-              types: ["administrative_area_level_1", "political"],
-            },
-          ],
-          types: ["establishment", "point_of_interest", "stadium"],
-        },
-      ],
+    it("asks only for the location and address parts, in the same session", async () => {
+      const get = respond(OVAL_DETAILS);
+
+      await makeProvider({ get }).resolve("ChIJ-oval", "session-1");
+
+      const [url, config] = get.mock.calls[0];
+      expect(url).toBe("https://places.googleapis.com/v1/places/ChIJ-oval");
+      expect(config.params).toEqual({ sessionToken: "session-1" });
+      expect(config.headers).toEqual({
+        "X-Goog-Api-Key": "test-key",
+        "X-Goog-FieldMask": "location,addressComponents",
+      });
     });
-    const [result] = await makeProvider(get).search("Kensington Oval");
-    expect(result).toMatchObject({
-      line1: "Kensington Oval",
-      line2: "President Kennedy Dr, Bridgetown",
-      parish: "st-michael",
+
+    it("returns the coordinate and parish", async () => {
+      const get = respond(OVAL_DETAILS);
+      expect(await makeProvider({ get }).resolve("ChIJ-oval")).toEqual({
+        lat: "13.104995",
+        lon: "-59.622524",
+        parish: "st-michael",
+      });
     });
-  });
 
-  it("returns [] for ZERO_RESULTS", async () => {
-    const get = respond({ status: "ZERO_RESULTS", results: [] });
-    expect(await makeProvider(get).search("nowhere")).toEqual([]);
-  });
-
-  it("drops a country-level match, whose centroid would mis-route the case", async () => {
-    const get = respond({
-      status: "OK",
-      results: [
-        {
-          formatted_address: "Barbados",
-          geometry: { location: { lat: 13.193887, lng: -59.543198 } },
-          types: ["country", "political"],
-        },
-      ],
+    it("escapes the place id into the path", async () => {
+      const get = respond(OVAL_DETAILS);
+      await makeProvider({ get }).resolve("a/b");
+      expect(get.mock.calls[0][0]).toBe(
+        "https://places.googleapis.com/v1/places/a%2Fb",
+      );
     });
-    expect(await makeProvider(get).search("asdfgh")).toEqual([]);
-  });
 
-  it("drops results missing coordinates and caps the list at five", async () => {
-    const get = respond({
-      status: "OK",
-      results: [
-        { formatted_address: "No geometry, Barbados" },
-        ...Array.from({ length: 7 }, () => BROAD_STREET),
-      ],
+    it("rejects when the place has no location", async () => {
+      const get = respond({ addressComponents: [] });
+      await expect(makeProvider({ get }).resolve("ChIJ-x")).rejects.toThrow(
+        "no location",
+      );
     });
-    expect(await makeProvider(get).search("broad")).toHaveLength(5);
-  });
-
-  it.each([
-    "OVER_DAILY_LIMIT",
-    "OVER_QUERY_LIMIT",
-    "REQUEST_DENIED",
-    "UNKNOWN_ERROR",
-  ])("rejects on %s so the service falls back", async (status) => {
-    const get = respond({ status, error_message: "nope", results: [] });
-    await expect(makeProvider(get).search("broad")).rejects.toThrow(status);
-  });
-
-  it("rejects when the HTTP call fails", async () => {
-    const get = vi
-      .fn()
-      .mockReturnValue(throwError(() => new Error("socket hang up")));
-    await expect(makeProvider(get).search("broad")).rejects.toThrow(
-      "socket hang up",
-    );
   });
 });

@@ -402,3 +402,42 @@
   outline: 3px solid var(--govbb-color-focus);
   outline-offset: 2px;
 }
+
+/* Address suggestions (#2679): each row is a place's name, the typed part in
+   bold, then where it is in the muted colour. The popup keeps the design
+   system's .govbb-combobox__list frame; the listbox inside it scrolls and the
+   "Powered by Google" mark Google's terms require stays below the rows. */
+.address-combobox__popup {
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+}
+
+.address-combobox__options {
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.address-combobox__where {
+  color: var(--govbb-color-muted);
+}
+
+.address-combobox__attribution {
+  margin: 0;
+  padding: var(--govbb-space-xs) var(--govbb-space-s);
+  font-size: var(--govbb-font-size-body-sm);
+  color: var(--govbb-color-muted);
+  text-align: end;
+}
+
+/* The no-match hint's "show where it is on a map" is a button (it opens the
+   map, it goes nowhere) styled as the link it reads as. */
+.address-lookup__map-link {
+  padding: 0;
+  font: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}

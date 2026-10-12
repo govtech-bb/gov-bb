@@ -2,13 +2,32 @@
 export interface GeocodeResult {
   /** The full formatted address — shown in the suggestions dropdown. */
   label: string;
-  lat: string;
-  lon: string;
+  /**
+   * The coordinate. Absent on a place suggestion (`placeId` set), which only
+   * gets one when the applicant picks it — see {@link GeocodeProvider.resolve}.
+   */
+  lat?: string;
+  lon?: string;
   /** Primary address line (name + street), for address line 1. */
   line1: string;
   /** Locality (town / district), for address line 2. */
   line2: string;
   /** Parish select value (e.g. `st-michael`), or "" when not resolved. */
+  parish: string;
+  /** Set on a place suggestion: resolve it for the coordinate once picked. */
+  placeId?: string;
+  /** The place's name, shown bold in the dropdown ("Kensington Oval"). */
+  mainText?: string;
+  /** Where it is, shown after the name ("President Kennedy Drive, …"). */
+  secondaryText?: string;
+  /** The spans of `mainText` that match what was typed, to embolden. */
+  matches?: { start: number; end: number }[];
+}
+
+/** The coordinate (and parish) of a picked place suggestion. */
+export interface ResolvedPlace {
+  lat: string;
+  lon: string;
   parish: string;
 }
 
@@ -17,10 +36,15 @@ export interface GeocodeResult {
  * real "nothing matched" answer — and REJECTS when it could not answer at all
  * (outage, quota or budget reached, bad key), so the service moves on to the
  * next provider instead of reporting a false "no such address".
+ *
+ * A provider whose suggestions carry no coordinate (Google Places) also
+ * implements `resolve`, which looks the picked place up. `sessionToken` groups
+ * a run of searches and the final lookup into one billed session.
  */
 export interface GeocodeProvider {
   readonly name: string;
-  search(query: string): Promise<GeocodeResult[]>;
+  search(query: string, sessionToken?: string): Promise<GeocodeResult[]>;
+  resolve?(placeId: string, sessionToken?: string): Promise<ResolvedPlace>;
 }
 
 /**
@@ -66,7 +90,8 @@ const normalizeParish = (raw: string): string =>
     .replace(/\s+/g, " ")
     .trim();
 
-const parishValue = (raw: string): string =>
+/** A provider's parish name ("Saint Michael") → its select value, or "". */
+export const parishValue = (raw: string): string =>
   PARISH_VALUE_BY_NORMALIZED[normalizeParish(raw)] ?? "";
 
 const POSTCODE = /\bbb\s?\d+\b/gi;

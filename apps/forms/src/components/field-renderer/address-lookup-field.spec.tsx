@@ -16,6 +16,7 @@ vi.mock("@forms/lib", () => ({
 vi.mock("../../lib/api/geocode", () => ({
   MIN_QUERY_LENGTH: 3,
   searchAddresses: vi.fn(),
+  resolvePlace: vi.fn(),
 }));
 
 // Leaflet needs a real layout engine; stand the map in with a button that
@@ -28,9 +29,10 @@ vi.mock("./location-pin-map", () => ({
   ),
 }));
 
-import { searchAddresses } from "../../lib/api/geocode";
+import { resolvePlace, searchAddresses } from "../../lib/api/geocode";
 
 const mockSearch = searchAddresses as Mock;
+const mockResolve = resolvePlace as Mock;
 
 let mockState: {
   value: unknown;
@@ -278,6 +280,125 @@ describe("AddressLookupField", () => {
     ).toHaveAttribute("role", "status");
     // Input still usable.
     expect(screen.getByRole("combobox")).toBeTruthy();
+  });
+
+  it("closes the list on Escape and leaves the text alone", async () => {
+    const user = userEvent.setup();
+    mockSearch.mockResolvedValue([
+      {
+        label: "Bay Street, Bridgetown, Barbados",
+        lat: "13.1",
+        lon: "-59.6",
+        line1: "Bay Street",
+        line2: "Bridgetown",
+        parish: "st-michael",
+      },
+    ]);
+    renderField();
+
+    await user.type(screen.getByRole("combobox"), "Bay");
+    await screen.findByRole("listbox");
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(screen.getByRole("combobox")).toHaveValue("Bay");
+  });
+
+  describe("with Google place suggestions", () => {
+    const OVAL = {
+      label:
+        "Kensington Oval, President Kennedy Drive, Bridgetown, Saint Michael, Barbados",
+      placeId: "ChIJ-oval",
+      mainText: "Kensington Oval",
+      secondaryText:
+        "President Kennedy Drive, Bridgetown, Saint Michael, Barbados",
+      matches: [{ start: 0, end: 6 }],
+      line1: "Kensington Oval",
+      line2: "President Kennedy Drive, Bridgetown",
+      parish: "st-michael",
+    };
+
+    const pickOval = async () => {
+      mockSearch.mockResolvedValue([OVAL]);
+      renderField();
+      await userEvent.type(screen.getByRole("combobox"), "kensin");
+      await userEvent.click(await screen.findByRole("option"));
+    };
+
+    it("shows the name with the typed part bold, where it is, and Google's mark", async () => {
+      mockSearch.mockResolvedValue([OVAL]);
+      renderField();
+
+      await userEvent.type(screen.getByRole("combobox"), "kensin");
+      const option = await screen.findByRole("option");
+
+      expect(option.querySelector("strong")?.textContent).toBe("Kensin");
+      expect(option.textContent).toContain("Kensington Oval");
+      expect(option.textContent).toContain("President Kennedy Drive");
+      expect(screen.getByText("Powered by Google")).toBeTruthy();
+    });
+
+    it("fills line 1 with the name, line 2 with the street and town, and the parish", async () => {
+      mockResolve.mockResolvedValue({
+        lat: "13.105",
+        lon: "-59.6225",
+        parish: "st-michael",
+      });
+      await pickOval();
+
+      expect(handleChange).toHaveBeenLastCalledWith("Kensington Oval");
+      expect(setFieldValue).toHaveBeenCalledWith(
+        "step-1.event-address-line-2",
+        "President Kennedy Drive, Bridgetown",
+      );
+      expect(setFieldValue).toHaveBeenCalledWith(
+        "step-1.event-parish",
+        "st-michael",
+      );
+    });
+
+    it("looks up the coordinate of the pick in the same session as the search", async () => {
+      mockResolve.mockResolvedValue({
+        lat: "13.105",
+        lon: "-59.6225",
+        parish: "st-michael",
+      });
+      await pickOval();
+
+      await waitFor(() =>
+        expect(setFieldValue).toHaveBeenCalledWith(
+          "step-1.event-address-coordinates",
+          "13.105,-59.6225",
+        ),
+      );
+      const searchSession = mockSearch.mock.calls[0][2];
+      expect(searchSession).toEqual(expect.any(String));
+      expect(mockResolve).toHaveBeenCalledWith("ChIJ-oval", searchSession);
+    });
+
+    it("does not write a late coordinate once the address has been edited", async () => {
+      let answer: (place: unknown) => void = () => {};
+      mockResolve.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+      await pickOval();
+
+      await userEvent.type(screen.getByRole("combobox"), " Stand");
+      answer({ lat: "13.105", lon: "-59.6225", parish: "st-michael" });
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(setFieldValue).not.toHaveBeenCalledWith(
+        "step-1.event-address-coordinates",
+        "13.105,-59.6225",
+      );
+    });
+
+    it("offers the map pin when the coordinate cannot be looked up", async () => {
+      mockResolve.mockRejectedValue(new Error("place lookup failed: 503"));
+      await pickOval();
+
+      expect(
+        await screen.findByRole("button", { name: "Place pin" }),
+      ).toBeTruthy();
+    });
   });
 
   describe("when no address matches", () => {

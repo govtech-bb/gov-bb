@@ -1,4 +1,8 @@
-import { ServiceUnavailableException } from "@nestjs/common";
+import {
+  BadRequestException,
+  NotFoundException,
+  ServiceUnavailableException,
+} from "@nestjs/common";
 import type { HttpService } from "@nestjs/axios";
 import { GeocodeProvider, GeocodeResult } from "./geocode-result";
 import { buildProviders, GeocodeService } from "./geocode.service";
@@ -103,6 +107,35 @@ describe("GeocodeService", () => {
     ]);
   });
 
+  it("keeps a place suggestion, which has no coordinate until it is picked", async () => {
+    const oval: GeocodeResult = {
+      label: "Kensington Oval",
+      line1: "Kensington Oval",
+      line2: "",
+      parish: "st-michael",
+      placeId: "ChIJ-oval",
+    };
+    const primary = provider("google", async () => [oval]);
+    expect(await new GeocodeService([primary]).search("kensin")).toEqual([
+      oval,
+    ]);
+  });
+
+  it("passes a valid session token to the provider and drops a malformed one", async () => {
+    const primary = provider("google", async () => []);
+    const service = new GeocodeService([primary]);
+
+    await service.search("first", "0f8f-session_1");
+    await service.search("second", "bad token!");
+
+    expect(primary.search).toHaveBeenNthCalledWith(
+      1,
+      "first",
+      "0f8f-session_1",
+    );
+    expect(primary.search).toHaveBeenNthCalledWith(2, "second", undefined);
+  });
+
   it("does not cache a failure", async () => {
     const primary = provider("primary", async () => [BRIDGETOWN]);
     primary.search.mockRejectedValueOnce(new Error("blip"));
@@ -129,6 +162,72 @@ describe("GeocodeService", () => {
     // q-first was evicted, so this misses the cache and hits upstream again.
     await service.search("q-first");
     expect(primary.search.mock.calls.length).toBe(callsBefore + 1);
+  });
+
+  describe("resolve", () => {
+    const places = (resolve: GeocodeProvider["resolve"]) => {
+      const google = {
+        ...provider("google", async () => []),
+        resolve: vi.fn(resolve),
+      };
+      return { google, service: new GeocodeService([google]) };
+    };
+
+    it("looks the picked place up with the provider that suggested it", async () => {
+      const { google, service } = places(async () => ({
+        lat: "13.105",
+        lon: "-59.6225",
+        parish: "st-michael",
+      }));
+
+      expect(await service.resolve("ChIJ-oval", "session-1")).toEqual({
+        lat: "13.105",
+        lon: "-59.6225",
+        parish: "st-michael",
+      });
+      expect(google.resolve).toHaveBeenCalledWith("ChIJ-oval", "session-1");
+    });
+
+    it("rejects a malformed place id before calling the provider", async () => {
+      const { google, service } = places(async () => ({
+        lat: "13.1",
+        lon: "-59.6",
+        parish: "",
+      }));
+      await expect(service.resolve("../admin")).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(google.resolve).not.toHaveBeenCalled();
+    });
+
+    it("refuses a place outside Barbados", async () => {
+      const { service } = places(async () => ({
+        lat: "51.5",
+        lon: "-0.12",
+        parish: "",
+      }));
+      await expect(service.resolve("ChIJ-london")).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it("throws 503 when the lookup fails, so the field can offer a map pin", async () => {
+      const { service } = places(async () => {
+        throw new Error("quota");
+      });
+      await expect(service.resolve("ChIJ-oval")).rejects.toBeInstanceOf(
+        ServiceUnavailableException,
+      );
+    });
+
+    it("throws 404 when no provider can look a place up", async () => {
+      const service = new GeocodeService([
+        provider("nominatim", async () => []),
+      ]);
+      await expect(service.resolve("ChIJ-oval")).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
   });
 
   it("refetches once a cached entry has expired", async () => {
