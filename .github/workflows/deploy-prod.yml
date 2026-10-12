@@ -447,6 +447,11 @@ jobs:
           # prod API (ALB DNS over HTTP until api.ssb DNS + :443 land) so the
           # build resolves against the env it deploys into.
           VITE_FORMS_API_URL: http://ssb-api-prod-1165104707.ca-central-1.elb.amazonaws.com
+          # Since #1675, a production landing build throws on a request if these
+          # are unset, so the smoke returns 500. Same values as the prod landing
+          # Amplify app (d33h8dmrfcznn0).
+          VITE_FORMS_URL: https://forms.alpha.gov.bb
+          VITE_CHAT_URL: https://chat.alpha.gov.bb
         run: |
           pnpm exec nx build landing
           node .github/scripts/ssr-smoke.mjs apps/landing/.amplify-hosting/compute/default landing
