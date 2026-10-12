@@ -820,6 +820,9 @@ function StartPagesEditor() {
         {servicePreview && (
           <ServicePreview
             snapshot={servicePreview}
+            savedFormId={
+              servicePreview.recipe ? servicePreview.manifest.formId : null
+            }
             onClose={() => setServicePreview(null)}
           />
         )}
