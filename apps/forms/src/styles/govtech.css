@@ -383,6 +383,13 @@
   align-self: stretch;
   height: 20rem;
   margin-top: var(--govbb-space-xs);
+  /* Leaflet stacks its panes and controls at z-index 400-1000; keep them inside
+     the map so the address suggestions (z-index 10) float over it. */
+  isolation: isolate;
+}
+
+.address-lookup__map-actions {
+  margin: var(--govbb-space-xs) 0 0;
 }
 
 /* The shape sits on an inner span: Leaflet positions the marker element itself

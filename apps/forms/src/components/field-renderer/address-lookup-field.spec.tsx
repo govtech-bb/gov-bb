@@ -587,6 +587,41 @@ describe("AddressLookupField", () => {
       expect(screen.getByRole("combobox")).toHaveValue("Bridgetown");
     });
 
+    it("hides the map when asked, keeping the placed pin", async () => {
+      await userEvent.click(await failLookup());
+      setFieldValue.mockClear();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Hide the map" }),
+      );
+
+      expect(screen.queryByRole("button", { name: "Place pin" })).toBeNull();
+      expect(screen.getByRole("combobox")).toHaveFocus();
+      expect(setFieldValue).not.toHaveBeenCalledWith(
+        "step-1.event-address-coordinates",
+        "",
+      );
+    });
+
+    it("closes the map when a suggestion is picked", async () => {
+      await failLookup();
+      mockSearch.mockResolvedValue([
+        {
+          label: "Bay Street, Bridgetown, Barbados",
+          lat: "13.1",
+          lon: "-59.6",
+          line1: "Bay Street",
+          line2: "Bridgetown",
+          parish: "st-michael",
+        },
+      ]);
+
+      await userEvent.type(screen.getByRole("combobox"), " Bay");
+      await userEvent.click(await screen.findByRole("option"));
+
+      expect(screen.queryByRole("button", { name: "Place pin" })).toBeNull();
+    });
+
     it("keeps the map up when a later lookup succeeds", async () => {
       await failLookup();
       mockSearch.mockResolvedValue([]);

@@ -169,7 +169,11 @@ export function AddressLookupField({
         result.lat && result.lon ? `${result.lat},${result.lon}` : "",
       );
     }
+    // The pick replaces any pin: drop it, close the map, and let no late
+    // address-at-the-pin answer overwrite the pick.
     setPin(null);
+    setShowPinMap(false);
+    pinLookup.current += 1;
     setSuggestions([]);
 
     // A place suggestion has no coordinate yet: look it up, in the same
@@ -237,6 +241,13 @@ export function AddressLookupField({
     setShowPinMap(true);
   };
 
+  // A placed pin stays the routing coordinate; only the map goes. Focus returns
+  // to the address, as the button that had it is gone.
+  const hidePinMap = () => {
+    setShowPinMap(false);
+    document.getElementById(field.id)?.focus();
+  };
+
   return (
     <FormGroup data-field-width={field.ui?.width}>
       <Label
@@ -278,6 +289,15 @@ export function AddressLookupField({
               describedBy={pinHintId}
             />
           </Suspense>
+          <p className="address-lookup__map-actions">
+            <button
+              className="govbb-link address-lookup__map-link"
+              onClick={hidePinMap}
+              type="button"
+            >
+              Hide the map
+            </button>
+          </p>
         </>
       ) : lookupFailed ? (
         <Hint role="status">
