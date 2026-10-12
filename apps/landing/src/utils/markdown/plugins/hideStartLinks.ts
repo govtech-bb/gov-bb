@@ -26,7 +26,11 @@ const WORD_TO_NUMBER: Record<string, number> = {
   ten: 10,
 }
 
-function isDataStartLink(node: ElementContent): boolean {
+/**
+ * True for the `<a data-start-link>` CTA this plugin hides. Exported so the
+ * content tests in registry.test.ts find start links the way this plugin does.
+ */
+export function isDataStartLink(node: ElementContent): boolean {
   return (
     node.type === 'element' &&
     node.tagName === 'a' &&

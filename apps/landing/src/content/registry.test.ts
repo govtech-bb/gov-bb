@@ -18,10 +18,18 @@ import {
 } from './registry'
 import { CATEGORY_BY_SLUG } from './categories'
 import { search } from '../lib/search'
-import type { Element } from 'hast'
+import type { Element, ElementContent } from 'hast'
 import { hideStartLinks } from '../utils/markdown/plugins'
-import { isWaysParagraph } from '../utils/markdown/plugins/hideStartLinks'
+import {
+  isDataStartLink,
+  isWaysParagraph,
+} from '../utils/markdown/plugins/hideStartLinks'
 import type { ViewLevel } from '../lib/frontmatter'
+
+// The tests below walk loosely typed hast; ask the plugin what a start link is
+// rather than restating its predicate.
+const isStartLink = (node: object): boolean =>
+  isDataStartLink(node as ElementContent)
 
 describe('resolveServiceHref', () => {
   it('rewrites a bare service slug to its category-prefixed URL', () => {
@@ -147,13 +155,7 @@ describe('education pages link their published form (#911 Group A)', () => {
     properties?: Record<string, unknown>
     children?: unknown[]
   }): { properties?: Record<string, unknown> } | undefined {
-    if (
-      node.type === 'element' &&
-      node.tagName === 'a' &&
-      node.properties?.dataStartLink !== undefined
-    ) {
-      return node
-    }
+    if (isStartLink(node)) return node
     for (const child of (node.children ?? []) as Array<typeof node>) {
       const hit = findStartLink(child)
       if (hit) return hit
@@ -499,11 +501,6 @@ describe('route lists nest the start link (#2483)', () => {
     properties?: Record<string, unknown>
     children?: Array<Node>
   }
-
-  const isStartLink = (n: Node) =>
-    n.type === 'element' &&
-    n.tagName === 'a' &&
-    n.properties?.dataStartLink !== undefined
 
   const textOf = (n: Node): string =>
     n.type === 'text'
