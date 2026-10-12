@@ -453,3 +453,37 @@
   border: 0;
   cursor: pointer;
 }
+
+/* The confirmation an applicant answers before a change throws away an address
+   the lookup found (#2679). Native <dialog> in modal mode. */
+.confirm-dialog {
+  /* The base reset zeroes margins; auto restores the native centring. */
+  margin: auto;
+  width: calc(100% - 2 * var(--govbb-space-m));
+  max-width: 36rem;
+  padding: var(--govbb-space-l);
+  color: var(--govbb-color-ink);
+  background: var(--govbb-color-surface);
+  border: var(--govbb-border-width-form) solid var(--govbb-color-ink);
+  border-radius: var(--govbb-radius);
+}
+
+/* Focus goes to the dialog itself so it is announced; its frame needs no ring. */
+.confirm-dialog:focus {
+  outline: none;
+}
+
+.confirm-dialog::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
+
+.confirm-dialog h2 {
+  margin-top: 0;
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--govbb-space-s);
+  margin-top: var(--govbb-space-m);
+}

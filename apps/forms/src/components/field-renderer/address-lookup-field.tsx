@@ -10,6 +10,7 @@ import {
   searchAddresses,
 } from "../../lib/api/geocode";
 import { AddressCombobox } from "./address-combobox";
+import { ConfirmDialog } from "./confirm-dialog";
 import { FieldRenderContext } from "./render-context";
 
 // Leaflet is only needed when address suggestions are down or find nothing, so
@@ -24,8 +25,6 @@ const DEBOUNCE_MS = 400;
 const PIN_SETTLE_MS = 500;
 // A routing coordinate as the API accepts it (`isRoutingCoordinate`).
 const ROUTING_COORDINATE = /^-?\d+\.\d+,-?\d+\.\d+$/;
-const EDIT_WARNING =
-  "If you change this address, we will clear the address details we found and you will need to find the address again. Do you want to change it?";
 
 /**
  * A single-line address field backed by the Barbados-locked `/geocode` proxy.
@@ -125,17 +124,16 @@ export function AddressLookupField({
     if (value && !f.state.meta.isValid) void f.validate("submit");
   };
 
+  // A change to a located address waits on the applicant's answer: an edit to
+  // line 1 (held until they agree) or a new parish (put back if they do not).
+  const [confirming, setConfirming] = useState<
+    { kind: "edit"; next: string } | { kind: "parish" } | null
+  >(null);
+
   const parish = useStore(form.store, () => readParish());
   useEffect(() => {
     if (!located.current || parish === locatedParish.current) return;
-    // The applicant corrected the parish: keep the address lines, but the
-    // coordinate was for the old answer, so it goes and they locate it again.
-    located.current = false;
-    pendingPlace.current = null;
-    pinLookup.current += 1;
-    setPin(null);
-    writeCoordinate("");
-    setParishChanged(true);
+    setConfirming({ kind: "parish" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parish]);
 
@@ -192,13 +190,15 @@ export function AddressLookupField({
 
   const update = (next: string) => {
     // Editing an address the lookup found throws its details away, so ask
-    // first; cancelling leaves the field as it was.
+    // first; the edit waits for the answer.
     if (located.current) {
-      if (!window.confirm(EDIT_WARNING)) return;
-      located.current = false;
-      setParishChanged(false);
-      clearFoundDetails();
+      setConfirming({ kind: "edit", next });
+      return;
     }
+    applyEdit(next);
+  };
+
+  const applyEdit = (next: string) => {
     setQuery(next);
     commitChange(next);
     pendingPlace.current = null;
@@ -212,6 +212,51 @@ export function AddressLookupField({
     }
     // Clearing the address starts over.
     if (next.trim() === "") clearFoundDetails();
+  };
+
+  // Focus returns once the dialog has gone: while it is open the page behind
+  // it is inert and cannot take focus.
+  const returnFocusTo = useRef<string | null>(null);
+  useEffect(() => {
+    if (confirming || !returnFocusTo.current) return;
+    document.getElementById(returnFocusTo.current)?.focus();
+    returnFocusTo.current = null;
+  }, [confirming]);
+  const focusField = (id: string) => {
+    returnFocusTo.current = id;
+  };
+
+  const confirmChange = () => {
+    const pending = confirming;
+    setConfirming(null);
+    if (!pending) return;
+    located.current = false;
+    pendingPlace.current = null;
+    pinLookup.current += 1;
+    if (pending.kind === "edit") {
+      setParishChanged(false);
+      clearFoundDetails();
+      applyEdit(pending.next);
+      focusField(field.id);
+    } else {
+      // A corrected parish: keep the address lines, but the coordinate was
+      // for the old answer, so it goes and the applicant locates it again.
+      setPin(null);
+      writeCoordinate("");
+      setParishChanged(true);
+      if (parishFieldId) focusField(siblingId(parishFieldId));
+    }
+  };
+
+  const cancelChange = () => {
+    const pending = confirming;
+    setConfirming(null);
+    if (pending?.kind === "parish" && parishFieldId) {
+      form.setFieldValue(siblingId(parishFieldId), locatedParish.current);
+      focusField(siblingId(parishFieldId));
+    } else {
+      focusField(field.id);
+    }
   };
 
   const select = (result: GeocodeResult) => {
@@ -385,6 +430,38 @@ export function AddressLookupField({
             .
           </Hint>
         )
+      )}
+      {confirming && (
+        <ConfirmDialog
+          open
+          onConfirm={confirmChange}
+          onCancel={cancelChange}
+          {...(confirming.kind === "parish"
+            ? {
+                title: "Change the parish?",
+                confirmLabel: "Change the parish",
+                cancelLabel: "Keep the parish",
+                children: (
+                  <p>
+                    We found the address in a different parish. If you change
+                    it, you will need to find the address on the map so we can
+                    send your request to the right polyclinic.
+                  </p>
+                ),
+              }
+            : {
+                title: "Change the address?",
+                confirmLabel: "Change the address",
+                cancelLabel: "Keep the address",
+                children: (
+                  <p>
+                    If you change the address, we will clear the details we
+                    found for it. You will need to find the address again, from
+                    the list or on the map.
+                  </p>
+                ),
+              })}
+        />
       )}
     </FormGroup>
   );
