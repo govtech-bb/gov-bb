@@ -178,7 +178,6 @@
           "ref": "components/national-id-number",
           "overrides": {
             "hint": "for example, 850101-0001",
-            "label": "National Identification (ID) Number",
             "fieldId": "applicant-id-number",
             "behaviours": [
               {
@@ -190,7 +189,7 @@
             ],
             "validations": {
               "required": {
-                "error": "ID Number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             },
@@ -369,7 +368,6 @@
         {
           "ref": "components/national-id-number",
           "overrides": {
-            "label": "National Identification (ID) Number",
             "fieldId": "husband-id-number",
             "behaviours": [
               {
@@ -381,7 +379,7 @@
             ],
             "validations": {
               "required": {
-                "error": "ID Number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             },
@@ -477,7 +475,6 @@
         {
           "ref": "components/national-id-number",
           "overrides": {
-            "label": "National Identification (ID) Number",
             "fieldId": "wife-id-number",
             "behaviours": [
               {
@@ -489,7 +486,7 @@
             ],
             "validations": {
               "required": {
-                "error": "ID Number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             },
@@ -742,7 +739,7 @@
     }
   ],
   "createdAt": "2026-06-08T21:16:00.486Z",
-  "updatedAt": "2026-10-05T17:20:45.000Z",
+  "updatedAt": "2026-10-12T17:44:53.000Z",
   "meta": {
     "visibility": "public"
   }

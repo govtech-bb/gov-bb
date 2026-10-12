@@ -73,10 +73,9 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "child-id-number",
-            "label": "National Identification (ID) Number",
             "validations": {
               "required": {
-                "error": "ID number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             },
@@ -279,10 +278,9 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "guardian-id-number",
-            "label": "National Identification (ID) Number",
             "validations": {
               "required": {
-                "error": "ID number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             },
@@ -513,10 +511,9 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "applicant-id-number",
-            "label": "National Identification (ID) Number",
             "validations": {
               "required": {
-                "error": "ID Number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             },
@@ -748,7 +745,7 @@
     }
   ],
   "createdAt": "2026-06-11T21:35:31.794Z",
-  "updatedAt": "2026-10-09T11:35:00.000Z",
+  "updatedAt": "2026-10-12T17:44:53.000Z",
   "meta": {
     "visibility": "maintenance"
   }

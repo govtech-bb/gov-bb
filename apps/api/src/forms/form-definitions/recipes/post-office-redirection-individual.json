@@ -108,14 +108,13 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "applicant-id-number",
-            "label": "National Identification (ID) Number",
             "validations": {
               "pattern": {
                 "error": "Enter a valid ID number (for example, 850101-0001)",
                 "value": "^[0-9]{6}-[0-9]{4}$"
               },
               "required": {
-                "error": "ID Number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             },
@@ -583,14 +582,13 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "minor-id-number",
-            "label": "National Identification (ID) Number",
             "validations": {
               "pattern": {
                 "error": "Enter a valid ID number (for example, 850101-0001)",
                 "value": "^[0-9]{6}-[0-9]{4}$"
               },
               "required": {
-                "error": "ID Number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             },
@@ -738,14 +736,13 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "adult-id-number",
-            "label": "National Identification (ID) Number",
             "validations": {
               "pattern": {
                 "error": "Enter a valid ID number (for example, 850101-0001)",
                 "value": "^[0-9]{6}-[0-9]{4}$"
               },
               "required": {
-                "error": "ID Number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             },
@@ -822,7 +819,7 @@
     }
   ],
   "createdAt": "2026-06-04T20:58:01.397Z",
-  "updatedAt": "2026-10-05T17:20:45.000Z",
+  "updatedAt": "2026-10-12T17:44:53.000Z",
   "meta": {
     "visibility": "maintenance"
   }

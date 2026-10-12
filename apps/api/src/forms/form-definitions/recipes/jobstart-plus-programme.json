@@ -210,7 +210,6 @@
             "ui": {
               "width": "medium"
             },
-            "label": "National Identification (ID) Number",
             "fieldId": "applicant-nid",
             "behaviours": [
               {
@@ -223,7 +222,7 @@
             ],
             "validations": {
               "required": {
-                "error": "ID Number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             }
@@ -1413,5 +1412,5 @@
     }
   ],
   "createdAt": "2026-06-09T17:09:06.077Z",
-  "updatedAt": "2026-10-13T01:24:51.000Z"
+  "updatedAt": "2026-10-13T06:37:08.000Z"
 }
