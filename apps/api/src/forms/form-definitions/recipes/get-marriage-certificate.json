@@ -201,7 +201,7 @@
         {
           "ref": "components/show-hide",
           "overrides": {
-            "hint": "If you don't have a National ID number, you can use your passport number instead.",
+            "hint": "If you don't have a Barbados National Identification (ID) number, you can use your passport number instead.",
             "label": "Use passport number instead",
             "fieldId": "passport-toggle"
           }
@@ -391,7 +391,7 @@
         {
           "ref": "components/show-hide",
           "overrides": {
-            "hint": "If the husband doesn't have a National ID number, you can use a passport number instead.",
+            "hint": "If the husband doesn't have a Barbados National Identification (ID) number, you can use a passport number instead.",
             "label": "Use passport number instead",
             "fieldId": "husband-passport-toggle"
           }
@@ -498,7 +498,7 @@
         {
           "ref": "components/show-hide",
           "overrides": {
-            "hint": "If the wife doesn't have a National ID number, you can use a passport number instead.",
+            "hint": "If the wife doesn't have a Barbados National Identification (ID) number, you can use a passport number instead.",
             "label": "Use passport number instead",
             "fieldId": "wife-passport-toggle"
           }
@@ -739,7 +739,7 @@
     }
   ],
   "createdAt": "2026-06-08T21:16:00.486Z",
-  "updatedAt": "2026-10-12T17:44:53.000Z",
+  "updatedAt": "2026-10-12T18:00:56.000Z",
   "meta": {
     "visibility": "public"
   }

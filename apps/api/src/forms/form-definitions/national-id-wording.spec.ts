@@ -15,9 +15,10 @@ import { hydrateForm, type Resolver } from "../../registry/resolution";
 // (NATIONAL_ID_LABEL); this keeps recipes from drifting away from it again.
 //
 // A field counts as asking for a Barbados ID when it carries the registry's
-// mask or pattern, which is how the component (directly or via a block)
-// arrives after hydration. Two older plain-text fields ask for the same number
-// with neither; they are pinned by id below.
+// mask, or any pattern that accepts an ID: that is how the component (directly
+// or via a block) arrives after hydration, and it also catches a recipe that
+// restates the pattern in its own words. Plain-text fields that ask for the
+// same number are pinned by id below, so they stay checked if they lose it.
 const RECIPES_DIR = path.resolve(__dirname, "recipes");
 
 const CHILD_LABEL = `Child's ${NATIONAL_ID_LABEL}`;
@@ -29,6 +30,7 @@ const CARD_NAME = "Barbados National Identification (ID) card";
 const GENERIC_NATIONAL_ID_FIELDS = [
   "school-uniform-grant-barbados/parent-national-id",
   "seniors-recreational-activities-programme/national-registration-number",
+  "smart-stream-vendor-registration/nrn",
 ];
 
 // Other names this document has gone by. Checked in hints once the
@@ -48,6 +50,7 @@ type HydratedField = {
   mask?: string;
   label?: string;
   hint?: string;
+  options?: { label?: string }[];
   validations?: { required?: Rule; pattern?: Rule } & Record<string, Rule>;
 };
 type HydratedStep = { stepId: string; elements?: HydratedField[] };
@@ -61,11 +64,47 @@ function namesItAnotherWay(text: string): boolean {
   return OTHER_NAMES.test(rest);
 }
 
+/** True when a field's mask or pattern means it takes a Barbados ID. */
+export function hasIdFormat(field: HydratedField): boolean {
+  if (field.mask === NATIONAL_ID_FORMAT.mask) return true;
+  const pattern = field.validations?.pattern?.value;
+  if (typeof pattern !== "string") return false;
+  try {
+    // Accepts an ID but not a letter in it or an extra digit, so a looser
+    // pattern (a licence or business name) that happens to accept one isn't.
+    const re = new RegExp(pattern);
+    return (
+      re.test(SPECIMEN) && !re.test("A50101-0001") && !re.test("850101-00011")
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The other fields on a step that asks for the ID, such as the "use passport
+ * number instead" toggle, mustn't call it something else a line below it.
+ */
+export function checkNeighbourWording(
+  where: string,
+  field: HydratedField,
+): string[] {
+  const texts = [
+    field.label,
+    field.hint,
+    ...(field.options ?? []).map((o) => o.label),
+    ...Object.values(field.validations ?? {}).map((r) => r.error),
+  ];
+  return texts
+    .filter((t): t is string => typeof t === "string" && namesItAnotherWay(t))
+    .map((t) => `${where}: "${t}" names the ID another way`);
+}
+
 /** Human-readable problems for one national ID field ([] means it agrees). */
 export function checkNationalIdWording(
   where: string,
   field: HydratedField,
-  { hasIdFormat }: { hasIdFormat: boolean },
+  { idFormat }: { idFormat: boolean },
 ): string[] {
   const problems: string[] = [];
   const { label, hint, validations } = field;
@@ -83,7 +122,7 @@ export function checkNationalIdWording(
     );
   }
   if (
-    hasIdFormat &&
+    idFormat &&
     (validations?.pattern?.value !== NATIONAL_ID_FORMAT.pattern ||
       validations?.pattern?.error !== NATIONAL_ID_FORMAT.error)
   ) {
@@ -143,18 +182,24 @@ it("every Barbados ID field uses the one name, error wording and example number"
   const genericSeen = new Set<string>();
   for (const { formId, steps } of recipes) {
     for (const step of steps) {
-      for (const field of step.elements ?? []) {
+      const fields = step.elements ?? [];
+      const isIdField = (field: HydratedField) =>
+        hasIdFormat(field) ||
+        GENERIC_NATIONAL_ID_FIELDS.includes(`${formId}/${field.fieldId}`);
+      const stepAsksForId = fields.some(isIdField);
+      for (const field of fields) {
         const where = `${formId} › ${step.stepId} › ${field.fieldId}`;
-        const hasIdFormat =
-          field.mask === NATIONAL_ID_FORMAT.mask ||
-          field.validations?.pattern?.value === NATIONAL_ID_FORMAT.pattern;
-        const generic = GENERIC_NATIONAL_ID_FIELDS.includes(
-          `${formId}/${field.fieldId}`,
-        );
-        if (!hasIdFormat && !generic) continue;
-        if (hasIdFormat) idFormatFields++;
-        if (generic) genericSeen.add(`${formId}/${field.fieldId}`);
-        problems.push(...checkNationalIdWording(where, field, { hasIdFormat }));
+        if (!isIdField(field)) {
+          if (stepAsksForId)
+            problems.push(...checkNeighbourWording(where, field));
+          continue;
+        }
+        const idFormat = hasIdFormat(field);
+        if (idFormat) idFormatFields++;
+        if (GENERIC_NATIONAL_ID_FIELDS.includes(`${formId}/${field.fieldId}`)) {
+          genericSeen.add(`${formId}/${field.fieldId}`);
+        }
+        problems.push(...checkNationalIdWording(where, field, { idFormat }));
       }
     }
   }
@@ -166,6 +211,52 @@ it("every Barbados ID field uses the one name, error wording and example number"
     [...GENERIC_NATIONAL_ID_FIELDS].sort(),
   );
   expect(problems).toEqual([]);
+});
+
+describe("checkNeighbourWording", () => {
+  it("catches a passport toggle that still uses the old name", () => {
+    expect(
+      checkNeighbourWording("f", {
+        fieldId: "passport-toggle",
+        label: "Use passport number instead",
+        hint: "If you don't have a National ID number, use your passport number.",
+      })[0],
+    ).toContain("names the ID another way");
+  });
+
+  it("passes a neighbour that uses the one name, or doesn't mention it", () => {
+    expect(
+      checkNeighbourWording("f", {
+        fieldId: "passport-toggle",
+        label: "Use passport number instead",
+        hint: `If you don't have a ${NATIONAL_ID_LABEL}, use your passport number.`,
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe("hasIdFormat", () => {
+  it("recognises the mask, the registry pattern and a restated one", () => {
+    expect(hasIdFormat({ fieldId: "a", mask: "999999-9999" })).toBe(true);
+    expect(
+      hasIdFormat({
+        fieldId: "a",
+        validations: { pattern: { value: "^[0-9]{6}-[0-9]{4}$" } },
+      }),
+    ).toBe(true);
+    expect(
+      hasIdFormat({
+        fieldId: "a",
+        validations: { pattern: { value: "^\\d{6}$" } },
+      }),
+    ).toBe(false);
+    expect(
+      hasIdFormat({
+        fieldId: "licence",
+        validations: { pattern: { value: "^[A-Za-z0-9 -]+$" } },
+      }),
+    ).toBe(false);
+  });
 });
 
 describe("checkNationalIdWording", () => {
@@ -182,7 +273,7 @@ describe("checkNationalIdWording", () => {
     },
   };
   const check = (field: HydratedField) =>
-    checkNationalIdWording("f", field, { hasIdFormat: true });
+    checkNationalIdWording("f", field, { idFormat: true });
 
   it("passes the canonical field and the child variant", () => {
     expect(check(ok)).toEqual([]);

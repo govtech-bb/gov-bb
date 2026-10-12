@@ -231,7 +231,7 @@
         {
           "ref": "components/show-hide",
           "overrides": {
-            "hint": "If you don't have a National ID number, you can use your passport number instead.",
+            "hint": "If you don't have a Barbados National Identification (ID) number, you can use your passport number instead.",
             "label": "Use passport number instead",
             "fieldId": "passport-toggle"
           }
@@ -1412,5 +1412,5 @@
     }
   ],
   "createdAt": "2026-06-09T17:09:06.077Z",
-  "updatedAt": "2026-10-13T06:37:08.000Z"
+  "updatedAt": "2026-10-13T06:37:22.000Z"
 }
