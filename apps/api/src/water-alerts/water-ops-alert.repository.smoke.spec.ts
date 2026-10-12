@@ -100,6 +100,21 @@ const HAS_DB = !!process.env.DB_HOST;
       expect(await repo.recordFailure(key, "6 hours")).not.toBeNull();
     });
 
+    it("gives a failure that starts inside the window and outlasts it the first wording", async () => {
+      const key = `${prefix}flap-then-lasting`;
+      await repo.recordFailure(key, "6 hours");
+      await repo.recordRecovery(key);
+
+      await age(key, "30 minutes");
+      expect(await repo.recordFailure(key, "6 hours")).toBeNull(); // quiet
+      // Still failing once the window has passed: ops have heard nothing about
+      // this failure, so it's "failing", not "still failing".
+      await age(key, "6 hours");
+      expect(await repo.recordFailure(key, "6 hours")).toMatchObject({
+        kind: "first",
+      });
+    });
+
     it("lets exactly one of two concurrent tasks alert", async () => {
       const key = `${prefix}race`;
       const runner = dataSource.createQueryRunner();
@@ -132,8 +147,8 @@ const HAS_DB = !!process.env.DB_HOST;
 
     it("recovers silently after an undelivered alert, and starts fresh after markHealthy", async () => {
       const key = `${prefix}reset`;
-      expect(await repo.recordFailure(key, "6 hours")).not.toBeNull();
-      await repo.forgetAlert(key);
+      const alert = await repo.recordFailure(key, "6 hours");
+      await repo.forgetAlert(key, alert!.previousAlertedAt);
       expect(await repo.recordRecovery(key)).toBeNull();
 
       expect(await repo.recordFailure(key, "6 hours")).toMatchObject({
@@ -144,6 +159,45 @@ const HAS_DB = !!process.env.DB_HOST;
       expect(await repo.recordFailure(key, "6 hours")).toMatchObject({
         kind: "first",
       });
+    });
+
+    it("retries an undelivered first alert next run, still as the first", async () => {
+      const key = `${prefix}first-undelivered`;
+      const alert = await repo.recordFailure(key, "6 hours");
+      expect(alert).toMatchObject({ kind: "first" });
+      await repo.forgetAlert(key, alert!.previousAlertedAt);
+
+      expect(await repo.recordFailure(key, "6 hours")).toMatchObject({
+        kind: "first",
+      });
+    });
+
+    it("still emails the recovery when only a reminder went undelivered", async () => {
+      const key = `${prefix}reminder-undelivered`;
+      expect(await repo.recordFailure(key, "6 hours")).toMatchObject({
+        kind: "first",
+      });
+      await age(key, "6 hours 1 minute");
+      const reminder = await repo.recordFailure(key, "6 hours");
+      expect(reminder).toMatchObject({ kind: "reminder" });
+      await repo.forgetAlert(key, reminder!.previousAlertedAt);
+
+      // Retried next run rather than six hours later…
+      expect(await repo.recordFailure(key, "6 hours")).toMatchObject({
+        kind: "reminder",
+      });
+      // …and ops, who got the first email, are told when it recovers.
+      expect(await repo.recordRecovery(key)).toBeInstanceOf(Date);
+    });
+
+    it("still emails the recovery when the reminder is undelivered and it recovers before a retry", async () => {
+      const key = `${prefix}reminder-undelivered-recovers`;
+      await repo.recordFailure(key, "6 hours");
+      await age(key, "6 hours 1 minute");
+      const reminder = await repo.recordFailure(key, "6 hours");
+      await repo.forgetAlert(key, reminder!.previousAlertedAt);
+
+      expect(await repo.recordRecovery(key)).toBeInstanceOf(Date);
     });
   },
 );

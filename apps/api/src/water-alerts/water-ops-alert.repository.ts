@@ -5,8 +5,16 @@ import { BaseRepository } from "../database/base.repository";
 
 /** A failure the caller should email about now. */
 export interface FailureAlert {
+  /** "first" when no email has gone out for this failure yet. */
   kind: "first" | "reminder";
   failingSince: Date;
+  /**
+   * last_alerted_at before this alert claimed it, for forgetAlert to put back
+   * if the email isn't delivered. Postgres text, so it round-trips at full
+   * (microsecond) precision: a JS Date would truncate it to milliseconds and
+   * could land it just before failing_since.
+   */
+  previousAlertedAt: string | null;
 }
 
 /**
@@ -26,30 +34,50 @@ export class WaterOpsAlertRepository extends BaseRepository<WaterOpsAlertEntity>
    * "6 hours"); otherwise null. That applies to a *new* failure too, so a
    * failure that flaps (fail, recover, fail…) is emailed at most once per
    * interval rather than every run. failing_since is always recorded.
-   * NOW() is fixed per transaction, so "alerted" means this statement moved
-   * last_alerted_at, and "first" means this failure started now.
+   *
+   * The decision reads the row as it was (`prev`, locked FOR UPDATE, as in
+   * recordRecovery), because RETURNING only shows the new values: "first"
+   * means no alert has gone out since this failure started. NOW() is fixed
+   * per transaction, so "alerted" means this statement moved last_alerted_at.
    */
   async recordFailure(
     key: string,
     remindAfter: string,
   ): Promise<FailureAlert | null> {
-    const rows: Array<{
-      failingSince: Date;
-      alerted: boolean;
-      first: boolean;
-    }> = await this.manager.query(
-      `INSERT INTO "water_ops_alerts" ("key", "failing_since", "last_alerted_at")
-         VALUES ($1, NOW(), NOW())
-         ON CONFLICT ("key") DO UPDATE SET
-           "failing_since" = COALESCE("water_ops_alerts"."failing_since", NOW()),
-           "last_alerted_at" = CASE
-             WHEN "water_ops_alerts"."last_alerted_at" IS NULL
-               OR "water_ops_alerts"."last_alerted_at" < NOW() - $2::interval THEN NOW()
-             ELSE "water_ops_alerts"."last_alerted_at"
-           END
-         RETURNING "failing_since" AS "failingSince",
-                   ("last_alerted_at" = NOW()) AS "alerted",
-                   ("failing_since" = NOW()) AS "first"`,
+    // Make sure there is a row to lock; a concurrent insert is a no-op.
+    await this.manager.query(
+      `INSERT INTO "water_ops_alerts" ("key") VALUES ($1)
+       ON CONFLICT ("key") DO NOTHING`,
+      [key],
+    );
+    // TypeORM's Postgres driver returns [rows, rowCount] for UPDATE.
+    const [rows]: [
+      Array<{
+        failingSince: Date;
+        alerted: boolean;
+        first: boolean;
+        previousAlertedAt: string | null;
+      }>,
+      number,
+    ] = await this.manager.query(
+      `UPDATE "water_ops_alerts" a SET
+         "failing_since" = COALESCE(prev."failing_since", NOW()),
+         "last_alerted_at" = CASE
+           WHEN prev."last_alerted_at" IS NULL
+             OR prev."last_alerted_at" < NOW() - $2::interval THEN NOW()
+           ELSE prev."last_alerted_at"
+         END
+       FROM (
+         SELECT "id", "failing_since", "last_alerted_at" FROM "water_ops_alerts"
+         WHERE "key" = $1
+         FOR UPDATE
+       ) prev
+       WHERE a."id" = prev."id"
+       RETURNING a."failing_since" AS "failingSince",
+                 (a."last_alerted_at" = NOW()) AS "alerted",
+                 (prev."last_alerted_at" IS NULL
+                   OR prev."last_alerted_at" < a."failing_since") AS "first",
+                 prev."last_alerted_at"::text AS "previousAlertedAt"`,
       [key, remindAfter],
     );
     const row = rows[0];
@@ -57,6 +85,7 @@ export class WaterOpsAlertRepository extends BaseRepository<WaterOpsAlertEntity>
     return {
       kind: row.first ? "first" : "reminder",
       failingSince: row.failingSince,
+      previousAlertedAt: row.previousAlertedAt,
     };
   }
 
@@ -97,13 +126,19 @@ export class WaterOpsAlertRepository extends BaseRepository<WaterOpsAlertEntity>
   }
 
   /**
-   * Forget that `key`'s failure was alerted, because the email didn't go out:
-   * the next run alerts again, and if it recovers first, it does so silently.
+   * Undo an alert whose email didn't go out, by putting last_alerted_at back
+   * to `previousAlertedAt` (from recordFailure). The next run alerts again,
+   * since that value is past the interval. A recovery before then emails only
+   * if an earlier alert for this failure did reach ops.
    */
-  async forgetAlert(key: string): Promise<void> {
+  async forgetAlert(
+    key: string,
+    previousAlertedAt: string | null,
+  ): Promise<void> {
     await this.manager.query(
-      `UPDATE "water_ops_alerts" SET "last_alerted_at" = NULL WHERE "key" = $1`,
-      [key],
+      `UPDATE "water_ops_alerts" SET "last_alerted_at" = $2::timestamp
+       WHERE "key" = $1`,
+      [key, previousAlertedAt],
     );
   }
 

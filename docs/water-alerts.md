@@ -77,14 +77,19 @@ several API tasks run the checker and the record must survive restarts and
 deploys. Each "should I email?" decision is a single atomic statement, so tasks
 reporting the same failure send one email. It is claimed before sending; if the
 ops email itself fails (often because SES is what's down), the claim is undone
-so the next run tries again, and a recovery before then stays silent because the
-team was never told. A failed "recovered" email is not retried. If the table
+by restoring the previous alert time, so the next run tries again with the same
+wording. A recovery before then still emails if an earlier alert for that
+failure reached the team, and stays silent if none did. "Failing" (rather than
+"still failing") means no alert has gone out since the failure started, so a
+retried first alert, or a failure that began during the 6-hour window, still
+says it's new. A failed "recovered" email is not retried. If the table
 can't be reached (for example the database is what's down), each task falls
 back to remembering its own last alert: at most one email per task every 6
 hours, and no "recovered" email for that outage.
 
 `water-ops-alert.repository.smoke.spec.ts` runs these statements against a real
-Postgres (lifecycle, flapping, two concurrent tasks, claim and release). Like the
+Postgres (lifecycle, flapping, two concurrent tasks, claim and release,
+undelivered first alerts and reminders, re-running the migration). Like the
 other smoke specs it is skipped unless `DB_HOST` is set, so CI skips it: run it
 against a local database after changing that SQL.
 

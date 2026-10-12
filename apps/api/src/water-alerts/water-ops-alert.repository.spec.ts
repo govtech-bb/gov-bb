@@ -8,50 +8,85 @@ function repositoryWith(query: ReturnType<typeof vi.fn>) {
 }
 
 describe("WaterOpsAlertRepository.recordFailure", () => {
-  it("records every failure but only alerts when the last alert is older than the interval", async () => {
-    const query = vi.fn().mockResolvedValue([]);
+  /** The ensure-row INSERT, then the UPDATE's [rows, rowCount]. */
+  const queryReturning = (rows: unknown[]) =>
+    vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([rows, rows.length]);
+
+  it("decides from the row as it was, locked, and only alerts past the interval", async () => {
+    const query = queryReturning([]);
     await repositoryWith(query).recordFailure("checker-crash", "6 hours");
 
-    const [sql, params] = query.mock.calls[0];
+    const [insertSql, insertParams] = query.mock.calls[0];
+    expect(insertSql).toContain('ON CONFLICT ("key") DO NOTHING');
+    expect(insertParams).toEqual(["checker-crash"]);
+
+    const [sql, params] = query.mock.calls[1];
     expect(params).toEqual(["checker-crash", "6 hours"]);
-    expect(sql).toContain('ON CONFLICT ("key") DO UPDATE');
+    expect(sql).toContain("FOR UPDATE");
     // failing_since is always kept/set; last_alerted_at only moves when alerting,
     // so a failure that flaps back within the interval stays quiet (#2970).
-    expect(sql).toContain(
-      'COALESCE("water_ops_alerts"."failing_since", NOW())',
-    );
+    expect(sql).toContain('COALESCE(prev."failing_since", NOW())');
     expect(sql).toContain("< NOW() - $2::interval THEN NOW()");
-    expect(sql).not.toMatch(/DO UPDATE SET[\s\S]*WHERE/);
+    // "first" = no alert since this failure started (Shannon's review on #2982),
+    // not "this failure started now".
+    expect(sql).toContain(
+      'prev."last_alerted_at" < a."failing_since") AS "first"',
+    );
+    expect(sql).toContain(
+      'prev."last_alerted_at"::text AS "previousAlertedAt"',
+    );
   });
 
-  it("reports a first alert when the failure starts now", async () => {
+  it("reports a first alert with the alert time it replaced", async () => {
     const since = new Date("2026-10-09T10:00:00Z");
-    const query = vi
-      .fn()
-      .mockResolvedValue([{ failingSince: since, alerted: true, first: true }]);
+    const query = queryReturning([
+      {
+        failingSince: since,
+        alerted: true,
+        first: true,
+        previousAlertedAt: null,
+      },
+    ]);
     await expect(
       repositoryWith(query).recordFailure("checker-crash", "6 hours"),
-    ).resolves.toEqual({ kind: "first", failingSince: since });
+    ).resolves.toEqual({
+      kind: "first",
+      failingSince: since,
+      previousAlertedAt: null,
+    });
   });
 
-  it("reports a reminder when the failure started earlier", async () => {
+  it("reports a reminder when an alert already went out for this failure", async () => {
     const since = new Date("2026-10-09T04:00:00Z");
-    const query = vi
-      .fn()
-      .mockResolvedValue([
-        { failingSince: since, alerted: true, first: false },
-      ]);
+    const query = queryReturning([
+      {
+        failingSince: since,
+        alerted: true,
+        first: false,
+        previousAlertedAt: "2026-10-09 04:00:00.123456",
+      },
+    ]);
     await expect(
       repositoryWith(query).recordFailure("checker-crash", "6 hours"),
-    ).resolves.toEqual({ kind: "reminder", failingSince: since });
+    ).resolves.toEqual({
+      kind: "reminder",
+      failingSince: since,
+      previousAlertedAt: "2026-10-09 04:00:00.123456",
+    });
   });
 
   it("returns null when the failure was recorded but alerted recently", async () => {
-    const query = vi
-      .fn()
-      .mockResolvedValue([
-        { failingSince: new Date(), alerted: false, first: true },
-      ]);
+    const query = queryReturning([
+      {
+        failingSince: new Date(),
+        alerted: false,
+        first: true,
+        previousAlertedAt: null,
+      },
+    ]);
     await expect(
       repositoryWith(query).recordFailure("checker-crash", "6 hours"),
     ).resolves.toBeNull();
@@ -145,12 +180,15 @@ describe("WaterOpsAlertRepository.markHealthy", () => {
 });
 
 describe("WaterOpsAlertRepository.forgetAlert", () => {
-  it("forgets that a failure was alerted, so the next run alerts again", async () => {
+  it("puts back the alert time from before the undelivered alert", async () => {
     const query = vi.fn().mockResolvedValue([[], 1]);
-    await repositoryWith(query).forgetAlert("checker-crash");
+    await repositoryWith(query).forgetAlert(
+      "checker-crash",
+      "2026-10-09 04:00:00.123456",
+    );
 
     const [sql, params] = query.mock.calls[0];
-    expect(sql).toContain('SET "last_alerted_at" = NULL');
-    expect(params).toEqual(["checker-crash"]);
+    expect(sql).toContain('SET "last_alerted_at" = $2::timestamp');
+    expect(params).toEqual(["checker-crash", "2026-10-09 04:00:00.123456"]);
   });
 });

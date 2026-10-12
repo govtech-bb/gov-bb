@@ -97,18 +97,24 @@ describe("OpsAlertService", () => {
       expect(mailer.sendSimple).toHaveBeenCalledTimes(2);
     });
 
-    it("forgets the alert when its email fails, so the next run retries it", async () => {
+    it("undoes the alert when its email fails, so the next run retries it", async () => {
       const { repo, mailer, service } = setup();
+      // A reminder: the first alert did reach ops, so undoing must restore
+      // that earlier alert time (not clear it) or the recovery email is lost.
       repo.recordFailure.mockResolvedValue({
-        kind: "first",
+        kind: "reminder",
         failingSince: SINCE,
+        previousAlertedAt: "2026-10-09 04:00:00.123456",
       });
       mailer.sendSimple.mockRejectedValue(new Error("SES down"));
 
       await expect(
         service.failure("checker-crash", "boom", "Error: boom"),
       ).resolves.toBeUndefined();
-      expect(repo.forgetAlert).toHaveBeenCalledWith("checker-crash");
+      expect(repo.forgetAlert).toHaveBeenCalledWith(
+        "checker-crash",
+        "2026-10-09 04:00:00.123456",
+      );
     });
 
     it("says so when throttling in memory, and reminds with the still-failing subject", async () => {

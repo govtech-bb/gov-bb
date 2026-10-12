@@ -37,8 +37,9 @@ const WORDING: Record<
  * failure that flaps (fail, recover, fail…) can't flood either: a failure
  * inside that window is recorded but not emailed, and then recovers silently. Whether to email is decided by WaterOpsAlertRepository
  * in one atomic statement, so several API tasks reporting the same failure
- * send one email. Claim, then send: if the ops email itself fails, that alert
- * waits for the next reminder rather than risking two tasks both sending.
+ * send one email. Claim, then send: if the ops email itself fails, the claim
+ * is undone so the next run retries it, rather than risking two tasks both
+ * sending.
  *
  * If the state table can't be reached (e.g. the database is what's down), each
  * task falls back to remembering its own last alert in memory: at worst one
@@ -101,11 +102,12 @@ export class OpsAlertService {
       subject,
       `${summary}\n\n${status}\n\nDetails:\n${details}`,
     );
-    // Not delivered: forget the alert so the next run tries again, and so a
-    // recovery before then stays silent (ops were never told it failed).
+    // Not delivered: undo this alert so the next run tries again. Recovery
+    // still emails if an earlier alert for this failure reached ops, and stays
+    // silent if none did.
     if (!delivered) {
       await this.state
-        .forgetAlert(signal)
+        .forgetAlert(signal, alert.previousAlertedAt)
         .catch((err: Error) =>
           this.logger.warn(`Could not reset ops alert: ${err.message}`),
         );
