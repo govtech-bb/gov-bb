@@ -80,19 +80,24 @@ it("ignores renewal answers left behind after switching to a new licence", async
 });
 
 it.each([
-  ["yourself", [], false],
-  ["another-person", ["licence-holder-person"], true],
-  ["business", ["licence-holder-business"], true],
+  ["yourself", [], undefined],
+  ["another-person", ["licence-holder-person"], "person-has-permission"],
+  ["business", ["licence-holder-business"], "business-has-permission"],
 ])(
   "applying for %s shows only the licence-holder questions for that answer",
-  async (applyingFor, expected, asksPermission) => {
+  async (applyingFor, expected, permissionField) => {
     const cond = await conditions({
       "applying-for": { "applying-for": applyingFor },
     });
     expect(activeOf(HOLDER_STEPS, cond.activeStepIds)).toEqual(expected);
     const active = cond.activeFieldIds.get("applying-for")!;
-    expect(active.has("has-permission")).toBe(asksPermission);
-    expect(active.has("relationship-to-licence-holder")).toBe(asksPermission);
+    // Each branch has its own permission question, so each gets its own stop copy.
+    for (const id of ["person-has-permission", "business-has-permission"]) {
+      expect(active.has(id)).toBe(id === permissionField);
+    }
+    expect(active.has("relationship-to-licence-holder")).toBe(
+      permissionField !== undefined,
+    );
   },
 );
 
@@ -101,7 +106,8 @@ it.each([
 it.each([
   ["renewal-check", "same-licence-holder", "no", "yes"],
   ["renewal-check", "address-changed", "yes", "no"],
-  ["applying-for", "has-permission", "no", "yes"],
+  ["applying-for", "person-has-permission", "no", "yes"],
+  ["applying-for", "business-has-permission", "no", "yes"],
 ])(
   "%s.%s refuses %s and accepts %s",
   async (stepId, fieldId, refused, accepted) => {

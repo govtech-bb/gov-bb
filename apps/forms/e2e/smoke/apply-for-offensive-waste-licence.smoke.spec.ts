@@ -163,8 +163,6 @@ export function buildData() {
     phone: bbPhoneNumber(),
 
     currentLicenceNumber: `OT/${faker.string.numeric(5)}`,
-    buildingChanges:
-      "Added a bunded washdown bay and a new grease trap (smoke test)",
     relationship: "Manager",
 
     holderFirstName: faker.person.firstName(),
@@ -218,11 +216,10 @@ export async function fillApplicationType(
 /**
  * Renewal only. Same holder must be "yes" and address changed must be "no" —
  * the other answers are refused (see the blocked test). "yes" to building
- * changes reveals the optional description and, later, `changed-building-plans`.
+ * changes later asks for `changed-building-plans`.
  */
 export async function fillRenewalCheck(
   page: Page,
-  data: Data,
   buildingChanges: "yes" | "no",
 ): Promise<void> {
   const step = expectStep(page, "renewal-check");
@@ -231,16 +228,7 @@ export async function fillRenewalCheck(
   );
   await selectRadio(page, step, "same-licence-holder", "yes");
   await selectRadio(page, step, "address-changed", "no");
-
-  const description = page.locator(
-    `[id="${step}_building-changes-description"]`,
-  );
-  await expect(description).toBeHidden();
   await selectRadio(page, step, "building-changes", buildingChanges);
-  if (buildingChanges === "yes") {
-    await expect(description).toBeVisible({ timeout: STEP_TIMEOUT });
-    await description.fill(data.buildingChanges);
-  }
   await advance(page, step);
 }
 
@@ -270,14 +258,19 @@ export async function fillApplyingFor(
 ): Promise<void> {
   const step = expectStep(page, "applying-for");
   await expect(page.locator("h1")).toContainText("Who are you applying for?");
-  const permission = page.locator(`fieldset[id="${step}_has-permission"]`);
+  // Each "someone else" answer has its own permission question and stop copy.
+  const permissionId =
+    applyingFor === "business"
+      ? "business-has-permission"
+      : "person-has-permission";
+  const permission = page.locator(`fieldset[id="${step}_${permissionId}"]`);
 
   await selectDropdown(page, step, "applying-for", applyingFor);
   if (applyingFor === "yourself") {
     await expect(permission).toBeHidden();
   } else {
     await expect(permission).toBeVisible({ timeout: STEP_TIMEOUT });
-    await selectRadio(page, step, "has-permission", "yes");
+    await selectRadio(page, step, permissionId, "yes");
     await fillField(
       page,
       step,
@@ -492,7 +485,7 @@ test.describe("Offensive Trade Licence — Live Smoke", () => {
 
     await openForm(page);
     await fillApplicationType(page, "renewal");
-    await fillRenewalCheck(page, data, "yes");
+    await fillRenewalCheck(page, "yes");
     await fillCurrentLicence(page, data);
     await fillApplyingFor(page, data, "another-person");
     await fillYourDetails(page, data);
@@ -508,12 +501,7 @@ test.describe("Offensive Trade Licence — Live Smoke", () => {
 
     await checkAndSubmit(
       page,
-      [
-        data.currentLicenceNumber,
-        data.buildingChanges,
-        data.holderFirstName,
-        data.holderAddress,
-      ],
+      [data.currentLicenceNumber, data.holderFirstName, data.holderAddress],
       [data.businessName],
     );
   });
@@ -526,7 +514,7 @@ test.describe("Offensive Trade Licence — Live Smoke", () => {
 
     await openForm(page);
     await fillApplicationType(page, "renewal");
-    await fillRenewalCheck(page, data, "no");
+    await fillRenewalCheck(page, "no");
     await fillCurrentLicence(page, data);
     await fillApplyingFor(page, data, "business");
     await fillYourDetails(page, data);
@@ -538,7 +526,7 @@ test.describe("Offensive Trade Licence — Live Smoke", () => {
     await checkAndSubmit(
       page,
       [data.currentLicenceNumber, data.businessName],
-      [data.buildingChanges, data.holderAddress],
+      [data.holderAddress],
     );
   });
 
@@ -565,7 +553,7 @@ test.describe("Offensive Trade Licence — Live Smoke", () => {
     await expectBlocked(
       page,
       renewal,
-      "You cannot renew this licence if the address where you do the work has changed.",
+      "You cannot renew this licence if the work address has changed.",
     );
 
     await selectRadio(page, renewal, "address-changed", "no");
@@ -574,7 +562,7 @@ test.describe("Offensive Trade Licence — Live Smoke", () => {
 
     const applying = expectStep(page, "applying-for");
     await selectDropdown(page, applying, "applying-for", "business");
-    await selectRadio(page, applying, "has-permission", "no");
+    await selectRadio(page, applying, "business-has-permission", "no");
     await fillField(
       page,
       applying,
@@ -584,7 +572,7 @@ test.describe("Offensive Trade Licence — Live Smoke", () => {
     await expectBlocked(
       page,
       applying,
-      "You need permission from the person, business or organisation before you can apply.",
+      "You need permission from the business or organisation before you can apply.",
     );
   });
 });

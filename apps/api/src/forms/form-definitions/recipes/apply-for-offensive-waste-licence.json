@@ -53,7 +53,7 @@
             "label": "Is this licence still for the same person, business or organisation?",
             "validations": {
               "required": {
-                "error": "Select whether this licence is still for the same person, business or organisation.",
+                "error": "Select whether the licence is still for the same person, business or organisation.",
                 "value": true
               },
               "pattern": {
@@ -84,7 +84,7 @@
                 "value": true
               },
               "pattern": {
-                "error": "You cannot renew this licence if the address where you do the work has changed. Go back and select Apply for a new licence.",
+                "error": "You cannot renew this licence if the work address has changed. Go back and select Apply for a new licence.",
                 "value": "^no$"
               }
             },
@@ -121,30 +121,6 @@
                 "value": "no"
               }
             ]
-          }
-        },
-        {
-          "ref": "components/generic-textarea",
-          "overrides": {
-            "fieldId": "building-changes-description",
-            "label": "What changes have you made, or do you plan to make?",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "building-changes",
-                "targetStepId": "renewal-check",
-                "operator": "equal",
-                "value": "yes"
-              }
-            ],
-            "ui": {
-              "width": "long"
-            }
           }
         }
       ]
@@ -215,15 +191,15 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "has-permission",
-            "label": "Do you have permission to apply for this licence?",
+            "fieldId": "person-has-permission",
+            "label": "Do you have permission to apply?",
             "validations": {
               "required": {
-                "error": "Select whether you have permission to apply for this licence.",
+                "error": "Select whether you have permission to apply.",
                 "value": true
               },
               "pattern": {
-                "error": "You need permission from the person, business or organisation before you can apply.",
+                "error": "You need permission from this person before you can apply.",
                 "value": "^yes$"
               }
             },
@@ -232,11 +208,44 @@
                 "type": "fieldConditionalOn",
                 "targetFieldId": "applying-for",
                 "targetStepId": "applying-for",
-                "operator": "in",
-                "value": [
-                  "another-person",
-                  "business"
-                ]
+                "operator": "equal",
+                "value": "another-person"
+              }
+            ],
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "business-has-permission",
+            "label": "Do you have permission to apply?",
+            "validations": {
+              "required": {
+                "error": "Select whether you have permission to apply.",
+                "value": true
+              },
+              "pattern": {
+                "error": "You need permission from the business or organisation before you can apply.",
+                "value": "^yes$"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-for",
+                "targetStepId": "applying-for",
+                "operator": "equal",
+                "value": "business"
               }
             ],
             "options": [
@@ -337,7 +346,6 @@
           "ref": "components/generic-tel",
           "overrides": {
             "fieldId": "telephone-number",
-            "hint": "Enter a Barbados or international number.",
             "validations": {
               "required": {
                 "error": "Telephone number is required",
@@ -685,7 +693,7 @@
                 "value": "bone-boiling-crushing"
               },
               {
-                "label": "Take wool off sheep skins, also called fellmongering",
+                "label": "Remove wool from sheep skins, also called fellmongering",
                 "value": "fellmongering"
               },
               {
@@ -705,20 +713,20 @@
                 "value": "tanning"
               },
               {
-                "label": "Make chemicals or acids",
-                "value": "chemicals-acids"
+                "label": "Make fertiliser from animal waste, also called manure manufacturing",
+                "value": "manure-manufacturing"
               },
               {
                 "label": "Make glue",
                 "value": "glue"
               },
               {
-                "label": "Make fertiliser from animal waste, also called manure manufacturing",
-                "value": "manure-manufacturing"
-              },
-              {
                 "label": "Make soap by boiling fats or oils, also called soap boiling",
                 "value": "soap-boiling"
+              },
+              {
+                "label": "Make chemicals or acids",
+                "value": "chemicals-acids"
               }
             ]
           }
@@ -820,8 +828,7 @@
             "multiple": true,
             "validations": {
               "required": {
-                "error": "Upload the building plans and specifications.",
-                "value": true
+                "value": false
               },
               "fileTypes": {
                 "error": "File must be a PDF, image or document",
@@ -882,8 +889,7 @@
             "multiple": true,
             "validations": {
               "required": {
-                "error": "Upload the building plans and specifications.",
-                "value": true
+                "value": false
               },
               "fileTypes": {
                 "error": "File must be a PDF, image or document",
@@ -952,7 +958,7 @@
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "behaviours": [],
-      "markdownContent": "We have received your application for an offensive trade licence.\n\nKeep your reference number in case you need to contact Environmental Health about your application.\n\nWe have sent a confirmation email to the email address you gave. A copy of your application has been sent to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- Environmental Health will review your application.\n- They may inspect the place where you do the work.\n- They will contact you with the result.\n- If your application is approved, they will tell you how to get your licence.\n\nSubmitting an application does not mean that an offensive trade licence has been granted.\n\n## Contact\n\nIf you need help, contact your Environmental Health Service office.\n\n{polyclinicContact}",
+      "markdownContent": "We have received your application for an offensive trade licence.\n\nKeep your reference number in case you need to contact Environmental Health about your application.\n\nWe have sent a confirmation email to the email address you gave. A copy of your application has been sent to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- Environmental Health will review your application.\n- They may need to inspect the place where you do the work before they decide.\n- They will contact you with the result.\n- If your application is approved, they will tell you how to get your licence.\n\n## Contact\n\nIf you need help, contact your Environmental Health Service office.\n\n{polyclinicContact}",
       "elements": []
     }
   ],
@@ -1000,7 +1006,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:33:15.101Z",
-  "updatedAt": "2026-10-09T12:00:00.000Z",
+  "updatedAt": "2026-10-12T12:00:00.000Z",
   "meta": {
     "visibility": "preview"
   },
