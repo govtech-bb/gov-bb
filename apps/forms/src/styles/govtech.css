@@ -29,6 +29,14 @@
   align-self: stretch;
 }
 
+/* The form group is a flex column with `align-items: flex-start` too, so it
+   shrink-wrapped the fieldset itself to its options — and a revealed field
+   stretched to that narrow fieldset, leaving revealed text inputs and selects
+   a fraction of the column. Give the fieldset the full column width. */
+.govbb-form-group > .govbb-fieldset {
+  align-self: stretch;
+}
+
 /* Space multiple fields within a revealed checkbox option. */
 .govbb-checkbox-item:has(> .govbb-checkbox:checked)
   + .govbb-checkbox-item__conditional {
