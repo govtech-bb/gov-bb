@@ -199,4 +199,63 @@ describe("GoogleProvider", () => {
       );
     });
   });
+  describe("reverse (Geocoding API)", () => {
+    const REVERSE = {
+      status: "OK",
+      results: [
+        {
+          formatted_address: "493G+XX Bridgetown, Barbados",
+          types: ["plus_code"],
+          address_components: [],
+        },
+        {
+          formatted_address:
+            "493G+XXX, President Kennedy Dr, Bridgetown, Saint Michael BB120004Barbados",
+          types: ["establishment", "point_of_interest"],
+          address_components: [
+            {
+              long_name: "Saint Michael",
+              types: ["administrative_area_level_1", "political"],
+            },
+          ],
+        },
+      ],
+    };
+
+    it("asks for the address at the point", async () => {
+      const get = respond(REVERSE);
+      await makeProvider({ get }).reverse(13.105, -59.6225);
+      const [url, config] = get.mock.calls[0];
+      expect(url).toBe("https://maps.googleapis.com/maps/api/geocode/json");
+      expect(config.params).toEqual({
+        latlng: "13.105,-59.6225",
+        key: "test-key",
+      });
+    });
+
+    it("skips the bare plus-code answer and maps the first real address", async () => {
+      const get = respond(REVERSE);
+      expect(await makeProvider({ get }).reverse(13.105, -59.6225)).toEqual({
+        label:
+          "493G+XXX, President Kennedy Dr, Bridgetown, Saint Michael BB120004Barbados",
+        lat: "13.105000",
+        lon: "-59.622500",
+        line1: "President Kennedy Dr",
+        line2: "Bridgetown",
+        parish: "st-michael",
+      });
+    });
+
+    it("returns null for ZERO_RESULTS", async () => {
+      const get = respond({ status: "ZERO_RESULTS", results: [] });
+      expect(await makeProvider({ get }).reverse(13.2, -59.5)).toBeNull();
+    });
+
+    it("rejects on a quota or key error so the service falls back", async () => {
+      const get = respond({ status: "OVER_QUERY_LIMIT", results: [] });
+      await expect(makeProvider({ get }).reverse(13.2, -59.5)).rejects.toThrow(
+        "OVER_QUERY_LIMIT",
+      );
+    });
+  });
 });

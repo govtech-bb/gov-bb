@@ -230,6 +230,58 @@ describe("GeocodeService", () => {
     });
   });
 
+  describe("reverse", () => {
+    const AT_OVAL = result("13.105000", "-59.622500", "President Kennedy Dr");
+    const reverser = (name: string, reverse: GeocodeProvider["reverse"]) => ({
+      ...provider(name, async () => []),
+      reverse: vi.fn(reverse),
+    });
+
+    it("answers from the first provider that can", async () => {
+      const google = reverser("google", async () => AT_OVAL);
+      const service = new GeocodeService([google]);
+      expect(await service.reverse(13.105, -59.6225)).toEqual(AT_OVAL);
+      expect(google.reverse).toHaveBeenCalledWith(13.105, -59.6225);
+    });
+
+    it("falls back when the first provider fails", async () => {
+      const google = reverser("google", async () => {
+        throw new Error("quota");
+      });
+      const nominatim = reverser("nominatim", async () => AT_OVAL);
+      expect(
+        await new GeocodeService([google, nominatim]).reverse(13.105, -59.6225),
+      ).toEqual(AT_OVAL);
+    });
+
+    it("throws 404 when there is no address at the point", async () => {
+      const google = reverser("google", async () => null);
+      await expect(
+        new GeocodeService([google]).reverse(13.2, -59.5),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("throws 503 when every provider fails", async () => {
+      const google = reverser("google", async () => {
+        throw new Error("down");
+      });
+      await expect(
+        new GeocodeService([google]).reverse(13.2, -59.5),
+      ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    });
+
+    it.each([
+      [Number.NaN, -59.5],
+      [51.5, -0.12],
+    ])("refuses a point outside Barbados (%s, %s)", async (lat, lon) => {
+      const google = reverser("google", async () => AT_OVAL);
+      await expect(
+        new GeocodeService([google]).reverse(lat, lon),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(google.reverse).not.toHaveBeenCalled();
+    });
+  });
+
   it("refetches once a cached entry has expired", async () => {
     vi.useFakeTimers();
     try {

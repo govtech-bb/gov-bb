@@ -71,3 +71,17 @@ export async function resolvePlace(
   if (!res.ok) throw new Error(`place lookup failed: ${res.status}`);
   return (await res.json()) as ResolvedPlace;
 }
+
+/**
+ * The address at a point — for a pin the applicant placed on the map. Throws
+ * when there is none (404) or the lookup fails.
+ */
+export async function reverseGeocode(
+  lat: number,
+  lon: number,
+): Promise<GeocodeResult> {
+  const params = new URLSearchParams({ lat: String(lat), lon: String(lon) });
+  const res = await fetch(`${API_URL}/geocode/reverse?${params}`);
+  if (!res.ok) throw new Error(`reverse lookup failed: ${res.status}`);
+  return (await res.json()) as GeocodeResult;
+}

@@ -139,4 +139,49 @@ describe("NominatimProvider", () => {
       else process.env.NOMINATIM_BASE_URL = previous;
     }
   });
+  describe("reverse", () => {
+    it("asks for the address at the point, street-level", async () => {
+      const get = vi.fn().mockReturnValue(of({ data: {} }));
+      await makeProvider(get).reverse(13.105, -59.6225);
+      const [url, config] = get.mock.calls[0];
+      expect(url).toBe("https://nominatim.openstreetmap.org/reverse");
+      expect(config.params).toEqual({
+        lat: 13.105,
+        lon: -59.6225,
+        format: "json",
+        addressdetails: 1,
+        zoom: 18,
+      });
+    });
+
+    it("maps the address, keeping the point it was asked about", async () => {
+      const get = vi.fn().mockReturnValue(
+        of({
+          data: {
+            display_name:
+              "President Kennedy Drive, Bridgetown, Saint Michael, BB11000, Barbados",
+            lat: "13.10501",
+            lon: "-59.62251",
+            address: { state: "Saint Michael" },
+          },
+        }),
+      );
+      expect(await makeProvider(get).reverse(13.105, -59.6225)).toEqual({
+        label:
+          "President Kennedy Drive, Bridgetown, Saint Michael, BB11000, Barbados",
+        lat: "13.105000",
+        lon: "-59.622500",
+        line1: "President Kennedy Drive",
+        line2: "Bridgetown",
+        parish: "st-michael",
+      });
+    });
+
+    it("returns null when there is no address at the point", async () => {
+      const get = vi
+        .fn()
+        .mockReturnValue(of({ data: { error: "Unable to geocode" } }));
+      expect(await makeProvider(get).reverse(13.2, -59.5)).toBeNull();
+    });
+  });
 });

@@ -144,6 +144,33 @@ export class GeocodeService {
     return place;
   }
 
+  /**
+   * The address at a pin the applicant placed on the map, from the first
+   * provider that can answer. 404 when there is no address there; 503 when no
+   * provider could answer.
+   */
+  async reverse(lat: number, lon: number): Promise<GeocodeResult> {
+    if (!isWithinBarbados(lat, lon)) {
+      throw new BadRequestException("The point is not in Barbados");
+    }
+    for (const provider of this.providers) {
+      if (!provider.reverse) continue;
+      let found: GeocodeResult | null;
+      try {
+        found = await provider.reverse(lat, lon);
+      } catch (error) {
+        this.logger.warn(
+          `[geocode] ${provider.name} reverse lookup failed for ${lat},${lon}: ${(error as Error).message}`,
+        );
+        continue;
+      }
+      // An empty answer is final, as for search.
+      if (!found) throw new NotFoundException("No address at that point");
+      return found;
+    }
+    throw new ServiceUnavailableException("Address lookup is unavailable");
+  }
+
   private remember(key: string, results: GeocodeResult[]): void {
     if (this.cache.size >= CACHE_MAX_ENTRIES) {
       const oldest = this.cache.keys().next().value;

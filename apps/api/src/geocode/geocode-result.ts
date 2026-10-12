@@ -45,6 +45,12 @@ export interface GeocodeProvider {
   readonly name: string;
   search(query: string, sessionToken?: string): Promise<GeocodeResult[]>;
   resolve?(placeId: string, sessionToken?: string): Promise<ResolvedPlace>;
+  /**
+   * The address at a point — for a pin the applicant placed on the map. `null`
+   * when there is none (a real answer); rejects when the provider could not
+   * answer, like `search`.
+   */
+  reverse?(lat: number, lon: number): Promise<GeocodeResult | null>;
 }
 
 /**

@@ -36,7 +36,19 @@ interface GooglePlaceDetails {
   addressComponents?: { longText?: string; types?: string[] }[];
 }
 
+/** The subset of a Geocoding API (reverse) response we consume. */
+interface GoogleReverseResponse {
+  status?: string;
+  error_message?: string;
+  results?: {
+    formatted_address?: string;
+    address_components?: { long_name?: string; types?: string[] }[];
+    types?: string[];
+  }[];
+}
+
 const PLACES_URL = "https://places.googleapis.com/v1/places";
+const GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json";
 
 /**
  * Google Places API (New) — metered. `search` is Autocomplete: predictions
@@ -45,6 +57,8 @@ const PLACES_URL = "https://places.googleapis.com/v1/places";
  * Predictions carry no coordinate, so a picked one is looked up with `resolve`
  * (Place Details, location and address parts only). Passing the same session
  * token to both bills the run of keystrokes and the pick as one session.
+ *
+ * `reverse` is the Geocoding API: the address at a pin the applicant placed.
  *
  * Any failed call — quota or budget reached, bad key, outage — rejects, and the
  * service falls back to the next provider.
@@ -145,5 +159,40 @@ export class GoogleProvider implements GeocodeProvider {
       lon: location.longitude.toFixed(6),
       parish: parishName ? parishValue(parishName) : "",
     };
+  }
+
+  async reverse(lat: number, lon: number): Promise<GeocodeResult | null> {
+    const response = await firstValueFrom(
+      this.http.get<GoogleReverseResponse>(GEOCODE_URL, {
+        params: { latlng: `${lat},${lon}`, key: this.apiKey },
+      }),
+    );
+
+    const { status, error_message, results } = response.data ?? {};
+    if (status === "ZERO_RESULTS") return null;
+    if (status !== "OK") {
+      throw new Error(
+        `status ${status ?? "missing"}${error_message ? `: ${error_message}` : ""}`,
+      );
+    }
+    // Google leads with a bare plus code ("493G+XX Bridgetown"), which names no
+    // street; take the first answer that does.
+    const match = (results ?? []).find(
+      (item) =>
+        typeof item.formatted_address === "string" &&
+        !item.types?.includes("plus_code") &&
+        !item.types?.includes("country"),
+    );
+    if (!match) return null;
+
+    return toGeocodeResult({
+      label: match.formatted_address as string,
+      // The pin's own point, not the address's: it is the applicant's answer.
+      lat: lat.toFixed(6),
+      lon: lon.toFixed(6),
+      parishHints: (match.address_components ?? [])
+        .filter((c) => c.types?.includes("administrative_area_level_1"))
+        .map((c) => c.long_name),
+    });
   }
 }

@@ -30,6 +30,15 @@ export class GeocodeController {
     return this.geocode.search(q ?? "", session);
   }
 
+  /** `GET /geocode/reverse?lat=&lon=` — the address at a pin on the map. */
+  @Get("reverse")
+  reverse(
+    @Query("lat") lat?: string,
+    @Query("lon") lon?: string,
+  ): Promise<GeocodeResult> {
+    return this.geocode.reverse(Number(lat), Number(lon));
+  }
+
   /** `GET /geocode/place/:placeId?session=` — the coordinate of a picked place. */
   @Get("place/:placeId")
   resolve(

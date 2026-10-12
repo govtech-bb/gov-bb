@@ -7,12 +7,14 @@ import {
   toGeocodeResult,
 } from "../geocode-result";
 
-/** The subset of a Nominatim `/search` result we consume. */
+/** The subset of a Nominatim `/search` (or `/reverse`) result we consume. */
 interface NominatimItem {
   display_name?: string;
   lat?: string;
   lon?: string;
   address?: Record<string, string | undefined>;
+  /** Set by `/reverse` when there is no address at the point. */
+  error?: string;
 }
 
 const DEFAULT_BASE_URL = "https://nominatim.openstreetmap.org";
@@ -65,5 +67,26 @@ export class NominatimProvider implements GeocodeProvider {
           parishHints: Object.values(item.address ?? {}),
         }),
       );
+  }
+
+  async reverse(lat: number, lon: number): Promise<GeocodeResult | null> {
+    const response = await firstValueFrom(
+      this.http.get<NominatimItem>(`${this.baseUrl}/reverse`, {
+        params: { lat, lon, format: "json", addressdetails: 1, zoom: 18 },
+        headers: { "User-Agent": USER_AGENT },
+      }),
+    );
+
+    const item = response.data;
+    if (!item || item.error || typeof item.display_name !== "string") {
+      return null;
+    }
+    return toGeocodeResult({
+      label: item.display_name,
+      // The pin's own point, not the address's: it is the applicant's answer.
+      lat: lat.toFixed(6),
+      lon: lon.toFixed(6),
+      parishHints: Object.values(item.address ?? {}),
+    });
   }
 }

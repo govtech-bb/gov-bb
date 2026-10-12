@@ -5,6 +5,7 @@ import {
   GeocodeResult,
   MIN_QUERY_LENGTH,
   resolvePlace,
+  reverseGeocode,
   searchAddresses,
 } from "../../lib/api/geocode";
 import { AddressCombobox } from "./address-combobox";
@@ -17,6 +18,9 @@ const LocationPinMap = lazy(() => import("./location-pin-map"));
 // Wait for a typing pause before querying — keeps request volume within the
 // /geocode throttle and eases load on the upstream Nominatim rate limit.
 const DEBOUNCE_MS = 400;
+// Wait for the pin to settle before looking up its address — arrow keys move it
+// one nudge at a time.
+const PIN_SETTLE_MS = 500;
 
 /**
  * A single-line address field backed by the Barbados-locked `/geocode` proxy.
@@ -83,6 +87,11 @@ export function AddressLookupField({
   // Groups this applicant's keystrokes and their pick into one billed lookup
   // session; a pick ends it.
   const session = useRef<string | null>(null);
+  // Bumped by every pin move and every edit, so only the latest pin's address
+  // is written, and never over something the applicant typed since.
+  const pinLookup = useRef(0);
+  const pinTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(pinTimer.current), []);
 
   useEffect(() => {
     if (justSelected.current) {
@@ -125,6 +134,7 @@ export function AddressLookupField({
     setQuery(next);
     commitChange(next);
     pendingPlace.current = null;
+    pinLookup.current += 1;
     // The coordinate belongs to the suggestion that was picked, and the
     // applicant cannot see it (it is a `ui.hidden` field), so editing the
     // address by hand would otherwise send the CMS a precise coordinate for an
@@ -197,6 +207,29 @@ export function AddressLookupField({
       siblingId(coordinatesFieldId),
       `${lat.toFixed(6)},${lon.toFixed(6)}`,
     );
+
+    // Fill the address lines with the address at the pin once it settles. The
+    // coordinate stays the pin's own: the address is a description of it.
+    const lookup = ++pinLookup.current;
+    clearTimeout(pinTimer.current);
+    pinTimer.current = setTimeout(() => {
+      reverseGeocode(lat, lon)
+        .then((found) => {
+          if (lookup !== pinLookup.current || !found.line1) return;
+          justSelected.current = true;
+          setQuery(found.line1);
+          commitChange(found.line1);
+          const targets = field.geocodeTargets;
+          if (targets?.line2FieldId) {
+            form.setFieldValue(siblingId(targets.line2FieldId), found.line2);
+          }
+          if (targets?.parishFieldId && found.parish) {
+            form.setFieldValue(siblingId(targets.parishFieldId), found.parish);
+          }
+        })
+        // No address there, or the lookup is down: the applicant types it.
+        .catch(() => {});
+    }, PIN_SETTLE_MS);
   };
 
   const openPinMap = () => {

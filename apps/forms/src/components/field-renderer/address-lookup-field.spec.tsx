@@ -17,6 +17,7 @@ vi.mock("../../lib/api/geocode", () => ({
   MIN_QUERY_LENGTH: 3,
   searchAddresses: vi.fn(),
   resolvePlace: vi.fn(),
+  reverseGeocode: vi.fn(),
 }));
 
 // Leaflet needs a real layout engine; stand the map in with a button that
@@ -29,10 +30,15 @@ vi.mock("./location-pin-map", () => ({
   ),
 }));
 
-import { resolvePlace, searchAddresses } from "../../lib/api/geocode";
+import {
+  resolvePlace,
+  reverseGeocode,
+  searchAddresses,
+} from "../../lib/api/geocode";
 
 const mockSearch = searchAddresses as Mock;
 const mockResolve = resolvePlace as Mock;
+const mockReverse = reverseGeocode as Mock;
 
 let mockState: {
   value: unknown;
@@ -97,6 +103,7 @@ describe("AddressLookupField", () => {
   beforeEach(() => {
     mockState = { value: undefined, meta: { isValid: true, errors: [] } };
     vi.clearAllMocks();
+    mockReverse.mockRejectedValue(new Error("reverse lookup failed: 503"));
   });
 
   it("renders an ARIA combobox input", () => {
@@ -520,6 +527,64 @@ describe("AddressLookupField", () => {
         "step-1.event-address-coordinates",
         "",
       );
+    });
+
+    it("fills the address lines from the address at the pin, keeping the pin", async () => {
+      mockReverse.mockResolvedValue({
+        label: "President Kennedy Dr, Bridgetown, Saint Michael Barbados",
+        lat: "13.100000",
+        lon: "-59.600000",
+        line1: "President Kennedy Dr",
+        line2: "Bridgetown",
+        parish: "st-michael",
+      });
+      await userEvent.click(await failLookup());
+
+      await waitFor(() =>
+        expect(handleChange).toHaveBeenLastCalledWith("President Kennedy Dr"),
+      );
+      expect(mockReverse).toHaveBeenCalledWith(13.1, -59.6);
+      expect(screen.getByRole("combobox")).toHaveValue("President Kennedy Dr");
+      expect(setFieldValue).toHaveBeenCalledWith(
+        "step-1.event-address-line-2",
+        "Bridgetown",
+      );
+      expect(setFieldValue).toHaveBeenCalledWith(
+        "step-1.event-parish",
+        "st-michael",
+      );
+      // The coordinate stays the pin's own.
+      const coordinateWrites = setFieldValue.mock.calls.filter(
+        ([id]) => id === "step-1.event-address-coordinates",
+      );
+      expect(coordinateWrites.at(-1)?.[1]).toBe("13.100000,-59.600000");
+    });
+
+    it("does not overwrite an address typed while the pin's address was looked up", async () => {
+      let answer: (result: unknown) => void = () => {};
+      mockReverse.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+      await userEvent.click(await failLookup());
+      await waitFor(() => expect(mockReverse).toHaveBeenCalled());
+
+      await userEvent.type(screen.getByRole("combobox"), " Gap");
+      answer({
+        label: "President Kennedy Dr, Bridgetown",
+        line1: "President Kennedy Dr",
+        line2: "Bridgetown",
+        parish: "st-michael",
+      });
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(screen.getByRole("combobox")).toHaveValue("Bridgetown Gap");
+    });
+
+    it("leaves the address alone when there is no address at the pin", async () => {
+      mockReverse.mockRejectedValue(new Error("reverse lookup failed: 404"));
+      await userEvent.click(await failLookup());
+      await waitFor(() => expect(mockReverse).toHaveBeenCalled());
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(screen.getByRole("combobox")).toHaveValue("Bridgetown");
     });
 
     it("keeps the map up when a later lookup succeeds", async () => {
