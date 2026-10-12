@@ -52,7 +52,7 @@ There are 2 ways to redirect your personal mail. You can:
 
 Along with your personal details, the redirection form asks you to share:
 
-* the name and National Identification number of every person who wants to redirect their mail
+* the name and Barbados National Identification (ID) number of every person who wants to redirect their mail
 * the old address
 * the new address
 * start date of redirection

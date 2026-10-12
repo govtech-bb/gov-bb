@@ -31,7 +31,7 @@ You can complete the referral online. It takes about 15 minutes.
 
 You’ll need to give:
 
-- the student’s details — their name, National ID number, date of birth, sex and home address
+- the student’s details — their name, Barbados National Identification (ID) number, date of birth, sex and home address
 - the parent or guardian details — names, relationships and contact numbers, and who the student lives with most of the time
 - the school details — the school name, the student’s class or form, and the school telephone number
 - a description of the student’s challenges, and the difficulties you have observed

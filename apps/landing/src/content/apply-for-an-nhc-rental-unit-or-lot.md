@@ -25,7 +25,7 @@ If your monthly income is more than BDS $3,000, you will not be able to continue
 
 You will need:
 
-- your National Identification (ID) Number, which is on your national ID card
+- your Barbados National Identification (ID) number, which is on your Barbados National Identification (ID) card
 - your TAMIS number, if you have one
 - two recent pay slips
 - your national ID card
