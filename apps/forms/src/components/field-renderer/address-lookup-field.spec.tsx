@@ -276,6 +276,35 @@ describe("AddressLookupField", () => {
     );
   });
 
+  it("clears line 2, the parish and the coordinate when line 1 is cleared", async () => {
+    mockSearch.mockResolvedValue([
+      {
+        label: "Bay Street, Bridgetown, Barbados",
+        lat: "13.1",
+        lon: "-59.6",
+        line1: "Bay Street",
+        line2: "Bridgetown",
+        parish: "st-michael",
+      },
+    ]);
+    renderField();
+    await userEvent.type(screen.getByRole("combobox"), "Bay");
+    await userEvent.click(await screen.findByRole("option"));
+    setFieldValue.mockClear();
+
+    await userEvent.clear(screen.getByRole("combobox"));
+
+    expect(setFieldValue).toHaveBeenCalledWith(
+      "step-1.event-address-line-2",
+      "",
+    );
+    expect(setFieldValue).toHaveBeenCalledWith("step-1.event-parish", "");
+    expect(setFieldValue).toHaveBeenCalledWith(
+      "step-1.event-address-coordinates",
+      "",
+    );
+  });
+
   it("shows a non-blocking notice when the lookup fails on a field with no coordinate", async () => {
     mockSearch.mockRejectedValue(new Error("network down"));
     renderField(addressLookupField({ line2FieldId: "event-address-line-2" }));
@@ -620,6 +649,18 @@ describe("AddressLookupField", () => {
       await userEvent.click(await screen.findByRole("option"));
 
       expect(screen.queryByRole("button", { name: "Place pin" })).toBeNull();
+    });
+
+    it("drops a placed pin when line 1 is cleared", async () => {
+      await userEvent.click(await failLookup());
+      setFieldValue.mockClear();
+
+      await userEvent.clear(screen.getByRole("combobox"));
+
+      expect(setFieldValue).toHaveBeenCalledWith(
+        "step-1.event-address-coordinates",
+        "",
+      );
     });
 
     it("keeps the map up when a later lookup succeeds", async () => {

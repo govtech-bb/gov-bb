@@ -146,6 +146,22 @@ export function AddressLookupField({
     if (coordinatesFieldId && !pin) {
       form.setFieldValue(siblingId(coordinatesFieldId), "");
     }
+
+    // Clearing the address starts over: line 2, the parish and any pin were
+    // filled for the old address, so they go too rather than linger stale.
+    if (next.trim() === "") {
+      const targets = field.geocodeTargets;
+      if (targets?.line2FieldId) {
+        form.setFieldValue(siblingId(targets.line2FieldId), "");
+      }
+      if (targets?.parishFieldId) {
+        form.setFieldValue(siblingId(targets.parishFieldId), "");
+      }
+      if (coordinatesFieldId) {
+        setPin(null);
+        form.setFieldValue(siblingId(coordinatesFieldId), "");
+      }
+    }
   };
 
   const select = (result: GeocodeResult) => {
