@@ -304,11 +304,22 @@ const MOCK_GEOCODE_PLACES: Record<
 
 /**
  * Answer the address lookup from {@link MOCK_GEOCODE_PLACES} instead of the
- * API's `/geocode`, which calls a metered provider (Google) with a daily cap.
- * The smoke suite must never spend money or fail on someone else's quota
- * (#2679), so every spec with an address-lookup field registers this in a
- * `beforeEach`. A query for an unknown place gets no suggestions, exactly as a
- * real lookup that finds nothing.
+ * API's `/geocode` endpoints, which call a metered provider (Google) with a
+ * daily cap. The smoke suite must never spend money or fail on someone else's
+ * quota (#2679), so every spec with an address-lookup field registers this in
+ * a `beforeEach`. Covers every endpoint that reaches Google:
+ *
+ * - `/geocode?q=` — suggestions. An unknown place gets none, exactly as a real
+ *   lookup that finds nothing.
+ * - `/geocode/reverse` — the address at a placed pin. Answers with the nearest
+ *   mock place's parish (the locked parish must come from the pin) and no
+ *   street address, like a pin dropped on open ground.
+ * - `/geocode/place/:id` — a picked place's coordinate. The mock suggestions
+ *   carry their coordinate, so this is never needed; answer 404 so a stray
+ *   call fails visibly rather than reaching Google.
+ *
+ * `/geocode/polyclinic` is left live: it is our own catchment lookup, not a
+ * provider call, and worth exercising.
  */
 export async function mockGeocoder(page: Page): Promise<void> {
   await page.route(
@@ -322,6 +333,34 @@ export async function mockGeocoder(page: Page): Promise<void> {
       );
       return route.fulfill({ json: match ? [match[1]] : [] });
     },
+  );
+  await page.route(
+    (url) => url.pathname.endsWith("/geocode/reverse"),
+    (route) => {
+      const params = new URL(route.request().url()).searchParams;
+      const lat = Number(params.get("lat"));
+      const lon = Number(params.get("lon"));
+      const nearest = Object.values(MOCK_GEOCODE_PLACES).reduce((a, b) =>
+        (Number(a.lat) - lat) ** 2 + (Number(a.lon) - lon) ** 2 <=
+        (Number(b.lat) - lat) ** 2 + (Number(b.lon) - lon) ** 2
+          ? a
+          : b,
+      );
+      return route.fulfill({
+        json: {
+          label: "",
+          lat: lat.toFixed(6),
+          lon: lon.toFixed(6),
+          line1: "",
+          line2: "",
+          parish: nearest.parish,
+        },
+      });
+    },
+  );
+  await page.route(
+    (url) => url.pathname.includes("/geocode/place/"),
+    (route) => route.fulfill({ status: 404, json: {} }),
   );
 }
 
