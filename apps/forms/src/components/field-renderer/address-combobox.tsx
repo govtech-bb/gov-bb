@@ -13,7 +13,7 @@ import { GeocodeResult } from "../../lib/api/geocode";
  * combobox, styled with the design system's `.govbb-combobox` classes. It is
  * local to the address field (not `@govtech-bb/react`'s Autocomplete) because
  * each row shows a place's name with the typed part in bold and where it is in
- * a lighter colour, and Google's terms need a "Powered by Google" mark under
+ * a lighter colour, and Google's terms need a "Google Maps" attribution under
  * the list. The parent owns the text and the suggestions.
  */
 export function AddressCombobox({
@@ -34,7 +34,7 @@ export function AddressCombobox({
   onValueChange: (value: string) => void;
   suggestions: GeocodeResult[];
   onPick: (result: GeocodeResult) => void;
-  /** Show the "Powered by Google" mark under the list. */
+  /** Show the "Google Maps" attribution under the list. */
   attribution: boolean;
 }): JSX.Element {
   // Same id the design-system combobox gives its list, which smoke specs target.
@@ -144,7 +144,9 @@ export function AddressCombobox({
             ))}
           </ul>
           {attribution && (
-            <p className="address-combobox__attribution">Powered by Google</p>
+            <p className="address-combobox__attribution" translate="no">
+              Google Maps
+            </p>
           )}
         </div>
       )}

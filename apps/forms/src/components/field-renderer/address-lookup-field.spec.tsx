@@ -361,7 +361,7 @@ describe("AddressLookupField", () => {
       await userEvent.click(await screen.findByRole("option"));
     };
 
-    it("shows the name with the typed part bold, where it is, and Google's mark", async () => {
+    it("shows the name with the typed part bold, where it is, and Google's attribution", async () => {
       mockSearch.mockResolvedValue([OVAL]);
       renderField();
 
@@ -371,7 +371,10 @@ describe("AddressLookupField", () => {
       expect(option.querySelector("strong")?.textContent).toBe("Kensin");
       expect(option.textContent).toContain("Kensington Oval");
       expect(option.textContent).toContain("President Kennedy Drive");
-      expect(screen.getByText("Powered by Google")).toBeTruthy();
+      expect(screen.getByText("Google Maps")).toHaveAttribute(
+        "translate",
+        "no",
+      );
     });
 
     it("fills line 1 with the name, line 2 with the street and town, and the parish", async () => {

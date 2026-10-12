@@ -413,7 +413,7 @@
 /* Address suggestions (#2679): each row is a place's name, the typed part in
    bold, then where it is in the muted colour. The popup keeps the design
    system's .govbb-combobox__list frame; the listbox inside it scrolls and the
-   "Powered by Google" mark Google's terms require stays below the rows. */
+   "Google Maps" attribution Google's terms require stays below the rows. */
 .address-combobox__popup {
   display: flex;
   flex-direction: column;
@@ -431,12 +431,17 @@
   color: var(--govbb-color-muted);
 }
 
+/* Google's text-attribution spec: Roboto (or sans-serif) at weight 400,
+   12-16px, grey #5E5E5E, exactly "Google Maps" and never wrapped. */
 .address-combobox__attribution {
   margin: 0;
   padding: var(--govbb-space-xs) var(--govbb-space-s);
-  font-size: var(--govbb-font-size-body-sm);
-  color: var(--govbb-color-muted);
+  font-family: Roboto, sans-serif;
+  font-size: 1rem;
+  font-weight: 400;
+  color: #5e5e5e;
   text-align: end;
+  white-space: nowrap;
 }
 
 /* The no-match hint's "show where it is on a map" is a button (it opens the
