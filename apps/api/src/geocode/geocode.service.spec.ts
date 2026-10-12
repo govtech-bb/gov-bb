@@ -277,20 +277,27 @@ describe("GeocodeService", () => {
       ).toBe("st-michael");
     });
 
-    it("throws 404 when there is no address at the point", async () => {
+    // The parish is read-only on a located address, so a pin must always come
+    // back with one, even where there is no street address to name.
+    it("returns just the parish when there is no address at the point", async () => {
       const google = reverser("google", async () => null);
-      await expect(
-        new GeocodeService([google]).reverse(13.2, -59.5),
-      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(await new GeocodeService([google]).reverse(13.2, -59.55)).toEqual({
+        label: "",
+        lat: "13.200000",
+        lon: "-59.550000",
+        line1: "",
+        line2: "",
+        parish: "st-joseph",
+      });
     });
 
-    it("throws 503 when every provider fails", async () => {
+    it("returns just the parish when every provider fails", async () => {
       const google = reverser("google", async () => {
         throw new Error("down");
       });
-      await expect(
-        new GeocodeService([google]).reverse(13.2, -59.5),
-      ).rejects.toBeInstanceOf(ServiceUnavailableException);
+      expect(
+        (await new GeocodeService([google]).reverse(13.2, -59.55)).parish,
+      ).toBe("st-joseph");
     });
 
     it.each([

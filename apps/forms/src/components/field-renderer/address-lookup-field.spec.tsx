@@ -5,12 +5,6 @@ import userEvent from "@testing-library/user-event";
 import FieldRenderer from ".";
 import type { ClientPrimitive } from "@forms/types";
 
-vi.mock("@tanstack/react-form", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@tanstack/react-form")>()),
-  useStore: (_store: unknown, select: (state: unknown) => unknown) =>
-    select(undefined),
-}));
-
 vi.mock("@forms/lib", () => ({
   checkConditionalOn: vi.fn().mockReturnValue("required"),
   parseDatePart: (raw: string) => {
@@ -79,7 +73,6 @@ const mockForm = {
   }) => <>{children(mockFieldApi)}</>,
   getFieldValue: (id: string) => formValues[id],
   setFieldValue,
-  store: {},
 };
 
 function addressLookupField(
@@ -105,21 +98,9 @@ function addressLookupField(
 }
 
 function renderField(field = addressLookupField()) {
-  const view = render(
+  return render(
     <FieldRenderer form={mockForm} field={field} validationProperties={{}} />,
   );
-  return {
-    ...view,
-    /** Re-render, so the field sees a sibling value changed by another field. */
-    refresh: () =>
-      view.rerender(
-        <FieldRenderer
-          form={mockForm}
-          field={field}
-          validationProperties={{}}
-        />,
-      ),
-  };
 }
 
 /** Answer the confirmation dialog with the named button. */
@@ -357,11 +338,10 @@ describe("AddressLookupField", () => {
     };
     const pickBay = async () => {
       mockSearch.mockResolvedValue([BAY]);
-      const view = renderField();
+      renderField();
       await userEvent.type(screen.getByRole("combobox"), "Bay");
       await userEvent.click(await screen.findByRole("option"));
       setFieldValue.mockClear();
-      return view;
     };
 
     it("asks before an edit, and keeping the address changes nothing", async () => {
@@ -411,55 +391,6 @@ describe("AddressLookupField", () => {
         "step-1.event-address-coordinates",
         "",
       );
-    });
-
-    it("keeps the lines but drops the coordinate when the parish is changed, and offers the map", async () => {
-      const { refresh } = await pickBay();
-
-      formValues["step-1.event-parish"] = "christ-church";
-      refresh();
-      await answer("Change the parish");
-
-      expect(setFieldValue).toHaveBeenCalledWith(
-        "step-1.event-address-coordinates",
-        "",
-      );
-      expect(setFieldValue).not.toHaveBeenCalledWith(
-        "step-1.event-address-line-2",
-        "",
-      );
-      expect(screen.getByRole("combobox")).toHaveValue("Bay Street");
-      expect(screen.getByText(/You changed the parish/)).toBeTruthy();
-      expect(
-        screen.getByRole("button", { name: "Find it on the map" }),
-      ).toBeTruthy();
-    });
-
-    it("puts the parish back when the applicant keeps it", async () => {
-      const { refresh } = await pickBay();
-
-      formValues["step-1.event-parish"] = "christ-church";
-      refresh();
-      expect(
-        screen.getByRole("dialog", { name: "Change the parish?" }),
-      ).toBeTruthy();
-      await answer("Keep the parish");
-
-      expect(setFieldValue).toHaveBeenCalledWith(
-        "step-1.event-parish",
-        "st-michael",
-      );
-      expect(setFieldValue).not.toHaveBeenCalledWith(
-        "step-1.event-address-coordinates",
-        "",
-      );
-    });
-
-    it("does not treat its own parish fill as a change", async () => {
-      const { refresh } = await pickBay();
-      refresh();
-      expect(setFieldValue).not.toHaveBeenCalled();
-      expect(screen.queryByRole("dialog")).toBeNull();
     });
   });
 
@@ -767,6 +698,26 @@ describe("AddressLookupField", () => {
       await new Promise((r) => setTimeout(r, 0));
 
       expect(screen.getByRole("combobox")).toHaveValue("Bridgetown Gap");
+    });
+
+    it("sets the parish from the pin even where there is no street address", async () => {
+      mockReverse.mockResolvedValue({
+        label: "",
+        lat: "13.100000",
+        lon: "-59.600000",
+        line1: "",
+        line2: "",
+        parish: "st-joseph",
+      });
+      await userEvent.click(await failLookup());
+
+      await waitFor(() =>
+        expect(setFieldValue).toHaveBeenCalledWith(
+          "step-1.event-parish",
+          "st-joseph",
+        ),
+      );
+      expect(screen.getByRole("combobox")).toHaveValue("Bridgetown");
     });
 
     it("leaves the address alone when there is no address at the pin", async () => {

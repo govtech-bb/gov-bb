@@ -894,3 +894,16 @@ describe("address-lookup field that writes a routing coordinate", () => {
     ).toBeUndefined();
   });
 });
+
+describe("parish filled by a located address", () => {
+  it("is not validated on its own", () => {
+    const { onDynamic } = buildFieldValidationProperties(
+      makeField("event-parish", "event", {
+        htmlType: "select",
+        filledByAddressLookup: true,
+        validations: { required: { value: true, error: "Select the parish" } },
+      }),
+    );
+    expect(onDynamic!({ value: "", fieldApi: makeFieldApi() })).toBeUndefined();
+  });
+});

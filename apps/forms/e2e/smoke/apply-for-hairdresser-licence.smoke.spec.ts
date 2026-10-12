@@ -169,7 +169,6 @@ export function buildData() {
     // For the map run: a faker street address, which the (mocked) geocoder
     // will not find, so the applicant has to place it on the map.
     unfoundAddress: faker.location.streetAddress(),
-    homeParish: faker.helpers.arrayElement(PARISH_VALUES),
     // Goes to the monitored test inbox so a real run is verifiable end-to-end.
     email: "testing@govtech.bb",
     phone: bbMobileNumber(),
@@ -317,13 +316,9 @@ export async function fillPersonalDetails(
     "national-id-number",
     data.nationalIdDigits,
   );
-  const parish = page.locator(`select[id="${step}_home-parish"]`);
   if (addressMode === "geocoded") {
     await fillGeocodedAddress(page, step, data.address);
   } else {
-    // The parish first: changing it after the pin would drop the pin's
-    // coordinate, as the pin was placed for the old parish.
-    await selectDropdown(page, step, "home-parish", data.homeParish);
     await fillAddressOnMap(page, step, data.unfoundAddress);
   }
   // Line 2 is optional here (the recipe overrides required:false), but fill
@@ -331,14 +326,13 @@ export async function fillPersonalDetails(
   // wrote.
   await fillField(page, step, "address-line-2", data.addressLine2);
 
-  if (addressMode === "geocoded") {
-    // The geocoder fills parish from the picked suggestion; assert rather than
-    // overwrite, since that value is the catchment router's fallback.
-    await expect(parish).not.toHaveValue("");
-  } else {
-    // Chosen before the pin; the address at the pin may have refined it.
-    await expect(parish).not.toHaveValue("");
-  }
+  // The parish is read-only on a located address — filled from the picked
+  // suggestion or the pin — so assert it rather than choose it.
+  await expect(page.locator(`[id="${step}_home-parish"]`)).toHaveAttribute(
+    "data-value",
+    /\S/,
+    { timeout: STEP_TIMEOUT },
+  );
   await advance(page, step);
 }
 

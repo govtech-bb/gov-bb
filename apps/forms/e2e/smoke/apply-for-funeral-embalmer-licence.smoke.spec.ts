@@ -302,9 +302,10 @@ export async function fillPersonalDetails(
   // The geocoder fills parish from the picked suggestion; assert rather than
   // overwrite, since that value is the catchment router's fallback when the
   // coordinates miss every polygon.
-  await expect(
-    page.locator(`select[id="${step}_home-parish"]`),
-  ).not.toHaveValue("");
+  await expect(page.locator(`[id="${step}_home-parish"]`)).toHaveAttribute(
+    "data-value",
+    /\S/,
+  );
   await advance(page, step);
 }
 

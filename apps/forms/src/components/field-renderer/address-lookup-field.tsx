@@ -1,6 +1,5 @@
 import { JSX, lazy, Suspense, useEffect, useRef, useState } from "react";
 import { FormGroup, Hint, Label } from "@govtech-bb/react";
-import { useStore } from "@tanstack/react-form";
 import ErrorMessage from "../error-message";
 import {
   GeocodeResult,
@@ -98,23 +97,16 @@ export function AddressLookupField({
   useEffect(() => () => clearTimeout(pinTimer.current), []);
 
   // Whether the address (and its coordinate) came from the lookup — a pick or
-  // the pin — and the parish it was located in. Editing a located address
-  // asks first; changing its parish drops the coordinate.
-  const parishFieldId = field.geocodeTargets?.parishFieldId;
-  const readParish = (): unknown =>
-    parishFieldId ? form.getFieldValue(siblingId(parishFieldId)) : undefined;
+  // the pin. Editing a located address asks first. (Its parish is read-only,
+  // set only from the location — see `filledByAddressLookup`.)
   const located = useRef(
     Boolean(coordinatesFieldId) &&
       ROUTING_COORDINATE.test(
         String(form.getFieldValue(siblingId(coordinatesFieldId ?? "")) ?? ""),
       ),
   );
-  const locatedParish = useRef<unknown>(readParish());
-  const [parishChanged, setParishChanged] = useState(false);
   const markLocated = () => {
     located.current = true;
-    locatedParish.current = readParish();
-    setParishChanged(false);
   };
 
   const writeCoordinate = (value: string) => {
@@ -124,17 +116,8 @@ export function AddressLookupField({
     if (value && !f.state.meta.isValid) void f.validate("submit");
   };
 
-  // A change to a located address waits on the applicant's answer: an edit to
-  // line 1 (held until they agree) or a new parish (put back if they do not).
-  const [confirming, setConfirming] = useState<
-    { kind: "edit"; next: string } | { kind: "parish" } | null
-  >(null);
-
-  const parish = useStore(form.store, () => readParish());
-  useEffect(() => {
-    if (!located.current || parish === locatedParish.current) return;
-    setConfirming({ kind: "parish" });
-  }, [parish]);
+  // An edit to a located address waits on the applicant's answer.
+  const [confirming, setConfirming] = useState<{ next: string } | null>(null);
 
   useEffect(() => {
     if (justSelected.current) {
@@ -191,7 +174,7 @@ export function AddressLookupField({
     // Editing an address the lookup found throws its details away, so ask
     // first; the edit waits for the answer.
     if (located.current) {
-      setConfirming({ kind: "edit", next });
+      setConfirming({ next });
       return;
     }
     applyEdit(next);
@@ -232,30 +215,14 @@ export function AddressLookupField({
     located.current = false;
     pendingPlace.current = null;
     pinLookup.current += 1;
-    if (pending.kind === "edit") {
-      setParishChanged(false);
-      clearFoundDetails();
-      applyEdit(pending.next);
-      focusField(field.id);
-    } else {
-      // A corrected parish: keep the address lines, but the coordinate was
-      // for the old answer, so it goes and the applicant locates it again.
-      setPin(null);
-      writeCoordinate("");
-      setParishChanged(true);
-      if (parishFieldId) focusField(siblingId(parishFieldId));
-    }
+    clearFoundDetails();
+    applyEdit(pending.next);
+    focusField(field.id);
   };
 
   const cancelChange = () => {
-    const pending = confirming;
     setConfirming(null);
-    if (pending?.kind === "parish" && parishFieldId) {
-      form.setFieldValue(siblingId(parishFieldId), locatedParish.current);
-      focusField(siblingId(parishFieldId));
-    } else {
-      focusField(field.id);
-    }
+    focusField(field.id);
   };
 
   const select = (result: GeocodeResult) => {
@@ -269,7 +236,8 @@ export function AddressLookupField({
     if (targets?.line2FieldId) {
       form.setFieldValue(siblingId(targets.line2FieldId), result.line2);
     }
-    // Only set the parish when resolved, so we never clobber a manual choice.
+    // Only set the parish when resolved; otherwise the coordinate lookup below
+    // brings it.
     if (targets?.parishFieldId && result.parish) {
       form.setFieldValue(siblingId(targets.parishFieldId), result.parish);
     }
@@ -297,7 +265,6 @@ export function AddressLookupField({
         writeCoordinate(`${place.lat},${place.lon}`);
         if (targets?.parishFieldId && !result.parish && place.parish) {
           form.setFieldValue(siblingId(targets.parishFieldId), place.parish);
-          markLocated();
         }
       })
       .catch(() => {
@@ -321,20 +288,22 @@ export function AddressLookupField({
     pinTimer.current = setTimeout(() => {
       reverseGeocode(lat, lon)
         .then((found) => {
-          if (lookup !== pinLookup.current || !found.line1) return;
-          justSelected.current = true;
-          setQuery(found.line1);
-          commitChange(found.line1);
+          if (lookup !== pinLookup.current) return;
           const targets = field.geocodeTargets;
-          if (targets?.line2FieldId) {
-            form.setFieldValue(siblingId(targets.line2FieldId), found.line2);
-          }
+          // The parish always comes back — it is read-only, so the pin is the
+          // only way to set it; the lines only where there is an address.
           if (targets?.parishFieldId && found.parish) {
             form.setFieldValue(siblingId(targets.parishFieldId), found.parish);
           }
-          markLocated();
+          if (!found.line1) return;
+          justSelected.current = true;
+          setQuery(found.line1);
+          commitChange(found.line1);
+          if (targets?.line2FieldId) {
+            form.setFieldValue(siblingId(targets.line2FieldId), found.line2);
+          }
         })
-        // No address there, or the lookup is down: the pin still locates it.
+        // The lookup is down: the pin still locates the address.
         .catch(() => {});
     }, PIN_SETTLE_MS);
   };
@@ -409,16 +378,11 @@ export function AddressLookupField({
         </Hint>
       ) : (
         // A routing address must be located, so when the list cannot place it
-        // — nothing found, the parish changed, or Continue refused it — the map
-        // is the way on.
+        // — nothing found, or Continue refused it — the map is the way on.
         coordinatesFieldId &&
-        (noMatch || parishChanged || invalid) && (
+        (noMatch || invalid) && (
           <Hint role="status">
-            {noMatch
-              ? "We cannot find that address. "
-              : parishChanged
-                ? "You changed the parish, so we need to check where the address is. "
-                : ""}
+            {noMatch ? "We cannot find that address. " : ""}
             <button
               className="govbb-link address-lookup__map-link"
               onClick={openPinMap}
@@ -433,34 +397,18 @@ export function AddressLookupField({
       {confirming && (
         <ConfirmDialog
           open
+          title="Change the address?"
+          confirmLabel="Change the address"
+          cancelLabel="Keep the address"
           onConfirm={confirmChange}
           onCancel={cancelChange}
-          {...(confirming.kind === "parish"
-            ? {
-                title: "Change the parish?",
-                confirmLabel: "Change the parish",
-                cancelLabel: "Keep the parish",
-                children: (
-                  <p>
-                    We found the address in a different parish. If you change
-                    it, you will need to find the address on the map so we can
-                    send your request to the right polyclinic.
-                  </p>
-                ),
-              }
-            : {
-                title: "Change the address?",
-                confirmLabel: "Change the address",
-                cancelLabel: "Keep the address",
-                children: (
-                  <p>
-                    If you change the address, we will clear the details we
-                    found for it. You will need to find the address again, from
-                    the list or on the map.
-                  </p>
-                ),
-              })}
-        />
+        >
+          <p>
+            If you change the address, we will clear the details we found for
+            it, including the parish. You will need to find the address again,
+            from the list or on the map.
+          </p>
+        </ConfirmDialog>
       )}
     </FormGroup>
   );

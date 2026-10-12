@@ -334,8 +334,8 @@ export async function fillAboutTheRestaurant(
   // The geocoder fills parish from the picked suggestion; assert rather than
   // overwrite, since that value is the catchment router's fallback.
   await expect(
-    page.locator(`select[id="${step}_restaurant-parish"]`),
-  ).not.toHaveValue("");
+    page.locator(`[id="${step}_restaurant-parish"]`),
+  ).toHaveAttribute("data-value", /\S/);
 
   const propertyUseOther = page.locator(`[id="${step}_property-use-other"]`);
   await expect(propertyUseOther).toBeHidden();

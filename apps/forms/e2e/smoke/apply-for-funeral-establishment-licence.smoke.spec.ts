@@ -221,8 +221,8 @@ export async function fillEstablishmentInformation(
   // overwrite, since that value is the catchment router's fallback when the
   // coordinates miss every polygon.
   await expect(
-    page.locator(`select[id="${step}_establishment-address-parish"]`),
-  ).not.toHaveValue("");
+    page.locator(`[id="${step}_establishment-address-parish"]`),
+  ).toHaveAttribute("data-value", /\S/);
   await fillField(
     page,
     step,

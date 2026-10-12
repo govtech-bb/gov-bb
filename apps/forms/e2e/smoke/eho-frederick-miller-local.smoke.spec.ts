@@ -175,9 +175,11 @@ test("routes a Frederick Miller event to St. Philip and mints an MOH-EHO referen
   ).toHaveValue(/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/, { timeout: STEP_TIMEOUT });
   const coordinates = (await coordinatesInput.inputValue()).trim();
 
-  const eventParish = await page
-    .locator(`select[id="${step}_event-parish"]`)
-    .inputValue();
+  // Read-only on a located address: the stored value is on `data-value`.
+  const eventParish =
+    (await page
+      .locator(`[id="${step}_event-parish"]`)
+      .getAttribute("data-value")) ?? "";
 
   await fillDate(
     page,

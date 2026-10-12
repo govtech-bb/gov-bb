@@ -307,9 +307,10 @@ export async function fillBusinessAddressDetails(
   );
   // The geocoder fills the parish from the picked suggestion; assert rather than
   // overwrite, since that value is the catchment router's fallback.
-  await expect(
-    page.locator(`select[id="${step}_business-parish"]`),
-  ).not.toHaveValue("");
+  await expect(page.locator(`[id="${step}_business-parish"]`)).toHaveAttribute(
+    "data-value",
+    /\S/,
+  );
 
   await advance(page, step);
   return coordinates;

@@ -437,9 +437,10 @@ export async function fillPropertyDetails(
   );
   // The geocoder fills the parish from the picked suggestion; assert rather than
   // overwrite, since that value is the catchment router's fallback.
-  await expect(
-    page.locator(`select[id="${step}_property-parish"]`),
-  ).not.toHaveValue("");
+  await expect(page.locator(`[id="${step}_property-parish"]`)).toHaveAttribute(
+    "data-value",
+    /\S/,
+  );
 
   await fillField(page, step, "property-number-of-rooms", data.propertyRooms);
   await fillField(

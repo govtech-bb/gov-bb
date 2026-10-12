@@ -151,13 +151,15 @@ export class GeocodeService {
 
   /**
    * The address at a pin the applicant placed on the map, from the first
-   * provider that can answer. 404 when there is no address there; 503 when no
-   * provider could answer.
+   * provider that can answer. The parish always comes back — from the map when
+   * the provider names none, has no address there, or none could answer — as
+   * a located address's parish is read-only and only the pin can set it.
    */
   async reverse(lat: number, lon: number): Promise<GeocodeResult> {
     if (!isWithinBarbados(lat, lon)) {
       throw new BadRequestException("The point is not in Barbados");
     }
+    const parish = () => parishAt(lat, lon);
     for (const provider of this.providers) {
       if (!provider.reverse) continue;
       let found: GeocodeResult | null;
@@ -170,10 +172,17 @@ export class GeocodeService {
         continue;
       }
       // An empty answer is final, as for search.
-      if (!found) throw new NotFoundException("No address at that point");
-      return { ...found, parish: found.parish || parishAt(lat, lon) };
+      if (!found) break;
+      return { ...found, parish: found.parish || parish() };
     }
-    throw new ServiceUnavailableException("Address lookup is unavailable");
+    return {
+      label: "",
+      lat: lat.toFixed(6),
+      lon: lon.toFixed(6),
+      line1: "",
+      line2: "",
+      parish: parish(),
+    };
   }
 
   private remember(key: string, results: GeocodeResult[]): void {

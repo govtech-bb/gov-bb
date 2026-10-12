@@ -209,6 +209,16 @@ export const buildFieldValidationProperties = (
 const buildRuleValidationProperties = (
   field: ClientPrimitive,
 ): FieldValidationProperties => {
+  // A parish filled from a located address is read-only: the address field
+  // already refuses an address that is not located, so it has nothing to check.
+  if (field.filledByAddressLookup) {
+    return {
+      onDynamic(_input) {
+        return undefined;
+      },
+    };
+  }
+
   // The show-hide toggle stores a boolean (open/closed state) and never has its
   // own validation rules; a content element carries no submission value at
   // all; fields without validations have nothing to check. Either way, return

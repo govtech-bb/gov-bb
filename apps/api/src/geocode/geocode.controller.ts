@@ -30,7 +30,10 @@ export class GeocodeController {
     return this.geocode.search(q ?? "", session);
   }
 
-  /** `GET /geocode/reverse?lat=&lon=` — the address at a pin on the map. */
+  /**
+   * `GET /geocode/reverse?lat=&lon=` — the address at a pin on the map. Always
+   * carries the parish; the address lines are empty where none was found.
+   */
   @Get("reverse")
   reverse(
     @Query("lat") lat?: string,
