@@ -88,6 +88,9 @@ jobs:
     name: Detect affected targets
     needs: advance-staging
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read # list this workflow's past runs to find the affected base
     outputs:
       api: ${{ steps.affected.outputs.api }}
       forms: ${{ steps.affected.outputs.forms }}
@@ -109,20 +112,45 @@ jobs:
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
 
+      # The affected base is the commit of the last successful deploy-staging
+      # run on main (runs are dispatched with --ref main), so a skipped or failed
+      # promotion is picked up by the next one.
+      #
+      # This replaced nrwl/nx-set-shas. That action only accepts a past run whose
+      # commit is among the latest 100 on main (one page of GET /commits). After
+      # the 30 Sep deploy (4e07352), staging failed for other reasons until main
+      # was 100 commits ahead; from then on every run failed here with "Unable to
+      # find a successful workflow run", and could never recover on its own
+      # (runs 2026-10-10 onward). An ancestry check against the full checkout has
+      # no window. As before, a missing base fails loudly rather than falling
+      # back to HEAD~1 and under-deploying (run 35656441931).
       - name: Derive base/head SHAs
-        uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
-        with:
-          # Runs are dispatched with --ref main now, so the affected base is the
-          # last successful deploy-staging run on main. (Was `staging` when this
-          # triggered on push:staging.)
-          main-branch-name: main
-          workflow-id: deploy-staging.yml
-          # This workflow only runs via workflow_dispatch. The action's default
-          # last-successful-event is push, which never matched a staging run, so
-          # every deploy fell back to HEAD~1 with only a warning (run 35656441931)
-          # and under-deployed whenever a promotion had been skipped.
-          last-successful-event: workflow_dispatch
-          error-on-no-successful-workflow: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "NX_HEAD=$GITHUB_SHA" >> "$GITHUB_ENV"
+
+          BASE=$(gh api \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-staging.yml/runs?branch=main&event=workflow_dispatch&status=success&per_page=1" \
+            --jq '.workflow_runs[0].head_sha // empty')
+
+          [ -n "$BASE" ] || {
+            echo "❌ No successful deploy-staging run on main, so the affected base is unknown."
+            exit 1
+          }
+          git cat-file -e "${BASE}^{commit}" 2>/dev/null || {
+            echo "❌ The last deployed SHA ($BASE) is not in this checkout."
+            exit 1
+          }
+          # A non-ancestor means main was rewritten; diffing against it would
+          # deploy only the divergent paths.
+          git merge-base --is-ancestor "$BASE" "$GITHUB_SHA" || {
+            echo "❌ The last deployed SHA ($BASE) is not an ancestor of $GITHUB_SHA."
+            exit 1
+          }
+
+          echo "NX_BASE=$BASE" >> "$GITHUB_ENV"
+          echo "Affected window: $BASE..$GITHUB_SHA ($(git rev-list --count "${BASE}..${GITHUB_SHA}") commits)"
 
       - name: Compute affected deploy targets
         id: affected
@@ -318,6 +346,11 @@ jobs:
           # landing's prebuild fetches the live form manifest; point it at the
           # staging API so the build resolves against the env it deploys into.
           VITE_FORMS_API_URL: https://api.staging.alpha.gov.bb
+          # Since #1675, a production landing build throws on a request if these
+          # are unset, so the smoke returned 500. Same values as the staging
+          # landing Amplify app (d3u4q4kqt5t6ok).
+          VITE_FORMS_URL: https://forms.staging.alpha.gov.bb
+          VITE_CHAT_URL: https://chat.staging.alpha.gov.bb
         run: |
           pnpm exec nx build landing
           node .github/scripts/ssr-smoke.mjs apps/landing/.amplify-hosting/compute/default landing
