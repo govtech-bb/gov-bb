@@ -188,8 +188,10 @@ jobs:
       # Deriving from the ref cannot degrade that way: it asks the question that
       # actually matters ("what changed since prod last shipped"), needs no
       # bootstrap run, and fails loudly below rather than under-deploying.
-      # sandbox/staging keep nx-set-shas — they run on `main`, which matches
-      # their main-branch-name, so their lookup chains correctly.
+      # sandbox/staging derive their base from their own last successful run on
+      # `main` (see their "Derive base/head SHAs" steps). They no longer use
+      # nx-set-shas either: it only checks the latest 100 commits on main, so it
+      # jammed staging once 100 commits passed without a green deploy (#3035).
       - name: Derive base/head SHAs
         id: shas
         env:
