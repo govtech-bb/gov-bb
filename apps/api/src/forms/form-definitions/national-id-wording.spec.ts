@@ -70,12 +70,12 @@ export function hasIdFormat(field: HydratedField): boolean {
   const pattern = field.validations?.pattern?.value;
   if (typeof pattern !== "string") return false;
   try {
-    // Accepts an ID but not a letter in it or an extra digit, so a looser
-    // pattern (a licence or business name) that happens to accept one isn't.
+    // Accepts an ID but not a letter in it, so a looser pattern (a licence or
+    // business name) that happens to accept one isn't mistaken for an ID one.
+    // Unanchored restatements (\d{6}-\d{4}) still count, and then fail the
+    // check against the registry's pattern.
     const re = new RegExp(pattern);
-    return (
-      re.test(SPECIMEN) && !re.test("A50101-0001") && !re.test("850101-00011")
-    );
+    return re.test(SPECIMEN) && !re.test("A50101-0001");
   } catch {
     return false;
   }
@@ -186,6 +186,8 @@ it("every Barbados ID field uses the one name, error wording and example number"
       const isIdField = (field: HydratedField) =>
         hasIdFormat(field) ||
         GENERIC_NATIONAL_ID_FIELDS.includes(`${formId}/${field.fieldId}`);
+      // Neighbours are the step's own fields (where the passport toggle
+      // sits); no ID field is inside a repeatable today.
       const stepAsksForId = fields.some(isIdField);
       for (const field of fields) {
         const where = `${formId} › ${step.stepId} › ${field.fieldId}`;
@@ -206,6 +208,8 @@ it("every Barbados ID field uses the one name, error wording and example number"
 
   // Can't pass vacuously: if hydration stops carrying the pattern, or a pinned
   // field is renamed, this fails instead of checking nothing.
+  // 51 on 2026-10-12: 44 direct component refs, 5 personal-information and
+  // 1 proving-your-identity blocks, and Smart Stream's patterned plain field.
   expect(idFormatFields).toBeGreaterThanOrEqual(51);
   expect([...genericSeen].sort()).toEqual(
     [...GENERIC_NATIONAL_ID_FIELDS].sort(),
@@ -256,6 +260,12 @@ describe("hasIdFormat", () => {
         validations: { pattern: { value: "^[A-Za-z0-9 -]+$" } },
       }),
     ).toBe(false);
+    expect(
+      hasIdFormat({
+        fieldId: "a",
+        validations: { pattern: { value: "\\d{6}-\\d{4}" } },
+      }),
+    ).toBe(true);
   });
 });
 
