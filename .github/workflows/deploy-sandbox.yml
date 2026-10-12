@@ -88,7 +88,7 @@ jobs:
             -f sha="${{ github.sha }}" -F force=false
 
   # Decide which deploy targets actually changed, so unchanged apps are skipped.
-  # The base is the last SUCCESSFUL deploy (nx-set-shas), not the push range:
+  # The base is the last SUCCESSFUL deploy (see "Derive base/head SHAs"), not the push range:
   # a target that failed to deploy stays "affected" until it ships green, where
   # a github.event.before diff would wrongly skip it on the next unrelated push.
   setup:
