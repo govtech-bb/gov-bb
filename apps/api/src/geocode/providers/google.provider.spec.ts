@@ -72,6 +72,59 @@ describe("GoogleProvider", () => {
     expect(result.parish).toBe("christ-church");
   });
 
+  // Google runs the parish, postcode and country together with no commas
+  // ("Saint Michael BB120004Barbados"), so they must not land in line 2.
+  it("keeps the run-together parish, postcode and country out of the address lines", async () => {
+    const get = respond({
+      status: "OK",
+      results: [
+        {
+          formatted_address: "Gun Hill, Saint George Barbados",
+          geometry: { location: { lat: 13.1428139, lng: -59.5599161 } },
+          address_components: [
+            {
+              long_name: "Saint George",
+              types: ["administrative_area_level_1", "political"],
+            },
+          ],
+          types: ["locality", "political"],
+        },
+      ],
+    });
+    const [result] = await makeProvider(get).search("Gun Hill");
+    expect(result).toMatchObject({
+      line1: "Gun Hill",
+      line2: "",
+      parish: "st-george",
+    });
+  });
+
+  it("keeps the typed place name as line 1 and moves the street to line 2", async () => {
+    const get = respond({
+      status: "OK",
+      results: [
+        {
+          formatted_address:
+            "493G+XXX, President Kennedy Dr, Bridgetown, Saint Michael BB120004Barbados",
+          geometry: { location: { lat: 13.1049948, lng: -59.6225241 } },
+          address_components: [
+            {
+              long_name: "Saint Michael",
+              types: ["administrative_area_level_1", "political"],
+            },
+          ],
+          types: ["establishment", "point_of_interest", "stadium"],
+        },
+      ],
+    });
+    const [result] = await makeProvider(get).search("Kensington Oval");
+    expect(result).toMatchObject({
+      line1: "Kensington Oval",
+      line2: "President Kennedy Dr, Bridgetown",
+      parish: "st-michael",
+    });
+  });
+
   it("returns [] for ZERO_RESULTS", async () => {
     const get = respond({ status: "ZERO_RESULTS", results: [] });
     expect(await makeProvider(get).search("nowhere")).toEqual([]);

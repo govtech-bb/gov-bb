@@ -1,5 +1,11 @@
 import { JSX, lazy, Suspense, useEffect, useRef, useState } from "react";
-import { Autocomplete, FormGroup, Hint, Label } from "@govtech-bb/react";
+import {
+  Autocomplete,
+  Button,
+  FormGroup,
+  Hint,
+  Label,
+} from "@govtech-bb/react";
 import ErrorMessage from "../error-message";
 import {
   GeocodeResult,
@@ -8,8 +14,8 @@ import {
 } from "../../lib/api/geocode";
 import { FieldRenderContext } from "./render-context";
 
-// Leaflet is only needed when address suggestions are down, so it stays out of
-// the main bundle.
+// Leaflet is only needed when address suggestions are down or find nothing, so
+// it stays out of the main bundle.
 const LocationPinMap = lazy(() => import("./location-pin-map"));
 
 // Wait for a typing pause before querying — keeps request volume within the
@@ -52,13 +58,25 @@ export function AddressLookupField({
   const [query, setQuery] = useState(initial);
   const [suggestions, setSuggestions] = useState<GeocodeResult[]>([]);
   const [lookupFailed, setLookupFailed] = useState(false);
+  // The lookup answered but found nothing for what was typed.
+  const [noMatch, setNoMatch] = useState(false);
   // The pin the applicant placed on the fallback map. While set, the routing
   // coordinate belongs to the pin, not to the address text.
   const [pin, setPin] = useState<[number, number] | null>(null);
   const coordinatesFieldId = field.geocodeTargets?.coordinatesFieldId;
-  // Once suggestions have failed, keep the map up even if a later lookup
-  // succeeds, so it does not vanish while the applicant is placing the pin.
+  // Once suggestions have failed, or the applicant has asked for the map, keep
+  // it up even if a later lookup succeeds, so it does not vanish while they are
+  // placing the pin.
   const [showPinMap, setShowPinMap] = useState(false);
+  const pinHintId = `${field.id}-pin-hint`;
+  // Opening the map from the no-match link removes the link, so focus moves to
+  // the map's guidance rather than dropping to the page.
+  const focusPinHint = useRef(false);
+  useEffect(() => {
+    if (!showPinMap || !focusPinHint.current) return;
+    focusPinHint.current = false;
+    document.getElementById(pinHintId)?.focus();
+  }, [showPinMap, pinHintId]);
 
   // The last committed selection — suppresses the lookup that a select would
   // otherwise trigger by changing the input's text.
@@ -72,6 +90,7 @@ export function AddressLookupField({
     const trimmed = query.trim();
     if (trimmed.length < MIN_QUERY_LENGTH) {
       setSuggestions([]);
+      setNoMatch(false);
       return;
     }
 
@@ -81,11 +100,13 @@ export function AddressLookupField({
         .then((results) => {
           setSuggestions(results);
           setLookupFailed(false);
+          setNoMatch(results.length === 0);
         })
         .catch((error: unknown) => {
           if (error instanceof DOMException && error.name === "AbortError")
             return;
           setSuggestions([]);
+          setNoMatch(false);
           setLookupFailed(true);
           if (coordinatesFieldId) setShowPinMap(true);
         });
@@ -148,7 +169,10 @@ export function AddressLookupField({
     );
   };
 
-  const pinHintId = `${field.id}-pin-hint`;
+  const openPinMap = () => {
+    focusPinHint.current = true;
+    setShowPinMap(true);
+  };
 
   return (
     <FormGroup data-field-width={field.ui?.width}>
@@ -180,9 +204,10 @@ export function AddressLookupField({
       />
       {showPinMap ? (
         <>
-          <Hint id={pinHintId} role="status">
-            We cannot suggest addresses at the moment. Type your address, then
-            move the pin on the map to where it is.
+          <Hint id={pinHintId} role="status" tabIndex={-1}>
+            {lookupFailed
+              ? "We cannot suggest addresses at the moment. Type your address, then move the pin on the map to where it is."
+              : "Move the pin on the map to where the address is."}
           </Hint>
           <Suspense fallback={null}>
             <LocationPinMap
@@ -192,11 +217,25 @@ export function AddressLookupField({
             />
           </Suspense>
         </>
+      ) : lookupFailed ? (
+        <Hint role="status">
+          Address suggestions are unavailable right now — you can type the
+          address yourself.
+        </Hint>
       ) : (
-        lookupFailed && (
+        noMatch &&
+        coordinatesFieldId && (
           <Hint role="status">
-            Address suggestions are unavailable right now — you can type the
-            address yourself.
+            We cannot find that address. You can type it yourself, or{" "}
+            <Button
+              className="underline"
+              onClick={openPinMap}
+              type="button"
+              variant="link"
+            >
+              show where it is on a map
+            </Button>
+            .
           </Hint>
         )
       )}

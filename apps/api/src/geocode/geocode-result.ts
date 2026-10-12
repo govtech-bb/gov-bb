@@ -69,12 +69,15 @@ const normalizeParish = (raw: string): string =>
 const parishValue = (raw: string): string =>
   PARISH_VALUE_BY_NORMALIZED[normalizeParish(raw)] ?? "";
 
-const isPostcode = (part: string): boolean => /^bb\s?\d/i.test(part.trim());
+const POSTCODE = /\bbb\s?\d+\b/gi;
+// An Open Location Code ("493G+XXX") — Google's stand-in for a missing street
+// number. It means nothing to an applicant or an officer reading the address.
+const PLUS_CODE = /^[23456789cfghjmpqrvwx]{2,8}\+[23456789cfghjmpqrvwx]*$/i;
 
 /**
  * Split a formatted address into line 1 / line 2 / parish. Barbados has no
  * reliable structured street data, so this is deterministic string parsing:
- * drop the country and postcode, pull out the part matching a known parish,
+ * drop the country, postcode and plus code, pull out the part matching a known parish,
  * treat the last remaining part as the locality (line 2) and the rest as line 1.
  * `parishHints` (the provider's structured address parts) are matched first.
  */
@@ -92,11 +95,22 @@ export function toGeocodeResult(input: {
   const parts = label
     .split(",")
     .map((p) => p.trim())
-    .filter(Boolean)
-    .filter((p) => p.toLowerCase() !== "barbados" && !isPostcode(p));
+    .filter(Boolean);
+  // The country closes the address. Google glues it to the parish and postcode
+  // with no comma ("Saint Michael BB120004Barbados"), so strip it from the last
+  // part rather than only dropping a bare "Barbados" part.
+  if (parts.length > 0) {
+    parts[parts.length - 1] = parts[parts.length - 1].replace(
+      /\s*barbados$/i,
+      "",
+    );
+  }
+  const cleaned = parts
+    .map((p) => p.replace(POSTCODE, "").trim())
+    .filter((p) => p && !PLUS_CODE.test(p));
 
   const remaining: string[] = [];
-  for (const part of parts) {
+  for (const part of cleaned) {
     const value = parishValue(part);
     if (value) {
       parish ||= value;

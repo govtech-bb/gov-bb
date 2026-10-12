@@ -71,15 +71,28 @@ export class GoogleProvider implements GeocodeProvider {
           !item.types?.includes("country"),
       )
       .slice(0, MAX_RESULTS)
-      .map((item) =>
-        toGeocodeResult({
+      .map((item) => {
+        const result = toGeocodeResult({
           label: item.formatted_address as string,
           lat: String(item.geometry?.location?.lat),
           lon: String(item.geometry?.location?.lng),
           parishHints: (item.address_components ?? [])
             .filter((c) => c.types?.includes("administrative_area_level_1"))
             .map((c) => c.long_name),
-        }),
-      );
+        });
+        // A named place ("Kensington Oval"): Google's address never carries the
+        // name, so swapping what the applicant typed for the street address
+        // reads as a different place. Keep the typed name as line 1 and move
+        // the street to line 2.
+        const isNamedPlace = item.types?.some(
+          (t) => t === "establishment" || t === "point_of_interest",
+        );
+        if (!isNamedPlace) return result;
+        return {
+          ...result,
+          line1: query,
+          line2: [result.line1, result.line2].filter(Boolean).join(", "),
+        };
+      });
   }
 }

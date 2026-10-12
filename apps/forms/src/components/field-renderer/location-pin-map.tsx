@@ -45,8 +45,9 @@ function PlaceOnClick({
 /**
  * A map of Barbados with one pin the applicant moves to where their address is
  * — by dragging it, clicking or tapping the map, or focusing the pin and using
- * the arrow keys. Shown only when address suggestions are unavailable, so the
- * applicant can still give us a location to route their application by.
+ * the arrow keys. Shown only when address suggestions are unavailable or find
+ * nothing, so the applicant can still give us a location to route their
+ * application by.
  */
 export default function LocationPinMap({
   value,

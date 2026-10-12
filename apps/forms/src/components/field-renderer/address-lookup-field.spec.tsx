@@ -280,6 +280,84 @@ describe("AddressLookupField", () => {
     expect(screen.getByRole("combobox")).toBeTruthy();
   });
 
+  describe("when no address matches", () => {
+    const findNoMatch = async () => {
+      mockSearch.mockResolvedValue([]);
+      renderField();
+      await userEvent.type(screen.getByRole("combobox"), "Nowhere Lane");
+      return screen.findByRole("button", {
+        name: "show where it is on a map",
+      });
+    };
+
+    it("says so and offers the map behind a link, not up front", async () => {
+      const link = await findNoMatch();
+
+      expect(link.closest("[role=status]")?.textContent).toMatch(
+        /We cannot find that address/,
+      );
+      expect(screen.queryByRole("button", { name: "Place pin" })).toBeNull();
+    });
+
+    it("opens the map when the link is clicked, with guidance to move the pin", async () => {
+      await userEvent.click(await findNoMatch());
+
+      expect(
+        await screen.findByRole("button", { name: "Place pin" }),
+      ).toBeTruthy();
+      const guidance = screen.getByText(
+        /Move the pin on the map to where the address is/,
+      );
+      expect(guidance).toHaveFocus();
+      expect(guidance.textContent).not.toMatch(/at the moment/);
+    });
+
+    it("writes the placed pin to the routing coordinate", async () => {
+      await userEvent.click(await findNoMatch());
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Place pin" }),
+      );
+
+      expect(setFieldValue).toHaveBeenCalledWith(
+        "step-1.event-address-coordinates",
+        "13.100000,-59.600000",
+      );
+    });
+
+    it("drops the link once a later lookup finds a match", async () => {
+      await findNoMatch();
+      mockSearch.mockResolvedValue([
+        {
+          label: "Nowhere Lane, Bridgetown, Barbados",
+          lat: "13.1",
+          lon: "-59.6",
+          line1: "Nowhere Lane",
+          line2: "Bridgetown",
+          parish: "st-michael",
+        },
+      ]);
+
+      await userEvent.type(screen.getByRole("combobox"), "s");
+      await screen.findByRole("option");
+
+      expect(
+        screen.queryByRole("button", { name: "show where it is on a map" }),
+      ).toBeNull();
+    });
+
+    it("offers no map link on a field with no coordinate to write", async () => {
+      mockSearch.mockResolvedValue([]);
+      renderField(addressLookupField({ line2FieldId: "event-address-line-2" }));
+
+      await userEvent.type(screen.getByRole("combobox"), "Nowhere Lane");
+      await waitFor(() => expect(mockSearch).toHaveBeenCalled());
+
+      expect(
+        screen.queryByRole("button", { name: "show where it is on a map" }),
+      ).toBeNull();
+    });
+  });
+
   describe("when address suggestions are unavailable", () => {
     const failLookup = async () => {
       mockSearch.mockRejectedValue(new Error("geocode request failed: 503"));
