@@ -21,7 +21,8 @@ export class JourneyController {
   // behind the load balancer ThrottlerGuard keys on the balancer hop, not the
   // citizen: every citizen on a task would share one bucket, and a busy hour
   // would refuse real events and undercount (#3022 review). Abuse is bounded by
-  // the 64 KB text body limit (main.ts) and 25 events per request (schema).
+  // the 64 KB text / 1 MB JSON body limits (main.ts) and 25 events per request
+  // (schema).
   // A per-client-IP limit belongs in the WAF, which sees the real address; no
   // WAF rule covers this path yet (follow-up in alpha-infra).
   //

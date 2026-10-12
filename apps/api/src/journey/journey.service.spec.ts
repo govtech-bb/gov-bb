@@ -65,8 +65,39 @@ describe("JourneyService", () => {
     }
   });
 
+  // A malformed envelope is a broken client: 400, so it shows up as errors.
   it.each([
     ["not JSON", "{oops"],
+    ["a JSON number", "42"],
+    ["a JSON string", '"hello"'],
+    ["null", null],
+    ["an empty batch", []],
+    [
+      "a batch over the limit",
+      Array.from({ length: MAX_EVENTS_PER_REQUEST + 1 }, () => event()),
+    ],
+  ])("rejects %s with 400 and logs nothing", (_label, body) => {
+    expect(() => service.record(body, BROWSER)).toThrow(BadRequestException);
+    expect(stdout).not.toHaveBeenCalled();
+  });
+
+  // One bad event must not lose the good ones in its batch (#3022 review):
+  // sendBeacon never reads the response, so a 400 would be silent data loss.
+  it("logs the valid events in a batch and drops only the invalid one", () => {
+    const body = [
+      event(),
+      event({ path: "/forms/x?token=abc" }),
+      event({ event: "test-form:form-review" }),
+    ];
+    expect(service.record(body, BROWSER)).toBe(2);
+    const lines = logged(stdout);
+    expect(lines.filter((l) => l.log_type === "journey_event")).toHaveLength(2);
+    expect(lines.filter((l) => l.log_type === "journey_rejected")).toEqual([
+      expect.objectContaining({ dropped: 1, received: 3, fields: ["path"] }),
+    ]);
+  });
+
+  it.each([
     ["unknown app", event({ app: "cams" })],
     ["upper-case or spaced name", event({ event: "Form Start" })],
     ["name too long", event({ event: "a".repeat(101) })],
@@ -82,14 +113,22 @@ describe("JourneyService", () => {
         ),
       }),
     ],
-    [
-      "batch too large",
-      Array.from({ length: MAX_EVENTS_PER_REQUEST + 1 }, () => event()),
-    ],
-  ])("rejects %s with 400 and logs nothing", (_label, body) => {
-    expect(() => service.record(body, BROWSER)).toThrow(BadRequestException);
-    expect(stdout).not.toHaveBeenCalled();
-  });
+  ])(
+    "drops an event with %s, counting it without logging its content",
+    (_label, body) => {
+      expect(service.record(body, BROWSER)).toBe(0);
+      const lines = logged(stdout);
+      expect(lines).toEqual([
+        expect.objectContaining({
+          log_type: "journey_rejected",
+          dropped: 1,
+          received: 1,
+        }),
+      ]);
+      expect(String(stdout.mock.calls[0][0])).not.toContain("a@b.com");
+      expect(String(stdout.mock.calls[0][0])).not.toContain("token=abc");
+    },
+  );
 
   it("drops crawler traffic without logging it", () => {
     expect(

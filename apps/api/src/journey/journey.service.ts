@@ -2,8 +2,8 @@ import { Injectable } from "@nestjs/common";
 import { AppError } from "@/common/errors";
 import { writeBusinessLog } from "@/common/business-log";
 import {
+  journeyEventSchema,
   journeyRequestSchema,
-  type JourneyEvent,
 } from "./journey-event.schema";
 
 // Crawlers and headless browsers execute page scripts too; counting them would
@@ -14,14 +14,28 @@ const BOT_USER_AGENT = /bot|crawl|spider|slurp|headless|lighthouse/i;
 export class JourneyService {
   /**
    * Validate and record a request's events. Returns how many were recorded
-   * (0 for a bot). Throws 400 on a malformed body, so a broken client shows up
-   * as errors rather than as quietly missing data.
+   * (0 for a bot). A malformed body (not JSON, or not one event / a list of 1
+   * to 25) is a 400. Each event is then checked on its own: valid ones are
+   * logged and invalid ones dropped, so one bad event can't lose a whole batch.
+   * sendBeacon never reads the response, so drops are counted in a
+   * journey_rejected line (field names only, never content) instead.
    */
   record(body: unknown, userAgent: string | undefined): number {
-    const events = this.parse(body);
+    const items = this.parse(body);
     if (userAgent && BOT_USER_AGENT.test(userAgent)) return 0;
 
-    for (const e of events) {
+    let recorded = 0;
+    const failedFields = new Set<string>();
+    for (const item of items) {
+      const result = journeyEventSchema.safeParse(item);
+      if (!result.success) {
+        for (const issue of result.error.issues) {
+          failedFields.add(issue.path.map(String).join(".") || "(event)");
+        }
+        continue;
+      }
+      const e = result.data;
+      recorded += 1;
       writeBusinessLog("journey_event", {
         message: `journey ${e.event}`,
         app: e.app,
@@ -33,10 +47,20 @@ export class JourneyService {
         client_ts: e.client_ts,
       });
     }
-    return events.length;
+
+    const dropped = items.length - recorded;
+    if (dropped > 0) {
+      writeBusinessLog("journey_rejected", {
+        message: `journey: dropped ${dropped} of ${items.length} invalid event(s)`,
+        dropped,
+        received: items.length,
+        fields: [...failedFields].sort(),
+      });
+    }
+    return recorded;
   }
 
-  private parse(body: unknown): JourneyEvent[] {
+  private parse(body: unknown): unknown[] {
     // navigator.sendBeacon posts a string as text/plain (a CORS-simple request
     // that survives the page closing), so accept the JSON as text too.
     let raw = body;
@@ -49,7 +73,9 @@ export class JourneyService {
     }
     const result = journeyRequestSchema.safeParse(raw);
     if (!result.success) {
-      throw AppError.badRequest("Invalid journey event");
+      throw AppError.badRequest(
+        "Body must be one journey event or a list of 1 to 25",
+      );
     }
     return Array.isArray(result.data) ? result.data : [result.data];
   }

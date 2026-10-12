@@ -42,9 +42,12 @@ export const journeyEventSchema = z
   })
   .strict();
 
+// The request envelope: one event object, or a list of 1 to 25. Only the shape
+// is checked here; each event is validated on its own (journey.service.ts), so
+// one bad event in a batch doesn't take the good ones down with it.
 export const journeyRequestSchema = z.union([
-  journeyEventSchema,
-  z.array(journeyEventSchema).min(1).max(MAX_EVENTS_PER_REQUEST),
+  z.record(z.string(), z.unknown()),
+  z.array(z.unknown()).min(1).max(MAX_EVENTS_PER_REQUEST),
 ]);
 
 export type JourneyEvent = z.infer<typeof journeyEventSchema>;

@@ -9,7 +9,10 @@
 // Field names avoid Datadog's reserved attributes (`status`, `service`, `host`,
 // `date`), which would otherwise be reinterpreted.
 
-export type BusinessLogType = "journey_event" | "business_event";
+export type BusinessLogType =
+  | "journey_event"
+  | "journey_rejected"
+  | "business_event";
 
 export function writeBusinessLog(
   logType: BusinessLogType,
