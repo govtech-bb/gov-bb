@@ -455,7 +455,7 @@ it("still dispatches UPDATE_FIELD_OVERRIDES when the ref is unchanged", async ()
 // visible and overridable — not silently enforced only at runtime.
 
 const NATIONAL_ID_PATTERN_ERROR =
-  "Enter a valid National ID number (for example, 850101-0001)";
+  "Enter a valid Barbados National Identification (ID) number (for example, 850101-0001)";
 
 it("surfaces a base component validation rule as an inherited, read-only row", async () => {
   // National ID number declares a `pattern` rule in the registry. Freshly added
@@ -1263,27 +1263,31 @@ it("reopens with stored categories and drops groups on Reset to defaults", async
 it.each([
   "request-an-environmental-health-officer",
   "apply-for-temporary-restaurant-permit",
-])("opens %s's checkbox accordion with its stored categories", (formId) => {
-  const { field } = openRecipeField(
-    formId,
-    "components/generic-checkbox-accordion",
-  );
-  const groups = field.overrides.groups;
-  if (!groups?.length) throw new Error(`${formId} stores no groups`);
-  expect(categoryLabelInputs()).toEqual(groups.map((g) => g.label));
-  expect(
-    screen
-      .getAllByRole("checkbox", { name: /higher-risk/i })
-      .map((el) => el.getAttribute("aria-checked") === "true"),
-  ).toEqual(groups.map((g) => g.higherRisk === true));
-  const firstRow = screen
-    .getByDisplayValue(groups[0].label)
-    .closest("fieldset");
-  expect(
-    within(firstRow!)
-      .getAllByLabelText("Option value")
-      .map((el) => (el as HTMLInputElement).value),
-  ).toEqual(groups[0].options.map((o) => o.value));
-  // Rendering ten real categories (54 options) takes ~4s on a quiet machine,
-  // close to the 10s default under CI load.
-}, 20_000);
+])(
+  "opens %s's checkbox accordion with its stored categories",
+  (formId) => {
+    const { field } = openRecipeField(
+      formId,
+      "components/generic-checkbox-accordion",
+    );
+    const groups = field.overrides.groups;
+    if (!groups?.length) throw new Error(`${formId} stores no groups`);
+    expect(categoryLabelInputs()).toEqual(groups.map((g) => g.label));
+    expect(
+      screen
+        .getAllByRole("checkbox", { name: /higher-risk/i })
+        .map((el) => el.getAttribute("aria-checked") === "true"),
+    ).toEqual(groups.map((g) => g.higherRisk === true));
+    const firstRow = screen
+      .getByDisplayValue(groups[0].label)
+      .closest("fieldset");
+    expect(
+      within(firstRow!)
+        .getAllByLabelText("Option value")
+        .map((el) => (el as HTMLInputElement).value),
+    ).toEqual(groups[0].options.map((o) => o.value));
+    // Rendering ten real categories (54 options) takes ~4s on a quiet machine,
+    // close to the 10s default under CI load.
+  },
+  20_000,
+);
