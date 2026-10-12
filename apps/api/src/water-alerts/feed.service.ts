@@ -12,6 +12,7 @@ import {
   parseEventWindow,
   stripHtml,
 } from "./outages.domain";
+import { sanitizeForLog } from "@/common/log-sanitize";
 
 const DEFAULT_FEED_URL =
   "https://barbadoswaterauthority.com/category/service-disruptions/feed/";
@@ -87,6 +88,12 @@ export class FeedService {
         responseType: "text",
         timeout: 10_000,
         maxContentLength: MAX_FEED_BYTES,
+        // Don't follow redirects (#2971), as timedPost doesn't (#287): a
+        // compromised or spoofed feed host could otherwise 3xx the API to an
+        // internal address such as ECS task metadata. The feed answers 200
+        // directly; if BWA ever moves it, the fetch fails visibly (unavailable
+        // state, ops alert) and BWA_FEED_URL can point at the new address.
+        maxRedirects: 0,
         headers: {
           "User-Agent": "gov.bb-water-alerts/1.0 (https://gov.bb)",
           Accept: "application/rss+xml, application/xml, text/xml",
@@ -177,13 +184,17 @@ export class FeedService {
   }
 }
 
-/** The notice's guid or link, quoted and clipped, so a log line can trace it. */
+/**
+ * The notice's guid or link, quoted and clipped, so a log line can trace it.
+ * sanitizeForLog (not just JSON.stringify) so a crafted guid can't carry line
+ * separators or bidi overrides that forge the log line (#2971).
+ */
 function noticeRef(raw: unknown): string {
   const item = (raw ?? {}) as Record<string, unknown>;
   const ref = [item.guid, item.link].find(
     (v): v is string => typeof v === "string" && v.trim() !== "",
   );
-  return ref ? JSON.stringify(clip(ref.trim(), 200)) : "(no ID)";
+  return ref ? JSON.stringify(sanitizeForLog(ref)) : "(no ID)";
 }
 
 /** One-line reason a notice was skipped (Zod errors are otherwise JSON). */
