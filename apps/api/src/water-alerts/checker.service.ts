@@ -246,10 +246,11 @@ export class CheckerService {
       return true;
     } catch (err) {
       // Never log a resident's address (#1640, #2971), not even masked: the
-      // subscriber ID is enough to look them up. The SES error is redacted
-      // too, as a rejection can name the address it rejected.
+      // subscriber ID is enough to look them up. That includes the SES error,
+      // which can name the address it rejected, so any address in it is
+      // replaced outright rather than masked.
       this.logger.warn(
-        `Alert email to subscriber ${subscriberId} failed: ${redactEmailsIn((err as Error).message)}`,
+        `Alert email to subscriber ${subscriberId} failed: ${redactEmailsIn((err as Error).message, "[email]")}`,
       );
       return false;
     }

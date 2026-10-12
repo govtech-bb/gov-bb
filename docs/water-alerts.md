@@ -31,9 +31,10 @@ can't bounce the API to an internal address (#2971). The feed answers directly;
 if BWA ever moves it, it shows as unavailable until `BWA_FEED_URL` is updated.
 
 Logs never contain a resident's email address (#2971): a failed alert email
-logs only the subscriber ID; a failed confirmation email (no subscriber ID yet)
-logs the address masked by `redactPii` (`j***@example.com`) and the area. Either
-way the delivery error is logged with any address in it masked. Feed values in log lines go through `sanitizeForLog`, which also
+logs only the subscriber ID, and any address the delivery error names is
+replaced with `[email]`; a failed confirmation email (no subscriber ID yet) logs
+the address masked by `redactPii` (`j***@example.com`) and the area, with any
+address in the delivery error masked the same way. Feed values in log lines go through `sanitizeForLog`, which also
 blanks line separators and bidi controls that could disguise a log line.
 
 Notices are validated one at a time, so one bad notice can't take the feed down

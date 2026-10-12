@@ -318,9 +318,11 @@ describe("CheckerService send-failure log (#2971)", () => {
 
     const line = warn.mock.calls.map(([m]) => String(m)).join("\n");
     expect(line).toContain("subscriber s1");
-    // The ID is enough to look the subscriber up; even a masked address next
-    // to it can be near-identifying on a small domain.
-    expect(line).not.toContain("(j***@");
-    expect(line).not.toContain("jane@");
+    // The ID is enough to look the subscriber up; even a masked address can
+    // be near-identifying on a small domain, so none appears, not even the
+    // one the SES error names.
+    expect(line).toContain("[email]");
+    expect(line).not.toContain("@example.com");
+    expect(line).not.toContain("jane");
   });
 });

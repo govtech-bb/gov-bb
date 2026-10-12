@@ -136,8 +136,20 @@ describe("redactEmailsIn (#2971)", () => {
   });
 
   it("still masks an address that straddles the logged length", () => {
-    const cleaned = redactEmailsIn(`${"x ".repeat(95)}jane.doe@example.com`);
-    expect(cleaned).not.toContain("jane.doe");
+    // 97 pairs put the 200-character cut inside the local part ("jane.d"), so
+    // this only passes if matching sees past the cut: with a cap of just
+    // MAX_LOGGED_LENGTH, "jane" would leak. (At 95 the cut lands in the
+    // domain and the address still matches either way.)
+    const cleaned = redactEmailsIn(`${"x ".repeat(97)}jane.doe@example.com`);
+    expect(cleaned).not.toContain("jane");
+  });
+
+  it("replaces each address with a fixed token when one is given", () => {
+    const cleaned = redactEmailsIn(
+      "identities failed the check: jane@example.com, bob@gov.bb",
+      "[email]",
+    );
+    expect(cleaned).toBe("identities failed the check: [email], [email]");
   });
 
   it("is still log-safe: control characters stripped, length bounded", () => {

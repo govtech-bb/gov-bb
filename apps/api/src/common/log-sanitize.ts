@@ -101,17 +101,22 @@ const EMAIL_IN_TEXT = /[^\s@<>()[\]",;:]+@[^\s@<>()[\]",;:]+/g;
 /**
  * Makes free text — typically a delivery error message — safe to log when it
  * may name a person's email address: every email-shaped substring is masked
- * with {@link redactPii}, then the whole text goes through
+ * with {@link redactPii} (`j***@example.com`), or replaced outright with
+ * `replacement` when one is given, then the whole text goes through
  * {@link sanitizeForLog}. Use it where the text comes from a third party (an
  * SES rejection can name the address it rejected), not just for a value you
- * already know is an email (#2971).
+ * already know is an email (#2971). Pass a `replacement` when the line already
+ * identifies the person another way (e.g. a subscriber ID), so not even the
+ * masked domain is logged.
  */
-export function redactEmailsIn(text: unknown): string {
+export function redactEmailsIn(text: unknown, replacement?: string): string {
   const str = typeof text === "string" ? text : String(text);
   // Cap before matching: the pattern is quadratic on a long run ending in "@"
   // with no domain (ReDoS on third-party text). Only MAX_LOGGED_LENGTH
   // characters are logged anyway; keeping twice that means an address
   // straddling the cut is still matched (and masked) whole.
   const bounded = str.slice(0, MAX_LOGGED_LENGTH * 2);
-  return sanitizeForLog(bounded.replace(EMAIL_IN_TEXT, (m) => redactPii(m)));
+  return sanitizeForLog(
+    bounded.replace(EMAIL_IN_TEXT, (m) => replacement ?? redactPii(m)),
+  );
 }
