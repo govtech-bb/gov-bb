@@ -95,7 +95,7 @@
         {
           "ref": "components/national-id-number",
           "overrides": {
-            "hint": "Example: 110915-0048",
+            "hint": "For example, 850101-0001",
             "fieldId": "camper-national-id",
             "validations": {
               "required": {
@@ -891,7 +891,7 @@
   "title": "National Summer Camp Programme 2025: Camper Registration Form",
   "formId": "national-summer-camp-2025-registration",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-10-12T17:44:53.000Z",
+  "updatedAt": "2026-10-12T17:45:45.000Z",
   "processors": [
     {
       "type": "email",
