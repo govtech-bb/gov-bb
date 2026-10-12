@@ -1,6 +1,6 @@
 import { Body, Controller, Headers, HttpCode, Post } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { Throttle } from "@nestjs/throttler";
+import { SkipThrottle } from "@nestjs/throttler";
 import { JourneyService } from "./journey.service";
 
 // First-party journey analytics for the landing and forms sites, replacing
@@ -17,15 +17,17 @@ export class JourneyController {
 
   @Post()
   @HttpCode(204)
-  // Looser than the global default (5 per 10s): one form step sends two or
-  // three events, and many citizens share an IP behind government and mobile
-  // networks. A throttled request is a lost event, so err towards accepting;
-  // the WAF rate-based rule still caps floods.
-  @Throttle({
-    short: { limit: 40, ttl: 10_000 },
-    medium: { limit: 300, ttl: 60_000 },
-    long: { limit: 5_000, ttl: 3_600_000 },
-  })
+  // No app-level throttle. apps/api does not set Express `trust proxy`, so
+  // behind the load balancer ThrottlerGuard keys on the balancer hop, not the
+  // citizen: every citizen on a task would share one bucket, and a busy hour
+  // would refuse real events and undercount (#3022 review). Abuse is bounded by
+  // the 64 KB text body limit (main.ts) and 25 events per request (schema).
+  // A per-client-IP limit belongs in the WAF, which sees the real address; no
+  // WAF rule covers this path yet (follow-up in alpha-infra).
+  //
+  // The buckets are named explicitly: a bare @SkipThrottle() only skips a
+  // throttler called "default", and app.module registers short/medium/long.
+  @SkipThrottle({ short: true, medium: true, long: true })
   @ApiOperation({
     summary: "Record first-party journey events (landing and forms sites)",
   })
