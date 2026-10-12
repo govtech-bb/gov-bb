@@ -134,7 +134,6 @@ export function AddressLookupField({
   useEffect(() => {
     if (!located.current || parish === locatedParish.current) return;
     setConfirming({ kind: "parish" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parish]);
 
   useEffect(() => {
