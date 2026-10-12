@@ -86,7 +86,12 @@ function rehypeHideStartLinks(options: RehypeHideStartLinksOptions = {}) {
   }
 }
 
-function isWaysParagraph(element: Element): boolean {
+/**
+ * True for a "There are N ways…" lead-in whose count this plugin rewrites.
+ * Exported so the content guard in registry.test.ts (#2483) checks exactly
+ * the paragraphs this plugin acts on.
+ */
+export function isWaysParagraph(element: Element): boolean {
   if (element.tagName !== 'p') return false
   const text = element.children
     .filter((child) => child.type === 'text')

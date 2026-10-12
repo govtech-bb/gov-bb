@@ -18,7 +18,9 @@ import {
 } from './registry'
 import { CATEGORY_BY_SLUG } from './categories'
 import { search } from '../lib/search'
+import type { Element } from 'hast'
 import { hideStartLinks } from '../utils/markdown/plugins'
+import { isWaysParagraph } from '../utils/markdown/plugins/hideStartLinks'
 import type { ViewLevel } from '../lib/frontmatter'
 
 describe('resolveServiceHref', () => {
@@ -516,18 +518,10 @@ describe('route lists nest the start link (#2483)', () => {
           startLinks(c, inLi || (n.type === 'element' && n.tagName === 'li')),
         )
 
-  // Mirrors the plugin's isWaysParagraph: a <p> whose *direct* text matches
-  // its WAYS_TO_APPLY_REGEX. Only those paragraphs get their count rewritten,
-  // so only those pages can desync.
+  // Uses the plugin's own isWaysParagraph, so the guard checks exactly the
+  // paragraphs whose count the plugin rewrites: only those pages can desync.
   const hasRouteCount = (n: Node): boolean =>
-    (n.type === 'element' &&
-      n.tagName === 'p' &&
-      /are (\d+) ways|are ([a-zA-Z]+) ways/i.test(
-        (n.children ?? [])
-          .filter((c) => c.type === 'text')
-          .map((c) => c.value ?? '')
-          .join(''),
-      )) ||
+    (n.type === 'element' && isWaysParagraph(n as unknown as Element)) ||
     (n.children ?? []).some(hasRouteCount)
 
   it('every page with a "There are N ways" lead-in nests its start link in a list item', () => {
@@ -575,7 +569,7 @@ describe('route lists nest the start link (#2483)', () => {
 
     const text = textOf(tree)
     expect(startLinks(tree as Node)).toEqual([])
-    expect(text).toContain('There is 1 way to apply for a licence')
+    expect(text).toContain('There is 1 way to apply for a licence. You can:')
     expect(text).not.toContain('Complete an application form online')
     expect(text).not.toContain('You can apply for a licence online')
     // The paper route, and its NCC address, survive.
