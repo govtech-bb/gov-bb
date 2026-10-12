@@ -516,10 +516,18 @@ describe('route lists nest the start link (#2483)', () => {
           startLinks(c, inLi || (n.type === 'element' && n.tagName === 'li')),
         )
 
+  // Mirrors the plugin's isWaysParagraph: a <p> whose *direct* text matches
+  // its WAYS_TO_APPLY_REGEX. Only those paragraphs get their count rewritten,
+  // so only those pages can desync.
   const hasRouteCount = (n: Node): boolean =>
     (n.type === 'element' &&
       n.tagName === 'p' &&
-      /are (\d+|[a-z]+) ways/i.test(textOf(n))) ||
+      /are (\d+) ways|are ([a-zA-Z]+) ways/i.test(
+        (n.children ?? [])
+          .filter((c) => c.type === 'text')
+          .map((c) => c.value ?? '')
+          .join(''),
+      )) ||
     (n.children ?? []).some(hasRouteCount)
 
   it('every page with a "There are N ways" lead-in nests its start link in a list item', () => {
@@ -528,11 +536,18 @@ describe('route lists nest the start link (#2483)', () => {
         hasRouteCount(p.hast as Node) &&
         startLinks(p.hast as Node).some((inLi) => !inLi),
     ).map((p) => p.url)
-    expect(misshapen).toEqual([])
+    expect(
+      misshapen,
+      'These pages have a "There are N ways" lead-in but a start link outside a list item. ' +
+        'Hiding the online route would lower the count and orphan its heading. ' +
+        'Write the routes as a numbered list with the <a data-start-link> indented inside ' +
+        'the online item (see apply-for-hotel-licence.md).',
+    ).toEqual([])
   })
 
   it('beach-park: both routes are items of one numbered list', () => {
     const page = findPage('business-trade/sell-goods-services-beach-park')
+    expect(page, 'beach-park page not found').toBeDefined()
     const findOl = (n: Node): Node | undefined =>
       n.type === 'element' &&
       n.tagName === 'ol' &&
