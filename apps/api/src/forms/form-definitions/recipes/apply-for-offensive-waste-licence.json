@@ -30,6 +30,31 @@
               }
             ]
           }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "current-licence-number",
+            "label": "What is your current licence number?",
+            "validations": {
+              "required": {
+                "error": "Enter your current licence number.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "targetStepId": "application-type",
+                "operator": "equal",
+                "value": "renewal"
+              }
+            ],
+            "ui": {
+              "width": "short"
+            }
+          }
         }
       ]
     },
@@ -121,37 +146,6 @@
                 "value": "no"
               }
             ]
-          }
-        }
-      ]
-    },
-    {
-      "stepId": "current-licence",
-      "title": "What is your current licence number?",
-      "behaviours": [
-        {
-          "type": "stepConditionalOn",
-          "targetStepId": "application-type",
-          "targetFieldId": "application-type",
-          "operator": "equal",
-          "value": "renewal"
-        }
-      ],
-      "elements": [
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "current-licence-number",
-            "label": "Licence number",
-            "validations": {
-              "required": {
-                "error": "Enter your current licence number.",
-                "value": true
-              }
-            },
-            "ui": {
-              "width": "short"
-            }
           }
         }
       ]
@@ -1006,7 +1000,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:33:15.101Z",
-  "updatedAt": "2026-10-12T12:00:00.000Z",
+  "updatedAt": "2026-10-12T22:45:00.000Z",
   "meta": {
     "visibility": "preview"
   },

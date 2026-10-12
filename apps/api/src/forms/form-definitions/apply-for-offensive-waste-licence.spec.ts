@@ -44,13 +44,28 @@ async function field(stepId: string, fieldId: string): Promise<Primitive> {
   return found as Primitive;
 }
 
-const RENEWAL_STEPS = ["renewal-check", "current-licence"];
+const RENEWAL_STEPS = ["renewal-check"];
 const PLANS_STEPS = ["building-plans", "changed-building-plans"];
 const HOLDER_STEPS = ["licence-holder-person", "licence-holder-business"];
 
 function activeOf(steps: string[], active: Set<string>): string[] {
   return steps.filter((s) => active.has(s));
 }
+
+it.each([
+  ["new", false],
+  ["renewal", true],
+])(
+  "a %s application asks for the current licence number on the first step: %s",
+  async (applicationType, asked) => {
+    const { activeFieldIds } = await conditions({
+      "application-type": { "application-type": applicationType },
+    });
+    expect(
+      activeFieldIds.get("application-type")!.has("current-licence-number"),
+    ).toBe(asked);
+  },
+);
 
 it.each([
   ["new", undefined, [], ["building-plans"]],

@@ -34,8 +34,9 @@
  *   FAKER_SEED       fix faker's RNG for a reproducible data set.
  *
  * Form-specific notes:
- *  - Authored steps, in order: `application-type`, `renewal-check` and
- *    `current-licence` (renewal only), `applying-for`, `your-details`,
+ *  - Authored steps, in order: `application-type` (which reveals the current
+ *    licence number for a renewal), `renewal-check` (renewal only),
+ *    `applying-for`, `your-details`,
  *    `licence-holder-person` / `licence-holder-business` (one per
  *    `applying-for` answer), `business-activities`, `work-address`,
  *    `building-plans` (new licence) or `changed-building-plans` (renewal with
@@ -202,14 +203,31 @@ async function expectBlocked(
   expectStep(page, step, { exact: true });
 }
 
-/** New licence or renewal. Gates the renewal steps and which plans step shows. */
+/**
+ * New licence or renewal. Gates the renewal steps and which plans step shows.
+ * A renewal reveals the current licence number on the same step.
+ */
 export async function fillApplicationType(
   page: Page,
+  data: Data,
   applicationType: "new" | "renewal",
 ): Promise<void> {
   const step = expectStep(page, "application-type");
   await expect(page.locator("h1")).toContainText("About your application");
+  const licenceNumber = page.locator(`[id="${step}_current-licence-number"]`);
+
   await selectRadio(page, step, "application-type", applicationType);
+  if (applicationType === "new") {
+    await expect(licenceNumber).toBeHidden();
+  } else {
+    await expect(licenceNumber).toBeVisible({ timeout: STEP_TIMEOUT });
+    await fillField(
+      page,
+      step,
+      "current-licence-number",
+      data.currentLicenceNumber,
+    );
+  }
   await advance(page, step);
 }
 
@@ -229,24 +247,6 @@ export async function fillRenewalCheck(
   await selectRadio(page, step, "same-licence-holder", "yes");
   await selectRadio(page, step, "address-changed", "no");
   await selectRadio(page, step, "building-changes", buildingChanges);
-  await advance(page, step);
-}
-
-/** Renewal only — the current licence number, on its own step. */
-export async function fillCurrentLicence(
-  page: Page,
-  data: Data,
-): Promise<void> {
-  const step = expectStep(page, "current-licence");
-  await expect(page.locator("h1")).toContainText(
-    "What is your current licence number?",
-  );
-  await fillField(
-    page,
-    step,
-    "current-licence-number",
-    data.currentLicenceNumber,
-  );
   await advance(page, step);
 }
 
@@ -461,8 +461,8 @@ test.describe("Offensive Trade Licence — Live Smoke", () => {
     logData(data);
 
     await openForm(page);
-    await fillApplicationType(page, "new");
-    // "new" skips both renewal steps.
+    await fillApplicationType(page, data, "new");
+    // "new" skips the renewal check.
     await fillApplyingFor(page, data, "yourself");
     await fillYourDetails(page, data);
     // "yourself" skips both licence-holder steps.
@@ -484,9 +484,8 @@ test.describe("Offensive Trade Licence — Live Smoke", () => {
     logData(data);
 
     await openForm(page);
-    await fillApplicationType(page, "renewal");
+    await fillApplicationType(page, data, "renewal");
     await fillRenewalCheck(page, "yes");
-    await fillCurrentLicence(page, data);
     await fillApplyingFor(page, data, "another-person");
     await fillYourDetails(page, data);
     await fillLicenceHolderPerson(page, data, "no");
@@ -513,9 +512,8 @@ test.describe("Offensive Trade Licence — Live Smoke", () => {
     logData(data);
 
     await openForm(page);
-    await fillApplicationType(page, "renewal");
+    await fillApplicationType(page, data, "renewal");
     await fillRenewalCheck(page, "no");
-    await fillCurrentLicence(page, data);
     await fillApplyingFor(page, data, "business");
     await fillYourDetails(page, data);
     await fillLicenceHolderBusiness(page, data, "yes");
@@ -536,7 +534,7 @@ test.describe("Offensive Trade Licence — Live Smoke", () => {
     const data = buildData();
 
     await openForm(page);
-    await fillApplicationType(page, "renewal");
+    await fillApplicationType(page, data, "renewal");
 
     const renewal = expectStep(page, "renewal-check");
     await selectRadio(page, renewal, "same-licence-holder", "no");
@@ -558,7 +556,6 @@ test.describe("Offensive Trade Licence — Live Smoke", () => {
 
     await selectRadio(page, renewal, "address-changed", "no");
     await advance(page, renewal);
-    await fillCurrentLicence(page, data);
 
     const applying = expectStep(page, "applying-for");
     await selectDropdown(page, applying, "applying-for", "business");
