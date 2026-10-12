@@ -43,6 +43,15 @@ export function ServiceDelete({
     draft.pages.some((page) => page.baseSha);
 
   const remove = async () => {
+    // A connected form whose summary didn't load (e.g. listForms failed) can't
+    // be proven unpublished, and skipping it would leave it behind as a
+    // form-only row once the list recovers. Block until it can be resolved.
+    if (!form && (draft.manifest.formId || service.formId)) {
+      workspace.setError(
+        "The application form could not be loaded, so this service cannot be deleted yet. Reload the page and try again.",
+      );
+      return;
+    }
     if (
       !(await confirm({
         title: "Delete service?",

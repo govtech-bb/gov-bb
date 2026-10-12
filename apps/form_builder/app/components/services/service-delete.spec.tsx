@@ -201,6 +201,46 @@ it("offers disable instead of delete for a published service", async () => {
   expect(deleteForm).not.toHaveBeenCalled();
 });
 
+it("blocks delete while the connected form's details are unavailable", async () => {
+  const draft = await saveServiceDraft({
+    data: {
+      snapshot: {
+        ...snapshot,
+        manifest: { ...snapshot.manifest, formId: "fishing" },
+      },
+      expectedRevision: 0,
+    },
+  });
+  localStorage.setItem(
+    "service-workspace:v1:editor:fishing:versions",
+    JSON.stringify([{ id: "v1" }]),
+  );
+  const ws = workspace(draft);
+  const onDeleted = vi.fn();
+  // The forms list failed to load: the manifest names a form, the row has none.
+  render(
+    <ServiceDelete
+      service={row()}
+      workspace={ws}
+      onDeleted={onDeleted}
+      onChanged={vi.fn()}
+    />,
+  );
+
+  await userEvent.click(screen.getByRole("button", { name: "Delete service" }));
+
+  expect(ws.setError).toHaveBeenCalledWith(
+    expect.stringContaining("application form could not be loaded"),
+  );
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+  expect(deleteForm).not.toHaveBeenCalled();
+  expect(onDeleted).not.toHaveBeenCalled();
+  expect(await listServiceDrafts()).toHaveLength(1);
+  expect(
+    await listServiceCheckpoints({ data: { serviceId: "fishing" } }),
+  ).toHaveLength(1);
+});
+
 it("treats a service whose manifest is already in Git as published", async () => {
   const draft = await saveServiceDraft({
     data: {

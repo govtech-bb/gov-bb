@@ -42,5 +42,9 @@ there would be a larger change.
 - The dialog reads "Disable Form" (legacy component). The user chose to leave it.
 - No "Enable service" in Services yet. It's still under the builder's
   "Manage form".
-- `deleteForm` is skipped if the forms list didn't load, which can leave the
-  form row behind.
+- None on the forms-list gap. Review (phrogwrld) caught that a failed
+  `listForms` left `service.form` undefined. Delete then skipped `deleteForm`
+  but still cleared the draft, so the form came back as its own row. Delete is
+  now blocked while the manifest names a form whose summary isn't loaded. It
+  doesn't delete by id instead, because missing metadata doesn't prove the
+  form is unpublished.
