@@ -59,10 +59,8 @@ env:
   # the ALB HTTPS listener landed in alpha-infra PR-3 (network + staging stack),
   # so smoke tests now hit the real URLs QA uses, over TLS.
   API_SMOKE_URL: https://api.staging.alpha.gov.bb/health
-  FORM_BUILDER_API_SMOKE_URL: https://api.staging.alpha.gov.bb/builder/health
   AMPLIFY_FORMS_URL: https://forms.staging.alpha.gov.bb
   AMPLIFY_LANDING_URL: https://staging.alpha.gov.bb
-  AMPLIFY_FORM_BUILDER_URL: https://builder.staging.alpha.gov.bb
   AMPLIFY_FEATURE_FLAGGING_URL: https://feature-flagging.staging.alpha.gov.bb
 
 jobs:
@@ -92,10 +90,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       api: ${{ steps.affected.outputs.api }}
-      fb-api: ${{ steps.affected.outputs.fb-api }}
       forms: ${{ steps.affected.outputs.forms }}
       landing: ${{ steps.affected.outputs.landing }}
-      fb-app: ${{ steps.affected.outputs.fb-app }}
       ff-app: ${{ steps.affected.outputs.ff-app }}
       migrations: ${{ steps.affected.outputs.migrations }}
       amplify-config: ${{ steps.affected.outputs.amplify-config }}
@@ -137,10 +133,8 @@ jobs:
           has() { echo "$AFFECTED" | jq -e --arg p "$1" 'index($p)' >/dev/null && echo true || echo false; }
 
           echo "api=$(has api)" >> "$GITHUB_OUTPUT"
-          echo "fb-api=$(has form-builder-api)" >> "$GITHUB_OUTPUT"
           echo "forms=$(has forms)" >> "$GITHUB_OUTPUT"
           echo "landing=$(has landing)" >> "$GITHUB_OUTPUT"
-          echo "fb-app=$(has form-builder-app)" >> "$GITHUB_OUTPUT"
           echo "ff-app=$(has feature-flagging-app)" >> "$GITHUB_OUTPUT"
 
           # TypeORM migrations live in packages/database/src/migrations/; the old
@@ -289,95 +283,13 @@ jobs:
           LABEL: api
         run: bash .github/scripts/smoke-test-url.sh
 
-  deploy-form-builder:
-    name: Build, Push & Deploy form-builder
-    needs: setup
-    if: needs.setup.outputs.fb-api == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          persist-credentials: false
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to ECR
-        id: ecr-login
-        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
-
-      # Same cache reuse as the api job (scope written by CI's docker-build
-      # job on push to main).
-      - name: Build and push image
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
-        with:
-          context: .
-          file: apps/form_builder_api/Dockerfile
-          platforms: linux/amd64
-          push: true
-          provenance: false
-          tags: |
-            ${{ steps.ecr-login.outputs.registry }}/gov-bb-form-builder:${{ github.sha }}
-            ${{ steps.ecr-login.outputs.registry }}/gov-bb-form-builder:latest
-          cache-from: type=gha,scope=ci-form-builder-api
-
-      - name: Image reference
-        id: build
-        env:
-          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: echo "image=$REGISTRY/gov-bb-form-builder:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
-
-      - name: Get current task definition
-        run: |
-          aws ecs describe-task-definition \
-            --task-definition form-builder-staging \
-            --region $AWS_REGION --query taskDefinition --output json > fb-task-def.json
-
-      - name: Render task definition with new image
-        id: new-task-def
-        uses: aws-actions/amazon-ecs-render-task-definition@6853cfae8c3a7d978fbf68b5a55453395541dfbb # v1.8.5
-        with:
-          task-definition: fb-task-def.json
-          container-name: form-builder
-          image: ${{ steps.build.outputs.image }}
-
-      - name: Deploy to ECS
-        id: deploy
-        uses: aws-actions/amazon-ecs-deploy-task-definition@a310a830f5c14e583e35d84e4e1ec7dd177c3c9c # v2.6.2
-        with:
-          task-definition: ${{ steps.new-task-def.outputs.task-definition }}
-          service: form-builder-staging
-          cluster: ${{ env.ECS_CLUSTER }}
-          wait-for-service-stability: true
-
-      - name: Verify ECS deployment landed (catches silent rollback)
-        env:
-          CLUSTER: ${{ env.ECS_CLUSTER }}
-          SERVICE: form-builder-staging
-          EXPECTED_TASK_DEF: ${{ steps.deploy.outputs.task-definition-arn }}
-        run: bash .github/scripts/verify-ecs-deployment.sh
-
-      - name: Smoke test /builder/health
-        env:
-          URL: ${{ env.FORM_BUILDER_API_SMOKE_URL }}
-          LABEL: form-builder
-        run: bash .github/scripts/smoke-test-url.sh
-
   # ---------------------------------------------------------------------------
   # SSR smoke gate — boots each affected WEB_COMPUTE app's BUILT compute server
   # in the runner and asserts its homepage responds (<500, no hang) BEFORE the
   # Amplify deploy jobs run. Catches "compiles clean but hangs/5xx at runtime"
   # regressions that build/typecheck/unit all miss — e.g. the 2026-05-31 outage
   # where a transitive @tanstack/react-start bump hung landing's createServerFn
-  # SSR path (30s timeout → 500). amplify-{landing,form-builder} need this
+  # SSR path (30s timeout → 500). amplify-landing needs this
   # job, so a failure here BLOCKS the deploy and staging stays on the last good
   # version. forms is static (WEB) — no compute server to smoke.
   # ---------------------------------------------------------------------------
@@ -386,7 +298,6 @@ jobs:
     needs: setup
     if: |
       needs.setup.outputs.landing == 'true'
-      || needs.setup.outputs.fb-app == 'true'
       || needs.setup.outputs.amplify-config == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -411,31 +322,13 @@ jobs:
           pnpm exec nx build landing
           node .github/scripts/ssr-smoke.mjs apps/landing/.amplify-hosting/compute/default landing
 
-      - name: Smoke form-builder
-        if: needs.setup.outputs.fb-app == 'true' || needs.setup.outputs.amplify-config == 'true'
-        env:
-          # Dummy boot-time values so the SSR server starts: the session cipher
-          # requires a 32-byte base64 SESSION_SECRET (set below) or it throws.
-          # The smoke only GETs / which 307-redirects to OAuth — that proves the
-          # runtime serves requests; it never completes an actual OAuth flow.
-          GITHUB_OAUTH_CLIENT_ID: smoke
-          GITHUB_OAUTH_CLIENT_SECRET: smoke
-          GITHUB_ORG: govtech-bb
-          ADMIN_API_TOKEN: smoke
-          BUILDER_API_URL: http://127.0.0.1:9
-          OAUTH_REDIRECT_BASE: http://127.0.0.1:3000
-        run: |
-          export SESSION_SECRET="$(node -e "console.log(require('crypto').randomBytes(32).toString('base64'))")"
-          pnpm exec nx build form-builder-app
-          node .github/scripts/ssr-smoke.mjs apps/form_builder/.amplify-hosting/compute/default form-builder
-
   # ---------------------------------------------------------------------------
   # Amplify deploys — auto-build is OFF on the staging branch (per app IaC),
   # so this workflow is the sole trigger. Each job runs start-job → monitor →
   # URL smoke test. The smoke test catches "build succeeded but URL doesn't
   # serve" (same pattern as sandbox commit ab003dd9).
   #
-  # The three WEB_COMPUTE apps also `needs: ssr-smoke` — a runtime hang there
+  # amplify-landing also `needs: ssr-smoke` — a runtime hang there
   # blocks the deploy entirely, so a broken SSR build never reaches the live URL.
   # ---------------------------------------------------------------------------
 
@@ -539,61 +432,6 @@ jobs:
           LABEL: landing
         run: bash .github/scripts/smoke-test-url.sh
 
-  amplify-form-builder:
-    name: Amplify build (form-builder)
-    needs: [setup, ssr-smoke]
-    if: needs.setup.outputs.fb-app == 'true' || needs.setup.outputs.amplify-config == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          persist-credentials: false
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Trigger and monitor Amplify build
-        env:
-          AMPLIFY_APP_ID: ds1h02l8ue9hv
-          AMPLIFY_BRANCH: staging
-          APP_LABEL: form-builder
-        run: |
-          set -euo pipefail
-          JOB_ID=$(aws amplify start-job \
-            --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
-            --job-type RELEASE --region "$AWS_REGION" \
-            --query jobSummary.jobId --output text)
-          echo "Amplify $APP_LABEL job: $JOB_ID"
-
-          for i in $(seq 1 30); do
-            STATUS=$(aws amplify get-job \
-              --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
-              --job-id "$JOB_ID" --region "$AWS_REGION" \
-              --query job.summary.status --output text)
-            echo "[$i/30] $APP_LABEL: $STATUS"
-            case "$STATUS" in
-              SUCCEED) echo "✅ Amplify $APP_LABEL build succeeded"; exit 0 ;;
-              FAILED|CANCELLED) echo "❌ Amplify $APP_LABEL build $STATUS"; exit 1 ;;
-            esac
-            sleep 30
-          done
-          echo "❌ Amplify $APP_LABEL build did not finish in 15 min"
-          exit 1
-
-      - name: Smoke test form-builder URL
-        env:
-          URL: ${{ env.AMPLIFY_FORM_BUILDER_URL }}
-          LABEL: form-builder
-          # form-builder is auth-gated: unauthenticated requests get a 307
-          # redirect to /auth/github (which 302s on to github.com OAuth).
-          # Either of those means the SSR is alive and routing correctly —
-          # the smoke is proof-of-life, not proof-of-auth-flow.
-          EXPECT_CODES: "200,302,307"
-        run: bash .github/scripts/smoke-test-url.sh
-
   # Feature-flagging admin UI (apps/feature_flagging SSR) at
   # feature-flagging.staging.alpha.gov.bb. Gives staging a way to change a
   # service's status before prod (gov-bb#2755). App created by alpha-infra#700.
@@ -646,14 +484,14 @@ jobs:
         env:
           URL: ${{ env.AMPLIFY_FEATURE_FLAGGING_URL }}
           LABEL: feature-flagging
-          # Auth-gated like form-builder: an unauthenticated request redirects
+          # Auth-gated: an unauthenticated request redirects
           # to the GitHub login flow. A redirect means the SSR is alive.
           EXPECT_CODES: "200,302,307"
         run: bash .github/scripts/smoke-test-url.sh
 
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, deploy-form-builder, ssr-smoke, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging]
+    needs: [setup, deploy-api, ssr-smoke, amplify-forms, amplify-landing, amplify-feature-flagging]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -679,17 +517,13 @@ jobs:
             echo "|--------|--------|"
             row "SSR smoke (pre-deploy)" "${{ needs.ssr-smoke.result }}"
             row "API"                  "${{ needs.deploy-api.result }}"
-            row "form-builder API"     "${{ needs.deploy-form-builder.result }}"
             row "Amplify forms"        "${{ needs.amplify-forms.result }}"
             row "Amplify landing"      "${{ needs.amplify-landing.result }}"
-            row "Amplify form-builder" "${{ needs.amplify-form-builder.result }}"
             row "Amplify feature-flagging" "${{ needs.amplify-feature-flagging.result }}"
             echo ""
             echo "**URLs (ALB / amplifyapp.com until DNS lands):**"
             echo "- API: ${{ env.API_SMOKE_URL }}"
-            echo "- form-builder: ${{ env.FORM_BUILDER_API_SMOKE_URL }}"
             echo "- forms: ${{ env.AMPLIFY_FORMS_URL }}"
             echo "- landing: ${{ env.AMPLIFY_LANDING_URL }}"
-            echo "- form-builder app: ${{ env.AMPLIFY_FORM_BUILDER_URL }}"
             echo "- feature-flagging: ${{ env.AMPLIFY_FEATURE_FLAGGING_URL }}"
           } >> "$GITHUB_STEP_SUMMARY"
