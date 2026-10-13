@@ -22,8 +22,10 @@ that doesn't depend on the answers.
   (`pattern: ^yes$`, as on the hotel and swimming pool forms); "Your details"
   reordered with a "Your address" sub-heading; `person-details` and
   `business-details` steps shown only for their answer; new/renewal and the
-  current licence number moved into each vehicle; "Your agreement" with full
-  name and date; the confirmation rewritten and the duplicate `nextSteps`
+  current licence number moved into each vehicle; "Your agreement" with only
+  the confirmation checkbox (ADR 0041: the applicant's name is on "Your
+  details" and the submission is timestamped, so the review's full name and
+  date are not asked); the confirmation rewritten and the duplicate `nextSteps`
   removed.
 - `application-type` and `business-address-details` steps are gone. The CMS
   webhook (`groupByStep`) now receives `applying-for`, `person-details`,
