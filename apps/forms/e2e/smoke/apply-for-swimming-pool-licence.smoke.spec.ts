@@ -37,6 +37,8 @@
  *    `person-details` or `business-details`, `pool-location` (the property),
  *    `pool-details` (repeatable, one instance per pool) and
  *    `supporting-documents`.
+ *  - `about-application` asks a renewal for its current licence number and a
+ *    new licence for its optional Planning and Development application number.
  *  - There is no stop page: answering "No" to permission is refused on the
  *    `permission` step itself by a `^yes$` pattern rule (the hotel licence
  *    pattern). Neither walk takes that branch, since it cannot submit.
@@ -56,8 +58,7 @@
  *    path, and the MDA email then fails with NO_RECIPIENT. We pick from known
  *    geocodable locations and assert the coordinates and parish filled.
  *  - `supporting-documents` branches on `application-type`: "new" asks for the
- *    Planning and Development site plan plus an optional application number,
- *    "renewal" for the optional Pool Plan.
+ *    Planning and Development site plan, "renewal" for the optional Pool Plan.
  *  - The confirmation screen's copy lives in `markdownContent`, with
  *    `{polyclinic}` substituted from the geocoded property address. We assert
  *    a real polyclinic name and that the "your local polyclinic" fallback is
@@ -198,7 +199,10 @@ export async function openForm(page: Page): Promise<void> {
   });
 }
 
-/** New or renewal. A renewal is asked for its current licence number. */
+/**
+ * New or renewal. A renewal is asked for its current licence number; a new
+ * licence for its optional Planning and Development application number.
+ */
 export async function fillAboutApplication(
   page: Page,
   data: Data,
@@ -207,11 +211,15 @@ export async function fillAboutApplication(
   const step = expectStep(page, "about-application");
   await expect(page.locator("h1")).toContainText("About your application");
   const licenceNumber = page.locator(`[id="${step}_licence-number"]`);
+  const planningNumber = page.locator(`[id="${step}_town-text"]`);
   await selectRadio(page, step, "application-type", applicationType);
   if (applicationType === "renewal") {
     await expect(licenceNumber).toBeVisible({ timeout: STEP_TIMEOUT });
     await licenceNumber.fill(data.licenceNumber);
+    await expect(planningNumber).toBeHidden();
   } else {
+    await expect(planningNumber).toBeVisible({ timeout: STEP_TIMEOUT });
+    await planningNumber.fill(data.planningApplicationNumber);
     await expect(licenceNumber).toBeHidden();
   }
   await advance(page, step);
@@ -328,9 +336,9 @@ export async function fillPool(
   );
   await fillField(page, step, "pool-name", pool.name);
   await selectRadio(page, step, "pool-type", pool.type);
+  await selectRadio(page, step, "pool-open-to-public", pool.openToPublic);
   await fillField(page, step, "pool-water-capacity-number", pool.capacity);
   await selectRadio(page, step, "pool-capacity-unit", pool.unit);
-  await selectRadio(page, step, "pool-open-to-public", pool.openToPublic);
   await selectRadio(page, step, "addAnother", addAnother);
   await advance(page, step);
 }
@@ -342,7 +350,6 @@ export async function fillPool(
  */
 export async function fillPlanningDocuments(
   page: Page,
-  data: Data,
   applicationType: "new" | "renewal",
 ): Promise<void> {
   const step = expectStep(page, "supporting-documents");
@@ -362,7 +369,6 @@ export async function fillPlanningDocuments(
       mimeType: TEST_PNG.mimeType,
       buffer: TEST_PNG.buffer,
     });
-    await fillField(page, step, "town-text", data.planningApplicationNumber);
   } else {
     await expect(sitePlan).toBeHidden();
     await uploadOne(page, step, "pool-plan", {
@@ -420,7 +426,7 @@ test.describe("Swimming Pool Licence — Live Smoke", () => {
     await fillProperty(page, data, "private-home");
     await fillPool(page, data.pools[0], "yes");
     await fillPool(page, data.pools[1], "no");
-    await fillPlanningDocuments(page, data, "new");
+    await fillPlanningDocuments(page, "new");
 
     const step = expectStep(page, "check-your-answers");
     await expect(page.locator("h1")).toContainText("Check your answers");
@@ -450,7 +456,7 @@ test.describe("Swimming Pool Licence — Live Smoke", () => {
     await fillBusinessDetails(page, data);
     await fillProperty(page, data, "other");
     await fillPool(page, data.pools[0], "no");
-    await fillPlanningDocuments(page, data, "renewal");
+    await fillPlanningDocuments(page, "renewal");
 
     const step = expectStep(page, "check-your-answers");
     await expect(page.locator("h1")).toContainText("Check your answers");
