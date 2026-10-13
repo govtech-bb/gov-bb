@@ -15,8 +15,9 @@ that doesn't depend on the answers.
 
 - Start page rewritten to the review: new title and description, definition of
   offensive matter, the 10pm–6am rule, "Who needs to apply", "What you need",
-  "How to apply" with bold route titles (as in #2814), "Get help" with each
-  office as a bold name and the phone and email on separate lines.
+  "How to apply" as a numbered list of the two routes, and "Contact" with one
+  line per office (name, phone, email), both as on the offensive trade page
+  (#2993).
 - Recipe: new `applying-for` first step with a `has-permission` gate
   (`pattern: ^yes$`, as on the hotel and swimming pool forms); "Your details"
   reordered with a "Your address" sub-heading; `person-details` and
@@ -42,7 +43,9 @@ across three steps, two of them conditional. The paper route sends the form to
 "the office for the area where the business or operator is located", so we
 added one unconditional `operator-address` step ("Where is the business or
 operator located?"), with the address lookup and hidden coordinates. The
-person and business steps don't ask for an address. A fallback chain in
+person step asks the review's "Is their address the same as yours?" and, for
+"No", collects their address in plain fields (as on #2993); nothing routes on
+it. The business step doesn't ask for an address. A fallback chain in
 `catchmentRouting` would match the review exactly, but it is a platform change
 to fix one form. The cost is that someone applying for themselves enters an
 address twice: "Your address" and the operator address.
@@ -51,8 +54,10 @@ address twice: "Your address" and the operator address.
 Capping it while Q1 is open would remove a working feature. The "more than one
 vehicle" copy ships with it, and the PR flags that it depends on Q1.
 
-**The current licence number is optional and per vehicle.** The condition
-leaves out `targetStepId`, so it applies within each vehicle instance.
+**The registration number is asked only for a renewal; the current licence
+number is always shown and optional.** This swaps the review's layout (agreed
+2026-10-12). The registration number's condition leaves out `targetStepId`, so
+it applies within each vehicle instance.
 
 **Telephone keeps the registry hint.** The review asks for "Enter a Barbados
 or international number.", but telephone hints are uniform across forms

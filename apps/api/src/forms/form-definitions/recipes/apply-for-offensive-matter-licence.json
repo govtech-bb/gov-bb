@@ -245,6 +245,94 @@
               }
             }
           }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "person-same-address",
+            "label": "Is their address the same as yours?",
+            "validations": {
+              "required": {
+                "error": "Select whether their address is the same as yours.",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "person-address-line-1",
+            "label": "Address line 1",
+            "validations": {
+              "required": {
+                "error": "Enter their address line 1.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "person-same-address",
+                "targetStepId": "person-details",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "person-address-line-2",
+            "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "person-same-address",
+                "targetStepId": "person-details",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "person-parish",
+            "label": "Parish",
+            "validations": {
+              "required": {
+                "error": "Select the parish for their address.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "person-same-address",
+                "targetStepId": "person-details",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
         }
       ]
     },
@@ -412,6 +500,14 @@
                 "value": true
               }
             },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "operator": "equal",
+                "value": "renew"
+              }
+            ],
             "ui": {
               "width": "short"
             }
@@ -427,14 +523,6 @@
                 "value": false
               }
             },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "application-type",
-                "operator": "equal",
-                "value": "renew"
-              }
-            ],
             "ui": {
               "width": "short"
             }
@@ -553,7 +641,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:13:52.779Z",
-  "updatedAt": "2026-10-13T00:33:31.000Z",
+  "updatedAt": "2026-10-13T00:55:14.000Z",
   "catchmentRouting": {
     "coordinatesField": "operator-address.operator-address-coordinates",
     "parishField": "operator-address.operator-parish"
