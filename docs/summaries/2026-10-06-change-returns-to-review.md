@@ -68,6 +68,7 @@ newly revealed incomplete step".
 - #2932: per-instance visibility evaluation for repeatable steps, including
   `sharedFields`. Until then, a cross-step condition that requires a field on a
   completed repeatable step is caught only by the API's 422.
-- The submit-time 422 redirect doesn't set `returnTo`, and the Change href drops
-  `?preview`/`?draft` (that one predates this work). Both are raised as separate tasks.
+- The submit-time 422 redirect doesn't set `returnTo`; raised as a separate task.
+  (The Change href dropping `?preview`/`?draft`, which predated this work, was
+  fixed in this PR after review: Review builds it from the tokens.)
 - An applicant sent to a now-invalid step sees its error only after pressing Continue.
