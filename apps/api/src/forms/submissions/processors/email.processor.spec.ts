@@ -745,6 +745,57 @@ describe("EmailProcessor — dynamic template rendering", () => {
     );
   });
 
+  describe("trackable (CaMS tracker link)", () => {
+    async function renderCtxFor(payload: SubmissionCreatedEvent) {
+      const templateSvc = makeTemplateService("<h1>Received</h1>");
+      const processor = new EmailProcessor(
+        makeConfig(),
+        makeMailer(),
+        templateSvc,
+        makeBodyBuilder(),
+        makeFilesService(),
+        makeFormConfigService(null, "Dept"),
+        makeCatchmentContactService(),
+        makeNotificationLog(),
+      );
+      await processor.process(payload);
+      return templateSvc.render;
+    }
+
+    it("is true when the form has a mapped (CaMS) webhook", async () => {
+      const payload = makePayload();
+      payload.processors.push({
+        type: "webhook",
+        config: { mapping: { mdaCode: "EHD" } },
+      } as unknown as SubmissionCreatedEvent["processors"][number]);
+
+      expect(await renderCtxFor(payload)).toHaveBeenCalledWith(
+        "submission-received",
+        expect.objectContaining({ trackable: true }),
+      );
+    });
+
+    it("is false for an email-only form", async () => {
+      expect(await renderCtxFor(makePayload())).toHaveBeenCalledWith(
+        "submission-received",
+        expect.objectContaining({ trackable: false }),
+      );
+    });
+
+    it("is false for a webhook without a mapping", async () => {
+      const payload = makePayload();
+      payload.processors.push({
+        type: "webhook",
+        config: { url: "https://hooks.example.gov/x" },
+      } as unknown as SubmissionCreatedEvent["processors"][number]);
+
+      expect(await renderCtxFor(payload)).toHaveBeenCalledWith(
+        "submission-received",
+        expect.objectContaining({ trackable: false }),
+      );
+    });
+  });
+
   it("does not resolve a department name for the MDA (config) email", async () => {
     const formConfig = makeFormConfigService("mda@dept.gov.bb", "Dept");
     const processor = new EmailProcessor(

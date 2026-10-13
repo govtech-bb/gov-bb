@@ -91,6 +91,28 @@ describe("FeedbackService", () => {
     expect(text).not.toContain("Submitted from:");
   });
 
+  it("sets reply-to and shows the address when an email is supplied", async () => {
+    const { service } = makeService();
+    await service.send({ ...DTO, email: "visitor@example.com" });
+
+    const input = getSentInput();
+    expect(input.ReplyToAddresses).toEqual(["visitor@example.com"]);
+    // FromEmailAddress stays the verified SES sender.
+    expect(input.FromEmailAddress).toBe("noreply@test.gov");
+    const text = input.Content?.Simple?.Body?.Text?.Data ?? "";
+    expect(text).toContain("Reply to: visitor@example.com");
+  });
+
+  it("omits reply-to and the reply-to line when no email is supplied", async () => {
+    const { service } = makeService();
+    await service.send({ visitReason: "Just looking" });
+
+    const input = getSentInput();
+    expect(input.ReplyToAddresses).toBeUndefined();
+    const text = input.Content?.Simple?.Body?.Text?.Data ?? "";
+    expect(text).not.toContain("Reply to:");
+  });
+
   it("attaches the configuration set when one is configured", async () => {
     const { service } = makeService(
       makeConfig({ "email.configurationSet": "feedback-cfg" }),

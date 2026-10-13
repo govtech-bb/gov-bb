@@ -134,7 +134,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-for-lodging-barracks-licence",
-    title: "Apply for a lodging house or barracks licence",
+    title: "Register a lodging house or barracks with Environmental Health",
     category: "business-trade",
     formId: "apply-for-lodging-barracks-licence",
     visibility: "preview",
@@ -148,14 +148,16 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-for-offensive-matter-licence",
-    title: "Apply for an offensive matter licence with Environmental Health",
+    title:
+      "Apply to Environmental Health for an offensive matter licence to move sewage and other harmful waste",
     category: "business-trade",
     formId: "apply-for-offensive-matter-licence",
     visibility: "preview",
   },
   {
     slug: "apply-for-offensive-waste-licence",
-    title: "Apply for an offensive trade licence with Environmental Health",
+    title:
+      "Apply to Environmental Health for an offensive trade licence to do work that may cause fumes, smells or waste",
     category: "business-trade",
     formId: "apply-for-offensive-waste-licence",
     visibility: "preview",
@@ -176,7 +178,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-for-swimming-pool-licence",
-    title: "Apply for a swimming pool licence",
+    title: "Apply to Environmental Health for a swimming pool licence",
     category: "business-trade",
     formId: "apply-for-swimming-pool-licence",
     visibility: "preview",
@@ -246,7 +248,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-to-use-state-land",
-    title: "Apply to use state land",
+    title: "Apply to use land owned by the Government of Barbados",
     category: "housing",
     formId: "mohlm-application-use-state-land",
     visibility: "preview",

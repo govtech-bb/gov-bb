@@ -129,8 +129,37 @@
               "required": {
                 "error": "Select whether you have a disability",
                 "value": true
+              },
+              "pattern": {
+                "value": "^yes$",
+                "error": "You can only apply if you are under 25 or have a disability or long-term health condition"
               }
             }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "disability-ineligible-notice",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "applicant-details",
+                "targetFieldId": "applicant-dob",
+                "operator": "gte",
+                "value": "25",
+                "transform": "yearsSince"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetStepId": "applicant-details",
+                "targetFieldId": "disability-eligibility",
+                "operator": "equal",
+                "value": "no"
+              }
+            ],
+            "content": "If you are 25 or older, you can only apply for JobStart Plus if you have a disability or long-term health condition.",
+            "variant": "warning"
           }
         },
         {
@@ -181,7 +210,6 @@
             "ui": {
               "width": "medium"
             },
-            "label": "National Identification (ID) Number",
             "fieldId": "applicant-nid",
             "behaviours": [
               {
@@ -194,7 +222,7 @@
             ],
             "validations": {
               "required": {
-                "error": "ID Number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             }
@@ -203,7 +231,7 @@
         {
           "ref": "components/show-hide",
           "overrides": {
-            "hint": "If you don't have a National ID number, you can use your passport number instead.",
+            "hint": "If you don't have a Barbados National Identification (ID) number, you can use your passport number instead.",
             "label": "Use passport number instead",
             "fieldId": "passport-toggle"
           }
@@ -287,41 +315,6 @@
         }
       ],
       "behaviours": []
-    },
-    {
-      "stepId": "ineligble-step",
-      "title": "You are ineligible",
-      "elements": [
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "isDisabled": true,
-            "validations": {
-              "equal": {
-                "error": "You are not eligible to continue this application"
-              },
-              "required": {
-                "value": true,
-                "error": "You are not eligible to continue this application"
-              }
-            },
-            "ui": {
-              "width": "short",
-              "hideLabel": true
-            }
-          }
-        }
-      ],
-      "behaviours": [
-        {
-          "type": "stepConditionalOn",
-          "targetStepId": "applicant-details",
-          "targetFieldId": "disability-eligibility",
-          "operator": "equal",
-          "value": "no"
-        }
-      ],
-      "markdownContent": "## Apply to Job Start Plus Programme Eligibility\n\n\nYou are eligible to sign up if you meet both of the 2 criteria:\n\n- You are 16 to 24 years old (or between 16 and 34 if you are a person with a disability).\n- You are not currently employed or enrolled in a training institution.\n\nCurrently, you do not meet one or more of the above criteria, and therefore are not eligible to complete this form."
     },
     {
       "stepId": "disability-support",
@@ -972,7 +965,6 @@
             "fieldId": "post-sec-end-year-1",
             "validations": {
               "gt": {
-                "targetStepId": "post-secondary",
                 "referenceFieldId": "post-sec-start-year-1"
               },
               "pattern": {
@@ -1408,14 +1400,6 @@
               }
             }
           }
-        },
-        {
-          "ref": "components/date-of-birth",
-          "overrides": {
-            "label": "Date of declaration",
-            "fieldId": "declaration-date",
-            "isHidden": true
-          }
         }
       ],
       "behaviours": []
@@ -1428,5 +1412,5 @@
     }
   ],
   "createdAt": "2026-06-09T17:09:06.077Z",
-  "updatedAt": "2026-09-18T18:21:48.000Z"
+  "updatedAt": "2026-10-13T06:37:22.000Z"
 }

@@ -29,7 +29,7 @@ You can complete the online form. It takes about 10 minutes.
 
 ## What the form asks for
 
-1. Your details as the parent or guardian, including your title, name, National ID number, home address, mobile number and email address.
+1. Your details as the parent or guardian, including your title, name, Barbados National Identification (ID) number, home address, mobile number and email address.
 2. Your child’s name and date of birth.
 3. Which BSSEE sitting year you are applying for.
 4. Your child’s current school and class.

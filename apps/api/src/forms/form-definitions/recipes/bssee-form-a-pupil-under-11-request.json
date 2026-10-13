@@ -158,11 +158,10 @@
           "ref": "components/contact-telephone",
           "overrides": {
             "fieldId": "guardian-contact-number",
-            "label": "Contact Number",
             "validations": {
               "required": {
                 "value": true,
-                "error": "Please enter a contact number"
+                "error": "Telephone number is required"
               }
             }
           }
@@ -390,5 +389,5 @@
     }
   ],
   "createdAt": "2026-06-02T15:33:27.264Z",
-  "updatedAt": "2026-09-17T13:49:39.000Z"
+  "updatedAt": "2026-10-05T18:32:56.000Z"
 }

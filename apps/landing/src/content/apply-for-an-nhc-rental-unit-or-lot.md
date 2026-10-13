@@ -25,7 +25,7 @@ NHC will check if you meet the other requirements after you apply.
 
 For each person applying, you will need:
 
-- their National Registration Number
+- their Barbados National Identification (ID) number
 - their date of birth and contact details
 - details of their job, self-employed work or pension
 - their National ID to upload
@@ -42,23 +42,23 @@ If you are applying for a rental home, you will also need details of everyone wh
 
 There are 2 ways to apply.
 
-### Apply online
+1. **Apply online**
 
-<a data-start-link>Start now</a>
+   <a data-start-link>Start now</a>
 
-### Apply using a paper form
+2. **Apply using a paper form**
 
-You can get a paper form from:
+   You can get a paper form from:
 
-National Housing Corporation  
-"The Garden"  
-Country Road  
-St. Michael
+   National Housing Corporation  
+   "The Garden"  
+   Country Road  
+   St. Michael
 
-Telephone: (246) 536-5300  
-Email: NHC.CustomerService@barbados.gov.bb
+   Telephone: (246) 536-5300  
+   Email: NHC.CustomerService@barbados.gov.bb
 
-Complete the form by hand and return it to the National Housing Corporation at the address above.
+   Complete the form by hand and return it to the National Housing Corporation at the address above.
 
 ## Cost
 

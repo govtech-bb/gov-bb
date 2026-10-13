@@ -64,11 +64,10 @@
         {
           "ref": "components/national-id-number",
           "overrides": {
-            "label": "National Identification (ID) Number",
             "fieldId": "id-number",
             "validations": {
               "required": {
-                "error": "National ID number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             },
@@ -120,7 +119,6 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Telephone number",
             "fieldId": "telephone-no",
             "validations": {
               "required": {
@@ -265,5 +263,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:39:29.964Z",
-  "updatedAt": "2026-08-06T11:46:18.000Z"
+  "updatedAt": "2026-10-12T17:44:53.000Z"
 }

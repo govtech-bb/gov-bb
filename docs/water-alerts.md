@@ -26,6 +26,27 @@ The BWA feed is cached for ten minutes. `checkedAt` is when that cached feed was
 fetched. Expired cache failures and malformed feeds show an unavailable state;
 sample notices are never served as live data. Requests have timeouts, and feed
 size, notice fields, URLs, email addresses, parish values and tokens are checked.
+The feed request does not follow redirects, so a compromised or spoofed BWA host
+can't bounce the API to an internal address (#2971). The feed answers directly;
+if BWA ever moves it, it shows as unavailable until `BWA_FEED_URL` is updated.
+
+Logs never contain a resident's email address (#2971): a failed alert email
+logs only the subscriber ID, and any address the delivery error names is
+replaced with `[email]`; a failed confirmation email (no subscriber ID yet) logs
+the address masked by `redactPii` (`j***@example.com`) and the area, with any
+address in the delivery error masked the same way. Feed values in log lines go through `sanitizeForLog`, which also
+blanks line separators and bidi controls that could disguise a log line.
+
+Notices are validated one at a time, so one bad notice can't take the feed down
+(#2969). A notice with an invalid or unsafe link, an unparseable date or an
+over-long ID is skipped and never served. Skips are logged once per fetch as
+`Skipped N invalid BWA notice(s)`, with the guid/link and reason of the first
+five. Only the first 100 notices are read; BWA's feed serves 10. An untitled notice is kept, because it is still
+a real outage, and titled from up to 80 characters of its body, cut at a word
+boundary (or "BWA service notice" when the body is empty too). The feed shows
+the unavailable state only when its structure is broken or it has notices but
+none are valid — an empty list there would wrongly say there are no outages. A
+skipped notice is only visible in the API logs until #2970 adds an ops signal.
 
 The prototype's public demo endpoint is intentionally omitted: it sent simulated
 alerts to every confirmed subscriber. Tests use local fixtures and mocked email

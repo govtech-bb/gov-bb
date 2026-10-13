@@ -4,13 +4,22 @@ import { createAiAccess } from "../../../server/ai-builder/access";
 import { aiUploadSchema, type AiContext } from "@govtech-bb/form-builder";
 import type { ChatFetcherInput, UIMessage } from "@tanstack/ai-client";
 
+const UNREACHABLE = "The AI service could not be reached. Retry in a moment.";
+
+// Keep the friendly message for the UI, but log and attach the real cause so a
+// blocked call (e.g. CSP, #3027) is diagnosable from the browser console.
+function aiError(cause: unknown, message = UNREACHABLE): Error {
+  console.error("AI request failed:", cause);
+  return new Error(message, { cause });
+}
+
 export async function aiRequest(
   path: string,
   body: unknown,
   signal: AbortSignal,
 ): Promise<Response> {
-  const access = await createAiAccess().catch(() => {
-    throw new Error("The AI service could not be reached. Retry in a moment.");
+  const access = await createAiAccess().catch((error) => {
+    throw aiError(error);
   });
   signal.throwIfAborted();
   const response = await fetch(access.url + path, {
@@ -24,12 +33,13 @@ export async function aiRequest(
     body: JSON.stringify(body),
   }).catch((error) => {
     if (signal.aborted) throw error;
-    throw new Error("The AI service could not be reached. Retry in a moment.");
+    throw aiError(error);
   });
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new Error(
-      error?.error ?? "The AI service could not be reached. Retry in a moment.",
+    throw aiError(
+      { status: response.status, body: error },
+      error?.error ?? UNREACHABLE,
     );
   }
   return response;

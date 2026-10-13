@@ -72,15 +72,8 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Contact No",
             "fieldId": "contact-no",
-            "columnWidth": "50%",
-            "validations": {
-              "required": {
-                "error": "Contact No is required",
-                "value": true
-              }
-            }
+            "columnWidth": "50%"
           }
         },
         {
@@ -118,12 +111,11 @@
         {
           "ref": "components/national-id-number",
           "overrides": {
-            "label": "ID Number",
             "fieldId": "id-number",
             "columnWidth": "50%",
             "validations": {
               "required": {
-                "error": "ID Number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             }
@@ -293,5 +285,5 @@
     }
   ],
   "createdAt": "2026-06-03T00:00:00.000Z",
-  "updatedAt": "2026-09-18T18:21:48.000Z"
+  "updatedAt": "2026-10-12T17:45:45.000Z"
 }

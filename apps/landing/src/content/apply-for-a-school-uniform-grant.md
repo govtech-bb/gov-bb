@@ -27,7 +27,7 @@ You can apply online. It takes about 10 minutes.
 
 You’ll need to give:
 
-1. Your details as the parent or guardian — your name, National ID number, home address, parish, mobile number and email address.
+1. Your details as the parent or guardian — your name, Barbados National Identification (ID) number, home address, parish, mobile number and email address.
 2. Your child’s details — their full name, date of birth, school, school year and class level.
 3. Your bank or credit union account details so the grant can be paid.
 

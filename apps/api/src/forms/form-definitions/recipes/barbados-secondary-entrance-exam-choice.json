@@ -125,7 +125,6 @@
         {
           "ref": "components/national-id-number",
           "overrides": {
-            "label": "ID Number",
             "fieldId": "id-number",
             "validations": {
               "required": {
@@ -188,7 +187,6 @@
         {
           "ref": "components/national-id-number",
           "overrides": {
-            "label": "ID Number",
             "fieldId": "parent-id-number"
           }
         },
@@ -196,7 +194,6 @@
           "ref": "components/telephone",
           "overrides": {
             "type": "tel",
-            "label": "Phone",
             "fieldId": "parent-phone"
           }
         }
@@ -398,5 +395,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:24:07.446Z",
-  "updatedAt": "2026-08-06T11:46:18.000Z"
+  "updatedAt": "2026-10-12T17:45:45.000Z"
 }

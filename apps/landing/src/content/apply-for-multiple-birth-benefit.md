@@ -24,7 +24,7 @@ You will need:
 
 - your ID and contact details
 - your address
-- details of each child, including their full name, ID number, and school or nursery
+- details of each child, including their full name, Barbados National Identification (ID) number, and school or nursery
 - your bank or credit union account details
 
 ## Documents you must provide

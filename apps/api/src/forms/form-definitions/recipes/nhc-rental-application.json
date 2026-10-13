@@ -724,10 +724,9 @@
         {
           "ref": "components/national-id-number",
           "overrides": {
-            "label": "National Registration Number",
             "validations": {
               "required": {
-                "error": "National Registration Number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             }
@@ -1192,10 +1191,9 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "co-applicant-national-id-number",
-            "label": "National Registration Number",
             "validations": {
               "required": {
-                "error": "National Registration Number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             }
@@ -2429,7 +2427,7 @@
     }
   ],
   "createdAt": "2026-09-03T00:00:00.000Z",
-  "updatedAt": "2026-10-10T12:08:01.000Z",
+  "updatedAt": "2026-10-13T12:00:00.000Z",
   "meta": {
     "visibility": "preview"
   }

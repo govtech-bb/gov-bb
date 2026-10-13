@@ -18,7 +18,7 @@ It shouldn’t take longer than 10 minutes.
 
 You will need to share:
 
-- the name and National Identification number of the person applying
+- the name and Barbados National Identification (ID) number of the person applying
 - name(s) of every other person who also wants to redirect their mail
 - the old address
 - the new address

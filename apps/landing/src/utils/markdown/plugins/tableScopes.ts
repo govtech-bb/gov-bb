@@ -25,6 +25,9 @@ function visit(node: Root | Element): void {
 }
 
 function applyScopes(table: Element): void {
+  // Column header text, so each body cell can carry it as `data-label` — the
+  // label a stacked row shows on phones, where the header row is hidden.
+  let labels: string[] = []
   for (const section of table.children) {
     if (section.type !== 'element') continue
     const isHead = section.tagName === 'thead'
@@ -39,14 +42,32 @@ function applyScopes(table: Element): void {
         for (const cell of cells) {
           cell.properties = { ...cell.properties, scope: 'col' }
         }
+        labels = cells.map(textOf)
         continue
       }
-      const [first] = cells
+      const [first, ...rest] = cells
       if (!first) continue
       first.tagName = 'th'
       first.properties = { ...first.properties, scope: 'row' }
+      rest.forEach((cell, i) => {
+        const label = labels[i + 1]
+        if (label) cell.properties = { ...cell.properties, dataLabel: label }
+      })
     }
   }
+}
+
+function textOf(node: Element): string {
+  return node.children
+    .map((child) =>
+      child.type === 'text'
+        ? child.value
+        : child.type === 'element'
+          ? textOf(child)
+          : '',
+    )
+    .join('')
+    .trim()
 }
 
 export default rehypeTableScopes

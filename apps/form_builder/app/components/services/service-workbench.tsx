@@ -527,7 +527,11 @@ export function ServiceWorkbench({
         />
       )}
       {preview && (
-        <ServicePreview snapshot={draft} onClose={() => setPreview(false)} />
+        <ServicePreview
+          snapshot={draft}
+          savedFormId={draft.recipe ? manifest.formId : null}
+          onClose={() => setPreview(false)}
+        />
       )}
     </>
   );

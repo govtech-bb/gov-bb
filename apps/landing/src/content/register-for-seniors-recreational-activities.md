@@ -22,7 +22,7 @@ This programme is for older people living in Barbados.
 
 You will need:
 
-- your Barbados National Registration Number (NRN)
+- your Barbados National Identification (ID) number
 - a contact number
 - your address, including your parish
 - an emergency contact and their phone number
