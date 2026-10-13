@@ -22,7 +22,7 @@ This service is for older people in Barbados who need help at home.
 
 You will need:
 
-- the person's National Registration Number (NRN) and date of birth
+- the person's Barbados National Identification (ID) number and date of birth
 - the person's address
 - a contact person and their phone number
 - details of any pensions or other income

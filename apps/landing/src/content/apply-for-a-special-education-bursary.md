@@ -42,9 +42,9 @@ You can apply online.
 
 You’ll need to give:
 
-1. Your child’s details — their name, date of birth, sex and National ID number.
+1. Your child’s details — their name, date of birth, sex and Barbados National Identification (ID) number.
 2. Your child’s needs — their diagnosis or assessed needs, their current school or programme, and why a private provider is needed.
-3. Your details as the parent or guardian — your name, National ID number, relationship to the child, home address, phone number and email address.
+3. Your details as the parent or guardian — your name, Barbados National Identification (ID) number, relationship to the child, home address, phone number and email address.
 4. Your household circumstances — the number of people in your household, the number of dependent children, your employment status, your approximate monthly household income, and any other government support you receive for this child.
 5. The private provider’s details — their name, address, phone number, the annual fees, the amount you are requesting and the expected start date.
 6. Your bank or credit union account details.

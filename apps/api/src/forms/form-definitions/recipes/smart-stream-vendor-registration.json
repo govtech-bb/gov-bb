@@ -151,14 +151,14 @@
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "nrn",
-            "label": "NRN",
+            "label": "Barbados National Identification (ID) number",
             "validations": {
               "required": {
-                "error": "NRN is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               },
               "pattern": {
-                "error": "NRN must be in the format YYMMDD-NNNN (e.g. 850101-0001)",
+                "error": "Enter a valid Barbados National Identification (ID) number (for example, 850101-0001)",
                 "value": "^\\d{6}-\\d{4}$"
               }
             },
@@ -382,5 +382,5 @@
     }
   ],
   "createdAt": "2026-06-01T18:44:06.662Z",
-  "updatedAt": "2026-08-06T11:46:18.000Z"
+  "updatedAt": "2026-10-12T17:45:45.000Z"
 }

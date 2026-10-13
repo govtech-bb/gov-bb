@@ -108,14 +108,9 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "applicant-id-number",
-            "label": "National Identification (ID) Number",
             "validations": {
-              "pattern": {
-                "error": "Enter a valid ID number (for example, 850101-0001)",
-                "value": "^[0-9]{6}-[0-9]{4}$"
-              },
               "required": {
-                "error": "ID Number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             },
@@ -137,7 +132,7 @@
           "overrides": {
             "fieldId": "passport-toggle",
             "label": "Use passport number instead",
-            "hint": "If you don't have a National ID number, you can use your passport number instead."
+            "hint": "If you don't have a Barbados National Identification (ID) number, you can use your passport number instead."
           }
         },
         {
@@ -190,7 +185,6 @@
           "ref": "components/telephone",
           "overrides": {
             "fieldId": "applicant-telephone-number",
-            "label": "Telephone number",
             "validations": {
               "required": {
                 "error": "Telephone number is required",
@@ -584,14 +578,9 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "minor-id-number",
-            "label": "National Identification (ID) Number",
             "validations": {
-              "pattern": {
-                "error": "Enter a valid ID number (for example, 850101-0001)",
-                "value": "^[0-9]{6}-[0-9]{4}$"
-              },
               "required": {
-                "error": "ID Number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             },
@@ -739,14 +728,9 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "adult-id-number",
-            "label": "National Identification (ID) Number",
             "validations": {
-              "pattern": {
-                "error": "Enter a valid ID number (for example, 850101-0001)",
-                "value": "^[0-9]{6}-[0-9]{4}$"
-              },
               "required": {
-                "error": "ID Number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             },
@@ -823,7 +807,7 @@
     }
   ],
   "createdAt": "2026-06-04T20:58:01.397Z",
-  "updatedAt": "2026-09-18T18:21:48.000Z",
+  "updatedAt": "2026-10-12T18:00:56.000Z",
   "meta": {
     "visibility": "maintenance"
   }

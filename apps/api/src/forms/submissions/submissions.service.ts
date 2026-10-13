@@ -6,6 +6,7 @@ import {
   FormSubmissionEntity,
 } from "@/database/entities/form-submission.entity";
 import { AppError } from "@/common/errors";
+import { writeBusinessLog } from "@/common/business-log";
 import { isFormClosed } from "@govtech-bb/form-types";
 import { ExpressionsService } from "@/expressions/expressions.service";
 import {
@@ -191,6 +192,20 @@ export class SubmissionsService {
       },
       referencePrefix,
     );
+
+    // Server-side ground truth for business metrics: one line per NEW accepted
+    // submission (replays return above and are not counted). The browser's
+    // "form-submit" journey event is reconciled against this count. No values,
+    // and no reference code, which unlocks the public tracker.
+    writeBusinessLog("business_event", {
+      message: `submission accepted for ${dto.formId}`,
+      event: "submission_accepted",
+      form_id: dto.formId,
+      form_version: pinnedVersion,
+      submission_id: saved.id,
+      payment_required: hasGating,
+      smoke: dto.isSmokeSubmission === true,
+    });
 
     // Coordinate-based catchment routing: when the recipe declares which fields
     // hold the event coordinates + parish, resolve the serving polyclinic once

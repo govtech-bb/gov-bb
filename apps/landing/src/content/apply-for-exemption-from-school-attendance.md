@@ -46,8 +46,8 @@ It takes about 15 minutes to apply online.
 
 ## What the form asks for
 
-1. Your title, name, National ID number, relationship to the child, home address, parish, mobile number and email address.
-2. The child’s name, date of birth, sex and National ID or birth certificate number, along with their current school, last class and last date attended if they have attended school.
+1. Your title, name, Barbados National Identification (ID) number, relationship to the child, home address, parish, mobile number and email address.
+2. The child’s name, date of birth, sex and Barbados National Identification (ID) number or birth certificate number, along with their current school, last class and last date attended if they have attended school.
 3. The reason you are applying and a description of your circumstances.
 4. The start and end dates of the exemption you are requesting.
 5. A description of how the child’s education will continue during the exemption.

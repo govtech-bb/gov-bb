@@ -36,7 +36,7 @@ There are 2 ways to register for the Primary School Textbook Grant. You can:
    The form asks for:
 
    - bank account information so the funds can be paid.
-   - the student’s name, ID number and class.
+   - the student’s name, Barbados National Identification (ID) number and class.
    - the name of the child’s school and principal.
    - the parent or guardian’s contact details.
 

@@ -1,4 +1,5 @@
 import { CatchmentRoutingService } from "./catchment-routing.service";
+import { CatchmentGeometryService } from "./catchment-geometry.service";
 import { PARISH_DEFAULTS } from "./polyclinic-routing";
 import {
   PARISH_ROUTING_POINTS,
@@ -193,7 +194,7 @@ describe("isRoutingCoordinate", () => {
 describe("PARISH_ROUTING_POINTS resolve to their assigned catchment", () => {
   let svc: CatchmentRoutingService;
   beforeAll(() => {
-    svc = new CatchmentRoutingService();
+    svc = new CatchmentRoutingService(new CatchmentGeometryService());
     svc.onModuleInit();
   });
 

@@ -26,6 +26,9 @@ async function bootstrap() {
   const port = config.get<number>("app.port") ?? 3001;
 
   app.use(express.json({ limit: "1mb" }));
+  // navigator.sendBeacon posts journey events as text/plain (no CORS preflight,
+  // survives page unload); JourneyService parses the JSON itself.
+  app.use("/journey", express.text({ type: "text/plain", limit: "64kb" }));
   const corsOrigin =
     config.get<string>("app.corsOrigin") ?? "http://localhost:3000";
   const corsOrigins: (string | RegExp)[] = corsOrigin

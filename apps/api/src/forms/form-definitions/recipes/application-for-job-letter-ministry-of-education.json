@@ -701,15 +701,13 @@
         {
           "ref": "components/home-telephone",
           "overrides": {
-            "fieldId": "tel-home",
-            "label": "Tel Home"
+            "fieldId": "tel-home"
           }
         },
         {
           "ref": "components/mobile-telephone",
           "overrides": {
-            "fieldId": "mobile-number",
-            "label": "Mobile Number"
+            "fieldId": "mobile-number"
           }
         },
         {
@@ -774,5 +772,5 @@
     }
   ],
   "createdAt": "2026-06-08T18:48:15.188Z",
-  "updatedAt": "2026-09-17T13:49:39.000Z"
+  "updatedAt": "2026-10-05T17:20:45.000Z"
 }

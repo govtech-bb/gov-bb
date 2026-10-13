@@ -41,7 +41,7 @@ const schema = await this.registry.hydrateForm(recipe);
 
 ```typescript
 // Component — override display fields directly
-{ ref: 'components/national-id', overrides: { label: 'National Registration Number' } }
+{ ref: 'components/national-id-number', overrides: { label: "Child's Barbados National Identification (ID) number" } }
 
 // Block — target individual fields within the block by fieldId
 { ref: 'blocks/physical-address', overrides: { town: { label: 'City or Town' } } }

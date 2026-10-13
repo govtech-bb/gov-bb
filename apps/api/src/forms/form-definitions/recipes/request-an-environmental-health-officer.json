@@ -3,7 +3,7 @@
   "title": "Request an Environmental Health Officer",
   "description": "Request an Environmental Health Officer to attend an event where food or drink is served to the public.",
   "createdAt": "2026-08-10T00:00:00Z",
-  "updatedAt": "2026-09-10T00:19:08.000Z",
+  "updatedAt": "2026-10-05T22:01:06.000Z",
   "processors": [
     {
       "type": "email",
@@ -159,7 +159,6 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "hint": "We will use this to contact you about your request. For example, (246) 249 1234.",
             "behaviours": [
               {
                 "type": "fieldArray",
@@ -640,9 +639,8 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "label": "Their phone number",
+            "label": "Caterer or cook telephone number",
             "fieldId": "caterer-phone",
-            "hint": "For example, (246) 249 1234.",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -654,11 +652,7 @@
             "validations": {
               "required": {
                 "value": true,
-                "error": "Enter the phone number of the caterer or cook"
-              },
-              "phone": {
-                "value": true,
-                "error": "Please enter a valid phone number"
+                "error": "Caterer or cook telephone number is required"
               }
             }
           }

@@ -109,7 +109,7 @@ Semantic components already SHIP their purpose-specific validations centrally (\
 | Trigger | Action |
 |---------|--------|
 | Field uses \`components/generic-email\` | Add \`email\` validation: \`{"value": true, "error": "Enter a valid email address"}\` (semantic \`components/email\` already ships this — do not restate) |
-| Field uses \`components/generic-tel\` | Add \`phone\` validation: \`{"value": true, "error": "Please enter a valid phone number"}\` (defaults to a Barbados number; a leading + allows overseas numbers; the semantic tel components already ship this — do not restate) |
+| Field uses \`components/generic-tel\` or any tel component | Add NO \`phone\` validation: every tel component, \`generic-tel\` included, already ships \`phone\` with the shared "Enter a valid telephone number" message (defaults to a Barbados number; a leading + allows overseas numbers) — never override it. If you change a required tel field's label, set \`required\` to \`{"value": true, "error": "{Label} is required"}\` so the error still names the field |
 | Field description says "required", "must provide", "mandatory", or has asterisk (*) | Add \`required\` validation — unless the component already ships \`required\` (email, tel, parish and most semantic components do), in which case add nothing |
 | Paper form — common required fields (name, first name, last name, email, phone, address line 1, date of birth) | Infer \`required\` validation automatically — but only on generic primitives; the semantic components for these fields already ship \`required\` |
 | "address line 2", "apt", "suite", "unit", or any second/continuation line of a multi-line field | These must be OPTIONAL: set \`"required": {"value": false}\` explicitly. Omitting the rule is NOT enough — generic primitives inherit \`required: true\` from the registry. Add \`required: {"value": true}\` only if the form explicitly marks the line itself as required (asterisk, "mandatory") |
@@ -194,7 +194,7 @@ When a conditional behaviour watches one of these fields, compare against the co
 
 ### CATEGORY 6: Voice Of The Copy You Write
 
-Component labels, error messages and option lists that come from the registry are already written in the platform voice — leave them alone (per CATEGORY 0b, do not restate them). These rules govern only the user-facing text YOU author: \`label\`, \`hint\`, option \`label\`s on generic components, the declaration statement, and the \`submission-confirmation\` step's \`nextSteps\` content.
+Component labels, error messages and option lists that come from the registry are already written in the platform voice — leave them alone (per CATEGORY 0b, do not restate them). These rules govern only the user-facing text YOU author: \`label\`, \`hint\`, option \`label\`s on generic components, the declaration statement, and the \`submission-confirmation\` step's \`markdownContent\`.
 
 #### Rule A: Plain language, aimed at a 9-year-old reading age
 
@@ -216,7 +216,7 @@ The form tells you what the service COLLECTS. It rarely tells you the fee, the p
 
 | Situation | Do NOT | Do instead |
 |-----------|--------|------------|
-| The form has no stated fee, timeline or post-submission process | Invent "$50 fee", "within 24 hours", "you will be contacted in 5 working days" | Leave it out. Keep the default \`submission-confirmation\` copy generic (see Rule 6) — do not add invented specifics to its \`nextSteps.content\` |
+| The form has no stated fee, timeline or post-submission process | Invent "$50 fee", "within 24 hours", "you will be contacted in 5 working days" | Leave it out. Keep the default \`submission-confirmation\` copy generic (see Rule 6) — do not add invented specifics to its \`markdownContent\` |
 | The form asks an unusual or sensitive question (medical condition, household income, demographic data, prior programme participation) | Write a \`hint\` inventing why it is collected ("so we can support you safely") | Either omit the hint, or write a neutral one that does not claim a purpose the form never stated |
 | A field's purpose or rule is unclear | Guess a plausible-sounding explanation | Write the plainest label the form supports and add no speculative hint |
 
@@ -292,7 +292,7 @@ Every form must have at least an email processor so the applicant receives a con
 The frontend requires a step with stepId "submission-confirmation" as the LAST step.
 
 \`\`\`json
-{"stepId": "submission-confirmation", "title": "Application submitted", "elements": [], "nextSteps": [{"title": "What happens next", "content": "We have received your submission. You will receive a confirmation email at the address you provided."}]}
+{"stepId": "submission-confirmation", "title": "Application submitted", "elements": [], "markdownContent": "## What happens next\\n\\nWe have received your submission. You will receive a confirmation email at the address you provided."}
 \`\`\`
 
 ### Rule 7: NEVER combine isHidden with required validation
@@ -478,16 +478,16 @@ A checkbox accordion carries its categories in \`groups\`, with the required rul
     },
     {
       "stepId": "declaration",
-      "title": "Declaration",
+      "title": "Confirm and submit your application",
       "elements": [
-        {"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "I confirm that the information provided is true and correct.", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to continue"}}}}
+        {"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "I confirm that the information I have provided is true and correct to the best of my knowledge.", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to continue."}}}}
       ]
     },
     {
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "elements": [],
-      "nextSteps": [{"title": "What happens next", "content": "We have received your submission. You will receive a confirmation email at the address you provided."}]
+      "markdownContent": "## What happens next\\n\\nWe have received your submission. You will receive a confirmation email at the address you provided."
     }
   ],
   "processors": [
@@ -528,7 +528,7 @@ Block overrides are keyed by the element's fieldId within the block, so those ke
 - minLength: {"value": 2, "error": "..."}
 - maxLength: {"value": 100, "error": "..."}
 - email: {"value": true, "error": "..."}
-- phone: {"value": true, "error": "..."} (telephone number — accepts any common format, defaults to a Barbados number, validated with libphonenumber)
+- phone: {"value": true, "error": "..."} (telephone number — accepts any common format, defaults to a Barbados number, validated with libphonenumber; every tel component already ships it, so never override it on a tel field)
 - pastOrToday: {"value": true, "error": "..."} (date must not be in future)
 - futureOrToday: {"value": true, "error": "..."} (date must not be in past)
 - pattern: {"value": "^regex$", "error": "..."}
@@ -616,6 +616,17 @@ When a form lets the applicant supply one identifier in place of another ("Use p
 2. \`fieldConditionalOn\` on the revealed field (the passport input) targeting the toggle, so it only appears when toggled on.
 3. \`optionalIf\` on the field being replaced (the National ID input) targeting the SAME toggle, so its required validation relaxes when the alternative is in use.
 Never leave the primary field unconditionally required next to a reveal toggle — an applicant without that identifier could never submit the form.
+
+## Eligibility Stops (an answer that means the applicant cannot continue)
+Only when the source form states the rule (an income limit, an age rule, needing permission to apply for someone else — never invent one, per Output Rules), put the stop ON the question itself:
+1. Add a \`pattern\` validation to the question that accepts ONLY the eligible option's submitted \`value\` (never its label), so Continue never leaves the step on any other answer — in the browser and again when the server validates the submission. Keep its error short: it is the error-summary link text.
+2. Directly after the question, add a \`components/content\` block with \`"variant": "warning"\` and a \`fieldConditionalOn\` on the ineligible answer. It explains the rule and what the applicant can do instead.
+3. If the question is itself conditional, repeat ITS condition on the warning as well (conditions combine with AND). Hidden answers are not cleared, so without it a leftover "no" shows the warning after the applicant changes the earlier answer. A hidden question is not validated, so its pattern never blocks someone it was not shown to.
+\`\`\`json
+{"ref": "components/generic-radio", "overrides": {"fieldId": "income-eligible", "label": "Is your monthly income BDS $3,000 or less?", "options": [{"label": "Yes", "value": "yes"}, {"label": "No", "value": "no"}], "validations": {"required": {"value": true, "error": "Tell us whether your monthly income is BDS $3,000 or less"}, "pattern": {"value": "^yes$", "error": "You must have a monthly income of BDS $3,000 or less to apply"}}}}
+{"ref": "components/content", "overrides": {"fieldId": "income-ineligible-notice", "variant": "warning", "behaviours": [{"type": "fieldConditionalOn", "targetFieldId": "income-eligible", "operator": "equal", "value": "no"}], "content": "To apply, your monthly income must be BDS $3,000 or less. If your circumstances change, you can come back and apply again."}}
+\`\`\`
+NEVER build a separate "you are not eligible" step that holds a disabled (\`isDisabled\`) required field nobody can fill in. That old workaround adds a page only to trap the applicant, and its error points at a field they cannot touch.
 
 ## Step-Level vs Field-Level Behaviours
 The behaviours above (\`fieldConditionalOn\`, \`optionalIf\`) are FIELD-level: they live in a \`behaviours\` array inside an element's \`overrides\`. The next behaviours are STEP-level — \`stepConditionalOn\`, \`repeatable\` (and \`sharedFields\`) — and they live in a \`behaviours\` array on the STEP itself, as a sibling of \`elements\` (placed AFTER it), never inside an element:
@@ -705,7 +716,7 @@ Only do this when one answer genuinely covers every item in the common case (ope
 ## Declaration Checkbox Pattern
 The declaration step contains EXACTLY ONE element — this confirmation checkbox, nothing else (Rule 17). The fieldId is always \`declaration-confirmed\`, the label is always \`Declaration\`, and it is always required:
 \`\`\`json
-{"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "Full declaration statement text shown next to checkbox", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to continue"}}}}
+{"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "Full declaration statement text shown next to checkbox", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to continue."}}}}
 \`\`\`
 Put the full statement in options[0].label (shown NEXT TO the checkbox), not in label (which is the heading above). Any other values the paper form's declaration section collects (date, signature, printed name) belong on a regular step before the declaration, never in the declaration step itself.
 

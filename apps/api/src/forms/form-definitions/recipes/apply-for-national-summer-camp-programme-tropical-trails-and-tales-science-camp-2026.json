@@ -324,11 +324,10 @@
         {
           "ref": "components/mobile-telephone",
           "overrides": {
-            "label": "Mobile phone number",
             "fieldId": "parent-mobile-phone",
             "validations": {
               "required": {
-                "error": "Enter a mobile phone number",
+                "error": "Mobile telephone is required",
                 "value": true
               }
             }
@@ -361,14 +360,12 @@
         {
           "ref": "components/home-telephone",
           "overrides": {
-            "label": "Landline number",
             "fieldId": "parent-landline"
           }
         },
         {
           "ref": "components/work-telephone",
           "overrides": {
-            "label": "Work phone number",
             "fieldId": "parent-work-phone"
           }
         }
@@ -887,16 +884,11 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "hint": "For example, 421-1234 or +1 876 123 4567.",
             "label": "Main phone number",
             "fieldId": "emergency-phone-number",
             "validations": {
-              "phone": {
-                "error": "Enter a phone number in the correct format",
-                "value": true
-              },
               "required": {
-                "error": "Enter a phone number",
+                "error": "Main phone number is required",
                 "value": true
               }
             }
@@ -1041,7 +1033,12 @@
                 "targetFieldId": "doctor-question"
               }
             ],
-            "validations": {}
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Phone number for doctor or polyclinic is required"
+              }
+            }
           }
         }
       ],
@@ -1269,16 +1266,10 @@
         {
           "ref": "components/generic-tel",
           "overrides": {
-            "hint": "For example, 421-1234 or +1 876 123 4567.",
-            "label": "Phone number",
             "fieldId": "collection-person-phone",
             "validations": {
-              "phone": {
-                "error": "Enter a phone number in the correct format",
-                "value": true
-              },
               "required": {
-                "error": "Enter a phone number",
+                "error": "Telephone number is required",
                 "value": true
               }
             }
@@ -1343,7 +1334,7 @@
     }
   ],
   "createdAt": "2026-06-17T17:53:52.346Z",
-  "updatedAt": "2026-09-18T18:21:48.000Z",
+  "updatedAt": "2026-10-05T22:01:06.000Z",
   "meta": {
     "visibility": "public",
     "closingDateTime": "2026-07-09T23:59:00-04:00"

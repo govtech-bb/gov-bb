@@ -4,7 +4,7 @@ export const Telephone: TelPrimitive = {
   fieldId: "telephone",
   label: "Telephone number",
   htmlType: "tel",
-  hint: "For example, 421-1234 for Barbados or +1 876 210 1234 for numbers outside Barbados",
+  hint: "For example, 421-1234 for a Barbados number or +1 876 210 1234 for a number outside Barbados.",
   validations: {
     required: {
       value: true,
@@ -12,7 +12,7 @@ export const Telephone: TelPrimitive = {
     },
     phone: {
       value: true,
-      error: "Please enter a valid phone number",
+      error: "Enter a valid telephone number",
     },
   },
 };

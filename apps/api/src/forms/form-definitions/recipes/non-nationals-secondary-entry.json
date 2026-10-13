@@ -195,7 +195,6 @@
         {
           "ref": "components/contact-telephone",
           "overrides": {
-            "label": "Contact Number",
             "fieldId": "guardian-contact-number"
           }
         },
@@ -394,5 +393,5 @@
     }
   ],
   "createdAt": "2026-05-28T16:03:10.475Z",
-  "updatedAt": "2026-09-17T13:49:39.000Z"
+  "updatedAt": "2026-10-05T17:20:45.000Z"
 }

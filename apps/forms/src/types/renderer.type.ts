@@ -24,7 +24,7 @@ export interface FormMeta {
   contractSteps: ClientFormStep[];
   defaultValues: Record<string, unknown>;
   validationProperties: Record<string, FieldValidationProperties>;
-  stepConditionalTargets: Record<stepId, fieldId>;
+  stepConditionalTargets: Record<stepId, fieldId[]>;
   repeatSettings: RepeatableStepSettings;
   idempotencyKey: string;
 }

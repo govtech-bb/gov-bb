@@ -37,7 +37,7 @@
         {
           "ref": "components/national-id-number",
           "overrides": {
-            "hint": "Enter your valid National ID Number (for example, 450702-0130)"
+            "hint": "For example, 850101-0001"
           }
         }
       ],
@@ -187,7 +187,7 @@
         {
           "ref": "components/national-id-number",
           "overrides": {
-            "label": "Child's National ID Number",
+            "label": "Child's Barbados National Identification (ID) number",
             "fieldId": "child-national-id"
           }
         },
@@ -405,5 +405,5 @@
     }
   ],
   "createdAt": "2026-06-25T14:17:23.186Z",
-  "updatedAt": "2026-08-26T09:37:23.000Z"
+  "updatedAt": "2026-10-12T17:45:45.000Z"
 }

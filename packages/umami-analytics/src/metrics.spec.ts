@@ -61,6 +61,30 @@ describe("aggregateFormEvents", () => {
     expect(agg.get("passport")!.counts["form-start"]).toBe(50);
     expect(agg.has("page-service-view")).toBe(false);
   });
+
+  it("normalises the compact codes long-id forms emit (#2682)", () => {
+    // A long form id overflows Umami's 50-char event-name limit, so its events
+    // are stored under compact codes (`sview`, `fconf`, `s1`…). aggregation must
+    // land them under the same canonical keys / step numbers as the full names.
+    const id = "apply-for-temporary-restaurant-permit";
+    const agg = aggregateFormEvents([
+      { x: `${id}:form-start`, y: 181 }, // fits → full name
+      { x: `${id}:fconf`, y: 53 }, // form-confirmation-view
+      { x: `${id}:fverr`, y: 165 }, // form-validation-error
+      { x: `${id}:s1`, y: 115 },
+      { x: `${id}:s2`, y: 106 },
+    ]);
+    const entry = agg.get(id)!;
+    expect(entry.counts).toMatchObject({
+      "form-start": 181,
+      "form-confirmation-view": 53,
+      "form-validation-error": 165,
+    });
+    expect(entry.steps).toEqual([
+      { step: 1, count: 115 },
+      { step: 2, count: 106 },
+    ]);
+  });
 });
 
 describe("weightedAverage / weightedSum", () => {
