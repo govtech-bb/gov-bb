@@ -56,8 +56,10 @@
  *  - New or renewal is asked PER VEHICLE on `vehicle-details`.
  *    `vehicle-registration-number` is revealed by `application-type` = "renew"
  *    with no `targetStepId`, so the condition is local to each vehicle
- *    instance: the two-vehicle test renews vehicle 1 and applies new for
- *    vehicle 2, and asserts the registration field is hidden on vehicle 2.
+ *    instance. The another-person test renews vehicle 1 and applies new for
+ *    vehicle 2 (registration hidden on vehicle 2); the business test does the
+ *    reverse (registration shown on vehicle 2). Both orders matter: "Add
+ *    another" copies the previous instance, so a copy must not follow it.
  *    `current-licence` is always shown and optional. The value is "renew", not
  *    "renewal" as on the sibling offensive-waste recipe.
  *  - `vehicle-details` is a repeatable step (min 1, max 20) with no
@@ -549,7 +551,7 @@ test.describe("Offensive Matter Licence — Live Smoke", () => {
     if (process.env.SMOKE_HOLD) await page.pause();
   });
 
-  test("applying for a business: permission is required, then a renewal", async ({
+  test("applying for a business: permission is required, then a new vehicle and a renewal", async ({
     page,
   }) => {
     const data = buildData();
@@ -561,10 +563,21 @@ test.describe("Offensive Matter Licence — Live Smoke", () => {
     await fillBusinessDetails(page, data);
     const coordinates = await fillOperatorAddress(page, data);
 
-    const vehicleStep = expectStep(page, "vehicle-details");
+    // New first, then renew: vehicle 2 is copied from vehicle 1 by "Add
+    // another", and its registration number must follow vehicle 2's own
+    // answer, not vehicle 1's (#2857).
+    const firstVehicleStep = expectStep(page, "vehicle-details");
     await fillVehicleDetails(
       page,
-      vehicleStep,
+      firstVehicleStep,
+      { applicationType: "new" },
+      "yes",
+    );
+    const secondVehicleStep = expectStep(page, "vehicle-details");
+    expect(secondVehicleStep).not.toBe(firstVehicleStep);
+    await fillVehicleDetails(
+      page,
+      secondVehicleStep,
       {
         registration: data.firstVehicle,
         applicationType: "renew",
