@@ -312,6 +312,32 @@ describe("POST /builder/registry/validate — unknown override keys", () => {
       ],
     });
   });
+
+  it("reports an unknown key together with a later layer's issue", async () => {
+    const recipe = makeRecipe([
+      { ref: "components/generic-text", overrides: { readonly: true } },
+      { ref: "components/this-does-not-exist" },
+    ]);
+    const res = mockRes();
+
+    await validateHandler({ body: { recipe } } as Request, res);
+
+    expect(res.body).toEqual({
+      ok: false,
+      issues: [
+        {
+          path: "steps",
+          message:
+            'step "step-1" › field "components/generic-text" › unknown override key "readonly" — dropped at parse, it has no effect',
+        },
+        {
+          path: "steps[step-1].elements[1].ref",
+          message:
+            'Unknown component/block ref "components/this-does-not-exist"',
+        },
+      ],
+    });
+  });
 });
 
 // The kebab-case id rule lives in the shared schema (kebabIdSchema, issues
