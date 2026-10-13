@@ -28,22 +28,11 @@
  * backfill that landed with it set every recipe's `updatedAt` to its last
  * commit date, so the guard holds from there on.
  */
-import { execFileSync } from "node:child_process";
-import * as fs from "node:fs";
-import * as path from "node:path";
 import { isDeepStrictEqual } from "node:util";
+import { changedRecipes, gitIn } from "./recipe-base-diff";
 import { isRecord, recipeContent } from "./recipe-content";
 
-export const RECIPES_DIR = "apps/api/src/forms/form-definitions/recipes";
-
-/**
- * The canonical flat `recipes/{formId}.json`; the legacy versioned
- * `recipes/{formId}/{version}.json` files are frozen and never checked.
- */
-export function isFlatRecipeFile(relPath: string): boolean {
-  const posix = relPath.split(path.sep).join("/");
-  return path.posix.dirname(posix) === RECIPES_DIR && posix.endsWith(".json");
-}
+export { RECIPES_DIR, isFlatRecipeFile } from "./recipe-base-diff";
 
 /** How far ahead of the guard's clock a stamp may be — clock skew, no more. */
 const MAX_SKEW_MS = 5 * 60_000;
@@ -131,20 +120,7 @@ export function run(
   argv: string[],
   { cwd, now = new Date() }: { cwd: string; now?: Date },
 ): RunResult {
-  const git = (args: string[]) =>
-    execFileSync("git", args, {
-      cwd,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    });
-  /** `git show <spec>`, or null when the object does not exist. */
-  const gitShow = (spec: string): string | null => {
-    try {
-      return git(["show", spec]);
-    } catch {
-      return null;
-    }
-  };
+  const git = gitIn(cwd);
   /**
    * The committer date of the newest commit on `rev` touching `file` — the
    * floor for a content change's stamp. Not `rev`'s own date: CI checks out
@@ -156,80 +132,14 @@ export function run(
     return date ? new Date(date).toISOString() : null;
   };
 
-  const staged = argv.includes("--staged");
-  const baseIndex = argv.indexOf("--base");
-  const baseRef = baseIndex === -1 ? "origin/main" : argv[baseIndex + 1];
-  if (!baseRef || baseRef.startsWith("--")) {
-    throw new Error("--base needs a ref, e.g. --base origin/main");
-  }
-  const positional = argv.filter(
-    (arg, i) => !arg.startsWith("--") && argv[i - 1] !== "--base",
-  );
-
-  const root = git(["rev-parse", "--show-toplevel"]).trim();
-  const toRel = (file: string) =>
-    path.relative(root, path.resolve(cwd, file)).split(path.sep).join("/");
-
-  let files: string[];
-  let baseRev: string;
-  let after: (file: string) => string | null;
-  if (staged) {
-    files =
-      positional.length > 0
-        ? positional.map(toRel)
-        : git([
-            "diff",
-            "--cached",
-            "--name-only",
-            "--diff-filter=AM",
-            "--",
-            RECIPES_DIR,
-          ])
-            .split("\n")
-            .filter(Boolean);
-    baseRev = "HEAD";
-    after = (file) => gitShow(`:${file}`);
-  } else {
-    try {
-      baseRev = git(["merge-base", baseRef, "HEAD"]).trim();
-    } catch {
-      throw new Error(
-        `Cannot find the merge base of ${baseRef} and HEAD — fetch the base first (git fetch origin main).`,
-      );
-    }
-    files = git([
-      "diff",
-      "--name-only",
-      "--diff-filter=AM",
-      baseRev,
-      "--",
-      RECIPES_DIR,
-    ])
-      .split("\n")
-      .filter(Boolean);
-    after = (file) => {
-      try {
-        return fs.readFileSync(path.join(root, file), "utf8");
-      } catch {
-        return null;
-      }
-    };
-  }
-
-  const recipes = files.filter(isFlatRecipeFile);
+  const { baseRev, recipes } = changedRecipes(argv, cwd);
   const errors: string[] = [];
-  for (const file of recipes) {
-    const next = after(file);
-    if (next === null) continue; // removed since the diff was listed
-    const error = checkUpdatedAtBumped(
-      gitShow(`${baseRev}:${file}`),
-      next,
-      file,
-      {
-        floor: lastChanged(baseRev, file),
-        now,
-      },
-    );
+  for (const { file, before, after } of recipes) {
+    if (after === null) continue; // removed since the diff was listed
+    const error = checkUpdatedAtBumped(before, after, file, {
+      floor: lastChanged(baseRev, file),
+      now,
+    });
     if (error) errors.push(error);
   }
   return { checked: recipes.length, errors };
