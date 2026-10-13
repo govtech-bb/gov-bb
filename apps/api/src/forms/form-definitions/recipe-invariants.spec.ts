@@ -254,6 +254,31 @@ it("catchmentRouting paths point at a field on an unconditional step", async () 
   expect(problems).toEqual([]);
 });
 
+// The declaration step holds only the confirmation checkbox (ADR 0041). A name
+// or date field there repeats what the form already has: the applicant's name
+// is asked on an earlier step and every submission is timestamped. #2166
+// removed such dates from 34 recipes, but a form-builder publish or a
+// hand-edited content review can bring them back, hidden or not, so pin it.
+it("declaration steps ask for no name or date", async () => {
+  const problems: string[] = [];
+  const recipes = await readRecipeFiles();
+
+  for (const { file, raw } of recipes) {
+    for (const step of (raw as { steps: Step[] }).steps) {
+      if (step.stepId !== "declaration") continue;
+      for (const el of step.elements ?? []) {
+        const component = el.ref.replace(/^components\//, "");
+        const fieldId = el.overrides?.fieldId ?? component;
+        if (/name|date/.test(component) || /name|date/.test(fieldId)) {
+          problems.push(`${file}: declaration has "${fieldId}" (${el.ref})`);
+        }
+      }
+    }
+  }
+
+  expect(problems).toEqual([]);
+});
+
 // Telephone questions follow one pattern (#2917): the registry sets the hint
 // and the "not valid" error, and every "required" error reads
 // "{label} is required". The tests below stop recipes drifting from it.

@@ -834,32 +834,6 @@
       "behaviours": [],
       "elements": [
         {
-          "ref": "components/name",
-          "overrides": {
-            "fieldId": "declaration-full-name",
-            "label": "Full name",
-            "validations": {
-              "required": {
-                "error": "Enter your full name",
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-date",
-          "overrides": {
-            "fieldId": "declaration-date",
-            "label": "Date",
-            "validations": {
-              "required": {
-                "error": "Enter the date",
-                "value": true
-              }
-            }
-          }
-        },
-        {
           "ref": "components/confirmation",
           "overrides": {
             "fieldId": "declaration-confirmed",
@@ -932,7 +906,7 @@
     }
   ],
   "createdAt": "2026-08-25T00:10:51.219Z",
-  "updatedAt": "2026-10-05T11:54:23.000Z",
+  "updatedAt": "2026-10-13T01:24:51.000Z",
   "meta": {
     "visibility": "preview"
   },
