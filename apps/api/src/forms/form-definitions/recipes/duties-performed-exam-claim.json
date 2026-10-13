@@ -68,7 +68,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-textarea",
           "overrides": {
             "label": "Address",
             "fieldId": "address",
@@ -222,7 +222,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Date",
             "fieldId": "date",
@@ -353,7 +353,7 @@
       "title": "Section C: Practical Examination Setup",
       "elements": [
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Date",
             "fieldId": "date",
@@ -484,7 +484,7 @@
       "title": "Section D: Reader, Writer, Interpreter, Model, Moderator or Dictator Duties",
       "elements": [
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Date",
             "fieldId": "date",
@@ -829,5 +829,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:25:58.965Z",
-  "updatedAt": "2026-10-13T23:18:48.000Z"
+  "updatedAt": "2026-10-13T23:33:42.000Z"
 }

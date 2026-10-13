@@ -85,7 +85,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/date-of-birth",
           "overrides": {
             "label": "Date of Birth of Child",
             "fieldId": "date-of-birth",
@@ -289,7 +289,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Date",
             "fieldId": "applicant-date",
@@ -335,7 +335,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Date",
             "fieldId": "official-date",
@@ -364,5 +364,5 @@
     }
   ],
   "createdAt": "2026-05-28T16:03:10.475Z",
-  "updatedAt": "2026-10-13T23:18:48.000Z"
+  "updatedAt": "2026-10-13T23:33:42.000Z"
 }
