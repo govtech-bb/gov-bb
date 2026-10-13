@@ -122,6 +122,7 @@ describe("archiveDrafts", () => {
         apiUrl: "https://api.example.com",
         token: "secret",
         fetch: fetchMock as unknown as typeof fetch,
+        sleep: async () => {},
         log: (msg) => log.push(msg),
       },
     );
@@ -148,6 +149,7 @@ describe("archiveDrafts", () => {
         apiUrl: "https://api.example.com",
         token: "secret",
         fetch: fetchMock as unknown as typeof fetch,
+        sleep: async () => {},
         log: (msg) => log.push(msg),
       }),
     ).resolves.toEqual([]);
@@ -166,6 +168,7 @@ describe("archiveDrafts", () => {
         apiUrl: "https://api.example.com",
         token: "secret",
         fetch: fetchMock as unknown as typeof fetch,
+        sleep: async () => {},
         log: (msg) => log.push(msg),
       }),
     ).resolves.toEqual([{ formId: "passport-renewal", reason: "HTTP 500" }]);
@@ -185,6 +188,7 @@ describe("archiveDrafts", () => {
           apiUrl: "https://api.example.com",
           token: "wrong",
           fetch: fetchMock as unknown as typeof fetch,
+          sleep: async () => {},
           log: () => {},
         }),
       ).resolves.toEqual([
@@ -204,6 +208,7 @@ describe("archiveDrafts", () => {
         apiUrl: "https://wrong-host.example.com",
         token: "secret",
         fetch: fetchMock as unknown as typeof fetch,
+        sleep: async () => {},
         log: () => {},
       }),
     ).resolves.toEqual([
@@ -218,9 +223,75 @@ describe("archiveDrafts", () => {
       apiUrl: "https://api.example.com",
       token: "secret",
       fetch: fetchMock as unknown as typeof fetch,
+      sleep: async () => {},
       log: () => {},
     });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  // #2409: the API throttles to 5 requests / 10 s, so a push touching more
+  // recipes than that gets 429 for the rest.
+  describe("on 429", () => {
+    function run(responses: Response[]) {
+      const fetchMock = vi.fn();
+      for (const r of responses) fetchMock.mockResolvedValueOnce(r);
+      const sleep = vi.fn(async () => {});
+      const result = archiveDrafts([{ formId: "passport-renewal" }], {
+        apiUrl: "https://api.example.com",
+        token: "secret",
+        fetch: fetchMock as unknown as typeof fetch,
+        log: () => {},
+        sleep,
+      });
+      return { result, fetchMock, sleep };
+    }
+    const tooMany = (headers?: Record<string, string>) =>
+      new Response(null, { status: 429, headers });
+
+    it("waits Retry-After seconds and retries the same form", async () => {
+      const { result, fetchMock, sleep } = run([
+        tooMany({ "Retry-After": "3" }),
+        new Response(null, { status: 204 }),
+      ]);
+      await expect(result).resolves.toEqual([]);
+      expect(sleep).toHaveBeenCalledOnce();
+      expect(sleep).toHaveBeenCalledWith(3000);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("waits 10 s when there is no Retry-After header", async () => {
+      const { result, sleep } = run([
+        tooMany(),
+        new Response(null, { status: 204 }),
+      ]);
+      await expect(result).resolves.toEqual([]);
+      expect(sleep).toHaveBeenCalledWith(10000);
+    });
+
+    it("gives up after 3 retries and reports the failure once", async () => {
+      const { result, fetchMock } = run([
+        tooMany(),
+        tooMany(),
+        tooMany(),
+        tooMany(),
+      ]);
+      await expect(result).resolves.toEqual([
+        { formId: "passport-renewal", reason: "HTTP 429" },
+      ]);
+      expect(fetchMock).toHaveBeenCalledTimes(4);
+    });
+
+    it("does not retry any other status", async () => {
+      const { result, fetchMock, sleep } = run([
+        new Response(null, { status: 500 }),
+        new Response(null, { status: 204 }),
+      ]);
+      await expect(result).resolves.toEqual([
+        { formId: "passport-renewal", reason: "HTTP 500" },
+      ]);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(sleep).not.toHaveBeenCalled();
+    });
   });
 });
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * On push to `main`, archive builder drafts for recipes that were just added.
+ * On push to `main`, archive builder drafts for recipes that were added or
+ * whose content changed.
  *
  * Inputs (env vars set by the workflow):
  *   - GITHUB_EVENT_PATH: path to the push event payload JSON.
@@ -18,6 +19,8 @@
  *     recipe-content.ts's definition, shared with the updatedAt guard. An
  *     added recipe, or a blob that does not parse, is archived as before.
  *   - POSTs to /admin/drafts/{formId}/archive for each.
+ *   - 429 (the API allows 5 requests / 10 s) waits `Retry-After` seconds
+ *     (10 when absent) and retries the same form, at most 3 times.
  *   - 204 / 404 = success. Any other status, or a failed request, is logged,
  *     the remaining forms are still attempted, and the run then exits 1.
  *
@@ -86,7 +89,11 @@ export interface ArchiveDriverDeps {
   token: string;
   fetch: typeof fetch;
   log: (msg: string) => void;
+  sleep: (ms: number) => Promise<void>;
 }
+
+const MAX_RETRIES = 3;
+const DEFAULT_RETRY_AFTER_S = 10;
 
 /** A draft the API did not archive, and the status or error that said so. */
 export interface ArchiveFailure {
@@ -100,19 +107,27 @@ export interface ArchiveFailure {
  */
 export async function archiveDrafts(
   entries: { formId: string }[],
-  { apiUrl, token, fetch: fetchFn, log }: ArchiveDriverDeps,
+  { apiUrl, token, fetch: fetchFn, log, sleep }: ArchiveDriverDeps,
 ): Promise<ArchiveFailure[]> {
   const failures: ArchiveFailure[] = [];
   for (const { formId } of entries) {
     const url = `${apiUrl.replace(/\/+$/, "")}/admin/drafts/${formId}/archive`;
     try {
-      const res = await fetchFn(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/json",
-        },
-      });
+      let res: Response;
+      for (let attempt = 0; ; attempt++) {
+        res = await fetchFn(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        });
+        if (res.status !== 429 || attempt === MAX_RETRIES) break;
+        const seconds = Number(res.headers.get("Retry-After"));
+        const waitS = seconds > 0 ? seconds : DEFAULT_RETRY_AFTER_S;
+        log(`RETRY [429] ${formId} — waiting ${waitS}s`);
+        await sleep(waitS * 1000);
+      }
       if (res.status === 204 || res.status === 404) {
         log(`OK [${res.status}] ${formId}`);
       } else {
@@ -274,6 +289,7 @@ async function main(): Promise<void> {
     token,
     fetch: globalThis.fetch,
     log: console.log,
+    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   });
   if (failures.length > 0) {
     emitArchiveFailures(failures);
