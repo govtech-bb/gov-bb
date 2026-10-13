@@ -1995,7 +1995,7 @@
           "ref": "components/content",
           "overrides": {
             "fieldId": "documents-intro",
-            "content": "Upload all documents that apply to each person before you submit the application.\n\nAccepted formats: PDF, JPG or PNG. Maximum file size: 10 MB each.",
+            "content": "Upload all documents that apply to each person before you submit the application.",
             "variant": "text"
           }
         },
@@ -2443,7 +2443,7 @@
     }
   ],
   "createdAt": "2026-09-03T00:00:00.000Z",
-  "updatedAt": "2026-10-13T16:13:52.000Z",
+  "updatedAt": "2026-10-13T19:06:34.000Z",
   "meta": {
     "visibility": "preview"
   }
