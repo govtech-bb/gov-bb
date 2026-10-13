@@ -6,7 +6,8 @@
 
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { seed } from "./seed";
+import type { Database } from "./db";
+import { importEstate, seed } from "./seed";
 import { ESTATE } from "./seed-data";
 import { Redacted } from "./modules/redacted";
 import { PREVIEW_TOKEN } from "./routes/site";
@@ -179,4 +180,100 @@ describe("seed", () => {
     await app.close();
     await close();
   }, 60_000);
+
+  it("imports the estate once, naming the markdown commit as the actor", async () => {
+    const { db, close } = await createTestDb();
+
+    const report = await importEstate(db, { dryRun: false });
+
+    expect(report).toEqual({
+      existing: 0,
+      actors: {},
+      categories: ESTATE.categories.length,
+      documents: ESTATE.pages.length,
+    });
+    const { rows } = await db.execute<{ actor: string }>(
+      sql`select distinct actor from change_events`,
+    );
+    expect(rows.map((row) => row.actor)).toEqual([`import:${ESTATE.source}`]);
+
+    await close();
+  }, 60_000);
+
+  it("refuses when content already exists and writes nothing", async () => {
+    const { db, close } = await createTestDb();
+    await seed(db);
+    const history = await countOf(db, "change_events");
+
+    const refusal = importEstate(db, { dryRun: false });
+    await expect(refusal).rejects.toThrow(/refusing/);
+    await expect(refusal).rejects.toThrow(`seed=${ESTATE.pages.length}`);
+    expect(await countOf(db, "content_pages")).toBe(ESTATE.pages.length);
+    expect(await countOf(db, "change_events")).toBe(history);
+
+    await close();
+  }, 60_000);
+
+  it("dry run reports the counts and leaves nothing behind", async () => {
+    const { db, close } = await createTestDb();
+
+    expect(await importEstate(db, { dryRun: true })).toEqual({
+      existing: 0,
+      actors: {},
+      categories: ESTATE.categories.length,
+      documents: ESTATE.pages.length,
+    });
+    expect(await countOf(db, "content_pages")).toBe(0);
+    expect(await countOf(db, "categories")).toBe(0);
+    expect(await countOf(db, "change_events")).toBe(0);
+
+    await close();
+  }, 60_000);
+
+  it("force replaces existing content in one transaction and records the reason", async () => {
+    const { db, close } = await createTestDb();
+    await seed(db);
+
+    const report = await importEstate(db, {
+      dryRun: false,
+      force: "test replace",
+    });
+
+    expect(report).toEqual({
+      existing: ESTATE.pages.length,
+      actors: { seed: ESTATE.pages.length },
+      categories: ESTATE.categories.length,
+      documents: ESTATE.pages.length,
+    });
+    expect(await countOf(db, "content_pages")).toBe(ESTATE.pages.length);
+    const { rows } = await db.execute<{ actor: string }>(
+      sql`select distinct actor from change_events order by actor`,
+    );
+    expect(rows.map((row) => row.actor)).toEqual([
+      `import:${ESTATE.source} force: test replace`,
+      "seed",
+    ]);
+
+    await close();
+  }, 60_000);
+
+  it("a failure part-way leaves no partial estate", async () => {
+    const { db, close } = await createTestDb();
+    // The first page's search chunks fail after the categories and that page
+    // went in.
+    await db.execute(sql`drop table search_chunks`);
+
+    await expect(importEstate(db, { dryRun: false })).rejects.toThrow();
+    expect(await countOf(db, "categories")).toBe(0);
+    expect(await countOf(db, "content_pages")).toBe(0);
+
+    await close();
+  }, 60_000);
 });
+
+async function countOf(db: Database, table: string) {
+  const { rows } = await db.execute<{ n: number }>(
+    sql`select count(*)::int as n from ${sql.identifier(table)}`,
+  );
+  return rows[0]!.n;
+}

@@ -1,7 +1,8 @@
 /**
  * Loads the live estate's categories and markdown pages — the snapshot in
  * `seed-data/estate.json` — with each new page's search chunks and the first
- * entry in its history.
+ * entry in its history. That entry's actor defaults to `seed`; the one-shot
+ * import names its own.
  *
  * Every insert is `on conflict do nothing`, so this is additive and
  * idempotent: it inserts what is missing and never overwrites what an author
@@ -9,7 +10,7 @@
  * mean a newly added page never reached a database seeded before it, silently.
  */
 
-import { eq } from "drizzle-orm";
+import { count, eq, sql, TransactionRollbackError } from "drizzle-orm";
 import {
   toDocument,
   writeChange,
@@ -17,10 +18,13 @@ import {
 } from "./adapters/postgres-pages";
 import type { Database } from "./db";
 import { chunkMarkdown } from "./modules/search-text";
-import { categories, contentPages } from "./schema";
+import { categories, changeEvents, contentPages } from "./schema";
 import { ESTATE } from "./seed-data";
 
-export async function seed(db: Database): Promise<{
+export async function seed(
+  db: Database,
+  actorId = "seed",
+): Promise<{
   categories: number;
   documents: number;
 }> {
@@ -104,7 +108,7 @@ export async function seed(db: Database): Promise<{
           await writeChange(tx, {
             page: toDocument(row),
             action: "created",
-            actorId: "seed",
+            actorId,
           });
         }
         return row;
@@ -125,4 +129,71 @@ export async function seed(db: Database): Promise<{
   }
 
   return counts;
+}
+
+/** What a one-shot import wrote, or would have written on a dry run. */
+export type ImportReport = {
+  /** Rows `content_pages` held before the import. */
+  existing: number;
+  /** `change_events` actors and their row counts before the import. */
+  actors: Record<string, number>;
+  categories: number;
+  documents: number;
+};
+
+/**
+ * Loads the estate once into a deployed database (#2978): one transaction
+ * around `seed()`, so a failure leaves nothing behind. Refuses when
+ * `content_pages` already has rows, because `seed()` is additive and would
+ * bring back deleted pages without updating changed ones. `force` replaces
+ * instead: the three content tables are truncated first, in the same
+ * transaction, and the stated reason lands in every history entry. History
+ * (`change_events`) is never truncated; it is append-only and the record of
+ * what happened. `dryRun` does the real work and rolls it back.
+ */
+export async function importEstate(
+  db: Database,
+  options: { dryRun: boolean; force?: string },
+): Promise<ImportReport> {
+  let report!: ImportReport;
+  try {
+    await db.transaction(async (tx) => {
+      await tx.execute(
+        sql`lock table content_pages in share row exclusive mode`,
+      );
+      const [total] = await tx.select({ n: count() }).from(contentPages);
+      const existing = total!.n;
+      const actors: Record<string, number> = {};
+      for (const row of await tx
+        .select({ actor: changeEvents.actor, n: count() })
+        .from(changeEvents)
+        .groupBy(changeEvents.actor)) {
+        actors[row.actor] = row.n;
+      }
+      if (existing > 0 && !options.force) {
+        const histogram =
+          Object.entries(actors)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([actor, n]) => `${actor}=${n}`)
+            .join(", ") || "none";
+        throw new Error(
+          `content_pages has ${existing} rows (history actors: ${histogram}); refusing. Pass --force "<reason>" to replace them.`,
+        );
+      }
+      if (existing > 0) {
+        await tx.execute(
+          sql`truncate search_chunks, content_pages, categories`,
+        );
+      }
+      const actor = options.force
+        ? `import:${ESTATE.source} force: ${options.force}`
+        : `import:${ESTATE.source}`;
+      const counts = await seed(tx, actor);
+      report = { existing, actors, ...counts };
+      if (options.dryRun) tx.rollback();
+    });
+  } catch (error) {
+    if (!(error instanceof TransactionRollbackError)) throw error;
+  }
+  return report;
 }
