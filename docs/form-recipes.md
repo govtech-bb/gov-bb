@@ -241,6 +241,15 @@ stale draft row from a fresh one (ADR 0075, #2878), so
 `pnpm validate-recipe-updated-at` fails in CI and in the pre-commit hook when
 a recipe's content changes without that stamp moving forward.
 
+A PR — a builder `Publish form:` one included — also must not silently drop a
+form's delivery, routing or geocoding (#2409). The **Recipe removal guard**
+workflow (`pnpm validate-recipe-removals`) compares each changed recipe with
+its merge base and fails when it has fewer webhook processors, MDA-email
+processors (`recipientField` containing `mdaEmail`), `catchmentRouting`,
+`geocodeTargets` or `components/address-lookup` refs, naming each drop. When a
+removal is deliberate, add the `recipe-removal-override` label to the PR; the
+check re-runs and is skipped.
+
 ### Recover from a malformed recipe at boot
 
 The loader is strict: a recipe that fails schema validation throws at

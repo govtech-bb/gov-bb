@@ -1,0 +1,52 @@
+name: Recipe Removal Guard
+
+# Fails a PR whose changed recipes drop a webhook or MDA-email processor,
+# catchment routing, geocodeTargets or an address lookup against the merge
+# base (#2409). The `recipe-removal-override` label skips it for a deliberate
+# removal.
+#
+# Its own workflow, not a step in ci.yml: CI runs on the default pull_request
+# types, and a re-run reuses the original event payload, so a label added
+# after the fact would never be seen. Listening for labeled/unlabeled here
+# re-evaluates the guard whenever the label changes.
+#
+# No `paths:` filter on purpose: if this becomes a required check, a
+# path-filtered workflow never reports on unrelated PRs and blocks them. The
+# script exits fast when no recipe changed.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+# Latest event wins, so the result reflects the PR's current labels.
+concurrency:
+  group: recipe-removal-guard-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  recipe-removal-guard:
+    name: Recipe removal guard
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'recipe-removal-override') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+          # Full history so the guard can diff against the merge base.
+          fetch-depth: 0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+
+      - name: Recipe changes keep delivery, routing and geocoding
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: pnpm validate-recipe-removals --base "origin/$BASE_REF"
