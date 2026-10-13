@@ -47,10 +47,9 @@
               }
             },
             "national-id-number": {
-              "label": "National Registration Number (ID No.)",
               "validations": {
                 "required": {
-                  "error": "Please enter your National Registration Number",
+                  "error": "Barbados National Identification (ID) number is required",
                   "value": true
                 }
               }
@@ -768,7 +767,7 @@
   "title": "National Community Cultural Training Programme Registration 2025–2026",
   "formId": "youth-cultural-training-registration-2025",
   "createdAt": "2025-01-01T00:00:00Z",
-  "updatedAt": "2026-10-05T22:01:06.000Z",
+  "updatedAt": "2026-10-12T17:45:45.000Z",
   "processors": [
     {
       "type": "email",

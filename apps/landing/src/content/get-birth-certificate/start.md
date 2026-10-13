@@ -21,7 +21,7 @@ Each certified copy costs $5 BBD. People aged 60 and over pay $1 BBD per certifi
 
 The form asks for:
 
-- the applicant’s name, address and National ID number
+- the applicant’s name, address and Barbados National Identification (ID) number
 - the full name, date of birth, place of birth and place of baptism of the person named on the certificate
 - the full name(s) of the parent(s) of the person named on the certificate
 

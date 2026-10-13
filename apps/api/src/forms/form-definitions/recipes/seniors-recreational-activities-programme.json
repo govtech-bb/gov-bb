@@ -102,8 +102,8 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "hint": "For example, 950303-0041",
-            "label": "National registration number",
+            "hint": "For example, 850101-0001",
+            "label": "Barbados National Identification (ID) number",
             "fieldId": "national-registration-number",
             "validations": {
               "required": {
@@ -511,5 +511,5 @@
     }
   ],
   "createdAt": "2026-06-26T10:57:46.815Z",
-  "updatedAt": "2026-09-18T18:21:48.000Z"
+  "updatedAt": "2026-10-12T17:45:45.000Z"
 }

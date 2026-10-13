@@ -1,9 +1,9 @@
 import type { TextPrimitive } from "@govtech-bb/form-types";
-import { NATIONAL_ID_FORMAT } from "../barbados-id-patterns";
+import { NATIONAL_ID_FORMAT, NATIONAL_ID_LABEL } from "../barbados-id-patterns";
 
 export const NationalIdNumber: TextPrimitive = {
   fieldId: "national-id-number",
-  label: "National Identification (ID) number",
+  label: NATIONAL_ID_LABEL,
   htmlType: "text",
   ui: {
     width: "short",

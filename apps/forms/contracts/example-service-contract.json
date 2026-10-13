@@ -130,16 +130,16 @@
         },
         {
           "fieldId": "national-id-number",
-          "label": "National Identification (ID) number",
+          "label": "Barbados National Identification (ID) number",
           "htmlType": "text",
           "validations": {
             "required": {
               "value": true,
-              "error": "National ID number is required"
+              "error": "Barbados National Identification (ID) number is required"
             },
             "pattern": {
               "value": "^\\d{6}-\\d{4}$",
-              "error": "Enter a valid ID number (for example, 850101-0001)"
+              "error": "Enter a valid Barbados National Identification (ID) number (for example, 850101-0001)"
             }
           },
           "metadata": {

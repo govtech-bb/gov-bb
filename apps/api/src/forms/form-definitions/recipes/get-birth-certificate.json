@@ -182,11 +182,10 @@
             ],
             "validations": {
               "required": {
-                "error": "ID Number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             },
-            "label": "National Identification (ID) Number",
             "ui": {
               "width": "medium"
             }
@@ -195,7 +194,7 @@
         {
           "ref": "components/show-hide",
           "overrides": {
-            "hint": "If you don't have a National ID number, you can use your passport number instead.",
+            "hint": "If you don't have a Barbados National Identification (ID) number, you can use your passport number instead.",
             "label": "Use passport number instead",
             "fieldId": "passport-toggle"
           }
@@ -731,7 +730,7 @@
     }
   ],
   "createdAt": "2026-06-10T15:48:50.342Z",
-  "updatedAt": "2026-09-18T18:21:48.000Z",
+  "updatedAt": "2026-10-12T18:00:56.000Z",
   "meta": {
     "visibility": "public"
   }
