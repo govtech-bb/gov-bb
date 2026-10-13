@@ -54,9 +54,10 @@ vehicle" copy ships with it, and the PR flags that it depends on Q1.
 **The current licence number is optional and per vehicle.** The condition
 leaves out `targetStepId`, so it applies within each vehicle instance.
 
-**Telephone keeps the registry hint.** The review asks for "Enter a Barbados
-or international number." The registry hint from #2917 says the same thing
-with example numbers, and it is the house pattern, so we kept it.
+**Telephone follows the review.** The hint is the review's "Enter a Barbados
+or international number." rather than the #2917 registry hint, and the button
+reads "Add another telephone number". On 2026-10-12 we decided to follow the
+review's wording wherever the recipe can.
 
 **Office names kept as "Randal Phillips" and "Sir Winston Scott"**, and St.
 Philip stays on 536-4240 (#2817). These names match `POLYCLINIC_CONTACTS` and

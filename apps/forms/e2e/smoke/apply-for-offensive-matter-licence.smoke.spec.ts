@@ -61,7 +61,7 @@
  *    `instanceLabel: "Vehicle"`, so match the h1 loosely.
  *  - `applicant-telephone` is a `fieldArray` (min 1, max 3). Row 0 keeps the
  *    unsuffixed id; rows 1+ are index-suffixed (`…_applicant-telephone-1`) and
- *    added with the "Add Another Telephone number" button. It validates with
+ *    added with the "Add another telephone number" button. It validates with
  *    libphonenumber-js, so every row needs a real Barbados exchange.
  *  - The confirmation `markdownContent` carries `{polyclinic}`, substituted
  *    with the catchment resolved from the operator address. We assert a real
@@ -233,8 +233,8 @@ export async function fillApplyingFor(
 
 /**
  * Step 2 — the applicant. `applicant-telephone` is a fieldArray: row 0 keeps
- * the unsuffixed id, and `secondPhone` (when given) clicks "Add Another
- * Telephone number" and fills the `-1` row.
+ * the unsuffixed id, and `secondPhone` (when given) clicks "Add another
+ * telephone number" and fills the `-1` row.
  */
 export async function fillYourDetails(
   page: Page,
@@ -254,7 +254,7 @@ export async function fillYourDetails(
     const secondRow = page.locator(`[id="${step}_applicant-telephone-1"]`);
     await expect(secondRow).toHaveCount(0);
     await page
-      .getByRole("button", { name: "Add Another Telephone number" })
+      .getByRole("button", { name: "Add another telephone number" })
       .click();
     await expect(secondRow).toBeVisible({ timeout: STEP_TIMEOUT });
     await secondRow.fill(data.secondPhone);

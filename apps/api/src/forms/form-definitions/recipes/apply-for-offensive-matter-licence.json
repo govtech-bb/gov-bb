@@ -123,11 +123,13 @@
           "ref": "components/telephone",
           "overrides": {
             "fieldId": "applicant-telephone",
+            "hint": "Enter a Barbados or international number.",
             "behaviours": [
               {
                 "type": "fieldArray",
                 "min": 1,
-                "max": 3
+                "max": 3,
+                "addAnotherLabel": "Add another telephone number"
               }
             ]
           }
@@ -504,7 +506,7 @@
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "behaviours": [],
-      "markdownContent": "We have received your application.\n\nWe have sent a confirmation email to the email address you gave. A copy has also been sent to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\n- Environmental Health will review your application.\n- Each vehicle will be inspected before a licence is issued.\n- Environmental Health will tell you the result.\n- If your application is approved, they will tell you how to get each licence.\n\n## Get help\n\nIf you need help, contact the Environmental Health Service office for your area.\n\n{polyclinicContact}",
+      "markdownContent": "We have received your application.\n\nWe have sent a confirmation email to the email address you gave. A copy has also been sent to the Environmental Health Department at **{polyclinic}**.\n\n## What happens next\n\nEnvironmental Health will review your application.\n\nEach vehicle will be inspected before a licence is issued.\n\nEnvironmental Health will tell you the result.\n\nIf your application is approved, they will tell you how to get each licence.\n\n## Get help\n\nIf you need help, contact the Environmental Health Service office for your area.\n\n{polyclinicContact}",
       "elements": []
     }
   ],
@@ -552,7 +554,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:13:52.779Z",
-  "updatedAt": "2026-10-09T12:00:00.000Z",
+  "updatedAt": "2026-10-12T12:00:00.000Z",
   "catchmentRouting": {
     "coordinatesField": "operator-address.operator-address-coordinates",
     "parishField": "operator-address.operator-parish"
