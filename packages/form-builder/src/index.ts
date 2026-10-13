@@ -7,6 +7,7 @@ export type {
   RecipeFieldDraft,
   RecipeProcessorDraft,
   AuthorableProcessorType,
+  AuthorableProcessorPreset,
   ChildOverrides,
 } from "./types";
 
