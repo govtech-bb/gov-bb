@@ -20,8 +20,14 @@ const result = (
   parish: "",
 });
 
-const BRIDGETOWN = result("13.0975", "-59.6145", "Bridgetown");
-const OISTINS = result("13.066", "-59.542", "Oistins");
+const BRIDGETOWN = {
+  ...result("13.0975", "-59.6145", "Bridgetown"),
+  parish: "st-michael",
+};
+const OISTINS = {
+  ...result("13.066", "-59.542", "Oistins"),
+  parish: "christ-church",
+};
 
 function provider(
   name: string,
@@ -134,6 +140,25 @@ describe("GeocodeService", () => {
       "0f8f-session_1",
     );
     expect(primary.search).toHaveBeenNthCalledWith(2, "second", undefined);
+  });
+
+  // A located address's parish is read-only, so it must come with the pick.
+  it("works out the parish of a result that names none", async () => {
+    const primary = provider("primary", async () => [
+      { ...BRIDGETOWN, parish: "" },
+    ]);
+    const [found] = await new GeocodeService([primary]).search("Bridgetown");
+    expect(found.parish).toBe("st-michael");
+  });
+
+  it("does not cache a fallback's answer", async () => {
+    const primary = provider("primary", async () => [BRIDGETOWN]);
+    primary.search.mockRejectedValueOnce(new Error("blip"));
+    const fallback = provider("fallback", async () => [OISTINS]);
+    const service = new GeocodeService([primary, fallback]);
+
+    expect(await service.search("Bridgetown")).toEqual([OISTINS]);
+    expect(await service.search("Bridgetown")).toEqual([BRIDGETOWN]);
   });
 
   it("does not cache a failure", async () => {
@@ -261,6 +286,14 @@ describe("GeocodeService", () => {
       const google = reverser("google", async () => {
         throw new Error("quota");
       });
+      const nominatim = reverser("nominatim", async () => AT_OVAL);
+      expect(
+        await new GeocodeService([google, nominatim]).reverse(13.105, -59.6225),
+      ).toEqual(AT_OVAL);
+    });
+
+    it("asks the next provider when the first has no address at the point", async () => {
+      const google = reverser("google", async () => null);
       const nominatim = reverser("nominatim", async () => AT_OVAL);
       expect(
         await new GeocodeService([google, nominatim]).reverse(13.105, -59.6225),

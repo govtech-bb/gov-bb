@@ -15,6 +15,8 @@ vi.mock("@forms/lib", () => ({
 
 vi.mock("../../lib/api/geocode", () => ({
   MIN_QUERY_LENGTH: 3,
+  ROUTING_COORDINATE: /^-?\d+\.\d+,-?\d+\.\d+$/,
+  locatingPlace: vi.fn(),
   searchAddresses: vi.fn(),
   resolvePlace: vi.fn(),
   reverseGeocode: vi.fn(),
@@ -32,6 +34,7 @@ vi.mock("./location-pin-map", () => ({
 }));
 
 import {
+  locatingPlace,
   lookupPolyclinic,
   resolvePlace,
   reverseGeocode,
@@ -464,6 +467,21 @@ describe("AddressLookupField", () => {
       );
     });
 
+    // Continue waits on this rather than refusing a pick as not located.
+    it("records the pick as being located until its coordinate comes back", async () => {
+      mockResolve.mockResolvedValue({
+        lat: "13.105",
+        lon: "-59.6225",
+        parish: "st-michael",
+      });
+      await pickOval();
+
+      expect(locatingPlace).toHaveBeenCalledWith(
+        "step-1.event-address-line-1",
+        expect.any(Promise),
+      );
+    });
+
     it("looks up the coordinate of the pick in the same session as the search", async () => {
       mockResolve.mockResolvedValue({
         lat: "13.105",
@@ -618,15 +636,48 @@ describe("AddressLookupField", () => {
       );
     });
 
-    it("an edit drops the placed pin", async () => {
+    // The pin is the location and the text only describes it, so correcting
+    // the address the pin filled in must not send the applicant back to it.
+    it("an edit keeps the placed pin and its parish", async () => {
       await userEvent.click(await failLookup());
       setFieldValue.mockClear();
 
       await userEvent.type(screen.getByRole("combobox"), " Road");
 
-      expect(setFieldValue).toHaveBeenCalledWith(
+      expect(setFieldValue).not.toHaveBeenCalledWith(
         "step-1.event-address-coordinates",
         "",
+      );
+      expect(setFieldValue).not.toHaveBeenCalledWith("step-1.event-parish", "");
+      expect(formValues["step-1.event-address-coordinates"]).toBe(
+        "13.100000,-59.600000",
+      );
+    });
+
+    it("looks up the next thing typed after the pin wrote text already there", async () => {
+      mockReverse.mockResolvedValue({
+        label: "Bridgetown",
+        lat: "13.100000",
+        lon: "-59.600000",
+        line1: "Bridgetown",
+        line2: "",
+        parish: "st-michael",
+      });
+      await userEvent.click(await failLookup());
+      await waitFor(() => expect(mockReverse).toHaveBeenCalled());
+      await new Promise((r) => setTimeout(r, 0));
+      mockSearch.mockClear();
+      mockSearch.mockResolvedValue([]);
+
+      // One keystroke: a stuck flag would swallow exactly this lookup.
+      await userEvent.type(screen.getByRole("combobox"), "X");
+
+      await waitFor(() =>
+        expect(mockSearch).toHaveBeenCalledWith(
+          "BridgetownX",
+          expect.anything(),
+          expect.any(String),
+        ),
       );
     });
 

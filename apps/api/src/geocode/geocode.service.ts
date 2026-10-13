@@ -97,16 +97,26 @@ export class GeocodeService {
     const cached = this.cache.get(key);
     if (cached && cached.expires > Date.now()) return cached.results;
 
-    for (const provider of this.providers) {
+    for (const [index, provider] of this.providers.entries()) {
       try {
-        const results = (await provider.search(query, sessionToken)).filter(
-          (r) =>
-            // A place suggestion has no coordinate yet — the provider kept it
-            // to Barbados, and resolve() checks the coordinate once picked.
-            (r.placeId !== undefined && r.lat === undefined) ||
-            isWithinBarbados(Number(r.lat), Number(r.lon)),
-        );
-        this.remember(key, results);
+        const results = (await provider.search(query, sessionToken))
+          .filter(
+            (r) =>
+              // A place suggestion has no coordinate yet — the provider kept it
+              // to Barbados, and resolve() checks the coordinate once picked.
+              (r.placeId !== undefined && r.lat === undefined) ||
+              isWithinBarbados(Number(r.lat), Number(r.lon)),
+          )
+          // A located address's parish is read-only, so a result placed
+          // without one (Nominatim often names none) reads it off the map.
+          .map((r) =>
+            r.lat === undefined || r.parish
+              ? r
+              : { ...r, parish: parishAt(Number(r.lat), Number(r.lon)) },
+          );
+        // Only the primary's answer is cached: a fallback's would outlive the
+        // outage that caused it.
+        if (index === 0) this.remember(key, results);
         return results;
       } catch (error) {
         this.logger.warn(
@@ -171,8 +181,9 @@ export class GeocodeService {
         );
         continue;
       }
-      // An empty answer is final, as for search.
-      if (!found) break;
+      // Unlike search, an empty answer is not final: Google often has only a
+      // plus code for a rural pin, where the next provider may name the road.
+      if (!found) continue;
       return { ...found, parish: found.parish || parish() };
     }
     return {

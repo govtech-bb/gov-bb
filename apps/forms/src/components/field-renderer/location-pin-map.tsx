@@ -1,5 +1,10 @@
 import "leaflet/dist/leaflet.css";
-import { divIcon, latLngBounds, type Marker as LeafletMarker } from "leaflet";
+import {
+  divIcon,
+  latLngBounds,
+  type LeafletEvent,
+  type Marker as LeafletMarker,
+} from "leaflet";
 import { JSX, useEffect, useRef } from "react";
 import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
 
@@ -67,8 +72,15 @@ export default function LocationPinMap({
     onChange(clampedLat, clampedLon);
   };
 
+  // The pin's element exists only once Leaflet adds it to the map, which is
+  // after this component's first render — so it is made keyboard-operable on
+  // that `add`, and the key handler reaches the latest `place` through a ref.
+  const latestPlace = useRef(place);
   useEffect(() => {
-    const element = marker.current?.getElement();
+    latestPlace.current = place;
+  });
+  const makeKeyboardOperable = (event: LeafletEvent) => {
+    const element = (event.target as LeafletMarker).getElement();
     if (!element) return;
     element.setAttribute("role", "button");
     element.setAttribute(
@@ -76,18 +88,17 @@ export default function LocationPinMap({
       "Map pin for your address. Use the arrow keys to move it.",
     );
     element.setAttribute("aria-describedby", describedBy);
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const step = NUDGE[event.key];
+    element.addEventListener("keydown", (keyEvent) => {
+      const step = NUDGE[keyEvent.key];
       if (!step) return;
-      event.preventDefault();
-      event.stopPropagation();
+      keyEvent.preventDefault();
+      keyEvent.stopPropagation();
       const current = marker.current?.getLatLng();
-      if (current) place(current.lat + step[0], current.lng + step[1]);
-    };
-    element.addEventListener("keydown", handleKeyDown);
-    return () => element.removeEventListener("keydown", handleKeyDown);
-  });
+      if (current) {
+        latestPlace.current(current.lat + step[0], current.lng + step[1]);
+      }
+    });
+  };
 
   return (
     <MapContainer
@@ -107,6 +118,7 @@ export default function LocationPinMap({
       <Marker
         draggable
         eventHandlers={{
+          add: makeKeyboardOperable,
           dragend: () => {
             const current = marker.current?.getLatLng();
             if (current) place(current.lat, current.lng);

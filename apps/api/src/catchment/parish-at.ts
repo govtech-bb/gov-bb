@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { isWithinBarbados } from "@/geocode/geocode-result";
+import { inRing } from "./catchment-geometry.service";
 
 /**
  * The parish a point lies in — for an address the geocoder placed but did not
@@ -15,16 +17,7 @@ import path from "node:path";
  * point outside Barbados.
  */
 export function parishAt(lat: number, lon: number): string {
-  if (
-    !Number.isFinite(lat) ||
-    !Number.isFinite(lon) ||
-    lat < 13.03 ||
-    lat > 13.35 ||
-    lon < -59.67 ||
-    lon > -59.4
-  ) {
-    return "";
-  }
+  if (!isWithinBarbados(lat, lon)) return "";
 
   const parishes = boundaries();
   for (const { parish, polygons } of parishes) {
@@ -47,7 +40,7 @@ export function parishAt(lat: number, lon: number): string {
   return nearest;
 }
 
-type Ring = number[][];
+type Ring = [number, number][];
 interface ParishShape {
   parish: string;
   /** Each polygon is [outer ring, ...holes]; points are [lon, lat]. */
@@ -83,20 +76,4 @@ function inPolygon(lon: number, lat: number, rings: Ring[]): boolean {
     inRing(lon, lat, rings[0]) &&
     !rings.slice(1).some((hole) => inRing(lon, lat, hole))
   );
-}
-
-/** Ray casting: is [lon, lat] inside this ring? */
-function inRing(lon: number, lat: number, ring: Ring): boolean {
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const [xi, yi] = ring[i];
-    const [xj, yj] = ring[j];
-    if (
-      yi > lat !== yj > lat &&
-      lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi
-    ) {
-      inside = !inside;
-    }
-  }
-  return inside;
 }

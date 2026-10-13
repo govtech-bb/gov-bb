@@ -1,12 +1,15 @@
 import { JSX, lazy, Suspense, useEffect, useRef, useState } from "react";
 import { FormGroup, Hint, Label } from "@govtech-bb/react";
+import { v4 as uuidv4 } from "uuid";
 import ErrorMessage from "../error-message";
 import {
   GeocodeResult,
+  locatingPlace,
   lookupPolyclinic,
   MIN_QUERY_LENGTH,
   resolvePlace,
   reverseGeocode,
+  ROUTING_COORDINATE,
   searchAddresses,
 } from "../../lib/api/geocode";
 import { AddressCombobox } from "./address-combobox";
@@ -22,8 +25,6 @@ const DEBOUNCE_MS = 400;
 // Wait for the pin to settle before looking up its address — arrow keys move it
 // one nudge at a time.
 const PIN_SETTLE_MS = 500;
-// A routing coordinate as the API accepts it (`isRoutingCoordinate`).
-const ROUTING_COORDINATE = /^-?\d+\.\d+,-?\d+\.\d+$/;
 
 /**
  * A single-line address field backed by the Barbados-locked `/geocode` proxy.
@@ -97,8 +98,9 @@ export function AddressLookupField({
   useEffect(() => () => clearTimeout(pinTimer.current), []);
 
   // Whether the address (and its coordinate) came from the lookup — a pick or
-  // the pin. Editing a located address drops its coordinate and parish. (The
-  // parish is locked, set only from the location — see `filledByAddressLookup`.)
+  // the pin. Editing a picked address drops its coordinate and parish; a pin
+  // keeps them. (The parish is locked, set only from the location — see
+  // `filledByAddressLookup`.)
   const located = useRef(
     Boolean(coordinatesFieldId) &&
       ROUTING_COORDINATE.test(
@@ -145,7 +147,8 @@ export function AddressLookupField({
 
     const controller = new AbortController();
     const timer = setTimeout(() => {
-      session.current ??= crypto.randomUUID();
+      // Not crypto.randomUUID(): it throws outside a secure context.
+      session.current ??= uuidv4();
       searchAddresses(trimmed, controller.signal, session.current)
         .then((results) => {
           setSuggestions(results);
@@ -183,10 +186,22 @@ export function AddressLookupField({
   };
 
   const update = (next: string) => {
+    // This is typing, so look it up — even if a pick or pin left the flag set
+    // by writing text the input already held (no re-render, so never cleared).
+    justSelected.current = false;
     setQuery(next);
     commitChange(next);
     pendingPlace.current = null;
     pinLookup.current += 1;
+    // Clearing the address starts over.
+    if (next.trim() === "") {
+      located.current = false;
+      clearFoundDetails();
+      return;
+    }
+    // A placed pin is the location and the text only describes it, so the
+    // applicant can correct the address the pin filled in and keep the pin.
+    if (pin) return;
     // The coordinate belongs to the address that was located, and the
     // applicant cannot see it (it is a `ui.hidden` field), so a typed address
     // must never carry one: it would route the application to the polyclinic
@@ -200,8 +215,6 @@ export function AddressLookupField({
       }
     }
     if (coordinatesFieldId) writeCoordinate("");
-    // Clearing the address starts over.
-    if (next.trim() === "") clearFoundDetails();
   };
 
   const select = (result: GeocodeResult) => {
@@ -237,7 +250,7 @@ export function AddressLookupField({
     session.current = null;
     if (!result.placeId || result.lat) return;
     pendingPlace.current = result;
-    resolvePlace(result.placeId, sessionToken)
+    const lookup = resolvePlace(result.placeId, sessionToken)
       .then((place) => {
         if (pendingPlace.current !== result) return;
         pendingPlace.current = null;
@@ -252,6 +265,7 @@ export function AddressLookupField({
         // No coordinate for the pick: let the applicant place the pin instead.
         if (coordinatesFieldId) setShowPinMap(true);
       });
+    locatingPlace(field.id, lookup);
   };
 
   const placePin = (lat: number, lon: number) => {

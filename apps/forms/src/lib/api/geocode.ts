@@ -34,6 +34,30 @@ export interface ResolvedPlace {
   parish: string;
 }
 
+/** A routing coordinate as the API accepts it (`isRoutingCoordinate`). */
+export const ROUTING_COORDINATE = /^-?\d+\.\d+,-?\d+\.\d+$/;
+
+// Picked places whose coordinate is still being looked up, by address field id,
+// so Continue waits for the answer rather than refusing the pick as not located.
+const placesBeingLocated = new Map<string, Promise<void>>();
+
+/** Record that `fieldId`'s picked place is being located until `lookup` settles. */
+export function locatingPlace(fieldId: string, lookup: Promise<unknown>): void {
+  const settled: Promise<void> = lookup
+    .then(() => {})
+    .catch(() => {})
+    .finally(() => {
+      if (placesBeingLocated.get(fieldId) === settled) {
+        placesBeingLocated.delete(fieldId);
+      }
+    });
+  placesBeingLocated.set(fieldId, settled);
+}
+
+/** Settles once `fieldId`'s picked place is located; undefined if none is pending. */
+export const placeBeingLocated = (fieldId: string): Promise<void> | undefined =>
+  placesBeingLocated.get(fieldId);
+
 /** Minimum characters before we query — avoids noisy one/two-letter lookups. */
 export const MIN_QUERY_LENGTH = 3;
 

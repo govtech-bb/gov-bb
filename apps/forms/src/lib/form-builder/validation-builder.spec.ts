@@ -16,6 +16,7 @@ import {
   buildValidation,
   buildFieldValidationProperties,
 } from "./validation-builder";
+import { locatingPlace } from "../api/geocode";
 import type { ClientServiceContract, ClientPrimitive } from "@forms/types";
 import type { AnyFieldApi } from "@tanstack/react-form";
 
@@ -873,6 +874,36 @@ describe("address-lookup field that writes a routing coordinate", () => {
       "event_event-coordinates": "13.104995,-59.622524",
     });
     expect(onDynamic!({ value: "Kensington Oval", fieldApi })).toBeUndefined();
+  });
+
+  // Continue pressed while a picked place's coordinate is still on its way
+  // waits for it, rather than refusing the pick as not located.
+  it("judges a pick once its coordinate arrives", async () => {
+    const { onDynamic, onDynamicAsync } =
+      buildFieldValidationProperties(addressField());
+    const values: Record<string, unknown> = { "event_event-coordinates": "" };
+    const fieldApi = makeFieldApi(values);
+    let arrive: () => void = () => {};
+    locatingPlace(
+      "event_event-address",
+      new Promise<void>((resolve) => (arrive = resolve)),
+    );
+
+    expect(onDynamic!({ value: "Kensington Oval", fieldApi })).toBeUndefined();
+    const verdict = onDynamicAsync!({ value: "Kensington Oval", fieldApi });
+    values["event_event-coordinates"] = "13.104995,-59.622524";
+    arrive();
+    expect(await verdict).toBeUndefined();
+  });
+
+  it("refuses a pick whose coordinate could not be found", async () => {
+    const { onDynamicAsync } = buildFieldValidationProperties(addressField());
+    const fieldApi = makeFieldApi({ "event_event-coordinates": "" });
+    locatingPlace("event_event-address", Promise.reject(new Error("503")));
+
+    expect(
+      await onDynamicAsync!({ value: "Kensington Oval", fieldApi }),
+    ).toEqual(["Choose the address from the list, or find it on the map"]);
   });
 
   it("keeps the required message for an empty address", () => {
