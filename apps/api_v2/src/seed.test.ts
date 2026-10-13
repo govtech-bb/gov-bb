@@ -18,6 +18,24 @@ import {
 } from "./test-db";
 
 describe("seed", () => {
+  it("records the markdown commit the snapshot came from", () => {
+    expect(ESTATE.source).toMatch(/^[0-9a-f]{40}$/);
+  });
+
+  it("files every page under a known category and parent", () => {
+    const slugs = new Set(ESTATE.categories.map((category) => category.slug));
+    const urls = new Set(ESTATE.pages.map((page) => page.url));
+    expect(
+      ESTATE.pages
+        .filter(
+          (page) =>
+            (page.category !== null && !slugs.has(page.category)) ||
+            (page.parent !== null && !urls.has(page.parent)),
+        )
+        .map((page) => page.url),
+    ).toEqual([]);
+  });
+
   it("loads every page and category, and a second run adds nothing", async () => {
     const { db, close } = await createTestDb();
 
