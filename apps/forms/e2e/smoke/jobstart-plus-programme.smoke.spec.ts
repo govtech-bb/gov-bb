@@ -43,7 +43,7 @@
  *  - The renderer auto-injects nothing extra: `check-your-answers` is an explicit
  *    recipe step. It is guarded all the same in case of deployment drift.
  *  - `declaration` carries a single-option confirmation checkbox; its fieldset id is
- *    `declaration_declaration-confirmed`. (`declaration-date` is hidden.)
+ *    `declaration_declaration-confirmed`.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect } from "@playwright/test";
