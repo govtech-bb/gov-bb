@@ -70,7 +70,8 @@ async function addProcessor(type: string) {
     (
       {
         email: "Email confirmation",
-        webhook: "Webhook",
+        "webhook-cams": "Case Management System (CaMS)",
+        webhook: "Webhook (custom URL)",
         payment: "Payment",
         spreadsheet: "Spreadsheet export",
         opencrvs: "OpenCRVS forward",
@@ -89,6 +90,7 @@ it("adds a processor of each authorable type", async () => {
   render(<Harness initial={emptyDraft} />);
   for (const type of [
     "email",
+    "webhook-cams",
     "webhook",
     "payment",
     "spreadsheet",
@@ -99,11 +101,17 @@ it("adds a processor of each authorable type", async () => {
   expect(state().map((p) => p.type)).toEqual([
     "email",
     "webhook",
+    "webhook",
     "payment",
     "spreadsheet",
     "opencrvs",
   ]);
-  // Five sequential render+user-event cycles run slower under Vitest than the
+  // The CaMS preset lands as a mapped webhook; the custom one keeps its url.
+  expect(state()[1].config).toHaveProperty("mapping");
+  expect(state()[1].config).not.toHaveProperty("url");
+  expect(state()[2].config).toHaveProperty("url");
+  expect(state()[2].config).not.toHaveProperty("mapping");
+  // Six sequential render+user-event cycles run slower under Vitest than the
   // 5s default allows on a loaded CI runner (~1s locally); give it headroom.
 }, 15000);
 
