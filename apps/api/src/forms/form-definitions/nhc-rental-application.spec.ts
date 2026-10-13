@@ -128,6 +128,7 @@ it("asks the steps in the content review's order", async () => {
     "household",
     "occupant-details",
     "upload-your-documents",
+    "check-your-answers",
     "declaration",
     "submission-confirmation",
   ]);
@@ -283,6 +284,7 @@ it("routes a single employed applicant for a rental home past the joint steps", 
     "household",
     "occupant-details",
     "upload-your-documents",
+    "check-your-answers",
     "declaration",
     "submission-confirmation",
   ]);
@@ -311,6 +313,7 @@ it("routes a joint house-lot application with a retired co-applicant", async () 
     "housing",
     "money-owed",
     "upload-your-documents",
+    "check-your-answers",
     "declaration",
     "submission-confirmation",
   ]);

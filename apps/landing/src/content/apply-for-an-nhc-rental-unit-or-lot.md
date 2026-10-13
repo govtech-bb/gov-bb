@@ -1,6 +1,6 @@
 ---
 title: 'Apply for a National Housing Corporation (NHC) rental home or house lot'
-description: 'Apply to the National Housing Corporation (NHC) for a rental home or house lot if you receive BDS $3,000 a month or less.'
+description: 'Apply to the National Housing Corporation (NHC) for a rental home or house lot.'
 stage: 'alpha'
 featured: false
 publish_date: 2026-04-16
@@ -16,8 +16,8 @@ You can apply on your own or with one other person.
 
 You must be a Barbadian citizen or permanent resident.
 
-- if you apply on your own, you must receive BDS $3,000 a month or less
-- if 2 people apply, they must receive BDS $3,000 a month or less in total
+- if you apply on your own, you must receive **BDS $3,000 a month or less**
+- if 2 people apply, they must receive **BDS $3,000 a month or less in total**
 
 NHC will check if you meet the other requirements after you apply.
 
