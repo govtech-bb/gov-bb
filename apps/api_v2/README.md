@@ -22,19 +22,19 @@ Generate `BETTER_AUTH_SECRET` with `openssl rand -base64 32` and keep it stable.
 
 For local development only, `AUTH_BYPASS=true` skips sign-in. BetterAuth is not started, so the credentials above are unused and placeholders will do, and every editor request runs as a fixed local developer. Pair it with the editor's `VITE_AUTH_BYPASS=true`. Because a bypassed API admits any caller, startup refuses it in production and whenever `EDITOR_ORIGIN` is not `localhost` or `127.0.0.1`.
 
-| Variable                                           | Purpose/default                                                                |
-| -------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD` | `localhost`, `5432`, `postgres`, `postgres`                                    |
-| `DB_NAME`                                          | `gov_bb_v2`                                                                    |
-| `DB_SSL_CA`                                        | Optional PEM contents or CA file path; production uses verified TLS            |
-| `PORT`                                             | `3020`                                                                         |
-| `SEED`                                             | `true` loads the committed estate snapshot on boot; off by default             |
-| `BETTER_AUTH_URL`                                  | Required public API origin                                                     |
-| `EDITOR_ORIGIN`                                    | Required editor origin; the exact credentialed CORS and write-origin allowlist |
-| `BETTER_AUTH_SECRET`                               | Required secret of at least 32 characters                                      |
-| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`         | Required server-side GitHub OAuth credentials                                  |
-| `AUTH_BYPASS`                                      | Local development only: `true` skips sign-in (see above)                       |
-| `PREVIEW_SECRET`                                   | Optional; the site's preview token. Unset, every preview read is refused       |
+| Variable                                           | Purpose/default                                                                                                                                                                                                        |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD` | `localhost`, `5432`, `postgres`, `postgres`                                                                                                                                                                            |
+| `DB_NAME`                                          | `gov_bb_v2`                                                                                                                                                                                                            |
+| `DB_SSL_CA`                                        | Optional PEM contents or CA file path; production uses verified TLS                                                                                                                                                    |
+| `PORT`                                             | `3020`                                                                                                                                                                                                                 |
+| `SEED`                                             | `true` loads the committed estate snapshot on boot. Local development only: an additive seed on every boot brings back a page an editor deleted, so no deployed environment may set it (#3052 removes it from sandbox) |
+| `BETTER_AUTH_URL`                                  | Required public API origin                                                                                                                                                                                             |
+| `EDITOR_ORIGIN`                                    | Required editor origin; the exact credentialed CORS and write-origin allowlist                                                                                                                                         |
+| `BETTER_AUTH_SECRET`                               | Required secret of at least 32 characters                                                                                                                                                                              |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`         | Required server-side GitHub OAuth credentials                                                                                                                                                                          |
+| `AUTH_BYPASS`                                      | Local development only: `true` skips sign-in (see above)                                                                                                                                                               |
+| `PREVIEW_SECRET`                                   | Optional; the site's preview token. Unset, every preview read is refused                                                                                                                                               |
 
 Production requires HTTPS API/editor origins on the same site, such as separate subdomains of the same organizational domain. Cookies are host-only, HttpOnly, Secure on HTTPS, and SameSite=Lax; API requests from the editor include credentials. Do not enable broad cookie domains or permissive CORS. Register the production API's exact `/api/auth/callback/github` URI in GitHub. Forwarded Host headers do not determine callback URLs; the configured origin does. This change does not configure hosting, DNS, or a reverse proxy.
 
@@ -90,7 +90,58 @@ The hierarchy is `parent_id`, not the url. A page is served only when it and eve
 
 `search_chunks` holds each page's body split at its headings, as plain text, rewritten in the same transaction as every save. Rejoined, a page's chunks are exactly the text landing's search indexes today (`search-text.test.ts` checks every seeded page), so moving search onto the API does not move its ranking. The generated `tsv` column and its GIN index are there for server-side search and are not read yet.
 
-The seed is a committed snapshot of legacy markdown and the category taxonomy, subcategories included, with each sub-page's parent. Inserts are additive and idempotent and never replace authored changes. It runs only with `SEED=true`, because an additive insert also brings back a page an editor deleted. Each page it adds starts its history with a `created` entry by `seed`, so an editor can always return to it. Regenerate it with `pnpm seed-data` when intentionally updating the snapshot.
+The seed is a committed snapshot of legacy markdown and the category taxonomy, subcategories included, with each sub-page's parent. Inserts are additive and idempotent and never replace authored changes. It runs only with `SEED=true`, because an additive insert also brings back a page an editor deleted. Each page it adds starts its history with a `created` entry by `seed`, so an editor can always return to it. Regenerate it with `pnpm seed-data` when intentionally updating the snapshot. `pnpm seed-data` also records `source`, the last commit that touched `apps/landing/src/content`, and the one-time import names it in every history entry it writes (see "Importing the estate" below).
+
+## Importing the estate (one-time)
+
+Deployed databases get the estate once, by a command rather than by `SEED`. It is compiled into the image beside `main.js`, so it runs with the task's own database settings:
+
+```sh
+node dist/src/import-estate.js [--dry-run] [--force "<reason>"]
+```
+
+Locally, from this directory, run `pnpm import-estate --dry-run` or `pnpm import-estate`; it reads `.env` like `pnpm dev`. Do not add a `--` separator: this pnpm forwards it literally and tsx then rejects the flag.
+
+The command migrates first, prints `database: <name> host: <addr>` before writing anything, then one JSON line: `{"mode":"dry-run"|"import"|"replace","existing":N,"actors":{…},"categories":N,"documents":N}`. It refuses, with exit code 1, when `content_pages` already has rows: `content_pages has N rows (history actors: …); refusing. Pass --force "<reason>" to replace them.` `--force` truncates `search_chunks`, `content_pages` and `categories` and then imports, all in one transaction; `change_events` is never truncated. `--dry-run` does the real work and rolls it back, so its counts and errors are real. Every imported page's `created` history entry is by `import:<source sha>`, with ` force: <reason>` appended when forced.
+
+### Per environment
+
+Do sandbox first, then staging and prod once their api_v2 services exist.
+
+1. Refresh the snapshot: merge `main` into `v2-rewrite`, run `pnpm seed-data`, commit `estate.json`, merge, and let the deploy build the image. The `source` sha in that commit is what history will show.
+2. Confirm the task definition does not set `SEED`: `aws ecs describe-task-definition --task-definition api-v2-<env> --query 'taskDefinition.containerDefinitions[0].environment'`. If it does, see #3052.
+3. Run the command inside the live container with ECS Exec (needs the AWS Session Manager plugin and credentials for the account). The deployed image has no `psql`, so every database step goes through the command. Dry run first; read the `database:` line and the counts; then the real run.
+
+   ```sh
+   export AWS_REGION=ca-central-1
+   CLUSTER=modular-forms-sandbox
+   SERVICE=api-v2-sandbox
+   TASK=$(aws ecs list-tasks --cluster "$CLUSTER" --service-name "$SERVICE" --query 'taskArns[0]' --output text)
+   aws ecs execute-command --cluster "$CLUSTER" --task "$TASK" --container api-v2 --interactive \
+     --command "node dist/src/import-estate.js --dry-run"
+   aws ecs execute-command --cluster "$CLUSTER" --task "$TASK" --container api-v2 --interactive \
+     --command "node dist/src/import-estate.js"
+   ```
+
+4. Record it: run `--dry-run` once more. It refuses and prints `history actors: import:<sha>=116`, which is the ledger: the `change_events` rows carry `occurred_at` and the sha names the markdown commit.
+5. Smoke from your machine. Every `public` page in `estate.json` returns 200 from `GET /pages?url=`; `preview` pages return 200 only with the `x-preview-token` header (the task's `PREVIEW_SECRET`); `draft` pages are never served by that endpoint.
+
+   ```sh
+   API=https://<api origin>
+   jq -r '.pages[] | select(.visibility == "public") | .url' apps/api_v2/src/seed-data/estate.json |
+     while read -r url; do
+       code=$(curl -s -o /dev/null -w '%{http_code}' --get --data-urlencode "url=$url" "$API/pages")
+       [ "$code" = 200 ] || echo "$code $url"
+     done
+   ```
+
+### A database that already has content
+
+Sandbox holds the snapshot today, loaded by `SEED=true`. Run `--dry-run`: it refuses and shows the actor histogram. If it shows only `seed` and `spike`, no editor has written, so replace with `--force "<reason>"`; the sandbox rehearsal is `--force "sandbox rehearsal: replace SEED=true content"`. If editors have written, do not replace: fix forward in the editor, or restore with RDS point-in-time recovery to a moment before the bad run. The same rule is the rollback rule after a bad import.
+
+### The markdown freeze
+
+`apps/landing/src/content` freezes at the prod import. Until then it stays editable, and the snapshot is regenerated before each environment's import (step 1). After the prod import, content changes go through the editor only; delete the directory once landing_v2 is the only reader.
 
 ## Operations and tests
 
