@@ -102,7 +102,7 @@ node dist/src/import-estate.js [--dry-run] [--force "<reason>"]
 
 Locally, from this directory, run `pnpm import-estate --dry-run` or `pnpm import-estate`; it reads `.env` like `pnpm dev`. Do not add a `--` separator: this pnpm forwards it literally and tsx then rejects the flag.
 
-The command migrates first, prints `database: <name> host: <addr>` before writing anything, then one JSON line: `{"mode":"dry-run"|"import"|"replace","existing":N,"actors":{…},"categories":N,"documents":N}`. It refuses, with exit code 1, when `content_pages` already has rows: `content_pages has N rows (history actors: …); refusing. Pass --force "<reason>" to replace them.` `--force` truncates `search_chunks`, `content_pages` and `categories` and then imports, all in one transaction; `change_events` is never truncated. `--dry-run` does the real work and rolls it back, so its counts and errors are real. Every imported page's `created` history entry is by `import:<source sha>`, with ` force: <reason>` appended when forced.
+The command migrates first, prints `database: <name> host: <addr>` before writing anything, then one JSON line: `{"mode":"dry-run"|"import"|"replace","existing":N,"actors":{…},"categories":N,"documents":N}`. It refuses, with exit code 1, when `content_pages` already has rows: `content_pages has N rows (history actors: …); refusing. Pass --force "<reason>" to replace them.` `--force` truncates `search_chunks`, `content_pages` and `categories` and then imports, all in one transaction; `change_events` is never truncated. The transaction holds a lock on `content_pages` until it commits or rolls back, so editor saves stall for the few seconds it takes, and a forced run (which truncates) stalls public reads for that time too. `--dry-run` does the real work and rolls it back, so its counts and errors are real. Every imported page's `created` history entry is by `import:<source sha>`, with ` force: <reason>` appended when forced.
 
 ### Per environment
 
@@ -113,17 +113,30 @@ Do sandbox first, then staging and prod once their api_v2 services exist.
 3. Run the command inside the live container with ECS Exec (needs the AWS Session Manager plugin and credentials for the account). The deployed image has no `psql`, so every database step goes through the command. Dry run first; read the `database:` line and the counts; then the real run.
 
    ```sh
+   export AWS_PROFILE=<your profile>
    export AWS_REGION=ca-central-1
    CLUSTER=modular-forms-sandbox
    SERVICE=api-v2-sandbox
    TASK=$(aws ecs list-tasks --cluster "$CLUSTER" --service-name "$SERVICE" --query 'taskArns[0]' --output text)
-   aws ecs execute-command --cluster "$CLUSTER" --task "$TASK" --container api-v2 --interactive \
-     --command "node dist/src/import-estate.js --dry-run"
-   aws ecs execute-command --cluster "$CLUSTER" --task "$TASK" --container api-v2 --interactive \
-     --command "node dist/src/import-estate.js"
+   aws ecs execute-command --cluster "$CLUSTER" --task "$TASK" --container api-v2 --interactive --command /bin/sh
    ```
 
-4. Record it: run `--dry-run` once more. It refuses and prints `history actors: import:<sha>=116`, which is the ledger: the `change_events` rows carry `occurred_at` and the sha names the markdown commit.
+   Then, inside that shell:
+
+   ```sh
+   node dist/src/import-estate.js --dry-run
+   node dist/src/import-estate.js
+   ```
+
+   and for a forced run inside the same shell:
+
+   ```sh
+   node dist/src/import-estate.js --force "sandbox rehearsal: replace SEED=true content"
+   ```
+
+   A one-shot form also works when the command needs no quoting, e.g. `--command "node dist/src/import-estate.js --dry-run"`; for a forced run as a one-shot, wrap it as `--command "/bin/sh -c 'node dist/src/import-estate.js --force \"<reason>\"'"` and confirm the quoting on the sandbox rehearsal before relying on it.
+
+4. Record it: run `--dry-run` once more. It refuses and prints `history actors:`, which is the ledger: `import:<sha>=116` after a plain import, or `import:<sha> force: <reason>=116` alongside the old `seed=116` after a forced replace (the sandbox rehearsal). The `change_events` rows carry `occurred_at` and the sha names the markdown commit.
 5. Smoke from your machine. Every `public` page in `estate.json` returns 200 from `GET /pages?url=`; `preview` pages return 200 only with the `x-preview-token` header (the task's `PREVIEW_SECRET`); `draft` pages are never served by that endpoint.
 
    ```sh

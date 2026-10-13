@@ -230,6 +230,27 @@ describe("seed", () => {
     await close();
   }, 60_000);
 
+  it("dry run with force leaves existing content and history untouched", async () => {
+    const { db, close } = await createTestDb();
+    await seed(db);
+    const history = await countOf(db, "change_events");
+
+    const report = await importEstate(db, { dryRun: true, force: "rehearsal" });
+
+    expect(report.existing).toBe(ESTATE.pages.length);
+    expect(report.categories).toBe(ESTATE.categories.length);
+    expect(report.documents).toBe(ESTATE.pages.length);
+    expect(await countOf(db, "content_pages")).toBe(ESTATE.pages.length);
+    expect(await countOf(db, "categories")).toBe(ESTATE.categories.length);
+    expect(await countOf(db, "change_events")).toBe(history);
+    const { rows } = await db.execute<{ actor: string }>(
+      sql`select distinct actor from change_events order by actor`,
+    );
+    expect(rows.map((row) => row.actor)).toEqual(["seed"]);
+
+    await close();
+  }, 60_000);
+
   it("force replaces existing content in one transaction and records the reason", async () => {
     const { db, close } = await createTestDb();
     await seed(db);
