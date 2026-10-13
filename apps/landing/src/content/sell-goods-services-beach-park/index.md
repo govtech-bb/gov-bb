@@ -26,21 +26,21 @@ If you are intending to do hair braiding at your location, you will also need to
 
 There are 2 ways to apply for a licence. You can:
 
-### 1\. Complete an application form online
+1. **Complete an application form online**
 
-You can apply for a licence online.
+   You can apply for a licence online.
 
-<a data-start-link href="/business-trade/sell-goods-services-beach-park/start">Apply online</a>
+   <a data-start-link href="/business-trade/sell-goods-services-beach-park/start">Apply online</a>
 
-### 2\. Complete a paper application form
+2. **Complete a paper application form**
 
-You can collect a paper form from the National Conservation Commission (NCC), complete it by hand, and return it to the NCC at:
+   You can collect a paper form from the National Conservation Commission (NCC), complete it by hand, and return it to the NCC at:
 
-Codrington Road,<br />
-Bridgetown,<br />
-St. Michael
+   Codrington Road,<br />
+   Bridgetown,<br />
+   St. Michael
 
-You can also return a paper application form by post. However, returning it in person can speed up the process because NCC colleagues may be able to check your application for missing information and let you know immediately.
+   You can also return a paper application form by post. However, returning it in person can speed up the process because NCC colleagues may be able to check your application for missing information and let you know immediately.
 
 ## What you need to share when you apply
 

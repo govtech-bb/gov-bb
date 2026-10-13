@@ -64,7 +64,7 @@ export class PaymentRequiredListener {
       });
 
       this.logger.log(
-        `[payment-required] Sent to ${event.customerEmail} for submission ${event.submissionId}`,
+        `[payment-required] Sent for submission ${event.submissionId}`,
       );
     } catch (err) {
       // Best-effort: never let a failed acknowledgement disrupt the flow.
