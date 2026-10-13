@@ -154,7 +154,7 @@ async function hydratedRecipes(): Promise<
         await fs.readFile(path.join(RECIPES_DIR, file), "utf8"),
       );
       const recipe = serviceContractRecipeSchema.parse(raw);
-      const hydrated = await hydrateForm(recipe, getCatalog());
+      const hydrated = hydrateForm(recipe, getCatalog());
       return {
         formId: file.replace(/\.json$/, ""),
         steps: hydrated.steps as unknown as HydratedStep[],

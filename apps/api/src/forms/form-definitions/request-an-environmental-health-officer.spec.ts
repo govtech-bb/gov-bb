@@ -19,7 +19,7 @@ const GATED_STEP_IDS = ["food-details", "food-safety"];
 async function hydratedSteps() {
   const raw = JSON.parse(await fs.readFile(RECIPE_PATH, "utf8"));
   const recipe = serviceContractRecipeSchema.parse(raw);
-  const hydrated = await hydrateForm(recipe, getCatalog());
+  const hydrated = hydrateForm(recipe, getCatalog());
   return hydrated.steps as unknown as {
     stepId: string;
     behaviours?: {

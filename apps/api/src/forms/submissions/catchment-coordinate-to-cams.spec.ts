@@ -127,7 +127,7 @@ async function routedRecipes(): Promise<RoutedRecipe[]> {
     // vacuously if that ever changed.
     if (!mapping) throw new Error(`${recipe.formId}: routed with no mapping`);
 
-    const hydrated = await hydrateForm(recipe, getCatalog());
+    const hydrated = hydrateForm(recipe, getCatalog());
     const coordinateStepId = routing.coordinatesField.split(".")[0];
 
     // The address lookup whose `geocodeTargets` writes the routing coordinate —

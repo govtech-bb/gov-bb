@@ -24,10 +24,7 @@ async function hydratedContract(): Promise<ServiceContract> {
   const raw = JSON.parse(await fs.readFile(RECIPE_PATH, "utf8"));
   const recipe = serviceContractRecipeSchema.parse(raw);
   // Every ref in this recipe is a builtin, so a miss is a bug in the recipe.
-  return (await hydrateForm(
-    recipe,
-    getCatalog(),
-  )) as unknown as ServiceContract;
+  return hydrateForm(recipe, getCatalog()) as unknown as ServiceContract;
 }
 
 function isoYearsAgo(years: number): string {

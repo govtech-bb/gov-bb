@@ -23,10 +23,7 @@ const RECIPE_PATH = path.resolve(
 async function contract(): Promise<ServiceContract> {
   const raw = JSON.parse(await fs.readFile(RECIPE_PATH, "utf8"));
   const recipe = serviceContractRecipeSchema.parse(raw);
-  return (await hydrateForm(
-    recipe,
-    getCatalog(),
-  )) as unknown as ServiceContract;
+  return hydrateForm(recipe, getCatalog()) as unknown as ServiceContract;
 }
 
 async function conditions(values: Record<string, unknown>) {

@@ -46,7 +46,7 @@ async function mappedRecipes(): Promise<MappedRecipe[]> {
 
     const { name, email, phone } = mapping.applicant;
     const routing = recipe.catchmentRouting;
-    const hydrated = await hydrateForm(recipe, getCatalog());
+    const hydrated = hydrateForm(recipe, getCatalog());
     mapped.push({
       formId: recipe.formId,
       applicantPaths: [...(Array.isArray(name) ? name : [name]), email, phone],

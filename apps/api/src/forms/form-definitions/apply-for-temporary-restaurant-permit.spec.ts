@@ -22,7 +22,7 @@ const RECIPE_PATH = path.resolve(
 async function confirmationStep() {
   const raw = JSON.parse(await fs.readFile(RECIPE_PATH, "utf8"));
   const recipe = serviceContractRecipeSchema.parse(raw);
-  const hydrated = await hydrateForm(recipe, getCatalog());
+  const hydrated = hydrateForm(recipe, getCatalog());
   const step = hydrated.steps.find(
     (s) => s.stepId === "submission-confirmation",
   );
