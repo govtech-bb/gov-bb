@@ -847,12 +847,7 @@ Every form MUST include this as the **last step** in the `steps` array. The fron
   "stepId": "submission-confirmation",
   "title": "Application submitted",
   "elements": [],
-  "nextSteps": [
-    {
-      "title": "What happens next",
-      "content": "We have received your submission. You will receive a confirmation email at the address you provided."
-    }
-  ]
+  "markdownContent": "## What happens next\n\nWe have received your submission. You will receive a confirmation email at the address you provided."
 }
 ```
 
@@ -860,7 +855,7 @@ Every form MUST include this as the **last step** in the `steps` array. The fron
 
 - `stepId` MUST be exactly `"submission-confirmation"` — the renderer checks this literal string
 - `elements` MUST be an empty array `[]` — the renderer uses a dedicated component, not field rendering
-- `nextSteps` is optional but recommended — array of `{title, content?, items?}` shown after the success message
+- `markdownContent` is optional but recommended — a markdown string shown after the success message (use `## What happens next` as the heading; bullet lists with `-`)
 - This step goes AFTER the declaration step (it is always the last step)
 - For payment forms, the renderer automatically shows payment status — no extra config needed here
 
@@ -1145,7 +1140,7 @@ VALUES (
         "stepId": "submission-confirmation",
         "title": "Application submitted",
         "elements": [],
-        "nextSteps": [{"title": "What happens next", "content": "We have received your application. You will receive a confirmation email at the address you provided."}]
+        "markdownContent": "## What happens next\n\nWe have received your application. You will receive a confirmation email at the address you provided."
       }
     ],
     "processors": []
@@ -1258,7 +1253,7 @@ Before finalizing the SQL, verify:
 - [ ] Date fields use `components/date-of-birth` with appropriate fieldId + label overrides
 - [ ] Age fields use `components/generic/number` (not radio or select)
 - [ ] Free-text relationship fields use `components/name`, not `components/relationship`
-- [ ] The last step is `{"stepId": "submission-confirmation", "title": "Application submitted", "elements": [], "nextSteps": [...]}`
+- [ ] The last step is `{"stepId": "submission-confirmation", "title": "Application submitted", "elements": [], "markdownContent": "## What happens next\n\n..."}`
 - [ ] No hidden fields have `required` validation (`isHidden: true` + `required: true` blocks submission)
 - [ ] No step has more than 10 fields
 - [ ] The SQL uses dollar-quoting (`$recipe$...$recipe$`) to avoid quote escaping issues

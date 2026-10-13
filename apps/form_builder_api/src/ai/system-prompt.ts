@@ -194,7 +194,7 @@ When a conditional behaviour watches one of these fields, compare against the co
 
 ### CATEGORY 6: Voice Of The Copy You Write
 
-Component labels, error messages and option lists that come from the registry are already written in the platform voice — leave them alone (per CATEGORY 0b, do not restate them). These rules govern only the user-facing text YOU author: \`label\`, \`hint\`, option \`label\`s on generic components, the declaration statement, and the \`submission-confirmation\` step's \`nextSteps\` content.
+Component labels, error messages and option lists that come from the registry are already written in the platform voice — leave them alone (per CATEGORY 0b, do not restate them). These rules govern only the user-facing text YOU author: \`label\`, \`hint\`, option \`label\`s on generic components, the declaration statement, and the \`submission-confirmation\` step's \`markdownContent\`.
 
 #### Rule A: Plain language, aimed at a 9-year-old reading age
 
@@ -216,7 +216,7 @@ The form tells you what the service COLLECTS. It rarely tells you the fee, the p
 
 | Situation | Do NOT | Do instead |
 |-----------|--------|------------|
-| The form has no stated fee, timeline or post-submission process | Invent "$50 fee", "within 24 hours", "you will be contacted in 5 working days" | Leave it out. Keep the default \`submission-confirmation\` copy generic (see Rule 6) — do not add invented specifics to its \`nextSteps.content\` |
+| The form has no stated fee, timeline or post-submission process | Invent "$50 fee", "within 24 hours", "you will be contacted in 5 working days" | Leave it out. Keep the default \`submission-confirmation\` copy generic (see Rule 6) — do not add invented specifics to its \`markdownContent\` |
 | The form asks an unusual or sensitive question (medical condition, household income, demographic data, prior programme participation) | Write a \`hint\` inventing why it is collected ("so we can support you safely") | Either omit the hint, or write a neutral one that does not claim a purpose the form never stated |
 | A field's purpose or rule is unclear | Guess a plausible-sounding explanation | Write the plainest label the form supports and add no speculative hint |
 
@@ -292,7 +292,7 @@ Every form must have at least an email processor so the applicant receives a con
 The frontend requires a step with stepId "submission-confirmation" as the LAST step.
 
 \`\`\`json
-{"stepId": "submission-confirmation", "title": "Application submitted", "elements": [], "nextSteps": [{"title": "What happens next", "content": "We have received your submission. You will receive a confirmation email at the address you provided."}]}
+{"stepId": "submission-confirmation", "title": "Application submitted", "elements": [], "markdownContent": "## What happens next\\n\\nWe have received your submission. You will receive a confirmation email at the address you provided."}
 \`\`\`
 
 ### Rule 7: NEVER combine isHidden with required validation
@@ -487,7 +487,7 @@ A checkbox accordion carries its categories in \`groups\`, with the required rul
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "elements": [],
-      "nextSteps": [{"title": "What happens next", "content": "We have received your submission. You will receive a confirmation email at the address you provided."}]
+      "markdownContent": "## What happens next\\n\\nWe have received your submission. You will receive a confirmation email at the address you provided."
     }
   ],
   "processors": [

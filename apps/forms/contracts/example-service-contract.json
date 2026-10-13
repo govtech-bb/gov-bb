@@ -587,15 +587,7 @@
       "stepId": "submission-confirmation",
       "title": "Thank you for your application!",
       "elements": [],
-      "nextSteps": [
-        { "step": "We will review your application within 5 working days." },
-        {
-          "step": "You will receive an email confirmation once your mail redirection is active."
-        },
-        {
-          "step": "Your mail redirection will begin on the requested start date."
-        }
-      ]
+      "markdownContent": "## What happens next\n\n- We will review your application within 5 working days.\n- You will receive an email confirmation once your mail redirection is active.\n- Your mail redirection will begin on the requested start date."
     }
   ],
   "processors": [

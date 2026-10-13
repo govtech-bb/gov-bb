@@ -1104,17 +1104,7 @@
       "stepId": "submission-confirmation",
       "title": "Thank you for your application!",
       "elements": [],
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "You will receive a confirmation email with:",
-          "items": [
-            "Your application reference number",
-            "the cost of the certificate(s)",
-            "the expected completion date"
-          ]
-        }
-      ]
+      "markdownContent": "## What happens next\n\nYou will receive a confirmation email with:\n\n- Your application reference number\n- the cost of the certificate(s)\n- the expected completion date"
     }
   ]
 }
