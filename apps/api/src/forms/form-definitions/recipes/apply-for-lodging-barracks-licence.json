@@ -1522,7 +1522,7 @@
     },
     {
       "stepId": "supporting-documents",
-      "title": "Supporting documents and licences",
+      "title": "Upload supporting documents",
       "behaviours": [
         {
           "type": "stepConditionalOn",
@@ -1650,7 +1650,7 @@
     }
   ],
   "createdAt": "2026-08-24T23:54:14.187Z",
-  "updatedAt": "2026-10-13T11:43:35.000Z",
+  "updatedAt": "2026-10-13T12:15:17.000Z",
   "meta": {
     "visibility": "preview"
   },

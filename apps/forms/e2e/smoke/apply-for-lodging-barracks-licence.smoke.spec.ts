@@ -717,7 +717,7 @@ export async function fillSitePlan(page: Page, upload: boolean): Promise<void> {
   const step = await onStep(
     page,
     "supporting-documents",
-    "Supporting documents and licences",
+    "Upload supporting documents",
   );
   if (upload) {
     await uploadOne(page, step, "site-plan", {
