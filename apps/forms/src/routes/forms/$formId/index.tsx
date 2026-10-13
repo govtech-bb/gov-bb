@@ -463,8 +463,10 @@ function FormView() {
   // changes. This replaces a `useStore`-in-a-loop (a rules-of-hooks violation)
   // whose fresh-array dependency also defeated the memo on every render.
   const conditionalTargetKey = Object.entries(formMeta.stepConditionalTargets)
-    .map(([stepId, fieldId]) =>
-      String(formValues[getFullFieldId(stepId, fieldId)] ?? ""),
+    .flatMap(([stepId, fieldIds]) =>
+      fieldIds.map((fieldId) =>
+        String(formValues[getFullFieldId(stepId, fieldId)] ?? ""),
+      ),
     )
     .join("|");
 

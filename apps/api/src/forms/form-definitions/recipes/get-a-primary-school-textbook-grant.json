@@ -84,7 +84,6 @@
               {
                 "type": "optionalIf",
                 "targetFieldId": "child-passport-toggle",
-                "targetStepId": "child-details",
                 "operator": "equal",
                 "value": true
               }
@@ -121,7 +120,6 @@
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "child-passport-toggle",
-                "targetStepId": "child-details",
                 "operator": "equal",
                 "value": true
               }
@@ -218,7 +216,6 @@
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "is-parent-or-guardian",
-                "targetStepId": "child-details",
                 "operator": "equal",
                 "value": "no"
               }
@@ -751,7 +748,7 @@
     }
   ],
   "createdAt": "2026-06-11T21:35:31.794Z",
-  "updatedAt": "2026-08-20T18:45:33.000Z",
+  "updatedAt": "2026-10-09T11:35:00.000Z",
   "meta": {
     "visibility": "maintenance"
   }

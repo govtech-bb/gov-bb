@@ -155,7 +155,8 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-for-offensive-waste-licence",
-    title: "Apply for an offensive trade licence with Environmental Health",
+    title:
+      "Apply to Environmental Health for an offensive trade licence to do work that may cause fumes, smells or waste",
     category: "business-trade",
     formId: "apply-for-offensive-waste-licence",
     visibility: "preview",
@@ -246,7 +247,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-to-use-state-land",
-    title: "Apply to use state land",
+    title: "Apply to use land owned by the Government of Barbados",
     category: "housing",
     formId: "mohlm-application-use-state-land",
     visibility: "preview",

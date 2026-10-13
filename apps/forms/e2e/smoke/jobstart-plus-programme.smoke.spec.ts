@@ -83,9 +83,9 @@ test.describe("JobStart Plus Programme — Live Smoke", () => {
     );
     await fillField(page, step, "applicant-last-name", faker.person.lastName());
     // `applicant-dob` enforces 16 < age < 34 (recipe `gt:16` / `lt:34`,
-    // transform `yearsSince`), and the disability-support step blocks anyone
-    // whose `yearsSince(dob) >= 25` unless they answer "yes" to has-disability.
-    // This run answers "no", so the applicant must be 17–24. Derive the birth
+    // transform `yearsSince`), and `disability-eligibility` blocks anyone
+    // whose `yearsSince(dob) >= 25` unless they answer "yes" to it.
+    // This run keeps that question hidden, so the applicant must be 17–24. Derive the birth
     // year at runtime so the age stays inside that window as calendar years
     // pass — a fixed offset of 25 put the applicant exactly on the >= 25 gate
     // the day their birthday passed and broke this; -21 keeps them ~20–21,
@@ -255,5 +255,35 @@ test.describe("JobStart Plus Programme — Live Smoke", () => {
     await submitAndConfirm(page, {
       heading: "Application submitted",
     });
+  });
+
+  // A 25+ applicant without a disability is stopped on the question itself:
+  // "No" reveals the warning and fails the `^yes$` pattern, so Continue never
+  // leaves `applicant-details`.
+  test("stops a 25+ applicant without a disability inline", async ({
+    page,
+  }) => {
+    await openSmokeForm(page, FORM_ID);
+    await page.waitForURL((url) => !!url.searchParams.get("step"), {
+      timeout: STEP_TIMEOUT,
+    });
+
+    const step = expectStep(page, "applicant-details", { exact: true });
+    // ~29–30 years old: over the >= 25 gate, under the lt:34 ceiling.
+    const dobYear = new Date().getFullYear() - 30;
+    await fillDate(page, step, "applicant-dob", 15, 6, dobYear);
+    await selectRadio(page, step, "disability-eligibility", "no");
+    // Content elements render with no id (a bare `div.govbb-warning-text`), so
+    // the notice is located by class.
+    await expect(page.locator(".govbb-warning-text")).toContainText(
+      "you can only apply for JobStart Plus if you have a disability",
+    );
+
+    await page.getByRole("button", { name: /^Continue$/ }).click();
+    await expect(page.locator(".govbb-error-summary")).toContainText(
+      "You can only apply if you are under 25 or have a disability or long-term health condition",
+      { timeout: STEP_TIMEOUT },
+    );
+    expectStep(page, step, { exact: true });
   });
 });
