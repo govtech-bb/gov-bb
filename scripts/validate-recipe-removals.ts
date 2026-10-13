@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Recipe removal guard CLI (#2409): fails when a changed flat recipe drops a
- * webhook or MDA-email processor, its catchment routing, a geocodeTargets
+ * webhook processor or MDA delivery email, its catchment routing, a geocodeTargets
  * block or an address lookup against the base revision (see
  * recipe-removal-guards.ts). Same modes as validate-recipe-updated-at.ts
  * (recipe-base-diff.ts); CI runs `--base origin/<target>` from its own
@@ -11,12 +11,12 @@
 import { changedRecipes } from "./recipe-base-diff";
 import { checkRemovals } from "./recipe-removal-guards";
 
-/** Parsed JSON, or null for text that is not JSON (validate-recipes reports that). */
+/** Parsed JSON, or undefined for a missing file or text that is not JSON. */
 function parse(text: string | null): unknown {
   try {
-    return text === null ? null : JSON.parse(text);
+    return text === null ? undefined : JSON.parse(text);
   } catch {
-    return null;
+    return undefined;
   }
 }
 
@@ -28,9 +28,12 @@ function main(): void {
     console.error((err as Error).message);
     process.exit(2);
   }
-  const errors = recipes.flatMap(({ file, before, after }) =>
-    after === null ? [] : checkRemovals(file, parse(before), parse(after)),
-  );
+  // An unparseable `after` is skipped (validate-recipes reports invalid
+  // JSON); an unparseable `before` has nothing to lose.
+  const errors = recipes.flatMap(({ file, before, after }) => {
+    const next = parse(after);
+    return next === undefined ? [] : checkRemovals(file, parse(before), next);
+  });
   if (errors.length > 0) {
     console.error(
       `Found ${errors.length} removal(s) of recipe delivery, routing or geocoding (#2409):`,

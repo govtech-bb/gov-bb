@@ -7,7 +7,11 @@
  * recipe, which covers a `blocks/*` ref's per-child override record too.
  * Returns human-readable error strings (empty when clean).
  */
+import { classifyRecipientField } from "@govtech-bb/form-types";
 import { isRecord } from "./recipe-content";
+
+const nonEmptyRecord = (value: unknown) =>
+  isRecord(value) && Object.keys(value).length > 0;
 
 function processors(recipe: unknown): Record<string, unknown>[] {
   const list = isRecord(recipe) ? recipe.processors : undefined;
@@ -39,21 +43,25 @@ const CATEGORIES: [string, (recipe: unknown) => number][] = [
     (r) => processors(r).filter((p) => p.type === "webhook").length,
   ],
   [
-    "MDA-email processors",
+    // Every recipient but a submitted answer (the applicant) is the MDA's.
+    "MDA delivery emails",
     (r) =>
       processors(r).filter(
         (p) =>
           p.type === "email" &&
           isRecord(p.config) &&
           typeof p.config.recipientField === "string" &&
-          p.config.recipientField.includes("mdaEmail"),
+          classifyRecipientField(p.config.recipientField) !== "submitted",
       ).length,
   ],
   [
     "catchment routing",
-    (r) => (isRecord(r) && r.catchmentRouting !== undefined ? 1 : 0),
+    (r) => (isRecord(r) && nonEmptyRecord(r.catchmentRouting) ? 1 : 0),
   ],
-  ["geocode targets", (r) => countObjects(r, (o) => "geocodeTargets" in o)],
+  [
+    "geocode targets",
+    (r) => countObjects(r, (o) => nonEmptyRecord(o.geocodeTargets)),
+  ],
   [
     "address lookups",
     (r) => countObjects(r, (o) => o.ref === "components/address-lookup"),
@@ -71,7 +79,7 @@ export function checkRemovals(
     const now = count(after);
     if (now < was) {
       errors.push(
-        `${file}: removes ${category} (base had ${was}, this PR has ${now}). If this is deliberate, add the recipe-removal-override label.`,
+        `${file}: removes ${category} (base had ${was}, this change has ${now}). If this is deliberate, a PR can carry the recipe-removal-override label.`,
       );
     }
   }

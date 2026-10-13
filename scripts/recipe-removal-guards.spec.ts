@@ -20,6 +20,12 @@ const lookup = {
 };
 const plainLookup = { ref: "components/address-lookup" };
 const address = { ref: "components/address" };
+const email = (recipientField: string) => ({
+  type: "email",
+  config: { recipientField },
+});
+const removal = (category: string) =>
+  `${FILE}: removes ${category} (base had 1, this change has 0). If this is deliberate, a PR can carry the recipe-removal-override label.`;
 
 const recipe = (elements: unknown[], processors: unknown[], extra = {}) => ({
   formId: "x",
@@ -49,7 +55,7 @@ describe("checkRemovals", () => {
       }),
     ],
     [
-      "MDA-email processors",
+      "MDA delivery emails",
       recipe([lookup], [webhook, applicantEmail], {
         catchmentRouting: { by: "parish" },
       }),
@@ -67,14 +73,47 @@ describe("checkRemovals", () => {
   ])("reports removed %s", (category, after) => {
     const errors = checkRemovals(FILE, full, after);
     expect(errors).toEqual([
-      `${FILE}: removes ${category} (base had 1, this PR has 0). If this is deliberate, add the recipe-removal-override label.`,
+      `${FILE}: removes ${category} (base had 1, this change has 0). If this is deliberate, a PR can carry the recipe-removal-override label.`,
     ]);
   });
 
   it("reports a downgraded address lookup", () => {
     const before = recipe([plainLookup], []);
     expect(checkRemovals(FILE, before, recipe([address], []))).toEqual([
-      `${FILE}: removes address lookups (base had 1, this PR has 0). If this is deliberate, add the recipe-removal-override label.`,
+      `${FILE}: removes address lookups (base had 1, this change has 0). If this is deliberate, a PR can carry the recipe-removal-override label.`,
+    ]);
+  });
+
+  it.each([
+    ["a literal address (exit-survey shape)", "survey@gov.bb"],
+    ["a contactDetails address", "contactDetails.email"],
+  ])("reports a dropped MDA delivery email to %s", (_what, field) => {
+    expect(
+      checkRemovals(FILE, recipe([], [email(field)]), recipe([], [])),
+    ).toEqual([removal("MDA delivery emails")]);
+  });
+
+  it("ignores a dropped applicant email", () => {
+    const before = recipe([], [email("applicant.email")]);
+    expect(checkRemovals(FILE, before, recipe([], []))).toEqual([]);
+  });
+
+  it("passes switching config.mdaEmail to a literal address", () => {
+    const before = recipe([], [email("config.mdaEmail")]);
+    const after = recipe([], [email("mda@gov.bb")]);
+    expect(checkRemovals(FILE, before, after)).toEqual([]);
+  });
+
+  it("treats an emptied catchmentRouting or geocodeTargets as removed", () => {
+    const before = recipe([lookup], [], { catchmentRouting: { by: "parish" } });
+    const after = recipe(
+      [{ ...lookup, overrides: { fieldId: "address", geocodeTargets: {} } }],
+      [],
+      { catchmentRouting: null },
+    );
+    expect(checkRemovals(FILE, before, after)).toEqual([
+      removal("catchment routing"),
+      removal("geocode targets"),
     ]);
   });
 
@@ -89,7 +128,7 @@ describe("checkRemovals", () => {
     );
     const after = recipe([block({ label: "Line 1" })], []);
     expect(checkRemovals(FILE, before, after)).toEqual([
-      `${FILE}: removes geocode targets (base had 1, this PR has 0). If this is deliberate, add the recipe-removal-override label.`,
+      `${FILE}: removes geocode targets (base had 1, this change has 0). If this is deliberate, a PR can carry the recipe-removal-override label.`,
     ]);
   });
 

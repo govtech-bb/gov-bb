@@ -244,11 +244,14 @@ a recipe's content changes without that stamp moving forward.
 A PR — a builder `Publish form:` one included — also must not silently drop a
 form's delivery, routing or geocoding (#2409). The **Recipe removal guard**
 workflow (`pnpm validate-recipe-removals`) compares each changed recipe with
-its merge base and fails when it has fewer webhook processors, MDA-email
-processors (`recipientField` containing `mdaEmail`), `catchmentRouting`,
-`geocodeTargets` or `components/address-lookup` refs, naming each drop. When a
-removal is deliberate, add the `recipe-removal-override` label to the PR; the
-check re-runs and is skipped.
+its merge base and fails when it has fewer webhook processors, MDA delivery
+emails (any email `recipientField` but a submitted answer: a literal address,
+`contactDetails.`, `config.` or `catchment.`), non-empty `catchmentRouting`,
+non-empty `geocodeTargets` or `components/address-lookup` refs, naming each
+drop. When a removal is deliberate, add the `recipe-removal-override` label to
+the PR; the check re-runs and is skipped, and stays skipped for later pushes
+while the label is on. A deleted or renamed recipe file isn't checked (the
+filename is the form id, so the builder never renames one).
 
 ### Recover from a malformed recipe at boot
 
