@@ -257,6 +257,24 @@ describe("seed", () => {
     await close();
   }, 60_000);
 
+  it("force also clears categories left behind without pages", async () => {
+    const { db, close } = await createTestDb();
+    await seed(db);
+    await db.execute(sql`truncate search_chunks, content_pages`);
+
+    const report = await importEstate(db, {
+      dryRun: false,
+      force: "test leftovers",
+    });
+
+    expect(report.existing).toBe(0);
+    expect(report.categories).toBe(ESTATE.categories.length);
+    expect(report.documents).toBe(ESTATE.pages.length);
+    expect(await countOf(db, "categories")).toBe(ESTATE.categories.length);
+
+    await close();
+  }, 60_000);
+
   it("a failure part-way leaves no partial estate", async () => {
     const { db, close } = await createTestDb();
     // The first page's search chunks fail after the categories and that page

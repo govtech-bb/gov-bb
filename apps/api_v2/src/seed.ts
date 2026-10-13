@@ -146,7 +146,7 @@ export type ImportReport = {
  * around `seed()`, so a failure leaves nothing behind. Refuses when
  * `content_pages` already has rows, because `seed()` is additive and would
  * bring back deleted pages without updating changed ones. `force` replaces
- * instead: the three content tables are truncated first, in the same
+ * instead: the three content tables are always truncated first, in the same
  * transaction, and the stated reason lands in every history entry. History
  * (`change_events`) is never truncated; it is append-only and the record of
  * what happened. `dryRun` does the real work and rolls it back.
@@ -180,7 +180,7 @@ export async function importEstate(
           `content_pages has ${existing} rows (history actors: ${histogram}); refusing. Pass --force "<reason>" to replace them.`,
         );
       }
-      if (existing > 0) {
+      if (options.force) {
         await tx.execute(
           sql`truncate search_chunks, content_pages, categories`,
         );
