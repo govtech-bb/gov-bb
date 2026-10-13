@@ -28,9 +28,10 @@ applied wherever a field asks for a Barbados ID.
   a recipe's `required` replaces the registry's whole rule, so deleting it ships
   "This field is required". Labels inherit; errors are restated.
 - **The guard finds ID fields by format, not by ref.** Hydrated fields don't keep
-  their ref. Mask, or a pattern that accepts 850101-0001 and rejects a letter or
-  an extra digit — the second clause exists because the first version also
-  caught a licence-number and a business-name pattern. This found three
+  their ref. Mask, or a pattern that accepts 850101-0001 and rejects a letter in
+  it — that clause exists because the first version also caught a
+  licence-number and a business-name pattern. An extra-digit probe was tried
+  and dropped: it let an unanchored `\d{6}-\d{4}` restatement slip past. This found three
   plain-text fields asking for the ID (school uniform, seniors, Smart Stream)
   and post-office's restated pattern, which an initial "only the error is
   overridden" reading had missed.
