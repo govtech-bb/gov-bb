@@ -490,11 +490,14 @@ export class EmailProcessor implements ISubmissionProcessor {
     try {
       const ctx = await this.emailBodyBuilder.build(payload);
       if (fileLinks.length > 0) ctx.fileLinks = fileLinks;
-      // Both templates carry the coat-of-arms branding. The department name is
-      // only used by the citizen acknowledgement, so resolve that directory
-      // lookup only for that template.
+      // Both templates carry the coat-of-arms branding. The department name and
+      // tracker link are only used by the citizen acknowledgement, so resolve
+      // them only for that template.
       ctx.coatOfArmsUrl = this.mailer.coatOfArmsUrl;
       if (templateId === RECEIVED_TEMPLATE) {
+        ctx.trackable = payload.processors.some(
+          (p) => p.type === "webhook" && Boolean(p.config.mapping),
+        );
         ctx.departmentName =
           (await this.formConfigService.resolveDepartmentName(
             payload.formId,
