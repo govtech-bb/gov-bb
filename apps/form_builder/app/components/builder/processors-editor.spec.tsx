@@ -954,3 +954,158 @@ it("keeps a DOB selection when a rule switches to comparing age (#959)", async (
     "s.date-of-birth",
   );
 });
+
+// ── Case Management System (CaMS) webhook (#2684) ───────────────────────────
+
+const CAMS_FIELDS: ResolvedFieldId[] = [
+  ...FIELDS,
+  {
+    fieldId: "first-name",
+    editorFieldId: "e3",
+    stepId: "applicant",
+    stepTitle: "Applicant",
+    display: "First name",
+    isBoolean: false,
+    isNumeric: false,
+  },
+  {
+    fieldId: "last-name",
+    editorFieldId: "e4",
+    stepId: "applicant",
+    stepTitle: "Applicant",
+    display: "Last name",
+    isBoolean: false,
+    isNumeric: false,
+  },
+  {
+    fieldId: "phone",
+    editorFieldId: "e5",
+    stepId: "contact",
+    stepTitle: "Contact",
+    display: "Phone number",
+    isBoolean: false,
+    isNumeric: false,
+  },
+];
+
+function camsDraft(extra: Partial<RecipeDraft> = {}): RecipeDraft {
+  return {
+    ...emptyDraft,
+    mdaContactId: "11111111-1111-4111-8111-111111111111",
+    processors: [
+      {
+        id: "cams-1",
+        type: "webhook",
+        config: {
+          method: "POST",
+          signatureHeader: "X-Webhook-Signature",
+          timeoutMs: 10000,
+          secret: "keep-me-1234567890",
+          mapping: {
+            programmeCode: "RESTAURANT_LICENCE",
+            applicant: { name: [], email: "", phone: "" },
+            excludeSteps: ["check-your-answers"],
+            groupByStep: true,
+          },
+        },
+      },
+    ],
+    ...extra,
+  };
+}
+
+function mapping(): Record<string, unknown> {
+  return state()[0].config.mapping as Record<string, unknown>;
+}
+
+it("renders a CaMS webhook without any URL, auth or timeout fields", () => {
+  render(<Harness initial={camsDraft()} fields={CAMS_FIELDS} />);
+  expect(screen.getByLabelText(/^programme code/i)).toHaveValue(
+    "RESTAURANT_LICENCE",
+  );
+  expect(screen.queryByLabelText(/^url$/i)).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(/method/i)).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(/signature header/i)).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(/timeout/i)).not.toBeInTheDocument();
+  expect(screen.getByText(/come from this form's MDA contact/i)).toBeVisible();
+});
+
+it("edits the CaMS programme code into config.mapping and keeps unrendered keys", async () => {
+  render(<Harness initial={camsDraft()} fields={CAMS_FIELDS} />);
+  const input = screen.getByLabelText(/^programme code/i);
+  await userEvent.clear(input);
+  await userEvent.type(input, "HOTEL_LICENCE");
+  expect(mapping().programmeCode).toBe("HOTEL_LICENCE");
+  expect(state()[0].config.secret).toBe("keep-me-1234567890");
+  expect(state()[0].config).not.toHaveProperty("url");
+});
+
+it("uppercases the MDA code and removes it when emptied", async () => {
+  render(<Harness initial={camsDraft()} fields={CAMS_FIELDS} />);
+  const input = screen.getByLabelText(/^MDA code/i);
+  await userEvent.type(input, "moh");
+  expect(mapping().mdaCode).toBe("MOH");
+  await userEvent.clear(input);
+  expect(mapping()).not.toHaveProperty("mdaCode");
+});
+
+it("writes applicant name as an ordered first/last list, and phone and email paths", async () => {
+  render(<Harness initial={camsDraft()} fields={CAMS_FIELDS} />);
+  await chooseOption(
+    screen.getByLabelText(/applicant first name/i),
+    /\(applicant\.first-name\)$/,
+  );
+  expect(mapping().applicant).toMatchObject({ name: ["applicant.first-name"] });
+  await chooseOption(
+    screen.getByLabelText(/applicant last name/i),
+    /\(applicant\.last-name\)$/,
+  );
+  await chooseOption(
+    screen.getByLabelText(/applicant phone/i),
+    /\(contact\.phone\)$/,
+  );
+  await chooseOption(
+    screen.getByLabelText(/applicant email/i),
+    /\(contact\.email\)$/,
+  );
+  expect(mapping().applicant).toEqual({
+    name: ["applicant.first-name", "applicant.last-name"],
+    email: "contact.email",
+    phone: "contact.phone",
+  });
+});
+
+it("toggles a step in the CaMS excluded steps", async () => {
+  render(<Harness initial={camsDraft()} fields={CAMS_FIELDS} />);
+  await userEvent.click(screen.getByRole("checkbox", { name: /declaration/i }));
+  expect(mapping().excludeSteps).toEqual(["check-your-answers", "declaration"]);
+  await userEvent.click(
+    screen.getByRole("checkbox", { name: /check-your-answers/i }),
+  );
+  expect(mapping().excludeSteps).toEqual(["declaration"]);
+  await userEvent.click(screen.getByRole("checkbox", { name: /^Applicant/ }));
+  expect(mapping().excludeSteps).toEqual(["declaration", "applicant"]);
+});
+
+it("warns when a CaMS webhook has no MDA contact (null or absent)", () => {
+  const { unmount } = render(
+    <Harness
+      initial={camsDraft({ mdaContactId: null })}
+      fields={CAMS_FIELDS}
+    />,
+  );
+  expect(screen.getByText(/choose an MDA contact/i)).toBeInTheDocument();
+  unmount();
+  render(
+    <Harness
+      initial={camsDraft({ mdaContactId: undefined })}
+      fields={CAMS_FIELDS}
+    />,
+  );
+  expect(screen.getByText(/choose an MDA contact/i)).toBeInTheDocument();
+});
+
+it("does not warn about the MDA contact when one is chosen", () => {
+  render(<Harness initial={camsDraft()} fields={CAMS_FIELDS} />);
+  expect(screen.queryByText(/choose an MDA contact/i)).not.toBeInTheDocument();
+});

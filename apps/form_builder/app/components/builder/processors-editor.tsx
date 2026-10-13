@@ -64,6 +64,11 @@ export function ProcessorsEditor({
   // and the draft can still be saved — the Deploy gate is what blocks it.
   const missingCatchmentWebhook =
     checkCatchmentRoutingHasMapping(draft).length > 0;
+  // A mapped (CaMS) webhook resolves its address and API key from the form's
+  // MDA contact, so it cannot send without one (#2684).
+  const camsWithoutContact =
+    !draft.mdaContactId &&
+    processors.some((p) => p.type === "webhook" && Boolean(p.config.mapping));
   const questionLabels = Object.fromEntries(
     fields.map((f) => [`${f.stepId}.${f.fieldId}`, f.display]),
   );
@@ -122,8 +127,17 @@ export function ProcessorsEditor({
           <Banner variant="alert" size="sm" role="alert">
             <div className="min-w-0 flex-1">
               This form routes by catchment and needs a Case Management System
-              (CaMS) action with a programme code. You can save the draft, but it cannot be deployed
-              until one is added.
+              (CaMS) action with a programme code. You can save the draft, but
+              it cannot be deployed until one is added.
+            </div>
+          </Banner>
+        )}
+
+        {camsWithoutContact && (
+          <Banner variant="alert" size="sm" role="alert">
+            <div className="min-w-0 flex-1">
+              Choose an MDA contact under Contact details. Case Management
+              System (CaMS) submissions can't be sent without one.
             </div>
           </Banner>
         )}

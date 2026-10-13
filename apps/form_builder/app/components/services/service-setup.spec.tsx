@@ -388,6 +388,43 @@ it("warns in the advanced actions when a catchment-routed form has no mapped web
   );
 });
 
+it("only warns about a CaMS action's MDA contact when none is pending (#2684)", async () => {
+  const withCams = (mdaContactId: string | null) => {
+    const initial = draft();
+    initial.pendingConfig.mdaContactId = mdaContactId;
+    initial.recipe!.processors!.push({
+      type: "webhook",
+      config: {
+        method: "POST",
+        signatureHeader: "X-Webhook-Signature",
+        timeoutMs: 10000,
+        mapping: {
+          programmeCode: "HOUSING",
+          applicant: {
+            name: "contact.name",
+            email: "contact.email",
+            phone: "contact.phone",
+          },
+          excludeSteps: [],
+          groupByStep: false,
+        },
+      },
+    });
+    return initial;
+  };
+  const { unmount } = render(<Harness initial={withCams(departments[0].id)} />);
+  await userEvent.click(
+    screen.getByRole("button", { name: "Advanced action settings" }),
+  );
+  expect(screen.queryByText(/choose an MDA contact/i)).not.toBeInTheDocument();
+  unmount();
+  render(<Harness initial={withCams(null)} />);
+  await userEvent.click(
+    screen.getByRole("button", { name: "Advanced action settings" }),
+  );
+  expect(screen.getByText(/choose an MDA contact/i)).toBeInTheDocument();
+});
+
 it("keeps incomplete payments in the editor and explains what prevents saving", async () => {
   render(<Harness />);
   await userEvent.click(
