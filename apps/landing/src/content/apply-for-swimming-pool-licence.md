@@ -65,12 +65,12 @@ Submitting an application does not mean that the licence has been granted.
 
 Contact the Environmental Health Service office for your area.
 
-| Office                                            | Phone          | Email                                                                 |
-| ------------------------------------------------- | -------------- | --------------------------------------------------------------------- |
-| Branford Taitt Polyclinic                         | (246) 536-3700 | [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)               |
-| David Thompson Health and Social Services Complex | (246) 536-4453 | [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)           |
-| Eunice Gibson Polyclinic                          | (246) 536-4033 | [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb) |
-| Maurice Byer Polyclinic                           | (246) 536-3214 | [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)             |
-| Randal Phillips Polyclinic                        | (246) 536-4338 | [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)               |
-| St. Philip Polyclinic                             | (246) 536-4240 | [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)         |
-| Winston Scott Polyclinic                          | (246) 536-3476 | [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)               |
+| Office                                          | Phone          | Email                                                                 |
+| ----------------------------------------------- | -------------- | --------------------------------------------------------------------- |
+| Branford Taitt Polyclinic                       | (246) 536-3700 | [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)               |
+| David Thompson Health & Social Services Complex | (246) 536-4453 | [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)           |
+| Eunice Gibson Polyclinic                        | (246) 536-4033 | [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb) |
+| Maurice Byer Polyclinic                         | (246) 536-3214 | [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)             |
+| Randal Phillips Polyclinic                      | (246) 536-4338 | [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)               |
+| St. Philip Polyclinic                           | (246) 536-4240 | [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)         |
+| Sir Winston Scott Polyclinic                    | (246) 536-3476 | [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)               |
