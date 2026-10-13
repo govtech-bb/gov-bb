@@ -56,8 +56,8 @@ describe("throttler configuration", () => {
     expect(hasSkipMetadata(PaymentWebhookController)).toBe(true);
   });
 
-  // #3022: without `trust proxy` the guard keys on the load balancer, so any
-  // per-IP limit here would be shared by every citizen and drop real events.
+  // #3022: skipped while the API did not set `trust proxy`, when the guard
+  // keyed on the load balancer and a limit here was shared by every citizen.
   // A bare @SkipThrottle() writes only "THROTTLER:SKIPdefault"; the guard
   // checks "THROTTLER:SKIP<name>" for each registered bucket, so every bucket
   // must be named or the route is still throttled.
