@@ -8,6 +8,7 @@ import {
 import type { RequiredMessageDefect } from "@govtech-bb/form-builder";
 import {
   checkCatchmentRoutingHasMapping,
+  checkOverrideKeys,
   type ValidationResult,
   type ValidationIssue,
 } from "@govtech-bb/form-types";
@@ -33,7 +34,7 @@ const REQUIRED_DEFECT_CAUSE: Record<RequiredMessageDefect, string> = {
 };
 
 /**
- * The full author-time recipe validation, in five layers, run against the live
+ * The full author-time recipe validation, in six layers, run against the live
  * catalog (builtin + DB custom components):
  *
  *   1. `validateFormContract` — the `serviceContractRecipeSchema` parse
@@ -57,6 +58,10 @@ const REQUIRED_DEFECT_CAUSE: Record<RequiredMessageDefect, string> = {
  *      and the form is not served (#2877). The builder lets an author Remove
  *      that webhook (Save draft stays possible); this is what stops the draft
  *      being deployed. `pnpm validate-recipes` runs the same shared check.
+ *   6. `checkOverrideKeys` — an override key the schema doesn't know is
+ *      stripped at parse and silently does nothing (#2713). Runs on the RAW
+ *      `recipe`, not `result.data` (already stripped): the legacy Deploy
+ *      commits the overrides exactly as sent. Shared with `pnpm validate-recipes`.
  *
  * Used by `POST /builder/registry/validate` (the client Deploy gate). It was
  * also the server backstop for `POST /builder/publish` until that dormant route
@@ -107,6 +112,13 @@ export async function validateRecipeFully(
   ).map((message) => ({ path: "processors", message }));
   if (catchmentIssues.length > 0) {
     return { ok: false, issues: catchmentIssues };
+  }
+
+  const overrideKeyIssues: ValidationIssue[] = checkOverrideKeys(recipe).map(
+    (message) => ({ path: "steps", message }),
+  );
+  if (overrideKeyIssues.length > 0) {
+    return { ok: false, issues: overrideKeyIssues };
   }
 
   return result;
