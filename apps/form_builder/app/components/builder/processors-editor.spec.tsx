@@ -1000,7 +1000,7 @@ function camsDraft(extra: Partial<RecipeDraft> = {}): RecipeDraft {
           method: "POST",
           signatureHeader: "X-Webhook-Signature",
           timeoutMs: 10000,
-          secret: "keep-me-1234567890",
+          secret: "kept",
           mapping: {
             programmeCode: "RESTAURANT_LICENCE",
             applicant: { name: [], email: "", phone: "" },
@@ -1036,7 +1036,7 @@ it("edits the CaMS programme code into config.mapping and keeps unrendered keys"
   await userEvent.clear(input);
   await userEvent.type(input, "HOTEL_LICENCE");
   expect(mapping().programmeCode).toBe("HOTEL_LICENCE");
-  expect(state()[0].config.secret).toBe("keep-me-1234567890");
+  expect(state()[0].config.secret).toBe("kept");
   expect(state()[0].config).not.toHaveProperty("url");
 });
 
