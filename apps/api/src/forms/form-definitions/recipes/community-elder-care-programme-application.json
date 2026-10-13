@@ -38,7 +38,6 @@
         {
           "ref": "components/national-id-number",
           "overrides": {
-            "label": "National Registration Number",
             "hint": "Format: YYMMDD-XXXX"
           }
         }
@@ -1040,5 +1039,5 @@
     }
   ],
   "createdAt": "2026-06-17T12:58:02.243Z",
-  "updatedAt": "2026-09-18T18:21:48.000Z"
+  "updatedAt": "2026-10-12T17:45:45.000Z"
 }

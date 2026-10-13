@@ -98,7 +98,7 @@ and tests must use the slug, not the display label.
 
 1. **Sentence case, not Title Case, not SHOUTING.**
    `First name` ✅ · `First Name` ❌ · `SUBJECT(S)` ❌ → `Subject(s)` ✅
-   Match the registry default label where one exists ("National ID number",
+   Match the registry default label where one exists ("Barbados National Identification (ID) number",
    "Date of birth", "Email address", "Telephone number", "Marital status").
 2. **Descriptive and user-friendly**, written _to the citizen_.
    `Telephone No` ❌ → `Telephone number` ✅ · `DOB` ❌ → `Date of birth` ✅
@@ -210,7 +210,7 @@ This recipe is the canonical "needs updating" form. Representative fixes:
 | First/Last name   | `generic-text`, label `"First Name"`                                                    | `components/first-name` / `components/last-name`, `"First name"`                     |
 | Gender            | `generic-text`, label `"Gender"`, `minLength: 2`                                        | `components/sex` (radio), label `"Gender"`                                           |
 | Date of birth     | three `generic-number` fields `dob-day/month/year`                                      | one `components/date-of-birth`                                                       |
-| ID Number         | `generic-text`, `"ID Number"`, `minLength: 2`                                           | `components/national-id-number`, `"National ID number"`                              |
+| ID Number         | `generic-text`, `"ID Number"`, `minLength: 2`                                           | `components/national-id-number`, `"Barbados National Identification (ID) number"`    |
 | Address           | `generic-text` (no parish)                                                              | `components/address` **followed by `components/parish`**                             |
 | Email             | `generic-text`, `"Email"`, `minLength: 2`                                               | `components/email`, `"Email address"`                                                |
 | Telephone No      | `generic-text`, `"Telephone No"`                                                        | `components/telephone`, `"Telephone number"`                                         |

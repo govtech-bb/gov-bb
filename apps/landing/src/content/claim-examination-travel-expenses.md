@@ -29,7 +29,7 @@ You can claim online. The form takes about 10 to 15 minutes, depending on how ma
 
 ## What the form asks for
 
-- your personal details (surname, first names, National ID number, school or examination centre, home address, mobile number and email address)
+- your personal details (surname, first names, Barbados National Identification (ID) number, school or examination centre, home address, mobile number and email address)
 - travel period (the month and year you are claiming for)
 - trip details (number of trips, and for each trip the date, where you travelled from and to, the purpose, and the amount claimed in Barbados dollars)
 - receipts (supporting receipts where required for non-mileage expenses)

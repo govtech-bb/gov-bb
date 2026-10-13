@@ -11,6 +11,7 @@ export {
 } from "./person-name-pattern";
 export {
   NATIONAL_ID_FORMAT,
+  NATIONAL_ID_LABEL,
   NATIONAL_INSURANCE_FORMAT,
   POSTCODE_FORMAT,
   TAMIS_FORMAT,

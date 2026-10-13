@@ -147,11 +147,10 @@
             "ui": {
               "width": "medium"
             },
-            "label": "National Identification (ID) Number",
             "fieldId": "applicant-national-id",
             "validations": {
               "required": {
-                "error": "Please enter your National ID number.",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             }
@@ -703,7 +702,7 @@
   "title": "Digital Media Training Programme – Application Form",
   "formId": "digital-media-training-programme-application",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-10-05T18:32:56.000Z",
+  "updatedAt": "2026-10-12T17:44:53.000Z",
   "processors": [
     {
       "type": "email",

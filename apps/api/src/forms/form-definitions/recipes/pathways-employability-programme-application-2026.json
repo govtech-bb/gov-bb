@@ -418,11 +418,10 @@
               "width": "short"
             },
             "hint": "All information in this section is mandatory upon commencement of the programme. Assistance is available if you require help obtaining documentation.",
-            "label": "National Registration Number (ID No.)",
             "fieldId": "national-registration-number",
             "validations": {
               "required": {
-                "error": "Enter your National Registration Number",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             }
@@ -911,7 +910,7 @@
   "title": "Pathways Employability Programme: Application Form (2026)",
   "formId": "pathways-employability-programme-application-2026",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-10-05T18:32:56.000Z",
+  "updatedAt": "2026-10-12T17:45:45.000Z",
   "processors": [
     {
       "type": "email",

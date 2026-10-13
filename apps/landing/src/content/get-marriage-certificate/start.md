@@ -23,7 +23,7 @@ Each certified copy costs $10 BBD for Barbadian nationals. For non-nationals, ea
 
 The form asks for:
 
-- the applicant’s name, address and National ID number
-- the full name, date of marriage, place of marriage and National ID number of the husband and the wife
+- the applicant’s name, address and Barbados National Identification (ID) number
+- the full name, date of marriage, place of marriage and Barbados National Identification (ID) number of the husband and the wife
 
 <a data-start-link>Start</a>

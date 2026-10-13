@@ -14,7 +14,7 @@ It shouldn’t take longer than 10 minutes.
 
 ## What you will need
 
-* the name and National Identification number of every person who wants to redirect their mail
+* the name and Barbados National Identification (ID) number of every person who wants to redirect their mail
 * the old address
 * the new address
 * start date of redirection

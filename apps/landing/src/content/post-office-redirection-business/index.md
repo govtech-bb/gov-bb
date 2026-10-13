@@ -46,7 +46,7 @@ There are 2 ways to redirect your business mail. You can:
 
 The redirection form asks you to share:
 
-- the full name and National Identification number of the person applying on behalf of the business
+- the full name and Barbados National Identification (ID) number of the person applying on behalf of the business
 - the business registration number
 - the old address
 - the new address
