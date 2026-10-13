@@ -60,6 +60,18 @@ const conflict = z.looseObject({
 
 const idParams = z.object({ id: PageId });
 
+/** The `updated_at` a client last read, so a write over changes it never saw is refused. */
+const ifUpdatedAt = z.object({
+  "if-updated-at": z.iso
+    .datetime({ offset: true })
+    .transform((value) => new Date(value))
+    .optional()
+    .describe(
+      "The `updated_at` this client last read. Omit to accept " +
+        "whatever is stored.",
+    ),
+});
+
 const editorSecurity = [{ editorSession: [] }];
 const authErrors = { 401: error, 403: error, 503: error };
 
@@ -199,16 +211,7 @@ export const SCHEMAS = {
       "it by `parent_id`, and nothing redirects from the old url.",
     tags: ["pages"],
     params: idParams,
-    headers: z.object({
-      "if-updated-at": z.iso
-        .datetime({ offset: true })
-        .transform((value) => new Date(value))
-        .optional()
-        .describe(
-          "The `updated_at` this client last read. Omit to accept " +
-            "whatever is stored.",
-        ),
-    }),
+    headers: ifUpdatedAt,
     body: SaveFields,
     security: editorSecurity,
     response: {
@@ -264,14 +267,18 @@ export const SCHEMAS = {
   deletePage: {
     summary: "Delete a page",
     description:
-      "Requires an employee session and the editor's Origin header. A page " +
+      "Requires an employee session and the editor's Origin header. Send " +
+      "the `updated_at` you last read in the `if-updated-at` header: a page " +
+      "saved since is refused with a 409 rather than deleted unseen. A page " +
       "with sub-pages is refused (422) until they are moved or deleted.",
     tags: ["pages"],
     params: idParams,
+    headers: ifUpdatedAt,
     security: editorSecurity,
     response: {
       204: z.undefined(),
       400: error,
+      409: conflict,
       422: validationFailed,
       500: error,
       ...authErrors,

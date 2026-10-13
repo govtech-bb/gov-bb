@@ -105,8 +105,8 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
       (await send("POST", "/pages", page)).json(),
     savePage: async (id: string, fields: SaveFields, ifUpdatedAt: string): Promise<ApiPage> =>
       (await send("PUT", `/pages/${id}`, fields, ifUpdatedAt)).json(),
-    deletePage: async (id: string) => {
-      await send("DELETE", `/pages/${id}`);
+    deletePage: async (id: string, ifUpdatedAt?: string) => {
+      await send("DELETE", `/pages/${id}`, undefined, ifUpdatedAt);
     },
     landingUrl: (path: string) => (landing ? `${landing}${path}` : undefined),
   };

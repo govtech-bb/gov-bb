@@ -89,6 +89,18 @@ describe("editor API client", () => {
     expect(requests.at(-1)?.headers["content-type"]).toBeUndefined();
   });
 
+  it("deletes with the page's last updated_at, so a newer save is refused", async () => {
+    status = 204;
+    response = "";
+    await createEditorApi(origin).deletePage("page-1", "2026-10-07T12:00:00.000Z");
+
+    expect(requests.at(-1)).toMatchObject({
+      url: "/pages/page-1",
+      method: "DELETE",
+      headers: { "if-updated-at": "2026-10-07T12:00:00.000Z" },
+    });
+  });
+
   it("unwraps list reads", async () => {
     status = 200;
     response = JSON.stringify({ categories: [{ id: "c", slug: "money" }] });

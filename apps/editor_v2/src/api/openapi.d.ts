@@ -1162,12 +1162,15 @@ export interface paths {
         post?: never;
         /**
          * Delete a page
-         * @description Requires an employee session and the editor's Origin header. A page with sub-pages is refused (422) until they are moved or deleted.
+         * @description Requires an employee session and the editor's Origin header. Send the `updated_at` you last read in the `if-updated-at` header: a page saved since is refused with a 409 rather than deleted unseen. A page with sub-pages is refused (422) until they are moved or deleted.
          */
         delete: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description The `updated_at` this client last read. Omit to accept whatever is stored. */
+                    "if-updated-at"?: string;
+                };
                 path: {
                     id: string;
                 };
@@ -1219,6 +1222,23 @@ export interface paths {
                         "application/json": {
                             error: string;
                             message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "conflict";
+                            message: string;
+                            /** Format: uuid */
+                            documentId: string;
                         } & {
                             [key: string]: unknown;
                         };

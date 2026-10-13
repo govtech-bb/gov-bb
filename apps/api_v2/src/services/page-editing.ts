@@ -231,12 +231,29 @@ export class PageEditing {
     });
   }
 
-  /** Delete a page and audit it; one with sub-pages is refused, and one already gone is not an error. */
+  /**
+   * Delete a page and audit it; one with sub-pages is refused, and one already gone is not an
+   * error. With `expectedUpdatedAt`, a page saved since the caller read it is refused, as a save
+   * is, rather than taking work the caller never saw off the site.
+   */
   delete(
     id: PageId,
+    expectedUpdatedAt: Date | null,
     actor: Employee,
-  ): Promise<Result<void, PageRejected | ContentStoreUnavailable>> {
+  ): Promise<
+    Result<void, PageRejected | PageConflict | ContentStoreUnavailable>
+  > {
     return this.records.atomically(async (records) => {
+      if (expectedUpdatedAt !== null) {
+        const locked = await records.lock(id);
+        if (!locked.ok) return locked;
+        const current = locked.value;
+        if (
+          current !== null &&
+          current.updated_at !== expectedUpdatedAt.toISOString()
+        )
+          return err(new PageConflict(id));
+      }
       const removed = await records.remove(id);
       if (!removed.ok) return removed;
       if (removed.value === null) return ok(undefined);

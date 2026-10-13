@@ -227,11 +227,21 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     url: "/pages/:id",
     schema: SCHEMAS.deletePage,
     handler: async (request, reply) => {
-      const deleted = await editing.delete(request.params.id, actor(request));
+      const deleted = await editing.delete(
+        request.params.id,
+        request.headers[IF_UPDATED_AT] ?? null,
+        actor(request),
+      );
       if (deleted.ok) return reply.status(204).send();
       switch (deleted.error._tag) {
         case "PageRejected":
           return reply.status(422).send(rejected(deleted.error));
+        case "PageConflict":
+          return reply.status(409).send({
+            error: "conflict",
+            message: deleted.error.message,
+            documentId: deleted.error.documentId,
+          });
         case "ContentStoreUnavailable":
           return reply
             .status(500)

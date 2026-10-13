@@ -273,12 +273,20 @@ export function DeletePageDialog({
   const client = useQueryClient();
 
   const remove = useMutation({
-    mutationFn: () => api.deletePage(page.id),
+    // The version this editor last read, so a page saved since is refused rather than deleted unseen.
+    mutationFn: () =>
+      api.deletePage(page.id, client.getQueryData(pageQuery(api, page.id).queryKey)?.updated_at),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["content"] });
       done();
     },
+    onError: (error) => {
+      if (error instanceof ApiFailure && error.status === 409)
+        void client.invalidateQueries({ queryKey: ["content"] });
+    },
   });
+
+  const conflict = remove.error instanceof ApiFailure && remove.error.status === 409;
 
   return (
     <WorkspaceDialog
@@ -286,7 +294,15 @@ export function DeletePageDialog({
       description={`${documentLabel(page)} is removed from the content API and, if it is public, from the site. Its draft in this browser is kept.`}
       close={close}
     >
-      <Problems messages={refusals(remove.error, "The page could not be deleted. Try again.")} />
+      <Problems
+        messages={
+          conflict
+            ? [
+                "A newer version of this page has been saved since you opened it. Check it before you delete the page.",
+              ]
+            : refusals(remove.error, "The page could not be deleted. Try again.")
+        }
+      />
       <div className="mt-5 flex gap-2">
         <Button
           variant="accent"
