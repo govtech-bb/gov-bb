@@ -995,6 +995,34 @@ describe("Review", () => {
     );
   });
 
+  it("Change link keeps the preview and draft tokens, so a new tab opens the same version", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-personal",
+        title: "Personal Details",
+        fields: [],
+      }),
+    ];
+
+    render(
+      <Review
+        formMeta={{ ...baseFormMeta, formId: "my-form" } as FormMeta}
+        form={makeMockForm() as never}
+        visibleSteps={steps}
+        previewToken="prev-1"
+        draftToken="draft-1"
+      />,
+    );
+
+    // The click handler keeps them (it spreads the current search), but the
+    // href is what a new tab, middle-click or copied link uses; without the
+    // tokens it would open the published form instead (#2937 review).
+    expect(screen.getByRole("link", { name: /Change/ })).toHaveAttribute(
+      "href",
+      "/forms/my-form?step=step-personal&returnTo=check-your-answers&preview=prev-1&draft=draft-1",
+    );
+  });
+
   it("Change link exposes the step name to assistive tech via visually-hidden text", () => {
     const steps: ClientFormStep[] = [
       makeStep({

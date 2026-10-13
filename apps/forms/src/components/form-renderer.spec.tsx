@@ -87,7 +87,13 @@ vi.mock("./error-summary", () => ({
 
 vi.mock("./review", () => ({
   __esModule: true,
-  default: () => <div data-testid="review" />,
+  default: (props: { previewToken?: string; draftToken?: string }) => (
+    <div
+      data-testid="review"
+      data-preview={props.previewToken}
+      data-draft={props.draftToken}
+    />
+  ),
 }));
 
 vi.mock("./submission-confirmation", () => ({
@@ -558,6 +564,24 @@ describe("FormRenderer", () => {
       />,
     );
     expect(screen.getByTestId("review")).toBeInTheDocument();
+  });
+
+  it("hands the preview and draft tokens to Review for its Change links", () => {
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="check-your-answers"
+        visibleSteps={[makeStep("check-your-answers")]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+        previewToken="prev-1"
+        draftToken="draft-1"
+      />,
+    );
+    const review = screen.getByTestId("review");
+    expect(review).toHaveAttribute("data-preview", "prev-1");
+    expect(review).toHaveAttribute("data-draft", "draft-1");
   });
 
   it("renders ApplicantNameDisplay on declaration step", () => {

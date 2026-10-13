@@ -798,6 +798,8 @@ function ActiveStep({
               formMeta={formMeta}
               form={form}
               visibleSteps={visibleSteps}
+              previewToken={previewToken}
+              draftToken={draftToken}
             />
           )}
 
