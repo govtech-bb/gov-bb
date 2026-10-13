@@ -543,32 +543,6 @@
       "behaviours": [],
       "elements": [
         {
-          "ref": "components/name",
-          "overrides": {
-            "fieldId": "declaration-full-name",
-            "label": "Full name",
-            "validations": {
-              "required": {
-                "error": "Enter your full name.",
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-date",
-          "overrides": {
-            "fieldId": "declaration-date",
-            "label": "Date",
-            "validations": {
-              "required": {
-                "error": "Enter the date.",
-                "value": true
-              }
-            }
-          }
-        },
-        {
           "ref": "components/confirmation",
           "overrides": {
             "fieldId": "declaration-confirmed",
@@ -641,7 +615,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:13:52.779Z",
-  "updatedAt": "2026-10-13T00:55:14.000Z",
+  "updatedAt": "2026-10-13T01:20:54.000Z",
   "catchmentRouting": {
     "coordinatesField": "operator-address.operator-address-coordinates",
     "parishField": "operator-address.operator-parish"

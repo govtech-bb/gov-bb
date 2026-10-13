@@ -83,7 +83,6 @@ import {
   openSmokeForm,
   advance,
   expectStep,
-  fillDate,
   fillField,
   fillGeocodedAddress,
   selectDropdown,
@@ -413,24 +412,9 @@ export async function fillVehicleDetails(
 }
 
 /** Fill "Your agreement" and submit for real. */
-async function agreeAndSubmit(page: Page, data: Data): Promise<void> {
+async function agreeAndSubmit(page: Page): Promise<void> {
   const step = expectStep(page, "declaration");
   await expect(page.locator("h1")).toContainText("Your agreement");
-  await fillField(
-    page,
-    step,
-    "declaration-full-name",
-    `${data.firstName} ${data.lastName}`,
-  );
-  const today = new Date();
-  await fillDate(
-    page,
-    step,
-    "declaration-date",
-    today.getDate(),
-    today.getMonth() + 1,
-    today.getFullYear(),
-  );
   await page
     .locator(`fieldset[id="${step}_declaration-confirmed"]`)
     .getByRole("checkbox")
@@ -498,7 +482,7 @@ test.describe("Offensive Matter Licence — Live Smoke", () => {
     await expect(page.getByText(data.currentLicence)).toHaveCount(0);
     await passCheckYourAnswers(page, coordinates);
 
-    await agreeAndSubmit(page, data);
+    await agreeAndSubmit(page);
     if (process.env.SMOKE_HOLD) await page.pause();
   });
 
@@ -547,7 +531,7 @@ test.describe("Offensive Matter Licence — Live Smoke", () => {
     await expect(page.getByText(data.firstVehicle).first()).toBeVisible();
     await passCheckYourAnswers(page, coordinates);
 
-    await agreeAndSubmit(page, data);
+    await agreeAndSubmit(page);
     if (process.env.SMOKE_HOLD) await page.pause();
   });
 
@@ -590,7 +574,7 @@ test.describe("Offensive Matter Licence — Live Smoke", () => {
     await expect(page.getByText(data.currentLicence).first()).toBeVisible();
     await passCheckYourAnswers(page, coordinates);
 
-    await agreeAndSubmit(page, data);
+    await agreeAndSubmit(page);
     if (process.env.SMOKE_HOLD) await page.pause();
   });
 });
