@@ -3,7 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import NodeCache from "node-cache";
 import { CustomComponent } from "./entities/custom-component.entity";
-import { getCatalog, hydrateForm } from "@govtech-bb/form-builder";
+import { hydrateForm } from "@govtech-bb/form-builder";
 import type {
   RegistryCatalog,
   CustomComponentEntry,
@@ -52,7 +52,9 @@ export class RegistryService {
       type: c.type,
       definition: c.definition,
     }));
-    const catalog: RegistryCatalog = { ...getCatalog(), custom };
+    // Builtins aren't listed: getRegistryItem falls back to the registry for
+    // any ref not found here, so only the DB-backed customs go in.
+    const catalog: RegistryCatalog = { components: [], blocks: [], custom };
 
     this.cache.set(CACHE_KEY, catalog);
     this.logger.debug(
