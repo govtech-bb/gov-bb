@@ -45,17 +45,15 @@ You need to renew your licence by the first business day in January.
 
 You can apply online or use a paper form.
 
-**Apply online**
+1. **Apply online**
 
-The form takes about 10 minutes to complete.
+   The form takes about 10 minutes to complete.
 
-<a data-start-link>Start now</a>
+   <a data-start-link>Start now</a>
 
-**Apply using a paper form**
+2. **Apply using a paper form**
 
-You can get a paper application from your Environmental Health Service office.
-
-Complete the form and return it to the office for the area where the business or operator is located.
+   You can get a paper application from your Environmental Health Service office. Complete the form and return it to the office for the area where the business or operator is located.
 
 ## Cost
 
@@ -74,34 +72,14 @@ Each vehicle must:
 
 Environmental Health will tell you the result.
 
-## Get help
+## Contact
 
 If you need help, contact the Environmental Health Service office for your area.
 
-**Branford Taitt Polyclinic**  
-[(246) 536-3700](tel:+12465363700)  
-[EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)
-
-**David Thompson Health & Social Services Complex**  
-[(246) 536-4453](tel:+12465364453)  
-[DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)
-
-**Eunice Gibson Polyclinic**  
-[(246) 536-4033](tel:+12465364033)  
-[EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)
-
-**Maurice Byer Polyclinic**  
-[(246) 536-3214](tel:+12465363214)  
-[MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)
-
-**Randal Phillips Polyclinic**  
-[(246) 536-4338](tel:+12465364338)  
-[RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)
-
-**Sir Winston Scott Polyclinic**  
-[(246) 536-3476](tel:+12465363476)  
-[EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)
-
-**St. Philip Polyclinic**  
-[(246) 536-4240](tel:+12465364240)  
-[StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)
+-   Branford Taitt Polyclinic - [(246) 536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)
+-   David Thompson Health & Social Services Complex - [(246) 536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)
+-   Eunice Gibson Polyclinic - [(246) 536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)
+-   Maurice Byer Polyclinic - [(246) 536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)
+-   Randal Phillips Polyclinic - [(246) 536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)
+-   Sir Winston Scott Polyclinic - [(246) 536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)
+-   St. Philip Polyclinic - [(246) 536-4240](tel:+12465364240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)
