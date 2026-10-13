@@ -49,15 +49,13 @@ There are two ways to register.
 
    <a data-start-link>Start now</a>
 
-2. ### Apply using a paper form
+2. ### Get a paper application from the polyclinic
 
-   You can get a paper application from a polyclinic.
-
-   Complete the form and return it to the polyclinic for the area where the lodging house or barracks is.
+   Complete the form by hand and submit it to the polyclinic for the area where the property is located.
 
 ## Cost
 
-There is no cost to register or to renew a registration.
+There is no cost for this service.
 
 ## What happens after you apply
 
@@ -68,9 +66,9 @@ There is no cost to register or to renew a registration.
 
 Submitting an application does not mean that the lodging house or barracks has been registered.
 
-## Contact
+## Get help
 
-If you need help, contact the Environmental Health Service office for your area.
+Contact the Environmental Health Service office for your area.
 
 | Office                                          | Phone          | Email                                                                 |
 | ----------------------------------------------- | -------------- | --------------------------------------------------------------------- |
