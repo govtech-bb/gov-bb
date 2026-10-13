@@ -123,7 +123,6 @@
           "ref": "components/telephone",
           "overrides": {
             "fieldId": "applicant-telephone",
-            "hint": "Enter a Barbados or international number.",
             "behaviours": [
               {
                 "type": "fieldArray",
@@ -554,7 +553,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:13:52.779Z",
-  "updatedAt": "2026-10-12T12:00:00.000Z",
+  "updatedAt": "2026-10-13T00:33:31.000Z",
   "catchmentRouting": {
     "coordinatesField": "operator-address.operator-address-coordinates",
     "parishField": "operator-address.operator-parish"
