@@ -43,19 +43,19 @@ GPS coordinates are numbers that show the exact location of a place. You can usu
 
 ## How to apply
 
-There are 2 ways to apply. You can:
+There are 2 ways to apply.
 
-1. **Apply online**
+1. ### Apply online
 
-   Allow about 5 minutes to complete the form.
+   The online form takes about 5 minutes.
 
    <a data-start-link>Start now</a>
 
-2. **Apply using a paper form**
+2. ### Apply using a paper form
 
    You can get a paper form from:
 
-   National Housing Corporation  
+   **National Housing Corporation**  
    "The Garden"  
    Country Road  
    St. Michael
@@ -72,21 +72,12 @@ If your application is approved, you may have to pay to use the land. The Minist
 
 ## What happens next
 
-After you submit your application:
+After you submit your application, you will get a reference number and confirmation by email.
 
-- you will get a reference number and confirmation by email
-- the Ministry will review your application and may contact you if they need more information
-- how long it takes depends on what you want to use the land for
-- some requests may need approval from other government departments before the Ministry can decide
+The Ministry will review your application and may contact you if they need more information.
 
-Submitting an application does not mean you have been given permission to use the land.
+How long it takes depends on what you want to use the land for.
+
+Some requests may need approval from other government departments before the Ministry can decide.
 
 <!-- MDA NOTE: Confirm what an approved applicant receives (for example a permission letter, a permit, or conditions of use). -->
-
-## Contact
-
-If you have questions about your application, or you cannot apply online, contact the Ministry of Housing, Lands and Maintenance.
-
-If you need to change your application after you send it, contact the Ministry to ask for the change.
-
-<!-- MDA NOTE: Confirm the telephone number and email address for the Lands division specifically, then add them here. -->
