@@ -8,7 +8,8 @@
     "test": "vitest run",
     "e2e": "vitest run --config vitest.e2e.config.ts",
     "typecheck": "tsc -p tsconfig.check.json --noEmit",
-    "seed-data": "tsx scripts/build-seed-data.ts"
+    "seed-data": "tsx scripts/build-seed-data.ts",
+    "import-estate": "tsx --env-file-if-exists=.env src/import-estate.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",
