@@ -500,14 +500,6 @@
                 "value": true
               }
             },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "application-type",
-                "operator": "equal",
-                "value": "renew"
-              }
-            ],
             "ui": {
               "width": "short"
             }
@@ -523,6 +515,14 @@
                 "value": false
               }
             },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "operator": "equal",
+                "value": "renew"
+              }
+            ],
             "ui": {
               "width": "short"
             }
@@ -615,7 +615,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:13:52.779Z",
-  "updatedAt": "2026-10-13T01:20:54.000Z",
+  "updatedAt": "2026-10-13T01:40:25.000Z",
   "catchmentRouting": {
     "coordinatesField": "operator-address.operator-address-coordinates",
     "parishField": "operator-address.operator-parish"

@@ -54,14 +54,14 @@
  *    hidden coordinates filled. That field renders as an `input[type=hidden]`,
  *    so assert its VALUE — never its visibility.
  *  - New or renewal is asked PER VEHICLE on `vehicle-details`.
- *    `vehicle-registration-number` is revealed by `application-type` = "renew"
+ *    `current-licence` (optional) is revealed by `application-type` = "renew"
  *    with no `targetStepId`, so the condition is local to each vehicle
  *    instance. The another-person test renews vehicle 1 and applies new for
- *    vehicle 2 (registration hidden on vehicle 2); the business test does the
- *    reverse (registration shown on vehicle 2). Both orders matter: "Add
+ *    vehicle 2 (licence number hidden on vehicle 2); the business test does
+ *    the reverse (licence number shown on vehicle 2). Both orders matter: "Add
  *    another" copies the previous instance, so a copy must not follow it.
- *    `current-licence` is always shown and optional. The value is "renew", not
- *    "renewal" as on the sibling offensive-waste recipe.
+ *    `vehicle-registration-number` is asked for every vehicle. The value is
+ *    "renew", not "renewal" as on the sibling offensive-waste recipe.
  *  - `vehicle-details` is a repeatable step (min 1, max 20) with no
  *    sharedFields, so the base step IS vehicle 1 and carries the injected
  *    `addAnother` radio. Vehicle 2 lands on `vehicle-details~1`. The step sets
@@ -186,6 +186,7 @@ export function buildData() {
 
     currentLicence: `OM/${faker.string.numeric(5)}`,
     firstVehicle: vehicleRegistration(),
+    secondVehicle: vehicleRegistration(),
   };
 }
 
@@ -379,34 +380,34 @@ export async function fillOperatorAddress(
 export async function fillVehicleDetails(
   page: Page,
   stepId: string,
-  vehicle:
-    | { applicationType: "new"; currentLicence?: string }
-    | {
-        applicationType: "renew";
-        registration: string;
-        currentLicence?: string;
-      },
+  vehicle: {
+    registration: string;
+    applicationType: "new" | "renew";
+    currentLicence?: string;
+  },
   addAnother: "yes" | "no",
 ): Promise<void> {
   await expect(page.locator("h1")).toContainText("Tell us about the vehicle");
 
-  const registration = page.locator(
-    `[id="${stepId}_vehicle-registration-number"]`,
-  );
-  await expect(registration).toBeHidden();
+  const currentLicence = page.locator(`[id="${stepId}_current-licence"]`);
+  await expect(currentLicence).toBeHidden();
 
   await selectRadio(page, stepId, "application-type", vehicle.applicationType);
   if (vehicle.applicationType === "renew") {
-    await expect(registration).toBeVisible({ timeout: STEP_TIMEOUT });
-    await registration.fill(vehicle.registration);
+    await expect(currentLicence).toBeVisible({ timeout: STEP_TIMEOUT });
+    if (vehicle.currentLicence)
+      await currentLicence.fill(vehicle.currentLicence);
   } else {
     // Instance-local: another vehicle's "renew" must not reveal it here.
-    await expect(registration).toBeHidden();
+    await expect(currentLicence).toBeHidden();
   }
 
-  // Always shown, and optional.
-  if (vehicle.currentLicence)
-    await fillField(page, stepId, "current-licence", vehicle.currentLicence);
+  await fillField(
+    page,
+    stepId,
+    "vehicle-registration-number",
+    vehicle.registration,
+  );
   await selectRadio(page, stepId, "addAnother", addAnother);
   await advance(page, stepId);
 }
@@ -472,13 +473,12 @@ test.describe("Offensive Matter Licence — Live Smoke", () => {
     await fillVehicleDetails(
       page,
       vehicleStep,
-      { applicationType: "new" },
+      { registration: data.firstVehicle, applicationType: "new" },
       "no",
     );
 
-    // A new licence is never asked for a registration number, and the
-    // optional licence number was left blank.
-    await expect(page.getByText(data.firstVehicle)).toHaveCount(0);
+    await expect(page.getByText(data.firstVehicle).first()).toBeVisible();
+    // A new licence is never asked for a licence number.
     await expect(page.getByText(data.currentLicence)).toHaveCount(0);
     await passCheckYourAnswers(page, coordinates);
 
@@ -520,7 +520,7 @@ test.describe("Offensive Matter Licence — Live Smoke", () => {
     await fillVehicleDetails(
       page,
       secondVehicleStep,
-      { applicationType: "new" },
+      { registration: data.secondVehicle, applicationType: "new" },
       "no",
     );
 
@@ -529,6 +529,7 @@ test.describe("Offensive Matter Licence — Live Smoke", () => {
     await expect(page.getByText(data.phone).first()).toBeVisible();
     await expect(page.getByText(data.secondPhone).first()).toBeVisible();
     await expect(page.getByText(data.firstVehicle).first()).toBeVisible();
+    await expect(page.getByText(data.secondVehicle).first()).toBeVisible();
     await passCheckYourAnswers(page, coordinates);
 
     await agreeAndSubmit(page);
@@ -548,13 +549,13 @@ test.describe("Offensive Matter Licence — Live Smoke", () => {
     const coordinates = await fillOperatorAddress(page, data);
 
     // New first, then renew: vehicle 2 is copied from vehicle 1 by "Add
-    // another", and its registration number must follow vehicle 2's own
+    // another", and its licence number field must follow vehicle 2's own
     // answer, not vehicle 1's (#2857).
     const firstVehicleStep = expectStep(page, "vehicle-details");
     await fillVehicleDetails(
       page,
       firstVehicleStep,
-      { applicationType: "new" },
+      { registration: data.firstVehicle, applicationType: "new" },
       "yes",
     );
     const secondVehicleStep = expectStep(page, "vehicle-details");
@@ -563,7 +564,7 @@ test.describe("Offensive Matter Licence — Live Smoke", () => {
       page,
       secondVehicleStep,
       {
-        registration: data.firstVehicle,
+        registration: data.secondVehicle,
         applicationType: "renew",
         currentLicence: data.currentLicence,
       },

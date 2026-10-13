@@ -56,10 +56,12 @@ address twice: "Your address" and the operator address.
 Capping it while Q1 is open would remove a working feature. The "more than one
 vehicle" copy ships with it, and the PR flags that it depends on Q1.
 
-**The registration number is asked only for a renewal; the current licence
-number is always shown and optional.** This swaps the review's layout (agreed
-2026-10-12). The registration number's condition leaves out `targetStepId`, so
-it applies within each vehicle instance.
+**The current licence number is optional and per vehicle**, as in the review:
+the registration number is asked for every vehicle, and the current licence
+number only for a renewal. The condition leaves out `targetStepId`, so it
+applies within each vehicle instance. That exposed a forms bug: a vehicle
+added with "Add another" followed the previous vehicle's answer. It is fixed
+in `addRepeatableStep`.
 
 **Telephone keeps the registry hint.** The review asks for "Enter a Barbados
 or international number.", but telephone hints are uniform across forms
