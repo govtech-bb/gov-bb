@@ -336,9 +336,9 @@ export async function fillPool(
   );
   await fillField(page, step, "pool-name", pool.name);
   await selectRadio(page, step, "pool-type", pool.type);
+  await selectRadio(page, step, "pool-open-to-public", pool.openToPublic);
   await fillField(page, step, "pool-water-capacity-number", pool.capacity);
   await selectRadio(page, step, "pool-capacity-unit", pool.unit);
-  await selectRadio(page, step, "pool-open-to-public", pool.openToPublic);
   await selectRadio(page, step, "addAnother", addAnother);
   await advance(page, step);
 }

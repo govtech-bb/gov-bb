@@ -691,6 +691,29 @@
           }
         },
         {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "pool-open-to-public",
+            "label": "Is this pool open to the public?",
+            "validations": {
+              "required": {
+                "error": "Select whether this pool is open to the public",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
           "ref": "components/generic-number",
           "overrides": {
             "fieldId": "pool-water-capacity-number",
@@ -726,29 +749,6 @@
               {
                 "label": "Cubic metres",
                 "value": "cubic-metres"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "pool-open-to-public",
-            "label": "Is this pool open to the public?",
-            "validations": {
-              "required": {
-                "error": "Select whether this pool is open to the public",
-                "value": true
-              }
-            },
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
               }
             ]
           }
@@ -920,7 +920,7 @@
     }
   ],
   "createdAt": "2026-08-25T00:10:51.219Z",
-  "updatedAt": "2026-10-13T03:16:57.000Z",
+  "updatedAt": "2026-10-13T03:27:45.000Z",
   "meta": {
     "visibility": "preview"
   },
