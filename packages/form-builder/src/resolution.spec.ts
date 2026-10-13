@@ -923,6 +923,67 @@ describe("hydrateForm", () => {
       hydrateForm(recipe as never, {} as never).catchmentRouting,
     ).toBeUndefined();
   });
+
+  // Custom components come from the custom_components table and can hold a
+  // single field or a whole block. The API resolver this replaced expanded a
+  // custom block (a definition with `blockId`) into its fields; the shared
+  // path has to as well, or it serves the block object as one broken field.
+  describe("custom components", () => {
+    const customCatalog = (definition: Record<string, unknown>) => ({
+      ...getCatalog(),
+      custom: [
+        {
+          ref: "components/acme/widget",
+          displayName: "acme/widget",
+          namespace: "acme",
+          type: "widget",
+          definition,
+        },
+      ],
+    });
+    const recipeWith = (overrides?: Record<string, unknown>) =>
+      makeRecipe({
+        steps: [
+          {
+            stepId: "step-1",
+            title: "Step 1",
+            elements: [{ ref: "components/acme/widget", overrides }],
+          },
+        ],
+      });
+
+    it("hydrates a custom field as one element with its overrides", () => {
+      const steps = hydrateForm(
+        recipeWith({ label: "Widget code" }),
+        customCatalog({ fieldId: "widget", label: "Widget", htmlType: "text" }),
+      ).steps;
+      expect(steps[0].elements).toEqual([
+        expect.objectContaining({ fieldId: "widget", label: "Widget code" }),
+      ]);
+    });
+
+    it("expands a custom block into its fields, with overrides keyed by fieldId", () => {
+      const steps = hydrateForm(
+        recipeWith({ "widget-name": { label: "Name of widget" } }),
+        customCatalog({
+          blockId: "widget-details",
+          blockDescription: "Widget details",
+          blockVersion: "1.0.0",
+          elements: [
+            { fieldId: "widget-name", label: "Name", htmlType: "text" },
+            { fieldId: "widget-size", label: "Size", htmlType: "text" },
+          ],
+        }),
+      ).steps;
+      expect(steps[0].elements).toEqual([
+        expect.objectContaining({
+          fieldId: "widget-name",
+          label: "Name of widget",
+        }),
+        expect.objectContaining({ fieldId: "widget-size", label: "Size" }),
+      ]);
+    });
+  });
 });
 
 // ─── collectGenericRequiredMessages ──────────────────────────────────────────

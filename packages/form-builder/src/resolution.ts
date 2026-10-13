@@ -47,11 +47,13 @@ function resolveElementFields(
   element: { ref: string; overrides?: unknown },
   item: ComponentDefinition | BlockDefinition,
 ): Primitive[] {
-  if (element.ref.startsWith("blocks/")) {
+  // By what the ref resolved to, not its prefix: a custom component
+  // (`components/<ns>/<type>`) can be a block too.
+  if ("block" in item) {
     const childOverrides =
       (element.overrides as Record<string, FieldOverrides> | undefined) ?? {};
     // Clone for the same singleton-aliasing reason as the component branch.
-    return (item as BlockDefinition).block.elements.map((child) =>
+    return item.block.elements.map((child) =>
       applyFieldOverrides(
         structuredClone(child),
         childOverrides[child.fieldId] ?? {},
@@ -65,7 +67,7 @@ function resolveElementFields(
   // request. The retired api-side resolver cloned here too.
   return [
     applyFieldOverrides(
-      structuredClone((item as ComponentDefinition).primitive),
+      structuredClone(item.primitive),
       (element.overrides as FieldOverrides | undefined) ?? {},
     ),
   ];
