@@ -12,8 +12,8 @@ import {
 import { rawNative } from "../../src/forms/editor/native-state";
 import { syncNativeSource } from "../../src/forms/editor/native-source";
 import { nativeSemanticEqual } from "../../src/forms/schema/semantics";
-import { lexicalToMarkdown } from "../../src/converters/lexicalToMarkdown";
-import { markdownToLexical } from "../../src/converters/markdownToLexical";
+import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
+import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
 import type { AnyFormDefinition } from "../../src/forms/schema/types";
 
 const form: AnyFormDefinition = {
@@ -176,14 +176,14 @@ test("editing readable Markdown attributes changes the exported native question"
   );
 
   try {
-    const source = lexicalToMarkdown(editor.getEditorState().toJSON(), govbbFormEditor);
+    const source = lexicalToFormMarkdown(editor.getEditorState().toJSON(), govbbFormEditor);
 
     const changed = source
       .replace('width="short"', 'width="long"')
       .replace(/(\? Amount\n[^\n]*?) required(?=[ }])/, '$1 required="false"');
 
     expect(changed).not.toBe(source);
-    const parsed = markdownToLexical(changed, govbbFormEditor);
+    const parsed = formMarkdownToLexical(changed, govbbFormEditor);
     expect(parsed.diagnostics.filter((issue) => issue.severity === "fatal")).toEqual([]);
     expect(parsed.state).toBeDefined();
 
@@ -225,8 +225,8 @@ test("hiding and showing a native question preserves label visibility through Ma
         visible,
         parts: { label: { visible } },
       });
-      const source = lexicalToMarkdown(editor.getEditorState().toJSON(), govbbFormEditor);
-      const parsed = markdownToLexical(source, govbbFormEditor);
+      const source = lexicalToFormMarkdown(editor.getEditorState().toJSON(), govbbFormEditor);
+      const parsed = formMarkdownToLexical(source, govbbFormEditor);
       expect(parsed.diagnostics.filter((issue) => issue.severity === "fatal")).toEqual([]);
 
       if (!parsed.state) throw new Error("Native question source did not parse");

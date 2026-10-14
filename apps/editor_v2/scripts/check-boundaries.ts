@@ -223,8 +223,8 @@ function permitted(from: string, to: string, typeOnly: boolean) {
 
   if (
     [
-      "src/converters/pageMarkdownToLexical/index.ts",
-      "src/converters/lexicalToPageMarkdown/index.ts",
+      "src/converters/page-markdown-to-lexical.ts",
+      "src/converters/lexical-to-page-markdown.ts",
     ].includes(from)
   )
     return within(to, "src/pages") && !to.endsWith(".tsx");
@@ -303,8 +303,8 @@ function permitted(from: string, to: string, typeOnly: boolean) {
       within(to, "src/ui") ||
       [
         "src/cn.ts",
-        "src/converters/formSchemaToLexical/index.ts",
-        "src/converters/lexicalToFormSchema/index.ts",
+        "src/converters/form-schema-to-lexical.ts",
+        "src/converters/lexical-to-form-schema.ts",
         "lexical",
         "react",
         "@phosphor-icons/react",
@@ -362,15 +362,15 @@ function permitted(from: string, to: string, typeOnly: boolean) {
 
   // Public converters orchestrate only these configured headless/read bridges.
   if (
-    from === "src/converters/markdownToLexical/index.ts" &&
+    from === "src/converters/form-markdown-to-lexical.ts" &&
     ["src/forms/editor/runtime.ts", "src/forms/editor/native-source.ts"].includes(to)
   )
     return true;
 
   if (
     [
-      "src/converters/lexicalToFormSchema/index.ts",
-      "src/converters/formSchemaToLexical/index.ts",
+      "src/converters/lexical-to-form-schema.ts",
+      "src/converters/form-schema-to-lexical.ts",
     ].includes(from)
   )
     return (
@@ -379,17 +379,16 @@ function permitted(from: string, to: string, typeOnly: boolean) {
         "src/forms/editor/context.ts",
         "src/forms/definition.ts",
       ].includes(to) ||
-      (from === "src/converters/formSchemaToLexical/index.ts" &&
-        [
-          "src/editor/core/create-editor.ts",
-          "src/converters/lexicalToFormSchema/index.ts",
-        ].includes(to)) ||
+      (from === "src/converters/form-schema-to-lexical.ts" &&
+        ["src/editor/core/create-editor.ts", "src/converters/lexical-to-form-schema.ts"].includes(
+          to,
+        )) ||
       within(to, "src/forms/schema") ||
       (typeOnly && to === "lexical")
     );
 
   if (
-    from === "src/converters/lexicalToLegacySsb/index.ts" &&
+    from === "src/converters/lexical-to-legacy-ssb.ts" &&
     ["src/forms/editor/compile.ts", "src/forms/editor/legacy-mappings.ts"].includes(to)
   )
     return true;
@@ -421,8 +420,8 @@ function permitted(from: string, to: string, typeOnly: boolean) {
     from === "src/forms/editor/codec.ts" &&
     [
       "src/persistence/types.ts",
-      "src/converters/lexicalToMarkdown/index.ts",
-      "src/converters/markdownToLexical/index.ts",
+      "src/converters/lexical-to-form-markdown.ts",
+      "src/converters/form-markdown-to-lexical.ts",
     ].includes(to)
   )
     return true;
@@ -443,8 +442,8 @@ function permitted(from: string, to: string, typeOnly: boolean) {
         "src/forms/content.ts",
         "src/forms/native.ts",
         "src/cn.ts",
-        "src/converters/lexicalToFormSchema/index.ts",
-        "src/converters/lexicalToLegacySsb/index.ts",
+        "src/converters/lexical-to-form-schema.ts",
+        "src/converters/lexical-to-legacy-ssb.ts",
       ].includes(to) ||
       within(to, "src/forms/source") ||
       [

@@ -1,8 +1,8 @@
 import type { SerializedEditorState } from "lexical";
-import type { FormEditorDefinition } from "../../forms/definition";
-import { createFormSourceDialect } from "../../forms/source/dialect";
+import type { FormEditorDefinition } from "../forms/definition";
+import { createFormSourceDialect } from "../forms/source/dialect";
 
-export function lexicalToMarkdown(
+export function lexicalToFormMarkdown(
   state: SerializedEditorState,
   definition: FormEditorDefinition,
 ): string {

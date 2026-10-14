@@ -15,7 +15,7 @@ export const pageQuery = (api: EditorApi, id: string) =>
 export const taxonomyQuery = (api: EditorApi) =>
   queryOptions({ queryKey: ["content", "taxonomy"], queryFn: () => api.taxonomy() });
 
-export const historyQuery = (api: EditorApi, id: string) =>
+export const pageHistoryQuery = (api: EditorApi, id: string) =>
   queryOptions({ queryKey: ["content", "history", id], queryFn: () => api.history(id) });
 
 /** A past version never changes, so it is fetched once. */
@@ -29,7 +29,7 @@ export const pageVersionQuery = (api: EditorApi, id: string, version: number) =>
 const VERSION_KEY = ["version"];
 
 /** The estate's change token, polled; when it moves, every content read refreshes. */
-export const versionQuery = (api: Pick<EditorApi, "version">, client: QueryClient) =>
+export const estateVersionQuery = (api: Pick<EditorApi, "version">, client: QueryClient) =>
   queryOptions({
     queryKey: VERSION_KEY,
     queryFn: async () => {

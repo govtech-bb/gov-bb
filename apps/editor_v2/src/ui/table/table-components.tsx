@@ -13,7 +13,7 @@ import { cn } from "../../cn";
 import { Button } from "../button";
 import { compactInput, settingsInput } from "../input";
 import { check, list, option, popup } from "../select";
-import { useTableContext } from "./hook";
+import { useTableContext } from "./table-hooks";
 
 // The global ring (teal outline over an ink edge) for a label whose visually hidden control has focus.
 const labelFocus =

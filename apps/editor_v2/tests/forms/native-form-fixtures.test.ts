@@ -4,10 +4,10 @@ import { createHash } from "node:crypto";
 import { $createTextNode, $getRoot } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
-import { formSchemaToLexical } from "../../src/converters/formSchemaToLexical";
-import { lexicalToFormSchema } from "../../src/converters/lexicalToFormSchema";
-import { lexicalToMarkdown } from "../../src/converters/lexicalToMarkdown";
-import { markdownToLexical } from "../../src/converters/markdownToLexical";
+import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
+import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
+import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
+import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
 import {
   nativeSemanticEqual,
   validateFormDefinition,
@@ -84,8 +84,8 @@ describe("seven full native form fixtures", () => {
         expect(exported.diagnostics).toEqual([]);
         expect(nativeSemanticEqual(exported.schema, form)).toBe(true);
 
-        const markdown = lexicalToMarkdown(editor.getEditorState().toJSON(), govbbFormEditor),
-          restored = markdownToLexical(markdown, govbbFormEditor);
+        const markdown = lexicalToFormMarkdown(editor.getEditorState().toJSON(), govbbFormEditor),
+          restored = formMarkdownToLexical(markdown, govbbFormEditor);
 
         expect(restored.diagnostics.filter((issue) => issue.severity === "fatal")).toEqual([]);
         expect(restored.state).toBeDefined();

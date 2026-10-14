@@ -4,7 +4,12 @@ import { createHeadlessEditor } from "../editor/core/create-editor";
 import { $setPageMetadata } from "../pages/metadata";
 import { govbbPageCodec, govbbPageEditor } from "../presets/govbb-page";
 import type { ApiPage, TaxonomyCategory } from "./client";
-import { markdownToSaveFields, pageToMarkdown, suggestedUrl } from "./page-markdown";
+import {
+  markdownToPageSaveInput,
+  pageToMarkdown,
+  pageVersionToDraftMarkdown,
+  suggestedUrl,
+} from "./page-markdown";
 
 const VISIBILITIES = ["public", "preview", "draft"] as const;
 
@@ -48,7 +53,7 @@ const markdownOf = (yaml: string) => `---\n${yaml}\n---\n\nBody`;
 describe("page markdown", () => {
   it("saves every seeded service page as the API holds it", () => {
     for (const page of pages) {
-      const saved = markdownToSaveFields(pageToMarkdown(page, categories), page, categories);
+      const saved = markdownToPageSaveInput(pageToMarkdown(page, categories), page, categories);
 
       if (page.parent_id === null && page.category_id === null) {
         // Not a service: the editor opens services only.
@@ -97,8 +102,8 @@ describe("page markdown", () => {
     const edited = govbbPageCodec.encode(editor.getEditorState().toJSON());
     editor.dispose();
 
-    const before = markdownToSaveFields(pageToMarkdown(entry, categories), entry, categories);
-    const after = markdownToSaveFields(edited, entry, categories);
+    const before = markdownToPageSaveInput(pageToMarkdown(entry, categories), entry, categories);
+    const after = markdownToPageSaveInput(edited, entry, categories);
 
     if (!before.ok || !after.ok) throw new Error("Both versions should save");
     // An edit re-exports the body in the editor's normal form (a hard break becomes <br>).
@@ -110,7 +115,7 @@ describe("page markdown", () => {
   });
 
   it("files an entry page under the subcategory it names", () => {
-    const saved = markdownToSaveFields(
+    const saved = markdownToPageSaveInput(
       markdownOf(
         "title: Youth\nurl: /youth-and-community/arts-culture/yar\ncategory: youth-and-community\nsubcategory: arts-culture",
       ),
@@ -122,7 +127,7 @@ describe("page markdown", () => {
   });
 
   it("treats a page with no visibility as public, as page details shows it", () => {
-    const saved = markdownToSaveFields(
+    const saved = markdownToPageSaveInput(
       markdownOf("title: Severance\nurl: /money/severance\ncategory: money-financial-support"),
       entry,
       categories,
@@ -142,7 +147,7 @@ describe("page markdown", () => {
   ])("refuses %s rather than dropping it", (_name, line, base, field) => {
     const category = base.parent_id === null ? "\ncategory: money-financial-support" : "";
     const yaml = `title: Severance\nurl: /money/severance${line.startsWith("categor") ? "" : category}\n${line}`;
-    const saved = markdownToSaveFields(markdownOf(yaml), base, categories);
+    const saved = markdownToPageSaveInput(markdownOf(yaml), base, categories);
 
     expect(saved.ok ? [] : saved.errors.map((error) => error.field)).toEqual([field]);
   });
@@ -153,13 +158,39 @@ describe("page markdown", () => {
     ["a path ending in /", "title: Severance\nurl: /money/", "url"],
     ["a path without its leading /", "title: Severance\nurl: money/severance", "url"],
   ])("asks for what is missing when a page has %s", (_name, yaml, field) => {
-    const saved = markdownToSaveFields(
+    const saved = markdownToPageSaveInput(
       markdownOf(`${yaml}\ncategory: money-financial-support`),
       entry,
       categories,
     );
 
     expect(saved.ok ? [] : saved.errors.map((error) => error.field)).toEqual([field]);
+  });
+
+  it("brings back a version's content and keeps the page's path and visibility", () => {
+    const current: ApiPage = { ...start, url: "/money/moved", visibility: "draft" };
+
+    const old = {
+      ...start,
+      url: "/money/old",
+      title: "Old title",
+      body_markdown: "Old body",
+      frontmatter: { lede: "Old introduction" },
+    };
+
+    const restored = markdownToPageSaveInput(
+      pageVersionToDraftMarkdown(current, old, []),
+      current,
+      [],
+    );
+
+    expect(restored.ok && restored.value).toMatchObject({
+      url: "/money/moved",
+      visibility: "draft",
+      title: "Old title",
+      body_markdown: "Old body",
+      frontmatter: { lede: "Old introduction" },
+    });
   });
 
   it("suggests a new page's path from its title, beneath its prefix", () => {

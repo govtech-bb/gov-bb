@@ -15,8 +15,8 @@ import {
   addressCountryEntry,
   govbbFormRegistryEntries,
 } from "../../src/presets/form-registry/entries";
-import { lexicalToMarkdown } from "../../src/converters/lexicalToMarkdown";
-import { markdownToLexical } from "../../src/converters/markdownToLexical";
+import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
+import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { nativeHost, nativeOutput } from "../helpers/native-form";
 
@@ -110,8 +110,8 @@ test("two address groups have independent references and submitted keys through 
     editor.update(() => editor.dispatchCommand(REDO_COMMAND, undefined), { discrete: true });
     expect(editor.getEditorState().toJSON()).toEqual(two);
 
-    const source = lexicalToMarkdown(two, govbbFormEditor),
-      parsed = markdownToLexical(source, govbbFormEditor);
+    const source = lexicalToFormMarkdown(two, govbbFormEditor),
+      parsed = formMarkdownToLexical(source, govbbFormEditor);
 
     expect(parsed.state).toBeDefined();
     const restored = createHeadlessEditor(govbbFormEditor, parsed.state!);

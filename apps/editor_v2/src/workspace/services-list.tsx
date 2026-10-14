@@ -8,7 +8,7 @@ import { cn } from "../cn";
 import { visibilityLabels } from "../pages";
 import { Button } from "../ui/button";
 import { settingsInput } from "../ui/input";
-import { createAppColumnHelper, useAppTable, useTableContext } from "../ui/table/hook";
+import { createAppColumnHelper, useAppTable, useTableContext } from "../ui/table/table-hooks";
 
 const column = createAppColumnHelper<ServiceSummary>();
 

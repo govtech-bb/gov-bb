@@ -2,10 +2,10 @@ import { readFile } from "node:fs/promises";
 import { expect, test } from "vitest";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
-import { formSchemaToLexical } from "../../src/converters/formSchemaToLexical";
-import { lexicalToFormSchema } from "../../src/converters/lexicalToFormSchema";
-import { lexicalToMarkdown } from "../../src/converters/lexicalToMarkdown";
-import { markdownToLexical } from "../../src/converters/markdownToLexical";
+import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
+import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
+import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
+import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
 import { nativeSemanticEqual } from "../../src/forms/schema/semantics";
 import pension from "../fixtures/forms/v2/pension.json";
 import identity from "../fixtures/forms/v2/examples/passport-example.json";
@@ -17,9 +17,9 @@ for (const [name, form] of Object.entries({ pension, identity }))
     expect(imported.status).toBe("ready");
 
     if (imported.status !== "ready") return;
-    const markdown = lexicalToMarkdown(imported.state, govbbFormEditor);
+    const markdown = lexicalToFormMarkdown(imported.state, govbbFormEditor);
     expect(markdown).not.toContain('"blocks": [\n      {\n        "id":');
-    const parsed = markdownToLexical(markdown, govbbFormEditor);
+    const parsed = formMarkdownToLexical(markdown, govbbFormEditor);
     expect(parsed.diagnostics.filter((issue) => issue.severity === "fatal")).toEqual([]);
     expect(parsed.state).toBeDefined();
 
@@ -105,9 +105,9 @@ test("native confirmation Markdown retains the form IDs and content", () => {
   const imported = formSchemaToLexical(identity, govbbFormEditor);
 
   if (imported.status !== "ready") throw new Error("Native fixture did not import");
-  const canonical = lexicalToMarkdown(imported.state, govbbFormEditor);
+  const canonical = lexicalToFormMarkdown(imported.state, govbbFormEditor);
   expect(canonical).toContain('type="confirmation"');
-  const parsed = markdownToLexical(canonical, govbbFormEditor);
+  const parsed = formMarkdownToLexical(canonical, govbbFormEditor);
   expect(parsed.diagnostics.filter((issue) => issue.severity === "fatal")).toEqual([]);
 
   if (!parsed.state) throw new Error("Confirmation page did not import");
@@ -117,7 +117,9 @@ test("native confirmation Markdown retains the form IDs and content", () => {
     const exported = lexicalToFormSchema(reopened.getEditorState(), govbbFormEditor, reopened);
     expect(exported.status).toBe("ready");
     expect(nativeSemanticEqual(exported.schema, identity)).toBe(true);
-    expect(lexicalToMarkdown(reopened.getEditorState().toJSON(), govbbFormEditor)).toBe(canonical);
+    expect(lexicalToFormMarkdown(reopened.getEditorState().toJSON(), govbbFormEditor)).toBe(
+      canonical,
+    );
   } finally {
     reopened.dispose();
   }
@@ -127,7 +129,7 @@ test("unsupported native Markdown page types are rejected without changing the s
   const imported = formSchemaToLexical(identity, govbbFormEditor);
 
   if (imported.status !== "ready") throw new Error("Native fixture did not import");
-  const canonical = lexicalToMarkdown(imported.state, govbbFormEditor);
+  const canonical = lexicalToFormMarkdown(imported.state, govbbFormEditor);
 
   const original = canonical.replace(
     /^(::page\{[^\n}]*\btype=)"confirmation"/gm,
@@ -136,7 +138,7 @@ test("unsupported native Markdown page types are rejected without changing the s
 
   expect(original).not.toBe(canonical);
   const before = structuredClone(imported.state);
-  const parsed = markdownToLexical(original, govbbFormEditor);
+  const parsed = formMarkdownToLexical(original, govbbFormEditor);
   expect(parsed.state).toBeUndefined();
   expect(parsed.document).toBeUndefined();
   expect(parsed.original).toBe(original);

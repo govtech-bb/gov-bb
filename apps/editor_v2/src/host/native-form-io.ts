@@ -1,8 +1,8 @@
 import type { LexicalEditor } from "lexical";
 import { createHeadlessEditor } from "../editor/core/create-editor";
 import type { FormEditorDefinition } from "../forms/definition";
-import { formSchemaToLexical } from "../converters/formSchemaToLexical";
-import { lexicalToFormSchema } from "../converters/lexicalToFormSchema";
+import { formSchemaToLexical } from "../converters/form-schema-to-lexical";
+import { lexicalToFormSchema } from "../converters/lexical-to-form-schema";
 import { nativeSemanticEqual, type NativeDiagnostic } from "../forms/schema";
 import type { DraftStore } from "../persistence/draft-store";
 import type {

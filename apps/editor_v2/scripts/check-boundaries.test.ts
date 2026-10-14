@@ -153,8 +153,8 @@ test("configured source and converter boundaries reject default presets and brow
   for (const [file, source] of [
     ["src/forms/source/example.ts", 'import { govbbFormEditor } from "../../presets/govbb-form";'],
     [
-      "src/converters/lexicalToMarkdown/index.ts",
-      'import { legacyFormDefinition } from "../../forms/legacy/definition";',
+      "src/converters/lexical-to-form-markdown.ts",
+      'import { legacyFormDefinition } from "../forms/legacy/definition";',
     ],
   ])
     expect(boundaryIssues(new Map([...files, [file!, source!]]))).toHaveLength(1);
@@ -163,8 +163,8 @@ test("configured source and converter boundaries reject default presets and brow
       new Map([
         ...files,
         [
-          "src/converters/lexicalToMarkdown/index.ts",
-          'import { createFormSourceDialect } from "../../forms/source/dialect"; import type { FormEditorDefinition } from "../../forms/definition";',
+          "src/converters/lexical-to-form-markdown.ts",
+          'import { createFormSourceDialect } from "../forms/source/dialect"; import type { FormEditorDefinition } from "../forms/definition";',
         ],
       ]),
     ),
@@ -300,20 +300,20 @@ test("native converters can use their configured bridge without importing concre
     );
 
   for (const file of [
-    "src/converters/formSchemaToLexical/index.ts",
-    "src/converters/lexicalToFormSchema/index.ts",
+    "src/converters/form-schema-to-lexical.ts",
+    "src/converters/lexical-to-form-schema.ts",
   ]) {
     expect(
       check(
         file,
-        'import { nativeBridge } from "../../forms/editor/native-bindings"; import type { FormDefinitionV2 } from "../../forms/schema/types";',
+        'import { nativeBridge } from "../forms/editor/native-bindings"; import type { FormDefinitionV2 } from "../forms/schema/types";',
       ),
     ).toEqual([]);
     expect(
-      check(file, 'import { NumberInput } from "../../forms/features/number/presentation";'),
+      check(file, 'import { NumberInput } from "../forms/features/number/presentation";'),
     ).toHaveLength(1);
     expect(
-      check(file, 'import type { LegacySsbFormSchema } from "../../forms/adapters/ssb/schema";'),
+      check(file, 'import type { LegacySsbFormSchema } from "../forms/adapters/ssb/schema";'),
     ).toHaveLength(1);
   }
 });
@@ -363,32 +363,32 @@ test("public conversion permits only its declared configured editor bridge", () 
 
   expect(
     check(
-      "src/converters/markdownToLexical/index.ts",
-      'import { createFormRuntime } from "../../forms/editor/runtime";',
+      "src/converters/form-markdown-to-lexical.ts",
+      'import { createFormRuntime } from "../forms/editor/runtime";',
     ),
   ).toEqual([]);
   expect(
     check(
-      "src/converters/lexicalToLegacySsb/index.ts",
-      'import { compileForm } from "../../forms/editor/compile";',
+      "src/converters/lexical-to-legacy-ssb.ts",
+      'import { compileForm } from "../forms/editor/compile";',
     ),
   ).toEqual([]);
   expect(
     check(
-      "src/converters/lexicalToFormSchema/index.ts",
-      'import { compileForm } from "../../forms/editor/compile";',
+      "src/converters/lexical-to-form-schema.ts",
+      'import { compileForm } from "../forms/editor/compile";',
     ),
   ).toHaveLength(1);
   expect(
     check(
-      "src/converters/lexicalToMarkdown/index.ts",
-      'import { createFormRuntime } from "../../forms/editor/runtime";',
+      "src/converters/lexical-to-form-markdown.ts",
+      'import { createFormRuntime } from "../forms/editor/runtime";',
     ),
   ).toHaveLength(1);
   expect(
     check(
-      "src/converters/markdownToLexical/index.ts",
-      'import { PageBreak } from "../../forms/features/pages/presentation";',
+      "src/converters/form-markdown-to-lexical.ts",
+      'import { PageBreak } from "../forms/features/pages/presentation";',
     ),
   ).toHaveLength(1);
 });
@@ -536,20 +536,20 @@ test("public page converters use page conversion contracts without importing for
   ]);
 
   for (const file of [
-    "src/converters/pageMarkdownToLexical/index.ts",
-    "src/converters/lexicalToPageMarkdown/index.ts",
+    "src/converters/page-markdown-to-lexical.ts",
+    "src/converters/lexical-to-page-markdown.ts",
   ]) {
     const check = (source: string) => boundaryIssues(new Map([...files, [file, source]]));
     expect(
       check(
-        'export { pageMarkdownToLexical } from "../../pages/converters"; import type { PageEditorDefinition } from "../../pages/definition";',
+        'export { pageMarkdownToLexical } from "../pages/converters"; import type { PageEditorDefinition } from "../pages/definition";',
       ),
     ).toEqual([]);
-    expect(check('export { PageEditor } from "../../pages/editor";')).toHaveLength(1);
+    expect(check('export { PageEditor } from "../pages/editor";')).toHaveLength(1);
     expect(
-      check('import { serializedToNativeForm } from "../../forms/editor/native-bindings";'),
+      check('import { serializedToNativeForm } from "../forms/editor/native-bindings";'),
     ).toHaveLength(1);
-    expect(check('import { govbbPageEditor } from "../../presets/govbb-page";')).toHaveLength(1);
+    expect(check('import { govbbPageEditor } from "../presets/govbb-page";')).toHaveLength(1);
     expect(check('export const saved = localStorage.getItem("page");')).toHaveLength(1);
   }
 });
@@ -595,13 +595,22 @@ test("workspace composition may assemble both document domains while reusable la
     ).toHaveLength(1);
 });
 
-test("pure page conversion and workspace models reject browser globals while browser modules allow them", () => {
+test("pure converters and workspace modules reject browser globals while browser modules allow them", () => {
   for (const file of [
+    "src/converters/form-markdown-to-lexical.ts",
+    "src/converters/form-schema-to-lexical.ts",
+    "src/converters/lexical-to-form-markdown.ts",
+    "src/converters/lexical-to-form-schema.ts",
+    "src/converters/lexical-to-legacy-ssb.ts",
+    "src/converters/lexical-to-page-markdown.ts",
+    "src/converters/page-markdown-to-lexical.ts",
     "src/pages/markdown.ts",
     "src/pages/converters.ts",
     "src/pages/definition.ts",
     "src/workspace/model.ts",
     "src/workspace/validation.ts",
+    "src/workspace/page-sync.ts",
+    "src/workspace/service-pages.ts",
   ]) {
     expect(
       boundaryIssues(
@@ -628,12 +637,13 @@ test("pure page conversion and workspace models reject browser globals while bro
 test("routing stays in the workspace UI", () => {
   const source = 'import { Link } from "@tanstack/react-router";';
 
-  for (const file of ["src/workspace/workspace.tsx", "src/workspace/api-page.tsx"])
+  for (const file of ["src/workspace/workspace.tsx", "src/workspace/remote-page-pane.tsx"])
     expect(boundaryIssues(new Map([[file, source]]))).toEqual([]);
 
   for (const file of [
     "src/workspace/model.ts",
-    "src/workspace/api-pages.ts",
+    "src/workspace/page-sync.ts",
+    "src/workspace/service-pages.ts",
     "src/pages/editor.tsx",
     "src/host/page-editor.tsx",
   ])

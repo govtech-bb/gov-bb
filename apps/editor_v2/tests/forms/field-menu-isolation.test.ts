@@ -7,8 +7,8 @@ import { $createDrawnInput } from "../../src/forms/editor/field-nodes";
 import { $describe } from "../../src/forms/react/gutter";
 import { $createFormTitleNode } from "../../src/forms/editor/nodes";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
-import { lexicalToMarkdown } from "../../src/converters/lexicalToMarkdown";
-import { markdownToLexical } from "../../src/converters/markdownToLexical";
+import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
+import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
 
 test("Number input and numbered list have distinct menu roles while source retains opaque list settings", () => {
   const editor = createHeadlessEditor(govbbFormEditor);
@@ -42,8 +42,8 @@ test("Number input and numbered list have distinct menu roles while source retai
     expect(models[0]!.header).toBeDefined();
     expect(models[1]!.header).toBeUndefined();
 
-    const source = lexicalToMarkdown(editor.getEditorState().toJSON(), govbbFormEditor);
-    const parsed = markdownToLexical(source, govbbFormEditor);
+    const source = lexicalToFormMarkdown(editor.getEditorState().toJSON(), govbbFormEditor);
+    const parsed = formMarkdownToLexical(source, govbbFormEditor);
     expect(parsed.diagnostics.filter((issue) => issue.severity === "fatal")).toEqual([]);
     expect(parsed.diagnostics.some((issue) => issue.code === "native-preparation")).toBe(true);
     expect(parsed.state).toBeDefined();

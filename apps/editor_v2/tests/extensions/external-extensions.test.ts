@@ -13,8 +13,8 @@ import {
   defineFormEditor,
   FormRegistryModule,
   lexicalToLegacySsb,
-  lexicalToMarkdown,
-  markdownToLexical,
+  lexicalToFormMarkdown,
+  formMarkdownToLexical,
   prepareRegistryEntry,
 } from "../../src/forms";
 import { govbbFormModules } from "../../src/presets/govbb-form";
@@ -133,8 +133,8 @@ test("native-only public field, content and registry compose with independent st
       ),
     ).toMatchObject({ config: { code: "NEW" } });
 
-    const source = lexicalToMarkdown(editor.getEditorState().toJSON(), definition),
-      parsed = markdownToLexical(source, definition);
+    const source = lexicalToFormMarkdown(editor.getEditorState().toJSON(), definition),
+      parsed = formMarkdownToLexical(source, definition);
 
     expect(parsed.state).toBeDefined();
     const restored = createHeadlessEditor(definition, parsed.state!);
@@ -154,7 +154,7 @@ test("native-only public field, content and registry compose with independent st
       ),
     ).toBe(true);
     const missing = defineFormEditor({ modules: [...govbbFormModules, NoticeFormModule()] });
-    const rejected = markdownToLexical(source, missing);
+    const rejected = formMarkdownToLexical(source, missing);
     expect(rejected.state).toBeUndefined();
     expect(rejected.original).toBe(source);
   } finally {

@@ -1,6 +1,6 @@
 import { isMap, isScalar, isSeq, parseDocument, stringify } from "yaml";
 import { parsePageMarkdown } from "../pages/markdown";
-import type { ApiPage, FieldError, SaveFields, TaxonomyCategory } from "./client";
+import type { ApiPage, FieldError, PageSnapshot, SavePageInput, TaxonomyCategory } from "./client";
 
 const TEXT_FRONTMATTER = ["stage", "section", "service_type", "source_url"] as const;
 
@@ -71,8 +71,8 @@ export function urlProblem(url: string) {
   return undefined;
 }
 
-export type SaveFieldsResult =
-  | { ok: true; value: SaveFields }
+export type PageSaveInputResult =
+  | { ok: true; value: SavePageInput }
   | { ok: false; errors: FieldError[] };
 
 /**
@@ -80,11 +80,11 @@ export type SaveFieldsResult =
  * key the API does not keep is refused rather than dropped, so nothing an
  * author wrote disappears on save.
  */
-export function markdownToSaveFields(
+export function markdownToPageSaveInput(
   markdown: string,
   base: ApiPage,
   categories: readonly TaxonomyCategory[],
-): SaveFieldsResult {
+): PageSaveInputResult {
   const first = parsePageMarkdown(markdown).children[0];
   const yaml = first?.type === "yaml" ? first : undefined;
   const document = parseDocument(yaml?.value ?? "");
@@ -138,7 +138,7 @@ export function markdownToSaveFields(
   if (!visibility) errors.push({ field: "visibility", message: "Choose public, preview or draft" });
 
   const categoryId = categoryOf(document, base, categories, errors);
-  const frontmatter: SaveFields["frontmatter"] = {};
+  const frontmatter: SavePageInput["frontmatter"] = {};
   const lede = text("lede");
 
   if (lede !== undefined) frontmatter.lede = lede;
@@ -273,4 +273,45 @@ export function suggestedUrl(prefix: string, title: string) {
     .replace(/-+$/, "");
 
   return `${prefix}/${slug}`;
+}
+
+const FIELD_LABELS = new Map([
+  ["title", "Title"],
+  ["url", "Path"],
+  ["category", "Category"],
+  ["category_id", "Category"],
+  ["subcategory", "Subcategory"],
+  ["description", "Description"],
+  ["visibility", "Visibility"],
+  ["form_id", "Form ID"],
+  ["publish_date", "Publication date"],
+  ["lede", "Introduction"],
+  ["parent_id", "Parent page"],
+  ["id", "Page"],
+]);
+
+/** How the editor names a field the API refused. */
+export const pageFieldLabel = (field: string) => FIELD_LABELS.get(field) ?? field;
+
+/**
+ * A past version's content over the page as it stands. Its path, category,
+ * parent and visibility stay as they are: restoring an old visibility could
+ * unpublish a live page.
+ */
+export function pageVersionToDraftMarkdown(
+  current: ApiPage,
+  version: PageSnapshot,
+  categories: readonly TaxonomyCategory[],
+) {
+  return pageToMarkdown(
+    {
+      ...current,
+      title: version.title,
+      description: version.description,
+      form_id: version.form_id,
+      body_markdown: version.body_markdown,
+      frontmatter: version.frontmatter,
+    },
+    categories,
+  );
 }

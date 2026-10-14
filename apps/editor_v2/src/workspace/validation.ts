@@ -1,6 +1,6 @@
 import type { DraftKeys } from "../persistence/types";
 import { govbbDraftKeys } from "../host/govbb-draft";
-import type { WorkspaceIndex, WorkspaceDocument, Service } from "./model";
+import type { WorkspaceIndex, WorkspaceDocument, WorkspaceService } from "./model";
 
 const object = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -53,7 +53,7 @@ function document(value: unknown): value is WorkspaceDocument {
         !!value.formId;
 }
 
-function service(value: unknown): value is Service {
+function service(value: unknown): value is WorkspaceService {
   if (
     !object(value) ||
     typeof value.id !== "string" ||

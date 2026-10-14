@@ -10,7 +10,7 @@ export { FormComposer, DraftCanvas } from "./form-composer";
 
 export { draftEditorConnection } from "./draft-editor";
 
-export { FormSchemaEditor } from "./form-schema-ui";
+export { FormJsonDialog } from "./form-json-dialog";
 
 export {
   prepareNativeImport,

@@ -1,17 +1,17 @@
 import type { DraftCodec, VisualPreparedSource } from "../../persistence/types";
 import { SourceError } from "../../persistence/types";
-import { lexicalToMarkdown } from "../../converters/lexicalToMarkdown";
-import { markdownToLexical } from "../../converters/markdownToLexical";
+import { lexicalToFormMarkdown } from "../../converters/lexical-to-form-markdown";
+import { formMarkdownToLexical } from "../../converters/form-markdown-to-lexical";
 import { formDefinition } from "../definition";
 import type { FormRuntime } from "./runtime";
 
 /** Persistence receives its codec explicitly from the host. */
-export function createDraftCodec(runtime: FormRuntime): DraftCodec<VisualPreparedSource> {
+export function createFormDraftCodec(runtime: FormRuntime): DraftCodec<VisualPreparedSource> {
   const definition = formDefinition(runtime.definition);
 
   return {
     prepare(source) {
-      const parsed = markdownToLexical(source, definition);
+      const parsed = formMarkdownToLexical(source, definition);
 
       if (!parsed.state || parsed.diagnostics.some((issue) => issue.severity === "fatal"))
         throw new SourceError(
@@ -21,12 +21,12 @@ export function createDraftCodec(runtime: FormRuntime): DraftCodec<VisualPrepare
 
       return {
         state: parsed.state,
-        source: lexicalToMarkdown(parsed.state, definition),
+        source: lexicalToFormMarkdown(parsed.state, definition),
         diagnostics: parsed.diagnostics,
         ...(parsed.migrated && { migrated: true, migrationOriginal: source }),
       };
     },
-    encode: (state) => lexicalToMarkdown(state, definition),
+    encode: (state) => lexicalToFormMarkdown(state, definition),
     prepareLegacy: (value) => runtime.prepareLegacy(value),
   };
 }

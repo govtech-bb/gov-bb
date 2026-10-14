@@ -4,7 +4,7 @@ import { $getRoot, createEditor } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { defineFormEditor } from "../../src/forms/definition";
 import { createFormRuntime } from "../../src/forms/editor/runtime";
-import { createDraftCodec } from "../../src/forms/editor/codec";
+import { createFormDraftCodec } from "../../src/forms/editor/codec";
 import { $installedFields } from "../../src/forms/editor/field-context";
 import { $isInput } from "../../src/forms/editor/nodes";
 import {
@@ -13,8 +13,8 @@ import {
   $pageRepeat,
 } from "../../src/forms/features/repetition/queries";
 import { validateContentSyntax } from "../../src/forms/source/content";
-import { lexicalToMarkdown } from "../../src/converters/lexicalToMarkdown";
-import { markdownToLexical } from "../../src/converters/markdownToLexical";
+import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
+import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
 import { govbbFormEditor, govbbFormModules } from "../../src/presets/govbb-form";
 import { normalizeMigrationRowIds } from "../helpers/form-editor";
 
@@ -49,7 +49,7 @@ test("form queries require their installed editor context instead of selecting a
 
   const editor = createHeadlessEditor(
     govbbFormEditor,
-    markdownToLexical(source, govbbFormEditor).state!,
+    formMarkdownToLexical(source, govbbFormEditor).state!,
   );
 
   try {
@@ -71,7 +71,7 @@ test("repetition follows the provided capability even when its implementation mo
   expect(definition.moduleKeys).not.toContain("form-repetition");
   expect(definition.capabilities).toContain("form-repetition");
   expect(Object.isFrozen(definition.capabilities)).toBe(true);
-  const editor = createHeadlessEditor(definition, markdownToLexical(source, definition).state!);
+  const editor = createHeadlessEditor(definition, formMarkdownToLexical(source, definition).state!);
 
   try {
     editor.read(() => {
@@ -85,23 +85,23 @@ test("repetition follows the provided capability even when its implementation mo
 });
 
 test("public Markdown conversion and the injected draft codec share one prepared canonical pipeline", async () => {
-  const codec = createDraftCodec(createFormRuntime(govbbFormEditor));
+  const codec = createFormDraftCodec(createFormRuntime(govbbFormEditor));
 
   const canonical = await readFile(
     new URL("../fixtures/forms/field-logic-draft.canonical.md", import.meta.url),
     "utf8",
   );
 
-  const result = markdownToLexical(canonical, govbbFormEditor);
+  const result = formMarkdownToLexical(canonical, govbbFormEditor);
   expect(result.diagnostics.filter((issue) => issue.severity === "fatal")).toEqual([]);
   expect(result.state).toBeDefined();
   const prepared = codec.prepare(canonical);
   expect(prepared.state).toEqual(result.state!);
-  expect(lexicalToMarkdown(result.state!, govbbFormEditor)).toBe(canonical);
+  expect(lexicalToFormMarkdown(result.state!, govbbFormEditor)).toBe(canonical);
   expect(prepared.source).toBe(canonical);
   expect(codec.prepare(prepared.source)).toEqual(prepared);
   const unsupported = source.replace("::text[Name]", "::uninstalled-answer[Name]");
-  const rejected = markdownToLexical(unsupported, govbbFormEditor);
+  const rejected = formMarkdownToLexical(unsupported, govbbFormEditor);
   expect(rejected.original).toBe(unsupported);
   expect(rejected.state).toBeUndefined();
   expect(rejected.diagnostics.some((issue) => issue.severity === "fatal")).toBe(true);
@@ -119,12 +119,12 @@ test("the public Markdown converter migrates version 1 once and preserves canoni
     "utf8",
   );
 
-  const result = markdownToLexical(legacy, govbbFormEditor);
+  const result = formMarkdownToLexical(legacy, govbbFormEditor);
   expect(result.migrated).toBe(true);
   expect(result.original).toBe(legacy);
-  const canonical = lexicalToMarkdown(result.state!, govbbFormEditor);
+  const canonical = lexicalToFormMarkdown(result.state!, govbbFormEditor);
   expect(normalizeMigrationRowIds(canonical)).toBe(expected);
-  const reloaded = markdownToLexical(canonical, govbbFormEditor);
+  const reloaded = formMarkdownToLexical(canonical, govbbFormEditor);
   expect(reloaded.migrated).toBeUndefined();
-  expect(lexicalToMarkdown(reloaded.state!, govbbFormEditor)).toBe(canonical);
+  expect(lexicalToFormMarkdown(reloaded.state!, govbbFormEditor)).toBe(canonical);
 });

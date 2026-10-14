@@ -5,7 +5,7 @@ import { $createParagraphNode, $createTextNode, $getRoot, type LexicalNode } fro
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import { createFormRuntime } from "../../src/forms/editor/runtime";
-import { createDraftCodec } from "../helpers/default-form";
+import { createFormDraftCodec } from "../helpers/default-form";
 import { $duplicateBlocks } from "../../src/forms/editor/structure/blocks";
 import { $fields } from "../../src/forms/features/logic/queries";
 import { $blockId, $setDepth, $setSettings, $settings } from "../../src/editor/core/document-state";
@@ -49,7 +49,7 @@ const groups: GroupDraft[] = [
 
 const literal = { field: "advice-option", text: "regulated-category", nested: ["training-option"] };
 
-const codec = createDraftCodec(createFormRuntime(govbbFormEditor));
+const codec = createFormDraftCodec(createFormRuntime(govbbFormEditor));
 
 const parts = (nodes: LexicalNode[]) => ({
   page: nodes.find((node) => $blockKind(node) === "page-break")!,

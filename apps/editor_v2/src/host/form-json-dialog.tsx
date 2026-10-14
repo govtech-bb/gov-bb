@@ -5,7 +5,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useEditorDefinition } from "../editor/react/composer";
 import { formDefinition } from "../forms/definition";
 import { createFormRuntime } from "../forms/editor/runtime";
-import { createDraftCodec } from "../forms/editor/codec";
+import { createFormDraftCodec } from "../forms/editor/codec";
 import { nativeDiagnosticPath, type NativeDiagnostic } from "../forms/schema";
 import type { DraftReplacementToken } from "../persistence/types";
 import { Button } from "../ui/button";
@@ -28,7 +28,7 @@ function downloadJson(source: string, name: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function FormSchemaEditor() {
+export function FormJsonDialog() {
   const [editor] = useLexicalComposerContext();
   const definition = formDefinition(useEditorDefinition());
   const draft = useDraft();
@@ -124,7 +124,7 @@ export function FormSchemaEditor() {
                   const next = prepareNativeImport(
                     source,
                     definition,
-                    createDraftCodec(createFormRuntime(definition)),
+                    createFormDraftCodec(createFormRuntime(definition)),
                   );
 
                   setStaged({ pending: next, token: begun.token });

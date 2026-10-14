@@ -6,10 +6,10 @@ type Json<Content> = Content extends { content: { "application/json": infer Body
 export type ApiPage = Json<paths["/pages/{id}"]["get"]["responses"][200]>;
 
 /** What creating a page sends. */
-export type NewPage = Json<paths["/pages"]["post"]["requestBody"]>;
+export type CreatePageInput = Json<paths["/pages"]["post"]["requestBody"]>;
 
 /** What saving a page sends: every field, with `parent_id` left out to keep the parent. */
-export type SaveFields = Json<paths["/pages/{id}"]["put"]["requestBody"]>;
+export type SavePageInput = Json<paths["/pages/{id}"]["put"]["requestBody"]>;
 
 /** One row of the services list. */
 export type ServiceSummary = Json<paths["/services"]["get"]["responses"][200]>[number];
@@ -61,7 +61,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
   async function send(
     method: "GET" | "POST" | "PUT" | "DELETE",
     path: string,
-    body?: NewPage | SaveFields,
+    body?: CreatePageInput | SavePageInput,
     ifUpdatedAt?: string,
   ) {
     const headers = new Headers();
@@ -101,9 +101,9 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
       (await read<{ versions: PageVersion[] }>(`/pages/${id}/history`)).versions,
     pageVersion: (id: string, version: number) =>
       read<PageSnapshot>(`/pages/${id}/history/${version}`),
-    createPage: async (page: NewPage): Promise<ApiPage> =>
+    createPage: async (page: CreatePageInput): Promise<ApiPage> =>
       (await send("POST", "/pages", page)).json(),
-    savePage: async (id: string, fields: SaveFields, ifUpdatedAt: string): Promise<ApiPage> =>
+    savePage: async (id: string, fields: SavePageInput, ifUpdatedAt: string): Promise<ApiPage> =>
       (await send("PUT", `/pages/${id}`, fields, ifUpdatedAt)).json(),
     deletePage: async (id: string) => {
       await send("DELETE", `/pages/${id}`);

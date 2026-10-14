@@ -3,8 +3,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { $getRoot } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
-import { formSchemaToLexical } from "../../src/converters/formSchemaToLexical";
-import { lexicalToFormSchema } from "../../src/converters/lexicalToFormSchema";
+import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
+import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
 import { $native } from "../../src/forms/editor/native-state";
 import {
   $nativeTargets,

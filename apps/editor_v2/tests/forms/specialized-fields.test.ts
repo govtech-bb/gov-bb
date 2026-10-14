@@ -6,8 +6,8 @@ import { executeAction } from "../../src/editor/core/actions";
 import { $settings, $setSettings } from "../../src/editor/core/document-state";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import { createFormRuntime } from "../../src/forms/editor/runtime";
-import { createDraftCodec, readMarkdown, toEditor } from "../helpers/default-form";
-import { lexicalToLegacySsb } from "../../src/converters/lexicalToLegacySsb";
+import { createFormDraftCodec, readMarkdown, toEditor } from "../helpers/default-form";
+import { lexicalToLegacySsb } from "../../src/converters/lexical-to-legacy-ssb";
 import { openingHoursField } from "../../src/forms/features/opening-hours/definition";
 import {
   OPENING_HOURS_PATTERN,
@@ -28,7 +28,7 @@ const emptySource =
   '---\nformat: govbb-form\nformatVersion: 2\ntitle: Apply\n---\n\n# Application\n\n::page{#application}\n\n::empty\n\n---\n\n# Declaration\n\n::page{#declaration type="declaration"}\n\n::checkboxes[Declaration]{#legal required}\n- I confirm the information I have given is correct\n\n---\n\n# Complete\n\n::page{#complete type="confirmation"}\n';
 
 const runtime = createFormRuntime(govbbFormEditor),
-  codec = createDraftCodec(runtime);
+  codec = createFormDraftCodec(runtime);
 
 const legacyEditorFor = () =>
   createHeadlessEditor(govbbFormEditor, toEditor(readMarkdown(emptySource).document!), {

@@ -1,11 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
-import { ApiFailure, type EditorApi, type NewPage, type ServiceDetail } from "../api/client";
-import { suggestedUrl, urlProblem } from "../api/page-markdown";
+import {
+  ApiFailure,
+  type EditorApi,
+  type CreatePageInput,
+  type ServiceDetail,
+} from "../api/client";
+import { suggestedUrl, urlProblem, pageFieldLabel } from "../api/page-markdown";
 import { pageQuery, taxonomyQuery } from "../api/queries";
 import { Button } from "../ui/button";
-import { fieldLabel } from "./api-pages";
-import { inputClass, WorkspaceDialog } from "./dialogs";
+import { workspaceDialogInputClass, WorkspaceDialog } from "./workspace-dialog";
 import { documentLabel, type PageDocument } from "./model";
 
 /** Create a page as a draft, then hand its id over once the API has it. */
@@ -13,7 +17,7 @@ function useCreatePage(api: EditorApi, done: (id: string) => void) {
   const client = useQueryClient();
 
   return useMutation({
-    mutationFn: (page: NewPage) => api.createPage(page),
+    mutationFn: (page: CreatePageInput) => api.createPage(page),
     onSuccess: (page) => {
       client.setQueryData(pageQuery(api, page.id).queryKey, page);
       void client.invalidateQueries({ queryKey: ["content"] });
@@ -33,7 +37,7 @@ function refusals(error: Error | null, otherwise: string) {
 
   if (error.errors.length === 0) return [otherwise];
 
-  return error.errors.map((item) => `${fieldLabel(item.field)}: ${item.message}`);
+  return error.errors.map((item) => `${pageFieldLabel(item.field)}: ${item.message}`);
 }
 
 function Problems({ messages }: { messages: readonly string[] }) {
@@ -62,7 +66,7 @@ function PathField({
       </label>
       <input
         id={id}
-        className={inputClass}
+        className={workspaceDialogInputClass}
         value={value}
         readOnly={readOnly}
         spellCheck={false}
@@ -74,7 +78,7 @@ function PathField({
 }
 
 /** A new service in the content API: a draft entry page filed under a category. */
-export function ApiServiceDialog({
+export function CreateRemoteServiceDialog({
   api,
   close,
   done,
@@ -128,7 +132,7 @@ export function ApiServiceDialog({
         </label>
         <input
           id={`${id}-title`}
-          className={inputClass}
+          className={workspaceDialogInputClass}
           value={title}
           onChange={(event) => setTitle(event.target.value)}
         />
@@ -137,7 +141,7 @@ export function ApiServiceDialog({
         </label>
         <select
           id={`${id}-category`}
-          className={inputClass}
+          className={workspaceDialogInputClass}
           value={categoryId}
           onChange={(event) => setCategoryId(event.target.value)}
         >
@@ -169,7 +173,7 @@ export function ApiServiceDialog({
 }
 
 /** A new draft page beneath a service's entry page: its start page or a supporting page. */
-export function ApiPageDialog({
+export function CreateRemotePageDialog({
   api,
   detail,
   close,
@@ -222,7 +226,7 @@ export function ApiPageDialog({
         </label>
         <select
           id={`${id}-kind`}
-          className={inputClass}
+          className={workspaceDialogInputClass}
           value={kind}
           onChange={(event) => setKind(event.target.value)}
         >
@@ -234,7 +238,7 @@ export function ApiPageDialog({
         </label>
         <input
           id={`${id}-title`}
-          className={inputClass}
+          className={workspaceDialogInputClass}
           value={title}
           onChange={(event) => setTitle(event.target.value)}
         />
@@ -259,7 +263,7 @@ export function ApiPageDialog({
 }
 
 /** Remove a page from the content API, once its author confirms. */
-export function DeletePageDialog({
+export function DeleteRemotePageDialog({
   api,
   page,
   close,

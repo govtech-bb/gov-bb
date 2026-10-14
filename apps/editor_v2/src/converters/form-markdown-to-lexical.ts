@@ -1,9 +1,9 @@
 import type { SerializedEditorState } from "lexical";
-import type { FormEditorDefinition } from "../../forms/definition";
-import { createFormSourceDialect } from "../../forms/source/dialect";
-import { createFormRuntime } from "../../forms/editor/runtime";
-import { syncNativeSource } from "../../forms/editor/native-source";
-import type { Diagnostic, FormDocument } from "../../forms/source/model";
+import type { FormEditorDefinition } from "../forms/definition";
+import { createFormSourceDialect } from "../forms/source/dialect";
+import { createFormRuntime } from "../forms/editor/runtime";
+import { syncNativeSource } from "../forms/editor/native-source";
+import type { Diagnostic, FormDocument } from "../forms/source/model";
 
 type PreparedMarkdown = {
   state?: SerializedEditorState;
@@ -14,7 +14,7 @@ type PreparedMarkdown = {
 };
 
 /** Prepare with the same installed document capabilities as the mounted editor. */
-export function markdownToLexical(
+export function formMarkdownToLexical(
   source: string,
   definition: FormEditorDefinition,
 ): PreparedMarkdown {

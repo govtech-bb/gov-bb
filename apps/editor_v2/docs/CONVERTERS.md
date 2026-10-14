@@ -4,15 +4,15 @@ The form editor imports and exports **FormDefinitionV2**, the application's JSON
 
 | Converter | Input | Result |
 | --- | --- | --- |
-| `lexicalToMarkdown(state, definition)` | Serialized Lexical state | Canonical Markdown |
-| `markdownToLexical(source, definition)` | Markdown bytes | Optional `state`, `original` source and diagnostics |
-| `lexicalToFormSchema(state, definition, editor?)` | Existing Lexical EditorState | `ready` with native schema, or `blocked` with `schema: null` and located diagnostics |
-| `formSchemaToLexical(value, definition)` | Unknown parsed JSON | Isolated prepared state, or blocked result retaining original data |
-| `lexicalToLegacySsb(state, definition, editor?)` | Existing Lexical EditorState | `schema` or `null`, with compatibility diagnostics |
-| `pageMarkdownToLexical(source, definition)` | Page Markdown and YAML | Visual prepared state, or intact source-only document with diagnostics |
-| `lexicalToPageMarkdown(state, definition)` | Serialized page Lexical state | Original bytes before edits; normalized page Markdown after edits |
+| [`lexicalToFormMarkdown(state, definition)`](../src/converters/lexical-to-form-markdown.ts) | Serialized form Lexical state | Canonical form Markdown |
+| [`formMarkdownToLexical(source, definition)`](../src/converters/form-markdown-to-lexical.ts) | Form Markdown bytes | Optional `state`, `original` source and diagnostics |
+| [`lexicalToFormSchema(state, definition, editor?)`](../src/converters/lexical-to-form-schema.ts) | Existing Lexical EditorState | `ready` with native schema, or `blocked` with `schema: null` and located diagnostics |
+| [`formSchemaToLexical(value, definition)`](../src/converters/form-schema-to-lexical.ts) | Unknown parsed JSON | Isolated prepared state, or blocked result retaining original data |
+| [`lexicalToLegacySsb(state, definition, editor?)`](../src/converters/lexical-to-legacy-ssb.ts) | Existing Lexical EditorState | `schema` or `null`, with compatibility diagnostics |
+| [`pageMarkdownToLexical(source, definition)`](../src/converters/page-markdown-to-lexical.ts) | Page Markdown and YAML | Visual prepared state, or intact source-only document with diagnostics |
+| [`lexicalToPageMarkdown(state, definition)`](../src/converters/lexical-to-page-markdown.ts) | Serialized page Lexical state | Original bytes before edits; normalized page Markdown after edits |
 
-Form converters are exported from `src/forms`; page converters and `createPageDraftCodec` are exported from `src/pages`. The folders under `src/converters` expose each conversion boundary; page implementations live in `src/pages/converters.ts`.
+Form converters and `createFormDraftCodec(runtime)` are exported from `src/forms`; page converters and `createPageDraftCodec(definition)` are exported from `src/pages`. The kebab-case files in `src/converters` expose each conversion boundary without single-file directories; page implementations remain in `src/pages/converters.ts`.
 
 Form Markdown import returns diagnostics and no state when preparation fails. Page import throws `SourceError` for invalid metadata; unsupported body syntax instead returns a valid source-only document. Callers must handle these outcomes separately.
 
@@ -56,7 +56,7 @@ A successful source upgrade returns `migrated: true` and the exact `migrationOri
 
 ## Application operations
 
-The app's **JSON** dialog downloads the visible native form or stages an uploaded file for review. Staging retains exact uploaded bytes and does not replace the canvas. Dirty Markdown, conflicts, recovery or read-only state block applying/exporting a stale canvas. A captured token rejects imports if the editor changes during file reading.
+The app's **JSON** dialog ([`FormJsonDialog`](../src/host/form-json-dialog.tsx)) downloads the visible native form or stages an uploaded file for review. Staging retains exact uploaded bytes and does not replace the canvas. Dirty Markdown, conflicts, recovery or read-only state block applying/exporting a stale canvas. A captured token rejects imports if the editor changes during file reading.
 
 `DraftStore.replacePrepared` prepares an editor closure, checks concurrency, writes a recovery journal, rechecks storage, commits canonical Markdown, then applies one history step. Precommit failures retain the old canvas. Failure after canonical commit freezes editing and retains both states for explicit recovery; cleanup failures report a successful content commit with cleanup pending. Cleanup verifies journal bytes and transaction identity. JSON import can be undone/redone and autosaved.
 

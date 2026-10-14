@@ -21,10 +21,10 @@ import { question, content } from "../../src/forms/registry/builders";
 import { prepareRegistryEntry, $instantiateRegistryEntry } from "../../src/forms/editor/registry";
 import { $insertBlocks } from "../../src/forms/editor/insertion";
 
-import { lexicalToFormSchema } from "../../src/converters/lexicalToFormSchema";
-import { formSchemaToLexical } from "../../src/converters/formSchemaToLexical";
-import { lexicalToMarkdown } from "../../src/converters/lexicalToMarkdown";
-import { markdownToLexical } from "../../src/converters/markdownToLexical";
+import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
+import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
+import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
+import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
 
 const savedKey = "registry-insertion-fixture";
 
@@ -70,7 +70,7 @@ let removedTrigger = false;
 const fixture = {
   ready: () => !!active,
   state: () => active!.getEditorState().toJSON(),
-  source: () => lexicalToMarkdown(active!.getEditorState().toJSON(), definition),
+  source: () => lexicalToFormMarkdown(active!.getEditorState().toJSON(), definition),
   selection: () =>
     active!.read(() => {
       const value = $getSelection();
@@ -155,7 +155,7 @@ function Controls() {
 
 const saved = localStorage.getItem(savedKey);
 
-const initialState = saved === null ? undefined : markdownToLexical(saved, definition).state;
+const initialState = saved === null ? undefined : formMarkdownToLexical(saved, definition).state;
 
 if (saved !== null && !initialState) throw Error("The saved fixture did not reload");
 

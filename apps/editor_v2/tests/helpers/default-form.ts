@@ -80,7 +80,7 @@ export {
   LEGACY_KEY,
 } from "../../src/host/govbb-draft";
 
-export { createDraftCodec } from "../../src/forms/editor/codec";
+export { createFormDraftCodec } from "../../src/forms/editor/codec";
 
 export * from "../../src/persistence/types";
 

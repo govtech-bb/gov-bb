@@ -2,23 +2,23 @@ import type { DraftKeys, DraftStorage } from "../persistence/types";
 import type { DraftStore } from "../persistence/draft-store";
 import { parseWorkspace } from "./validation";
 
-export type PageRole = "entry" | "start" | "supporting";
+export type ServicePageRole = "entry" | "start" | "supporting";
 
 type DocumentBase = { id: string; title: string; keys: DraftKeys };
 
-export type PageDocument = DocumentBase & { kind: "page"; role: PageRole };
+export type PageDocument = DocumentBase & { kind: "page"; role: ServicePageRole };
 
-export type FormDocument = DocumentBase & {
+export type WorkspaceFormDocument = DocumentBase & {
   kind: "form";
   mode: "application" | "calculator";
   formId: string;
 };
 
-export type WorkspaceDocument = PageDocument | FormDocument;
+export type WorkspaceDocument = PageDocument | WorkspaceFormDocument;
 
-export type Service = { id: string; title: string; documents: WorkspaceDocument[] };
+export type WorkspaceService = { id: string; title: string; documents: WorkspaceDocument[] };
 
-export type WorkspaceIndex = { version: 1; services: Service[] };
+export type WorkspaceIndex = { version: 1; services: WorkspaceService[] };
 
 export type WorkspaceLocation = { serviceId: string; documentId?: string } | undefined;
 
@@ -116,7 +116,7 @@ export class WorkspaceRepository {
     const name = title.trim();
 
     if (!name) throw new Error("Enter a service name");
-    const service: Service = { id: crypto.randomUUID(), title: name, documents: [page] };
+    const service: WorkspaceService = { id: crypto.randomUUID(), title: name, documents: [page] };
     this.addPreparedDocument(
       { version: 1, services: [...this.value.services, service] },
       page,

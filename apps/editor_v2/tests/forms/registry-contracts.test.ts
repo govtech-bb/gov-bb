@@ -11,8 +11,8 @@ import {
 import { content, question, rule } from "../../src/forms/registry/builders";
 import { FormRegistryModule } from "../../src/forms/editor/registry-module";
 import { govbbFormModules } from "../../src/presets/govbb-form";
-import { lexicalToMarkdown } from "../../src/converters/lexicalToMarkdown";
-import { markdownToLexical } from "../../src/converters/markdownToLexical";
+import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
+import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
 import { createFormSourceDialect } from "../../src/forms/source/dialect";
 import { nativeHost, nativeOutput } from "../helpers/native-form";
 
@@ -104,7 +104,7 @@ test("saved native registry copies survive catalog changes or removal without in
         targetKey: editor.read(() => $getRoot().getLastChild()!.getKey()),
       }).executed,
     ).toBe(true);
-    source = lexicalToMarkdown(editor.getEditorState().toJSON(), definition);
+    source = lexicalToFormMarkdown(editor.getEditorState().toJSON(), definition);
     output = nativeOutput(editor, definition);
   } finally {
     editor.dispose();
@@ -115,13 +115,13 @@ test("saved native registry copies survive catalog changes or removal without in
   ]);
 
   for (const next of [definitionFor(replacement), defineFormEditor({ modules: base })]) {
-    const parsed = markdownToLexical(source!, next);
+    const parsed = formMarkdownToLexical(source!, next);
     expect(parsed.state).toBeDefined();
     const restored = createHeadlessEditor(next, parsed.state!);
 
     try {
       expect(nativeOutput(restored, next)).toEqual(output!);
-      expect(lexicalToMarkdown(restored.getEditorState().toJSON(), next)).toBe(source!);
+      expect(lexicalToFormMarkdown(restored.getEditorState().toJSON(), next)).toBe(source!);
     } finally {
       restored.dispose();
     }

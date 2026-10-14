@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import type { ApiPage, EditorApi, PageVersion, TaxonomyCategory } from "../api/client";
-import { historyQuery, pageVersionQuery } from "../api/queries";
+import { pageHistoryQuery, pageVersionQuery } from "../api/queries";
 import { PagePreview } from "../pages";
 import { govbbPageEditor } from "../presets/govbb-page";
 import { Button } from "../ui/button";
-import { restoredMarkdown } from "./api-pages";
-import { WorkspaceDialog } from "./dialogs";
+import { pageVersionToDraftMarkdown } from "../api/page-markdown";
+import { WorkspaceDialog } from "./workspace-dialog";
 
 const ACTIONS = {
   created: "Created",
@@ -36,7 +36,7 @@ export function PageHistoryDialog({
   close: () => void;
   restore: (markdown: string) => void;
 }) {
-  const history = useQuery(historyQuery(api, current.id));
+  const history = useQuery(pageHistoryQuery(api, current.id));
   const [viewing, setViewing] = useState<number>();
 
   const version = useQuery({
@@ -89,7 +89,8 @@ export function PageHistoryDialog({
               variant="accent"
               disabled={!canRestore || !version.data}
               onClick={() => {
-                if (version.data) restore(restoredMarkdown(current, version.data, categories));
+                if (version.data)
+                  restore(pageVersionToDraftMarkdown(current, version.data, categories));
               }}
             >
               Restore this version
@@ -104,7 +105,7 @@ export function PageHistoryDialog({
           ) : (
             <div className="rounded-sm border border-line p-4">
               <PagePreview
-                source={restoredMarkdown(current, version.data, categories)}
+                source={pageVersionToDraftMarkdown(current, version.data, categories)}
                 definition={govbbPageEditor}
               />
             </div>

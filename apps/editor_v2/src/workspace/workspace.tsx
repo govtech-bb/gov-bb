@@ -3,18 +3,22 @@ import { Link, useBlocker, useNavigate, useParams, useRouterState } from "@tanst
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ApiFailure, type EditorApi } from "../api/client";
-import { serviceQuery, versionQuery } from "../api/queries";
-import { ApiPageDialog, ApiServiceDialog, DeletePageDialog } from "./api-dialogs";
-import { ApiPagePane } from "./api-page";
-import { serviceDocuments } from "./api-pages";
-import { ApiServiceNav } from "./api-service";
+import { serviceQuery, estateVersionQuery } from "../api/queries";
+import {
+  CreateRemotePageDialog,
+  CreateRemoteServiceDialog,
+  DeleteRemotePageDialog,
+} from "./remote-page-dialogs";
+import { RemotePagePane } from "./remote-page-pane";
+import { servicePageDocuments } from "./service-pages";
+import { ServicePagesNav } from "./service-pages-nav";
 import { workspaceLink } from "./navigation";
 import { Button } from "../ui/button";
 import { browserDraftStorage } from "../host/govbb-draft";
 import { PageDraftEditor } from "../host/page-editor";
 import { DocumentLabel } from "./document-label";
 import type { DraftStore } from "../persistence/draft-store";
-import { DocumentDialog, ServiceDialog } from "./dialogs";
+import { AddLocalDocumentDialog, LocalServiceDialog } from "./local-document-dialogs";
 import { openDocument, openWorkspace } from "./documents";
 import { WorkspaceFormEditor } from "./form-editor";
 import { ServicesList } from "./services-list";
@@ -149,14 +153,14 @@ function Workspace({
 
   const client = useQueryClient();
 
-  useQuery({ ...versionQuery(api, client), notifyOnChangeProps: [] });
+  useQuery({ ...estateVersionQuery(api, client), notifyOnChangeProps: [] });
 
   const remote = useQuery({
     ...serviceQuery(api, location?.serviceId ?? ""),
     enabled: !!location && !service,
   });
 
-  const remoteDocuments = remote.data ? serviceDocuments(remote.data) : [];
+  const remoteDocuments = remote.data ? servicePageDocuments(remote.data) : [];
   const remoteSelected = remoteDocuments.find((item) => item.id === location?.documentId);
 
   const missing =
@@ -318,7 +322,7 @@ function Workspace({
         }
       >
         {!service && remote.data && location && (
-          <ApiServiceNav
+          <ServicePagesNav
             serviceId={location.serviceId}
             documents={remoteDocuments}
             selectedId={remoteSelected?.id}
@@ -472,7 +476,7 @@ function Workspace({
                 remoteDocuments.find((item) => item.id === id)?.title ?? "Page from the content API"
               }
             >
-              <ApiPagePane api={api} id={id} active={id === remoteSelected?.id} />
+              <RemotePagePane api={api} id={id} active={id === remoteSelected?.id} />
             </section>
           ))}
           {panes.map((pane) => (
@@ -495,7 +499,7 @@ function Workspace({
         </main>
       </div>
       {dialog === "service" && (
-        <ServiceDialog
+        <LocalServiceDialog
           repository={repository}
           close={() => setDialog(undefined)}
           done={(created) => {
@@ -506,7 +510,7 @@ function Workspace({
         />
       )}
       {dialog === "api-service" && (
-        <ApiServiceDialog
+        <CreateRemoteServiceDialog
           api={api}
           close={() => setDialog(undefined)}
           done={(id) => {
@@ -516,7 +520,7 @@ function Workspace({
         />
       )}
       {dialog === "api-page" && remote.data && location && (
-        <ApiPageDialog
+        <CreateRemotePageDialog
           api={api}
           detail={remote.data}
           close={() => setDialog(undefined)}
@@ -527,7 +531,7 @@ function Workspace({
         />
       )}
       {dialog === "api-delete" && remoteSelected && location && (
-        <DeletePageDialog
+        <DeleteRemotePageDialog
           api={api}
           page={remoteSelected}
           close={() => setDialog(undefined)}
@@ -544,7 +548,7 @@ function Workspace({
         />
       )}
       {dialog === "rename" && service && (
-        <ServiceDialog
+        <LocalServiceDialog
           repository={repository}
           service={service}
           close={() => setDialog(undefined)}
@@ -555,7 +559,7 @@ function Workspace({
         />
       )}
       {dialog === "document" && service && (
-        <DocumentDialog
+        <AddLocalDocumentDialog
           repository={repository}
           service={service}
           close={() => setDialog(undefined)}

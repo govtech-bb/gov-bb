@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { $getRoot } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
-import { formSchemaToLexical } from "../../src/converters/formSchemaToLexical";
+import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import { $pageButtons } from "../../src/forms/features/pages/buttons";
 import { $pagePreview } from "../../src/forms/features/pages/queries";

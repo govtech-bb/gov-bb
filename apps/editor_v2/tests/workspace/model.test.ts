@@ -6,7 +6,7 @@ import {
   readLocation,
   WORKSPACE_KEY,
   WorkspaceRepository,
-  type FormDocument,
+  type WorkspaceFormDocument,
   type PageDocument,
   type WorkspaceIndex,
 } from "../../src/workspace/model";
@@ -20,7 +20,10 @@ const page = (id: string, role: PageDocument["role"] = "supporting"): PageDocume
   keys: documentKeys(id),
 });
 
-const form = (id: string, mode: FormDocument["mode"] = "application"): FormDocument => ({
+const form = (
+  id: string,
+  mode: WorkspaceFormDocument["mode"] = "application",
+): WorkspaceFormDocument => ({
   id,
   kind: "form",
   title: id,

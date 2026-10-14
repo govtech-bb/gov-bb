@@ -21,7 +21,7 @@ import { govbbFormEditor as legacyFormDefinition } from "../../src/presets/govbb
 import { createFormRuntime } from "../../src/forms/editor/runtime";
 import { defineFormEditor } from "../../src/forms/definition";
 import {
-  createDraftCodec,
+  createFormDraftCodec,
   initialDraft,
   LEGACY_KEY,
   MARKDOWN_KEY,
@@ -289,7 +289,7 @@ test("unsupported subtype in Markdown source-state stays recoverable before hydr
     '---\nformat: govbb-form\nformatVersion: 2\ntitle: Service\n---\n\n# Page\n\n::text[Name]{#name}\n\n:::source-state\n```json\n{"questions":{"name":{"answer":{"state":{"kind":"future-input"}}}}}\n```\n:::\n';
 
   const runtime = createFormRuntime(legacyFormDefinition),
-    codec = createDraftCodec(runtime);
+    codec = createFormDraftCodec(runtime);
 
   expect(() => codec.prepare(source)).toThrow(SourceError);
   const storage = memory({ [MARKDOWN_KEY]: source });
@@ -323,7 +323,7 @@ test("injected source codec obeys the host's installed nodes and retains origina
     }),
   );
 
-  const codec = createDraftCodec(runtime);
+  const codec = createFormDraftCodec(runtime);
   expect(() => codec.prepare(source)).toThrow(SourceError);
   const storage = memory({ [MARKDOWN_KEY]: source, [WORKING_KEY]: "unfinished source\n" });
 

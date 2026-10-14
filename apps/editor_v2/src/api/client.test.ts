@@ -1,6 +1,6 @@
 import { createServer, type IncomingHttpHeaders } from "node:http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { ApiFailure, createEditorApi, type SaveFields } from "./client";
+import { ApiFailure, createEditorApi, type SavePageInput } from "./client";
 
 let origin: string;
 
@@ -39,7 +39,7 @@ afterAll(async () => {
   );
 });
 
-const fields: SaveFields = {
+const fields: SavePageInput = {
   url: "/money-financial-support/calculate-severance-pay",
   category_id: null,
   title: "Calculate severance pay",
