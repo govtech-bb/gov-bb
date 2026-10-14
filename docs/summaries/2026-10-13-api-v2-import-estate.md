@@ -11,6 +11,7 @@ On `v2-rewrite` the converter (`pnpm seed-data` → `src/seed-data/estate.json`)
 - `c425d4d8` — `src/import-estate.ts`, compiled into the image as `dist/src/import-estate.js`; `pnpm import-estate` locally; an e2e spec that runs the compiled process on a scratch database.
 - `f08f1ecf`, `5e72ea0b` — README: `SEED` is local-only, and the "Importing the estate (one-time)" runbook.
 - Follow-up #3052 (infra): drop `SEED=true` from the sandbox task definition, later refuse `SEED` in production.
+- Recorded as [ADR 0077](../decisions/0077-deployed-content-databases-are-loaded-once-then-written-only-by-the-editor.md): a deployed content database is loaded once, then written only by the editor.
 
 ## Why we did it that way
 
