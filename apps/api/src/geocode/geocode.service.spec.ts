@@ -32,8 +32,9 @@ const OISTINS = {
 function provider(
   name: string,
   search: GeocodeProvider["search"],
+  cacheable = true,
 ): GeocodeProvider & { search: ReturnType<typeof vi.fn> } {
-  return { name, search: vi.fn(search) };
+  return { name, cacheable, search: vi.fn(search) };
 }
 
 describe("GeocodeService", () => {
@@ -159,6 +160,15 @@ describe("GeocodeService", () => {
 
     expect(await service.search("Bridgetown")).toEqual([OISTINS]);
     expect(await service.search("Bridgetown")).toEqual([BRIDGETOWN]);
+  });
+
+  // Google's terms allow caching only place IDs, not predictions.
+  it("does not cache a provider whose terms forbid it", async () => {
+    const google = provider("google", async () => [BRIDGETOWN], false);
+    const service = new GeocodeService([google]);
+    await service.search("Bridgetown");
+    await service.search("Bridgetown");
+    expect(google.search).toHaveBeenCalledTimes(2);
   });
 
   it("does not cache a failure", async () => {

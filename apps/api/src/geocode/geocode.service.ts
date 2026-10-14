@@ -114,9 +114,10 @@ export class GeocodeService {
               ? r
               : { ...r, parish: parishAt(Number(r.lat), Number(r.lon)) },
           );
-        // Only the primary's answer is cached: a fallback's would outlive the
-        // outage that caused it.
-        if (index === 0) this.remember(key, results);
+        // Only the primary's answer is cached, as a fallback's would outlive
+        // the outage that caused it — and only where the provider's terms
+        // allow it (not Google's).
+        if (index === 0 && provider.cacheable) this.remember(key, results);
         return results;
       } catch (error) {
         this.logger.warn(

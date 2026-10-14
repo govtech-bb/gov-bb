@@ -28,6 +28,7 @@ const USER_AGENT = "gov.bb-forms/1.0 (https://gov.bb)";
  */
 export class NominatimProvider implements GeocodeProvider {
   readonly name = "nominatim";
+  readonly cacheable = true;
 
   constructor(private readonly http: HttpService) {}
 

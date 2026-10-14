@@ -43,6 +43,11 @@ export interface ResolvedPlace {
  */
 export interface GeocodeProvider {
   readonly name: string;
+  /**
+   * Whether the provider's terms let us cache its search answers. Google's do
+   * not (Maps Platform terms §3.2.3(b): no caching beyond place IDs).
+   */
+  readonly cacheable?: boolean;
   search(query: string, sessionToken?: string): Promise<GeocodeResult[]>;
   resolve?(placeId: string, sessionToken?: string): Promise<ResolvedPlace>;
   /**
