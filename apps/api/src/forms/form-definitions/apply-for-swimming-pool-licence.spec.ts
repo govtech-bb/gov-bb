@@ -115,15 +115,44 @@ it("asks for the type of property only for another type", async () => {
   }
 });
 
-it("asks for the current licence number only on a renewal", async () => {
-  for (const [type, shown] of [
+// A new licence may give its Planning and Development application number; a
+// renewal gives each pool's current licence number, since there is one per pool.
+it("asks each pool for its licence number only on a renewal", async () => {
+  for (const [type, renewal] of [
     ["new", false],
     ["renewal", true],
   ] as const) {
+    const cond = await conditions({
+      "about-application": { "application-type": type },
+      "pool-details": { "pool-name": "Main pool" },
+    });
+    expect(
+      cond.activeFieldIds
+        .get("about-application")!
+        .has("planning-application-number"),
+    ).toBe(!renewal);
+    expect(cond.activeFieldIds.get("pool-details")!.has("licence-number")).toBe(
+      renewal,
+    );
+  }
+});
+
+// Environmental Health needs to know who runs each pool when it is not the
+// person filling in the form (for example, a clerk applying for a hotel).
+it("asks for the pool operator only when the applicant does not manage it", async () => {
+  const operatorFields = [
+    "pool-operator-name",
+    "pool-operator-telephone",
+    "pool-operator-email",
+  ];
+  for (const [answer, shown] of [
+    ["yes", false],
+    ["no", true],
+  ] as const) {
     const active = (
-      await conditions({ "about-application": { "application-type": type } })
-    ).activeFieldIds.get("about-application")!;
-    expect(active.has("licence-number")).toBe(shown);
+      await conditions({ "pool-details": { "manages-pool": answer } })
+    ).activeFieldIds.get("pool-details")!;
+    for (const id of operatorFields) expect(active.has(id), id).toBe(shown);
   }
 });
 
