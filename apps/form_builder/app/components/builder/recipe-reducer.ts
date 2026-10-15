@@ -3,7 +3,7 @@ import type {
   RecipeStepDraft,
   RecipeFieldDraft,
   RecipeProcessorDraft,
-  AuthorableProcessorType,
+  AuthorableProcessorPreset,
 } from "@govtech-bb/form-builder";
 import { makeDefaultProcessor } from "@govtech-bb/form-builder";
 import type {
@@ -202,7 +202,7 @@ export type RecipeAction =
       fromIndex: number;
       toIndex: number;
     }
-  | { type: "ADD_PROCESSOR"; processorType: AuthorableProcessorType }
+  | { type: "ADD_PROCESSOR"; processorType: AuthorableProcessorPreset }
   | { type: "REMOVE_PROCESSOR"; id: string }
   | {
       type: "UPDATE_PROCESSOR_CONFIG";

@@ -1,5 +1,5 @@
 import type { Processor } from "@govtech-bb/form-types";
-import type { AuthorableProcessorType } from "./types";
+import type { AuthorableProcessorPreset } from "./types";
 
 /**
  * A minimal, mostly-blank default processor for each type the builder can
@@ -15,8 +15,10 @@ import type { AuthorableProcessorType } from "./types";
  * `payment` is now authorable too (#716): its provider is fixed to `ezpay` and
  * the path/amount fields start blank for the author to fill in.
  */
-export function makeDefaultProcessor(type: AuthorableProcessorType): Processor {
-  switch (type) {
+export function makeDefaultProcessor(
+  preset: AuthorableProcessorPreset,
+): Processor {
+  switch (preset) {
     case "email":
       return { type: "email", config: { recipientField: "" } };
     case "webhook":
@@ -27,6 +29,29 @@ export function makeDefaultProcessor(type: AuthorableProcessorType): Processor {
           method: "POST",
           signatureHeader: "X-Webhook-Signature",
           timeoutMs: 10_000,
+        },
+      };
+    case "webhook-cams":
+      // No url/endpoint/auth: a mapped webhook resolves its URL and API key
+      // per-MDA (#2684). method/signatureHeader/timeoutMs are the schema
+      // defaults, required by the parsed Processor type.
+      return {
+        type: "webhook",
+        config: {
+          method: "POST",
+          signatureHeader: "X-Webhook-Signature",
+          timeoutMs: 10_000,
+          mapping: {
+            programmeCode: "",
+            applicant: { name: [], email: "", phone: "" },
+            // Mirrors the builder's REQUIRED_STEP_IDS — every draft has these.
+            excludeSteps: [
+              "check-your-answers",
+              "declaration",
+              "submission-confirmation",
+            ],
+            groupByStep: true,
+          },
         },
       };
     case "spreadsheet":

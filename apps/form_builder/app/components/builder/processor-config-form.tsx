@@ -1,3 +1,4 @@
+import { Checkbox } from "../ui/checkbox";
 import { Select } from "../ui/select";
 import { Input } from "../ui/input";
 import type {
@@ -7,6 +8,7 @@ import type {
 import { ValuePathPicker } from "./value-path-picker";
 import { KeyValueEditor } from "./key-value-editor";
 import { AmountEditor } from "./amount-editor";
+import { REQUIRED_STEP_IDS } from "./recipe-reducer";
 
 interface ProcessorConfigFormProps {
   processor: RecipeProcessorDraft;
@@ -141,6 +143,178 @@ export function ProcessorConfigForm({
 
     case "webhook": {
       const config = processor.config;
+      // A mapped webhook posts to a Case Management System (CaMS) whose
+      // address and API key resolve per-MDA, so it gets its own fields and
+      // never the URL/auth/timeout ones (#2684).
+      if (config.mapping) {
+        const mapping = config.mapping;
+        const setMapping = (patch: Partial<typeof mapping>) =>
+          onConfigChange({ ...config, mapping: { ...mapping, ...patch } });
+        // Reference segments are optional 3-4 capital letters: uppercase as
+        // typed and drop the key when emptied rather than persisting "".
+        const setSegment = (
+          key: "mdaCode" | "programmeShortCode",
+          value: string,
+        ) => {
+          const next = { ...mapping };
+          if (value) next[key] = value.toUpperCase();
+          else delete next[key];
+          onConfigChange({ ...config, mapping: next });
+        };
+        const names = Array.isArray(mapping.applicant.name)
+          ? mapping.applicant.name
+          : [mapping.applicant.name];
+        const setName = (first: string, last: string) =>
+          setMapping({
+            applicant: {
+              ...mapping.applicant,
+              name: last ? [first, last] : first ? [first] : [],
+            },
+          });
+        // Every step the author could exclude, keeping any already-excluded id
+        // that no longer matches a step so it is never silently dropped.
+        const stepTitles = new Map(fields.map((f) => [f.stepId, f.stepTitle]));
+        const stepIds = [
+          ...new Set([
+            ...stepTitles.keys(),
+            ...REQUIRED_STEP_IDS,
+            ...mapping.excludeSteps,
+          ]),
+        ];
+        return (
+          <>
+            <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+              <label htmlFor={fid("programmeCode")}>Programme code</label>
+              <Input
+                id={fid("programmeCode")}
+                type="text"
+                value={mapping.programmeCode}
+                onChange={(e) => setMapping({ programmeCode: e.target.value })}
+                className="w-full min-w-0"
+              />
+            </div>
+
+            <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+              <label htmlFor={fid("mdaCode")}>MDA code (optional)</label>
+              <p id={fid("mdaCode-hint")} className="text-xs text-ui-subtle">
+                3–4 capital letters — the first part of the reference, e.g. MOH.
+                Use the same code as this ministry's other forms.
+              </p>
+              <Input
+                id={fid("mdaCode")}
+                type="text"
+                maxLength={4}
+                aria-describedby={fid("mdaCode-hint")}
+                value={mapping.mdaCode ?? ""}
+                onChange={(e) => setSegment("mdaCode", e.target.value)}
+                className="w-full min-w-0"
+              />
+            </div>
+
+            <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+              <label htmlFor={fid("programmeShortCode")}>
+                Programme short code (optional)
+              </label>
+              <Input
+                id={fid("programmeShortCode")}
+                type="text"
+                maxLength={4}
+                value={mapping.programmeShortCode ?? ""}
+                onChange={(e) =>
+                  setSegment("programmeShortCode", e.target.value)
+                }
+                className="w-full min-w-0"
+              />
+            </div>
+
+            <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+              <label htmlFor={fid("applicantFirstName")}>
+                Applicant first name
+              </label>
+              <ValuePathPicker
+                id={fid("applicantFirstName")}
+                value={names[0] ?? ""}
+                fields={fields.filter((f) => fieldMatches(f, "name"))}
+                onChange={(first) => setName(first, names[1] ?? "")}
+              />
+            </div>
+
+            <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+              <label htmlFor={fid("applicantLastName")}>
+                Applicant last name
+              </label>
+              <ValuePathPicker
+                id={fid("applicantLastName")}
+                value={names[1] ?? ""}
+                fields={fields.filter((f) => fieldMatches(f, "name"))}
+                onChange={(last) => setName(names[0] ?? "", last)}
+              />
+            </div>
+
+            <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+              <label htmlFor={fid("applicantEmail")}>Applicant email</label>
+              <ValuePathPicker
+                id={fid("applicantEmail")}
+                value={mapping.applicant.email}
+                fields={fields.filter((f) => fieldMatches(f, "email"))}
+                onChange={(email) =>
+                  setMapping({ applicant: { ...mapping.applicant, email } })
+                }
+              />
+            </div>
+
+            <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+              <label htmlFor={fid("applicantPhone")}>Applicant phone</label>
+              <ValuePathPicker
+                id={fid("applicantPhone")}
+                value={mapping.applicant.phone}
+                fields={fields.filter((f) => fieldMatches(f, "phone"))}
+                onChange={(phone) =>
+                  setMapping({ applicant: { ...mapping.applicant, phone } })
+                }
+              />
+            </div>
+
+            <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+              <div className="text-[13px] font-medium text-ui-brand-hover">
+                Steps to exclude
+              </div>
+              {stepIds.map((stepId) => {
+                const title = stepTitles.get(stepId);
+                return (
+                  <Checkbox
+                    key={stepId}
+                    id={fid(`excludeStep-${stepId}`)}
+                    checked={mapping.excludeSteps.includes(stepId)}
+                    onCheckedChange={(checked) =>
+                      setMapping({
+                        excludeSteps: checked
+                          ? [...mapping.excludeSteps, stepId]
+                          : mapping.excludeSteps.filter((s) => s !== stepId),
+                      })
+                    }
+                    label={title ? `${title} (${stepId})` : stepId}
+                  />
+                );
+              })}
+            </div>
+
+            <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
+              <Checkbox
+                id={fid("groupByStep")}
+                checked={mapping.groupByStep}
+                onCheckedChange={(groupByStep) => setMapping({ groupByStep })}
+                label="Group answers by step"
+              />
+            </div>
+
+            <p className="text-sm text-ui-subtle">
+              The address and API key come from this form's MDA contact — you
+              don't enter them here.
+            </p>
+          </>
+        );
+      }
       return (
         <>
           <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">

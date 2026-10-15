@@ -12,8 +12,7 @@ import { useState } from "react";
 import type { Dispatch } from "react";
 import type {
   RecipeDraft,
-  RecipeProcessorDraft,
-  AuthorableProcessorType,
+  AuthorableProcessorPreset,
   ResolvedFieldId,
 } from "@govtech-bb/form-builder";
 import type { RecipeAction } from "./recipe-reducer";
@@ -26,23 +25,17 @@ interface ProcessorsEditorProps {
   embedded?: boolean;
 }
 
-const PROCESSOR_LABELS: Record<RecipeProcessorDraft["type"], string> = {
-  email: "Email confirmation",
-  webhook: "Webhook",
-  payment: "Payment",
-  spreadsheet: "Spreadsheet export",
-  opencrvs: "OpenCRVS forward",
-};
-
 // Every processor type is now authorable, including `payment` (#716): its
 // config is editable here and persisted to the DB sibling form_config.config
-// rather than the recipe.
-const ADDABLE: { type: AuthorableProcessorType; label: string }[] = [
-  { type: "email", label: PROCESSOR_LABELS.email },
-  { type: "webhook", label: PROCESSOR_LABELS.webhook },
-  { type: "payment", label: PROCESSOR_LABELS.payment },
-  { type: "spreadsheet", label: PROCESSOR_LABELS.spreadsheet },
-  { type: "opencrvs", label: PROCESSOR_LABELS.opencrvs },
+// rather than the recipe. The webhook type is offered twice: as a mapped
+// Case Management System (CaMS) webhook and as a custom-URL one (#2684).
+const ADDABLE: { type: AuthorableProcessorPreset; label: string }[] = [
+  { type: "email", label: "Email confirmation" },
+  { type: "webhook-cams", label: "Case Management System (CaMS)" },
+  { type: "webhook", label: "Webhook (custom URL)" },
+  { type: "payment", label: "Payment" },
+  { type: "spreadsheet", label: "Spreadsheet export" },
+  { type: "opencrvs", label: "OpenCRVS forward" },
 ];
 
 /**
@@ -58,7 +51,7 @@ export function ProcessorsEditor({
 }: ProcessorsEditorProps) {
   const confirm = useConfirmation();
   const processors = draft.processors ?? [];
-  const [addType, setAddType] = useState<AuthorableProcessorType>("email");
+  const [addType, setAddType] = useState<AuthorableProcessorPreset>("email");
   const hasApplicantEmail = processors.some(
     (p) =>
       p.type === "email" &&
@@ -71,6 +64,11 @@ export function ProcessorsEditor({
   // and the draft can still be saved — the Deploy gate is what blocks it.
   const missingCatchmentWebhook =
     checkCatchmentRoutingHasMapping(draft).length > 0;
+  // A mapped (CaMS) webhook resolves its address and API key from the form's
+  // MDA contact, so it cannot send without one (#2684).
+  const camsWithoutContact =
+    !draft.mdaContactId &&
+    processors.some((p) => p.type === "webhook" && Boolean(p.config.mapping));
   const questionLabels = Object.fromEntries(
     fields.map((f) => [`${f.stepId}.${f.fieldId}`, f.display]),
   );
@@ -128,9 +126,18 @@ export function ProcessorsEditor({
         {missingCatchmentWebhook && (
           <Banner variant="alert" size="sm" role="alert">
             <div className="min-w-0 flex-1">
-              This form routes by catchment and needs a webhook action with a
-              programme code. You can save the draft, but it cannot be deployed
-              until one is added.
+              This form routes by catchment and needs a Case Management System
+              (CaMS) action with a programme code. You can save the draft, but
+              it cannot be deployed until one is added.
+            </div>
+          </Banner>
+        )}
+
+        {camsWithoutContact && (
+          <Banner variant="alert" size="sm" role="alert">
+            <div className="min-w-0 flex-1">
+              Choose an MDA contact under Contact details. Case Management
+              System (CaMS) submissions can't be sent without one.
             </div>
           </Banner>
         )}
@@ -143,7 +150,7 @@ export function ProcessorsEditor({
               value={addType}
               onValueChange={(nextValue) => {
                 if (nextValue === null) return;
-                setAddType(nextValue as AuthorableProcessorType);
+                setAddType(nextValue as AuthorableProcessorPreset);
               }}
               items={[
                 ...ADDABLE.map((o) => ({ value: o.type, label: o.label })),
