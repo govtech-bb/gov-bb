@@ -32,6 +32,7 @@ The Ministry decides if you can use the land and for how long.
 You will need:
 
 - your Barbados National Identification (ID) number or passport number, if you are applying for yourself
+- your organisation's registration number, if you are applying for an organisation and it has one
 - the location of the land you want to use
 - details of what you want to use the land for
 - when and for how long you plan to use the land
@@ -39,7 +40,7 @@ You will need:
 
 GPS coordinates are numbers that show the exact location of a place. You can usually find them using a maps app on your phone.
 
-<!-- MDA NOTE: Confirm whether any supporting documents are required (for example site plans, public liability insurance, organisation registration), and whether the photo of the land is still needed. Confirm any minimum notice period before the requested start date. -->
+<!-- MDA NOTE: Confirm whether any supporting documents are required (for example site plans, public liability insurance). The photo of the land stays optional (decided 14 Oct). Confirm any minimum notice period before the requested start date. -->
 
 ## How to apply
 

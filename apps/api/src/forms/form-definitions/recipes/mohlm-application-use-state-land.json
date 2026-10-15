@@ -331,6 +331,19 @@
           }
         },
         {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "organisation-registration-number",
+            "label": "Registration number",
+            "hint": "If the organisation is registered in Barbados or another country",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
           "ref": "components/address",
           "overrides": {
             "fieldId": "organisation-address-line-1",
@@ -843,5 +856,5 @@
     }
   ],
   "createdAt": "2026-06-16T15:46:40.151Z",
-  "updatedAt": "2026-10-13T12:00:00.000Z"
+  "updatedAt": "2026-10-15T10:59:41.000Z"
 }
