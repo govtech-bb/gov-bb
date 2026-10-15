@@ -726,11 +726,11 @@
       "title": "Application submitted",
       "elements": [],
       "behaviours": [],
-      "markdownContent": "## What happens next\n\nYou will receive a confirmation email with:\n\n- your application reference number\n- the cost of the certificate(s)\n- the expected completion date"
+      "markdownContent": "## What happens next\n\nYou will receive a confirmation email with:\n\n- your application reference number\n- the cost of the certificate(s)\n\nCertificates are usually ready to collect within 10 days."
     }
   ],
   "createdAt": "2026-06-10T15:48:50.342Z",
-  "updatedAt": "2026-10-12T18:00:56.000Z",
+  "updatedAt": "2026-10-15T09:24:58.000Z",
   "meta": {
     "visibility": "public"
   }
