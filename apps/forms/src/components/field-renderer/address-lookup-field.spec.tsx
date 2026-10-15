@@ -25,12 +25,18 @@ vi.mock("../../lib/api/geocode", () => ({
 
 // Leaflet needs a real layout engine; stand the map in with a button that
 // places the pin the way a drag, tap or arrow key would.
+// `mapFails` stands in for a map chunk that will not load.
+let mapFails = false;
 vi.mock("./location-pin-map", () => ({
-  default: ({ onChange }: { onChange: (lat: number, lon: number) => void }) => (
-    <button type="button" onClick={() => onChange(13.1, -59.6)}>
-      Place pin
-    </button>
-  ),
+  default: ({ onChange }: { onChange: (lat: number, lon: number) => void }) => {
+    if (mapFails)
+      throw new Error("Failed to fetch dynamically imported module");
+    return (
+      <button type="button" onClick={() => onChange(13.1, -59.6)}>
+        Place pin
+      </button>
+    );
+  },
 }));
 
 import {
@@ -114,6 +120,7 @@ describe("AddressLookupField", () => {
     mockState = { value: undefined, meta: { isValid: true, errors: [] } };
     vi.clearAllMocks();
     formValues = {};
+    mapFails = false;
     mockReverse.mockRejectedValue(new Error("reverse lookup failed: 503"));
     mockPolyclinic.mockRejectedValue(
       new Error("polyclinic lookup failed: 404"),
@@ -123,6 +130,20 @@ describe("AddressLookupField", () => {
   it("renders an ARIA combobox input", () => {
     renderField();
     expect(screen.getByRole("combobox")).toBeTruthy();
+  });
+
+  // ARIA 1.2: the input names its listbox whether or not it is open.
+  it("keeps aria-controls on the input while the list is closed", () => {
+    renderField();
+    const input = screen.getByRole("combobox");
+    expect(input).toHaveAttribute("aria-expanded", "false");
+    expect(input).toHaveAttribute(
+      "aria-controls",
+      "step-1.event-address-line-1-listbox",
+    );
+    expect(
+      document.getElementById("step-1.event-address-line-1-listbox"),
+    ).not.toBeNull();
   });
 
   it("shows Barbados suggestions after typing past the threshold", async () => {
@@ -467,6 +488,27 @@ describe("AddressLookupField", () => {
       );
     });
 
+    it("keeps a pin placed while the pick's coordinate was still loading", async () => {
+      // Continue was refused earlier, so the map link is still offered.
+      mockState.meta = { isValid: false, errors: ["Choose the address"] };
+      let answer: (place: unknown) => void = () => {};
+      mockResolve.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+      await pickOval();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Find it on the map" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Place pin" }),
+      );
+      answer({ lat: "13.105", lon: "-59.6225", parish: "st-michael" });
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(formValues["step-1.event-address-coordinates"]).toBe(
+        "13.100000,-59.600000",
+      );
+    });
+
     // Continue waits on this rather than refusing a pick as not located.
     it("records the pick as being located until its coordinate comes back", async () => {
       mockResolve.mockResolvedValue({
@@ -748,6 +790,45 @@ describe("AddressLookupField", () => {
         ),
       );
       expect(screen.getByRole("combobox")).toHaveValue("Bridgetown");
+    });
+
+    // No parish at the pin means it is in the sea, where nothing routes.
+    it("locates nothing with a pin in the sea, and says to move it", async () => {
+      mockReverse.mockResolvedValue({
+        label: "",
+        lat: "13.100000",
+        lon: "-59.600000",
+        line1: "",
+        line2: "",
+        parish: "",
+      });
+      await userEvent.click(await failLookup());
+
+      expect(
+        await screen.findByText(
+          "The pin is in the sea. Move it to where the address is.",
+        ),
+      ).toBeTruthy();
+      expect(formValues["step-1.event-address-coordinates"]).toBe("");
+    });
+
+    it("keeps the page when the map cannot load", async () => {
+      mapFails = true;
+      const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      try {
+        mockSearch.mockRejectedValue(new Error("geocode request failed: 503"));
+        renderField();
+        await userEvent.type(screen.getByRole("combobox"), "Bridgetown");
+
+        expect(
+          await screen.findByText(/We cannot show the map at the moment/),
+        ).toBeTruthy();
+        expect(screen.getByRole("combobox")).toBeEnabled();
+      } finally {
+        consoleError.mockRestore();
+      }
     });
 
     it("leaves the address alone when there is no address at the pin", async () => {

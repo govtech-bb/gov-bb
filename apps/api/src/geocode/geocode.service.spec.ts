@@ -1,8 +1,10 @@
 import {
   BadRequestException,
+  Logger,
   NotFoundException,
   ServiceUnavailableException,
 } from "@nestjs/common";
+import { of } from "rxjs";
 import type { HttpService } from "@nestjs/axios";
 import { GeocodeProvider, GeocodeResult } from "./geocode-result";
 import { buildProviders, GeocodeService } from "./geocode.service";
@@ -140,6 +142,19 @@ describe("GeocodeService", () => {
       "first",
       "0f8f-session_1",
     );
+    expect(primary.search).toHaveBeenNthCalledWith(2, "second", undefined);
+  });
+
+  // Places API (New) refuses a token longer than 36 characters.
+  it("takes a 36-character session token (a v4 UUID) but drops a longer one", async () => {
+    const primary = provider("google", async () => [], false);
+    const service = new GeocodeService([primary]);
+    const uuid = "0f8f6c2e-3b1a-4d5e-9f00-123456789abc";
+
+    await service.search("first", uuid);
+    await service.search("second", `${uuid}x`);
+
+    expect(primary.search).toHaveBeenNthCalledWith(1, "first", uuid);
     expect(primary.search).toHaveBeenNthCalledWith(2, "second", undefined);
   });
 
@@ -395,6 +410,29 @@ describe("buildProviders", () => {
       }),
     ).toEqual(["nominatim", "google"]);
     expect(names({ GEOCODE_PROVIDERS: "nominatim" })).toEqual(["nominatim"]);
+  });
+
+  it("passes NOMINATIM_BASE_URL to the Nominatim provider", async () => {
+    const get = vi.fn().mockReturnValue(of({ data: [] }));
+    const [nominatim] = buildProviders({ get } as unknown as HttpService, {
+      NOMINATIM_BASE_URL: "https://geo.example.gov.bb",
+    });
+    await nominatim.search("bridgetown");
+    expect(get.mock.calls[0][0]).toBe("https://geo.example.gov.bb/search");
+  });
+
+  it("warns at startup when no provider is configured", () => {
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => undefined);
+    try {
+      expect(names({ GEOCODE_PROVIDERS: "google" })).toEqual([]);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("no geocoding provider is configured"),
+      );
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it("refuses an unknown provider name rather than silently dropping it", () => {

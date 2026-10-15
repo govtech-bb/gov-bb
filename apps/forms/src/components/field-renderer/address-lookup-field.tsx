@@ -1,4 +1,13 @@
-import { JSX, lazy, Suspense, useEffect, useRef, useState } from "react";
+import {
+  Component,
+  JSX,
+  lazy,
+  type ReactNode,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { FormGroup, Hint, Label } from "@govtech-bb/react";
 import { v4 as uuidv4 } from "uuid";
 import ErrorMessage from "../error-message";
@@ -18,6 +27,26 @@ import { FieldRenderContext } from "./render-context";
 // Leaflet is only needed when address suggestions are down or find nothing, so
 // it stays out of the main bundle.
 const LocationPinMap = lazy(() => import("./location-pin-map"));
+
+/**
+ * Keeps a map that fails to load (a stale chunk after a deploy) from taking the
+ * whole form page down with it: the rest of the page stays, with `fallback` in
+ * the map's place.
+ */
+class MapLoadBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError(): { failed: boolean } {
+    return { failed: true };
+  }
+
+  render(): ReactNode {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
 
 // Wait for a typing pause before querying — keeps request volume within the
 // /geocode throttle and eases load on the upstream Nominatim rate limit.
@@ -67,6 +96,8 @@ export function AddressLookupField({
   // The pin the applicant placed on the fallback map. While set, the routing
   // coordinate belongs to the pin, not to the address text.
   const [pin, setPin] = useState<[number, number] | null>(null);
+  // The pin is off the island (no parish there), so it locates nothing.
+  const [pinOffshore, setPinOffshore] = useState(false);
   const coordinatesFieldId = field.geocodeTargets?.coordinatesFieldId;
   // Once suggestions have failed, or the applicant has asked for the map, keep
   // it up even if a later lookup succeeds, so it does not vanish while they are
@@ -270,6 +301,10 @@ export function AddressLookupField({
 
   const placePin = (lat: number, lon: number) => {
     if (!coordinatesFieldId) return;
+    // The pin replaces a pick still being looked up: its late answer must not
+    // overwrite the pin.
+    pendingPlace.current = null;
+    setPinOffshore(false);
     setPin([lat, lon]);
     writeCoordinate(`${lat.toFixed(6)},${lon.toFixed(6)}`);
     markLocated();
@@ -283,9 +318,19 @@ export function AddressLookupField({
         .then((found) => {
           if (lookup !== pinLookup.current) return;
           const targets = field.geocodeTargets;
-          // The parish always comes back — it is read-only, so the pin is the
-          // only way to set it; the lines only where there is an address.
-          if (targets?.parishFieldId && found.parish) {
+          // No parish at the pin means it is in the sea: it routes nowhere, so
+          // it locates nothing until the applicant moves it onto the island.
+          if (!found.parish) {
+            setPinOffshore(true);
+            writeCoordinate("");
+            if (targets?.parishFieldId) {
+              form.setFieldValue(siblingId(targets.parishFieldId), "");
+            }
+            return;
+          }
+          // The parish is read-only, so the pin is the only way to set it; the
+          // lines only where there is an address.
+          if (targets?.parishFieldId) {
             form.setFieldValue(siblingId(targets.parishFieldId), found.parish);
           }
           if (!found.line1) return;
@@ -352,17 +397,28 @@ export function AddressLookupField({
       {showPinMap ? (
         <>
           <Hint id={pinHintId} role="status" tabIndex={-1}>
-            {lookupFailed
-              ? "We cannot suggest addresses at the moment. Type your address, then move the pin on the map to where it is."
-              : "Move the pin on the map to where the address is."}
+            {pinOffshore
+              ? "The pin is in the sea. Move it to where the address is."
+              : lookupFailed
+                ? "We cannot suggest addresses at the moment. Type your address, then move the pin on the map to where it is."
+                : "Move the pin on the map to where the address is."}
           </Hint>
-          <Suspense fallback={null}>
-            <LocationPinMap
-              value={pin}
-              onChange={placePin}
-              describedBy={pinHintId}
-            />
-          </Suspense>
+          <MapLoadBoundary
+            fallback={
+              <Hint role="status">
+                We cannot show the map at the moment. Refresh the page to try
+                again.
+              </Hint>
+            }
+          >
+            <Suspense fallback={null}>
+              <LocationPinMap
+                value={pin}
+                onChange={placePin}
+                describedBy={pinHintId}
+              />
+            </Suspense>
+          </MapLoadBoundary>
           <p className="address-lookup__map-actions">
             <button
               className="govbb-link address-lookup__map-link"

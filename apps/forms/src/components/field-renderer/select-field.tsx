@@ -35,7 +35,7 @@ export function renderSelectField(ctx: FieldRenderContext): JSX.Element {
 
   // A parish filled from a located address: the location decides it, so the
   // select is shown but disabled. The value stays in form state, which is what
-  // is submitted. `data-value` carries it for tests.
+  // is submitted.
   const filledByAddress = field.filledByAddressLookup === true;
 
   return (
@@ -52,10 +52,7 @@ export function renderSelectField(ctx: FieldRenderContext): JSX.Element {
       <Select
         {...sharedProps}
         {...requiredProps}
-        {...(filledByAddress && {
-          disabled: true,
-          "data-value": selectValue ?? "",
-        })}
+        {...(filledByAddress && { disabled: true })}
         value={selectValue ?? ""}
         aria-invalid={invalid}
         onChange={(e) => commitChange(e.target.value)}

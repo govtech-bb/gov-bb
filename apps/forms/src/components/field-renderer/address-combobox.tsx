@@ -92,7 +92,9 @@ export function AddressCombobox({
         role="combobox"
         aria-autocomplete="list"
         aria-expanded={expanded}
-        aria-controls={expanded ? listId : undefined}
+        // ARIA 1.2: the input names its listbox whether or not it is open, so
+        // the listbox stays in the DOM, hidden while closed.
+        aria-controls={listId}
         aria-activedescendant={
           expanded && active >= 0 ? optionId(active) : undefined
         }
@@ -107,49 +109,50 @@ export function AddressCombobox({
           onBlur?.(event);
         }}
       />
-      {expanded && (
-        <div className="govbb-combobox__list address-combobox__popup">
-          <ul
-            id={listId}
-            role="listbox"
-            aria-label={listLabel}
-            className="address-combobox__options"
-          >
-            {suggestions.map((result, index) => (
-              <li
-                key={`${result.placeId ?? result.label}-${index}`}
-                id={optionId(index)}
-                role="option"
-                aria-selected={index === active}
-                className="govbb-combobox__option"
-                // Keep focus in the input so the pick lands there.
-                onMouseDown={(event) => event.preventDefault()}
-                onMouseMove={() => setActive(index)}
-                onClick={() => choose(index)}
-              >
-                {result.mainText ? (
-                  <>
-                    {emphasise(result.mainText, result.matches ?? [])}
-                    {result.secondaryText && (
-                      <span className="address-combobox__where">
-                        {" "}
-                        {result.secondaryText}
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  result.label
-                )}
-              </li>
-            ))}
-          </ul>
-          {attribution && (
-            <p className="address-combobox__attribution" translate="no">
-              Google Maps
-            </p>
-          )}
-        </div>
-      )}
+      <div
+        className="govbb-combobox__list address-combobox__popup"
+        hidden={!expanded}
+      >
+        <ul
+          id={listId}
+          role="listbox"
+          aria-label={listLabel}
+          className="address-combobox__options"
+        >
+          {suggestions.map((result, index) => (
+            <li
+              key={`${result.placeId ?? result.label}-${index}`}
+              id={optionId(index)}
+              role="option"
+              aria-selected={index === active}
+              className="govbb-combobox__option"
+              // Keep focus in the input so the pick lands there.
+              onMouseDown={(event) => event.preventDefault()}
+              onMouseMove={() => setActive(index)}
+              onClick={() => choose(index)}
+            >
+              {result.mainText ? (
+                <>
+                  {emphasise(result.mainText, result.matches ?? [])}
+                  {result.secondaryText && (
+                    <span className="address-combobox__where">
+                      {" "}
+                      {result.secondaryText}
+                    </span>
+                  )}
+                </>
+              ) : (
+                result.label
+              )}
+            </li>
+          ))}
+        </ul>
+        {attribution && (
+          <p className="address-combobox__attribution" translate="no">
+            Google Maps
+          </p>
+        )}
+      </div>
       <div role="status" className="govbb-visually-hidden">
         {expanded
           ? `${count} ${count === 1 ? "result" : "results"} available`

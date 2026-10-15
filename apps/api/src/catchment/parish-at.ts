@@ -10,12 +10,19 @@ import { inRing } from "./catchment-geometry.service";
  * Point-in-polygon against geoBoundaries' generalised parish outlines
  * (`parish-boundaries.geojson`, CC BY 4.0 — the same data the landing app's
  * water-outages page uses). The coastline is approximate, so a point just off
- * it falls in no polygon; it then takes the parish of the nearest boundary
- * vertex, which on a coast is the parish it sits beside.
+ * it falls in no polygon; it then takes the parish of the nearest outline
+ * within {@link COAST_TOLERANCE_METRES}, which on a coast is the parish it sits
+ * beside. A point further out is at sea and has no parish.
  *
  * Returns the `components/parish` select value (e.g. `st-michael`), or "" for a
- * point outside Barbados.
+ * point outside Barbados or at sea.
  */
+// How far off the generalised coastline a real coastal address can fall. The
+// outlines are coarse (segments of up to 8 km): on the St Philip coast the real
+// shore is up to ~630 m outside them (Bottom Bay), so 1 km keeps a margin.
+const COAST_TOLERANCE_METRES = 1000;
+const METRES_PER_DEGREE = 111_320;
+
 export function parishAt(lat: number, lon: number): string {
   if (!isWithinBarbados(lat, lon)) return "";
 
@@ -24,13 +31,22 @@ export function parishAt(lat: number, lon: number): string {
     if (polygons.some((rings) => inPolygon(lon, lat, rings))) return parish;
   }
 
+  // Metres east and north of the point, flat over a few hundred metres.
+  const kx = METRES_PER_DEGREE * Math.cos((lat * Math.PI) / 180);
+  const toMetres = ([x, y]: [number, number]): [number, number] => [
+    (x - lon) * kx,
+    (y - lat) * METRES_PER_DEGREE,
+  ];
   let nearest = "";
-  let best = Infinity;
+  let best = COAST_TOLERANCE_METRES;
   for (const { parish, polygons } of parishes) {
-    for (const rings of polygons) {
-      for (const [x, y] of rings[0]) {
-        const distance = (x - lon) ** 2 + (y - lat) ** 2;
-        if (distance < best) {
+    for (const [outer] of polygons) {
+      for (let i = 1; i < outer.length; i++) {
+        const distance = distanceToSegment(
+          toMetres(outer[i - 1]),
+          toMetres(outer[i]),
+        );
+        if (distance <= best) {
           best = distance;
           nearest = parish;
         }
@@ -38,6 +54,21 @@ export function parishAt(lat: number, lon: number): string {
     }
   }
   return nearest;
+}
+
+/** Distance from the origin to the segment a–b. */
+function distanceToSegment(
+  [ax, ay]: [number, number],
+  [bx, by]: [number, number],
+): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lengthSquared = dx * dx + dy * dy;
+  const t =
+    lengthSquared === 0
+      ? 0
+      : Math.min(Math.max(-(ax * dx + ay * dy) / lengthSquared, 0), 1);
+  return Math.hypot(ax + t * dx, ay + t * dy);
 }
 
 type Ring = [number, number][];

@@ -286,7 +286,9 @@ export async function fillAddressOnMap(
   await page.getByRole("button", { name: "Find it on the map" }).click();
   const map = page.locator(".address-pin-map");
   await expect(map).toBeVisible({ timeout: STEP_TIMEOUT });
-  await map.click();
+  // Off-centre: the unplaced pin sits at the centre, and a click on the pin
+  // does not reach the map. (120, 120) also clears the zoom control.
+  await map.click({ position: { x: 120, y: 120 } });
 
   const coordinates = page.locator(`input[id="${stepId}_address-coordinates"]`);
   await expect(
@@ -328,11 +330,9 @@ export async function fillPersonalDetails(
 
   // The parish is read-only on a located address — filled from the picked
   // suggestion or the pin — so assert it rather than choose it.
-  await expect(page.locator(`[id="${step}_home-parish"]`)).toHaveAttribute(
-    "data-value",
-    /\S/,
-    { timeout: STEP_TIMEOUT },
-  );
+  await expect(
+    page.locator(`select[id="${step}_home-parish"]`),
+  ).not.toHaveValue("", { timeout: STEP_TIMEOUT });
   await advance(page, step);
 }
 

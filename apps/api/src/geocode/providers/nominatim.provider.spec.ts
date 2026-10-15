@@ -2,11 +2,11 @@ import type { Mock } from "vitest";
 import { of, throwError } from "rxjs";
 import { NominatimProvider } from "./nominatim.provider";
 
-function makeProvider(get: Mock) {
+function makeProvider(get: Mock, baseUrl?: string) {
   const http = { get } as unknown as ConstructorParameters<
     typeof NominatimProvider
   >[0];
-  return new NominatimProvider(http);
+  return new NominatimProvider(http, baseUrl);
 }
 
 describe("NominatimProvider", () => {
@@ -127,17 +127,10 @@ describe("NominatimProvider", () => {
     );
   });
 
-  it("resolves against a configurable base URL (NOMINATIM_BASE_URL)", async () => {
-    const previous = process.env.NOMINATIM_BASE_URL;
-    process.env.NOMINATIM_BASE_URL = "https://geo.example.gov.bb";
-    try {
-      const get = vi.fn().mockReturnValue(of({ data: [] }));
-      await makeProvider(get).search("bridgetown");
-      expect(get.mock.calls[0][0]).toBe("https://geo.example.gov.bb/search");
-    } finally {
-      if (previous === undefined) delete process.env.NOMINATIM_BASE_URL;
-      else process.env.NOMINATIM_BASE_URL = previous;
-    }
+  it("resolves against a configurable base URL", async () => {
+    const get = vi.fn().mockReturnValue(of({ data: [] }));
+    await makeProvider(get, "https://geo.example.gov.bb").search("bridgetown");
+    expect(get.mock.calls[0][0]).toBe("https://geo.example.gov.bb/search");
   });
   describe("reverse", () => {
     it("asks for the address at the point, street-level", async () => {

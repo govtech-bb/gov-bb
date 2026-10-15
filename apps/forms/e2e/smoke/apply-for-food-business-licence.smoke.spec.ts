@@ -412,8 +412,8 @@ export async function fillAboutTheFoodBusiness(
   // The geocoder fills parish from the picked suggestion; assert rather than
   // overwrite, since that value is the catchment router's fallback.
   await expect(
-    page.locator(`[id="${step}_business-location-parish"]`),
-  ).toHaveAttribute("data-value", /\S/);
+    page.locator(`select[id="${step}_business-location-parish"]`),
+  ).not.toHaveValue("");
 
   await advance(page, step);
 }

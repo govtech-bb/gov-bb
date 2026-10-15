@@ -30,11 +30,10 @@ export class NominatimProvider implements GeocodeProvider {
   readonly name = "nominatim";
   readonly cacheable = true;
 
-  constructor(private readonly http: HttpService) {}
-
-  private get baseUrl(): string {
-    return process.env.NOMINATIM_BASE_URL ?? DEFAULT_BASE_URL;
-  }
+  constructor(
+    private readonly http: HttpService,
+    private readonly baseUrl: string = DEFAULT_BASE_URL,
+  ) {}
 
   async search(query: string): Promise<GeocodeResult[]> {
     const { west, north, east, south } = BARBADOS_BOUNDS;

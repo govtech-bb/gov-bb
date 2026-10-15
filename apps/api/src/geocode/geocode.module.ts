@@ -10,7 +10,8 @@ import {
 
 /** Barbados-locked address-lookup proxy over a configurable provider chain. */
 @Module({
-  imports: [HttpModule, CatchmentModule],
+  // A provider that hangs must fail, so the chain falls through to the next.
+  imports: [HttpModule.register({ timeout: 5000 }), CatchmentModule],
   controllers: [GeocodeController],
   providers: [
     {

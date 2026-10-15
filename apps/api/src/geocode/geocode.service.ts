@@ -25,7 +25,8 @@ export const GEOCODE_PROVIDERS = Symbol("GEOCODE_PROVIDERS");
 const DEFAULT_PROVIDER_ORDER = "google,nominatim";
 // Both go into an upstream URL or body, so only plain token characters pass.
 const PLACE_ID = /^[\w-]{1,512}$/;
-const SESSION_TOKEN = /^[\w-]{1,64}$/;
+// Places API (New) takes a session token of at most 36 characters.
+const SESSION_TOKEN = /^[\w-]{1,36}$/;
 
 /** The session token if well-formed; a malformed one is dropped, not fatal. */
 const validSessionToken = (session?: string): string | undefined =>
@@ -55,12 +56,19 @@ export function buildProviders(
       const key = env.GOOGLE_GEOCODING_API_KEY?.trim();
       if (key) providers.push(new GoogleProvider(http, key));
     } else if (name === "nominatim") {
-      providers.push(new NominatimProvider(http));
+      const baseUrl = env.NOMINATIM_BASE_URL?.trim();
+      providers.push(new NominatimProvider(http, baseUrl || undefined));
     } else {
       throw new Error(
         `GEOCODE_PROVIDERS: unknown geocoding provider "${name}"`,
       );
     }
+  }
+  // Every lookup would answer 503 with nothing to say why, so say it here.
+  if (providers.length === 0) {
+    new Logger(GeocodeService.name).warn(
+      `[geocode] no geocoding provider is configured (GEOCODE_PROVIDERS="${env.GEOCODE_PROVIDERS ?? DEFAULT_PROVIDER_ORDER}"; Google needs GOOGLE_GEOCODING_API_KEY): every address lookup will fail`,
+    );
   }
   return providers;
 }

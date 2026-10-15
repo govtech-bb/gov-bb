@@ -386,8 +386,8 @@ export async function fillWorkAddress(page: Page, data: Data): Promise<string> {
   // The geocoder fills the parish from the picked suggestion; assert rather than
   // overwrite, since that value is the catchment router's fallback.
   await expect(
-    page.locator(`[id="${step}_work-address-parish"]`),
-  ).toHaveAttribute("data-value", /\S/);
+    page.locator(`select[id="${step}_work-address-parish"]`),
+  ).not.toHaveValue("");
 
   await advance(page, step);
   return coordinates;

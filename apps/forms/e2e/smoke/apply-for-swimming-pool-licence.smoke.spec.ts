@@ -316,10 +316,9 @@ export async function fillProperty(
   await fillField(page, step, "pool-address-line-2", data.propertyAddressLine2);
   // The geocoder fills the parish from the picked suggestion; assert rather than
   // overwrite, since that value is the catchment router's fallback.
-  await expect(page.locator(`[id="${step}_pool-parish"]`)).toHaveAttribute(
-    "data-value",
-    /\S/,
-  );
+  await expect(
+    page.locator(`select[id="${step}_pool-parish"]`),
+  ).not.toHaveValue("");
   await advance(page, step);
 }
 

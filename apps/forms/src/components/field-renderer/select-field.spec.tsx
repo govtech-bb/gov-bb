@@ -52,7 +52,6 @@ describe("a parish filled by a located address", () => {
     const parish = screen.getByRole("combobox", { name: "Parish of event" });
     expect(parish).toBeDisabled();
     expect(parish).toHaveValue("st-michael");
-    expect(parish).toHaveAttribute("data-value", "st-michael");
   });
 
   it("is empty and disabled until the address is located", () => {

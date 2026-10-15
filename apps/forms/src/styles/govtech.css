@@ -428,6 +428,10 @@
   overflow-y: hidden;
 }
 
+.address-combobox__popup[hidden] {
+  display: none;
+}
+
 .address-combobox__options {
   margin: 0;
   padding: 0;
