@@ -76,6 +76,34 @@ describe("GeocodeService", () => {
     expect(await service.search("Oistins")).toEqual([OISTINS]);
   });
 
+  it("drops a result offshore, where there is no parish", async () => {
+    const offshore = { ...result("13.17", "-59.66", "Off the west coast") };
+    const primary = provider("nominatim", async () => [offshore, BRIDGETOWN]);
+    const service = new GeocodeService([primary]);
+
+    expect(await service.search("coast")).toEqual([BRIDGETOWN]);
+  });
+
+  // The typed query is an applicant's address: personal data, kept out of logs.
+  it("does not log the query when a provider fails", async () => {
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => undefined);
+    try {
+      const primary = provider("google", async () => {
+        throw new Error("status OVER_DAILY_LIMIT");
+      });
+      const fallback = provider("nominatim", async () => [OISTINS]);
+      await new GeocodeService([primary, fallback]).search("12 Rock Hall Road");
+
+      const logged = warn.mock.calls.map(([message]) => String(message));
+      expect(logged.join("\n")).not.toContain("Rock Hall");
+      expect(logged.join("\n")).toContain("17-character query");
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it("falls back when the primary errors", async () => {
     const primary = provider("google", async () => {
       throw new Error("socket hang up");
@@ -246,6 +274,19 @@ describe("GeocodeService", () => {
         parish: "",
       }));
       expect((await service.resolve("ChIJ-mall")).parish).toBe("st-michael");
+    });
+
+    // As for a sea pin: a place with no parish routes nowhere, so the field
+    // offers the map rather than keep a coordinate that cannot be submitted.
+    it("refuses a place offshore, where there is no parish", async () => {
+      const { service } = places(async () => ({
+        lat: "13.170000",
+        lon: "-59.660000",
+        parish: "",
+      }));
+      await expect(service.resolve("ChIJ-sea")).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
 
     it("rejects a malformed place id before calling the provider", async () => {

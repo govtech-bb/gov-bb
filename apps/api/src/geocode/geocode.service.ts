@@ -121,7 +121,10 @@ export class GeocodeService {
             r.lat === undefined || r.parish
               ? r
               : { ...r, parish: parishAt(Number(r.lat), Number(r.lon)) },
-          );
+          )
+          // Still no parish means it is offshore, as for a sea pin: it routes
+          // nowhere, so it is not offered.
+          .filter((r) => r.lat === undefined || r.parish !== "");
         // Only the primary's answer is cached, as a fallback's would outlive
         // the outage that caused it — and only where the provider's terms
         // allow it (not Google's).
@@ -129,7 +132,8 @@ export class GeocodeService {
         return results;
       } catch (error) {
         this.logger.warn(
-          `[geocode] ${provider.name} lookup failed for "${query}": ${(error as Error).message}`,
+          // Not the query itself: an applicant's typed address is personal data.
+          `[geocode] ${provider.name} lookup failed for a ${query.length}-character query: ${(error as Error).message}`,
         );
       }
     }
@@ -139,8 +143,8 @@ export class GeocodeService {
 
   /**
    * The coordinate (and parish) of a place suggestion the applicant picked.
-   * 404 when it cannot be placed in Barbados; 503 when the lookup fails, so the
-   * address field can offer the map pin instead.
+   * 404 when it cannot be placed in Barbados (or is offshore, with no parish);
+   * 503 when the lookup fails. Either way the address field offers the map pin.
    */
   async resolve(placeId: string, session?: string): Promise<ResolvedPlace> {
     if (!PLACE_ID.test(placeId ?? "")) {
@@ -162,10 +166,12 @@ export class GeocodeService {
       throw new NotFoundException("Place not found");
     }
     // Some places carry no parish (Kensington Mall): read it off the map.
-    return {
-      ...place,
-      parish: place.parish || parishAt(Number(place.lat), Number(place.lon)),
-    };
+    const parish =
+      place.parish || parishAt(Number(place.lat), Number(place.lon));
+    // No parish means it is offshore, as for a sea pin: it routes nowhere, so
+    // the address field offers the map instead.
+    if (!parish) throw new NotFoundException("Place not found");
+    return { ...place, parish };
   }
 
   /**
@@ -186,7 +192,8 @@ export class GeocodeService {
         found = await provider.reverse(lat, lon);
       } catch (error) {
         this.logger.warn(
-          `[geocode] ${provider.name} reverse lookup failed for ${lat},${lon}: ${(error as Error).message}`,
+          // About 1 km: enough to debug, not the applicant's exact address.
+          `[geocode] ${provider.name} reverse lookup failed near ${lat.toFixed(2)},${lon.toFixed(2)}: ${(error as Error).message}`,
         );
         continue;
       }
