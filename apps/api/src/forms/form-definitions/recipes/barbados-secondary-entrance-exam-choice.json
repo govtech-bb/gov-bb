@@ -36,24 +36,21 @@
           "ref": "components/first-name",
           "overrides": {
             "label": "First Name",
-            "fieldId": "first-name",
-            "required": true
+            "fieldId": "first-name"
           }
         },
         {
           "ref": "components/middle-name",
           "overrides": {
             "label": "Middle Name (s)",
-            "fieldId": "middle-name",
-            "required": true
+            "fieldId": "middle-name"
           }
         },
         {
           "ref": "components/last-name",
           "overrides": {
             "label": "Last Name",
-            "fieldId": "last-name",
-            "required": true
+            "fieldId": "last-name"
           }
         },
         {
@@ -67,7 +64,6 @@
           "ref": "components/date-of-birth",
           "overrides": {
             "label": "Date of Birth",
-            "format": "mm/dd/yyyy",
             "fieldId": "date-of-birth",
             "validations": {
               "required": {
@@ -80,7 +76,6 @@
         {
           "ref": "components/email",
           "overrides": {
-            "type": "email",
             "label": "Email",
             "fieldId": "email",
             "validations": {
@@ -96,7 +91,6 @@
           "overrides": {
             "label": "Address",
             "fieldId": "address",
-            "multiline": true,
             "validations": {
               "required": {
                 "error": "Address is required",
@@ -193,7 +187,6 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "type": "tel",
             "fieldId": "parent-phone"
           }
         }
@@ -395,5 +388,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:24:07.446Z",
-  "updatedAt": "2026-10-12T17:45:45.000Z"
+  "updatedAt": "2026-10-13T23:18:48.000Z"
 }

@@ -71,7 +71,6 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "type": "email",
             "label": "Candidate Email",
             "fieldId": "candidate-email",
             "validations": {
@@ -409,5 +408,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:17:17.379Z",
-  "updatedAt": "2026-10-12T17:45:45.000Z"
+  "updatedAt": "2026-10-13T23:18:48.000Z"
 }

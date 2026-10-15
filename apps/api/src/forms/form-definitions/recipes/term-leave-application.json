@@ -20,7 +20,6 @@
           "overrides": {
             "label": "School",
             "fieldId": "school",
-            "fullWidth": true,
             "validations": {
               "required": {
                 "error": "School is required",
@@ -38,7 +37,6 @@
           "overrides": {
             "label": "First Name",
             "fieldId": "first-name",
-            "columnWidth": "50%",
             "validations": {
               "required": {
                 "error": "First Name is required",
@@ -56,7 +54,6 @@
           "overrides": {
             "label": "Last Name",
             "fieldId": "last-name",
-            "columnWidth": "50%",
             "validations": {
               "required": {
                 "error": "Last Name is required",
@@ -72,8 +69,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "fieldId": "contact-no",
-            "columnWidth": "50%"
+            "fieldId": "contact-no"
           }
         },
         {
@@ -81,7 +77,6 @@
           "overrides": {
             "label": "Email",
             "fieldId": "email",
-            "columnWidth": "50%",
             "validations": {
               "required": {
                 "error": "Email is required",
@@ -95,7 +90,6 @@
           "overrides": {
             "label": "Post",
             "fieldId": "post",
-            "columnWidth": "50%",
             "validations": {
               "required": {
                 "error": "Post is required",
@@ -112,7 +106,6 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "id-number",
-            "columnWidth": "50%",
             "validations": {
               "required": {
                 "error": "Barbados National Identification (ID) number is required",
@@ -234,10 +227,8 @@
         {
           "ref": "components/generic-textarea",
           "overrides": {
-            "rows": 4,
             "label": "Comments",
             "fieldId": "comments",
-            "fullWidth": true,
             "validations": {
               "required": {
                 "error": "Comments are required",
@@ -285,5 +276,5 @@
     }
   ],
   "createdAt": "2026-06-03T00:00:00.000Z",
-  "updatedAt": "2026-10-12T17:45:45.000Z"
+  "updatedAt": "2026-10-13T23:18:48.000Z"
 }
