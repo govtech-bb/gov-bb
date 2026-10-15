@@ -36,6 +36,7 @@ import {
   advance,
   currentStep,
   expectStep,
+  fillDate,
   fillField,
   selectRadio,
   submitAndConfirm,
@@ -76,7 +77,7 @@ test.describe("Duties Performed Exam Claim — Live Smoke", () => {
     // ─── Section B: Duties Performed (repeatable) ────────────────────────────
     step = expectStep(page, "section-b", { exact: true });
     await fillField(page, step, "row-no", "01");
-    await fillField(page, step, "date", "2026-05-10");
+    await fillDate(page, step, "date", 10, 5, 2026);
     await fillField(page, step, "centre", "Bridgetown Centre");
     await fillField(page, step, "role", "Invigilator");
     await fillField(page, step, "rate", "50");
@@ -92,7 +93,7 @@ test.describe("Duties Performed Exam Claim — Live Smoke", () => {
 
     // ─── Section C: Practical Examination Setup (repeatable) ─────────────────
     step = expectStep(page, "section-c", { exact: true });
-    await fillField(page, step, "date", "2026-05-12");
+    await fillDate(page, step, "date", 12, 5, 2026);
     await fillField(page, step, "centre", "Bridgetown Centre");
     await fillField(page, step, "subject", "Chemistry");
     await fillField(page, step, "total-candidates", "30");
@@ -108,7 +109,7 @@ test.describe("Duties Performed Exam Claim — Live Smoke", () => {
 
     // ─── Section D: Reader/Writer/etc Duties (repeatable) ────────────────────
     step = expectStep(page, "section-d", { exact: true });
-    await fillField(page, step, "date", "2026-05-15");
+    await fillDate(page, step, "date", 15, 5, 2026);
     await fillField(page, step, "centre", "Bridgetown Centre");
     await fillField(page, step, "subject", "English A");
     await fillField(page, step, "duties", "Reader");

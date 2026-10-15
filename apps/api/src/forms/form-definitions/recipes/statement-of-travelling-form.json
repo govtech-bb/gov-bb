@@ -143,7 +143,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-textarea",
           "overrides": {
             "label": "PARTICULARS",
             "fieldId": "particulars",
@@ -313,5 +313,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:43:20.632Z",
-  "updatedAt": "2026-10-13T23:18:48.000Z"
+  "updatedAt": "2026-10-15T00:30:30.000Z"
 }
