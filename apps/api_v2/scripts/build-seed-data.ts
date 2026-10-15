@@ -16,6 +16,7 @@
  *   a page has one `category_id`.
  * - categories: `CATEGORY_TAXONOMY` in its order, each subcategory a
  *   category with a parent.
+ * - source: the last commit that touched the markdown, so imported history can name it.
  */
 
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -166,6 +167,11 @@ for (const page of pages) {
 }
 
 const estate: SeedEstate = {
+  source: execFileSync(
+    "git",
+    ["log", "-1", "--format=%H", "--", "apps/landing/src/content"],
+    { cwd: root, encoding: "utf8" },
+  ).trim(),
   categories: CATEGORY_TAXONOMY.flatMap((category, position) => [
     {
       slug: category.slug,
