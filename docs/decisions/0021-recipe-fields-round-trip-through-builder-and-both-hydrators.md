@@ -1,5 +1,13 @@
 # 0021 — Recipe fields must round-trip through the builder and both hydrators
 
+> **Note 2026-10-13 ([#2024](https://github.com/govtech-bb/gov-bb/issues/2024)):**
+> `apps/api/src/registry/resolution.ts` was retired by #2044. The API now hydrates
+> recipes with the shared `hydrateForm` in `packages/form-builder/src/resolution.ts`
+> (called from `RegistryService`), the same function the builder preview uses.
+> References to the API resolver below describe the code when this decision was
+> taken; the decision still holds.
+> With one hydrator, the round-trip has one fewer carry point to keep in step.
+
 ## Context
 
 A `ServiceContractRecipe` field is only useful end-to-end if every layer between

@@ -1,12 +1,8 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { serviceContractRecipeSchema } from "@govtech-bb/form-types";
-import {
-  BUILTIN_REGISTRY,
-  NATIONAL_ID_FORMAT,
-  NATIONAL_ID_LABEL,
-} from "@govtech-bb/registry";
-import { hydrateForm, type Resolver } from "../../registry/resolution";
+import { NATIONAL_ID_FORMAT, NATIONAL_ID_LABEL } from "@govtech-bb/registry";
+import { getCatalog, hydrateForm } from "@govtech-bb/form-builder";
 
 // One name for one document (#2732). A Barbados ID field was labelled nine
 // ways across the forms, its required error worded seventeen ways, and its
@@ -37,12 +33,6 @@ const GENERIC_NATIONAL_ID_FIELDS = [
 // canonical label and card name have been taken out.
 const OTHER_NAMES =
   /national\s+(id|identification|registration)|\bNRN\b|\bID\s+number\b/i;
-
-const resolver: Resolver = async (ref) => {
-  const entry = BUILTIN_REGISTRY[ref as keyof typeof BUILTIN_REGISTRY];
-  if (!entry) throw new Error(`unresolvable ref "${ref}"`);
-  return entry;
-};
 
 type Rule = { value?: unknown; error?: string };
 type HydratedField = {
@@ -164,7 +154,7 @@ async function hydratedRecipes(): Promise<
         await fs.readFile(path.join(RECIPES_DIR, file), "utf8"),
       );
       const recipe = serviceContractRecipeSchema.parse(raw);
-      const hydrated = await hydrateForm(recipe, resolver);
+      const hydrated = hydrateForm(recipe, getCatalog());
       return {
         formId: file.replace(/\.json$/, ""),
         steps: hydrated.steps as unknown as HydratedStep[],

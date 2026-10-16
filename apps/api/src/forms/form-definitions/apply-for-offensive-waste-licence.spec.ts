@@ -7,8 +7,7 @@ import {
   type ServiceContract,
 } from "@govtech-bb/form-types";
 import { validateField } from "@govtech-bb/form-validation";
-import { BUILTIN_REGISTRY } from "@govtech-bb/registry";
-import { hydrateForm, type Resolver } from "../../registry/resolution";
+import { getCatalog, hydrateForm } from "@govtech-bb/form-builder";
 
 // The Environmental Health content review (#2858) rebuilt this journey around
 // renewal checks, one "Who are you applying for?" answer and a building-plans
@@ -21,16 +20,10 @@ const RECIPE_PATH = path.resolve(
   "recipes/apply-for-offensive-waste-licence.json",
 );
 
-const resolver: Resolver = async (ref) => {
-  const entry = BUILTIN_REGISTRY[ref as keyof typeof BUILTIN_REGISTRY];
-  if (!entry) throw new Error(`unresolvable ref "${ref}"`);
-  return entry;
-};
-
 async function contract(): Promise<ServiceContract> {
   const raw = JSON.parse(await fs.readFile(RECIPE_PATH, "utf8"));
   const recipe = serviceContractRecipeSchema.parse(raw);
-  return (await hydrateForm(recipe, resolver)) as unknown as ServiceContract;
+  return hydrateForm(recipe, getCatalog()) as unknown as ServiceContract;
 }
 
 async function conditions(values: Record<string, unknown>) {

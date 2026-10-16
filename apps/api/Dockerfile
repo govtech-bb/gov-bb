@@ -23,6 +23,7 @@ COPY --chown=app:app patches/ ./patches/
 COPY --chown=app:app apps/api/package.json apps/api/
 COPY --chown=app:app packages/database/package.json packages/database/
 COPY --chown=app:app packages/expressions/package.json packages/expressions/
+COPY --chown=app:app packages/form-builder/package.json packages/form-builder/
 COPY --chown=app:app packages/form-conditions/package.json packages/form-conditions/
 COPY --chown=app:app packages/form-types/package.json packages/form-types/
 COPY --chown=app:app packages/form-validation/package.json packages/form-validation/
