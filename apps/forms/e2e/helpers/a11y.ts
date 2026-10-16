@@ -17,7 +17,14 @@ const BLOCKING_IMPACTS = new Set(["serious", "critical"]);
  * axe ships `target-size` (wcag22aa) disabled, but selecting rules by tag runs
  * disabled rules too, so it needs no `.options()` to enable it.
  */
-const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
+const WCAG_TAGS = [
+  "wcag2a",
+  "wcag2aa",
+  "wcag21a",
+  "wcag21aa",
+  "wcag22a",
+  "wcag22aa",
+];
 
 /**
  * Run axe against the currently-loaded page and fail the test if any

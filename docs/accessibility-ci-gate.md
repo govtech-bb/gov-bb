@@ -43,7 +43,7 @@ which 404s non-public forms).
 
 Only violations with axe impact **`serious`** or **`critical`**, scoped to the
 WCAG A/AA rule tags (`wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`,
-`wcag22aa`). See
+`wcag22a`, `wcag22aa`). See
 [e2e/helpers/a11y.ts](../apps/forms/e2e/helpers/a11y.ts). `minor`/`moderate`
 findings and axe *best-practice* rules (e.g. `heading-order`) do **not** fail the
 build yet — this keeps the gate green on landing and lets the threshold tighten
