@@ -1,7 +1,6 @@
 import { Popover } from "@base-ui/react/popover";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
-import { $isListItemNode, $isListNode } from "@lexical/list";
 import {
   $isTableCellNode,
   $isTableSelection,
@@ -40,6 +39,8 @@ import {
   TextOutdent,
   Trash,
   Table,
+  ListBullets,
+  ListNumbers,
 } from "@phosphor-icons/react";
 import { useEffect, useId, useRef, useState } from "react";
 import {
@@ -57,6 +58,7 @@ import { PageActionList, PageMenuRow } from "./action-menu";
 import { $pageInsertionTarget } from "./insertion";
 import { PageMetadataNode } from "./metadata";
 import { PageComponentNode } from "./nodes";
+import { $nearestPageList, $setPageListType } from "./modules/lists";
 import { safePageUrl } from "./modules/text";
 import { usePageBlockDrag } from "./block-drag";
 
@@ -433,20 +435,18 @@ function PageBlockMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void 
         ($isRangeSelection(selection) ? $getNodeByKey(selection.anchor.key) : block);
 
       let component: PageComponentNode | null = null;
-      let list = $isListNode(block);
+      const list = $nearestPageList(node);
       let table = $isTableNode(block);
 
       while (node && !$isRootNode(node)) {
         if (!component && node instanceof PageComponentNode) component = node;
-
-        if ($isListItemNode(node)) list = true;
 
         if ($isTableCellNode(node)) table = true;
         node = node.getParent();
       }
 
       return {
-        list,
+        list: list ? { key: list.getKey(), type: list.getListType() } : null,
         table,
         up:
           !!block.getPreviousSibling() && !(block.getPreviousSibling() instanceof PageMetadataNode),
@@ -597,6 +597,30 @@ function PageBlockMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void 
             )}
             {model.list && (
               <div className="page-menu-section">
+                {model.list.type !== "bullet" && (
+                  <PageMenuRow
+                    icon={<ListBullets />}
+                    onClick={() =>
+                      change((block) => {
+                        $setPageListType($pageBlockDescendant(model.list!.key, block), "bullet");
+                      })
+                    }
+                  >
+                    Change to bulleted list
+                  </PageMenuRow>
+                )}
+                {model.list.type !== "number" && (
+                  <PageMenuRow
+                    icon={<ListNumbers />}
+                    onClick={() =>
+                      change((block) => {
+                        $setPageListType($pageBlockDescendant(model.list!.key, block), "number");
+                      })
+                    }
+                  >
+                    Change to numbered list
+                  </PageMenuRow>
+                )}
                 <PageMenuRow
                   icon={<TextIndent />}
                   onClick={() =>

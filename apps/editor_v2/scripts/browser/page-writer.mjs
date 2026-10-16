@@ -518,6 +518,28 @@ try {
   await button("Redo").click();
   assert.equal(await markdown(), groupedAfter);
 
+  for (const [content, outer, inner, action] of [
+    ["1. Parent\n   - Nested\n2. Sibling", "ol", "ul", "numbered"],
+    ["- Parent\n  1. Nested\n- Sibling", "ul", "ol", "bulleted"],
+  ]) {
+    await reset(content);
+    const before = await markdown();
+    await body.getByText("Parent", { exact: true }).click();
+    await hoverNestedMenu(body.locator(`${outer} ${inner} > li`).first());
+    assert.equal(
+      await button(`Change to ${action === "numbered" ? "bulleted" : "numbered"} list`).count(),
+      0,
+    );
+    await button(`Change to ${action} list`).click();
+    assert.equal(await body.locator(`:scope > ${outer} ${outer}`).textContent(), "Nested");
+    assert.equal(await body.locator(`:scope > ${outer}`).textContent(), "ParentNestedSibling");
+    const after = await markdown();
+    await button("Undo").click();
+    assert.equal(await markdown(), before);
+    await button("Redo").click();
+    assert.equal(await markdown(), after);
+  }
+
   for (const marker of ["-", "1."]) {
     await reset(`${marker} One\n${marker} Two\n${marker} Three`);
     const beforeIndent = await markdown();

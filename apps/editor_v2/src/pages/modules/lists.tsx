@@ -8,12 +8,34 @@ import {
   ListItemNode,
   ListExtension,
 } from "@lexical/list";
-import { $isParagraphNode } from "lexical";
+import { $isParagraphNode, type LexicalNode } from "lexical";
 import type { BlockContent, ListItem } from "mdast";
 import type { PageModule, PageHandler } from "../definition";
 import { PageListItemNode } from "../list-item";
 import { pageInsertAction } from "../insertion";
 import { blocks, phrasing, UnsupportedPageContent } from "../markdown";
+
+/** Find the nearest page list, not an outer list containing it. */
+export function $nearestPageList(node: LexicalNode | null): ListNode | null {
+  let current = node;
+
+  while (current) {
+    if ($isListNode(current)) return current;
+    current = current.getParent();
+  }
+
+  return null;
+}
+
+/** Change the nearest page list type without moving its items or nested lists. */
+export function $setPageListType(node: LexicalNode | null, type: "bullet" | "number") {
+  const list = $nearestPageList(node);
+
+  if (!list || list.getListType() === type) return false;
+  list.setListType(type).setStart(1);
+
+  return true;
+}
 
 const lists: PageHandler = {
   accepts: (node) => node.type === "list" || node.type === "listItem",
