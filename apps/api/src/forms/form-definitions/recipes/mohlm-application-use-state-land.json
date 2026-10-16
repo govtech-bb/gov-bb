@@ -331,6 +331,19 @@
           }
         },
         {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "organisation-registration-number",
+            "label": "Registration number",
+            "hint": "If the organisation is registered in Barbados or another country",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
           "ref": "components/address",
           "overrides": {
             "fieldId": "organisation-address-line-1",
@@ -524,6 +537,22 @@
           }
         },
         {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "land-address-heading",
+            "variant": "text",
+            "content": "## What is the address of the land?",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "land-has-address",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
           "ref": "components/address",
           "overrides": {
             "fieldId": "land-address-line-1",
@@ -655,7 +684,7 @@
           "overrides": {
             "fieldId": "gps-coordinates",
             "label": "GPS coordinates",
-            "hint": "For example, 13.1132, -59.5988.",
+            "hint": "For example, 13.1132, -59.5988. You can usually find GPS coordinates using a maps app on your phone.",
             "validations": {
               "required": {
                 "value": false
@@ -785,7 +814,6 @@
     {
       "stepId": "check-your-answers",
       "title": "Check your answers",
-      "description": "Review all the information you have provided before submitting your application.",
       "elements": [],
       "behaviours": []
     },
@@ -809,6 +837,9 @@
                 "error": "You must confirm the declaration to continue",
                 "value": true
               }
+            },
+            "ui": {
+              "hideLabel": true
             }
           }
         }
@@ -820,9 +851,10 @@
       "title": "Application submitted",
       "elements": [],
       "behaviours": [],
-      "markdownContent": "## What happens next\n\nThe Ministry will review your application and may contact you if they need more information.\n\nHow long it takes depends on what you want to use the land for.\n\nSome requests may need approval from other government departments before the Ministry can decide."
+      "markdownContent": "## What happens next\n\nThe Ministry will review your application and may contact you if they need more information.\n\nHow long it takes depends on what you want to use the land for.\n\nSome requests may need approval from other government departments before the Ministry can decide.",
+      "description": "Your application has been submitted."
     }
   ],
   "createdAt": "2026-06-16T15:46:40.151Z",
-  "updatedAt": "2026-10-12T18:00:56.000Z"
+  "updatedAt": "2026-10-15T10:59:41.000Z"
 }
