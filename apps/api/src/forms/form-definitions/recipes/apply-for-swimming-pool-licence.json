@@ -34,31 +34,9 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "licence-number",
-            "label": "Current swimming pool licence number",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "application-type",
-                "operator": "equal",
-                "value": "renewal"
-              }
-            ],
-            "ui": {
-              "width": "short"
-            }
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "town-text",
+            "fieldId": "planning-application-number",
             "label": "Planning and Development application number",
+            "hint": "Planning and Development used to be called Town and Country Planning.",
             "validations": {
               "required": {
                 "value": false
@@ -752,12 +730,125 @@
               }
             ]
           }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "licence-number",
+            "label": "Current licence number for this pool",
+            "hint": "This helps us find the pool's past records.",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "targetStepId": "about-application",
+                "operator": "equal",
+                "value": "renewal"
+              }
+            ],
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "manages-pool",
+            "label": "Do you manage this pool yourself?",
+            "hint": "Answer no if another person or business runs the pool day to day.",
+            "validations": {
+              "required": {
+                "error": "Select whether you manage this pool yourself",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "pool-operator-name",
+            "label": "Name of the person or business that manages this pool",
+            "validations": {
+              "required": {
+                "error": "Name of the person or business that manages this pool is required",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "manages-pool",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "pool-operator-telephone",
+            "label": "Their telephone number",
+            "hint": "Enter a Barbados or international number.",
+            "validations": {
+              "required": {
+                "error": "Their telephone number is required",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "manages-pool",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "pool-operator-email",
+            "label": "Their email address",
+            "validations": {
+              "required": {
+                "error": "Their email address is required",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "manages-pool",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
         }
       ]
     },
     {
       "stepId": "supporting-documents",
-      "title": "Planning information and documents",
+      "title": "Upload supporting documents",
       "behaviours": [],
       "elements": [
         {
@@ -767,8 +858,7 @@
             "label": "Planning and Development site plan",
             "validations": {
               "required": {
-                "error": "Upload the Planning and Development site plan",
-                "value": true
+                "value": false
               },
               "fileTypes": {
                 "error": "Upload a file in PDF, JPEG, PNG, Word or Excel format",
@@ -776,6 +866,10 @@
                   "application/pdf",
                   "image/jpeg",
                   "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png",
                   ".doc",
                   ".docx",
                   ".xls",
@@ -796,21 +890,29 @@
                 "value": "new"
               }
             ],
-            "hint": "Planning and Development used to be called Town and Country Planning."
+            "hint": "Planning and Development used to be called Town and Country Planning.",
+            "multiple": true
           }
         },
         {
           "ref": "components/upload-document",
           "overrides": {
             "fieldId": "pool-plan",
-            "label": "Pool Plan",
+            "label": "Pool plan",
             "validations": {
+              "required": {
+                "value": false
+              },
               "fileTypes": {
                 "error": "Upload a file in PDF, JPEG, PNG, Word or Excel format",
                 "value": [
                   "application/pdf",
                   "image/jpeg",
                   "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png",
                   ".doc",
                   ".docx",
                   ".xls",
@@ -920,7 +1022,7 @@
     }
   ],
   "createdAt": "2026-08-25T00:10:51.219Z",
-  "updatedAt": "2026-10-13T03:27:45.000Z",
+  "updatedAt": "2026-10-14T12:00:00.000Z",
   "meta": {
     "visibility": "preview"
   },

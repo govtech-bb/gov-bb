@@ -37,6 +37,7 @@ import { ServicePreview } from "./service-preview";
 import type { ContentListState } from "../content/use-content-list";
 import { CreatePageDialog } from "./create-page-dialog";
 import { ServiceWorkspace } from "./service-workspace";
+import { ServiceDelete } from "./service-delete";
 import {
   FORM_STATUS_HINT,
   FORM_STATUS_LABEL,
@@ -67,11 +68,13 @@ export function ServiceWorkbench({
   tab,
   setup,
   content,
+  onChanged,
 }: {
   service: ServiceRow;
   tab: ServiceTab;
   setup?: string;
   content: ContentListState;
+  onChanged: () => void;
 }) {
   const workspace = useServiceState(service);
   const navigate = useNavigate();
@@ -375,6 +378,12 @@ export function ServiceWorkbench({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <ServiceDelete
+            service={service}
+            workspace={workspace}
+            onChanged={onChanged}
+            onDeleted={() => navigate({ to: "/services", search: {} })}
+          />
           <Button icon={<EyeIcon />} onClick={() => setPreview(true)}>
             Preview service
           </Button>

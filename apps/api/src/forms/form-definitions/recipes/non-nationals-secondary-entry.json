@@ -11,7 +11,6 @@
           "overrides": {
             "label": "First Name",
             "fieldId": "child-first-name",
-            "required": true,
             "validations": {
               "required": {
                 "error": "First Name is required",
@@ -25,7 +24,6 @@
           "overrides": {
             "label": "Surname",
             "fieldId": "child-surname",
-            "required": true,
             "validations": {
               "required": {
                 "error": "Surname is required",
@@ -39,7 +37,6 @@
           "overrides": {
             "label": "Other Name(s)",
             "fieldId": "child-other-names",
-            "required": false,
             "validations": {
               "required": {
                 "error": "Other Name(s) are required",
@@ -53,7 +50,6 @@
           "overrides": {
             "label": "Country of Birth",
             "fieldId": "country-of-birth",
-            "required": true,
             "validations": {
               "required": {
                 "error": "Country of Birth is required",
@@ -67,7 +63,6 @@
           "overrides": {
             "label": "Name of Present School",
             "fieldId": "present-school",
-            "required": true,
             "validations": {
               "required": {
                 "error": "Name of Present School is required",
@@ -81,7 +76,6 @@
           "overrides": {
             "label": "Gender",
             "fieldId": "gender",
-            "required": true,
             "validations": {
               "required": {
                 "error": "Gender is required",
@@ -95,8 +89,6 @@
           "overrides": {
             "label": "Date of Birth of Child",
             "fieldId": "date-of-birth",
-            "required": true,
-            "inputType": "date",
             "validations": {
               "required": {
                 "error": "Date of Birth of Child is required",
@@ -120,7 +112,6 @@
                 "value": "no"
               }
             ],
-            "required": true,
             "validations": {
               "required": {
                 "error": "Select whether the child is a CARICOM national",
@@ -141,7 +132,6 @@
           "overrides": {
             "label": "Title",
             "fieldId": "guardian-title",
-            "required": false,
             "validations": {
               "required": {
                 "error": "Title is required",
@@ -155,7 +145,6 @@
           "overrides": {
             "label": "First Name",
             "fieldId": "guardian-first-name",
-            "required": true,
             "validations": {
               "required": {
                 "error": "First Name is required",
@@ -169,7 +158,6 @@
           "overrides": {
             "label": "Last Name",
             "fieldId": "guardian-last-name",
-            "required": true,
             "validations": {
               "required": {
                 "error": "Last Name is required",
@@ -183,7 +171,6 @@
           "overrides": {
             "label": "Address",
             "fieldId": "guardian-address",
-            "required": true,
             "validations": {
               "required": {
                 "error": "Address is required",
@@ -203,7 +190,6 @@
           "overrides": {
             "label": "Country of Birth of Parent/Guardian",
             "fieldId": "guardian-country-of-birth",
-            "required": true,
             "validations": {
               "required": {
                 "error": "Country of Birth of Parent/Guardian is required",
@@ -217,7 +203,6 @@
           "overrides": {
             "label": "Status",
             "fieldId": "guardian-status",
-            "required": true,
             "validations": {
               "required": {
                 "error": "Status is required",
@@ -245,9 +230,7 @@
           "ref": "components/generic-file",
           "overrides": {
             "label": "Birth Certificate",
-            "accept": "application/pdf,image/*",
             "fieldId": "birth-certificate",
-            "required": true,
             "validations": {
               "fileTypes": {
                 "value": ["application/pdf", "image/jpeg", "image/png"],
@@ -268,9 +251,7 @@
           "ref": "components/generic-file",
           "overrides": {
             "label": "Immigration Status Document (Parent for CARICOM Nationals, Child for Other Non-Nationals)",
-            "accept": "application/pdf,image/*",
             "fieldId": "immigration-status-document",
-            "required": true,
             "validations": {
               "fileTypes": {
                 "value": ["application/pdf", "image/jpeg", "image/png"],
@@ -299,7 +280,6 @@
           "overrides": {
             "label": "Signature",
             "fieldId": "applicant-signature",
-            "required": true,
             "validations": {
               "required": {
                 "error": "Signature is required",
@@ -313,8 +293,6 @@
           "overrides": {
             "label": "Date",
             "fieldId": "applicant-date",
-            "required": true,
-            "inputType": "date",
             "validations": {
               "required": {
                 "error": "Date is required",
@@ -334,11 +312,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "Certification",
-            "value": "This is to certify that I have seen the request submitted by the parent/guardian of the pupil",
             "fieldId": "official-certification",
-            "disabled": true,
-            "required": false,
-            "inputType": "textarea",
             "validations": {
               "required": {
                 "error": "Certification is required",
@@ -352,7 +326,6 @@
           "overrides": {
             "label": "Signature",
             "fieldId": "official-signature",
-            "required": false,
             "validations": {
               "required": {
                 "error": "Signature is required",
@@ -366,8 +339,6 @@
           "overrides": {
             "label": "Date",
             "fieldId": "official-date",
-            "required": false,
-            "inputType": "date",
             "validations": {
               "required": {
                 "error": "Date is required",
@@ -393,5 +364,5 @@
     }
   ],
   "createdAt": "2026-05-28T16:03:10.475Z",
-  "updatedAt": "2026-10-05T17:20:45.000Z"
+  "updatedAt": "2026-10-13T23:18:48.000Z"
 }

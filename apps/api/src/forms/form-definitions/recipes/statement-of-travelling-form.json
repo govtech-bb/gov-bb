@@ -147,7 +147,6 @@
           "overrides": {
             "label": "PARTICULARS",
             "fieldId": "particulars",
-            "multiline": true,
             "validations": {
               "required": {
                 "error": "PARTICULARS are required",
@@ -188,7 +187,6 @@
           "overrides": {
             "label": "Total Distance Travelled",
             "fieldId": "total-distance-travelled",
-            "readonly": true,
             "validations": {
               "required": {
                 "error": "Total Distance Travelled is required",
@@ -202,7 +200,6 @@
           "overrides": {
             "label": "First 320 KM or Less",
             "fieldId": "first320km-or-less",
-            "readonly": true,
             "validations": {
               "required": {
                 "error": "First 320 KM or Less is required",
@@ -216,7 +213,6 @@
           "overrides": {
             "label": "Remainder Over 320 KM",
             "fieldId": "remainder-over320km",
-            "readonly": true,
             "validations": {
               "required": {
                 "error": "Remainder Over 320 KM is required",
@@ -230,7 +226,6 @@
           "overrides": {
             "label": "Passenger Subtotal",
             "fieldId": "passenger-subtotal",
-            "readonly": true,
             "validations": {
               "required": {
                 "error": "Passenger Subtotal is required",
@@ -244,7 +239,6 @@
           "overrides": {
             "label": "Total Claimed",
             "fieldId": "total-claimed",
-            "readonly": true,
             "validations": {
               "required": {
                 "error": "Total Claimed is required",
@@ -264,10 +258,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "label": "School Distances by Parish",
-            "value": "Reference table for distances to various schools by parish - see form pages 3-5 for complete listing",
             "fieldId": "school-reference-info",
-            "multiline": true,
-            "readonly": true,
             "validations": {
               "required": {
                 "value": false
@@ -322,5 +313,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:43:20.632Z",
-  "updatedAt": "2026-10-12T17:45:45.000Z"
+  "updatedAt": "2026-10-13T23:18:48.000Z"
 }

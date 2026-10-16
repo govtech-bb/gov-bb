@@ -206,6 +206,7 @@ export type {
 } from "./service-contract.type";
 
 export { checkCatchmentRoutingHasMapping } from "./catchment-routing-guard";
+export { checkOverrideKeys } from "./override-keys-guard";
 
 export {
   deployBranchPrefix,

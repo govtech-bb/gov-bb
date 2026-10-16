@@ -81,7 +81,6 @@
           "overrides": {
             "label": "Address",
             "fieldId": "address",
-            "multiline": true,
             "validations": {
               "required": {
                 "error": "Address is required",
@@ -263,5 +262,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:39:29.964Z",
-  "updatedAt": "2026-10-12T17:44:53.000Z"
+  "updatedAt": "2026-10-13T23:18:48.000Z"
 }
