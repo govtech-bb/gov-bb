@@ -3,6 +3,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import {
   checkCatchmentRoutingHasMapping,
+  checkOverrideKeys,
   serializeRecipe,
   serviceContractRecipeSchema,
 } from "@govtech-bb/form-types";
@@ -114,6 +115,9 @@ async function main(): Promise<void> {
         (e) => `${relative}: ${e}`,
       ),
     );
+    // Unknown override keys (#2713): checked on `parsed`, the raw JSON, since
+    // the schema parse behind `recipe` has already stripped them.
+    errors.push(...checkOverrideKeys(parsed).map((e) => `${relative}: ${e}`));
     errors.push(...checkFileFieldsDeclareTypes(recipe, relative));
     errors.push(
       ...checkRequiredErrorsAreSpecific(recipe, relative, BUILTIN_REGISTRY),

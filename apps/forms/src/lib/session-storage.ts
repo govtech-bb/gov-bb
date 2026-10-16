@@ -91,6 +91,16 @@ export function markStepCompleted(formId: string, stepId: string) {
   }
 }
 
+// Forget steps that no longer exist — removed repeat instances, whose ids are
+// reused by count when the applicant adds another again (#2812).
+export function unmarkStepsCompleted(formId: string, stepIds: string[]) {
+  if (stepIds.length === 0) return;
+  const remaining = getCompletedSteps(formId).filter(
+    (id) => !stepIds.includes(id),
+  );
+  sessionStorage.setItem(`completedSteps_${formId}`, JSON.stringify(remaining));
+}
+
 /**
  * Returns the first step in `activeSteps` that has not yet been completed.
  *
@@ -104,6 +114,34 @@ export function getFirstIncompleteActiveStep(
 ): { stepId: string } | null {
   const completedSteps = getCompletedSteps(formId);
   return activeSteps.find((s) => !completedSteps.includes(s.stepId)) ?? null;
+}
+
+/**
+ * Where Continue goes when the applicant arrived from a Change link on
+ * check-your-answers (#2812): the first step before the review that still
+ * needs them, otherwise the review itself.
+ *
+ * A step needs them when it is not completed (newly revealed by the change)
+ * or when `isStepValid` rejects it — a cross-step condition can make a field
+ * on an already-completed step required, which completion records can't see.
+ *
+ * The scan stops at the review: Continue on the review marks it completed, so
+ * `getFirstIncompleteActiveStep` would carry on to the declaration.
+ * Returns null only if there is no check-your-answers step.
+ */
+export function getReviewReturnStep<T extends { stepId: string }>(
+  formId: string,
+  activeSteps: T[],
+  isStepValid: (step: T) => boolean,
+): T | null {
+  const completedSteps = getCompletedSteps(formId);
+  for (const step of activeSteps) {
+    if (step.stepId === "check-your-answers") return step;
+    if (!completedSteps.includes(step.stepId) || !isStepValid(step)) {
+      return step;
+    }
+  }
+  return null;
 }
 
 // Duration tracking: stamp the start at form-start so form-submit can report

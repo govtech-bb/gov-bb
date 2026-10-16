@@ -40,7 +40,6 @@
         {
           "ref": "components/date-of-birth",
           "overrides": {
-            "type": "date",
             "label": "Date of Birth",
             "fieldId": "dob"
           }
@@ -57,7 +56,6 @@
           "overrides": {
             "label": "Address",
             "fieldId": "address",
-            "multiline": true,
             "validations": {
               "required": {
                 "error": "Enter the student's address",
@@ -70,16 +68,14 @@
           "ref": "components/parish",
           "overrides": {
             "label": "Parish",
-            "fieldId": "parish",
-            "multiline": true
+            "fieldId": "parish"
           }
         },
         {
           "ref": "components/country",
           "overrides": {
             "label": "Nationality",
-            "fieldId": "nationality",
-            "multiline": true
+            "fieldId": "nationality"
           }
         }
       ],
@@ -691,7 +687,6 @@
         {
           "ref": "components/email",
           "overrides": {
-            "type": "tel",
             "label": "School email address",
             "hint": "Enter a contact email for the school",
             "fieldId": "school-email"
@@ -700,7 +695,6 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "type": "tel",
             "label": "School telephone number",
             "hint": "Enter the main telephone number the Student Support Services Unit can use to contact the school",
             "fieldId": "school-telephone",
@@ -768,7 +762,6 @@
             "label": "Describe any additional challenges",
             "hint": "Provide additional details or clarify any challenges selected above, or enter any other challenges not listed.",
             "fieldId": "additional-challenges",
-            "multiline": true,
             "validations": {
               "required": {
                 "value": false
@@ -895,7 +888,6 @@
           "overrides": {
             "label": "",
             "fieldId": "intervention-strategies",
-            "multiline": true,
             "validations": {
               "required": {
                 "value": false
@@ -943,7 +935,6 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "type": "date",
             "label": "Name of the person making this referral",
             "hint": "Should be the same as the person completing this form",
             "fieldId": "referrer-name",
@@ -957,7 +948,6 @@
         {
           "ref": "components/generic-date",
           "overrides": {
-            "type": "date",
             "label": "Date of referral",
             "fieldId": "referral-date",
             "validations": {
@@ -1007,5 +997,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:34:16.771Z",
-  "updatedAt": "2026-10-12T17:45:45.000Z"
+  "updatedAt": "2026-10-13T23:18:48.000Z"
 }

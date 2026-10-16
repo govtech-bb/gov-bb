@@ -18,6 +18,7 @@ import { ServiceStatusAuditLogEntity } from "./entities/service-status-audit-log
 import { NotificationLogEntity } from "./entities/notification-log.entity";
 import { WaterSubscriberEntity } from "./entities/water-subscriber.entity";
 import { WaterSentAlertEntity } from "./entities/water-sent-alert.entity";
+import { WaterOpsAlertEntity } from "./entities/water-ops-alert.entity";
 
 // Migrations
 import { CreateFormsTables1774544962999 } from "./migrations/1774544962999-CreateFormsTables";
@@ -46,6 +47,7 @@ import { RenameSwimmingPoolFormId1787769265564 } from "./migrations/178776926556
 import { RenameTemporaryRestaurantFormId1787855665564 } from "./migrations/1787855665564-RenameTemporaryRestaurantFormId";
 import { DeleteSupersededEnvironmentalHealthForms1787942065564 } from "./migrations/1787942065564-DeleteSupersededEnvironmentalHealthForms";
 import { RenameEnvironmentalHealthFormIds1788028465564 } from "./migrations/1788028465564-RenameEnvironmentalHealthFormIds";
+import { CreateWaterOpsAlerts1791536637000 } from "./migrations/1791536637000-CreateWaterOpsAlerts";
 import { CreateWaterAlertsTables1785917644000 } from "./migrations/1785917644000-CreateWaterAlertsTables";
 
 export const entities = [
@@ -66,6 +68,7 @@ export const entities = [
   NotificationLogEntity,
   WaterSubscriberEntity,
   WaterSentAlertEntity,
+  WaterOpsAlertEntity,
 ];
 
 export const migrations = [
@@ -95,6 +98,7 @@ export const migrations = [
   RenameTemporaryRestaurantFormId1787855665564,
   DeleteSupersededEnvironmentalHealthForms1787942065564,
   RenameEnvironmentalHealthFormIds1788028465564,
+  CreateWaterOpsAlerts1791536637000,
   CreateWaterAlertsTables1785917644000,
 ];
 

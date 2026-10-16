@@ -101,6 +101,7 @@ async function finishAndSubmit(page: Page, expectOnCya: string): Promise<void> {
 
   await submitAndConfirm(page, {
     heading: "Application submitted",
+    subheading: "Your application has been submitted.",
     referenceLabel: "Submission ID",
   });
 }

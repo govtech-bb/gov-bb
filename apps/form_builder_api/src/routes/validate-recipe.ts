@@ -8,6 +8,7 @@ import {
 import type { RequiredMessageDefect } from "@govtech-bb/form-builder";
 import {
   checkCatchmentRoutingHasMapping,
+  checkOverrideKeys,
   type ValidationResult,
   type ValidationIssue,
 } from "@govtech-bb/form-types";
@@ -33,26 +34,36 @@ const REQUIRED_DEFECT_CAUSE: Record<RequiredMessageDefect, string> = {
 };
 
 /**
- * The full author-time recipe validation, in five layers, run against the live
+ * The full author-time recipe validation, in six layers, run against the live
  * catalog (builtin + DB custom components):
  *
  *   1. `validateFormContract` — the `serviceContractRecipeSchema` parse
  *      (kebab-case id enforcement from #741, repeatable-bounds from #771).
- *   2. `findRecipeIdCollisionsFromRecipe` — recipe-wide fieldId/stepId
+ *   2. `checkOverrideKeys` — an override key the schema doesn't know is
+ *      stripped at parse and silently does nothing (#2713). It checks the
+ *      `recipe` argument, not `result.data` (already stripped). On
+ *      `/builder/registry/validate` that is the legacy Deploy's raw draft, whose
+ *      overrides are committed exactly as sent. The AI `validate_form` tool and
+ *      the services publish path parse through `fieldOverridesSchema` first, so
+ *      the keys are already gone there and this layer is a no-op — harmless,
+ *      since what those paths write is stripped the same way. Its issues are
+ *      reported alongside any later layer's, so one Deploy attempt shows them
+ *      all. Shared with `pnpm validate-recipes`.
+ *   3. `findRecipeIdCollisionsFromRecipe` — recipe-wide fieldId/stepId
  *      uniqueness, which the Zod schema can't check without a catalog to
  *      resolve component defaults (ADR 0010).
- *   3. `collectUnknownRefs` — ref-existence: the schema validates ref *format*,
+ *   4. `collectUnknownRefs` — ref-existence: the schema validates ref *format*,
  *      so a ref to a removed/renamed component parses but would drop in preview
  *      / throw in the renderer (also ADR 0010).
- *   4. `collectGenericRequiredMessages` — every effectively-required field must
+ *   5. `collectGenericRequiredMessages` — every effectively-required field must
  *      fail with a message that names it, since the forms error summary uses
  *      the message as its link text (#2227). Catalog-aware for the same reason
- *      as layer 2: the effective message comes from the registry base merged
+ *      as layer 3: the effective message comes from the registry base merged
  *      with the override, and either side can be the one that names nothing.
  *      `pnpm validate-recipes` runs the same rule over the committed recipes;
  *      this is the half that catches a recipe before it is deployed from the
  *      builder, including one built on a DB custom component (#2714).
- *   5. `checkCatchmentRoutingHasMapping` — a catchment-routed recipe must keep
+ *   6. `checkCatchmentRoutingHasMapping` — a catchment-routed recipe must keep
  *      a webhook with `mapping.programmeCode`, or the API refuses it at boot
  *      and the form is not served (#2877). The builder lets an author Remove
  *      that webhook (Save draft stays possible); this is what stops the draft
@@ -72,12 +83,20 @@ export async function validateRecipeFully(
     return result;
   }
 
+  const overrideKeyIssues: ValidationIssue[] = checkOverrideKeys(recipe).map(
+    (message) => ({ path: "steps", message }),
+  );
+  const fail = (issues: ValidationIssue[]): ValidationResult => ({
+    ok: false,
+    issues: [...overrideKeyIssues, ...issues],
+  });
+
   const catalog = await getFullCatalog();
 
   const collisions = findRecipeIdCollisionsFromRecipe(result.data, catalog);
   const collisionIssues = formatCollisionIssues(collisions);
   if (collisionIssues.length > 0) {
-    return { ok: false, issues: collisionIssues };
+    return fail(collisionIssues);
   }
 
   const unknownRefIssues: ValidationIssue[] = collectUnknownRefs(
@@ -88,7 +107,7 @@ export async function validateRecipeFully(
     message: `Unknown component/block ref "${ref}"`,
   }));
   if (unknownRefIssues.length > 0) {
-    return { ok: false, issues: unknownRefIssues };
+    return fail(unknownRefIssues);
   }
 
   const genericRequiredIssues: ValidationIssue[] =
@@ -99,14 +118,18 @@ export async function validateRecipeFully(
       }),
     );
   if (genericRequiredIssues.length > 0) {
-    return { ok: false, issues: genericRequiredIssues };
+    return fail(genericRequiredIssues);
   }
 
   const catchmentIssues: ValidationIssue[] = checkCatchmentRoutingHasMapping(
     result.data,
   ).map((message) => ({ path: "processors", message }));
   if (catchmentIssues.length > 0) {
-    return { ok: false, issues: catchmentIssues };
+    return fail(catchmentIssues);
+  }
+
+  if (overrideKeyIssues.length > 0) {
+    return fail([]);
   }
 
   return result;

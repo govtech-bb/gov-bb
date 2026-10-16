@@ -1,6 +1,9 @@
 import { renderHook, act } from "@testing-library/react";
+import type { AnyFormApi } from "@tanstack/react-form";
 import { useStepGuard } from "./use-step-guard";
-import type { ClientFormStep } from "@forms/types";
+import { getVisibleSteps } from "../lib/form-builder/helpers/behavior-helper";
+import { stepPassesValidation } from "../lib/form-builder/validation-builder";
+import type { ClientFormStep, ClientPrimitive } from "@forms/types";
 
 const mockNavigate = vi.fn();
 
@@ -255,6 +258,183 @@ describe("useStepGuard", () => {
     });
   });
 
+  describe("completeAndContinue — returning from a Change (#2812)", () => {
+    const formSteps = [
+      step("step-1"),
+      step("step-2"),
+      step("step-3"),
+      step("check-your-answers"),
+      step("declaration"),
+    ];
+
+    function lastSearch(prev: Record<string, unknown> = {}) {
+      const call = mockNavigate.mock.calls.at(-1)?.[0] as {
+        search: (p: Record<string, unknown>) => Record<string, unknown>;
+      };
+      return call.search(prev);
+    }
+
+    function renderReturning(isStepValid?: (s: ClientFormStep) => boolean) {
+      const { result } = renderHook(() =>
+        useStepGuard({
+          formId: FORM_ID,
+          activeSteps: formSteps,
+          currentStepId: "step-1",
+          returnToReview: true,
+          isStepValid,
+        }),
+      );
+      mockNavigate.mockClear();
+      return result;
+    }
+
+    it("goes straight back to check-your-answers and ends the change journey", () => {
+      markComplete(FORM_ID, "step-1", "step-2", "step-3", "check-your-answers");
+      const result = renderReturning();
+      act(() => result.current.completeAndContinue("step-1"));
+      expect(
+        lastSearch({ step: "step-1", returnTo: "check-your-answers" }),
+      ).toEqual({ step: "check-your-answers", returnTo: undefined });
+    });
+
+    it("stops at a step the change revealed, keeping the return flag", () => {
+      // step-3 is the revealed one; sequential Continue would go to step-2.
+      markComplete(FORM_ID, "step-1", "step-2", "check-your-answers");
+      const result = renderReturning();
+      act(() => result.current.completeAndContinue("step-1"));
+      expect(
+        lastSearch({ step: "step-1", returnTo: "check-your-answers" }),
+      ).toEqual({ step: "step-3", returnTo: "check-your-answers" });
+    });
+
+    it("stops at a completed step that is no longer valid", () => {
+      markComplete(FORM_ID, "step-1", "step-2", "step-3", "check-your-answers");
+      const result = renderReturning((s) => s.stepId !== "step-3");
+      act(() => result.current.completeAndContinue("step-1"));
+      expect(lastSearch()).toEqual(expect.objectContaining({ step: "step-3" }));
+    });
+
+    it("judges the stepsOverride list (repeatable add another)", () => {
+      markComplete(FORM_ID, "step-1", "step-2", "step-3", "check-your-answers");
+      const result = renderReturning();
+      const withInstance = [
+        step("step-1"),
+        step("step-1~1"),
+        ...formSteps.slice(1),
+      ];
+      act(() => result.current.completeAndContinue("step-1", withInstance));
+      expect(lastSearch()).toEqual(
+        expect.objectContaining({ step: "step-1~1" }),
+      );
+    });
+
+    it("without the flag, still advances to the next step", () => {
+      markComplete(FORM_ID, "step-2", "step-3", "check-your-answers");
+      const { result } = renderHook(() =>
+        useStepGuard({
+          formId: FORM_ID,
+          activeSteps: formSteps,
+          currentStepId: "step-1",
+        }),
+      );
+      mockNavigate.mockClear();
+      act(() => result.current.completeAndContinue("step-1"));
+      expect(lastSearch()).toEqual(expect.objectContaining({ step: "step-2" }));
+    });
+
+    it("does not re-judge the step the applicant just completed", () => {
+      // It has just passed the on-screen validators; a second opinion from the
+      // off-screen check must not be able to bounce them back onto it.
+      markComplete(FORM_ID, "step-2", "step-3", "check-your-answers");
+      const result = renderReturning((s) => s.stepId !== "step-1");
+      act(() => result.current.completeAndContinue("step-1"));
+      expect(lastSearch()).toEqual(
+        expect.objectContaining({ step: "check-your-answers" }),
+      );
+    });
+
+    it("never loops between two steps the validity check rejects", () => {
+      // If the off-screen check disagrees with the on-screen validators for
+      // two steps, re-judging earlier ones would bounce step-2 ↔ step-3
+      // forever. Validity is only judged ahead of the step just completed.
+      markComplete(FORM_ID, "step-1", "step-2", "step-3", "check-your-answers");
+      const result = renderReturning(
+        (s) => s.stepId !== "step-2" && s.stepId !== "step-3",
+      );
+      act(() => result.current.completeAndContinue("step-1"));
+      expect(lastSearch()).toEqual(expect.objectContaining({ step: "step-2" }));
+      act(() => result.current.completeAndContinue("step-2"));
+      expect(lastSearch()).toEqual(expect.objectContaining({ step: "step-3" }));
+      act(() => result.current.completeAndContinue("step-3"));
+      expect(lastSearch()).toEqual(
+        expect.objectContaining({ step: "check-your-answers" }),
+      );
+    });
+
+    it("still stops at an incomplete step behind the one just completed", () => {
+      // Completion is checked everywhere; only validity is forward-only.
+      markComplete(FORM_ID, "step-2", "step-3", "check-your-answers");
+      const result = renderReturning();
+      act(() => result.current.completeAndContinue("step-3"));
+      expect(lastSearch()).toEqual(expect.objectContaining({ step: "step-1" }));
+    });
+
+    it("advances normally on a form with no check-your-answers step", () => {
+      const noReview = [step("step-1"), step("step-2")];
+      const { result } = renderHook(() =>
+        useStepGuard({
+          formId: FORM_ID,
+          activeSteps: noReview,
+          currentStepId: "step-1",
+          returnToReview: true,
+        }),
+      );
+      mockNavigate.mockClear();
+      act(() => result.current.completeAndContinue("step-1"));
+      expect(lastSearch()).toEqual(expect.objectContaining({ step: "step-2" }));
+    });
+
+    it("keeps the flag when going Previous mid-change, so Continue still returns", () => {
+      markComplete(FORM_ID, "step-1", "step-2", "step-3", "check-your-answers");
+      const result = renderReturning();
+      act(() => result.current.navigateToStep("step-1"));
+      expect(lastSearch({ returnTo: "check-your-answers" })).toEqual({
+        step: "step-1",
+        returnTo: "check-your-answers",
+      });
+    });
+
+    it.each(["check-your-answers", "declaration"])(
+      "ignores the flag when completing %s (only steps before the review return)",
+      (stepId) => {
+        // e.g. a hand-edited ?step=declaration&returnTo=… link. On submit the
+        // completion records are already cleared, so a return scan would send
+        // a submitted applicant to an empty step 1 instead of confirmation.
+        const result = renderReturning();
+        const withConfirmation = [
+          ...formSteps,
+          step("submission-confirmation"),
+        ];
+        act(() => result.current.completeAndContinue(stepId, withConfirmation));
+        const next =
+          withConfirmation[
+            withConfirmation.findIndex((s) => s.stepId === stepId) + 1
+          ].stepId;
+        expect(lastSearch()).toEqual(expect.objectContaining({ step: next }));
+      },
+    );
+
+    it("navigating to check-your-answers by any route drops the flag", () => {
+      markComplete(FORM_ID, "step-1", "step-2", "step-3", "check-your-answers");
+      const result = renderReturning();
+      act(() => result.current.navigateToStep("check-your-answers"));
+      expect(lastSearch({ returnTo: "check-your-answers" })).toEqual({
+        step: "check-your-answers",
+        returnTo: undefined,
+      });
+    });
+  });
+
   describe("guard effect — rule 1 (no step in URL)", () => {
     it("navigates to the first incomplete step when currentStepId is empty", () => {
       renderHook(() =>
@@ -288,6 +468,166 @@ describe("useStepGuard", () => {
         }),
       );
       expect(mockNavigate).not.toHaveBeenCalled();
+    });
+  });
+});
+
+// The issue's own example, end to end through the real visibility and
+// validation code (only the router is mocked): switching "Are you the
+// property owner?" from Yes to No reveals a separate owner-details step via
+// stepConditionalOn, and the return from Change must stop there first.
+describe("issue #2812 scenario — a Change reveals a step via stepConditionalOn", () => {
+  const field = (stepId: string, fieldId: string): ClientPrimitive => ({
+    id: `${stepId}_${fieldId}`,
+    fieldId,
+    stepId,
+    name: fieldId,
+    label: fieldId,
+    htmlType: "text",
+    disabled: false,
+    hidden: false,
+    conditionallyHidden: false,
+    validations: { required: { value: true, error: `${fieldId} is required` } },
+  });
+  const allSteps: ClientFormStep[] = [
+    {
+      stepId: "application",
+      title: "Application",
+      fields: [field("application", "type")],
+    },
+    {
+      stepId: "property-owner",
+      title: "Owner",
+      fields: [field("property-owner", "is-owner")],
+    },
+    {
+      stepId: "owner-details",
+      title: "Owner details",
+      fields: [field("owner-details", "owner-name")],
+      behaviours: [
+        {
+          type: "stepConditionalOn",
+          targetStepId: "property-owner",
+          targetFieldId: "is-owner",
+          operator: "equal",
+          value: "no",
+        },
+      ],
+    },
+    {
+      stepId: "property-details",
+      title: "Property",
+      fields: [field("property-details", "address")],
+    },
+    { stepId: "check-your-answers", title: "Check your answers", fields: [] },
+    { stepId: "declaration", title: "Declaration", fields: [] },
+  ];
+  const formApiWith = (values: Record<string, unknown>) =>
+    ({
+      state: { values },
+      getFieldValue: (id: string) => values[id],
+    }) as unknown as AnyFormApi;
+
+  function changeOwnerAnswerTo(isOwner: "yes" | "no") {
+    // First pass answered Yes: owner-details was hidden and never completed.
+    markComplete(
+      FORM_ID,
+      "application",
+      "property-owner",
+      "property-details",
+      "check-your-answers",
+    );
+    const formApi = formApiWith({
+      application_type: "new",
+      "property-owner_is-owner": isOwner,
+      "property-details_address": "1 Bay Street",
+    });
+    const activeSteps = getVisibleSteps(allSteps, formApi);
+    const { result } = renderHook(() =>
+      useStepGuard({
+        formId: FORM_ID,
+        activeSteps,
+        currentStepId: "property-owner",
+        returnToReview: true,
+        isStepValid: (s) => stepPassesValidation(s, formApi),
+      }),
+    );
+    mockNavigate.mockClear();
+    return { result, activeSteps };
+  }
+  const search = () =>
+    (
+      mockNavigate.mock.calls.at(-1)?.[0] as {
+        search: (p: Record<string, unknown>) => Record<string, unknown>;
+      }
+    ).search({ returnTo: "check-your-answers" });
+
+  it("Yes → No: stops on the newly revealed owner-details step, then returns to the review", () => {
+    const { result, activeSteps } = changeOwnerAnswerTo("no");
+    expect(activeSteps.map((s) => s.stepId)).toContain("owner-details");
+
+    act(() => result.current.completeAndContinue("property-owner"));
+    expect(search()).toEqual({
+      step: "owner-details",
+      returnTo: "check-your-answers",
+    });
+
+    act(() => result.current.completeAndContinue("owner-details"));
+    expect(search()).toEqual({
+      step: "check-your-answers",
+      returnTo: undefined,
+    });
+  });
+
+  it("stops on a revealed step even when it has no required questions", () => {
+    // Validity can't catch this one, so it isolates the issue's rule: the
+    // first newly revealed *incomplete* step comes before the review.
+    const optionalOnly = allSteps.map((s) =>
+      s.stepId === "owner-details"
+        ? {
+            ...s,
+            fields: s.fields.map((f) => ({ ...f, validations: undefined })),
+          }
+        : s,
+    );
+    markComplete(
+      FORM_ID,
+      "application",
+      "property-owner",
+      "property-details",
+      "check-your-answers",
+    );
+    const formApi = formApiWith({
+      application_type: "new",
+      "property-owner_is-owner": "no",
+      "property-details_address": "1 Bay Street",
+    });
+    const activeSteps = getVisibleSteps(optionalOnly, formApi);
+    const { result } = renderHook(() =>
+      useStepGuard({
+        formId: FORM_ID,
+        activeSteps,
+        currentStepId: "property-owner",
+        returnToReview: true,
+        isStepValid: (s) => stepPassesValidation(s, formApi),
+      }),
+    );
+    mockNavigate.mockClear();
+    act(() => result.current.completeAndContinue("property-owner"));
+    expect(search()).toEqual({
+      step: "owner-details",
+      returnTo: "check-your-answers",
+    });
+  });
+
+  it("an unchanged Yes reveals nothing and goes straight back to the review", () => {
+    const { result, activeSteps } = changeOwnerAnswerTo("yes");
+    expect(activeSteps.map((s) => s.stepId)).not.toContain("owner-details");
+
+    act(() => result.current.completeAndContinue("property-owner"));
+    expect(search()).toEqual({
+      step: "check-your-answers",
+      returnTo: undefined,
     });
   });
 });

@@ -273,6 +273,73 @@ describe("POST /builder/registry/validate — catchment routing needs a mapped w
   });
 });
 
+// #2713: the Deploy-gate half of `pnpm validate-recipes`' override-key guard.
+// The legacy Deploy sends the draft's overrides verbatim and commits them as
+// sent, so an unknown key the schema parse would strip must be caught here, on
+// the raw recipe, or it lands in the committed file and silently does nothing.
+describe("POST /builder/registry/validate — unknown override keys", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getFullCatalogMock.mockResolvedValue(getCatalog());
+  });
+
+  it("rejects an override key the schema does not know", async () => {
+    const recipe = makeRecipe([
+      {
+        ref: "components/generic-text",
+        overrides: {
+          fieldId: "employer-name",
+          label: "Employer name",
+          readonly: true,
+          validations: {
+            required: { value: true, error: "Employer name is required" },
+          },
+        },
+      },
+    ]);
+    const res = mockRes();
+
+    await validateHandler({ body: { recipe } } as Request, res);
+
+    expect(res.body).toEqual({
+      ok: false,
+      issues: [
+        {
+          path: "steps",
+          message:
+            'step "step-1" › field "employer-name" › unknown override key "readonly" — dropped at parse, it has no effect',
+        },
+      ],
+    });
+  });
+
+  it("reports an unknown key together with a later layer's issue", async () => {
+    const recipe = makeRecipe([
+      { ref: "components/generic-text", overrides: { readonly: true } },
+      { ref: "components/this-does-not-exist" },
+    ]);
+    const res = mockRes();
+
+    await validateHandler({ body: { recipe } } as Request, res);
+
+    expect(res.body).toEqual({
+      ok: false,
+      issues: [
+        {
+          path: "steps",
+          message:
+            'step "step-1" › field "components/generic-text" › unknown override key "readonly" — dropped at parse, it has no effect',
+        },
+        {
+          path: "steps[step-1].elements[1].ref",
+          message:
+            'Unknown component/block ref "components/this-does-not-exist"',
+        },
+      ],
+    });
+  });
+});
+
 // The kebab-case id rule lives in the shared schema (kebabIdSchema, issues
 // #741/#745) and reaches this endpoint for free because validateHandler
 // funnels the recipe through validateFormContract before any catalog work.
