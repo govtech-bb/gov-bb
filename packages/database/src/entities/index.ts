@@ -34,3 +34,4 @@ export {
   WaterSubscriberStatus,
 } from "./water-subscriber.entity";
 export { WaterSentAlertEntity } from "./water-sent-alert.entity";
+export { WaterOpsAlertEntity } from "./water-ops-alert.entity";
