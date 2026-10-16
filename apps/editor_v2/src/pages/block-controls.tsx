@@ -94,12 +94,19 @@ function $blockSelection(selection: BaseSelection | null, block: LexicalNode) {
   return $rootBlock(anchor)?.getKey() === block.getKey() ? selection : null;
 }
 
+function $pageBlockDescendant(key: string | null, block: LexicalNode) {
+  const node = key ? $getNodeByKey(key) : null;
+
+  return node?.isAttached() && $rootBlock(node)?.is(block) ? node : null;
+}
+
 type Rail = { key: string; top: number };
 
 type OpenMenu = {
   kind: "insert" | "block";
   anchor: HTMLElement;
   key: string | null;
+  contextKey: string | null;
   selection: BaseSelection | null;
 };
 
@@ -116,6 +123,7 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
   const [empty, setEmpty] = useState(false);
   const [menu, setMenu] = useState<OpenMenu | null>(null);
   const hovered = useRef<string | null>(null);
+  const hoveredContext = useRef<string | null>(null);
   const caret = useRef<string | null>(null);
   const savedSelection = useRef<BaseSelection | null>(null);
 
@@ -179,7 +187,14 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
       if (!(target instanceof Node) || !editor.getRootElement()?.contains(target)) return;
       editor.getEditorState().read(
         () => {
-          hovered.current = $rootBlock($getNearestNodeFromDOMNode(target))?.getKey() ?? null;
+          const node = $getNearestNodeFromDOMNode(target);
+          const block = $rootBlock(node);
+          const previous = hoveredContext.current ? $getNodeByKey(hoveredContext.current) : null;
+          hovered.current = block?.getKey() ?? null;
+
+          // Crossing ancestor padding to the root rail must retain the nested settings target.
+          if (!node || !previous?.isAttached() || !node.isParentOf(previous))
+            hoveredContext.current = block ? (node?.getKey() ?? null) : null;
         },
         { editor },
       );
@@ -188,6 +203,7 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
 
     const onLeave = () => {
       hovered.current = null;
+      hoveredContext.current = null;
       measure();
     };
 
@@ -225,6 +241,7 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
       kind,
       anchor: element,
       key: target,
+      contextKey: kind === "block" ? hoveredContext.current : null,
       selection: savedSelection.current?.clone() ?? null,
     });
   };
@@ -411,9 +428,9 @@ function PageBlockMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void 
 
       const selection = $blockSelection(menu.selection, block);
 
-      let node: LexicalNode | null = $isRangeSelection(selection)
-        ? $getNodeByKey(selection.anchor.key)
-        : block;
+      let node: LexicalNode | null =
+        $pageBlockDescendant(menu.contextKey, block) ??
+        ($isRangeSelection(selection) ? $getNodeByKey(selection.anchor.key) : block);
 
       let component: PageComponentNode | null = null;
       let list = $isListNode(block);
@@ -515,8 +532,8 @@ function PageBlockMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void 
               <ComponentSettings
                 component={model.component}
                 onChange={(patch) =>
-                  change(() => {
-                    const node = $getNodeByKey(model.component!.key);
+                  change((block) => {
+                    const node = $pageBlockDescendant(model.component!.key, block);
 
                     if (node instanceof PageComponentNode)
                       node.setAttributes({ ...node.getAttributes(), ...patch });
@@ -529,8 +546,8 @@ function PageBlockMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void 
                 <PageMenuRow
                   icon={<Plus />}
                   onClick={() =>
-                    change(() => {
-                      const node = $getNodeByKey(model.component!.key);
+                    change((block) => {
+                      const node = $pageBlockDescendant(model.component!.key, block);
 
                       if (!(node instanceof PageComponentNode)) return;
 
