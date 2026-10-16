@@ -33,7 +33,7 @@ The dialect, migrations and preservation checks require ongoing maintenance. Com
 ## Evidence
 
 - [Markdown format and supported syntax](../MARKDOWN.md).
-- [Canonical writer and preservation check](../../src/converters/lexicalToMarkdown/index.ts).
-- [Isolated source preparation](../../src/converters/markdownToLexical/index.ts).
+- [Canonical writer and preservation check](../../src/converters/lexical-to-form-markdown.ts).
+- [Isolated source preparation](../../src/converters/form-markdown-to-lexical.ts).
 - [Draft fidelity and malformed-source tests](../../tests/forms/markdown.test.ts).
 - [Native bindings and migration preservation tests](../../tests/forms/native-form-markdown.test.ts).

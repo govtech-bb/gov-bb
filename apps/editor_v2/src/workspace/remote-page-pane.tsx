@@ -2,36 +2,34 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useBlocker, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import type { ApiPage, EditorApi } from "../api/client";
-import { pageToMarkdown, pickerCategories } from "../api/page-markdown";
+import { pageToMarkdown, pickerCategories, pageFieldLabel } from "../api/page-markdown";
 import { pageQuery, taxonomyQuery } from "../api/queries";
 import { browserDraftStorage } from "../host/govbb-draft";
 import { PageDraftEditor } from "../host/page-editor";
 import { download } from "../host/source-ui";
 import { readPageMetadata } from "../pages";
 import { Button } from "../ui/button";
-import { PageHistoryDialog } from "./api-history";
+import { PageHistoryDialog } from "./page-history-dialog";
 import {
-  apiPageDocument,
-  parseServerBase,
-  roleOf,
-  savePage,
-  seedApiPage,
-  serverBaseKey,
-  writeServerBase,
-  fieldLabel,
-  type ServerBase,
-} from "./api-pages";
+  parseServerPageBaseline,
+  savePageDraft,
+  seedPageDraftFromServer,
+  serverPageBaselineKey,
+  writeServerPageBaseline,
+  type ServerPageBaseline,
+} from "./page-sync";
+import { pageDocumentFromApi, inferServicePageRole } from "./service-pages";
 import { openDocument } from "./documents";
 import { flushDocument } from "./model";
 
 const baseListeners = new Set<() => void>();
 
 /** Tell this tab's readers that a server copy changed; other tabs hear the storage event. */
-export function notifyServerBase() {
+export function notifyServerPageBaseline() {
   for (const listener of baseListeners) listener();
 }
 
-function subscribeServerBase(listener: () => void) {
+function subscribeServerPageBaseline(listener: () => void) {
   baseListeners.add(listener);
   window.addEventListener("storage", listener);
 
@@ -42,16 +40,24 @@ function subscribeServerBase(listener: () => void) {
 }
 
 /** The server copy of a page this browser holds, current across tabs. */
-export function useServerBase(id: string) {
-  const source = useSyncExternalStore(subscribeServerBase, () =>
-    window.localStorage.getItem(serverBaseKey(id)),
+export function useServerPageBaseline(id: string) {
+  const source = useSyncExternalStore(subscribeServerPageBaseline, () =>
+    window.localStorage.getItem(serverPageBaselineKey(id)),
   );
 
-  return useMemo(() => parseServerBase(source, id), [source, id]);
+  return useMemo(() => parseServerPageBaseline(source, id), [source, id]);
 }
 
 /** A page from the content API, placed in its browser draft before the editor opens it. */
-export function ApiPagePane({ api, id, active }: { api: EditorApi; id: string; active: boolean }) {
+export function RemotePagePane({
+  api,
+  id,
+  active,
+}: {
+  api: EditorApi;
+  id: string;
+  active: boolean;
+}) {
   const client = useQueryClient();
 
   // Seeding writes the draft before its store first reads it, once per page per session.
@@ -63,8 +69,8 @@ export function ApiPagePane({ api, id, active }: { api: EditorApi; id: string; a
         client.ensureQueryData(taxonomyQuery(api)),
       ]);
 
-      seedApiPage(browserDraftStorage, page, categories);
-      notifyServerBase();
+      seedPageDraftFromServer(browserDraftStorage, page, categories);
+      notifyServerPageBaseline();
 
       return page;
     },
@@ -91,29 +97,40 @@ export function ApiPagePane({ api, id, active }: { api: EditorApi; id: string; a
       </section>
     ) : null;
 
-  return <ApiPageEditor api={api} page={opened.data} active={active} />;
+  return <RemotePageEditor api={api} page={opened.data} active={active} />;
 }
 
 const noticeClass = "page-document-paused flex flex-wrap items-center gap-x-3 gap-y-2";
 
-function ApiPageEditor({ api, page, active }: { api: EditorApi; page: ApiPage; active: boolean }) {
+function RemotePageEditor({
+  api,
+  page,
+  active,
+}: {
+  api: EditorApi;
+  page: ApiPage;
+  active: boolean;
+}) {
   const [store] = useState(() =>
-    openDocument(apiPageDocument({ ...page, role: roleOf(page) }), browserDraftStorage),
+    openDocument(
+      pageDocumentFromApi({ ...page, role: inferServicePageRole(page) }),
+      browserDraftStorage,
+    ),
   );
 
   const client = useQueryClient();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const draft = useSyncExternalStore(store.subscribe, store.getSnapshot);
-  const base = useServerBase(page.id);
+  const base = useServerPageBaseline(page.id);
   const categories = useQuery(taxonomyQuery(api)).data ?? [];
   const server = useQuery(pageQuery(api, page.id)).data ?? page;
   const [failure, setFailure] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const save = useMutation({
-    mutationFn: (current: { base: ServerBase; markdown: string }) =>
-      savePage(api, current.base, current.markdown, categories),
+    mutationFn: (current: { base: ServerPageBaseline; markdown: string }) =>
+      savePageDraft(api, current.base, current.markdown, categories),
     onSuccess: (outcome) => {
       if (outcome.kind === "saved") {
         rebase(outcome.base);
@@ -170,9 +187,9 @@ function ApiPageEditor({ api, page, active }: { api: EditorApi; page: ApiPage; a
 
   const errors = outcome?.kind === "invalid" ? outcome.errors : [];
 
-  const rebase = (next: ServerBase) => {
-    writeServerBase(browserDraftStorage, next);
-    notifyServerBase();
+  const rebase = (next: ServerPageBaseline) => {
+    writeServerPageBaseline(browserDraftStorage, next);
+    notifyServerPageBaseline();
   };
 
   const saveDraft = () => {
@@ -213,7 +230,7 @@ function ApiPageEditor({ api, page, active }: { api: EditorApi; page: ApiPage; a
       <ul className="mt-1 list-disc ps-5">
         {errors.map((error) => (
           <li key={`${error.field}:${error.message}`}>
-            {fieldLabel(error.field)}: {error.message}
+            {pageFieldLabel(error.field)}: {error.message}
           </li>
         ))}
       </ul>

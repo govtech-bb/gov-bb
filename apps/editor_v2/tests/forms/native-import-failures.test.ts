@@ -3,8 +3,8 @@ import { COMMAND_PRIORITY_EDITOR, createCommand, type LexicalEditor } from "lexi
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { installedEditorDefinition } from "../../src/editor/core/context";
 import { setEditorReadOnly } from "../../src/editor/core/editability";
-import { formSchemaToLexical } from "../../src/converters/formSchemaToLexical";
-import { lexicalToFormSchema } from "../../src/converters/lexicalToFormSchema";
+import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
+import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
 import { defineFormEditor } from "../../src/forms/definition";
 import type { FormModule } from "../../src/forms/field";
 import type { AnyFormDefinition } from "../../src/forms/schema";

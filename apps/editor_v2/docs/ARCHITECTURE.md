@@ -42,7 +42,7 @@ src/presets                  selected modules and built-in Form registry data
 src/persistence              storage-independent draft state machine
 src/host                     browser storage/events and application binding
 src/workspace                service/document index, navigation and document creation/import
-src/api                      api_v2 content reads, such as the services list
+src/api                      api_v2 transport, query options and page/Markdown adaptation
 src/ui/table                 shared list table: features and components once; each list adds columns and data
 src/routes                   TanStack routes and server-safe document shell
 ```
@@ -98,6 +98,10 @@ The host owns `localStorage`, storage/page lifecycle listeners and copy/download
 
 ## Service pages and workspace
 
+`workspace/page-sync.ts` reconciles a remote page with its browser draft and saves it with optimistic concurrency. Its `ServerPageBaseline` is the last server copy held by this browser, not server-side execution. `workspace/service-pages.ts` maps API pages to workspace document references and their display order. `api/page-markdown.ts` owns page/save-input conversion and selective version restoration. These modules reuse the existing API client and draft storage; they do not introduce another service or persistence layer.
+
+Workspace references (`WorkspaceFormDocument`, `PageDocument`, `WorkspaceService`) are navigation metadata, not the form Markdown AST or API service DTOs. `ServicePageRole` describes entry/start/supporting content; the form schema's `PageRole` describes questions/review/declaration/confirmation/result pages.
+
 Authoring controls share the form builder's visual primitives in `src/ui`: buttons, block grips, menu rows, popup panels and settings fields. Page layout, content spacing and insertion choices are specific to writing. Page drag/drop moves whole root content blocks; form drag/drop retains its question grouping and nesting rules. Neither editor imports the other's document structure.
 
 `definePageEditor` extends the kernel definition with installed Markdown handlers. Each page module supplies its supported syntax, Lexical import/export and safe preview rendering. The GovBB preset combines page metadata, text, components, native Lexical lists/tables and shared history, links and formatting. A list-item subclass preserves separate paragraphs within numbered instructions; form list nodes remain unchanged.
@@ -105,6 +109,8 @@ Authoring controls share the form builder's visual primitives in `src/ui`: butto
 Page metadata lives in a hidden document node, retaining its YAML document, original source and initial canonical fingerprint. Editing the title shares the body's undo and save operation. Export returns original bytes until content or metadata changes; afterwards it normalizes Markdown without discarding unknown YAML fields, link targets or body structure. Unsupported content makes the whole page source-only, so conversion cannot silently flatten part of it.
 
 The workspace index stores services and document references, roles, navigation labels and storage keys. Page content remains in its draft; form content remains in its existing contract. Services support an entry page, optional start page, supporting pages and one application form or calculator. The host retains independent document sessions, flushes changes before navigation and preserves unapplied source. The initial workspace attaches existing local form drafts without rewriting their stored documents. [ADR 0007](decisions/0007-service-workspaces-and-markdown-pages.md) records these boundaries.
+
+Remote page sessions live in `workspace/remote-page-pane.tsx`; page history and service-page navigation have their own purpose-named UI modules. `remote-page-dialogs.tsx` performs API-backed creation/deletion; `local-document-dialogs.tsx` creates/imports browser-local documents. Both reuse the presentation-only shell in `workspace-dialog.tsx`. Component names describe this distinction without changing product labels or routes.
 
 ## Extension proofs
 

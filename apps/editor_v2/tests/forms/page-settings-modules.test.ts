@@ -2,12 +2,17 @@ import { expect, test } from "vitest";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { defineFormEditor } from "../../src/forms/definition";
 import { govbbFormEditor, govbbFormModules } from "../../src/presets/govbb-form";
-import { markdownToLexical } from "../../src/converters/markdownToLexical";
+import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
 import { $setFormSettings } from "../../src/forms/editor/form-metadata";
 import { TextModule } from "../../src/editor/modules/text/module";
 import { WidgetNode } from "../../src/forms/editor/answer-nodes";
 import { createFormRuntime } from "../../src/forms/editor/runtime";
-import { createDraftCodec, initialDraft, MARKDOWN_KEY, WORKING_KEY } from "../helpers/default-form";
+import {
+  createFormDraftCodec,
+  initialDraft,
+  MARKDOWN_KEY,
+  WORKING_KEY,
+} from "../helpers/default-form";
 
 const source =
   "---\nformat: govbb-form\nformatVersion: 2\ntitle: Page contracts\n---\n\n# First page\n\n::page{#first}\n\n::text[Name]{#name required}\n\n---\n\n# Next page\n\n::page{#next}\n\nSome text\n";
@@ -46,7 +51,7 @@ test("removing pages removes page actions and rejects saved page structure witho
     expect(definition.actions.some((action) => action.id === id)).toBe(false);
   expect(definition.renderers.some((renderer) => renderer.key === "widget:page-break")).toBe(false);
   expect(definition.nodes.some((node) => node.type === "form-title")).toBe(false);
-  const parsed = markdownToLexical(source, definition);
+  const parsed = formMarkdownToLexical(source, definition);
   expect(parsed.state).toBeUndefined();
   expect(parsed.original).toBe(source);
   expect(parsed.diagnostics.some((issue) => issue.severity === "fatal")).toBe(true);
@@ -82,7 +87,7 @@ test("removing pages removes page actions and rejects saved page structure witho
     () => {
       throw Error("Unavailable pages must not load a demo");
     },
-    createDraftCodec(runtime),
+    createFormDraftCodec(runtime),
     runtime,
   );
 
@@ -92,11 +97,11 @@ test("removing pages removes page actions and rejects saved page structure witho
   expect(recovery.snapshot.source).toBe(working);
   expect(values.get(MARKDOWN_KEY)).toBe(source);
   expect(values.get(WORKING_KEY)).toBe(working);
-  expect(markdownToLexical(source, govbbFormEditor).state).toBeDefined();
+  expect(formMarkdownToLexical(source, govbbFormEditor).state).toBeDefined();
 });
 
 test("form metadata mutations respect readonly state and belong to one editor", () => {
-  const state = markdownToLexical(source, govbbFormEditor).state!;
+  const state = formMarkdownToLexical(source, govbbFormEditor).state!;
 
   const first = createHeadlessEditor(govbbFormEditor, state),
     second = createHeadlessEditor(govbbFormEditor, state);

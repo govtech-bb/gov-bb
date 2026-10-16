@@ -17,4 +17,4 @@ export type {
 
 export { legacyFieldAdapter, legacyContentAdapter } from "./editor/legacy-mappings";
 
-export { lexicalToLegacySsb } from "../converters/lexicalToLegacySsb";
+export { lexicalToLegacySsb } from "../converters/lexical-to-legacy-ssb";

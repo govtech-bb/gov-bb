@@ -43,7 +43,7 @@ import {
   TextModule,
 } from "../editor";
 import {
-  createDraftCodec,
+  createFormDraftCodec,
   createFormRuntime,
   formContentModule,
   defineFormEditor,
@@ -118,4 +118,4 @@ export const govbbFormEditor = defineFormEditor({ modules: govbbFormModules });
 
 export const govbbFormRuntime = createFormRuntime(govbbFormEditor);
 
-export const govbbFormCodec = createDraftCodec(govbbFormRuntime);
+export const govbbFormCodec = createFormDraftCodec(govbbFormRuntime);

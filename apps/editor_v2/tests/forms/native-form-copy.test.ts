@@ -3,10 +3,10 @@ import { $getRoot, UNDO_COMMAND, REDO_COMMAND } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { registerEditorHistory } from "../../src/editor/core/history";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
-import { formSchemaToLexical } from "../../src/converters/formSchemaToLexical";
-import { lexicalToFormSchema } from "../../src/converters/lexicalToFormSchema";
-import { lexicalToMarkdown } from "../../src/converters/lexicalToMarkdown";
-import { markdownToLexical } from "../../src/converters/markdownToLexical";
+import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
+import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
+import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
+import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
 import {
   $duplicateBlocks,
   $duplicateQuestion,
@@ -97,8 +97,8 @@ test("native whole-question copies preserve typed values and hints, with one und
     await Promise.resolve();
     expect(questions(exported(editor))[1]).toEqual(copy);
 
-    const markdown = lexicalToMarkdown(editor.getEditorState().toJSON(), govbbFormEditor),
-      parsed = markdownToLexical(markdown, govbbFormEditor);
+    const markdown = lexicalToFormMarkdown(editor.getEditorState().toJSON(), govbbFormEditor),
+      parsed = formMarkdownToLexical(markdown, govbbFormEditor);
 
     expect(parsed.state).toBeDefined();
     const reloaded = createHeadlessEditor(govbbFormEditor, parsed.state!);
@@ -196,8 +196,8 @@ test("pasting an option into another question adopts its identity and allocates 
     await Promise.resolve();
     expect(exported(editor)).toEqual(after);
 
-    const markdown = lexicalToMarkdown(editor.getEditorState().toJSON(), govbbFormEditor),
-      parsed = markdownToLexical(markdown, govbbFormEditor);
+    const markdown = lexicalToFormMarkdown(editor.getEditorState().toJSON(), govbbFormEditor),
+      parsed = formMarkdownToLexical(markdown, govbbFormEditor);
 
     expect(parsed.state).toBeDefined();
     const reloaded = createHeadlessEditor(govbbFormEditor, parsed.state!);

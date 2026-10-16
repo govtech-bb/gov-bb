@@ -2,10 +2,10 @@ import { expect, test } from "vitest";
 import { $getRoot } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
-import { formSchemaToLexical } from "../../src/converters/formSchemaToLexical";
-import { lexicalToFormSchema } from "../../src/converters/lexicalToFormSchema";
-import { lexicalToMarkdown } from "../../src/converters/lexicalToMarkdown";
-import { markdownToLexical } from "../../src/converters/markdownToLexical";
+import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
+import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
+import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
+import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
 import {
   $setNativeErrorMessage,
   nativeErrorMessages,
@@ -115,8 +115,8 @@ test("native message controls read and edit by rule ID, including separate date 
       ),
     );
 
-    const source = lexicalToMarkdown(editor.getEditorState().toJSON(), govbbFormEditor);
-    const parsed = markdownToLexical(source, govbbFormEditor);
+    const source = lexicalToFormMarkdown(editor.getEditorState().toJSON(), govbbFormEditor);
+    const parsed = formMarkdownToLexical(source, govbbFormEditor);
     expect(parsed.diagnostics).toEqual([]);
 
     if (!parsed.state) throw Error("Missing parsed state");

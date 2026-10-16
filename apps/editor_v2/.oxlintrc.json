@@ -64,7 +64,7 @@
     },
     {
       "files": [
-        "src/converters/formSchemaToLexical/index.ts"
+        "src/converters/form-schema-to-lexical.ts"
       ],
       "rules": {
         "anti-slop/no-unknown-parameters": "off"
@@ -863,7 +863,7 @@
     {
       "files": [
         "src/api/page-markdown.ts",
-        "src/workspace/api-pages.ts"
+        "src/workspace/page-sync.ts"
       ],
       "rules": {
         "anti-slop/no-runtime-typeof": "off"

@@ -53,6 +53,8 @@ The runner resolves an existing `playwright` or `playwright-core` installation, 
 
 App UI suites supply an employee session at the HTTP boundary through `scripts/browser/auth-fixture.mjs`; production has no authentication bypass. `authentication.mjs` separately exercises anonymous automatic login, callback confirmation, cancellation, unavailable authentication, sign-out and preservation of drafts that cannot be saved, using intercepted API/GitHub HTTP responses. Real GitHub consent and deployment cookies require a configured deployment smoke test.
 
+`remote-page-editing.mjs` intercepts the content API to verify remote page editing, optimistic save conflicts, selective history restoration and storage/reload preservation. `service-workspace.mjs` separately covers browser-local services and documents; it is not remote-save coverage.
+
 Pass suite names after the URL to run a subset:
 
 ```sh
@@ -83,6 +85,41 @@ The API's types in `src/api/openapi.d.ts` are generated from `apps/api_v2/openap
 Keep these keys stable when changing persistence. Unapplied source must survive reload, failed imports must retain the original input, and JSON replacement must retain the previous draft until recovery completes. Apply validates before replacing editor state. A storage failure must leave the unsaved work available for retry; conflicts between tabs require an explicit choice.
 
 Native IDs, answer keys, option values and Markdown anchors have different roles. Copying content remaps references and identities while retaining submitted values and opaque strings. See [Converters](CONVERTERS.md) for the preservation rules.
+
+## Source import migration
+
+The naming refactor changes repository source paths and symbols, not HTTP APIs or saved data. Existing barrel paths (`src/editor`, `src/forms`, `src/pages`, `src/host`) remain. No tracked source consumers were found outside this app; unknown external source consumers must update their imports using the map below. No blanket compatibility aliases were added.
+
+Paths below are relative to `src`. Symbols not listed as renamed keep their names.
+
+| Previous source | Current source |
+| --- | --- |
+| `workspace/api-pages.ts` synchronization | `workspace/page-sync.ts`: `ServerBase` → `ServerPageBaseline`, `SaveOutcome` → `PageSaveOutcome`, `serverBaseKey` → `serverPageBaselineKey`, `parseServerBase` → `parseServerPageBaseline`, `writeServerBase` → `writeServerPageBaseline`, `seedApiPage` → `seedPageDraftFromServer`, workspace `savePage` → `savePageDraft` |
+| `workspace/api-pages.ts` service mapping | `workspace/service-pages.ts`: `apiPageDocument` → `pageDocumentFromApi`, `serviceDocuments` → `servicePageDocuments`, `roleOf` → `inferServicePageRole` |
+| `workspace/api-pages.ts` Markdown helpers | `api/page-markdown.ts`: `restoredMarkdown` → `pageVersionToDraftMarkdown`, `fieldLabel` → `pageFieldLabel` |
+| `workspace/api-page.tsx` | `workspace/remote-page-pane.tsx`: `ApiPagePane` → `RemotePagePane`, private `ApiPageEditor` → `RemotePageEditor`, `useServerBase` → `useServerPageBaseline`, `notifyServerBase` → `notifyServerPageBaseline` |
+| `workspace/api-service.tsx` | `workspace/service-pages-nav.tsx`: `ApiServiceNav` → `ServicePagesNav` |
+| `workspace/api-history.tsx` | `workspace/page-history-dialog.tsx`; `PageHistoryDialog` unchanged |
+| `workspace/api-dialogs.tsx` | `workspace/remote-page-dialogs.tsx`: `ApiServiceDialog` → `CreateRemoteServiceDialog`, `ApiPageDialog` → `CreateRemotePageDialog`, `DeletePageDialog` → `DeleteRemotePageDialog` |
+| `workspace/dialogs.tsx` | `workspace/local-document-dialogs.tsx`: `ServiceDialog` → `LocalServiceDialog`, `DocumentDialog` → `AddLocalDocumentDialog`; shared `WorkspaceDialog` moves to `workspace/workspace-dialog.tsx`, `inputClass` → `workspaceDialogInputClass` |
+| Workspace model types only | `FormDocument` → `WorkspaceFormDocument`, `PageRole` → `ServicePageRole`, `Service` → `WorkspaceService`; the form AST/schema types are unchanged |
+| `api/client.ts` input types | `NewPage` → `CreatePageInput`, `SaveFields` → `SavePageInput`; transport method `EditorApi.savePage` unchanged |
+| `api/page-markdown.ts` save conversion | `SaveFieldsResult` → `PageSaveInputResult`, `markdownToSaveFields` → `markdownToPageSaveInput` |
+| `api/queries.ts` | `historyQuery` → `pageHistoryQuery`, `versionQuery` → `estateVersionQuery`; cache keys and timing unchanged |
+| `converters/lexicalToMarkdown/index.ts` | `converters/lexical-to-form-markdown.ts`: `lexicalToMarkdown` → `lexicalToFormMarkdown` |
+| `converters/markdownToLexical/index.ts` | `converters/form-markdown-to-lexical.ts`: `markdownToLexical` → `formMarkdownToLexical` |
+| `converters/formSchemaToLexical/index.ts` | `converters/form-schema-to-lexical.ts` |
+| `converters/lexicalToFormSchema/index.ts` | `converters/lexical-to-form-schema.ts` |
+| `converters/lexicalToLegacySsb/index.ts` | `converters/lexical-to-legacy-ssb.ts` |
+| `converters/pageMarkdownToLexical/index.ts` | `converters/page-markdown-to-lexical.ts`; still re-exports the page implementation |
+| `converters/lexicalToPageMarkdown/index.ts` | `converters/lexical-to-page-markdown.ts`; still re-exports the page implementation |
+| `forms/editor/codec.ts` | `createDraftCodec` → `createFormDraftCodec` |
+| `host/form-schema-ui.tsx` | `host/form-json-dialog.tsx`: `FormSchemaEditor` → `FormJsonDialog` |
+| `ui/table/hook.ts` | `ui/table/table-hooks.ts`; exports unchanged |
+
+There is no data migration: `govbb-editor:documents:<id>:server` still stores `{ page, markdown }`, and all existing draft/workspace keys, schema versions and routes remain unchanged. The app/package/Nx names remain `apps/editor_v2`, `@govtech-bb/editor-v2`, `editor_v2` and `dev:editor_v2`. Backend naming is a separate future review.
+
+Historical probes such as `rb4.mjs`, `step3-ui.mjs`, `step5-ui.mjs` and other numbered browser scripts are deferred pending confirmation of their use. They and legacy fixtures are not renamed or counted as passing regression checks.
 
 ## Known issues
 

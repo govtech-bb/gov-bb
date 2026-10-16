@@ -5,7 +5,7 @@ import { createRoot } from "react-dom/client";
 import { Editor } from "../../src/editor/react/editor";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import { createFormRuntime } from "../../src/forms/editor/runtime";
-import { createDraftCodec } from "../../src/forms/editor/codec";
+import { createFormDraftCodec } from "../../src/forms/editor/codec";
 import {
   $blockId,
   $createFormTitleNode,
@@ -22,7 +22,7 @@ import { $createMentionNode } from "../../src/forms/features/mentions/node";
 
 const editors = new Map<string, LexicalEditor>();
 
-const codec = createDraftCodec(createFormRuntime(govbbFormEditor));
+const codec = createFormDraftCodec(createFormRuntime(govbbFormEditor));
 
 const fixture = {
   ready: () => editors.size === 2,

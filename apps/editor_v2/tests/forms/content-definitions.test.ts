@@ -8,10 +8,10 @@ import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { createFormRuntime } from "../../src/forms/editor/runtime";
 import { createFormSourceDialect } from "../../src/forms/source/dialect";
 import { govbbFormModules } from "../../src/presets/govbb-form";
-import { lexicalToLegacySsb } from "../../src/converters/lexicalToLegacySsb";
-import { markdownToLexical } from "../../src/converters/markdownToLexical";
+import { lexicalToLegacySsb } from "../../src/converters/lexical-to-legacy-ssb";
+import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
 import {
-  createDraftCodec,
+  createFormDraftCodec,
   initialDraft,
   MARKDOWN_KEY,
   WORKING_KEY,
@@ -179,7 +179,7 @@ test("content definitions freeze detached source metadata and keep converter cal
 test("a separately declared content node owns Markdown and legacy output without central kind edits", () => {
   const definition = configured(),
     runtime = createFormRuntime(definition),
-    codec = createDraftCodec(runtime);
+    codec = createFormDraftCodec(runtime);
 
   const prepared = codec.prepare(source),
     editor = createHeadlessEditor(definition, prepared.state, { prepare: false });
@@ -211,7 +211,7 @@ test("a separately declared content node owns Markdown and legacy output without
 test("content with no output adapter saves and reloads but reports unsupported legacy output", () => {
   const definition = configured(false),
     runtime = createFormRuntime(definition),
-    codec = createDraftCodec(runtime);
+    codec = createFormDraftCodec(runtime);
 
   const prepared = codec.prepare(source),
     editor = createHeadlessEditor(definition, prepared.state, { prepare: false });
@@ -236,7 +236,7 @@ test("content with no output adapter saves and reloads but reports unsupported l
 test("removing a content module retains canonical and working source for recovery", () => {
   const full = configured(),
     runtime = createFormRuntime(full),
-    codec = createDraftCodec(runtime);
+    codec = createFormDraftCodec(runtime);
 
   const canonical = codec.encode(codec.prepare(source).state),
     working = canonical + "\nUnapplied edit\n";
@@ -245,7 +245,7 @@ test("removing a content module retains canonical and working source for recover
     absentRuntime = createFormRuntime(absent);
 
   const storage = memory({ [MARKDOWN_KEY]: canonical, [WORKING_KEY]: working });
-  const loaded = initialDraft(storage, noDemo, createDraftCodec(absentRuntime), absentRuntime);
+  const loaded = initialDraft(storage, noDemo, createFormDraftCodec(absentRuntime), absentRuntime);
   expect(loaded.snapshot.valid).toBe(false);
   expect(loaded.state).toBeUndefined();
   expect(loaded.snapshot.recovery?.original).toBe(canonical);
@@ -284,7 +284,7 @@ test("retained NodeState cannot conceal an unavailable content subtype", () => {
     $: { widget: "conditional-logic" },
   });
   expect(() => definition.validateDocument(raw)).toThrow("conditional-logic");
-  const recovered = markdownToLexical(hidden, definition);
+  const recovered = formMarkdownToLexical(hidden, definition);
   expect(recovered.state).toBeUndefined();
   expect(recovered.original).toBe(hidden);
   expect(

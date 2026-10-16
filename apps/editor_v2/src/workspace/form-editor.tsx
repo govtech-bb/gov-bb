@@ -1,5 +1,5 @@
 import { FormEditor } from "../forms";
-import { FormComposer, DraftCanvas, SourceEditor, DraftStatus, FormSchemaEditor } from "../host";
+import { FormComposer, DraftCanvas, SourceEditor, DraftStatus, FormJsonDialog } from "../host";
 import { govbbFormEditor } from "../presets/govbb-form";
 import type { DraftStore } from "../persistence/draft-store";
 
@@ -15,7 +15,7 @@ export function WorkspaceFormEditor({ store, active }: { store: DraftStore; acti
           aria-label="Form tools"
         >
           <SourceEditor />
-          <FormSchemaEditor />
+          <FormJsonDialog />
           <span className="ms-auto font-normal">
             <DraftStatus />
           </span>

@@ -205,16 +205,24 @@ async function waitForHealthy(server: Server, child: ChildProcess) {
   throw new Error(`Server never became healthy:\n${server.stderr}`);
 }
 
-/** Runs a process to completion and hands back what it said and how it left. */
+/**
+ * Runs a compiled entry point under `dist/src` (`main.js` by default) to
+ * completion and hands back what it said and how it left.
+ */
 export async function runToExit(
   env: Record<string, string>,
+  { script = "main.js", args = [] }: { script?: string; args?: string[] } = {},
 ): Promise<{ code: number | null; output: string }> {
   assertBuilt();
-  const child = spawn(process.execPath, [entrypoint], {
-    cwd: root,
-    env: { ...process.env, ...AUTH_ENV, ...env },
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  const child = spawn(
+    process.execPath,
+    [join(root, "dist", "src", script), ...args],
+    {
+      cwd: root,
+      env: { ...process.env, ...AUTH_ENV, ...env },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
 
   let output = "";
   child.stdout?.on("data", (chunk) => (output += String(chunk)));

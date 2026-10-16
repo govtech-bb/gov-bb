@@ -26,7 +26,7 @@ import {
 import {
   $createFormTitleNode,
   $createPageTitleNode,
-  createDraftCodec,
+  createFormDraftCodec,
   createFormRuntime,
   defineFormEditor,
   FormEditor,
@@ -64,7 +64,7 @@ const formDefinition = defineFormEditor({
   namespace: "external-form",
 });
 
-const formCodec = createDraftCodec(createFormRuntime(formDefinition));
+const formCodec = createFormDraftCodec(createFormRuntime(formDefinition));
 
 const contentCodec: DraftCodec = {
   prepare(source) {

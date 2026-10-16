@@ -2,10 +2,10 @@ import { expect, test } from "vitest";
 import { $createTextNode, $getRoot } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
-import { formSchemaToLexical } from "../../src/converters/formSchemaToLexical";
-import { lexicalToFormSchema } from "../../src/converters/lexicalToFormSchema";
-import { lexicalToMarkdown } from "../../src/converters/lexicalToMarkdown";
-import { markdownToLexical } from "../../src/converters/markdownToLexical";
+import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
+import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
+import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
+import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
 import { $native } from "../../src/forms/editor/native-state";
 import {
   $createQuestionNode,
@@ -197,8 +197,8 @@ test("unfinished native logic remains visible and Markdown-saveable while runnab
     expect(value.status).toBe("blocked");
     expect(value.diagnostics.some((issue) => issue.code === "array-length")).toBe(true);
 
-    const markdown = lexicalToMarkdown(editor.getEditorState().toJSON(), govbbFormEditor),
-      parsed = markdownToLexical(markdown, govbbFormEditor);
+    const markdown = lexicalToFormMarkdown(editor.getEditorState().toJSON(), govbbFormEditor),
+      parsed = formMarkdownToLexical(markdown, govbbFormEditor);
 
     expect(parsed.diagnostics.filter((issue) => issue.severity === "fatal")).toEqual([]);
     expect(parsed.state).toBeDefined();
@@ -254,8 +254,8 @@ test("new decorator questions project stable keys and accordion defaults before 
           expect($settings(node).fieldId).toBe($native(node).question!.key);
     });
 
-    const source = lexicalToMarkdown(editor.getEditorState().toJSON(), govbbFormEditor),
-      parsed = markdownToLexical(source, govbbFormEditor);
+    const source = lexicalToFormMarkdown(editor.getEditorState().toJSON(), govbbFormEditor),
+      parsed = formMarkdownToLexical(source, govbbFormEditor);
 
     expect(parsed.diagnostics.filter((issue) => issue.severity === "fatal")).toEqual([]);
     expect(parsed.state).toBeDefined();

@@ -1,4 +1,4 @@
-import { useCellContext } from "./hook";
+import { useCellContext } from "./table-hooks";
 
 const dates = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" });
 

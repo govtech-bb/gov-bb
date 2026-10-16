@@ -35,6 +35,8 @@ Keep runtime validation at JSON, Markdown, saved-state, extension and browser in
 | Test decoders and coverage readers | Tests exercise invalid inputs and extension boundaries, so they need the same validation operations. |
 | Authentication search and session parsing | Router search parameters and API session responses must be parsed before the editor uses them. |
 
+Converter allowances in `scripts/check-boundaries.ts` and lint exceptions use exact filenames, including `converters/form-schema-to-lexical.ts`; baseline parsing is in `workspace/page-sync.ts`. When moving these files, update their exact paths and the negative boundary tests (including relative import depth), not the scope of the permissions.
+
 Use `SAFETY:` comments to explain type assertions whose invariants TypeScript cannot express. Do not claim that an incomplete draft satisfies the published schema. Where a draft or adapter genuinely needs an exception, keep it local and explain why.
 
 The saved `hintShape` property has local naming exceptions because renaming it would change the storage format. Preserve persisted contracts when applying lint fixes.

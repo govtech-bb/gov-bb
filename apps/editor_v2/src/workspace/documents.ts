@@ -16,16 +16,16 @@ import {
   documentKeys,
   WORKSPACE_KEY,
   WorkspaceRepository,
-  type FormDocument,
+  type WorkspaceFormDocument,
   type PageDocument,
-  type PageRole,
-  type Service,
+  type ServicePageRole,
+  type WorkspaceService,
   type WorkspaceDocument,
 } from "./model";
 
 export function currentFormMode(
   state: SerializedEditorState | undefined,
-): FormDocument["mode"] | undefined {
+): WorkspaceFormDocument["mode"] | undefined {
   const title = state?.root.children[0];
 
   if (title?.type !== "form-title") return;
@@ -90,7 +90,7 @@ export function openDocument(document: WorkspaceDocument, storage: DraftStorage)
   );
 }
 
-export function newPage(title: string, role: PageRole, source?: string) {
+export function newPage(title: string, role: ServicePageRole, source?: string) {
   const id = crypto.randomUUID();
   const original = source ?? govbbPageCodec.encode(createEmptyPage(title));
   govbbPageCodec.prepare(original);
@@ -142,7 +142,7 @@ export function newForm(
 
   const native = serializedToNativeForm(pending.prepared.state, govbbFormEditor);
 
-  const document: FormDocument = {
+  const document: WorkspaceFormDocument = {
     id,
     title: native.title,
     kind: "form",
@@ -174,7 +174,7 @@ export function openWorkspace(storage: DraftStorage, existingKeys: readonly stri
     if (match) ids.add(match[1]!);
   }
 
-  const services: Service[] = [];
+  const services: WorkspaceService[] = [];
 
   for (const id of ids) {
     const keys = formDraftKeys(id);

@@ -13,8 +13,8 @@ import {
   capabilityWarnings as editorWarnings,
   logicIssues as editorIssues,
 } from "../../src/forms/editor/capabilities";
-import { lexicalToLegacySsb } from "../../src/converters/lexicalToLegacySsb";
-import { lexicalToMarkdown } from "../../src/converters/lexicalToMarkdown";
+import { lexicalToLegacySsb } from "../../src/converters/lexical-to-legacy-ssb";
+import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
 import {
   $createFormTitleNode,
   $createPageTitleNode,
@@ -197,7 +197,7 @@ test("pure output validation consumes only installed validators and retains read
     };
 
     expect(preflight(output.schema!, contributions)).toEqual(output.diagnostics);
-    expect(lexicalToMarkdown(before, definition)).toContain("::text[Your **name**]");
+    expect(lexicalToFormMarkdown(before, definition)).toContain("::text[Your **name**]");
     expect(logicIssues(output.schema!, before)).toEqual(editorIssues(output.schema!, state));
     expect(capabilityWarnings(output.schema!, before)).toEqual(
       editorWarnings(output.schema!, state),
@@ -219,7 +219,7 @@ test("a saved field without a legacy mapping produces a located unsupported-outp
     const state = editor.getEditorState(),
       before = state.toJSON();
 
-    expect(lexicalToMarkdown(before, definition)).toContain("::text[Your **name**]");
+    expect(lexicalToFormMarkdown(before, definition)).toContain("::text[Your **name**]");
     expect(lexicalToLegacySsb(state, definition, editor)).toEqual({
       schema: null,
       diagnostics: [

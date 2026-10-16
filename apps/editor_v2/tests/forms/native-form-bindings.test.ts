@@ -4,10 +4,10 @@ import { $createTextNode, $getRoot, $isElementNode, $setState, createState } fro
 import { $setSettings as $setRawSettings } from "../../src/editor/core/document-state";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
-import { formSchemaToLexical } from "../../src/converters/formSchemaToLexical";
-import { lexicalToFormSchema } from "../../src/converters/lexicalToFormSchema";
-import { lexicalToMarkdown } from "../../src/converters/lexicalToMarkdown";
-import { markdownToLexical } from "../../src/converters/markdownToLexical";
+import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
+import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
+import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
+import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
 import { $native, rawNative } from "../../src/forms/editor/native-state";
 import { $setFormSettings, nativeQuestionSettings } from "../../src/forms/editor/native-settings";
 import { $depth, $setDepth, $updateSettings, listIndexState } from "../../src/forms/editor/nodes";
@@ -65,8 +65,8 @@ test("all native field and structured content bindings survive the Markdown pers
   const editor = editorFor();
 
   try {
-    const source = lexicalToMarkdown(editor.getEditorState().toJSON(), govbbFormEditor);
-    const parsed = markdownToLexical(source, govbbFormEditor);
+    const source = lexicalToFormMarkdown(editor.getEditorState().toJSON(), govbbFormEditor);
+    const parsed = formMarkdownToLexical(source, govbbFormEditor);
     expect(parsed.diagnostics.filter((issue) => issue.severity === "fatal")).toEqual([]);
     expect(parsed.state).toBeDefined();
 
@@ -102,8 +102,8 @@ test("generic paragraph and heading layout hosts survive the actual Markdown cod
   const editor = editorFor(value);
 
   try {
-    const source = lexicalToMarkdown(editor.getEditorState().toJSON(), govbbFormEditor);
-    const parsed = markdownToLexical(source, govbbFormEditor);
+    const source = lexicalToFormMarkdown(editor.getEditorState().toJSON(), govbbFormEditor);
+    const parsed = formMarkdownToLexical(source, govbbFormEditor);
     expect(parsed.diagnostics.filter((issue) => issue.severity === "fatal")).toEqual([]);
     expect(parsed.state).toBeDefined();
 
@@ -112,7 +112,9 @@ test("generic paragraph and heading layout hosts survive the actual Markdown cod
 
     try {
       expect(nativeSemanticEqual(exportForm(reopened), value)).toBe(true);
-      expect(lexicalToMarkdown(reopened.getEditorState().toJSON(), govbbFormEditor)).toBe(source);
+      expect(lexicalToFormMarkdown(reopened.getEditorState().toJSON(), govbbFormEditor)).toBe(
+        source,
+      );
     } finally {
       reopened.dispose();
     }

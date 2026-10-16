@@ -16,11 +16,11 @@ import { $fields } from "../../src/forms/features/logic/queries";
 import { comparisons } from "../../src/forms/features/logic/comparisons";
 import { $mentionable } from "../../src/forms/features/mentions/editor";
 import { govbbFormEditor, govbbFormModules } from "../../src/presets/govbb-form";
-import { lexicalToLegacySsb } from "../../src/converters/lexicalToLegacySsb";
-import { markdownToLexical } from "../../src/converters/markdownToLexical";
-import { lexicalToMarkdown } from "../../src/converters/lexicalToMarkdown";
+import { lexicalToLegacySsb } from "../../src/converters/lexical-to-legacy-ssb";
+import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
+import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
 import {
-  createDraftCodec,
+  createFormDraftCodec,
   initialDraft,
   LEGACY_KEY,
   MARKDOWN_KEY,
@@ -87,7 +87,7 @@ test("removing one field module removes its actions, renderer, inspector and sou
   for (const slot of removed.slots!)
     expect(configured.slots.some((installed) => installed.key === slot.key)).toBe(false);
   expect(configured.actions.some((action) => action.id === "question_INPUT_TEXT")).toBe(true);
-  const parsed = markdownToLexical(fileSource, configured);
+  const parsed = formMarkdownToLexical(fileSource, configured);
   expect(parsed.state).toBeUndefined();
   expect(parsed.original).toBe(fileSource);
   expect(
@@ -101,7 +101,7 @@ test("uninstalled canonical fields recover original and working Markdown bytes, 
   const working = fileSource + "\nUnfinished source [\n";
   const storage = memory({ [MARKDOWN_KEY]: fileSource, [WORKING_KEY]: working });
   const runtime = createFormRuntime(withoutFile());
-  const loaded = initialDraft(storage, noDemo, createDraftCodec(runtime), runtime);
+  const loaded = initialDraft(storage, noDemo, createFormDraftCodec(runtime), runtime);
   expect(loaded.snapshot.valid).toBe(false);
   expect(loaded.state).toBeUndefined();
   expect(loaded.needsSave).toBe(false);
@@ -114,7 +114,7 @@ test("uninstalled canonical fields recover original and working Markdown bytes, 
   const restored = initialDraft(
     storage,
     noDemo,
-    createDraftCodec(restoredRuntime),
+    createFormDraftCodec(restoredRuntime),
     restoredRuntime,
   );
 
@@ -148,7 +148,7 @@ test("installed logic syntax cannot conceal an unavailable field in retained raw
   expect(() => definition.validateDocument(raw)).toThrow(
     "Unavailable widget field or block: file-upload",
   );
-  const parsed = markdownToLexical(source, definition);
+  const parsed = formMarkdownToLexical(source, definition);
   expect(parsed.state).toBeUndefined();
   expect(parsed.diagnostics).toEqual([
     expect.objectContaining({
@@ -163,7 +163,7 @@ test("installed logic syntax cannot conceal an unavailable field in retained raw
     storage = memory({ [MARKDOWN_KEY]: source, [WORKING_KEY]: working });
 
   const runtime = createFormRuntime(definition),
-    loaded = initialDraft(storage, noDemo, createDraftCodec(runtime), runtime);
+    loaded = initialDraft(storage, noDemo, createFormDraftCodec(runtime), runtime);
 
   expect(loaded.snapshot.recovery?.original).toBe(source);
   expect(loaded.snapshot.source).toBe(working);
@@ -173,7 +173,7 @@ test("installed logic syntax cannot conceal an unavailable field in retained raw
 
 test("raw JSON drafts with an unavailable field stay byte-exact and can load when its module returns", () => {
   const fullRuntime = createFormRuntime(govbbFormEditor),
-    fullCodec = createDraftCodec(fullRuntime);
+    fullCodec = createFormDraftCodec(fullRuntime);
 
   const raw = JSON.stringify(fullCodec.prepare(fileSource).state, null, 3) + "\n";
 
@@ -183,7 +183,7 @@ test("raw JSON drafts with an unavailable field stay byte-exact and can load whe
   const definition = withoutFile(),
     runtime = createFormRuntime(definition);
 
-  const loaded = initialDraft(storage, noDemo, createDraftCodec(runtime), runtime);
+  const loaded = initialDraft(storage, noDemo, createFormDraftCodec(runtime), runtime);
   expect(loaded.snapshot.valid).toBe(false);
   expect(loaded.snapshot.recovery).toEqual({ kind: "legacy", original: raw });
   expect(loaded.snapshot.diagnostics.some((issue) => issue.message.includes("file-upload"))).toBe(
@@ -212,7 +212,7 @@ test("configured conversion reads existing nodes without changing keys, bytes or
   );
 
   const runtime = createFormRuntime(govbbFormEditor),
-    codec = createDraftCodec(runtime);
+    codec = createFormDraftCodec(runtime);
 
   const prepared = codec.prepare(source);
   const editor = createHeadlessEditor(govbbFormEditor, prepared.state, { prepare: false });
@@ -233,7 +233,7 @@ test("configured conversion reads existing nodes without changing keys, bytes or
     expect(standalone.diagnostics).toEqual([]);
     expect(JSON.parse(JSON.stringify(standalone.schema))).toEqual(baseline.schema);
     expect(live).toEqual(standalone);
-    expect(lexicalToMarkdown(state.toJSON(), govbbFormEditor)).toBe(source);
+    expect(lexicalToFormMarkdown(state.toJSON(), govbbFormEditor)).toBe(source);
     expect(state.read(keys)).toEqual(originalKeys);
     expect(JSON.stringify(state.toJSON())).toBe(bytes);
     expect(editor.getEditorState()).toBe(state);
@@ -263,7 +263,7 @@ test("an installed field without a legacy SSB adapter saves source and reports u
     "---\nformat: govbb-form\nformatVersion: 2\ntitle: Accounts\n---\n\n# Account\n\n::page{#account-page}\n\n::account-code[Account code]{#account}\n";
 
   const runtime = createFormRuntime(definition),
-    codec = createDraftCodec(runtime);
+    codec = createFormDraftCodec(runtime);
 
   const prepared = codec.prepare(source),
     editor = createHeadlessEditor(definition, prepared.state, { prepare: false });
@@ -323,13 +323,15 @@ test("a host-defined field inserts through a registered action, retains typed so
   const definition = defineFormEditor({ modules: [...govbbFormModules, module] });
 
   const runtime = createFormRuntime(definition),
-    codec = createDraftCodec(runtime);
+    codec = createFormDraftCodec(runtime);
 
   const source =
     '---\nformat: govbb-form\nformatVersion: 2\ntitle: Accounts\n---\n\n# Account\n\n::page{#accounts}\n\n::title[Account code]\n\n---\n\n# Declaration\n\n::page{#declaration type="declaration"}\n\n::checkboxes[Declaration]{#legal required}\n- I confirm the information I have given is correct\n\n---\n\n# Application complete\n\n::page{#complete type="confirmation"}\n';
 
   expect(
-    markdownToLexical(source, definition).diagnostics.filter((issue) => issue.severity === "fatal"),
+    formMarkdownToLexical(source, definition).diagnostics.filter(
+      (issue) => issue.severity === "fatal",
+    ),
   ).toEqual([]);
   const editor = createHeadlessEditor(definition, codec.prepare(source).state, { prepare: false });
   // Legacy browser registrations are excluded headlessly, so install the same history owner once.
@@ -415,7 +417,7 @@ test("mention eligibility uses the installed field capability and preserves open
       "---\nformat: govbb-form\nformatVersion: 2\ntitle: Accounts\n---\n\n# Account\n\n::page{#accounts}\n\n::text[Name]{#name}\n\n::file-upload[Evidence]{#evidence}\n\n::opening-hours[Opening hours]{#hours}\n\n::account-code[Account code]{#account}\n\nYour details:\n";
 
     const runtime = createFormRuntime(definition),
-      codec = createDraftCodec(runtime);
+      codec = createFormDraftCodec(runtime);
 
     const editor = createHeadlessEditor(definition, codec.prepare(source).state, {
       prepare: false,
@@ -441,7 +443,7 @@ test("mention eligibility uses the installed field capability and preserves open
 });
 
 test("a removed long-answer module rejects its own node before headless hydration", () => {
-  const codec = createDraftCodec(createFormRuntime(govbbFormEditor));
+  const codec = createFormDraftCodec(createFormRuntime(govbbFormEditor));
   const source = fileSource.replace("::file-upload", "::long-answer");
   const saved = codec.prepare(source).state;
 

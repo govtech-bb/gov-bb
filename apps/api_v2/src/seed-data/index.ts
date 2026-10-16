@@ -42,6 +42,8 @@ const SeedPage = z.object({
 export type SeedPage = z.infer<typeof SeedPage>;
 
 const SeedEstate = z.object({
+  /** The last commit that touched `apps/landing/src/content` when the snapshot was built. */
+  source: z.string().regex(/^[0-9a-f]{40}$/),
   categories: z.array(SeedCategory),
   pages: z.array(SeedPage),
 });

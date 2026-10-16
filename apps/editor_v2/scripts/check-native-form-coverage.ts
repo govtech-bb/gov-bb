@@ -7,10 +7,10 @@ import {
   type AnyFormDefinition,
 } from "../src/forms/schema";
 import { registryDocument } from "../src/forms/registry/validation";
-import { formSchemaToLexical } from "../src/converters/formSchemaToLexical";
-import { lexicalToFormSchema } from "../src/converters/lexicalToFormSchema";
-import { lexicalToMarkdown } from "../src/converters/lexicalToMarkdown";
-import { markdownToLexical } from "../src/converters/markdownToLexical";
+import { formSchemaToLexical } from "../src/converters/form-schema-to-lexical";
+import { lexicalToFormSchema } from "../src/converters/lexical-to-form-schema";
+import { lexicalToFormMarkdown } from "../src/converters/lexical-to-form-markdown";
+import { formMarkdownToLexical } from "../src/converters/form-markdown-to-lexical";
 import { createHeadlessEditor } from "../src/editor/core/create-editor";
 
 export type CapabilityRow = {
@@ -356,8 +356,8 @@ export function checkNativeCoverageEvidence(
         continue;
       }
 
-      const source = lexicalToMarkdown(imported.state, definition),
-        parsed = markdownToLexical(source, definition);
+      const source = lexicalToFormMarkdown(imported.state, definition),
+        parsed = formMarkdownToLexical(source, definition);
 
       if (!parsed.state) {
         errors.push(`Native Markdown proof failed ${path} (${document.id})`);

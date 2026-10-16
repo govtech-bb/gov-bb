@@ -19,7 +19,7 @@ import {
 import { $insertBlocks } from "../../src/forms/editor/insertion";
 import { question, content, option, rule } from "../../src/forms/registry/builders";
 import { validateFormDefinition } from "../../src/forms/schema";
-import { formSchemaToLexical } from "../../src/converters/formSchemaToLexical";
+import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
 import { govbbFormEditor, govbbFormModules } from "../../src/presets/govbb-form";
 import { demoForm, demoFormEntry } from "../../src/presets/form-registry/demo";
 import { emptyNativeForm, nativeHost, nativeOutput } from "../helpers/native-form";

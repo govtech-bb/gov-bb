@@ -103,19 +103,19 @@ export {
 
 export { createFormRuntime, type FormRuntime } from "./editor/runtime";
 
-export { createDraftCodec } from "./editor/codec";
+export { createFormDraftCodec } from "./editor/codec";
 
-export { lexicalToMarkdown } from "../converters/lexicalToMarkdown";
+export { lexicalToFormMarkdown } from "../converters/lexical-to-form-markdown";
 
-export { markdownToLexical } from "../converters/markdownToLexical";
+export { formMarkdownToLexical } from "../converters/form-markdown-to-lexical";
 
-export { lexicalToLegacySsb } from "../converters/lexicalToLegacySsb";
+export { lexicalToLegacySsb } from "../converters/lexical-to-legacy-ssb";
 
 export type { LegacySsbFormSchema } from "./adapters/ssb/schema";
 
-export { lexicalToFormSchema } from "../converters/lexicalToFormSchema";
+export { lexicalToFormSchema } from "../converters/lexical-to-form-schema";
 
-export { formSchemaToLexical, type NativeImportResult } from "../converters/formSchemaToLexical";
+export { formSchemaToLexical, type NativeImportResult } from "../converters/form-schema-to-lexical";
 
 export {
   nativeField,

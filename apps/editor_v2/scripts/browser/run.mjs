@@ -32,6 +32,7 @@ const suites = requested.length
       "persistence-isolation.mjs",
       "confirmation-page.mjs",
       "service-workspace.mjs",
+      "remote-page-editing.mjs",
       "routing.mjs",
       "page-writer.mjs",
     ];

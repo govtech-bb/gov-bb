@@ -1,12 +1,12 @@
 import type { EditorState, LexicalEditor } from "lexical";
-import type { FormEditorDefinition } from "../../forms/definition";
-import { readFormState } from "../../forms/editor/context";
-import { NativeBindingError, serializedToNativeForm } from "../../forms/editor/native-bindings";
+import type { FormEditorDefinition } from "../forms/definition";
+import { readFormState } from "../forms/editor/context";
+import { NativeBindingError, serializedToNativeForm } from "../forms/editor/native-bindings";
 import {
   validateFormDefinition,
   type NativeValidationResult,
   type NativeDiagnostic,
-} from "../../forms/schema";
+} from "../forms/schema";
 
 /** Export reads the owning editor without normalizing or allocating identities. */
 export function lexicalToFormSchema(

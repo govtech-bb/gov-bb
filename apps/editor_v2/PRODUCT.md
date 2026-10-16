@@ -25,10 +25,10 @@ Page-to-form associations are explicit. Import preserves `form_id` and button UR
 Forms support text, numbers, email, phone, dates, times, choices, boolean answers and file uploads, plus address lookup, opening hours and grouped checkbox categories. Validation, repetition, disabled fields and number/time increments are block settings. Visible Conditional logic blocks and calculated values support application and calculator definitions.
 
 - Question wording and hints are edited on the canvas. Logic selectors use that wording; internal aliases are an advanced setting.
-- Insertion menus offer complete questions. Beneath a label with no answer, they offer answer inputs to complete it. A question label can serve as the page heading on a [single-question page](https://design-system.service.gov.uk/patterns/question-pages/).
+- Insertion menus offer complete questions. Beneath a label with no answer, they offer answer inputs to complete it. A question label can serve as the page heading on a page that asks one question.
 - Conditional logic blocks own answer-dependent visibility, required state and wording. They can target questions, content and pages. Follow-up insertion creates these same rules; indentation controls layout.
 - Selecting a new Show target also hides it initially, in one undo step. Existing visible targets can be hidden from the logic block. Hidden question parts without a Show rule have a Make visible action. Removing a rule preserves the target's visibility state, and recovery respects remaining rules.
-- [Confirmation pages](https://design-system.service.gov.uk/patterns/confirmation-pages/) confirm completion and explain what happens next. They retain their purpose during conversion. Calculator result pages have a separate role and remain editable.
+- Confirmation pages confirm completion and explain what happens next. They retain their purpose during conversion. Calculator result pages have a separate role and remain editable.
 - The Form registry supplies developer-defined questions, groups, pages and complete forms in native JSON. Insertions become independent editable copies. Complete forms create separate documents; authors do not add registry definitions through the UI. “Team blocks” and “GovBB fields” remain search aliases.
 - Duplicating a question gives it independent field and block identities while retaining its answer values. Copying an option into an existing question allocates a distinct submitted value.
 
@@ -44,7 +44,7 @@ Incomplete form content remains editable and saveable; JSON export reports what 
 
 ## Interface
 
-Use [GOV.UK form patterns](https://design-system.service.gov.uk/patterns/) with GovBB tokens, Figtree and branding from `@govtech-bb/frontend`. Follow the [terminology guide](docs/TERMINOLOGY.md): sentence case, hints below labels, “(optional)” for optional questions, no required-field asterisks, and “Continue” between pages.
+Use GovBB tokens, Figtree and branding from `@govtech-bb/frontend`. Follow the [terminology guide](docs/TERMINOLOGY.md): sentence case, hints below labels, “(optional)” for optional questions, no required-field asterisks, and “Continue” between pages.
 
 WCAG 2.2 AA is the accessibility target. Provide keyboard access, visible focus and meaning that does not depend on colour alone.
 

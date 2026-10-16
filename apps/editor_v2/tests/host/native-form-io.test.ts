@@ -4,7 +4,7 @@ import { $getRoot, $createTextNode, UNDO_COMMAND, REDO_COMMAND } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { registerEditorHistory } from "../../src/editor/core/history";
 import { govbbFormCodec, govbbFormEditor } from "../../src/presets/govbb-form";
-import { formSchemaToLexical } from "../../src/converters/formSchemaToLexical";
+import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
 import { nativeSemanticEqual } from "../../src/forms/schema";
 import { DraftStore, initialDraft } from "../../src/persistence/draft-store";
 import { draftEditorConnection } from "../../src/host/draft-editor";

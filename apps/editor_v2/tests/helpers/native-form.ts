@@ -1,7 +1,7 @@
 import { $createParagraphNode, $getRoot, type LexicalEditor } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
-import { formSchemaToLexical } from "../../src/converters/formSchemaToLexical";
-import { lexicalToFormSchema } from "../../src/converters/lexicalToFormSchema";
+import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
+import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
 import type { FormEditorDefinition } from "../../src/forms/definition";
 import type { AnyFormDefinition } from "../../src/forms/schema";
 import { govbbFormEditor } from "../../src/presets/govbb-form";

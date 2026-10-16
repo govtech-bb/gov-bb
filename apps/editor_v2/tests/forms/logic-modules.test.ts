@@ -13,13 +13,13 @@ import { defineFormEditor } from "../../src/forms/definition";
 import { govbbFormEditor, govbbFormModules } from "../../src/presets/govbb-form";
 import { createFormRuntime } from "../../src/forms/editor/runtime";
 import {
-  createDraftCodec,
+  createFormDraftCodec,
   initialDraft,
   MARKDOWN_KEY,
   WORKING_KEY,
   type DraftStorage,
 } from "../helpers/default-form";
-import { lexicalToLegacySsb } from "../../src/converters/lexicalToLegacySsb";
+import { lexicalToLegacySsb } from "../../src/converters/lexical-to-legacy-ssb";
 import {
   $blockId,
   $blockKind,
@@ -46,7 +46,7 @@ import { focusLogic } from "../../src/forms/features/logic/authoring";
 import { conditionalLogic } from "../../src/forms/core/logic";
 
 const runtime = createFormRuntime(govbbFormEditor),
-  codec = createDraftCodec(runtime);
+  codec = createFormDraftCodec(runtime);
 
 function fixture() {
   const editor = createHeadlessEditor(govbbFormEditor, undefined, { prepare: false });
@@ -197,7 +197,7 @@ test("removed modules reject their documents while retaining canonical and unapp
       expect(() => absent.validateDocument(state)).toThrow();
 
       const absentRuntime = createFormRuntime(absent),
-        absentCodec = createDraftCodec(absentRuntime);
+        absentCodec = createFormDraftCodec(absentRuntime);
 
       const storage = memory(canonical),
         working = storage.getItem(WORKING_KEY)!;
@@ -337,7 +337,7 @@ test("an absent calculation capability keeps active and inactive payloads saveab
       modules: govbbFormModules.filter((module) => module.key !== "form-calculations"),
     });
 
-    const withoutCalculations = createDraftCodec(createFormRuntime(definition));
+    const withoutCalculations = createFormDraftCodec(createFormRuntime(definition));
     const prepared = withoutCalculations.prepare(source);
     expect(withoutCalculations.encode(prepared.state)).toBe(source);
     const restored = createHeadlessEditor(definition, prepared.state, { prepare: false });

@@ -3,14 +3,13 @@ import { Check, X } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useId, useRef, useState, type Ref } from "react";
 import type { ApiPage, EditorApi, PageVersion, TaxonomyCategory } from "../api/client";
-import { pageToMarkdown } from "../api/page-markdown";
-import { historyQuery, pageVersionQuery } from "../api/queries";
+import { pageToMarkdown, pageVersionToDraftMarkdown } from "../api/page-markdown";
+import { pageHistoryQuery, pageVersionQuery } from "../api/queries";
 import { cn } from "../cn";
 import { PagePreviewSurface } from "../host/page-editor";
 import { Button } from "../ui/button";
 import { sectionLabel } from "../ui/item";
 import { labelFocus } from "../ui/table/table-components";
-import { restoredMarkdown } from "./api-pages";
 
 const ACTIONS = {
   created: "Created",
@@ -98,7 +97,7 @@ export function PageHistoryDialog({
   close: () => void;
   restore: (markdown: string) => void;
 }) {
-  const history = useQuery(historyQuery(api, current.id));
+  const history = useQuery(pageHistoryQuery(api, current.id));
   // Undefined is the current version, so the selection follows a newer save.
   const [selected, setSelected] = useState<number>();
   const name = useId();
@@ -138,7 +137,7 @@ export function PageHistoryDialog({
                   <PagePreviewSurface source={pageToMarkdown(current, categories)} />
                 ) : snapshot.data ? (
                   <PagePreviewSurface
-                    source={restoredMarkdown(current, snapshot.data, categories)}
+                    source={pageVersionToDraftMarkdown(current, snapshot.data, categories)}
                   />
                 ) : snapshot.isError ? (
                   <p role="alert">This version can no longer be shown.</p>
@@ -208,7 +207,7 @@ export function PageHistoryDialog({
                   disabled={!canRestore || selected === undefined || !snapshot.data}
                   onClick={() => {
                     if (snapshot.data)
-                      restore(restoredMarkdown(current, snapshot.data, categories));
+                      restore(pageVersionToDraftMarkdown(current, snapshot.data, categories));
                   }}
                 >
                   Restore this version

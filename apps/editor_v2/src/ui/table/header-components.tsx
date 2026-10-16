@@ -1,6 +1,6 @@
 import { CaretDown, CaretUp, CaretUpDown } from "@phosphor-icons/react";
 import { cn } from "../../cn";
-import { useHeaderContext } from "./hook";
+import { useHeaderContext } from "./table-hooks";
 
 /** The column's label as a sort toggle; the unsorted arrows stay faint so the sorted column leads. */
 export function SortButton() {

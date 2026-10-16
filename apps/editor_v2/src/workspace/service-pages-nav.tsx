@@ -3,7 +3,7 @@ import { Button } from "../ui/button";
 import { documentLabel, type PageDocument } from "./model";
 
 /** An API service's pages, in the sidebar the browser workspace uses. */
-export function ApiServiceNav({
+export function ServicePagesNav({
   serviceId,
   documents,
   selectedId,
