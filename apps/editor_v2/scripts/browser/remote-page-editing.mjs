@@ -40,7 +40,7 @@ const initial = {
 const historical = {
   ...initial,
   title: "Historical title",
-  body_markdown: "Historical body",
+  body_markdown: "Historical body\n\n[Preview link](https://example.com/)",
   url: "/old-path",
   visibility: "public",
   parent_id: "55555555-5555-4555-8555-555555555555",
@@ -88,6 +88,12 @@ await context.route("**/*", async (route) => {
   if (path === `/pages/${id}/history`)
     return reply({
       versions: [
+        {
+          version: 2,
+          action: "updated",
+          actor: { id: "test-user", name: "Test employee", email: "employee@govtech.bb" },
+          occurred_at: current.updated_at,
+        },
         {
           version: 1,
           action: "created",
@@ -174,14 +180,63 @@ try {
 
   const restoreVersion = current.updated_at;
   await button("History").click();
-  const dialog = page.getByRole("dialog", { name: "Page history", exact: true });
-  await dialog.getByRole("button", { name: "View", exact: true }).click();
-  await dialog.getByText("Historical body", { exact: true }).waitFor();
-  await dialog.getByRole("button", { name: "Restore this version", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Version history", exact: true });
+  const currentOption = dialog.getByRole("radio", { name: /^Current version/ });
+  const earlierOption = dialog.getByRole("radio").nth(1);
+  const restoreButton = dialog.getByRole("button", { name: "Restore this version", exact: true });
+  const preview = dialog.getByRole("region", { name: "Version preview", includeHidden: true });
+  await dialog.getByText("1 earlier version", { exact: true }).waitFor();
+  assert.equal(await currentOption.isChecked(), true);
+  assert.equal(await currentOption.evaluate((element) => element === document.activeElement), true);
+  assert.equal(await restoreButton.isDisabled(), true);
+  await preview.getByText("Edited remote body", { exact: true }).waitFor();
+
+  await currentOption.press("ArrowDown");
+  await preview.getByText("Historical body", { exact: true }).waitFor();
+  assert.equal(await earlierOption.isChecked(), true);
+  assert.equal(await restoreButton.isEnabled(), true);
+  const previewLink = preview.getByRole("link", { name: "Preview link", exact: true });
+  await previewLink.click();
+  assert.equal(page.url(), url.href);
+  await previewLink.press("Enter");
+  assert.equal(page.url(), url.href);
+  await page.keyboard.press("Escape");
+  await dialog.waitFor({ state: "hidden" });
+  assert.equal(
+    await button("History").evaluate((element) => element === document.activeElement),
+    true,
+  );
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await button("History").click();
+  await dialog.waitFor();
+  assert.equal(await preview.isVisible(), false);
+  assert.equal(await currentOption.isChecked(), true);
+  await dialog.locator("label").nth(1).click();
+  assert.equal(await earlierOption.isChecked(), true);
+  assert.equal(await restoreButton.isEnabled(), true);
+  await dialog.getByRole("button", { name: "Close version history", exact: true }).click();
+  await dialog.waitFor({ state: "hidden" });
+  assert.equal(
+    await button("History").evaluate((element) => element === document.activeElement),
+    true,
+  );
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await button("History").click();
+  await dialog.locator("label").nth(1).click();
+  await preview.getByText("Historical body", { exact: true }).waitFor();
+  await restoreButton.click();
   await dialog.waitFor({ state: "hidden" });
   assert.equal(await title.inputValue(), historical.title);
   assert.equal(writes.length, 3);
   assert.equal((await readBaseline()).page.updated_at, restoreVersion);
+  await button("Undo").click();
+  assert.equal(await title.inputValue(), "My conflicting title");
+  assert.equal(writes.length, 3);
+  await button("Redo").click();
+  assert.equal(await title.inputValue(), historical.title);
+  assert.equal(writes.length, 3);
   await button("Save").click();
   await waitForSavedTitle(historical.title);
   assert.equal(writes.length, 4);
@@ -197,7 +252,7 @@ try {
   await page.reload();
   await title.waitFor();
   assert.equal(await title.inputValue(), historical.title);
-  assert.equal(await body.innerText(), historical.body_markdown);
+  assert.equal(await body.innerText(), "Historical body\n\nPreview link");
   assert.deepEqual(await readBaseline(), baseline);
   assert.equal(await page.evaluate((key) => localStorage.getItem(key), committedKey), stored);
   assert.equal(new URL(page.url()).pathname, url.pathname);
