@@ -151,7 +151,7 @@ function RouteComponent() {
 
 function FormView() {
   const formMeta = Route.useLoaderData();
-  const { step, preview, draft, source, payment } = Route.useSearch();
+  const { step, preview, draft, source, payment, returnTo } = Route.useSearch();
   // Only `?draft=` (the DB scratch) blocks submission. `?preview=` serves the
   // published recipe and submits exactly as a citizen would (#1682).
   const isDraft = Boolean(draft);
@@ -489,6 +489,7 @@ function FormView() {
       isDraft={isDraft}
       previewToken={preview}
       draftToken={draft}
+      returnToReview={returnTo === "check-your-answers"}
     />
   );
 }
