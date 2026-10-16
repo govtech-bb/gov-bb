@@ -1,7 +1,7 @@
 # Accessibility (axe) CI gate
 
 A CI check that loads the deployed **forms** app in a real browser and fails a PR
-if it introduces a **serious/critical** WCAG 2.0/2.1 A-or-AA accessibility
+if it introduces a **serious/critical** WCAG 2.2 A-or-AA accessibility
 violation. It guards against regressing the accessibility fixes already made, and
 catches issues (colour contrast, focus, layout) that the jsdom-based `jest-axe`
 unit tests structurally cannot.
@@ -42,7 +42,8 @@ which 404s non-public forms).
 ## What fails the build
 
 Only violations with axe impact **`serious`** or **`critical`**, scoped to the
-WCAG A/AA rule tags (`wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`). See
+WCAG A/AA rule tags (`wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`,
+`wcag22aa`). See
 [e2e/helpers/a11y.ts](../apps/forms/e2e/helpers/a11y.ts). `minor`/`moderate`
 findings and axe *best-practice* rules (e.g. `heading-order`) do **not** fail the
 build yet — this keeps the gate green on landing and lets the threshold tighten
