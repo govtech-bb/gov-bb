@@ -1,6 +1,17 @@
-import { Controller, Get, Query } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  Query,
+} from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
-import { GeocodeResult, GeocodeService } from "./geocode.service";
+import { CatchmentRoutingService } from "@/catchment/catchment-routing.service";
+import {
+  GeocodeResult,
+  GeocodeService,
+  ResolvedPlace,
+} from "./geocode.service";
 
 // Autocomplete is naturally chattier than a page load — the global short bucket
 // (5 req / 10s) trips on a few keystrokes and returns 429. Raise it to a bound
@@ -12,11 +23,60 @@ import { GeocodeResult, GeocodeService } from "./geocode.service";
 })
 @Controller("geocode")
 export class GeocodeController {
-  constructor(private readonly geocode: GeocodeService) {}
+  constructor(
+    private readonly geocode: GeocodeService,
+    private readonly routing: CatchmentRoutingService,
+  ) {}
 
-  /** `GET /geocode?q=` — Barbados-only address suggestions. */
+  /**
+   * `GET /geocode/polyclinic?lat=&lon=` — the polyclinic an application at a
+   * located address is routed to, so the address field can say so. 404 for a
+   * point no polyclinic serves.
+   */
+  @Get("polyclinic")
+  polyclinic(
+    @Query("lat") lat?: string,
+    @Query("lon") lon?: string,
+  ): { polyclinic: string } {
+    const polyclinic = this.routing.servingPolyclinicAt(
+      Number(lat),
+      Number(lon),
+    );
+    if (!polyclinic)
+      throw new NotFoundException("No polyclinic serves that point");
+    return { polyclinic };
+  }
+
+  /**
+   * `GET /geocode?q=&session=` — Barbados-only address suggestions. `session`
+   * groups one applicant's keystrokes and their pick into one billed session.
+   */
   @Get()
-  search(@Query("q") q?: string): Promise<GeocodeResult[]> {
-    return this.geocode.search(q ?? "");
+  search(
+    @Query("q") q?: string,
+    @Query("session") session?: string,
+  ): Promise<GeocodeResult[]> {
+    return this.geocode.search(q ?? "", session);
+  }
+
+  /**
+   * `GET /geocode/reverse?lat=&lon=` — the address at a pin on the map. Always
+   * carries the parish; the address lines are empty where none was found.
+   */
+  @Get("reverse")
+  reverse(
+    @Query("lat") lat?: string,
+    @Query("lon") lon?: string,
+  ): Promise<GeocodeResult> {
+    return this.geocode.reverse(Number(lat), Number(lon));
+  }
+
+  /** `GET /geocode/place/:placeId?session=` — the coordinate of a picked place. */
+  @Get("place/:placeId")
+  resolve(
+    @Param("placeId") placeId: string,
+    @Query("session") session?: string,
+  ): Promise<ResolvedPlace> {
+    return this.geocode.resolve(placeId, session);
   }
 }

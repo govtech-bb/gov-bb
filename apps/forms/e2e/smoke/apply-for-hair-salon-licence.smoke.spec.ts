@@ -95,6 +95,7 @@ import {
   selectRadio,
   submitAndConfirm,
   uploadOne,
+  mockGeocoder,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
 
@@ -385,6 +386,8 @@ async function confirmAndSubmit(page: Page): Promise<void> {
   await expect(page.getByText(/Environmental Health/).first()).toBeVisible();
   await expect(page.getByText("your local polyclinic")).toHaveCount(0);
 }
+
+test.beforeEach(({ page }) => mockGeocoder(page));
 
 test.describe("Register Hair & Beauty Business — Live Smoke", () => {
   test("submits a new licence for a building premises", async ({ page }) => {

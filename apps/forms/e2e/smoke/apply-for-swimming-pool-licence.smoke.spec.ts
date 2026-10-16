@@ -81,6 +81,7 @@ import {
   selectRadio,
   submitAndConfirm,
   uploadOne,
+  mockGeocoder,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
 
@@ -442,6 +443,8 @@ async function agreeAndSubmit(page: Page): Promise<void> {
   await expect(page.getByText(/Polyclinic|Complex/).first()).toBeVisible();
   await expect(page.getByText("your local polyclinic")).toHaveCount(0);
 }
+
+test.beforeEach(({ page }) => mockGeocoder(page));
 
 test.describe("Swimming Pool Licence — Live Smoke", () => {
   test("submits a new licence for yourself with two pools", async ({

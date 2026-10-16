@@ -88,6 +88,7 @@ import {
   selectDropdown,
   selectRadio,
   submitAndConfirm,
+  mockGeocoder,
 } from "../helpers/smoke";
 
 export const FORM_ID = "apply-for-offensive-matter-licence";
@@ -455,6 +456,8 @@ function logData(data: Data): void {
   if (process.env.SMOKE_LOG_DATA)
     console.log("[smoke-data]", JSON.stringify(data, null, 2));
 }
+
+test.beforeEach(({ page }) => mockGeocoder(page));
 
 test.describe("Offensive Matter Licence — Live Smoke", () => {
   test("applying for yourself: a new licence for one vehicle", async ({
