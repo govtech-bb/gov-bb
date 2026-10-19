@@ -53,7 +53,7 @@ try {
     .first();
 
   await question.hover();
-  await page.getByRole("button", { name: "Move this block by dragging" }).click();
+  await page.getByRole("button", { name: "Block actions" }).click();
   await page.getByText("Hide question label", { exact: true }).click();
   await page.keyboard.press("Escape");
   await page.waitForFunction(() =>

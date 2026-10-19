@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import {
   documentKeys,
   documentLabel,
+  localDocumentAt,
   locationHash,
   readLocation,
   WORKSPACE_KEY,
@@ -246,4 +247,20 @@ test("navigation hashes round trip encoded identities and ignore malformed locat
   expect(readLocation("#/services/%E0%A4%A")).toBeUndefined();
   expect(readLocation("#/services/a/b/extra")).toBeUndefined();
   expect(readLocation("#/other/a")).toBeUndefined();
+});
+
+test("a route opens the browser's own document: its service's, or the form it drafts for an API service", () => {
+  const index: WorkspaceIndex = {
+    version: 1,
+    services: [{ id: "local", title: "Local", documents: [page("fees"), form("application")] }],
+  };
+
+  expect(localDocumentAt(index, { serviceId: "local", documentId: "fees" })?.id).toBe("fees");
+  expect(localDocumentAt(index, { serviceId: "local", documentId: "missing" })).toBeUndefined();
+  // Under a service from the content API, only a form drafted here is the browser's own
+  expect(localDocumentAt(index, { serviceId: "api", documentId: "application" })?.id).toBe(
+    "application",
+  );
+  expect(localDocumentAt(index, { serviceId: "api", documentId: "fees" })).toBeUndefined();
+  expect(localDocumentAt(index, { serviceId: "local" })).toBeUndefined();
 });

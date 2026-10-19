@@ -1,23 +1,14 @@
-import { Menu } from "@base-ui/react/menu";
-import {
-  CaretDown,
-  CaretLeft,
-  CaretRight,
-  Check,
-  Columns,
-  MagnifyingGlass,
-  X,
-} from "@phosphor-icons/react";
+import { CaretDown, CaretLeft, CaretRight, Columns, MagnifyingGlass } from "@phosphor-icons/react";
 import { useId } from "react";
 import { cn } from "../../cn";
 import { Button } from "../button";
-import { compactInput, settingsInput } from "../input";
-import { check, list, option, popup } from "../select";
+import { EmptyState, type EmptyStateProps } from "../empty-state";
+import { hiddenControlFocus } from "../focus";
+import { Input } from "../input";
+import { NativeSelect } from "../native-select";
+import { Menu } from "../menu";
+import { Tag } from "../tag";
 import { useTableContext } from "./table-hooks";
-
-// The global ring (teal outline over an ink edge) for a label whose visually hidden control has focus.
-export const labelFocus =
-  "has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus has-[:focus-visible]:shadow-[0_0_0_2px_var(--color-ink)]";
 
 /** Narrow tables fold secondary columns into the leading cell instead of scrolling them away. */
 const secondary = "@max-3xl:hidden";
@@ -32,11 +23,11 @@ export function Search({ label, placeholder }: { label: string; placeholder: str
         aria-hidden="true"
         className="pointer-events-none absolute start-2.5 top-1/2 size-4 -translate-y-1/2 text-muted"
       />
-      <input
+      <Input
         type="search"
         aria-label={label}
         placeholder={placeholder}
-        className={cn(settingsInput, "ps-8")}
+        className="ps-8"
         value={table.state.globalFilter ?? ""}
         onChange={(event) => table.setGlobalFilter(event.target.value)}
       />
@@ -69,7 +60,7 @@ export function FilterTabs({
           key={value}
           className={cn(
             "relative flex min-h-12 cursor-pointer items-center gap-2 text-15 font-semibold text-muted transition-colors duration-150 hover:text-ink has-checked:text-ink has-checked:after:absolute has-checked:after:inset-x-0 has-checked:after:-bottom-px has-checked:after:h-0.5 has-checked:after:bg-ink",
-            labelFocus,
+            hiddenControlFocus,
           )}
         >
           <input
@@ -89,7 +80,7 @@ export function FilterTabs({
   );
 }
 
-/** Pick any of a column's values. Dashed until something is chosen, then filled with a clear button beside it. */
+/** Pick any of a column's values. Dashed until something is chosen, then a Tag with a button to clear it. */
 export function FilterMenu({ column: id, label }: { column: string; label: string }) {
   const table = useTableContext();
   const column = table.getColumn(id);
@@ -102,64 +93,51 @@ export function FilterMenu({ column: id, label }: { column: string; label: strin
 
   const summary = chosen.length > 1 ? `${chosen[0]} +${chosen.length - 1}` : (chosen[0] ?? label);
 
-  return (
-    <div className="flex min-w-0">
-      <Menu.Root>
-        <Menu.Trigger
-          aria-label={`Filter by ${label.toLowerCase()}${chosen.length ? `: ${summary}` : ""}`}
-          className={cn(
-            "inline-flex h-9 min-w-0 cursor-pointer items-center gap-1.5 rounded-sm px-3 text-14 font-semibold transition-colors duration-150",
-            chosen.length
-              ? "rounded-e-none bg-blue-10 text-ink hover:bg-blue-20/40"
-              : "border border-dashed border-grey-60 text-muted hover:border-ink hover:text-ink",
-          )}
-        >
-          <span className="max-w-48 truncate">{summary}</span>
-          <CaretDown aria-hidden="true" className="size-3.5 shrink-0" />
-        </Menu.Trigger>
-        <Menu.Portal>
-          <Menu.Positioner sideOffset={6} align="start" className="z-50 outline-none">
-            <Menu.Popup className={cn(popup, "min-w-56")}>
-              <div className={list}>
-                {values.map((value) => (
-                  <Menu.CheckboxItem
-                    key={value}
-                    checked={chosen.includes(value)}
-                    onCheckedChange={(on) =>
-                      column?.setFilterValue(
-                        on ? [...chosen, value] : chosen.filter((item) => item !== value),
-                      )
-                    }
-                    className={option}
-                  >
-                    <span className="min-w-0 flex-1">{value}</span>
-                    <span className="text-13 text-muted tabular-nums in-data-highlighted:text-blue-20">
-                      {
-                        table.getCoreRowModel().rows.filter((row) => row.getValue(id) === value)
-                          .length
-                      }
-                    </span>
-                    <Menu.CheckboxItemIndicator className={check}>
-                      <Check />
-                    </Menu.CheckboxItemIndicator>
-                  </Menu.CheckboxItem>
-                ))}
-              </div>
-            </Menu.Popup>
-          </Menu.Positioner>
-        </Menu.Portal>
-      </Menu.Root>
-      {chosen.length > 0 && (
-        <button
-          type="button"
-          aria-label={`Clear ${label.toLowerCase()} filter`}
-          className="grid h-9 w-8 shrink-0 cursor-pointer place-items-center rounded-e-sm border-s border-white bg-blue-10 text-muted transition-colors duration-150 hover:bg-blue-20/40 hover:text-ink"
-          onClick={() => column?.setFilterValue(undefined)}
-        >
-          <X aria-hidden="true" className="size-3.5" />
-        </button>
+  const trigger = (
+    <Menu.Trigger
+      aria-label={`Filter by ${label.toLowerCase()}${chosen.length ? `: ${summary}` : ""}`}
+      className={cn(
+        "inline-flex min-w-0 cursor-pointer items-center gap-1.5 rounded-sm text-14 font-semibold transition-colors duration-150",
+        !chosen.length &&
+          "h-9 border border-dashed border-grey-60 px-3 text-muted hover:border-ink hover:text-ink",
       )}
-    </div>
+    >
+      <span className="max-w-48 truncate">{summary}</span>
+      <CaretDown aria-hidden="true" className="size-3.5 shrink-0" />
+    </Menu.Trigger>
+  );
+
+  return (
+    <Menu.Root>
+      {chosen.length ? (
+        // Chosen, it's a Tag: the menu to change the choice, and a button to clear it
+        <Tag
+          className="h-9"
+          removeLabel={`Clear ${label.toLowerCase()} filter`}
+          onRemove={() => column?.setFilterValue(undefined)}
+        >
+          {trigger}
+        </Tag>
+      ) : (
+        trigger
+      )}
+      <Menu.Content aria-label={`Filter by ${label.toLowerCase()}`} className="min-w-56">
+        {values.map((value) => (
+          <Menu.CheckboxItem
+            key={value}
+            checked={chosen.includes(value)}
+            onCheckedChange={(on) =>
+              column?.setFilterValue(
+                on ? [...chosen, value] : chosen.filter((item) => item !== value),
+              )
+            }
+            detail={table.getCoreRowModel().rows.filter((row) => row.getValue(id) === value).length}
+          >
+            {value}
+          </Menu.CheckboxItem>
+        ))}
+      </Menu.Content>
+    </Menu.Root>
   );
 }
 
@@ -176,35 +154,21 @@ export function ColumnsMenu() {
           </Button>
         }
       />
-      <Menu.Portal>
-        <Menu.Positioner sideOffset={6} align="end" className="z-50 outline-none">
-          <Menu.Popup className={cn(popup, "min-w-48")}>
-            <div className={list}>
-              {table
-                .getAllLeafColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => (
-                  <Menu.CheckboxItem
-                    key={column.id}
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(visible) => column.toggleVisibility(visible)}
-                    className={option}
-                  >
-                    <span className="min-w-0 flex-1 truncate">
-                      {/* oxlint-disable-next-line anti-slop/no-runtime-typeof -- A column header is a label or a render function; only a label can name a menu row. */}
-                      {typeof column.columnDef.header === "string"
-                        ? column.columnDef.header
-                        : column.id}
-                    </span>
-                    <Menu.CheckboxItemIndicator className={check}>
-                      <Check />
-                    </Menu.CheckboxItemIndicator>
-                  </Menu.CheckboxItem>
-                ))}
-            </div>
-          </Menu.Popup>
-        </Menu.Positioner>
-      </Menu.Portal>
+      <Menu.Content aria-label="Columns" align="end">
+        {table
+          .getAllLeafColumns()
+          .filter((column) => column.getCanHide())
+          .map((column) => (
+            <Menu.CheckboxItem
+              key={column.id}
+              checked={column.getIsVisible()}
+              onCheckedChange={(visible) => column.toggleVisibility(visible)}
+            >
+              {/* oxlint-disable-next-line anti-slop/no-runtime-typeof -- A column header is a label or a render function; only a label can name a menu row. */}
+              {typeof column.columnDef.header === "string" ? column.columnDef.header : column.id}
+            </Menu.CheckboxItem>
+          ))}
+      </Menu.Content>
     </Menu.Root>
   );
 }
@@ -219,7 +183,7 @@ export function DataTable({
 }: {
   caption: string;
   loading?: boolean;
-  empty: { title: string; hint: string };
+  empty: Pick<EmptyStateProps, "title" | "description" | "actions">;
 }) {
   const table = useTableContext();
   const rows = table.getRowModel().rows;
@@ -230,7 +194,7 @@ export function DataTable({
     <div role="region" aria-label={caption} tabIndex={0} className="overflow-x-auto">
       <table aria-busy={loading} className="w-full border-collapse text-start text-14">
         <caption className="sr-only">{caption}</caption>
-        <thead className="text-13 text-muted">
+        <thead className="text-12 text-muted">
           {table.getHeaderGroups().map((group) => (
             <tr key={group.id}>
               {group.headers.map((h) => (
@@ -283,23 +247,25 @@ export function DataTable({
             ))
           ) : rows.length === 0 ? (
             <tr className="border-t border-line">
-              <td colSpan={columns.length} className="px-4 py-16 text-center">
-                <p className="text-16 font-semibold">
-                  {filtered ? "Nothing matches these filters" : empty.title}
-                </p>
+              <td colSpan={columns.length}>
                 {filtered ? (
-                  <Button
-                    variant="secondary"
-                    className="mt-4"
-                    onClick={() => {
-                      table.resetGlobalFilter(true);
-                      table.resetColumnFilters(true);
-                    }}
-                  >
-                    Clear filters
-                  </Button>
+                  <EmptyState
+                    kind="not-found"
+                    title="Nothing matches these filters"
+                    actions={
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          table.resetGlobalFilter(true);
+                          table.resetColumnFilters(true);
+                        }}
+                      >
+                        Clear filters
+                      </Button>
+                    }
+                  />
                 ) : (
-                  <p className="mt-1 text-muted">{empty.hint}</p>
+                  <EmptyState {...empty} />
                 )}
               </td>
             </tr>
@@ -361,9 +327,9 @@ export function Pagination({ name }: { name: [string, string] }) {
         {first}–{Math.min(total, first + pageSize - 1)} of {total} {total === 1 ? name[0] : name[1]}
       </p>
       {total > pageSizes[0]! && (
-        <select
+        <NativeSelect
+          size="sm"
           aria-label="Rows per page"
-          className={cn(compactInput, "w-auto pe-7")}
           value={pageSize}
           onChange={(event) => table.setPageSize(Number(event.target.value))}
         >
@@ -372,7 +338,7 @@ export function Pagination({ name }: { name: [string, string] }) {
               {size} per page
             </option>
           ))}
-        </select>
+        </NativeSelect>
       )}
       {pages > 1 && (
         <nav aria-label="Pages" className="ms-auto flex items-center gap-1">
@@ -388,21 +354,15 @@ export function Pagination({ name }: { name: [string, string] }) {
                 …
               </span>
             ) : (
-              <button
+              <Button
                 key={page}
-                type="button"
                 aria-label={`Page ${page + 1}`}
                 aria-current={page === pageIndex ? "page" : undefined}
-                className={cn(
-                  "grid size-8 cursor-pointer place-items-center rounded-sm tabular-nums transition-colors duration-150",
-                  page === pageIndex
-                    ? "bg-brand-dark font-semibold text-white"
-                    : "hover:bg-tint hover:text-ink",
-                )}
+                className="min-w-8 tabular-nums"
                 onClick={() => table.setPageIndex(page)}
               >
                 {page + 1}
-              </button>
+              </Button>
             ),
           )}
           <Button

@@ -7,7 +7,8 @@ import { defineField } from "../../field";
 
 import type { Settings } from "../../core/settings";
 
-import { choicePresentation, markerPad } from "../choices/presentation";
+import { govbbMarkerLabel, govbbRadio } from "../../../ui/govbb";
+import { choicePresentation } from "../choices/presentation";
 
 export type MultipleChoiceSettings = { required: boolean };
 
@@ -51,10 +52,9 @@ export const multipleChoiceField = defineField({
       add: "pt-3",
     },
     rowClass: "items-start gap-4",
-    textClass: markerPad,
-    optionalClass: markerPad,
-    marker: () =>
-      $static("span", "size-(--form-marker) shrink-0 border-2 border-ink bg-white rounded-full"),
+    textClass: govbbMarkerLabel,
+    optionalClass: govbbMarkerLabel,
+    marker: () => $static("span", govbbRadio),
   }),
   turnInto: { group: "choice", order: 0, create: () => $createChoiceInput("multiple-choice")[0]! },
 });

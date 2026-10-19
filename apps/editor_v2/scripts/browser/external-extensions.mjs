@@ -204,6 +204,14 @@ try {
     await page.getByRole("button", { name: "Lock form", exact: true }).click();
     await page.getByRole("button", { name: /^Markdown(?:$| —)/ }).click();
     await page.getByRole("button", { name: action, exact: true }).click();
+
+    // Discarding asks first
+    if (action === "Discard changes")
+      await page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: action, exact: true })
+        .click();
+
     await page.getByRole("button", { name: "Close source", exact: true }).click();
     assert.equal(
       await page.evaluate(() => window.externalFixture.editable("form")),
@@ -217,7 +225,7 @@ try {
   // Open the actual form gutter menu and edit the extension's contributed inspector.
   const reference = form.locator("[data-reference-code]").first();
   await reference.hover();
-  const grip = page.getByRole("button", { name: "Move this block by dragging", exact: true });
+  const grip = page.getByRole("button", { name: "Block actions", exact: true });
   await grip.waitFor();
   await grip.click();
   const prefix = page.getByRole("textbox", { name: "Reference prefix", exact: true });

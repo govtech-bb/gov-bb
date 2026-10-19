@@ -1,5 +1,9 @@
 import { expect, test } from "vitest";
-import { isSafeLinkUrl, isSupportedLinkUrl } from "../../src/editor/modules/links/url";
+import {
+  isSafeLinkUrl,
+  isSupportedLinkUrl,
+  normalizeLinkUrl,
+} from "../../src/editor/modules/links/url";
 
 test("the reusable toolbar retains other document link schemes and rejects executable addresses", () => {
   expect(isSafeLinkUrl("ftp://example.gov.bb/archive")).toBe(true);
@@ -49,4 +53,37 @@ test("link destinations reject schemes and whitespace the page converter cannot 
     "/guidance\u007f",
   ])
     expect(isSupportedLinkUrl(value)).toBe(false);
+});
+
+test("a link is saved as the address the writer means", () => {
+  for (const [typed, address] of [
+    ["info@health.gov.bb", "mailto:info@health.gov.bb"],
+    [" info@health.gov.bb ", "mailto:info@health.gov.bb"],
+    ["+1 (246) 535-1000", "tel:+12465351000"],
+    ["246-535-1000", "tel:2465351000"],
+    ["535 1000", "tel:5351000"],
+    ["www.gov.bb/apply", "https://www.gov.bb/apply"],
+    ["gov.bb", "https://gov.bb"],
+    ["alpha.gov.bb:8080/help", "https://alpha.gov.bb:8080/help"],
+    ["localhost:3000", "https://localhost:3000"],
+  ] as const)
+    expect(normalizeLinkUrl(typed)).toBe(address);
+});
+
+test("an address with a scheme, a relative path, or anything that isn't an address stays as typed", () => {
+  for (const value of [
+    "https://www.gov.bb/apply",
+    "mailto:info@health.gov.bb",
+    "tel:+12465351000",
+    "/guidance",
+    "../before-you-start",
+    "docs/guide.pdf",
+    "#eligibility",
+    "?language=en",
+    "before-you-start",
+    "",
+    "123",
+    "Section 2.1",
+  ])
+    expect(normalizeLinkUrl(value)).toBe(value);
 });

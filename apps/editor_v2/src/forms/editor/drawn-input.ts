@@ -1,12 +1,16 @@
 import { $getDocument, setDOMUnmanaged } from "lexical";
 import { cn } from "../../cn";
+import { $tip } from "../../editor/react/block-dom";
+import { govbbBox, govbbFieldWidth } from "../../ui/govbb";
+
+/** GovBB's text input, drawn: the box at its question's width, its mark at the end. */
+export const inputBox = `relative flex h-(--form-control) w-full cursor-default items-center justify-end gap-2 pl-3 pr-3 ${govbbFieldWidth} ${govbbBox}`;
 
 /** Shared drawn-input box; feature modules supply its mark and explanatory tooltip. */
 export function $drawInputBox({ svg, mask, help }: { svg?: string; mask?: string; help: string }) {
   const document = $getDocument();
   const box = document.createElement("div");
-  box.className =
-    "relative flex h-(--form-control) w-full cursor-default items-center justify-end gap-2 pl-3 max-w-[var(--field-width,100%)] pr-3 rounded-sm border-2 border-ink bg-input";
+  box.className = inputBox;
   box.setAttribute("data-drawn", "");
   box.setAttribute("contenteditable", "false");
   box.setAttribute("aria-hidden", "true");
@@ -23,11 +27,7 @@ export function $drawInputBox({ svg, mask, help }: { svg?: string; mask?: string
   if (mask) mark.textContent = mask;
   else if (svg)
     mark.innerHTML = svg.replace("<svg ", '<svg width="18" height="18" aria-hidden="true" ');
-  const tip = document.createElement("span");
-  tip.className =
-    "pointer-events-none invisible absolute left-1/2 z-60 -translate-x-1/2 rounded-sm bg-ink px-2 py-1 font-sans text-12 leading-4 font-semibold whitespace-nowrap text-white opacity-0 transition-[opacity,visibility] duration-200 ease-out group-hover/tip:visible group-hover/tip:opacity-100 top-full mt-2.5";
-  tip.textContent = help;
-  mark.append(tip);
+  mark.append($tip(help, "bottom"));
   box.append(mark);
 
   return box;

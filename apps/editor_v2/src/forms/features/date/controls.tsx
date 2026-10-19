@@ -1,12 +1,12 @@
-import { Menu } from "@base-ui/react/menu";
+import { Menu as BaseMenu } from "@base-ui/react/menu";
 import { CaretDown, X } from "@phosphor-icons/react";
 import { useState } from "react";
 import { addToRange } from "react-day-picker";
 import { cn } from "../../../cn";
 import { Calendar, type CalendarProps } from "../../../ui/calendar";
+import { Input, input } from "../../../ui/input";
 import { formatDay, parseDay, shortDate } from "../../core/dates";
-import { item, ItemLabel, sectionLabel } from "../../../ui/item";
-import { list, option, popup } from "../../../ui/select";
+import { Menu } from "../../../ui/menu";
 import { RELATIVE_DATES } from "../../core/field-settings";
 import type { Setting } from "../../core/settings";
 import { SettingsGroup, Switch, Pick, SubmenuRow, useStore } from "../../react/settings-controls";
@@ -151,15 +151,12 @@ function DateItem({
         />
       </div>
       {onClear && (
-        <div className="border-t border-line py-1.25">
-          <Menu.Item
-            closeOnClick={false}
-            onClick={() => (onClear(), setOpen(false))}
-            className={item}
-          >
-            <ItemLabel>Clear</ItemLabel>
+        <>
+          <Menu.Separator />
+          <Menu.Item closeOnClick={false} onClick={() => (onClear(), setOpen(false))}>
+            Clear
           </Menu.Item>
-        </div>
+        </>
       )}
     </SubmenuRow>
   );
@@ -172,21 +169,19 @@ function DateDefault() {
   const isToday =
     !!given && typeof given === "object" && !Array.isArray(given) && given.field === today;
 
-  const box =
-    "flex h-8 w-full items-center rounded-sm bg-white pr-7 pl-2 text-14 text-ink shadow-input outline-none placeholder:text-placeholder hover:shadow-input-hover focus:shadow-input-focus max-sm:text-16";
-
   return (
     <div className="relative mx-3.5 mt-0.5 mb-1.5">
       {isToday ? (
-        <div className={box}>Today</div>
+        <div className={cn(input("sm"), "flex items-center pe-7")}>Today</div>
       ) : (
-        <input
+        <Input
+          size="sm"
           type="text"
           aria-label="Default date"
           defaultValue={typeof settings.defaultAnswer === "string" ? settings.defaultAnswer : ""}
           onChange={(e) => set({ defaultAnswer: e.target.value || undefined })}
           onKeyDown={(e) => e.key !== "Escape" && e.stopPropagation()}
-          className={box}
+          className="pe-7"
         />
       )}
       {isToday ? (
@@ -199,30 +194,20 @@ function DateDefault() {
           <X className="size-4" />
         </button>
       ) : (
-        <Menu.SubmenuRoot>
-          <Menu.SubmenuTrigger
+        <Menu.Sub>
+          <BaseMenu.SubmenuTrigger
             openOnHover={false}
             aria-label="Pick a field"
-            className="absolute inset-y-0 right-0 flex w-7 cursor-pointer items-center justify-center text-muted outline-none hover:text-ink"
+            className="absolute inset-y-0 right-0 flex w-7 cursor-pointer items-center justify-center rounded-xs text-muted hover:text-ink"
           >
-            <CaretDown className="size-4" />
-          </Menu.SubmenuTrigger>
-          <Menu.Portal>
-            <Menu.Positioner sideOffset={6} className="z-50 outline-none">
-              <Menu.Popup className={cn(popup, "min-w-40")}>
-                <div className={list}>
-                  <div className={cn(sectionLabel, "px-2.5")}>Date utilities</div>
-                  <Menu.Item
-                    onClick={() => set({ defaultAnswer: { field: today } })}
-                    className={option}
-                  >
-                    Today
-                  </Menu.Item>
-                </div>
-              </Menu.Popup>
-            </Menu.Positioner>
-          </Menu.Portal>
-        </Menu.SubmenuRoot>
+            <CaretDown className="size-3.5" />
+          </BaseMenu.SubmenuTrigger>
+          <Menu.SubContent aria-label="Pick a field" className="min-w-40">
+            <Menu.Group label="Date utilities">
+              <Menu.Item onClick={() => set({ defaultAnswer: { field: today } })}>Today</Menu.Item>
+            </Menu.Group>
+          </Menu.SubContent>
+        </Menu.Sub>
       )}
     </div>
   );

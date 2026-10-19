@@ -15,12 +15,8 @@ import {
   type NodeKey,
 } from "lexical";
 import { OPEN_FOLLOW_UP_COMMAND } from "../../features/logic/authoring";
-import { editorDefinition } from "../../../editor/core/context";
-import { headingShortcuts } from "../../../editor/modules/headings/editing";
-import { headingEntries } from "../../../editor/modules/headings/insertion";
-import { listShortcuts } from "../../../editor/modules/lists/editing";
-import { listEntries } from "../../../editor/modules/lists/insertion";
 import { registerOutsideKeys } from "../../../editor/react/active-editor";
+import { isMac } from "../../../editor/react/shortcut";
 import { $insertBlocks } from "../insertion";
 import { $canAddFollowUp } from "../nesting";
 import {
@@ -53,10 +49,6 @@ import {
 import { $caretBlock } from "./editing";
 import { $blockAtDOM } from "./selection";
 
-export const isMac = /Mac|iPhone|iPad/.test(
-  typeof navigator === "undefined" ? "" : navigator.userAgent,
-);
-
 /** Normalise modifier order and letter case for shortcut lookup. */
 export const hotkey = (e: KeyboardEvent) =>
   `${e.metaKey ? "cmd+" : ""}${e.ctrlKey ? "ctrl+" : ""}${e.shiftKey ? "shift+" : ""}${e.altKey ? "alt+" : ""}${/^[A-Z]$/.test(e.key) ? e.key.toLowerCase() : e.key}`;
@@ -76,6 +68,10 @@ export const titleKeys: Record<string, true> = isMac ? { "alt+†": true } : { "
 export const foldKeys: Record<string, boolean> = isMac
   ? { "cmd+alt+“": true, "cmd+alt+‘": false }
   : { "ctrl+[": true, "ctrl+]": false };
+
+/** The keys that fold (or unfold) a question, as foldKeys binds them, to write with shortcut(). */
+export const foldShortcut = (fold: boolean) =>
+  isMac ? ["mod", "alt", fold ? "[" : "]"] : ["mod", fold ? "[" : "]"];
 
 // On other platforms, selection shortcuts reverse the single-question fold direction.
 export const selectedFoldKeys: Record<string, boolean> = isMac
@@ -143,17 +139,14 @@ export const OPEN_BULK_INSERT_COMMAND = createCommand<NodeKey>("OPEN_BULK_INSERT
 // Choice shortcuts start with one required option and no question label.
 export const required = <T extends LexicalNode>(node: T) => $setSettings(node, { required: true });
 
-export const shortcuts = Object.assign(
-  {
-    "[]": () => [required($createOptionNode("checkboxes"))],
-    "[a]": () => [required($createOptionNode("multiple-choice"))],
-    "[v]": () => [required($createOptionNode("dropdown"))],
-  },
-  headingShortcuts,
-  listShortcuts,
+// Headings and lists convert as Markdown in every editor (registerMarkdownShortcuts); these make a form's own blocks
+export const shortcuts = new Map<string, () => LexicalNode[]>([
+  ["[]", () => [required($createOptionNode("checkboxes"))]],
+  ["[a]", () => [required($createOptionNode("multiple-choice"))]],
+  ["[v]", () => [required($createOptionNode("dropdown"))]],
   // GovBB forms have no divider, and "---" is a new page in our markdown too.
-  { "---": () => [$createWidgetNode("page-break"), $createPageTitleNode()] },
-);
+  ["---", () => [$createWidgetNode("page-break"), $createPageTitleNode()]],
+]);
 
 /** Convert shortcuts on keyup only, so pasting or undoing back to a marker does not convert it. */
 export function markdownShortcuts(editor: LexicalEditor) {
@@ -162,16 +155,9 @@ export function markdownShortcuts(editor: LexicalEditor) {
     editor.update(() => {
       const block = $caretBlock()?.block;
       const marker = $isParagraphNode(block) ? block.getTextContent() : "";
-      const make = shortcuts[marker];
+      const make = shortcuts.get(marker);
 
       if (!block || !make || !editor.isEditable()) return;
-
-      const content = [...headingEntries, ...listEntries].find((entry) =>
-        entry.shortcuts?.includes(marker),
-      );
-
-      if (content && !editorDefinition(editor).actions.some((action) => action.id === content.id))
-        return;
       $insertBlocks(make(), block.clear());
     });
   };

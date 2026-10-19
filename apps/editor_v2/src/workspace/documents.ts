@@ -179,11 +179,8 @@ export function openWorkspace(storage: DraftStorage, existingKeys: readonly stri
   for (const id of ids) {
     const keys = formDraftKeys(id);
 
-    if (
-      id !== active.id &&
-      id !== "original" &&
-      !Object.values(keys).some((key) => key !== undefined && storage.getItem(key) !== null)
-    )
+    // Only forms this browser already holds: a new browser starts with no services, not a demo form
+    if (!Object.values(keys).some((key) => key !== undefined && storage.getItem(key) !== null))
       continue;
     const store = openFormDocument(storage, keys);
     let title = "Existing form";
@@ -211,8 +208,5 @@ export function openWorkspace(storage: DraftStorage, existingKeys: readonly stri
   const repository = new WorkspaceRepository(storage, { version: 1, services }, source);
   repository.save(repository.index);
 
-  return {
-    repository,
-    initialLocation: { serviceId: `existing-${active.id}`, documentId: `form-${active.id}` },
-  };
+  return { repository };
 }

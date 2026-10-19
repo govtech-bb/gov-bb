@@ -1,11 +1,9 @@
-import { Popover } from "@base-ui/react/popover";
 import { Select } from "@base-ui/react/select";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
 import {
   Asterisk,
   CaretDown,
-  Check,
   Copy,
   DotsThreeVertical,
   Eye,
@@ -19,9 +17,18 @@ import {
   Trash,
 } from "@phosphor-icons/react";
 import { useEffect, useId, useState, type ReactNode } from "react";
+import { rankActions } from "../../../editor/core/actions";
+import { normalizeLinkUrl } from "../../../editor/modules/links/url";
+import { useLinkPages } from "../../../editor/react/composer";
 import { Button } from "../../../ui/button";
-import { pill, PillInput } from "../../../ui/pill";
-import { check, list, option, panel, popup } from "../../../ui/select";
+import { Checkbox } from "../../../ui/checkbox";
+import { Input } from "../../../ui/input";
+import { LinkPicker } from "../../../ui/link-picker";
+// This file's own NativeSelect adds a label and items around it
+import { NativeSelect as BrowserSelect } from "../../../ui/native-select";
+import { pill, pillChevron, PillInput } from "../../../ui/pill";
+import { Popover } from "../../../ui/popover";
+import { SelectOption, SelectPopup } from "../../../ui/select";
 import { FieldCombobox, header, More, Pick, typeGroups } from "../../react/logic-pickers";
 import type { Field } from "./queries";
 import { NativeFormulaPill, nativeFormula } from "../calculations/native-formula";
@@ -88,28 +95,22 @@ export function LogicPopover({
         {summary !== undefined && (
           <>
             <span className="min-w-0 truncate">{summary}</span>
-            <CaretDown className="size-3 shrink-0 text-muted" />
+            <span className={pillChevron}>
+              <CaretDown />
+            </span>
           </>
         )}
       </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Positioner
-          align="start"
-          sideOffset={6}
-          collisionPadding={8}
-          sticky
-          collisionAvoidance={{ side: "flip", align: "shift", fallbackAxisSide: "none" }}
-          className="z-50 outline-none"
-        >
-          <Popover.Popup
-            aria-label={label}
-            className={`${panel} max-h-[min(36rem,75dvh,var(--available-height))] w-88 max-w-[calc(100vw-2rem)] overflow-y-auto p-3`}
-          >
-            <Popover.Title className="mb-3 text-14 font-semibold">{label}</Popover.Title>
-            {children}
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
+      <Popover.Content
+        align="start"
+        sticky
+        collisionAvoidance={{ side: "flip", align: "shift", fallbackAxisSide: "none" }}
+        aria-label={label}
+        className="max-h-[min(36rem,75dvh,var(--available-height))] w-88"
+      >
+        <Popover.Title className="mb-3">{label}</Popover.Title>
+        {children}
+      </Popover.Content>
     </Popover.Root>
   );
 }
@@ -356,7 +357,7 @@ export function NativeConditionRow({
   const menu = (
     <More
       label={group ? `${name} group options` : `${name} options`}
-      size={group ? "sm" : undefined}
+      size={group ? "xs" : undefined}
       items={[
         [
           "Add condition",
@@ -421,32 +422,18 @@ export function NativeConditionRow({
           >
             <Select.Trigger
               aria-label="Match conditions"
-              className="inline-flex min-h-6 cursor-pointer items-center gap-0.5 rounded-xs px-1 outline-none hover:bg-grey-20 focus-visible:outline-3 focus-visible:outline-offset-1 focus-visible:outline-focus [&>svg]:size-3"
+              className="inline-flex min-h-6 cursor-pointer items-center gap-0.5 rounded-xs px-1 outline-none hover:bg-grey-20 focus-visible:outline-3 focus-visible:outline-offset-1 focus-visible:outline-focus [&>svg]:size-3.5"
             >
               {group.op === "any" ? "any" : "all"}
               <CaretDown />
             </Select.Trigger>
-            <Select.Portal>
-              <Select.Positioner
-                alignItemWithTrigger={false}
-                align="start"
-                sideOffset={6}
-                className="z-50 outline-none"
-              >
-                <Select.Popup className={popup}>
-                  <Select.List className={list}>
-                    {(["all", "any"] as const).map((op) => (
-                      <Select.Item key={op} value={op} className={option}>
-                        <Select.ItemText>{op}</Select.ItemText>
-                        <Select.ItemIndicator className={check}>
-                          <Check />
-                        </Select.ItemIndicator>
-                      </Select.Item>
-                    ))}
-                  </Select.List>
-                </Select.Popup>
-              </Select.Positioner>
-            </Select.Portal>
+            <SelectPopup>
+              {(["all", "any"] as const).map((op) => (
+                <SelectOption key={op} value={op}>
+                  {op}
+                </SelectOption>
+              ))}
+            </SelectPopup>
           </Select.Root>
           match
           {menu}
@@ -616,39 +603,34 @@ function VisibilityPicker({
             : "Select blocks"
       }
     >
-      <input
+      <Input
+        size="sm"
         type="search"
         aria-label="Search blocks and question parts"
         placeholder="Search blocks…"
         value={query}
         onChange={(event) => setQuery(event.target.value)}
-        className="mb-2 h-9 w-full rounded-sm bg-white px-2 text-14 shadow-input outline-none focus:shadow-input-focus"
+        className="mb-2"
       />
       <div className="max-h-80 overflow-y-auto">
-        {options.flatMap((item) =>
-          item.label.toLowerCase().includes(query.toLowerCase())
-            ? [
-                <label
-                  key={item.value}
-                  className="flex cursor-pointer items-start gap-2 rounded-sm px-2 py-2 text-14 hover:bg-tint"
-                >
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 shrink-0 accent-interactive"
-                    checked={selected.some((target) => target.value === item.value)}
-                    onChange={(event) =>
-                      onChange(
-                        event.target.checked
-                          ? [...value, item.target]
-                          : value.filter((target) => JSON.stringify(target) !== item.value),
-                      )
-                    }
-                  />
-                  {item.label}
-                </label>,
-              ]
-            : [],
-        )}
+        {rankActions(
+          query,
+          options.map((item) => ({ ...item, title: item.label })),
+        ).map((item) => (
+          <Checkbox
+            key={item.value}
+            label={item.label}
+            className="rounded-sm px-2 py-2 hover:bg-tint"
+            checked={selected.some((target) => target.value === item.value)}
+            onCheckedChange={(checked) =>
+              onChange(
+                checked
+                  ? [...value, item.target]
+                  : value.filter((target) => JSON.stringify(target) !== item.value),
+              )
+            }
+          />
+        ))}
       </div>
     </LogicPopover>
   );
@@ -799,9 +781,6 @@ export function NativeActionRow({
   );
 }
 
-const input =
-  "min-h-8 min-w-0 rounded-sm bg-white px-2 text-14 text-ink shadow-input outline-none focus:shadow-input-focus";
-
 const stack = "flex min-w-0 flex-col gap-2";
 
 export function NativeSelect<T extends string>({
@@ -820,7 +799,8 @@ export function NativeSelect<T extends string>({
   return (
     <label htmlFor={id} className={stack}>
       <span className="text-12 text-muted">{label}</span>
-      <select
+      <BrowserSelect
+        size="sm"
         id={id}
         value={value}
         onChange={(event) => {
@@ -829,7 +809,6 @@ export function NativeSelect<T extends string>({
           if (selected) onChange(selected.value);
           else if (event.target.value === "") onChange("");
         }}
-        className={input}
       >
         {!items.some((item) => item.value === "") && <option value="">Select…</option>}
         {!!value && !items.some((item) => item.value === value) && (
@@ -840,7 +819,7 @@ export function NativeSelect<T extends string>({
             {item.label}
           </option>
         ))}
-      </select>
+      </BrowserSelect>
     </label>
   );
 }
@@ -849,22 +828,25 @@ export function NativeInput({
   label,
   value,
   onChange,
+  onBlur,
   numeric = false,
 }: {
   label: string;
   value: string | number;
   onChange(value: string): void;
+  onBlur?(value: string): void;
   numeric?: boolean;
 }) {
   return (
     <label className={stack}>
       <span className="text-12 text-muted">{label}</span>
-      <input
+      <Input
+        size="sm"
         aria-label={label}
         inputMode={numeric ? "decimal" : undefined}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className={input}
+        onBlur={(event) => onBlur?.(event.target.value)}
       />
     </label>
   );
@@ -913,7 +895,7 @@ function Repair({ label, onRepair }: { label: string; onRepair(): void }) {
   return (
     <div role="status" className={stack}>
       This {label} needs repair.{" "}
-      <Button size="sm" onClick={onRepair}>
+      <Button size="xs" onClick={onRepair}>
         Replace {label}
       </Button>
     </div>
@@ -1076,7 +1058,7 @@ export function NativeExpressionEditor({
                 />
                 {variadic && operation.args.length > 2 ? (
                   <Button
-                    size="sm"
+                    size="xs"
                     onClick={() => {
                       const changed = structuredClone(operation);
                       changed.args.splice(index, 1);
@@ -1090,7 +1072,7 @@ export function NativeExpressionEditor({
             ))}
             {variadic ? (
               <Button
-                size="sm"
+                size="xs"
                 onClick={() => {
                   const changed = structuredClone(operation);
                   changed.args.push(operation.op === "concat" ? "" : 0);
@@ -1144,7 +1126,7 @@ export function NativeExpressionEditor({
                       }
                     />
                     <Button
-                      size="sm"
+                      size="xs"
                       onClick={() =>
                         onChange({
                           ...operation,
@@ -1157,7 +1139,7 @@ export function NativeExpressionEditor({
                   </fieldset>
                 ))}
                 <Button
-                  size="sm"
+                  size="xs"
                   onClick={() =>
                     onChange({
                       ...operation,
@@ -1278,7 +1260,7 @@ export function NativeConditionEditor({
                 }
               />
               <Button
-                size="sm"
+                size="xs"
                 onClick={() =>
                   onChange({
                     ...value,
@@ -1291,7 +1273,7 @@ export function NativeConditionEditor({
             </div>
           ))}
           <Button
-            size="sm"
+            size="xs"
             onClick={() =>
               onChange({ ...value, conditions: [...value.conditions, newCondition("eq")] })
             }
@@ -1375,6 +1357,7 @@ export function NativeRichTextEditor({
   targets: NativeTargets;
   label: string;
 }) {
+  const pages = useLinkPages();
   const parts = typeof value === "string" ? [value] : value;
 
   if (
@@ -1412,21 +1395,20 @@ export function NativeRichTextEditor({
                 <div className="flex flex-wrap gap-2">
                   {(["bold", "italic", "underline", "strikethrough", "code"] as const).map(
                     (mark) => (
-                      <label key={mark} className="text-12">
-                        <input
-                          type="checkbox"
-                          checked={part.marks?.includes(mark) ?? false}
-                          onChange={(event) =>
-                            set(index, {
-                              ...part,
-                              marks: event.target.checked
-                                ? [...(part.marks ?? []), mark]
-                                : (part.marks?.filter((value) => value !== mark) ?? []),
-                            })
-                          }
-                        />{" "}
-                        {mark}
-                      </label>
+                      <Checkbox
+                        key={mark}
+                        label={mark}
+                        className="text-12"
+                        checked={part.marks?.includes(mark) ?? false}
+                        onCheckedChange={(checked) =>
+                          set(index, {
+                            ...part,
+                            marks: checked
+                              ? [...(part.marks ?? []), mark]
+                              : (part.marks?.filter((value) => value !== mark) ?? []),
+                          })
+                        }
+                      />
                     ),
                   )}
                 </div>
@@ -1435,11 +1417,21 @@ export function NativeRichTextEditor({
               <span className="text-12 text-muted">Line break</span>
             ) : "link" in part ? (
               <>
-                <NativeInput
-                  label="Link URL"
-                  value={part.link}
-                  onChange={(link) => set(index, { ...part, link })}
-                />
+                <label className={stack}>
+                  <span className="text-12 text-muted">Link URL</span>
+                  <LinkPicker
+                    size="sm"
+                    aria-label="Link URL"
+                    value={part.link}
+                    pages={pages}
+                    onValueChange={(link) => set(index, { ...part, link })}
+                    // An email address, phone number or bare domain becomes the address it means once it's typed
+                    onBlur={({ target: { value: link } }) => {
+                      if (normalizeLinkUrl(link) !== link)
+                        set(index, { ...part, link: normalizeLinkUrl(link) });
+                    }}
+                  />
+                </label>
                 <NativeRichTextEditor
                   value={part.content}
                   targets={targets}
@@ -1455,7 +1447,7 @@ export function NativeRichTextEditor({
               />
             )}
             {parts.length > 1 ? (
-              <Button size="sm" onClick={() => onChange(parts.filter((_, at) => at !== index))}>
+              <Button size="xs" onClick={() => onChange(parts.filter((_, at) => at !== index))}>
                 Remove text part {index + 1}
               </Button>
             ) : null}
@@ -1664,21 +1656,20 @@ export function NativeActionEditor({
                   target,
                 })),
             ].map((item) => (
-              <label key={item.value} className="flex items-start gap-2 py-1 text-12">
-                <input
-                  type="checkbox"
-                  checked={value.targets.some((target) => JSON.stringify(target) === item.value)}
-                  onChange={(event) =>
-                    onChange({
-                      ...value,
-                      targets: event.target.checked
-                        ? [...value.targets, item.target]
-                        : value.targets.filter((target) => JSON.stringify(target) !== item.value),
-                    })
-                  }
-                />
-                {item.label}
-              </label>
+              <Checkbox
+                key={item.value}
+                label={item.label}
+                className="py-1 text-12"
+                checked={value.targets.some((target) => JSON.stringify(target) === item.value)}
+                onCheckedChange={(checked) =>
+                  onChange({
+                    ...value,
+                    targets: checked
+                      ? [...value.targets, item.target]
+                      : value.targets.filter((target) => JSON.stringify(target) !== item.value),
+                  })
+                }
+              />
             ))}
           </div>
         </fieldset>

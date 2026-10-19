@@ -1,9 +1,8 @@
-import { Menu } from "@base-ui/react/menu";
-import { Check, PencilSimpleLine, Trash } from "@phosphor-icons/react";
+import { PencilSimpleLine, Trash } from "@phosphor-icons/react";
 import type { BlockMenuActions, BlockMenuModel } from "../../react/block-settings";
 import { toSettings } from "../../core/repetition";
 import { FILE_TYPES, fileTypesOf } from "./files";
-import { check, list, option } from "../../../ui/select";
+import { Menu } from "../../../ui/menu";
 import {
   Action,
   AnswerMoreThanOnce,
@@ -91,25 +90,19 @@ function Choice({ label, value, options }: { label: string; value: string; optio
 
   return (
     <SubmenuRow label={label} text={text}>
-      <div className={list}>
-        {options.map(([key, name]) => (
-          <Menu.CheckboxItem
-            key={key}
-            checked={chosen.includes(key)}
-            disabled={chosen.length === 1 && chosen.includes(key)}
-            onCheckedChange={(on) => {
-              const next = on ? [...chosen, key] : chosen.filter((v) => v !== key);
-              set({ [value]: next.length ? next : undefined });
-            }}
-            className={option}
-          >
-            <span className="min-w-0 flex-1 truncate">{name}</span>
-            <Menu.CheckboxItemIndicator className={check}>
-              <Check />
-            </Menu.CheckboxItemIndicator>
-          </Menu.CheckboxItem>
-        ))}
-      </div>
+      {options.map(([key, name]) => (
+        <Menu.CheckboxItem
+          key={key}
+          checked={chosen.includes(key)}
+          disabled={chosen.length === 1 && chosen.includes(key)}
+          onCheckedChange={(on) => {
+            const next = on ? [...chosen, key] : chosen.filter((v) => v !== key);
+            set({ [value]: next.length ? next : undefined });
+          }}
+        >
+          {name}
+        </Menu.CheckboxItem>
+      ))}
     </SubmenuRow>
   );
 }

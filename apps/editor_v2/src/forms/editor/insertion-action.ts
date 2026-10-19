@@ -20,6 +20,8 @@ export function formInsertionAction(
     icon: entry.icon,
     description: entry.description,
     keywords: entry.keywords,
+    aliases: entry.aliases,
+    markdown: entry.markdown,
     preview,
     $available: (context) =>
       $canInsertFormAction(

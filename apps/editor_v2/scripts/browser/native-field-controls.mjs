@@ -2,6 +2,7 @@ import { authenticatedContext } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "./playwright.mjs";
+import { openDemoForm } from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -130,7 +131,7 @@ async function closeMenus() {
 async function menu(label, submenu) {
   await closeMenus();
   await root.getByRole("heading", { name: label, exact: true }).hover();
-  await button("Move this block by dragging").click();
+  await button("Block actions").click();
   await page.getByRole("menuitem", { name: new RegExp(`^${submenu}`) }).focus();
   await page.keyboard.press("ArrowRight");
   await page.getByRole("menu").last().waitFor();
@@ -163,7 +164,7 @@ async function redo() {
 }
 
 try {
-  await page.goto(url);
+  await openDemoForm(page, url);
   await root.waitFor();
   await button("JSON").click();
   await page.getByLabel("Open form JSON file", { exact: true }).setInputFiles({

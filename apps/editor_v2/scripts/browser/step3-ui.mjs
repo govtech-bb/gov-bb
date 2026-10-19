@@ -51,7 +51,7 @@ await page
   .first()
   .hover({ position: { x: 20, y: 10 } });
 
-await page.getByRole("button", { name: "Move this block by dragging" }).click();
+await page.getByRole("button", { name: "Block actions" }).click();
 
 const menu = page.locator("[role=menu]").first();
 

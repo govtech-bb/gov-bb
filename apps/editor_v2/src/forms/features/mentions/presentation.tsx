@@ -6,7 +6,6 @@ import {
   useBasicTypeaheadTriggerMatch,
   type TriggerFn,
 } from "@lexical/react/LexicalTypeaheadMenuPlugin";
-import { Popover } from "@base-ui/react/popover";
 import {
   $createTextNode,
   $getNearestNodeFromDOMNode,
@@ -21,13 +20,15 @@ import {
   SKIP_DOM_SELECTION_TAG,
   type NodeKey,
 } from "lexical";
-import { MagnifyingGlass, Trash } from "@phosphor-icons/react";
+import { Trash } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../../../cn";
-import { ItemLabel, item, sectionLabel } from "../../../ui/item";
-import { panel } from "../../../ui/select";
-import type { Field } from "../logic/queries";
+import { rankActions } from "../../../editor/core/actions";
+import { Input } from "../../../ui/input";
+import { RowContent } from "../../../ui/menu";
+import { Popover } from "../../../ui/popover";
+import { buttonRow, groupLabel, listEmpty, row, surface } from "../../../ui/surface";
 import { fieldIcon } from "../../react/logic-pickers";
 import { $isPlainText, $isWidgetNode } from "../../editor/nodes";
 import {
@@ -57,12 +58,6 @@ const sections = [
   ["INPUT_FIELD", "Mention an input field"],
   ["CALCULATED_FIELD", "Mention a calculated field"],
 ] as const;
-
-const matches = (field: Field, query: string) =>
-  query
-    .toLowerCase()
-    .split(" ")
-    .every((word) => field.title.toLowerCase().includes(word.trim()));
 
 /** Typing @ at the start of a rich-text block or after a space opens the reference menu. */
 export function MentionMenu() {
@@ -122,9 +117,10 @@ export function MentionMenu() {
   const options = useMemo(
     () =>
       sections.flatMap(([type]) =>
-        fields
-          .filter((f) => f.type === type && (!query || matches(f, query)))
-          .map((f) => new FieldOption(f)),
+        rankActions(
+          query ?? "",
+          fields.filter((f) => f.type === type),
+        ).map((f) => new FieldOption(f)),
       ),
     [fields, query],
   );
@@ -161,8 +157,8 @@ export function MentionMenu() {
         createPortal(
           <div
             className={cn(
-              panel,
-              "max-h-[min(524px,60vh)] w-75 overflow-y-auto py-1.5 [&>div:not(:last-child)]:mb-1.5 [&>div:not(:last-child)]:border-b [&>div:not(:last-child)]:border-line [&>div:not(:last-child)]:pb-1.5",
+              surface,
+              "group/popup max-h-[min(524px,60vh)] w-75 overflow-y-auto py-1 [&>div:not(:last-child)]:mb-1 [&>div:not(:last-child)]:border-b [&>div:not(:last-child)]:border-line [&>div:not(:last-child)]:pb-1",
             )}
           >
             {sections.map(([type, title]) => {
@@ -173,7 +169,7 @@ export function MentionMenu() {
               return (
                 items.length > 0 && (
                   <div key={type}>
-                    <div className={cn(sectionLabel, "px-3.5")}>{title}</div>
+                    <div className={groupLabel}>{title}</div>
                     {items.map(({ option, index }) => (
                       <div
                         key={option.key}
@@ -181,12 +177,12 @@ export function MentionMenu() {
                         role="option"
                         aria-selected={selectedIndex === index}
                         data-highlighted={selectedIndex === index ? "" : undefined}
-                        className={item}
+                        className={row}
                         onMouseEnter={() => setHighlightedIndex(index)}
                         onMouseDown={(e) => e.preventDefault()} // keep the caret (and the menu) in the editor
                         onClick={() => selectOptionAndCleanUp(option)}
                       >
-                        <ItemLabel icon={fieldIcon(option.field)}>{option.field.title}</ItemLabel>
+                        <RowContent icon={fieldIcon(option.field)}>{option.field.title}</RowContent>
                       </div>
                     ))}
                   </div>
@@ -194,12 +190,8 @@ export function MentionMenu() {
               );
             })}
             {!options.length && (
-              <div>
-                <div className={cn(item, "cursor-default text-muted hover:bg-transparent")}>
-                  <ItemLabel icon={<MagnifyingGlass />}>
-                    {query ? "No questions match" : "No questions above this line yet"}
-                  </ItemLabel>
-                </div>
+              <div className={listEmpty}>
+                {query ? "No questions match" : "No questions above this line yet"}
               </div>
             )}
           </div>,
@@ -286,69 +278,61 @@ export function MentionSettings() {
       open
       onOpenChange={(next, { reason }) => !next && close(reason !== "outside-press")}
     >
-      <Popover.Portal>
-        <Popover.Positioner
-          anchor={anchor}
-          side="bottom"
-          align="start"
-          className="z-50 outline-none"
-        >
-          <Popover.Popup
-            finalFocus={false}
-            className={cn(
-              panel,
-              "w-64 py-1.5 transition-opacity duration-180 ease-out-cubic data-ending-style:opacity-0 data-starting-style:opacity-0 [&>div:not(:last-child)]:mb-1.5 [&>div:not(:last-child)]:border-b [&>div:not(:last-child)]:border-line [&>div:not(:last-child)]:pb-1.5",
-            )}
-          >
-            {open.reference ? (
-              <div className="max-h-120 overflow-y-auto px-3.5 py-2">
-                <NativeDisplayReferenceEditor
-                  value={open.reference}
-                  targets={targets}
-                  onChange={(reference) => {
-                    edit((mention) => $setNativeMentionReference(mention, reference));
-                    setOpen((current) => current && { ...current, reference });
-                  }}
-                />
-              </div>
-            ) : (
-              <div>
-                <div className={cn(sectionLabel, "px-3.5")}>Default value</div>
-                <div className="px-3.5 pt-0.5 pb-1.5">
-                  <input
-                    key={open.key}
-                    autoFocus
-                    defaultValue={open.value}
-                    aria-label="Default value"
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      edit((mention) => $setState(mention, defaultState, value));
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key !== "Enter") return;
-                      e.preventDefault(); // the focus goes back to the editor: the Enter mustn't follow it there
-                      close(true);
-                    }}
-                    className="h-8 w-full rounded-sm bg-white px-2 text-14 text-ink shadow-input outline-none placeholder:text-placeholder hover:shadow-input-hover focus:shadow-input-focus"
-                  />
-                </div>
-              </div>
-            )}
-            <div>
-              <button
-                type="button"
-                className={item}
-                onClick={() => {
-                  edit((mention) => mention.remove());
+      <Popover.Content
+        aria-label="Mention settings"
+        anchor={anchor}
+        side="bottom"
+        align="start"
+        finalFocus={false}
+        className="w-64 p-0 py-1 [&>div:not(:last-child)]:mb-1 [&>div:not(:last-child)]:border-b [&>div:not(:last-child)]:border-line [&>div:not(:last-child)]:pb-1"
+      >
+        {open.reference ? (
+          <div className="max-h-120 overflow-y-auto px-3.5 py-2">
+            <NativeDisplayReferenceEditor
+              value={open.reference}
+              targets={targets}
+              onChange={(reference) => {
+                edit((mention) => $setNativeMentionReference(mention, reference));
+                setOpen((current) => current && { ...current, reference });
+              }}
+            />
+          </div>
+        ) : (
+          <div>
+            <div className={groupLabel}>Default value</div>
+            <div className="px-3.5 pt-0.5 pb-1.5">
+              <Input
+                size="sm"
+                key={open.key}
+                autoFocus
+                defaultValue={open.value}
+                aria-label="Default value"
+                onChange={(e) => {
+                  const value = e.target.value;
+                  edit((mention) => $setState(mention, defaultState, value));
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return;
+                  e.preventDefault(); // the focus goes back to the editor: the Enter mustn't follow it there
                   close(true);
                 }}
-              >
-                <ItemLabel icon={<Trash />}>Remove</ItemLabel>
-              </button>
+              />
             </div>
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
+          </div>
+        )}
+        <div>
+          <button
+            type="button"
+            className={buttonRow}
+            onClick={() => {
+              edit((mention) => mention.remove());
+              close(true);
+            }}
+          >
+            <RowContent icon={<Trash />}>Remove</RowContent>
+          </button>
+        </div>
+      </Popover.Content>
     </Popover.Root>
   );
 }

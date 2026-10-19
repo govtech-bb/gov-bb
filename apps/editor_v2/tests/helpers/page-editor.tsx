@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, vi } from "vitest";
-import { act } from "react";
+import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { $getRoot, type LexicalEditor } from "lexical";
@@ -61,8 +61,8 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-/** Mount a real page editor in a jsdom test; the registered hooks clean it up. */
-export async function renderPageEditor(source: string) {
+/** Mount a real page editor in a jsdom test, with other parts such as the title before it; the hooks clean it up. */
+export async function renderPageEditor(source: string, before?: ReactNode) {
   const prepared = govbbPageCodec.prepare(source);
 
   if (prepared.mode !== "visual") throw new Error("Expected visual page fixture");
@@ -70,12 +70,18 @@ export async function renderPageEditor(source: string) {
     root.render(
       <EditorComposer definition={govbbPageEditor} initialState={prepared.state}>
         <CaptureEditor />
+        {before}
         <PageEditor />
       </EditorComposer>,
     );
   });
 
   return editor;
+}
+
+/** Mount something larger in the same jsdom page, such as a page's whole frame; the hooks clean it up. */
+export async function renderInPage(node: ReactNode) {
+  await act(async () => root.render(node));
 }
 
 /** Find page controls, including menus rendered outside the editor in portals. */

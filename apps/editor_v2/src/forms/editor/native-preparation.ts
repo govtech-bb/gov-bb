@@ -372,8 +372,9 @@ export function prepareNativeBindings(
       metadata.required = { value: false, message: errors.required };
     const projectedErrors = object(nativeQuestionSettings(metadata).errors);
 
-    for (const key of Object.keys(errors))
-      if (!Object.hasOwn(projectedErrors, key))
+    // A blank message is none, so it has no rule to need
+    for (const [key, message] of Object.entries(errors))
+      if (!Object.hasOwn(projectedErrors, key) && !(typeof message === "string" && !message.trim()))
         issue(answer, `The legacy validation message “${key}” needs a native validation rule`);
 
     if (label) {

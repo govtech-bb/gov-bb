@@ -2,6 +2,7 @@ import { $isHeadingNode } from "@lexical/rich-text";
 import { format } from "date-fns";
 import type { ErrorMessage, Rule, RuleName } from "../adapters/ssb/rules";
 import { parseDay } from "../core/dates";
+import { isAuthoredMessage } from "../core/validation-messages";
 import {
   autoId,
   type IdItem,
@@ -155,7 +156,7 @@ export function messagesFor(
   return rulesFor(kind, settings, optionCount).map(({ rule, label: ruleLabel, value }) => {
     const range = rule === "onOrAfter" || rule === "onOrBefore";
     const given = errors[range ? "onOrAfter" : rule];
-    const pinned = typeof given === "string" && !!given.trim();
+    const pinned = typeof given === "string" && isAuthoredMessage(given);
 
     const fallback = defaultMessage(rule, {
       kind,

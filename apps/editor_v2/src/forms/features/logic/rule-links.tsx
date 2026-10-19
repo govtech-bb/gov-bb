@@ -34,7 +34,7 @@ export function LogicRuleLinks() {
           {source.links.map((link) => (
             <Button
               key={link.key}
-              size="sm"
+              size="xs"
               icon={<ArrowsSplit />}
               aria-label={`Edit logic ${link.number} for ${source.fallback}`}
               onClick={() => focusLogic(editor, link.key)}
@@ -50,7 +50,7 @@ export function LogicRuleLinks() {
                   : "Partly hidden without a Show rule"}
               </span>
               <Button
-                size="sm"
+                size="xs"
                 aria-label={`Make visible: ${source.fallback}`}
                 onClick={() => {
                   if (!editor.isEditable()) return;

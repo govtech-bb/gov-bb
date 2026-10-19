@@ -7,7 +7,8 @@ import { defineField } from "../../field";
 
 import type { Settings } from "../../core/settings";
 
-import { choicePresentation, markerPad } from "../choices/presentation";
+import { govbbCheckbox, govbbMarkerLabel } from "../../../ui/govbb";
+import { choicePresentation } from "../choices/presentation";
 
 export type CheckboxesSettings = { required: boolean };
 
@@ -54,10 +55,9 @@ export const checkboxesField = defineField({
       add: "pt-3",
     },
     rowClass: "items-start gap-4",
-    textClass: markerPad,
-    optionalClass: markerPad,
-    marker: () =>
-      $static("span", "size-(--form-marker) shrink-0 border-2 border-ink bg-white rounded-none"),
+    textClass: govbbMarkerLabel,
+    optionalClass: govbbMarkerLabel,
+    marker: () => $static("span", govbbCheckbox),
   }),
   turnInto: { group: "choice", order: 1, create: () => $createChoiceInput("checkboxes")[0]! },
 });

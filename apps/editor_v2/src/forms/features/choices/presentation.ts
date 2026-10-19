@@ -4,8 +4,6 @@ import { container, ghostBase, el, $static, icon } from "../../../editor/react/b
 import { $logicMount, $optional } from "../../editor/answer-dom";
 import type { ChoicePresentation } from "../../field";
 
-export const markerPad = "pt-[calc((var(--form-marker)_-_1.5em)/2)]";
-
 /** Shared option slots and events; each field supplies its own frame and markers. */
 export function choicePresentation({
   kind,

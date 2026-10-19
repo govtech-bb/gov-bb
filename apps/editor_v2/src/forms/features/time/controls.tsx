@@ -8,6 +8,8 @@ import {
   type FieldControlsProps,
 } from "../shared/controls";
 import { useId, useState } from "react";
+import { Input } from "../../../ui/input";
+import { NativeSelect } from "../../../ui/native-select";
 import { timeIncrementError, DEFAULT_TIME_INCREMENT } from "../shared/increments";
 
 export function TimeControls({ m, a }: FieldControlsProps) {
@@ -60,7 +62,8 @@ function TimeIncrement() {
       <label htmlFor={id} className="block pb-1 text-14">
         Time increment
       </label>
-      <select
+      <NativeSelect
+        size="sm"
         aria-label="Time increment preset"
         value={
           settings.step === undefined
@@ -72,7 +75,7 @@ function TimeIncrement() {
         onChange={(event) => {
           if (event.target.value !== "custom") update(event.target.value);
         }}
-        className="mb-1.5 h-8 w-full rounded-sm bg-white px-2 text-14 shadow-input"
+        className="mb-1.5"
       >
         <option value="">Default · {DEFAULT_TIME_INCREMENT / 60} minutes</option>
         {[1, 5, 15, 30, 60].map((minutes) => (
@@ -81,8 +84,9 @@ function TimeIncrement() {
           </option>
         ))}
         <option value="custom">Custom seconds</option>
-      </select>
-      <input
+      </NativeSelect>
+      <Input
+        size="sm"
         id={id}
         type="text"
         inputMode="decimal"
@@ -91,7 +95,6 @@ function TimeIncrement() {
         aria-invalid={!!error}
         aria-describedby={error ? id + "-error" : undefined}
         onChange={(event) => update(event.target.value)}
-        className="h-8 w-full rounded-sm bg-white px-2 text-14 shadow-input outline-none focus:shadow-input-focus"
       />
       <p className="pt-1 text-12 text-muted">
         Custom increment in seconds. Clear to use the default.

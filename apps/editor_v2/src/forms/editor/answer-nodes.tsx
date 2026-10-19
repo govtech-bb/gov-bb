@@ -22,14 +22,15 @@ import { RendererHost } from "../../editor/react/contributions";
 import type { WidgetKind } from "../core/widget-kinds";
 import { formDefinition } from "../definition";
 import {
+  $answerText,
   $logicMount,
   $optional,
   $repeatParts,
   answerGap,
-  frame,
   onEdge,
   optionalRoom,
 } from "./answer-dom";
+import { inputBox } from "./drawn-input";
 import { $installedField } from "./field-context";
 
 export {
@@ -104,10 +105,16 @@ export class LongAnswerNode extends ElementNode {
   }
   override createDOM() {
     const dom = el("div", `${container} ${answerGap} ${optionalRoom}`);
-    const box = $installedField(this.getType())!.draw!($settings(this));
+    const field = $installedField(this.getType())!;
+    const box = field.draw!($settings(this));
     setDOMUnmanaged(box, { captureSelection: true });
     box.append($optional(onEdge));
-    dom.append($logicMount(), box, el("div", "sr-only", { "data-text": "" }));
+    dom.append(
+      $logicMount(),
+      box,
+      $answerText(field.label),
+      el("div", "sr-only", { "data-text": "" }),
+    );
     $repeatParts(box);
 
     return dom;
@@ -140,25 +147,26 @@ export class InputNode extends ElementNode {
     const kind = $getState(this, inputKindState);
     const field = $installedField(kind);
 
-    if (field?.createDOM) return field.createDOM($settings(this), editor);
+    if (field?.createDOM) {
+      const dom = field.createDOM($settings(this), editor);
+      dom.querySelector(":scope > [data-text]")?.before($answerText(field.label));
+
+      return dom;
+    }
+
     const dom = el("div", `${container} ${answerGap} ${optionalRoom}`);
 
     // Field width caps the box; GovBB's number input always stops at 11rem
-    const box =
-      field?.draw?.($settings(this)) ??
-      $static(
-        "div",
-        cn(
-          "relative flex h-(--form-control) w-full cursor-default items-center justify-end gap-2 pl-3",
-          "max-w-[var(--field-width,100%)] pr-3",
-          frame,
-        ),
-        { "data-drawn": "" },
-      );
+    const box = field?.draw?.($settings(this)) ?? $static("div", inputBox, { "data-drawn": "" });
 
     setDOMUnmanaged(box, { captureSelection: true });
     box.append($optional(onEdge));
-    dom.append($logicMount(), box, el("div", "sr-only", { "data-text": "" }));
+    dom.append(
+      $logicMount(),
+      box,
+      $answerText(field?.label ?? kind),
+      el("div", "sr-only", { "data-text": "" }),
+    );
     $repeatParts(box);
 
     return dom;
@@ -205,11 +213,12 @@ export class OptionNode extends ElementNode {
   }
   override createDOM(_: unknown, editor: LexicalEditor): HTMLElement {
     const kind = $getState(this, choiceKindState);
-    const choice = $installedField(kind)?.choice;
+    const field = $installedField(kind);
+    const choice = field?.choice;
 
     if (!choice) throw new Error(`No choice presentation installed: ${kind}`);
 
-    return choice.createDOM($getState(this, indexState), () => {
+    const dom = choice.createDOM($getState(this, indexState), () => {
       if (!editor.isEditable()) return;
       editor.update(() => {
         if (!editor.isEditable()) return;
@@ -219,16 +228,23 @@ export class OptionNode extends ElementNode {
           node.insertAfter($createOptionNode($getState(node, choiceKindState))).selectStart();
       });
     });
+
+    // The question's first option says what its markers draw: “Answer: Radios”
+    const answer = $answerText(field.label);
+    answer.hidden = $getState(this, indexState) !== 0;
+    dom.querySelector("[data-card]")?.before(answer);
+
+    return dom;
   }
 
   override updateDOM(prev: this, dom: HTMLElement) {
     if ($getStateChange(this, prev, choiceKindState)) return true;
 
-    if ($getStateChange(this, prev, indexState))
-      $installedField($getState(this, choiceKindState))?.choice?.paint(
-        dom,
-        $getState(this, indexState),
-      );
+    if ($getStateChange(this, prev, indexState)) {
+      const index = $getState(this, indexState);
+      $installedField($getState(this, choiceKindState))?.choice?.paint(dom, index);
+      dom.querySelector<HTMLElement>(":scope > [data-answer]")!.hidden = index !== 0;
+    }
 
     return false;
   }

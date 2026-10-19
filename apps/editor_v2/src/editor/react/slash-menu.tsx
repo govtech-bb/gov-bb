@@ -2,8 +2,6 @@ import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext
 import {
   LexicalTypeaheadMenuPlugin,
   MenuOption,
-  PUNCTUATION,
-  useBasicTypeaheadTriggerMatch,
   type TriggerFn,
 } from "@lexical/react/LexicalTypeaheadMenuPlugin";
 import {
@@ -11,22 +9,33 @@ import {
   $getSelection,
   $isParagraphNode,
   $isRangeSelection,
+  $isRootNode,
   COMMAND_PRIORITY_NORMAL,
   type NodeKey,
 } from "lexical";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../../cn";
-import { ItemLabel, item, sectionLabel } from "../../ui/item";
-import { panel } from "../../ui/select";
+import { RowContent } from "../../ui/menu";
+import { group, groupLabel, listEmpty, listFooter, row, surface } from "../../ui/surface";
 import {
   $availableActions,
   $executeAction,
-  matchesAction,
+  rankActions,
   sectioned,
   type EditorAction,
 } from "../core/actions";
+import { $turnLineInto } from "../core/turn-into";
+import { $caretLine, registerLineHint } from "./block-dom";
 import { useEditorDefinition } from "./composer";
+import { useSlashTrigger } from "./slash-trigger";
+
+// The top-level block holding the caret, where a chosen block goes
+const $caretBlock = () => {
+  const selection = $getSelection();
+
+  return $isRangeSelection(selection) ? selection.anchor.getNode().getTopLevelElement() : null;
+};
 
 class BlockOption extends MenuOption {
   constructor(
@@ -40,9 +49,6 @@ class BlockOption extends MenuOption {
   }
 }
 
-// Allow punctuation used in block names and shortcuts, which Lexical otherwise treats as a query boundary.
-const punctuation = PUNCTUATION.replace("#", "").replace("\\-", "").replace("'", "");
-
 /** Type "/" in an ordinary text line to filter blocks, navigate with arrows and insert with Enter. */
 export function SlashMenu() {
   const [editor] = useLexicalComposerContext();
@@ -50,11 +56,35 @@ export function SlashMenu() {
   const [query, setQuery] = useState<string | null>(null);
   const [error, setError] = useState<string>();
 
-  const slash = useBasicTypeaheadTriggerMatch("/", {
-    minLength: 0,
-    allowWhitespace: true,
-    punctuation,
-  });
+  // Where "/" opens this menu, the caret's empty line says so
+  useEffect(
+    () =>
+      registerLineHint(editor, (focused) => {
+        const line = focused ? $caretLine() : null;
+
+        return $isParagraphNode(line) && $isRootNode(line.getParent())
+          ? [line, "Start writing, or type / to add a block."]
+          : null;
+      }),
+    [editor],
+  );
+
+  const slash = useSlashTrigger(
+    useCallback(
+      (query: string) => {
+        const block = $caretBlock();
+
+        return (
+          !!block &&
+          rankActions(
+            query,
+            $availableActions(editor, definition, { targetKey: block.getKey(), mode: "insert" }),
+          ).length > 0
+        );
+      },
+      [editor, definition],
+    ),
+  );
 
   const trigger = useCallback<TriggerFn>(
     (text, editor) => {
@@ -68,26 +98,26 @@ export function SlashMenu() {
     [slash],
   );
 
-  const options = useMemo(() => {
-    const q = query?.trim().toLowerCase();
+  const options = useMemo(
+    () =>
+      editor.getEditorState().read(
+        () => {
+          const block = $caretBlock();
 
-    return editor.getEditorState().read(
-      () => {
-        const selection = $getSelection();
-
-        const block = $isRangeSelection(selection)
-          ? selection.anchor.getNode().getTopLevelElement()
-          : null;
-
-        return block
-          ? $availableActions(editor, definition, { targetKey: block.getKey(), mode: "insert" })
-              .filter((entry) => !q || matchesAction(entry, q))
-              .map((entry) => new BlockOption(entry, block.getKey()))
-          : [];
-      },
-      { editor },
-    );
-  }, [editor, definition, query]);
+          return block
+            ? rankActions(
+                query ?? "",
+                $availableActions(editor, definition, {
+                  targetKey: block.getKey(),
+                  mode: "insert",
+                }),
+              ).map((entry) => new BlockOption(entry, block.getKey()))
+            : [];
+        },
+        { editor },
+      ),
+    [editor, definition, query],
+  );
 
   return (
     <LexicalTypeaheadMenuPlugin<BlockOption>
@@ -106,6 +136,15 @@ export function SlashMenu() {
       commandPriority={COMMAND_PRIORITY_NORMAL}
       onSelectOption={(option, query, closeMenu) => {
         const queryKey = query?.getKey();
+        const line = $getNodeByKey(option.targetKey);
+
+        if (
+          line &&
+          $turnLineInto(definition, option.entry.id, line, query?.getTextContent() ?? "", () =>
+            query?.remove(),
+          )
+        )
+          return closeMenu();
 
         const outcome = $executeAction(
           editor,
@@ -125,51 +164,71 @@ export function SlashMenu() {
       menuRenderFn={(
         anchor,
         { options, selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
-      ) =>
-        anchor.current &&
-        createPortal(
-          // Lexical points aria-activedescendant at the highlighted typeahead-item-N.
+      ) => {
+        const option = (entry: BlockOption, index: number) => (
           <div
-            role="listbox"
-            aria-label="Insert block"
-            className={cn(panel, "max-h-131 w-75 overflow-y-auto py-1.5")}
+            key={entry.key}
+            id={`typeahead-item-${index}`}
+            ref={entry.setRefElement}
+            role="option"
+            aria-label={entry.entry.title}
+            aria-selected={selectedIndex === index}
+            data-highlighted={selectedIndex === index ? "" : undefined}
+            className={row}
+            // Only a pointer that moves: one resting where the menu opens leaves Enter's choice alone
+            onMouseMove={() => setHighlightedIndex(index)}
+            onMouseDown={(e) => e.preventDefault()} // keep the caret (and the menu) in the editor
+            onClick={() => selectOptionAndCleanUp(entry)}
           >
-            {error && (
-              <div role="alert" className="px-3.5 py-1.5 text-14 text-red-700">
-                {error}
+            <RowContent icon={entry.entry.icon} detail={entry.entry.markdown}>
+              {entry.entry.title}
+            </RowContent>
+          </div>
+        );
+
+        const highlighted = selectedIndex === null ? undefined : options[selectedIndex]?.entry;
+
+        return (
+          anchor.current &&
+          createPortal(
+            <>
+              {/* Lexical points aria-activedescendant at the highlighted typeahead-item-N; this also says it aloud */}
+              <p role="status" className="sr-only">
+                {highlighted?.title}
+              </p>
+              <div className={cn(surface, "flex max-h-131 w-75 flex-col")}>
+                <div
+                  role="listbox"
+                  aria-label="Insert block"
+                  className="group/popup min-h-0 overflow-y-auto py-1"
+                >
+                  {error && (
+                    <div role="alert" className="px-3.5 py-1.5 text-14 text-error">
+                      {error}
+                    </div>
+                  )}
+                  {options.length === 0 && <div className={listEmpty}>No results</div>}
+                  {/* A search ranks one list; before it, the blocks are in their groups */}
+                  {query
+                    ? options.map(option)
+                    : sectioned(options).map(({ group: heading, items }) => (
+                        <div key={heading} className={group}>
+                          <div className={groupLabel}>{heading}</div>
+                          {items.map(({ item, index }) => option(item, index))}
+                        </div>
+                      ))}
+                </div>
+                {highlighted?.description && (
+                  <p className={listFooter} aria-hidden="true">
+                    {highlighted.description}
+                  </p>
+                )}
               </div>
-            )}
-            {options.length === 0 && (
-              <div className="px-3.5 py-1.5 text-14 text-subtle">No results</div>
-            )}
-            {sectioned(options).map(({ group, items }) => (
-              <div
-                key={group}
-                className="not-last:mb-1.5 not-last:border-b not-last:border-line not-last:pb-1.5"
-              >
-                <div className={cn(sectionLabel, "px-3.5")}>{group}</div>
-                {items.map(({ item: option, index }) => (
-                  <div
-                    key={option.key}
-                    id={`typeahead-item-${index}`}
-                    ref={option.setRefElement}
-                    role="option"
-                    aria-selected={selectedIndex === index}
-                    data-highlighted={selectedIndex === index ? "" : undefined}
-                    className={item}
-                    onMouseEnter={() => setHighlightedIndex(index)}
-                    onMouseDown={(e) => e.preventDefault()} // keep the caret (and the menu) in the editor
-                    onClick={() => selectOptionAndCleanUp(option)}
-                  >
-                    <ItemLabel icon={option.entry.icon}>{option.entry.title}</ItemLabel>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>,
-          anchor.current,
-        )
-      }
+            </>,
+            anchor.current,
+          )
+        );
+      }}
     />
   );
 }

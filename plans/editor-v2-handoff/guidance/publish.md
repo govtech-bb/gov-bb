@@ -1,0 +1,22 @@
+- **Build on wave 1.** Use the DocumentBar's publish slot and SaveState from the frame work, ConfirmDialog, Button's pending state and TextLink from the kit work, and the sidebar row model from the nav work. Read their components before you start; don't rebuild any of them.
+- **publish-control:**
+  - One `PublishControl` for pages; forms adopt it later.
+  - It compares the saved visibility with the draft's and names the action: "Publish page", "Publish changes", "Unpublish page" or "Save draft".
+  - It asks before unpublishing, through ConfirmDialog. On an entry page the question says the whole service goes offline.
+  - Every public change ends in a toast with a "View on site" link.
+  - Each visibility option says who can see the page (for example "Anyone on GOV.BB", "Only people with the preview link", "Only editors").
+- **visibility-badge:** one `VisibilityBadge` (badge, dot or label) built from one map of label, tone and colour. Use its dot as the visibility select's icon. Replace all three maps.
+- **unsaved-everywhere:**
+  - One draft-registry hook compares the stored server copies with the browser drafts.
+  - It feeds the sidebar row model's unsaved flag (the nav work left room for it), marks rows in the services list, adds an "Unsaved changes in this browser" group, and puts a dot in the tab title (through the frame work's title hook).
+  - Signing out with unsaved work asks first and lists the pages, through ConfirmDialog.
+- **path-field:**
+  - One `PathField` for the panel and the create dialogs. It checks as you type, with the same rules the API applies.
+  - For a public page, it warns that old links and the pages under it won't follow.
+  - Redirects need api_v2: leave them out and list them in your report.
+- **view-on-site:**
+  - Public pages get "View on site" in the document bar, from `api.landingUrl` (an external TextLink).
+  - Preview links for preview pages need an api_v2 endpoint: leave them out and say so.
+- **conflicts:**
+  - One `ConflictBanner` for both kinds of conflict, shown in the document bar's notice area. It says who saved and when (what the API returns; if it doesn't say who, say "Someone"), offers Compare (a side-by-side or diff view of the Markdown), and has buttons named by outcome: "Publish mine over theirs", "Use theirs", "Download mine".
+  - A toast then says what happened.

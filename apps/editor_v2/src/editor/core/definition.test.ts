@@ -53,7 +53,7 @@ test("composition reports duplicate module and registration identities", () => {
   ).toThrow("Duplicate registration key: save");
 });
 
-test("composition rejects missing capabilities and multiple history or document owners", () => {
+test("composition rejects missing capabilities and multiple history, document or Turn into owners", () => {
   expect(() => defineEditor([{ key: "questions", requires: ["text"] }])).toThrow(
     "Module questions requires text",
   );
@@ -69,6 +69,14 @@ test("composition rejects missing capabilities and multiple history or document 
       { key: "second", $initialize: () => {} },
     ]),
   ).toThrow("multiple default document initializers");
+  const turnInto = { $choices: () => null, $turnInto: () => {} };
+  expect(() =>
+    defineEditor([
+      { key: "first", turnInto },
+      { key: "second", turnInto },
+    ]),
+  ).toThrow("Multiple Turn into owners");
+  expect(defineEditor([{ key: "text", turnInto }]).turnInto).toBe(turnInto);
   expect(
     defineEditor([
       { key: "questions", requires: ["text"] },

@@ -1,11 +1,8 @@
 import {
   $createParagraphNode,
   $getSelection,
-  $isParagraphNode,
   $isRangeSelection,
   type ElementNode,
-  type LexicalEditor,
-  type LexicalNode,
   type ParagraphNode,
   type RangeSelection,
 } from "lexical";
@@ -51,29 +48,4 @@ export function $toText(block: ElementNode): ParagraphNode {
   line.selectStart();
 
   return line;
-}
-
-export type ContentShortcuts = Readonly<Record<string, () => LexicalNode[]>>;
-
-/** Run only on typing: a pasted marker or an undo does not convert a paragraph. */
-export function registerContentShortcuts(
-  editor: LexicalEditor,
-  shortcuts: ContentShortcuts,
-  $insert: (created: LexicalNode[], target: ParagraphNode) => void,
-) {
-  const onKeyUp = (event: KeyboardEvent) => {
-    if (!editor.isEditable() || composing(event) || ![" ", "-", "]"].includes(event.key)) return;
-    editor.update(() => {
-      if (!editor.isEditable()) return;
-      const block = $caretBlock()?.block;
-      const make = $isParagraphNode(block) ? shortcuts[block.getTextContent()] : undefined;
-
-      if ($isParagraphNode(block) && make) $insert(make(), block.clear());
-    });
-  };
-
-  return editor.registerRootListener((root, previous) => {
-    previous?.removeEventListener("keyup", onKeyUp);
-    root?.addEventListener("keyup", onKeyUp);
-  });
 }

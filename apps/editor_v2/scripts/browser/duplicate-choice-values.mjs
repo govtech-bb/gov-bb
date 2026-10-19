@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { chromium } from "./playwright.mjs";
+import { openDemoForm } from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -67,7 +68,7 @@ title: Choice duplication
 `;
 
 try {
-  await page.goto(process.argv[2] ?? "http://localhost:3013/");
+  await openDemoForm(page, process.argv[2] ?? "http://localhost:3013/");
   await root.waitFor();
   await page.getByRole("button", { name: /^Markdown/ }).click();
   await page.getByRole("textbox", { name: "Markdown source", exact: true }).fill(source);
@@ -81,7 +82,7 @@ try {
 
   assert.deepEqual(values(before), ["approved", "declined"]);
   await title.hover();
-  await page.getByRole("button", { name: "Move this block by dragging" }).click();
+  await page.getByRole("button", { name: "Block actions" }).click();
   await page.getByRole("menuitem", { name: /^Duplicate/ }).click();
   await settle();
   const after = await state();
@@ -194,7 +195,7 @@ try {
   page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   page.on("pageerror", (error) => errors.push(error.message));
   root = page.locator('[contenteditable="true"][aria-label="Form"]');
-  await page.goto(process.argv[2] ?? "http://localhost:3013/");
+  await openDemoForm(page, process.argv[2] ?? "http://localhost:3013/");
   await root.waitFor();
 
   // An unlabelled question needs its own copy boundary, rather than four options in one question.
@@ -208,7 +209,7 @@ try {
   await settle();
   assert.equal(await root.locator("h2").count(), 0);
   await root.locator("[data-option]").first().hover();
-  await page.getByRole("button", { name: "Move this block by dragging" }).click();
+  await page.getByRole("button", { name: "Block actions" }).click();
   await page.getByRole("menuitem", { name: /^Duplicate/ }).click();
   await settle();
   const untitled = await state();

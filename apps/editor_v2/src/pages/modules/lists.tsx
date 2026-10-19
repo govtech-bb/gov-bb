@@ -11,6 +11,7 @@ import {
 import { $isParagraphNode, type LexicalNode } from "lexical";
 import type { BlockContent, ListItem } from "mdast";
 import type { PageModule, PageHandler } from "../definition";
+import { lineHint } from "../../editor/react/block-dom";
 import { PageListItemNode } from "../list-item";
 import { pageInsertAction } from "../insertion";
 import { blocks, phrasing, UnsupportedPageContent } from "../markdown";
@@ -192,6 +193,8 @@ export function PageListsModule(): PageModule {
           order: 20,
           icon: <ListBullets />,
           description: "List items in any order.",
+          aliases: ["bullets", "unordered list", "ul"],
+          markdown: "-",
         },
       ),
       pageInsertAction(
@@ -203,6 +206,8 @@ export function PageListsModule(): PageModule {
           order: 20,
           icon: <ListNumbers />,
           description: "Write a sequence of steps.",
+          aliases: ["steps", "ordered list", "ol"],
+          markdown: "1.",
         },
       ),
     ],
@@ -210,7 +215,7 @@ export function PageListsModule(): PageModule {
       list: {
         ul: "page-list page-list-bullet",
         ol: "page-list page-list-number",
-        listitem: "page-list-item",
+        listitem: `page-list-item ${lineHint}`,
         nested: { listitem: "page-list-nested" },
       },
     },

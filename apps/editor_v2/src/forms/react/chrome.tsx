@@ -13,6 +13,7 @@ import { CaretDown, CaretRight, DotsThree } from "@phosphor-icons/react";
 import { useEffect, useReducer, type MouseEvent } from "react";
 import { cn } from "../../cn";
 import { Button } from "../../ui/button";
+import { Kbd } from "../../ui/kbd";
 import { Tip } from "../../ui/tooltip";
 import { $addTitle, $foldableTitle, $foldQuestion, $isUntitled } from "../editor/structure";
 import {
@@ -25,10 +26,10 @@ import {
   $withNested,
 } from "../editor/nodes";
 import { $canAddFollowUp } from "../editor/nesting";
+import { foldShortcut } from "../editor/structure/keyboard";
+import { shortcut } from "../../editor/react/shortcut";
 
 // Measure block controls outside contenteditable so they do not become editable content.
-
-const isMac = /Mac|iPhone|iPad/.test(typeof navigator === "undefined" ? "" : navigator.userAgent);
 
 // Buttons keep the editor's focus, and with it the caret
 const keepCaret = (e: MouseEvent) => e.preventDefault();
@@ -119,7 +120,8 @@ export function FoldActions({ anchor, hovered }: { anchor: HTMLElement; hovered:
             folded: !!$settings(block).folded,
             count: group.length - 1,
             left: line.right + 6 - box.left,
-            top: line.top + line.height / 2 - 12 - box.top,
+            // The middle of the line: the button centres on it, 24px or, on a touch screen, 44px
+            top: line.top + line.height / 2 - box.top,
           },
         ];
       });
@@ -128,13 +130,15 @@ export function FoldActions({ anchor, hovered }: { anchor: HTMLElement; hovered:
   );
 
   return folds.map(({ key, active, folded, count, left, top }) => {
-    const label = folded ? "Unfold blocks" : "Fold blocks";
+    const blocks = `${count} block${count === 1 ? "" : "s"}`;
+    // The name has the count the folded button shows, and says what pressing it does; aria-expanded says the state
+    const label = `${folded ? "Unfold" : "Fold"} ${blocks}`;
 
     return (
       <div
         key={key}
         className={cn(
-          "absolute z-2 flex items-center",
+          "absolute z-2 flex -translate-y-1/2 items-center",
           !folded && !active && "opacity-0 focus-within:opacity-100 hover:opacity-100",
         )}
         style={{ left, top }}
@@ -146,13 +150,14 @@ export function FoldActions({ anchor, hovered }: { anchor: HTMLElement; hovered:
             <>
               <em>{label}</em>
               <br />
-              {isMac ? "⌘ ⌥" : "Ctrl Shift"} {folded ? "]" : "["}
+              <Kbd>{shortcut(foldShortcut(!folded))}</Kbd>
             </>
           }
         >
           <Button
-            size="sm"
+            size="xs"
             aria-label={label}
+            aria-expanded={!folded}
             className="min-w-6"
             icon={folded ? <DotsThree /> : <CaretDown />}
             iconEnd={folded ? <CaretRight /> : undefined}
@@ -165,7 +170,7 @@ export function FoldActions({ anchor, hovered }: { anchor: HTMLElement; hovered:
               })
             }
           >
-            {folded ? `${count} block${count === 1 ? "" : "s"}` : undefined}
+            {folded ? blocks : undefined}
           </Button>
         </Tip>
       </div>
@@ -227,7 +232,7 @@ export function TitleHints({
   return hints.map(({ key, title, followUp, left, top }) => (
     <div
       key={key}
-      className="absolute z-3 flex h-9 w-70 items-center gap-5 max-xl:hidden in-[.dragging-blocks]:hidden"
+      className="absolute z-3 flex h-9 w-70 items-center gap-5 max-xl:hidden in-data-dragging:hidden"
       style={{ left, top }}
     >
       {title && <Hint label="Add question label" letter="T" onClick={() => add(key)} />}
@@ -252,19 +257,17 @@ function $showsHints(node: LexicalNode) {
   return true;
 }
 
-const key = "rounded-xs bg-white px-1 text-12 leading-4 shadow-input";
-
 function Hint({ label, letter, onClick }: { label: string; letter: string; onClick: () => void }) {
   return (
     <button
       type="button"
       onMouseDown={keepCaret}
       onClick={onClick}
-      className="group/hint flex h-9 cursor-pointer items-center gap-2 text-14 leading-3.5 text-muted hover:text-ink"
+      className="flex h-9 cursor-pointer items-center gap-2 text-14 text-muted hover:text-ink"
     >
       <span>{label}</span>
-      <kbd className={`${key} group-hover/hint:shadow-input-hover`}>{isMac ? "⌥" : "Alt"}</kbd>
-      <kbd className={`${key} group-hover/hint:shadow-input-hover`}>{letter}</kbd>
+      <Kbd>{shortcut(["alt"])}</Kbd>
+      <Kbd>{letter}</Kbd>
     </button>
   );
 }

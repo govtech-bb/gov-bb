@@ -1,18 +1,28 @@
 import { settingsObject, settingsArray } from "../helpers/serialized-test-data";
 import { createEditor } from "../helpers/default-form";
-import { $createLinkNode, LinkNode } from "@lexical/link";
+import {
+  $createLinkNode,
+  $isLinkNode,
+  $toggleLink,
+  LinkNode,
+  TOGGLE_LINK_COMMAND,
+} from "@lexical/link";
 import { $createHeadingNode, $isHeadingNode, HeadingNode } from "@lexical/rich-text";
 import { expect, test, vi } from "vitest";
 import {
   $createParagraphNode,
   $createTextNode,
   $getRoot,
+  $getSelection,
   $isParagraphNode,
+  $isRangeSelection,
   $isTextNode,
   CAN_UNDO_COMMAND,
   COMMAND_PRIORITY_EDITOR,
+  FORMAT_TEXT_COMMAND,
   HISTORY_MERGE_TAG,
   HISTORY_PUSH_TAG,
+  PASTE_TAG,
   REDO_COMMAND,
   UNDO_COMMAND,
   type LexicalNode,
@@ -25,7 +35,13 @@ import {
   $removeBlocks,
 } from "../../src/forms/editor/structure/blocks";
 import { $enter } from "../../src/forms/editor/structure/editing";
-import { pushStep, registerEditorHistory, type Step } from "../../src/editor/core/history";
+import {
+  HISTORY_START_TAG,
+  pushStep,
+  registerEditorHistory,
+  type Step,
+} from "../../src/editor/core/history";
+import { registerLinkHistory } from "../../src/editor/modules/links/module";
 import { touchFirst } from "../../src/forms/editor/structure/rubber-band";
 import { $toMarkdown } from "../helpers/default-form";
 import { $createMentionNode, MentionNode } from "../../src/forms/features/mentions/node";
@@ -233,6 +249,110 @@ test("rapid first edits keep a nonempty baseline through normalization, selectio
   }
 });
 
+test("a paste, a format or a link change is an undo step of its own, and typing elsewhere starts one", async () => {
+  const editor = newEditor();
+  run(editor, () => $getRoot().append($createParagraphNode().append($createTextNode("a"))));
+  registerEditorHistory(editor);
+  registerLinkHistory(editor);
+  // What the page's rich text and links do with these commands
+  editor.registerCommand(
+    FORMAT_TEXT_COMMAND,
+    (format) => {
+      const selection = $getSelection();
+
+      if ($isRangeSelection(selection)) selection.formatText(format);
+
+      return true;
+    },
+    COMMAND_PRIORITY_EDITOR,
+  );
+  editor.registerCommand(
+    TOGGLE_LINK_COMMAND,
+    (url) => {
+      $toggleLink(url);
+
+      return true;
+    },
+    COMMAND_PRIORITY_EDITOR,
+  );
+
+  const read = <T>(fn: () => T) => editor.getEditorState().read(fn, { editor });
+
+  const line = () => {
+    const node = $getRoot().getFirstDescendant();
+
+    if (!$isTextNode(node)) throw Error("Expected editable text");
+
+    return node;
+  };
+
+  const text = () => read(() => $getRoot().getTextContent());
+
+  let now = 0;
+
+  // Each change 20ms after the last, so that typing alone would make one step of them all
+  const change = async (fn: () => void, tag?: string) => {
+    vi.setSystemTime(new Date((now += 20)));
+    editor.update(fn, { tag });
+    await Promise.resolve();
+  };
+
+  const edit = (value: string, tag?: string) => change(() => line().setTextContent(value), tag);
+
+  const undo = async () => {
+    editor.dispatchCommand(UNDO_COMMAND, undefined);
+    await Promise.resolve();
+  };
+
+  try {
+    // A field's first keystroke starts a step, and its typing continues it
+    await edit("ab");
+    await edit("ab, ", HISTORY_START_TAG);
+    await edit("ab, c");
+    await undo();
+    expect(text()).toBe("ab");
+
+    // A paste stands alone, between the typing either side of it
+    await edit("abX");
+    await edit("abX pasted", PASTE_TAG);
+    await edit("abX pasted c");
+    await undo();
+    expect(text()).toBe("abX pasted");
+    await undo();
+    expect(text()).toBe("abX");
+
+    // So do bold and a link, applied straight after typing
+    await edit("abXY");
+    await change(() => {
+      line().select(0, 4);
+      editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold");
+    });
+    await change(() => {
+      line().select(0, 4);
+      editor.dispatchCommand(TOGGLE_LINK_COMMAND, "https://www.gov.bb");
+    });
+    expect(read(() => $isLinkNode(line().getParent()))).toBe(true);
+    await undo();
+    expect(read(() => [$isLinkNode(line().getParent()), line().hasFormat("bold")])).toEqual([
+      false,
+      true,
+    ]);
+    await undo();
+    expect(read(() => line().hasFormat("bold"))).toBe(false);
+    expect(text()).toBe("abXY");
+
+    // Typing after the caret moves starts a step, and the typing that follows joins it
+    await edit("abXYZ");
+    await change(() => line().select(1, 1));
+    await edit("a1bXYZ");
+    await edit("a12bXYZ");
+    await undo();
+    expect(text()).toBe("abXYZ");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 test("rapid duplicate and delete remain separate undoable structural actions", async () => {
   const editor = newEditor();
   run(editor, () => {
@@ -336,8 +456,8 @@ test("drops preserve folded questions and pages and keep options in their questi
     expect($dropCheck(page, $blockZone(p3)).lit).toBe(false); // a folded page lights only where a page ends
     $dropBlocks(page, $blockZone(p3)); // but lands at the end of the page it's dropped in
     order(folded, a, b, text, question, c, d, calc, page3, p3, p4, page, p1, p2);
-    $dropBlocks(page3, $blockZone(page)); // an unfolded page break may
-    order(folded, a, b, text, question, c, d, calc, p3, p4, page, page3, p1, p2);
+    $dropBlocks(page3, $blockZone(page)); // an unfolded page moves whole too, past the folded one
+    order(folded, a, b, text, question, c, d, calc, page, p1, p2, page3, p3, p4);
   });
 });
 

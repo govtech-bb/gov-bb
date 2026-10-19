@@ -1,4 +1,4 @@
-import { TextT, TextH, Quotes, Minus } from "@phosphor-icons/react";
+import { TextT, TextHTwo, TextHThree, TextHFour, Quotes, Minus } from "@phosphor-icons/react";
 import {
   $createParagraphNode,
   $createTextNode,
@@ -6,6 +6,12 @@ import {
   $isParagraphNode,
   $isTextNode,
   $isLineBreakNode,
+  IS_BOLD,
+  IS_CODE,
+  IS_ITALIC,
+  IS_STRIKETHROUGH,
+  TextNode,
+  type LexicalEditor,
   type LexicalNode,
   type TextFormatType,
 } from "lexical";
@@ -21,10 +27,13 @@ import {
 import { $createLinkNode, $isLinkNode } from "@lexical/link";
 import { createElement } from "react";
 import { TextModule } from "../../editor/modules/text/module";
+import { lineHint } from "../../editor/react/block-dom";
 import { isSupportedLinkUrl as safePageUrl } from "../../editor/modules/links/url";
 import type { MarkdownNode, PageHandler, PageModule } from "../definition";
 import { blocks, phrasing, UnsupportedPageContent } from "../markdown";
+import { registerPageBlockExit } from "../block-exit";
 import { pageInsertAction } from "../insertion";
+import { pageTurnInto } from "../turn-into";
 import { PageRuleNode } from "../nodes";
 
 export { isSupportedLinkUrl as safePageUrl } from "../../editor/modules/links/url";
@@ -250,11 +259,26 @@ const text: PageHandler = {
   },
 };
 
+// The formats a page's Markdown keeps (see formats above): any other, such as underline or highlight pasted from
+// another app, would show in the editor and be gone from the published page
+const kept = IS_BOLD | IS_ITALIC | IS_STRIKETHROUGH | IS_CODE;
+
+function registerPageFormats(editor: LexicalEditor) {
+  return editor.registerNodeTransform(TextNode, (node) => {
+    if (node.getFormat() & ~kept) node.setFormat(node.getFormat() & kept);
+  });
+}
+
 export function PageTextModule(): PageModule {
   const base = TextModule({ initialize: false });
 
   return {
     ...base,
+    registrations: [
+      ...(base.registrations ?? []),
+      { key: "page-formats", phase: "document", register: registerPageFormats },
+      { key: "page-block-exit", phase: "browser", register: registerPageBlockExit },
+    ],
     nodes: [
       ...(base.nodes ?? []),
       { type: "heading", node: HeadingNode },
@@ -262,21 +286,42 @@ export function PageTextModule(): PageModule {
       { type: "page-rule", node: PageRuleNode },
     ],
     markdown: [text],
+    turnInto: pageTurnInto,
     actions: [
       pageInsertAction("page-paragraph", "Text", $createParagraphNode, {
         group: "Text",
         order: 10,
         icon: <TextT />,
         description: "Write a paragraph of text.",
+        aliases: ["paragraph", "plain text"],
       }),
-      ...(["h1", "h2", "h3", "h4", "h5", "h6"] as const).map((tag) =>
-        pageInsertAction(`page-${tag}`, `Heading ${tag.slice(1)}`, () => $createHeadingNode(tag), {
-          group: "Text",
-          order: 10,
-          icon: <TextH />,
-          description: `Add a level ${tag.slice(1)} heading.`,
-        }),
-      ),
+      // The page's title is its Heading 1, and GOV.BB pages go no deeper than Heading 4, which only a search finds.
+      // Pages that use the others still open and keep them
+      pageInsertAction("page-h2", "Heading 2", () => $createHeadingNode("h2"), {
+        group: "Text",
+        order: 10,
+        icon: <TextHTwo />,
+        description: "Name a section of the page, such as ‘Who can apply’.",
+        aliases: ["h2", "subheading"],
+        markdown: "##",
+      }),
+      pageInsertAction("page-h3", "Heading 3", () => $createHeadingNode("h3"), {
+        group: "Text",
+        order: 10,
+        icon: <TextHThree />,
+        description: "Name part of a section, under a Heading 2.",
+        aliases: ["h3"],
+        markdown: "###",
+      }),
+      pageInsertAction("page-h4", "Heading 4", () => $createHeadingNode("h4"), {
+        group: "Text",
+        order: 10,
+        icon: <TextHFour />,
+        description: "Name part of a Heading 3 section.",
+        aliases: ["h4"],
+        markdown: "####",
+        searchOnly: true,
+      }),
       pageInsertAction(
         "page-quote",
         "Quote",
@@ -286,6 +331,8 @@ export function PageTextModule(): PageModule {
           order: 10,
           icon: <Quotes />,
           description: "Set a quotation apart from the text.",
+          aliases: ["blockquote", "quotation", "cite"],
+          markdown: ">",
         },
       ),
       pageInsertAction("page-rule", "Separator", () => new PageRuleNode(), {
@@ -293,10 +340,12 @@ export function PageTextModule(): PageModule {
         order: 10,
         icon: <Minus />,
         description: "Separate sections with a horizontal line.",
+        aliases: ["divider", "horizontal rule", "line", "hr"],
+        markdown: "---",
       }),
     ],
     theme: {
-      paragraph: "page-paragraph",
+      paragraph: `page-paragraph ${lineHint}`,
       heading: {
         h1: "page-h1",
         h2: "page-h2",

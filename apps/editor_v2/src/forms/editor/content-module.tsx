@@ -24,14 +24,7 @@ export function formContentModule(
         entry,
         "Layout blocks",
         order + index,
-        <div
-          aria-hidden="true"
-          className="pointer-events-none mt-5 rounded-sm bg-grey-10 p-4 select-none"
-        >
-          <div className="overflow-hidden rounded-sm bg-white p-5 text-(length:--form-text) shadow-sheet [--form-control:2.75rem] [--form-marker:1.75rem] [--form-text:1rem]">
-            {entry.renderPreview?.(entry.sample ?? {})}
-          </div>
-        </div>,
+        entry.renderPreview?.(entry.sample ?? {}),
       ),
     ),
   };

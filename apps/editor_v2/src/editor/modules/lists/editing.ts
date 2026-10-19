@@ -1,19 +1,7 @@
 import { $createParagraphNode, type ElementNode, type RangeSelection } from "lexical";
 import { $depth, $setDepth } from "../../core/document-state";
-import {
-  $createBulletNode,
-  $createNumberNode,
-  $createListLine,
-  $isListLine,
-  BulletNode,
-} from "./nodes";
-import { $toText, type ContentShortcuts } from "../formatting/editing";
-
-export const listShortcuts: ContentShortcuts = {
-  "- ": () => [$createBulletNode()],
-  "* ": () => [$createBulletNode()],
-  "1. ": () => [$createNumberNode()],
-};
+import { $createListLine, $isListLine, BulletNode } from "./nodes";
+import { $toText } from "../formatting/editing";
 
 export function $enterList(
   block: ElementNode,

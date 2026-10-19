@@ -1,5 +1,5 @@
 import { Tooltip } from "@base-ui/react/tooltip";
-import { Hash, MagnifyingGlass, TextT } from "@phosphor-icons/react";
+import { Hash, TextT } from "@phosphor-icons/react";
 import {
   useCallback,
   useEffect,
@@ -19,7 +19,9 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../../../cn";
-import { ItemLabel, item, sectionLabel } from "../../../ui/item";
+import { rankActions } from "../../../editor/core/actions";
+import { RowContent } from "../../../ui/menu";
+import { group, groupLabel, listEmpty, row, surface } from "../../../ui/surface";
 import { Tip } from "../../../ui/tooltip";
 import {
   fieldRefs,
@@ -81,13 +83,6 @@ export function formulaFields(fields: Field[], type: "NUMBER" | "TEXT") {
     })
     .sort((a, b) => rank[a.type] - rank[b.type]);
 }
-
-export const matchesQuery = (title: string, query: string) =>
-  !query ||
-  query
-    .toLowerCase()
-    .split(" ")
-    .every((w) => title.toLowerCase().includes(w.trim()));
 
 export const sectionTitles = {
   CALCULATED_FIELD: "Mention a calculated field",
@@ -804,7 +799,7 @@ export function FormulaEditor({
   const options = useMemo(() => formulaFields(fields, type), [fields, type]);
 
   const matches = useMemo(
-    () => (mention ? options.filter((f) => matchesQuery(f.title, mention.query)) : options),
+    () => (mention ? rankActions(mention.query, options) : options),
     [mention, options],
   );
 
@@ -1126,7 +1121,7 @@ export function FormulaEditor({
             m && {
               ...m,
               query: q,
-              selected: options.find((f) => matchesQuery(f.title, q))?.key ?? null,
+              selected: rankActions(q, options)[0]?.key ?? null,
             },
         );
         node.textContent = `@${q}`;
@@ -1385,7 +1380,7 @@ export function FormulaEditor({
           sync();
         }}
         className={cn(
-          "relative min-h-20 cursor-text rounded-sm bg-white px-3 py-2.5 text-14 leading-[22px] break-words whitespace-pre-wrap text-ink caret-ink shadow-input outline-none focus:shadow-input-focus max-[480px]:min-h-40 max-[480px]:text-16",
+          "relative min-h-20 cursor-text rounded-sm bg-white px-3 py-2.5 text-14 leading-[22px] break-words whitespace-pre-wrap text-ink caret-ink shadow-input outline-none focus:shadow-input-focus max-sm:min-h-40 max-sm:text-16",
           "focus:empty:before:content-[attr(data-placeholder)] focus:empty:before:text-placeholder",
           "[&_[data-token]]:text-14 [&_[data-token]]:text-interactive",
           "[&_[data-atom=op]]:inline-block [&_[data-atom=op]]:px-1 [&_[data-atom=op]]:text-ink",
@@ -1508,25 +1503,23 @@ export function Autocomplete({
 
   if (!style) return null;
 
-  const section =
-    "select-none not-last:mb-1.5 not-last:border-b not-last:border-line not-last:pb-1.5";
+  const section = cn("select-none", group);
 
   return (
     <div
       data-testid="formula-autocomplete"
       style={style}
-      className="absolute z-1001 max-h-70 max-w-100 min-w-60 overflow-y-auto rounded-sm bg-white py-1.5 shadow-popup"
+      className={cn(
+        surface,
+        "group/popup absolute z-1001 max-h-70 max-w-100 min-w-60 overflow-y-auto py-1",
+      )}
     >
       {sections.length === 0 ? (
-        <div className={section}>
-          <div className={cn(item, "cursor-default text-muted")}>
-            <ItemLabel icon={<MagnifyingGlass />}>No fields match</ItemLabel>
-          </div>
-        </div>
+        <div className={listEmpty}>No fields match</div>
       ) : (
         sections.map((s) => (
           <div key={s.type} className={section}>
-            <div className={cn(sectionLabel, "px-3.5")}>{sectionTitles[s.type]}</div>
+            <div className={groupLabel}>{sectionTitles[s.type]}</div>
             {s.items.map((f) => (
               <div key={f.key} onMouseEnter={() => onHover(f.key)}>
                 <div
@@ -1536,9 +1529,9 @@ export function Autocomplete({
                     e.stopPropagation();
                     onPick(f.key);
                   }}
-                  className={item}
+                  className={row}
                 >
-                  <ItemLabel icon={fieldIcon(f)}>{f.title}</ItemLabel>
+                  <RowContent icon={fieldIcon(f)}>{f.title}</RowContent>
                 </div>
               </div>
             ))}

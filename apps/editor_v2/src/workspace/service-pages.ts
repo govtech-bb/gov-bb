@@ -1,5 +1,13 @@
-import type { ApiPage, ServiceDetail } from "../api/client";
-import { documentKeys, type PageDocument, type ServicePageRole } from "./model";
+import type { ApiPage, ServiceDetail, ServicePage, ServiceSummary } from "../api/client";
+import {
+  documentKeys,
+  type PageDocument,
+  type ServicePageRole,
+  type WorkspaceDocument,
+  type WorkspaceFormDocument,
+  type WorkspaceIndex,
+  type WorkspaceService,
+} from "./model";
 
 const ROLE_ORDER: Record<ServicePageRole, number> = { entry: 0, start: 1, supporting: 2 };
 
@@ -18,11 +26,68 @@ export function pageDocumentFromApi(page: {
   };
 }
 
-/** A service's pages: the entry page, its start page, then the rest as the API orders them. */
-export function servicePageDocuments(detail: ServiceDetail) {
-  return detail.pages
-    .map(pageDocumentFromApi)
-    .sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role]);
+/**
+ * A row of a service's sidebar: the page or form it opens, how far it sits below the service's top level (the entry
+ * page and the pages directly under it are at 0), and how far it is published, for a page from the content API.
+ */
+export type ServiceNavRow = {
+  document: WorkspaceDocument;
+  depth: number;
+  visibility?: ServicePage["visibility"];
+};
+
+/**
+ * An opened service's rows: the entry page, then each page before the pages under it, a start page first among its
+ * siblings and the rest as the API orders them. A page whose parent isn't listed is kept, at the top. The form this
+ * browser drafts for the service comes last.
+ */
+export function remoteServiceRows(
+  detail: ServiceDetail,
+  form?: WorkspaceFormDocument,
+): ServiceNavRow[] {
+  const listed = new Set(detail.pages.map((page) => page.id));
+
+  const children = Map.groupBy(detail.pages, (page) =>
+    page.parent_id !== null && listed.has(page.parent_id) ? page.parent_id : null,
+  );
+
+  const rows = (parent: string | null, depth: number): ServiceNavRow[] =>
+    (children.get(parent) ?? [])
+      .toSorted((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role])
+      .flatMap((page) => [
+        {
+          document: pageDocumentFromApi(page),
+          depth: Math.max(0, depth - 1),
+          visibility: page.visibility,
+        },
+        ...rows(page.id, depth + 1),
+      ]);
+
+  return [...rows(null, 0), ...(form ? [{ document: form, depth: 0 }] : [])];
+}
+
+/** A service from the content API as the services list knows it, before its pages load: just its entry page. */
+export const listedServiceRows = (service: ServiceSummary): ServiceNavRow[] => [
+  {
+    document: pageDocumentFromApi({ id: service.id, title: service.title, role: "entry" }),
+    depth: 0,
+    visibility: service.visibility,
+  },
+];
+
+/** A service drafted in this browser: its documents in the order they were added, with nothing published. */
+export function localServiceRows(service: WorkspaceService): ServiceNavRow[] {
+  return service.documents.map((document) => ({ document, depth: 0 }));
+}
+
+/** The form this browser drafts for a service from the content API, joined by the form ID its pages name. */
+export function browserFormFor(index: WorkspaceIndex, formId: string | null) {
+  return index.services
+    .flatMap((service) => service.documents)
+    .find(
+      (document): document is WorkspaceFormDocument =>
+        formId !== null && document.kind === "form" && document.formId === formId,
+    );
 }
 
 /** A page's role from the page alone, for a page opened before its service has loaded. */

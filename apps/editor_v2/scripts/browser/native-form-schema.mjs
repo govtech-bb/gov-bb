@@ -2,6 +2,7 @@ import { authenticatedContext } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "./playwright.mjs";
+import { openDemoForm } from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -35,11 +36,14 @@ async function exported() {
 }
 
 try {
-  await page.goto(url);
+  await openDemoForm(page, url);
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.locator('[contenteditable="true"][aria-label="Form"]').waitFor();
-  await page.locator('[role="status"][title="Saved"]:visible').waitFor();
+  await page
+    .locator("[data-document-bar]:visible")
+    .getByText("Saved in this browser", { exact: true })
+    .waitFor();
   await openJson();
   const demo = await exported();
   assert.equal(demo.schemaVersion, 2);
@@ -249,6 +253,11 @@ try {
   await page.getByRole("button", { name: /^Markdown/ }).click();
   assert.match(await markdown.inputValue(), /Unapplied source retained/);
   await page.getByRole("button", { name: "Discard changes", exact: true }).click();
+  // Discarding asks first
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Discard changes", exact: true })
+    .click();
   await page.getByRole("button", { name: "Close source", exact: true }).click();
 
   // Edit a small native calculator through the actual authoring controls.
@@ -390,7 +399,7 @@ try {
   );
   const choiceTitle = () => root.getByRole("heading", { name: "Payment frequency", exact: true });
   await choiceTitle().first().hover();
-  await page.getByRole("button", { name: "Move this block by dragging", exact: true }).click();
+  await page.getByRole("button", { name: "Block actions", exact: true }).click();
   await page.getByRole("menuitem", { name: /^Duplicate/ }).click();
 
   const copied = await canvasExport(),
@@ -441,7 +450,10 @@ try {
   await choiceTitle().first().click();
   await page.keyboard.press("Meta+Shift+z");
   assert.deepEqual(await canvasExport(), removed);
-  await page.locator('[role="status"][title="Saved"]:visible').waitFor();
+  await page
+    .locator("[data-document-bar]:visible")
+    .getByText("Saved in this browser", { exact: true })
+    .waitFor();
   await page.reload();
   await root.waitFor();
   assert.deepEqual(

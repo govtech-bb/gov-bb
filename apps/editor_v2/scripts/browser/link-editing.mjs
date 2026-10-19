@@ -1,6 +1,7 @@
 import { authenticatedContext } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { chromium } from "./playwright.mjs";
+import { openDemoForm } from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -37,7 +38,7 @@ async function savedSource() {
 }
 
 try {
-  await page.goto(process.argv[2] ?? "http://localhost:3015/");
+  await openDemoForm(page, process.argv[2] ?? "http://localhost:3015/");
   await page.getByRole("textbox", { name: "Form", exact: true }).waitFor();
   await button("Create service").click();
   await page.getByLabel("Service name", { exact: true }).fill("Link editing checks");

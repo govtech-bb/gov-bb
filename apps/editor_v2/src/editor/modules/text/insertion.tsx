@@ -7,6 +7,7 @@ export const textEntries: readonly ContentEntry[] = [
     id: "TEXT",
     title: "Text",
     icon: <TextT />,
+    aliases: ["paragraph", "plain text"],
     kind: "paragraph",
     create: () => [$createParagraphNode()],
     description:

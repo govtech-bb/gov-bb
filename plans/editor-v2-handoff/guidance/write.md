@@ -1,0 +1,15 @@
+- The page editor is `src/pages`, built on Lexical with the shared editor in `src/editor` (`core`, `react`, `modules`). The form editor is `src/forms`. Several items say "both editors". Do the shared part in `src/editor` and wire it into both, keeping your `src/forms` edits small.
+- The "/" menus were just reworked. `src/editor/react/slash-trigger.ts` (`useSlashTrigger`) decides when they open. The page menu is `src/pages/slash-menu.tsx`, with rows in `src/pages/action-menu.tsx`; the form menu is `src/editor/react/slash-menu.tsx`. Keep their behaviour; tests are in `tests/editor` and `scripts/browser/content-modules.mjs`.
+- Undo (`src/editor/core/history.ts`): tag discrete operations, such as a conversion or an insert, with `HISTORY_PUSH_TAG` so each gets its own undo step. Fields outside the canvas use `SKIP_DOM_SELECTION_TAG`.
+- **Item order:** insert-placement, heading-levels, slash-ranking, slash-hint, title-flow, block-exit, turn-into, markdown-shortcuts, link-picker. markdown-shortcuts converts lines through turn-into, so do turn-into first.
+- **slash-ranking:** one `rankActions(query, actions)` in `src/editor/core/actions.ts`, used by both editors' insert lists and the field pickers. A later package unifies the list UI (ActionList), so don't build a new list component; add the Markdown hint and the description footer to today's lists.
+- **turn-into:**
+  - One capability plus a shared Turn into submenu: one component, used in the page block menu (`pages/block-controls.tsx`), the form block menu (`forms/react/block-menu.tsx`) and the selection toolbar.
+  - A later package merges the two block menus. Build the submenu so it drops straight into one menu.
+- **link-picker:**
+  - The page search needs workspace data, which `src/pages` can't import. Pass a page-search provider in from the host, through the page module or editor options. Without a provider, the picker accepts typed addresses only.
+  - Typed addresses go through `normalizeLinkUrl` and the link policy (`src/editor/modules/links`).
+  - "Link at caret": a popover showing the address with Edit and Remove whenever the caret is in a link, Action button or Start button.
+  - With ⌘K and no selection, the picker inserts a link with its text.
+  - The form logic's Link URL (`forms/features/logic/native-controls.tsx`) should use the same picker. Keep that edit small.
+- Preserve `aria-haspopup` and `aria-expanded` on the page editor's Insert and Block options buttons in `block-controls.tsx`.

@@ -1,6 +1,5 @@
-import { Dialog } from "@base-ui/react/dialog";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { ArrowDown, ArrowUp, Check, Code, Copy, X } from "@phosphor-icons/react";
+import { ArrowDown, ArrowUp, Code, Copy } from "@phosphor-icons/react";
 import {
   createContext,
   useContext,
@@ -11,13 +10,27 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
+import { Banner, type BannerTone } from "../ui/banner";
+import { Bar } from "../ui/bar";
 import { Button } from "../ui/button";
+import { ConfirmDialog } from "../ui/confirm-dialog";
+import { Dialog } from "../ui/dialog";
+import { Field } from "../ui/field";
+import { SaveState, type SaveStateProps } from "../ui/save-state";
+import { Textarea } from "../ui/textarea";
 import type { DraftStore } from "../persistence/draft-store";
 import { draftEditorConnection } from "./draft-editor";
 
 const DraftContext = createContext<DraftStore | null>(null);
 
+type SourceOpen = { open: boolean; setOpen: (open: boolean) => void };
+
+// Whether the document's Markdown is open: its tool in the bar opens it, and so does the notice that editing is paused
+const SourceOpenContext = createContext<SourceOpen>({ open: false, setOpen: () => {} });
+
 export function DraftProvider({ store, children }: { store: DraftStore; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+
   useEffect(() => {
     store.start();
     const external = (event: StorageEvent) => store.externalChange(event.key);
@@ -38,8 +51,15 @@ export function DraftProvider({ store, children }: { store: DraftStore; children
     };
   }, [store]);
 
-  return <DraftContext value={store}>{children}</DraftContext>;
+  return (
+    <DraftContext value={store}>
+      <SourceOpenContext value={{ open, setOpen }}>{children}</SourceOpenContext>
+    </DraftContext>
+  );
 }
+
+/** Opens and closes the document's Markdown from outside its dialog. */
+export const useSourceOpen = () => useContext(SourceOpenContext);
 
 export function DraftEditorBinding() {
   const [editor] = useLexicalComposerContext();
@@ -74,6 +94,9 @@ export function download(text: string, name = "form-source.md") {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/** What came of acting in a dialog, shown in its body in the outcome's tone (Banner). */
+export type DialogOutcome = { tone: BannerTone; text: string };
+
 export function SourceEditor({
   documentLabel = "form",
   fileName = "form-source.md",
@@ -84,8 +107,10 @@ export function SourceEditor({
   inline?: boolean;
 }) {
   const draft = useDraft();
-  const [requestedOpen, setRequestedOpen] = useState(false);
-  const [notice, setNotice] = useState("");
+  const save = useDraftSave(fileName);
+  const { open: requestedOpen, setOpen: setRequestedOpen } = useSourceOpen();
+  const [discarding, setDiscarding] = useState(false);
+  const [outcome, setOutcome] = useState<DialogOutcome>();
   const field = useId();
   const source = useRef<HTMLTextAreaElement>(null);
   const upload = useRef<HTMLInputElement>(null);
@@ -107,46 +132,43 @@ export function SourceEditor({
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(draft.source);
-      setNotice("Source copied");
+      setOutcome({ tone: "success", text: "Source copied" });
     } catch {
       source.current?.focus();
       source.current?.select();
-      setNotice("Copy is unavailable. The source is selected so you can copy it.");
+      setOutcome({
+        tone: "info",
+        text: "Copy is unavailable. The source is selected so you can copy it.",
+      });
     }
   };
 
   const apply = () => {
     if (draft.store.apply()) {
-      setNotice("Changes applied");
+      setOutcome({ tone: "success", text: "Changes applied" });
       source.current?.focus();
     }
   };
 
-  const content = (
+  const intro = (
     <>
-      {!inline && (
-        <div className="flex items-center justify-between gap-3">
-          <Dialog.Title className="text-24 font-semibold text-ink">
-            {documentLabel[0]?.toUpperCase()}
-            {documentLabel.slice(1)} source
-          </Dialog.Title>
-          <Dialog.Close
-            disabled={forcedOpen}
-            render={<Button icon={<X />} aria-label="Close source" />}
-          />
+      Edit the Markdown and apply it to the {documentLabel}. Unapplied changes pause canvas editing.
+    </>
+  );
+
+  const body = (
+    <>
+      {/* A failed save shows why, with its way out; any other problem, as it is */}
+      {save.status === "failed" ? (
+        <div className="mt-3">
+          <SaveState.Failure layout="box" {...save} />
         </div>
-      )}
-      <p className="mt-1 text-14 leading-5 text-muted">
-        Edit the Markdown and apply it to the {documentLabel}. Unapplied changes pause canvas
-        editing.
-      </p>
-      {draft.error && (
-        <p
-          role="alert"
-          className="mt-3 rounded-sm border-s-4 border-error bg-grey-10 px-3 py-2 text-14 text-ink"
-        >
-          {draft.error}
-        </p>
+      ) : (
+        draft.error && (
+          <Banner tone="error" className="mt-3">
+            {draft.error}
+          </Banner>
+        )
       )}
       {draft.conflict && (
         <div className="mt-3 flex flex-wrap gap-2">
@@ -169,8 +191,10 @@ export function SourceEditor({
           <Button
             onClick={() => {
               const result = draft.store.recoverReplacement("candidate");
-              setNotice(
-                result.status === "committed" ? "Applied changes recovered" : result.message,
+              setOutcome(
+                result.status === "committed"
+                  ? { tone: "success", text: "Applied changes recovered" }
+                  : { tone: "error", text: result.message },
               );
             }}
           >
@@ -179,7 +203,11 @@ export function SourceEditor({
           <Button
             onClick={() => {
               const result = draft.store.recoverReplacement("original");
-              setNotice(result.status === "committed" ? "Original draft restored" : result.message);
+              setOutcome(
+                result.status === "committed"
+                  ? { tone: "success", text: "Original draft restored" }
+                  : { tone: "error", text: result.message },
+              );
             }}
           >
             Restore original draft
@@ -204,13 +232,13 @@ export function SourceEditor({
           disabled={!!draft.replacement}
           onClick={() => upload.current?.click()}
         >
-          Open Markdown
+          Replace from file
         </Button>
         <input
           ref={upload}
           type="file"
           accept=".md,.markdown,text/markdown,text/plain"
-          aria-label="Open Markdown file"
+          aria-label="Markdown file to replace from"
           className="sr-only"
           tabIndex={-1}
           onChange={async (event) => {
@@ -228,18 +256,22 @@ export function SourceEditor({
               if (version !== uploadVersion.current) return;
 
               if (draft.store.getSnapshot() !== initial) {
-                setNotice(
-                  "The source changed while the file was opening. Your changes were kept. Open the file again to replace them.",
-                );
+                setOutcome({
+                  tone: "warning",
+                  text: "The source changed while the file was opening. Your changes were kept. Choose the file again to replace them.",
+                });
 
                 return;
               }
 
               draft.store.edit(text);
-              setNotice(`${file.name} is ready to apply`);
+              setOutcome({ tone: "info", text: `${file.name} is ready to apply` });
             } catch {
               if (version === uploadVersion.current)
-                setNotice("The file could not be read. Open it again or paste its contents.");
+                setOutcome({
+                  tone: "error",
+                  text: "The file could not be read. Choose it again, or paste its contents.",
+                });
             }
           }}
         />
@@ -263,25 +295,23 @@ export function SourceEditor({
           </Button>
         )}
       </div>
-      <label htmlFor={field} className="mb-1 text-14 font-semibold text-ink">
-        Markdown source
-      </label>
-      <textarea
-        id={field}
-        ref={source}
-        value={draft.source}
-        readOnly={!!draft.replacement}
-        onChange={(event) => {
-          draft.store.edit(event.target.value);
-          setNotice("");
-        }}
-        spellCheck={false}
-        autoCapitalize="off"
-        autoCorrect="off"
-        aria-invalid={fatal}
-        aria-describedby={draft.diagnostics.length ? `${field}-diagnostics` : undefined}
-        className="min-h-32 min-w-0 flex-1 resize-none rounded-sm border border-line bg-grey-10 p-3 font-mono text-14 leading-6 text-ink outline-none focus:border-interactive focus:ring-2 focus:ring-focus max-sm:text-16"
-      />
+      <Field label="Markdown source" className="flex-1">
+        <Textarea
+          ref={source}
+          value={draft.source}
+          readOnly={!!draft.replacement}
+          onChange={(event) => {
+            draft.store.edit(event.target.value);
+            setOutcome(undefined);
+          }}
+          spellCheck={false}
+          autoCapitalize="off"
+          autoCorrect="off"
+          aria-invalid={fatal}
+          aria-describedby={draft.diagnostics.length ? `${field}-diagnostics` : undefined}
+          className="min-h-32 flex-1 resize-none bg-grey-10 p-3 font-mono leading-6"
+        />
+      </Field>
       {draft.diagnostics.length > 0 && (
         <ul
           id={`${field}-diagnostics`}
@@ -291,9 +321,8 @@ export function SourceEditor({
             <li
               key={`${issue.code}:${issue.sourceKey ?? ""}:${issue.line}:${issue.column}:${issue.message}`}
             >
-              <button
-                type="button"
-                className="rounded-sm text-start underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-focus"
+              <Button
+                variant="link"
                 onClick={() => {
                   const input = source.current;
 
@@ -311,47 +340,63 @@ export function SourceEditor({
                 }}
               >
                 Line {issue.line}: {issue.message}
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
       )}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Button
-          onClick={apply}
-          disabled={!!draft.conflict || !!draft.replacement}
-          className="bg-interactive px-4 text-white hover:bg-interactive/90"
-        >
-          Apply changes
-        </Button>
-        <Button
-          onClick={() => {
-            draft.store.discard();
-            setNotice("Source changes discarded");
-          }}
-          disabled={!draft.valid || !draft.dirty || !!draft.conflict || !!draft.replacement}
-        >
-          Discard changes
-        </Button>
-        {draft.status === "error" && (
-          <Button onClick={() => draft.store.retry()}>Try saving again</Button>
-        )}
-        <span role="status" className="ms-auto text-14 text-muted">
-          {notice ||
-            (draft.dirty
-              ? "Unapplied changes"
-              : draft.status === "saved"
-                ? "Saved in this browser"
-                : "")}
-        </span>
-      </div>
+      {outcome && (
+        <Banner tone={outcome.tone} className="mt-3">
+          {outcome.text}
+        </Banner>
+      )}
+    </>
+  );
+
+  const actions = (
+    <>
+      {/* Whether it's saved shows in the document's bar, and what came of acting here in the body */}
+      <span role="status" className="me-auto text-14 text-muted">
+        {draft.dirty ? "Unapplied changes" : ""}
+      </span>
+      <Button
+        size="md"
+        onClick={() => setDiscarding(true)}
+        disabled={!draft.valid || !draft.dirty || !!draft.conflict || !!draft.replacement}
+      >
+        Discard changes
+      </Button>
+      {/* The Markdown can't be had back once discarded, so ask; the focus then goes back to it */}
+      <ConfirmDialog
+        open={discarding}
+        onClose={() => setDiscarding(false)}
+        title="Discard your changes?"
+        description={`Your changes to the Markdown haven't been applied, and they'll be lost. The ${documentLabel} stays as it is.`}
+        confirm="Discard changes"
+        finalFocus={source}
+        onConfirm={() => {
+          draft.store.discard();
+          setOutcome({ tone: "success", text: "Source changes discarded" });
+          setDiscarding(false);
+        }}
+      />
+      <Button
+        variant="accent"
+        size="md"
+        onClick={apply}
+        disabled={!!draft.conflict || !!draft.replacement}
+      >
+        Apply changes
+      </Button>
     </>
   );
 
   if (inline)
     return (
       <section aria-label={`${documentLabel} source`} className="flex min-h-120 flex-col p-5">
-        {content}
+        <p className="mt-1 text-14 leading-5 text-muted">{intro}</p>
+        {body}
+        <div className="mt-3 flex flex-wrap items-center gap-2">{actions}</div>
       </section>
     );
 
@@ -361,76 +406,61 @@ export function SourceEditor({
       onOpenChange={(next) => {
         setRequestedOpen(next);
 
-        if (next) setNotice("");
-        else uploadVersion.current++;
+        if (!next) uploadVersion.current++;
+      }}
+      // However it closed, by the author or once nothing holds it open, it opens next time without the last outcome
+      onOpenChangeComplete={(next) => {
+        if (!next) setOutcome(undefined);
       }}
     >
-      <Dialog.Trigger className="inline-flex h-8 items-center gap-1.5 rounded-sm px-2 text-14 text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
-        <Code className="size-4" /> <span className="max-sm:sr-only">Markdown</span>
-        {draft.dirty && <span className="sr-only"> — unapplied changes</span>}
-      </Dialog.Trigger>
-      <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 bg-ink/40" />
-        <Dialog.Popup className="fixed inset-4 z-50 mx-auto flex max-w-300 flex-col overflow-hidden rounded-sm bg-white p-5 shadow-popup outline-none max-sm:inset-0 max-sm:p-3">
-          <Dialog.Description className="sr-only">
-            Edit Markdown for this {documentLabel}.
-          </Dialog.Description>
-          {content}
-        </Dialog.Popup>
-      </Dialog.Portal>
+      <Dialog.Trigger
+        render={
+          <Bar.Tool icon={<Code />} label="Markdown">
+            {draft.dirty && <span className="sr-only"> — unapplied changes</span>}
+          </Bar.Tool>
+        }
+      />
+      <Dialog.Content size="full" close={!forcedOpen} closeLabel="Close source">
+        <Dialog.Header>
+          <Dialog.Title>
+            {documentLabel[0]?.toUpperCase()}
+            {documentLabel.slice(1)} source
+          </Dialog.Title>
+          <Dialog.Description>{intro}</Dialog.Description>
+        </Dialog.Header>
+        {/* The body's sections bring their own top margins */}
+        <Dialog.Body className="flex flex-col pt-1">{body}</Dialog.Body>
+        <Dialog.Actions>{actions}</Dialog.Actions>
+      </Dialog.Content>
     </Dialog.Root>
   );
 }
 
-/** Where a draft stands against the host's own store, once the browser copy is safe. */
-export type ServerSaveStatus = "saved" | "unsaved" | "saving" | "failed";
-
-const serverText = {
-  saved: ["Saved", "Saved"],
-  unsaved: ["Unsaved changes", "Unsaved"],
-  saving: ["Saving…", "Saving…"],
-  failed: ["Not saved", "Unsaved"],
-} as const;
-
-export function DraftStatus({ server }: { server?: ServerSaveStatus }) {
+/**
+ * The draft's save state. A problem with the browser copy outranks the host's own, as it's the one to fix first: a
+ * failed save, with Try again and Download a copy, or saving held back while a conflict or a draft to recover is
+ * settled. Otherwise it's the host's, such as a page's against the content API, or saved in this browser.
+ */
+export function useDraftSave(fileName: string, server?: SaveStateProps): SaveStateProps {
   const draft = useDraft();
 
-  // A browser-side problem outranks the host's status: it is the one to fix first.
-  const hosted = server && (draft.status === "saved" || draft.status === "saving");
+  if (draft.status === "error")
+    return {
+      status: "failed",
+      error: draft.error,
+      conflict: server?.conflict,
+      onRetry: draft.store.retry,
+      onDownload: () => download(draft.source, fileName),
+    };
 
-  const text = hosted
-    ? serverText[server][0]
-    : {
-        saving: "Saving…",
-        saved: "Saved",
-        source: "Source changes",
-        conflict: "Draft conflict",
-        recovery: "Recover draft",
-        error: "Not saved",
-      }[draft.status];
+  // The source dialog opens itself to settle these, and says why
+  if (draft.status === "conflict" || draft.status === "recovery")
+    return { status: "paused", conflict: server?.conflict };
 
-  const compactText = hosted
-    ? serverText[server][1]
-    : {
-        saving: "Saving…",
-        saved: "Saved",
-        source: "Edited",
-        conflict: "Conflict",
-        recovery: "Recover",
-        error: "Unsaved",
-      }[draft.status];
+  return server ?? { status: draft.status === "saving" ? "saving" : "local" };
+}
 
-  return (
-    <span
-      role="status"
-      title={draft.error ?? text}
-      className="flex items-center gap-1.5 text-14 whitespace-nowrap text-blue-20 [&>svg]:size-4"
-    >
-      {(hosted ? server === "saved" : draft.status === "saved") && <Check />}
-      <span className="max-sm:sr-only">{text}</span>
-      <span aria-hidden="true" className="sm:hidden">
-        {compactText}
-      </span>
-    </span>
-  );
+/** The draft's save state, for a host that shows it without a document bar. */
+export function DraftStatus({ fileName = "form-source.md" }: { fileName?: string }) {
+  return <SaveState.Status {...useDraftSave(fileName)} />;
 }

@@ -72,7 +72,7 @@ A registration returns its cleanup function. Each editor owns its history and li
 
 ## Contributions and actions
 
-Actions supply stable IDs, labels, grouping, optional numeric order, availability and execution callbacks. Slash and insertion-dialog surfaces read the installed actions. `executeAction(editor, definition, id, request)` opens an update; `$executeAction(...)` is for an existing update. Both enforce editor ownership and recheck availability before trigger removal or mutation. A `$prepare` callback can validate an insertion before returning its commit callback.
+Actions supply stable IDs, labels, grouping, optional numeric order, availability and execution callbacks. Slash and insertion-dialog surfaces read the installed actions. An action's preview draws the block alone: the insertion dialog puts every preview on one `PreviewSheet`, and `PreviewQuestion` sets a question's label, hint and “(optional)” (`src/ui/preview-sheet.tsx`). `executeAction(editor, definition, id, request)` opens an update; `$executeAction(...)` is for an existing update. Both enforce editor ownership and recheck availability before trigger removal or mutation. A `$prepare` callback can validate an insertion before returning its commit callback.
 
 `RendererHost` resolves a named renderer in the current editor; `EditorSlot` renders that editor's ordered slot contributions. Missing renderer contributions fail explicitly. Names include their role, such as `field-preview:text` and `widget:file-upload`, so unrelated content and answer kinds cannot collide.
 
@@ -98,7 +98,7 @@ The host owns `localStorage`, storage/page lifecycle listeners and copy/download
 
 ## Service pages and workspace
 
-`workspace/page-sync.ts` reconciles a remote page with its browser draft and saves it with optimistic concurrency. Its `ServerPageBaseline` is the last server copy held by this browser, not server-side execution. `workspace/service-pages.ts` maps API pages to workspace document references and their display order. `api/page-markdown.ts` owns page/save-input conversion and selective version restoration. These modules reuse the existing API client and draft storage; they do not introduce another service or persistence layer.
+`workspace/page-sync.ts` reconciles a remote page with its browser draft and saves it with optimistic concurrency. Its `ServerPageBaseline` is the last server copy held by this browser, not server-side execution. `workspace/service-pages.ts` maps API pages to the service sidebar's rows: workspace document references in display order, with each page's depth and visibility, and the service's browser form joined by its form ID. `api/page-markdown.ts` owns page/save-input conversion and selective version restoration. These modules reuse the existing API client and draft storage; they do not introduce another service or persistence layer.
 
 Workspace references (`WorkspaceFormDocument`, `PageDocument`, `WorkspaceService`) are navigation metadata, not the form Markdown AST or API service DTOs. `ServicePageRole` describes entry/start/supporting content; the form schema's `PageRole` describes questions/review/declaration/confirmation/result pages.
 

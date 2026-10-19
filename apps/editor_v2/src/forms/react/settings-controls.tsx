@@ -1,5 +1,5 @@
-import { Menu } from "@base-ui/react/menu";
-import { CaretDown, Check } from "@phosphor-icons/react";
+import { Menu as BaseMenu } from "@base-ui/react/menu";
+import { ArrowCounterClockwise } from "@phosphor-icons/react";
 import {
   createContext,
   useContext,
@@ -9,9 +9,10 @@ import {
   type ReactNode,
 } from "react";
 import { cn } from "../../cn";
-import { ItemLabel, Shortcut, item } from "../../ui/item";
-import { compactInput } from "../../ui/input";
-import { check, list, option, popup } from "../../ui/select";
+import { Input } from "../../ui/input";
+import { Kbd } from "../../ui/kbd";
+import { Menu, RowContent } from "../../ui/menu";
+import { row } from "../../ui/surface";
 import type { Setting, Settings } from "../core/settings";
 import { boundsError, DEFAULT_FIELD_ARRAY, withText, type FieldArray } from "../core/repetition";
 import { isFieldless } from "../editor/ssb";
@@ -21,11 +22,8 @@ export type Patch = Partial<Record<string, Setting | undefined>>;
 
 type Options = [value: string, label: string][];
 
-export const settingsGroupClassName =
-  "not-last:mb-1.5 not-last:border-b not-last:border-line not-last:pb-1.5";
-
 export function SettingsGroup({ children }: { children: ReactNode }) {
-  return <Menu.Group className={settingsGroupClassName}>{children}</Menu.Group>;
+  return <Menu.Group>{children}</Menu.Group>;
 }
 
 // The settings a row reads and writes: the question's, or (for an option's own rows) the option's
@@ -60,10 +58,12 @@ export function Switch({
 }) {
   const { settings, set } = useStore();
   const checked = !!settings[on];
+  const id = useId();
 
   return (
     <>
       <Toggle
+        id={id}
         checked={checked}
         onCheckedChange={(next) =>
           set({ [on]: next, ...(clear && !next && { [clear]: undefined }) })
@@ -73,6 +73,7 @@ export function Switch({
       </Toggle>
       {checked && value && (
         <Field
+          aria-labelledby={id}
           type={type}
           value={settings[value]}
           onChange={(v) => set({ [value]: parse(type, v) })}
@@ -118,11 +119,15 @@ export function Value({
   fallback?: Setting;
 }) {
   const { settings, set } = useStore();
+  const id = useId();
 
   return (
     <>
-      <Label>{label}</Label>
+      <Label>
+        <label htmlFor={id}>{label}</label>
+      </Label>
       <Field
+        id={id}
         type={type}
         value={settings[value] ?? fallback}
         onChange={(v) => set({ [value]: parse(type, v) })}
@@ -133,8 +138,8 @@ export function Value({
 
 export function Label({ children }: { children: ReactNode }) {
   return (
-    <div className={cn(item, "cursor-default")}>
-      <ItemLabel>{children}</ItemLabel>
+    <div className={cn(row, "cursor-default")}>
+      <RowContent>{children}</RowContent>
     </div>
   );
 }
@@ -153,8 +158,9 @@ export function Field({
 }) {
   return (
     <div className="px-3.5 pt-0.5 pb-1.5">
-      <input
+      <Input
         {...props}
+        size="sm"
         type={type}
         {...(controlled
           ? { value: value === undefined ? "" : String(value) }
@@ -162,7 +168,7 @@ export function Field({
         onChange={(e) => onChange(e.target.value)}
         // The keys are the field's: the menu would take letters for typeahead and arrows for moving
         onKeyDown={(e) => e.key !== "Escape" && e.stopPropagation()}
-        className={cn(compactInput, className)}
+        className={className}
       />
     </div>
   );
@@ -200,7 +206,8 @@ export function BoundsFields({
         ).map(([key, label]) => (
           <label key={key} className="text-12 leading-4 text-muted">
             {label}
-            <input
+            <Input
+              size="sm"
               type="number"
               inputMode="numeric"
               step={1}
@@ -215,7 +222,7 @@ export function BoundsFields({
                 if (boundsError(bounds.min, bounds.max) === null) onChange(bounds);
               }}
               onKeyDown={(e) => e.key !== "Escape" && e.stopPropagation()}
-              className="mt-1 h-8 w-full rounded-sm bg-white px-2 text-14 text-ink shadow-input outline-none placeholder:text-placeholder hover:shadow-input-hover focus:shadow-input-focus max-sm:text-16"
+              className="mt-1"
             />
           </label>
         ))}
@@ -266,7 +273,10 @@ export function AnswerMoreThanOnce({
   );
 }
 
-/** SSB values stay automatic until edited; clearing one restores its computed value. */
+/**
+ * SSB values stay automatic until edited; clearing one restores its computed value. A value with a default, such as an
+ * error message, says whether it is the Default or the author's Custom one, and a custom one offers Reset to default.
+ */
 export function SsbField({
   label,
   value,
@@ -280,6 +290,7 @@ export function SsbField({
   required,
   muted,
   resetOnClear = true,
+  hasDefault,
 }: {
   label: string;
   value: string;
@@ -293,6 +304,7 @@ export function SsbField({
   required?: boolean;
   muted?: boolean;
   resetOnClear?: boolean;
+  hasDefault?: boolean;
 }) {
   const id = useId();
   const [editing, setEditing] = useState(!inline);
@@ -302,23 +314,20 @@ export function SsbField({
   const warning = required && isFieldless(text) ? "Say which answer is missing" : null;
   const note = error || warning;
 
+  const tag = fixed ? "fixed" : hasDefault ? (pinned ? "Custom" : "Default") : !pinned && "auto";
+
   const name = (
     <>
       {label}
-      {(fixed || !pinned) && (
-        <span className="ml-2 text-12 font-normal text-muted">{fixed ? "fixed" : "auto"}</span>
-      )}
+      {tag && <span className="ml-2 text-12 font-normal text-muted">{tag}</span>}
     </>
   );
 
   return (
     <>
       {fixed && inline ? (
-        <div className={cn(item, "cursor-default")}>
-          <ItemLabel>{name}</ItemLabel>
-          <Shortcut>
-            <span className="font-mono">{value}</span>
-          </Shortcut>
+        <div className={cn(row, "cursor-default")}>
+          <RowContent detail={<span className="font-mono">{value}</span>}>{name}</RowContent>
         </div>
       ) : editing ? (
         <>
@@ -348,13 +357,23 @@ export function SsbField({
               if (inline) setEditing(false);
             }}
           />
+          {hasDefault && pinned && (
+            <Menu.Item
+              icon={<ArrowCounterClockwise />}
+              closeOnClick={false}
+              onClick={() => onChange(undefined)}
+            >
+              Reset to default
+            </Menu.Item>
+          )}
         </>
       ) : (
-        <Menu.Item closeOnClick={false} onClick={() => setEditing(true)} className={item}>
-          <ItemLabel>{name}</ItemLabel>
-          <Shortcut>
-            <span className="font-mono">{value}</span>
-          </Shortcut>
+        <Menu.Item
+          closeOnClick={false}
+          onClick={() => setEditing(true)}
+          detail={<span className="font-mono">{value}</span>}
+        >
+          {name}
         </Menu.Item>
       )}
       {note && (
@@ -392,14 +411,10 @@ export function Pick({
       <Menu.RadioGroup
         value={chosen}
         onValueChange={(picked) => set({ [value]: picked || undefined })}
-        className={list}
       >
         {options.map(([key, name]) => (
-          <Menu.RadioItem key={key} value={key} closeOnClick className={option}>
-            <span className="min-w-0 flex-1 truncate">{name}</span>
-            <Menu.RadioItemIndicator className={check}>
-              <Check />
-            </Menu.RadioItemIndicator>
+          <Menu.RadioItem key={key} value={key} closeOnClick>
+            {name}
           </Menu.RadioItem>
         ))}
       </Menu.RadioGroup>
@@ -426,48 +441,44 @@ export function SubmenuRow({
   children: ReactNode;
 }) {
   return (
-    <Menu.SubmenuRoot open={open} onOpenChange={onOpenChange}>
-      <Menu.SubmenuTrigger
-        openOnHover={false}
-        className="group/turn relative mx-1 flex h-8 w-[calc(100%-8px)] cursor-pointer items-center justify-between gap-1.5 rounded-sm px-2.5 text-14 leading-4 whitespace-nowrap text-ink outline-none select-none data-highlighted:bg-blue-80 data-highlighted:text-white data-popup-open:not-data-highlighted:bg-hover [&_svg]:text-muted data-highlighted:[&_svg]:text-white"
-      >
-        <ItemLabel icon={icon}>{label}</ItemLabel>
-        <div className="flex flex-1 items-center justify-end gap-1 overflow-hidden [&>svg]:size-4 [&>svg]:shrink-0">
-          <div className="flex-1 truncate text-end text-12 leading-4 text-muted group-data-highlighted/turn:text-blue-20">
-            {text}
-          </div>
-          <CaretDown />
-        </div>
-      </Menu.SubmenuTrigger>
-      <Menu.Portal>
-        <Menu.Positioner sideOffset={6} className="z-50 outline-none">
-          <Menu.Popup className={cn(popup, "min-w-40", className)}>{children}</Menu.Popup>
-        </Menu.Positioner>
-      </Menu.Portal>
-    </Menu.SubmenuRoot>
+    <Menu.Sub open={open} onOpenChange={onOpenChange}>
+      <Menu.SubTrigger openOnHover={false} icon={icon} detail={text}>
+        {label}
+      </Menu.SubTrigger>
+      <Menu.SubContent aria-label={label} className={cn("min-w-40", className)}>
+        {children}
+      </Menu.SubContent>
+    </Menu.Sub>
   );
 }
 
 export function Toggle({
+  id,
   checked,
   onCheckedChange,
   children,
 }: {
+  id?: string;
   checked?: boolean;
   onCheckedChange?: (checked: boolean) => void;
   children: ReactNode;
 }) {
   return (
-    <Menu.CheckboxItem checked={checked} onCheckedChange={onCheckedChange} className={item}>
-      <ItemLabel>{children}</ItemLabel>
+    <BaseMenu.CheckboxItem
+      id={id}
+      checked={checked}
+      onCheckedChange={onCheckedChange}
+      className={row}
+    >
+      <RowContent>{children}</RowContent>
       {/* On the highlighted row's navy: white when on, a translucent white track when off */}
-      <Menu.CheckboxItemIndicator
+      <BaseMenu.CheckboxItemIndicator
         keepMounted
-        className="relative h-4.5 w-7.5 shrink-0 rounded-full bg-grey-60 data-checked:bg-interactive group-data-highlighted/item:bg-white/40 group-data-highlighted/item:data-checked:bg-white"
+        className="relative h-4.5 w-7.5 shrink-0 rounded-full bg-grey-60 data-checked:bg-interactive group-data-highlighted/row:bg-white/40 group-data-highlighted/row:data-checked:bg-white"
       >
-        <span className="absolute top-0.5 left-0.5 size-3.5 rounded-full bg-white in-data-checked:left-3.5 group-data-highlighted/item:in-data-checked:bg-blue-80" />
-      </Menu.CheckboxItemIndicator>
-    </Menu.CheckboxItem>
+        <span className="absolute top-0.5 left-0.5 size-3.5 rounded-full bg-white in-data-checked:left-3.5 group-data-highlighted/row:in-data-checked:bg-blue-80" />
+      </BaseMenu.CheckboxItemIndicator>
+    </BaseMenu.CheckboxItem>
   );
 }
 
@@ -478,14 +489,14 @@ export function Action({
   children,
 }: {
   icon: ReactNode;
+  /** Its keys, as shortcut() writes them. */
   shortcut?: string;
   onClick?: () => void;
   children: ReactNode;
 }) {
   return (
-    <Menu.Item onClick={onClick} className={item}>
-      <ItemLabel icon={icon}>{children}</ItemLabel>
-      {shortcut && <Shortcut>{shortcut}</Shortcut>}
+    <Menu.Item icon={icon} detail={shortcut && <Kbd>{shortcut}</Kbd>} onClick={onClick}>
+      {children}
     </Menu.Item>
   );
 }
@@ -521,6 +532,7 @@ export function ErrorMessages({
               pinned={error.pinned}
               onChange={(next) => onChange(error, next)}
               required={"native" in error ? error.required : error.rule === "required"}
+              hasDefault
             />
           ))}
       </div>

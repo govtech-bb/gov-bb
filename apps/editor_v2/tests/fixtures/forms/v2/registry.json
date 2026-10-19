@@ -3552,7 +3552,7 @@
             "label": "Event name",
             "required": {
               "value": true,
-              "message": "Enter an answer"
+              "message": ""
             },
             "type": "question"
           },
@@ -3563,7 +3563,7 @@
             "label": "Which parish is the event in?",
             "required": {
               "value": true,
-              "message": "Enter an answer"
+              "message": ""
             },
             "config": {
               "selection": "single",
@@ -3590,7 +3590,7 @@
             "label": "Event date",
             "required": {
               "value": true,
-              "message": "Enter an answer"
+              "message": ""
             },
             "hint": "For example, 27 3 2026",
             "validation": [
@@ -3687,7 +3687,7 @@
             "label": "Do you need to close a road?",
             "required": {
               "value": true,
-              "message": "Enter an answer"
+              "message": ""
             },
             "config": {
               "selection": "single",
@@ -3714,7 +3714,7 @@
             "label": "How long will the road be closed?",
             "required": {
               "value": true,
-              "message": "Enter an answer"
+              "message": ""
             },
             "visible": false,
             "layout": {
@@ -3783,7 +3783,7 @@
             "label": "Upload a site plan",
             "required": {
               "value": true,
-              "message": "Enter an answer"
+              "message": ""
             },
             "type": "question"
           },
@@ -3807,7 +3807,7 @@
             "label": "Type of sound system",
             "required": {
               "value": true,
-              "message": "Enter an answer"
+              "message": ""
             },
             "type": "question"
           },
@@ -3818,7 +3818,7 @@
             "label": "Number of speakers",
             "required": {
               "value": true,
-              "message": "Enter an answer"
+              "message": ""
             },
             "type": "question"
           },
@@ -3829,7 +3829,7 @@
             "label": "Speaker brand",
             "required": {
               "value": true,
-              "message": "Enter an answer"
+              "message": ""
             },
             "repeat": {
               "min": 1,

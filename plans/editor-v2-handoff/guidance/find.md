@@ -1,0 +1,17 @@
+- **Build on what's there:** Bar, DocumentBar, the title hook, Sidebar and ServiceNav, ActionList (Base UI Autocomplete), ConfirmDialog, Kbd and TextLink.
+- **breadcrumbs:**
+  - One location trail (Services › Service › Page or Form) feeds a shared `Breadcrumbs` (a named nav with `aria-current`), the tab title and a route announcement.
+  - Services is marked current only on Services.
+- **regions:**
+  - F6 and Shift+F6 cycle the named areas: header, sidebar, document bar, canvas and settings.
+  - Each toolbar is one Tab stop.
+  - Focus moves to the title after a navigation.
+- **palette:**
+  - One `CommandPalette` on Base UI Dialog and Autocomplete (reuse ActionList), fed by one registry: services, the current service's pages, recent pages, and every workspace command.
+  - ⌘K opens it, except while text is selected in an editor, where ⌘K stays the link shortcut.
+  - Searching every page needs api_v2: leave it out and say so.
+- **item-actions:**
+  - One actions menu per item: Open, Open in new tab, View on site, Rename, Duplicate, Move to…, Delete. Use it in every list, the document bars and the palette.
+  - Browser drafts get Delete with an Undo toast. API pages keep the ConfirmDialog, since there's no trash in api_v2.
+  - Moving and redirects need api_v2: show nothing for Move until they exist, and list them in your report.
+  - Duplicate creates a copy through the API's create.

@@ -35,6 +35,21 @@ export function writeServerPageBaseline(storage: DraftStorage, base: ServerPageB
 }
 
 /**
+ * Whether a document's browser draft holds nothing of its own: there is none, or it is the server's copy as this
+ * browser last had it, with nothing unsaved. Opening such a page shows the server's copy; any other draft is kept.
+ */
+export function draftFollowsServer(storage: DraftStorage, id: string, keys = documentKeys(id)) {
+  const local = storage.getItem(keys.committed);
+
+  return (
+    local === null ||
+    (local === parseServerPageBaseline(storage.getItem(serverPageBaselineKey(id)), id)?.markdown &&
+      storage.getItem(keys.working) === null &&
+      !(keys.replacementJournal && storage.getItem(keys.replacementJournal) !== null))
+  );
+}
+
+/**
  * Put the server's copy of a page in front of its draft before the draft
  * opens. A draft with nothing unsaved follows the server; one with unsaved
  * changes is kept, and the editor offers choices once it sees the server has
@@ -47,14 +62,8 @@ export function seedPageDraftFromServer(
 ): ServerPageBaseline {
   const keys = documentKeys(page.id);
   const base = parseServerPageBaseline(storage.getItem(serverPageBaselineKey(page.id)), page.id);
-  const local = storage.getItem(keys.committed);
   const server = { page, markdown: pageToMarkdown(page, categories) };
-
-  const followsServer =
-    local === null ||
-    (local === base?.markdown &&
-      storage.getItem(keys.working) === null &&
-      !(keys.replacementJournal && storage.getItem(keys.replacementJournal) !== null));
+  const followsServer = draftFollowsServer(storage, page.id, keys);
 
   if (followsServer) storage.setItem(keys.committed, server.markdown);
 

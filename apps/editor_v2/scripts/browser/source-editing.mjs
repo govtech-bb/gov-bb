@@ -2,6 +2,7 @@ import { authenticatedContext } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "./playwright.mjs";
+import { formDraftUrl, openDemoForm } from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -33,11 +34,13 @@ const open = async () => {
 const close = async () => {
   const button = page.getByRole("button", { name: "Close source", exact: true });
 
-  if (await button.count()) await button.click();
+  // A dialog that closes itself, as once a conflict is resolved, may still be fading out: then it needs no click
+  if (await button.count())
+    await button.click({ timeout: 2000 }).catch(() => button.waitFor({ state: "detached" }));
 };
 
 try {
-  await page.goto(url);
+  await openDemoForm(page, url);
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await root.waitFor();
@@ -87,11 +90,16 @@ try {
   assert.equal(await source.inputValue(), "unclosed broken source");
   assert.equal(await root.getAttribute("contenteditable"), "false");
   await page.getByRole("button", { name: "Discard changes", exact: true }).click();
+  // Discarding asks first
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Discard changes", exact: true })
+    .click();
   assert.match(await source.inputValue(), /# Source-edited page/);
   assert.equal(await page.evaluate((key) => localStorage.getItem(key), working), null);
   const imported = (await source.inputValue()).replace("# Source-edited page", "# Imported page");
   await page
-    .getByLabel("Open Markdown file", { exact: true })
+    .getByLabel("Markdown file to replace from", { exact: true })
     .setInputFiles({ name: "edited.md", mimeType: "text/markdown", buffer: Buffer.from(imported) });
   await page.getByText("edited.md is ready to apply", { exact: true }).waitFor();
   await page.getByRole("button", { name: "Apply changes", exact: true }).click();
@@ -101,7 +109,7 @@ try {
     "Imported page",
   );
   const other = await context.newPage();
-  await other.goto(url);
+  await other.goto(formDraftUrl(url));
   await other.locator('[aria-label="Form"]').waitFor();
   await other.getByRole("button", { name: /^Markdown/ }).click();
   const theirs = other.getByRole("textbox", { name: "Markdown source", exact: true });
@@ -138,9 +146,13 @@ try {
   await page.getByText("Not saved", { exact: true }).waitFor();
   await open();
   assert.match(await source.inputValue(), /# Unsaved quota page/);
-  await page.getByText(/Not saved: Storage quota reached/).waitFor();
+  // In the dialog, as well as under the document's bar behind it
+  await page
+    .getByRole("dialog")
+    .getByText(/Not saved: Storage quota reached/)
+    .waitFor();
   await page.evaluate(() => (Storage.prototype.setItem = window.__draftOriginalSetItem));
-  await page.getByRole("button", { name: "Try saving again", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Try again", exact: true }).click();
   await page.getByText("Saved in this browser", { exact: true }).waitFor();
   await close();
   assert.match(
@@ -155,7 +167,7 @@ try {
 
   const legacyContext = await authenticatedContext(browser);
   const legacyPage = await legacyContext.newPage();
-  await legacyPage.goto(url);
+  await legacyPage.goto(formDraftUrl(url));
   await legacyPage.evaluate((bytes) => {
     localStorage.clear();
     localStorage.setItem("govbb-editor:draft", bytes);

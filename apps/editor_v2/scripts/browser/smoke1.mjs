@@ -1,6 +1,7 @@
 // GovBB editor smoke test: blocks, menus, undo, drag, rubber band, and caret placement.
 // node smoke1.mjs [url]
 import { chromium } from "./playwright.mjs";
+import { openDemoForm } from "./form-fixture.mjs";
 
 const url = process.argv[2] ?? "http://localhost:3013/";
 
@@ -22,7 +23,7 @@ const check = (name, ok, detail = "") =>
   results.push(`${ok ? "PASS" : "FAIL"} ${name}${detail ? ` — ${detail}` : ""}`);
 
 try {
-  await page.goto(url);
+  await openDemoForm(page, url);
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   const root = page.locator('[contenteditable="true"][aria-label="Form"]');
@@ -177,7 +178,7 @@ try {
   ]) {
     await block.hover();
     await page.waitForTimeout(80);
-    const grip = page.getByRole("button", { name: "Move this block by dragging" });
+    const grip = page.getByRole("button", { name: "Block actions" });
     await grip.click();
     const menu = page.locator("[role=menu]");
     await menu.waitFor({ timeout: 2000 }).catch(() => {});
@@ -210,7 +211,7 @@ try {
     const target = after1(byText("Event name")); // the "Event name" input
     await source.hover();
     await page.waitForTimeout(80);
-    const grip = page.getByRole("button", { name: "Move this block by dragging" });
+    const grip = page.getByRole("button", { name: "Block actions" });
     const g = await grip.boundingBox();
     const t = await target.boundingBox();
     await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);

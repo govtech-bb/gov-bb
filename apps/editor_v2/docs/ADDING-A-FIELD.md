@@ -48,9 +48,9 @@ The Reference example maps `peer` as a field reference. It leaves an opaque `lit
 
 ## Package the authoring UI
 
-`fieldModule({ field, insertion, Controls, Preview, Renderer? })` creates the complete installation unit. `insertion` supplies the stable action ID, order, node factory and question/answer copy. The helper contributes both a complete question and a bare answer action, previews and an inspector slot. Its inspector checks the input role before the kind, avoiding collisions with content such as numbered lists.
+`fieldModule({ field, insertion, Controls, Preview?, Renderer? })` creates the complete installation unit. `insertion` supplies the stable action ID, order, node factory and question/answer copy. The helper contributes both a complete question and a bare answer action, previews and an inspector slot. Its inspector checks the input role before the kind, avoiding collisions with content such as numbered lists.
 
-`Controls` receives `{ m: BlockMenuModel, a: BlockMenuActions }`; use `a.onSettings` for edits. The common form controls are exported, but there is no settings-form DSL. `Preview` receives optional width, mask and option samples; decorator `Renderer` receives `WidgetProps`. Keep renderers editor-scoped and do not install another history owner.
+`Controls` receives `{ m: BlockMenuModel, a: BlockMenuActions }`; use `a.onSettings` for edits. The common form controls are exported, but there is no settings-form DSL. Without a `Preview`, the insert dialog shows the field as the canvas draws it: the box its `draw` makes, or its `choice` options, so the two cannot disagree. Draw with the GovBB kit in `src/ui/govbb.ts`. A field the canvas draws in React, or not at all, brings its own `Preview`, which receives optional width, mask and option samples; decorator `Renderer` receives `WidgetProps`. Keep renderers editor-scoped and do not install another history owner.
 
 Install the module through `defineFormEditor({ modules: [...] })`. The same resolved definition must be used by the live editor, headless operations and converters. In the [extension browser fixture](../tests/browser/external-extensions.tsx), `ReferenceFieldModule()` is appended to `govbbFormModules` and the developer's registry can then use `kind: "reference-code"`.
 

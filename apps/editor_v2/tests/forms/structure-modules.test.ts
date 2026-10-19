@@ -76,6 +76,10 @@ test("form lifecycle keeps structural history before repeat/page/source-key regi
     "page-headings",
     "source-keys",
     "native-authoring",
+    "link-policy",
+    "link-history",
+    "turn-into-keys",
+    "markdown-shortcuts",
   ]);
   expect(govbbFormEditor.moduleKeys.filter((key) => key.includes("history"))).toEqual([]);
   expect(govbbFormEditor.structural.map((claim) => claim.storage.value)).toEqual(["page-break"]);

@@ -8,7 +8,8 @@ export const headingEntries: readonly ContentEntry[] = [
     shortcuts: ["# "],
     title: "Heading 1",
     icon: <TextHOne />,
-    keywords: "h1, #",
+    aliases: ["h1"],
+    markdown: "#",
     kind: "h1",
     renderPreview: ({ text }) => (
       <div className="leading-[1.3] font-semibold text-28">{text ?? "Heading 1"}</div>
@@ -23,7 +24,8 @@ export const headingEntries: readonly ContentEntry[] = [
     shortcuts: ["## "],
     title: "Heading 2",
     icon: <TextHTwo />,
-    keywords: "h2, ##",
+    aliases: ["h2", "subheading"],
+    markdown: "##",
     kind: "h2",
     renderPreview: ({ text }) => (
       <div className="leading-[1.3] font-semibold text-22">{text ?? "Heading 2"}</div>
@@ -38,7 +40,8 @@ export const headingEntries: readonly ContentEntry[] = [
     shortcuts: ["### "],
     title: "Heading 3",
     icon: <TextHThree />,
-    keywords: "h3, ###",
+    aliases: ["h3"],
+    markdown: "###",
     kind: "h3",
     renderPreview: ({ text }) => (
       <div className="leading-[1.3] font-semibold text-18">{text ?? "Heading 3"}</div>

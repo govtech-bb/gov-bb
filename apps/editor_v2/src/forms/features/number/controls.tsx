@@ -8,6 +8,7 @@ import {
   type FieldControlsProps,
 } from "../shared/controls";
 import { useId, useState } from "react";
+import { Input } from "../../../ui/input";
 import { positiveIncrementError } from "../shared/increments";
 
 export function NumberControls({ m, a }: FieldControlsProps) {
@@ -62,7 +63,8 @@ function NumberIncrement() {
         Increment
       </label>
 
-      <input
+      <Input
+        size="sm"
         id={id}
         type="text"
         inputMode="decimal"
@@ -71,7 +73,6 @@ function NumberIncrement() {
         aria-invalid={!!error}
         aria-describedby={error ? id + "-error" : undefined}
         onChange={(event) => update(event.target.value)}
-        className="h-8 w-full rounded-sm bg-white px-2 text-14 shadow-input outline-none focus:shadow-input-focus"
       />
 
       {error && (

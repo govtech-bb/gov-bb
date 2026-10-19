@@ -6,6 +6,7 @@ import {
   type DraftConnection,
   type DraftDiagnostic,
   type DraftKeys,
+  type DraftPause,
   type DraftRecovery,
   type DraftReplacement,
   type DraftReplacementToken,
@@ -192,6 +193,22 @@ export function initialDraft(
   }
 }
 
+/**
+ * The one pause rule: why editing is paused, if it is, naming the reason to settle first. The store takes no canvas
+ * edit while it holds, and both editors pause their canvas by it and say why.
+ */
+export function draftPause(snapshot: DraftSnapshot): DraftPause | undefined {
+  if (!snapshot.valid) return "invalid";
+
+  if (snapshot.replacement || snapshot.recovery?.kind === "replacement") return "replacement";
+
+  if (snapshot.recovery?.kind === "migration") return "migration";
+
+  if (snapshot.conflict) return "conflict";
+
+  if (snapshot.dirty) return "source";
+}
+
 /** Owns all writes, pending timers and competing-tab checks; React only presents its snapshot. */
 export class DraftStore {
   private snapshot: DraftSnapshot;
@@ -246,15 +263,7 @@ export class DraftStore {
     this.timer = undefined;
   }
   private editable() {
-    return (
-      this.snapshot.mode === "visual" &&
-      this.snapshot.valid &&
-      !this.snapshot.dirty &&
-      !this.snapshot.conflict &&
-      !this.snapshot.replacement &&
-      this.snapshot.recovery?.kind !== "migration" &&
-      this.snapshot.recovery?.kind !== "replacement"
-    );
+    return this.snapshot.mode === "visual" && !draftPause(this.snapshot);
   }
   private replacementPending() {
     return !!this.snapshot.replacement || this.snapshot.recovery?.kind === "replacement";

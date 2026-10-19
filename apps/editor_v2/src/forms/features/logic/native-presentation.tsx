@@ -72,7 +72,7 @@ export function NativeConditionalLogic({
                     <span className="native-rule-menu ml-auto opacity-0 group-hover/logic:opacity-100 focus-within:opacity-100">
                       <More
                         label={`Rule ${index + 1} options`}
-                        size="sm"
+                        size="xs"
                         items={[
                           [
                             "Add rule",
@@ -155,7 +155,7 @@ export function NativeConditionalLogic({
                       />
                       <More
                         label={`Action ${actionIndex + 1} options`}
-                        size="sm"
+                        size="xs"
                         items={[
                           [
                             "Add action",
@@ -199,7 +199,7 @@ export function NativeConditionalLogic({
                   ))}
                   {!rule.actions.length && (
                     <Button
-                      size="sm"
+                      size="xs"
                       icon={<Plus />}
                       onClick={() => at(index, { ...rule, actions: [newAction("setVisible")] })}
                     >
@@ -212,7 +212,7 @@ export function NativeConditionalLogic({
           ))}
           {!block.rules.length && (
             <Button
-              size="sm"
+              size="xs"
               icon={<Plus />}
               className="self-start"
               onClick={() =>

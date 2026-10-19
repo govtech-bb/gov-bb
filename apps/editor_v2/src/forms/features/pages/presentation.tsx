@@ -6,6 +6,7 @@ import { useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../../../cn";
 import { Button } from "../../../ui/button";
+import { Switch } from "../../../ui/switch";
 import { Tip } from "../../../ui/tooltip";
 import {
   CHECK_ANSWERS_DESCRIPTION,
@@ -210,20 +211,29 @@ export function PageBreak({ nodeKey, settings }: WidgetProps) {
     });
   };
 
+  // Named with the count the folded button shows; aria-expanded says whether the page's blocks show
+  const blocks = `${count} block${count === 1 ? "" : "s"}`;
+
   const fold = settings.folded ? (
     <Tip content="Unfold page">
       <Button
         icon={<CaretRight />}
-        aria-label="Unfold page"
+        aria-label={`Unfold page, ${blocks}`}
+        aria-expanded={false}
         onClick={() => set({ folded: undefined })}
       >
-        {count} block{count === 1 ? "" : "s"}
+        {blocks}
       </Button>
     </Tip>
   ) : (
     count > 0 && (
       <Tip content="Fold page">
-        <Button icon={<CaretDown />} aria-label="Fold page" onClick={() => set({ folded: true })} />
+        <Button
+          icon={<CaretDown />}
+          aria-label={`Fold page, ${blocks}`}
+          aria-expanded
+          onClick={() => set({ folded: true })}
+        />
       </Tip>
     )
   );
@@ -260,21 +270,15 @@ export function PageBreak({ nodeKey, settings }: WidgetProps) {
         <div className="ml-auto flex min-w-0 items-center gap-1">
           {qualified && (
             <Tip content="A confirmation page tells people their application was submitted and what happens next">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={!!settings.confirmation}
-                onClick={() => set({ confirmation: !settings.confirmation })}
-                className={cn(gapButton, "text-ink")}
-              >
-                <span className="max-md:sr-only">Confirmation page</span>
-                <span
-                  data-on={settings.confirmation ? "" : undefined}
-                  className="relative h-4.5 w-7.5 shrink-0 rounded-full bg-grey-60 data-on:bg-interactive"
-                >
-                  <span className="absolute top-0.5 left-0.5 size-3.5 rounded-full bg-white in-data-on:left-3.5" />
-                </span>
-              </button>
+              {/* The tip's trigger: the whole chip, label and switch */}
+              <span className="flex min-w-0">
+                <Switch
+                  label={<span className="max-md:sr-only">Confirmation page</span>}
+                  checked={!!settings.confirmation}
+                  onCheckedChange={(confirmation) => set({ confirmation })}
+                  className={gapButton}
+                />
+              </span>
             </Tip>
           )}
           {warnings.length > 0 && (

@@ -1,4 +1,4 @@
-export { DraftStore, initialDraft } from "./draft-store";
+export { DraftStore, draftPause, initialDraft } from "./draft-store";
 
 export {
   SourceError,
@@ -6,6 +6,7 @@ export {
   type DraftConnection,
   type DraftDiagnostic,
   type DraftKeys,
+  type DraftPause,
   type DraftStorage,
   type PreparedSource,
   type VisualPreparedSource,

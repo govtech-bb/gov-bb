@@ -45,6 +45,6 @@ pnpm exec vitest run docs/examples
 
 ## Regression fixtures
 
-The [form fixtures](../tests/fixtures/forms/README.md) contain native JSON examples and frozen legacy migration samples. `demo.canonical.md` is a migration fixture; the [native demo definition](../src/presets/form-registry/demo.ts) supplies fresh drafts.
+The [form fixtures](../tests/fixtures/forms/README.md) contain native JSON examples and frozen legacy migration samples. `demo.canonical.md` is a migration fixture; the [native demo definition](../src/presets/form-registry/demo.ts) supplies the registry's complete demo form.
 
 The [page fixtures](../tests/fixtures/pages/README.md) retain 16 originals with recorded hashes: three visual regressions and 13 source-only cases. Integration tests also read current pages directly from `apps/landing/src/content`. Preserve fixture bytes and semantics when changing converters.

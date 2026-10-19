@@ -1,0 +1,17 @@
+- **Build on wave 1.** The notice rule from the frame work decides where each message goes: app problems under the header, document problems in the document bar's notice area, dialog outcomes as a box Banner, field problems on the field, after-the-fact results as toasts. Use the kit work's ConfirmDialog and EmptyState.
+- **error-summary:**
+  - One `ErrorSummary` whose items focus their field, opening the side panel first if the field is in it.
+  - Every message about one value goes through Field's error. Field gets a hidden-label option for inline fields such as the title.
+  - Screen readers hear the reason, not just "invalid".
+- **failure-copy:**
+  - One `describeApiFailure(error, task)` returns the words and the one useful action for offline, 401, 403, 404, 409, 422 and 5xx.
+  - One failure Banner shows them.
+  - Never offer a retry that can't succeed.
+- **raw-errors:**
+  - A message catalogue at the UI boundary. Known failures get plain words and an action; anything else gets one general line with "Copy details" for support.
+  - No code or storage error text reaches an author word for word.
+- **session-ended:**
+  - One "session ended" state, set by the timer, the focus check and any 401, and shown as one dialog that keeps the work: "Your session has ended. Your changes are kept."
+  - "Sign in again" returns to the same page.
+  - Keep `workspaceAdmission` in `src/auth/session.ts`.
+- The glossary item comes last, in a final package that renames strings across the app. Don't rename terms beyond what your items need.

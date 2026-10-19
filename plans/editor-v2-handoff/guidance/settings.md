@@ -1,0 +1,30 @@
+- **Build on wave 1:** SidePanel (`src/ui/side-panel.tsx`, beside the page from 1200px and a drawer below, which is the user's call), Field and FieldGroup, the DocumentBar's settings toggle slot (empty for forms until now; you fill it), ConfirmDialog and EmptyState. Read the page editor's settings panel (`pages/metadata-fields.tsx`, `PageSettings`) and match it.
+- **settings-panel:**
+  - The form editor gets the SidePanel, driven by the selection:
+    - Form settings when nothing is selected. Include the closing date and emails that today need Markdown, as far as the form's settings model allows; check `forms/core/form-settings.ts` and `forms/editor/form-metadata.ts`.
+    - Page settings for a page.
+    - Question settings for a question, in sections: Answer, Validation, Logic, Advanced.
+  - The block menu keeps only actions.
+  - The settings toggle in the document bar opens it.
+- **settings-fields:**
+  - Field and FieldGroup become the only way to label a control.
+  - A `ComputedField` replaces `SsbField` for values that stay automatic until edited, showing "Default" or "Custom" with "Reset to default". The forms work already added that for error messages, so fold it in.
+- **first-form:**
+  - A guided empty state: EmptyState with "Add question" and a few starters.
+  - Named formats, with "Custom pattern" under Advanced.
+  - IDs and aliases move to Advanced.
+  - Plain words from TERMINOLOGY.md.
+- **logic-sentences:**
+  - A new rule starts from its question, with a condition that suits the question's type.
+  - Each rule reads as a sentence. The Add buttons are visible.
+  - Expressions and scopes go under Advanced.
+  - Say that later rules win.
+- **delete-question:**
+  - Before deleting, list the rules, calculations and references that use the question (`forms/schema/references.ts` can already find them) in a ConfirmDialog, then show an Undo toast.
+  - A question nothing uses deletes straight away, with the Undo toast.
+- **form-check:**
+  - Run the form check while editing.
+  - Show "N problems" in the document bar's status area.
+  - List them in plain words in the panel; clicking one selects its block.
+  - Reuse the list as the gate for exporting or publishing.
+- The blocks package is merging the page and form block menus at the same time. Keep your block-menu edits to removing settings, and leave the menu's structure to them.

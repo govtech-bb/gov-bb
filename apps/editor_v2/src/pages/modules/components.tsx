@@ -4,8 +4,10 @@ import { decodeHTMLAttribute, decodeHTMLStrict, encodeXML } from "entities";
 import type { PhrasingContent } from "mdast";
 import type { MarkdownNode, PageHandler, PageModule } from "../definition";
 import { PageComponentNode, type PageComponentAttributes } from "../nodes";
+import { defineSlot } from "../../editor/react/contributions";
 import { blocks, phrasing, UnsupportedPageContent } from "../markdown";
 import { pageInsertAction } from "../insertion";
+import { PageButtonLink } from "../button-link";
 import { safePageUrl } from "./text";
 
 function startLabel(nodes: readonly MarkdownNode[]): PhrasingContent[] | undefined {
@@ -316,6 +318,7 @@ export function PageComponentsModule(): PageModule {
     requires: ["text"],
     nodes: [{ type: "page-component", node: PageComponentNode }],
     markdown: [components],
+    slots: [defineSlot("page-button-link", "editor.overlay", () => <PageButtonLink />)],
     actions: [
       pageInsertAction(
         "page-notice",
@@ -326,6 +329,7 @@ export function PageComponentsModule(): PageModule {
           order: 40,
           icon: <Info />,
           description: "Highlight information readers need to know.",
+          aliases: ["callout", "inset text", "important", "note"],
         },
       ),
       pageInsertAction(
@@ -340,6 +344,7 @@ export function PageComponentsModule(): PageModule {
           order: 40,
           icon: <CaretCircleDown />,
           description: "Let readers expand supporting information.",
+          aliases: ["disclosure", "expand", "show and hide", "more information"],
         },
       ),
       pageInsertAction(
@@ -354,6 +359,7 @@ export function PageComponentsModule(): PageModule {
           order: 40,
           icon: <CursorClick />,
           description: "Link to the next step or related pages.",
+          aliases: ["button", "link button"],
         },
       ),
       pageInsertAction(
@@ -365,6 +371,7 @@ export function PageComponentsModule(): PageModule {
           order: 40,
           icon: <ArrowSquareRight />,
           description: "Take readers to the linked form.",
+          aliases: ["start now", "apply", "call to action"],
         },
       ),
     ],

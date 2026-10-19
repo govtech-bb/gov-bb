@@ -1,0 +1,15 @@
+- **Build on what's there:** Button's variants, Checkbox, Input, Field, Popover and Menu (with required labels), ActionList (from the blocks work), EmptyState and the touchTarget token.
+- **pills:** one Pill family in `ui/pill.tsx` (Select, Combobox, Popover, Input, InlineSelect, and a quiet tone), folding in Select's pill variant. Move all eight hand-made pills onto it.
+- **popups:**
+  - Rebuild EditFormula and BlocksPick on Popover, and the formula's @ list on ActionList.
+  - Then delete ContextMenu, fit, Spot, useOutside and useEscape.
+- **checklist:** a `CheckList` (searchable, with tri-state parents) on the shared Checkbox, and a `SearchField` for every search inside a popup.
+- **lists:** a `RepeaterList` in `src/ui` with a grip, Move up and Move down, Duplicate, Remove and an empty state. Use it for options, categories, rules, conditions and calculations.
+- **author-notes:** an `AuthorNote` for everything applicants never see, Badge for statuses, and one FieldRef look with one truncation rule.
+- **raw-controls:**
+  - Replace raw inputs, checkboxes and buttons with Input, Checkbox and Button. Add a `plain` Button variant and an `InputGroup`.
+  - Give Tip `anchor` and `open` props.
+  - Add one `FoldToggle` whose name includes its count, if the kit work hasn't already.
+- **form-preview:**
+  - A Preview, from the document bar's Preview slot, that runs the form a page at a time with its logic, validation and a filled-in Check answers page. Add "Go to page" and "Fill sample answers".
+  - Reuse the native form interpreter the tests use (`tests/helpers/native-fixture-interpreter.ts`), moving what's needed into `src/` properly.

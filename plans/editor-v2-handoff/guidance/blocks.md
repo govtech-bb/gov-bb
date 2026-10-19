@@ -1,0 +1,24 @@
+- **Build on wave 1:** Bar (for the format toolbar), Kbd, the touchTarget token, Menu with its required labels, and the write work's `rankActions` and Turn into submenu. Read them first.
+- **action-list:**
+  - One `ActionList` in `src/ui` on Base UI Autocomplete: grouped items with icon, title and description, one empty state (the shared no-match line), and optional search and preview. Keep the write work's ranked results, Markdown hints and description footer.
+  - Both editors' "/" and "+" use it, and so do @-mentions and the formula's @ list.
+  - The "+" opens the same list the slash does.
+  - Keep `useSlashTrigger`'s rules.
+- **block-menu:**
+  - One `BlockMenu` on Menu for both editors: the block's name as the group label, Turn into, Duplicate, Move up, Move down, then a red Delete last. Editor-specific groups go above.
+  - The settings package is moving question settings out of the form block menu into a side panel right now. Do block-menu after your other items, keep the form menu's settings entries where they are if they're still there, and say so in your report.
+- **rail:**
+  - Both rails get the same two buttons: Insert, and the grip named "Block actions" with its popup state.
+  - Delete lives only in the menu.
+  - Phones keep Insert.
+- **keyboard-model:**
+  - One shortcut registry in editor core: Esc selects the block, ⌘/ opens the menu, ⌘⇧↑ and ⌘⇧↓ move, ⌘D duplicates, Delete removes.
+  - It feeds the menus, tooltips, `aria-keyshortcuts`, and a Keyboard shortcuts dialog (opened with "?" outside text, and from the help menu or the document bar).
+  - Tab leaves the form canvas.
+  - `shortcut()` in `src/editor/react/shortcut.ts` stays the formatter.
+- **format-toolbar:**
+  - Build it on Bar as a named toolbar ("Format selection") with arrow-key movement.
+  - Add an entry key (Alt+F10) and a Remove link shortcut.
+- **announce:**
+  - One `announce()` live region, mounted once, for block actions ("Moved up", "Deleted. Press Ctrl+Z to undo.", with the platform's own keys) and for banners.
+  - Don't make the save status talk; the frame work already quieted it.

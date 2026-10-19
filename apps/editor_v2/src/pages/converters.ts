@@ -1,4 +1,9 @@
-import { $createParagraphNode, $getRoot, type SerializedEditorState } from "lexical";
+import {
+  $createParagraphNode,
+  $getRoot,
+  $isParagraphNode,
+  type SerializedEditorState,
+} from "lexical";
 import type { Root } from "mdast";
 import { createHeadlessEditor } from "../editor/core/create-editor";
 import { SourceError, type DraftCodec, type PreparedSource } from "../persistence/types";
@@ -27,14 +32,22 @@ function $encode(definition: PageEditorDefinition) {
   const context = pageConversion(definition);
   const metadata = $pageMetadataNode();
 
+  const content = $getRoot()
+    .getChildren()
+    .filter((node) => !(node instanceof PageMetadataNode));
+
+  // The empty line the editor keeps at the end of a page, to write on, isn't content
+  const $emptyLast = () => {
+    const last = content.at(-1);
+
+    return content.length > 1 && $isParagraphNode(last) && last.isEmpty();
+  };
+
+  while ($emptyLast()) content.pop();
+
   const body: Root = {
     type: "root",
-    children: blocks(
-      $getRoot()
-        .getChildren()
-        .filter((node) => !(node instanceof PageMetadataNode))
-        .flatMap((node) => context.$export(node)),
-    ),
+    children: blocks(content.flatMap((node) => context.$export(node))),
   };
 
   const yaml = metadata.getYaml();

@@ -1,6 +1,5 @@
 import type { PageType } from "../core/pages";
 import { $isHeadingNode } from "@lexical/rich-text";
-import eyeSlash from "@phosphor-icons/core/assets/regular/eye-slash.svg?raw";
 import smiley from "@phosphor-icons/core/assets/regular/smiley.svg?raw";
 import {
   $copyNode,
@@ -34,8 +33,8 @@ import { $native, $setNative } from "./native-state";
 import { $isShowHideNode } from "../../editor/modules/disclosure/nodes";
 import { $isListLine, $listRun } from "../../editor/modules/lists/nodes";
 import {
+  $stateTag,
   $static,
-  $tip,
   container,
   el,
   ghost,
@@ -165,20 +164,11 @@ function $receipt(withDefault: boolean) {
   return receipt;
 }
 
-function $hiddenLabelTag() {
-  const tag = $static(
-    "span",
-    "group/tip relative ms-1.5 hidden items-center gap-1 align-middle text-12 leading-4 font-semibold text-muted in-data-label-hidden:inline-flex",
-  );
-
-  tag.innerHTML = icon(eyeSlash, 14);
-  tag.append(
-    "Hidden",
-    $tip("Hidden on the page. Screen readers and Check your answers still use it", "top"),
-  );
-
-  return tag;
-}
+const $hiddenLabelTag = () =>
+  $stateTag("Hidden", "ms-1.5 hidden align-middle in-data-label-hidden:inline-flex", {
+    text: "Hidden on the page. Screen readers and Check your answers still use it",
+    side: "top",
+  });
 
 /** Any JSON value: logic rules and calculated fields keep nested lists and objects. */
 export type { Setting, Settings } from "../core/settings";
@@ -456,9 +446,8 @@ export function $run(block: LexicalNode) {
  * ordinary text blocks stand alone. Positional grouping means text between two options splits the question.
  */
 export function $blockGroup(block: LexicalNode): LexicalNode[] {
-  // A page break takes its head; a folded page takes its content too.
-  if ($isPageBreak(block))
-    return [block, ...$pageHead(block), ...($settings(block).folded ? $pageBlocks(block) : [])];
+  // A page break takes its head, folded or not: its settings are the page's own ($wholePage is the page with its blocks)
+  if ($isPageBreak(block)) return [block, ...$pageHead(block)];
 
   if (!$isQuestionNode(block) && !$isInput(block)) return [block];
   let input: LexicalNode | null = $isInput(block) ? $run(block)[0]! : null;
@@ -672,6 +661,16 @@ export function $pageType(start: LexicalNode): PageType {
     : confirmation === true
       ? "confirmation"
       : "questions";
+}
+
+/** A whole page: its start, its head and every block up to the next page. Page actions move, copy and delete this. */
+export function $wholePage(start: LexicalNode) {
+  const page = [start];
+
+  for (let next = $nextBlock(start); next && !$isPageBreak(next); next = $nextBlock(next))
+    page.push(next);
+
+  return page;
 }
 
 /** The blocks after a page start up to the next page, without its head. */

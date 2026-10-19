@@ -43,6 +43,7 @@ export { pushStep, registerEditorHistory, type Step } from "../../../editor/core
 
 export {
   $blockZone,
+  $canMovePage,
   $dragged,
   $dropBlocks,
   $dropCheck,
@@ -52,7 +53,9 @@ export {
   $foldQuestion,
   $hideBlocks,
   $isFolded,
+  $mergeWithPreviousPage,
   $moveBlocks,
+  $pageQuestionCount,
   $removeBlocks,
   $selectedBlocks,
   $withGroups,

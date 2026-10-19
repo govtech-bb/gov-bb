@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "./playwright.mjs";
+import { formDraftUrl } from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -65,7 +66,7 @@ const fresh = async ({ legacy = false } = {}) => {
 
   current = page;
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto(url);
+  await page.goto(formDraftUrl(url));
   await form(page).waitFor();
   await page.evaluate(() => document.fonts.ready);
   await settle(page);
@@ -75,7 +76,7 @@ const fresh = async ({ legacy = false } = {}) => {
 
 const openMenu = async (page, label) => {
   await question(page, label).hover();
-  await page.getByRole("button", { name: "Move this block by dragging" }).click();
+  await page.getByRole("button", { name: "Block actions" }).click();
   await page.getByRole("menu").first().waitFor();
 };
 
@@ -614,7 +615,10 @@ try {
           ),
       ),
     );
-    await page.locator('[role="status"][title="Saved"]').waitFor();
+    await page
+      .locator("[data-document-bar]:visible")
+      .getByText("Saved in this browser", { exact: true })
+      .waitFor();
     await page.reload();
     await form(page).waitFor();
     assert.deepEqual(

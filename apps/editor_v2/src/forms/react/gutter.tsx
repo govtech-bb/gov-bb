@@ -12,10 +12,10 @@ import {
   $getState,
   $isParagraphNode,
   $isRangeSelection,
+  $onUpdate,
   $setSelection,
   COMMAND_PRIORITY_LOW,
   KEY_DOWN_COMMAND,
-  mergeRegister,
   SKIP_DOM_SELECTION_TAG,
   type LexicalEditor,
   type LexicalNode,
@@ -24,9 +24,18 @@ import {
 import { DotsSixVertical, Plus, TextAlignLeft, Trash } from "@phosphor-icons/react";
 import type { BaseUIEvent } from "@base-ui/react/types";
 import { useEffect, useReducer, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
-import { cn } from "../../cn";
+import { Kbd } from "../../ui/kbd";
 import { Tip } from "../../ui/tooltip";
-import { blockHandle as action } from "../../ui/button";
+import {
+  BlockRail,
+  DropLine,
+  menuKey,
+  RailButton,
+  railGrip,
+  useBlockDrag,
+  useRailTarget,
+  type Line,
+} from "../../editor/react/block-rail";
 import {
   $dropBlocks,
   $dropCheck,
@@ -35,6 +44,8 @@ import {
   $foldQuestion,
   $hideBlocks,
   $isFolded,
+  $mergeWithPreviousPage,
+  $moveBlocks,
   $removeBlocks,
   $selectedBlocks,
   OPEN_BULK_INSERT_COMMAND,
@@ -42,6 +53,9 @@ import {
 } from "../editor/structure";
 import { $createLogic, focusLogic, OPEN_FOLLOW_UP_COMMAND } from "../features/logic/authoring";
 import { BlockMenu, type BlockMenuActions, type BlockMenuModel } from "./block-menu";
+import { $describePage, deletePageLabel, PageMenu } from "./page-menu";
+import { toastWithUndo } from "../../editor/react/undo-toast";
+import { altKey } from "../../editor/react/shortcut";
 import { BulkInsertDialog } from "./bulk-insert";
 import { $native } from "../editor/native-state";
 import { $setNativeErrorMessage, nativeErrorMessages } from "../editor/native-field-controls";
@@ -77,6 +91,7 @@ import {
   $toggleHidden,
   $turnInto,
   $updateSettings,
+  $wholePage,
   $withNested,
   choiceKindState,
   $turnIntoGroups,
@@ -102,15 +117,7 @@ const offsets = new Map([
   ["conditional-logic", 2],
 ]);
 
-const isMac = /Mac|iPhone|iPad/.test(typeof navigator === "undefined" ? "" : navigator.userAgent);
-
-const altKey = isMac ? "Option" : "Alt";
-
-const menuKey = isMac ? "⌘/" : "Ctrl+/";
-
 const DRAG_TYPE = "application/x-form-block";
-
-type Box = { left: number; top: number; width: number; height: number };
 
 /** A block's box in the anchor's coordinates, or null while it's hidden (folded away). */
 function boxOf(editor: LexicalEditor, anchor: HTMLElement, node: LexicalNode) {
@@ -179,11 +186,8 @@ function $caretPlace(editor: LexicalEditor, anchor: HTMLElement) {
   return block ? $placeOf(editor, anchor, block) : null;
 }
 
-const samePlace = (a: Place | null, b: Place | null) =>
-  a?.key === b?.key && a?.top === b?.top && a?.left === b?.left;
-
 /** A drop zone under a point, and the line it draws. */
-type Hit = { zone: DropZone; line: Box };
+type Hit = { zone: DropZone; line: Line };
 
 /** Drop zones span both gutters because this layout has no column-side targets. */
 function $zoneAt(editor: LexicalEditor, anchor: HTMLElement, x: number, y: number): Hit | null {
@@ -203,7 +207,6 @@ function $zoneAt(editor: LexicalEditor, anchor: HTMLElement, x: number, y: numbe
     left: box.left - inset,
     width: box.right - box.left + 2 * inset,
     top: box.bottom - 8,
-    height: 3,
   };
 
   if ($isPageBreak(row) && $settings(row).folded) line.top += 25; // a folded page's line draws lower
@@ -219,8 +222,6 @@ export function Gutter({ anchor }: { anchor: HTMLElement }) {
   const [editor] = useLexicalComposerContext();
   const editable = useEditable();
   const update = useEditableUpdate();
-  const [hovered, setHovered] = useState<Place | null>(null);
-  const [caret, setCaret] = useState<Place | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   // The menu came from ⌘/: closing it goes back to the caret, not to the handle
   const byKeyboard = useRef(false);
@@ -228,7 +229,31 @@ export function Gutter({ anchor }: { anchor: HTMLElement }) {
   const [followUpFor, setFollowUpFor] = useState<NodeKey | null>(null);
   const [bulkFor, setBulkFor] = useState<NodeKey | null>(null);
   const [, rerender] = useReducer((n: number) => n + 1, 0);
-  const strip = useRef<HTMLDivElement>(null);
+
+  const { target, pin, release } = useRailTarget(anchor, {
+    held: menuOpen,
+    // Page buttons have their own controls
+    $blockAt: (element, point) =>
+      element.closest("[data-page-button-row]")
+        ? null
+        : ($hoverAt(editor, anchor, point.y)?.key ?? null),
+    $caretBlock: () => {
+      const selection = $getSelection();
+
+      return $isRangeSelection(selection)
+        ? (selection.anchor.getNode().getTopLevelElement()?.getKey() ?? null)
+        : null;
+    },
+    // The table of offsets gives the top of the 30px-tall rail: its middle is 15px lower
+    $place: (key) => {
+      const node = $getNodeByKey(key);
+      const place = node && $placeOf(editor, anchor, node);
+
+      return place && { top: place.top + 15, left: place.left };
+    },
+  });
+
+  const hovered = target?.pointed ? target.key : null;
 
   useEffect(
     () =>
@@ -257,74 +282,48 @@ export function Gutter({ anchor }: { anchor: HTMLElement }) {
     [editor],
   );
 
-  // Follow the block under the pointer; freeze while its menu is open
-  useEffect(() => {
-    if (menuOpen || !editable) return;
-
-    const onMove = (e: MouseEvent) => {
-      // Keep the block active while its controls are hovered; page buttons have their own controls.
-      if (!(e.target instanceof Element) || strip.current?.contains(e.target)) return;
-
-      if (e.target.closest("[data-page-button-row]")) return setHovered(null);
-      const a = anchor.getBoundingClientRect();
-      const next = editor.read(() => $hoverAt(editor, anchor, e.clientY - a.top));
-      setHovered((prev) => (samePlace(prev, next) ? prev : next));
-    };
-
-    const onLeave = () => setHovered(null);
-    anchor.addEventListener("mousemove", onMove);
-    anchor.addEventListener("mouseleave", onLeave);
-
-    return () => {
-      anchor.removeEventListener("mousemove", onMove);
-      anchor.removeEventListener("mouseleave", onLeave);
-    };
-  }, [anchor, editor, menuOpen, editable]);
-
   useEffect(
     () =>
-      mergeRegister(
-        editor.registerUpdateListener(({ editorState }) => {
-          const next = editorState.read(() => $caretPlace(editor, anchor), { editor });
-          setCaret((prev) => (samePlace(prev, next) ? prev : next));
-        }),
-        editor.registerCommand(
-          KEY_DOWN_COMMAND,
-          (event) => {
-            if (
-              !editor.isEditable() ||
-              !(event.metaKey || event.ctrlKey) ||
-              event.altKey ||
-              event.key !== "/"
-            )
-              return false;
-            const place = $caretPlace(editor, anchor);
+      editor.registerCommand(
+        KEY_DOWN_COMMAND,
+        (event) => {
+          if (
+            !editor.isEditable() ||
+            !(event.metaKey || event.ctrlKey) ||
+            event.altKey ||
+            event.key !== "/"
+          )
+            return false;
+          const place = $caretPlace(editor, anchor);
 
-            if (!place) return false;
-            event.preventDefault();
-            byKeyboard.current = true;
-            setHovered(place);
-            setMenuOpen(true);
+          if (!place) return false;
+          event.preventDefault();
+          byKeyboard.current = true;
+          pin(place.key);
+          setMenuOpen(true);
 
-            return true;
-          },
-          COMMAND_PRIORITY_LOW,
-        ),
+          return true;
+        },
+        COMMAND_PRIORITY_LOW,
       ),
-    [anchor, editor],
+    [anchor, editor, pin],
   );
-  const shown = hovered ?? caret;
 
   // While the menu is open: highlight the block's question group and track its edits.
   // With several blocks selected the menu acts on them, and they're blue already.
+  const shownKey = target?.key;
+
   useEffect(() => {
-    if (!menuOpen || !shown) return;
+    if (!menuOpen || !shownKey) return;
 
     const els = editor.read(() => {
-      const node = $getNodeByKey(shown.key);
+      const node = $getNodeByKey(shownKey);
 
+      // A page's menu acts on the whole page
       return node && $selectedBlocks().length < 2
-        ? $withNested($blockGroup(node)).map((b) => editor.getElementByKey(b.getKey()))
+        ? ($isPageBreak(node) ? $wholePage(node) : $withNested($blockGroup(node))).map((b) =>
+            editor.getElementByKey(b.getKey()),
+          )
         : [];
     });
 
@@ -335,86 +334,44 @@ export function Gutter({ anchor }: { anchor: HTMLElement }) {
       unregister();
       els.forEach((el) => el?.removeAttribute("data-selected"));
     };
-  }, [menuOpen, shown, editor]);
+  }, [menuOpen, shownKey, editor]);
 
-  // Move whole questions and selections together. Capture these events before Lexical's text drag-and-drop
-  // handlers; .dragging-blocks keeps block controls out of the way during the move.
-  const [hit, setHit] = useState<Hit | null>(null);
-  const dragging = useRef<NodeKey | null>(null); // dragover can't read the drag's data
-  useEffect(() => {
-    const ours = (e: DragEvent) => !!e.dataTransfer?.types.includes(DRAG_TYPE);
-
-    const $hit = (e: DragEvent) => {
-      const node = dragging.current && $getNodeByKey(dragging.current);
+  // Move whole questions and selections together, wherever the form's rules allow
+  const drag = useBlockDrag(anchor, {
+    type: DRAG_TYPE,
+    $at: (key, point) => {
+      const node = $getNodeByKey(key);
       const a = anchor.getBoundingClientRect();
-      const at = node && $zoneAt(editor, anchor, e.clientX - a.left, e.clientY - a.top);
+      const at = node && $zoneAt(editor, anchor, point.x - a.left, point.y - a.top);
 
       return node && at && $dropCheck(node, at.zone).lit ? at : null;
-    };
+    },
+    $drop: (key, at) => {
+      const node = $getNodeByKey(key);
 
-    const onOver = (e: DragEvent) => {
-      if (!editor.isEditable() || !ours(e)) return;
-      e.preventDefault();
-      e.stopPropagation();
-      const next = editor.read(() => $hit(e));
-      setHit((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
-    };
+      if (node) $dropBlocks(node, at.zone);
+    },
+    // The next move finds what's under the pointer now
+    onEnd: release,
+  });
 
-    const onDrop = (e: DragEvent) => {
-      if (!editor.isEditable() || !ours(e)) return;
-      e.preventDefault();
-      e.stopPropagation();
-      setHit(null);
-      update(() => {
-        const node = dragging.current && $getNodeByKey(dragging.current);
-        const a = anchor.getBoundingClientRect();
-        const at = node && $zoneAt(editor, anchor, e.clientX - a.left, e.clientY - a.top);
-
-        if (node && at) $dropBlocks(node, at.zone);
-      });
-    };
-
-    const onLeave = (e: DragEvent) =>
-      (!(e.relatedTarget instanceof Node) || !anchor.contains(e.relatedTarget)) && setHit(null);
-
-    anchor.addEventListener("dragover", onOver, true);
-    anchor.addEventListener("drop", onDrop, true);
-    anchor.addEventListener("dragleave", onLeave, true);
-
-    return () => {
-      anchor.removeEventListener("dragover", onOver, true);
-      anchor.removeEventListener("drop", onDrop, true);
-      anchor.removeEventListener("dragleave", onLeave, true);
-    };
-  }, [anchor, editor, update]);
   useEffect(() => {
     const close = () => {
       setMenuOpen(false);
       setInsertInto(null);
       setFollowUpFor(null);
       setBulkFor(null);
-      setHovered(null);
-      setHit(null);
-      dragging.current = null;
-      anchor.closest(".form-builder-container")?.classList.remove("dragging-blocks");
+      release();
     };
 
-    const unregister = editor.registerEditableListener((value) => {
+    return editor.registerEditableListener((value) => {
       if (!value) close();
     });
-
-    return () => {
-      unregister();
-      dragging.current = null;
-      anchor.closest(".form-builder-container")?.classList.remove("dragging-blocks");
-    };
-  }, [anchor, editor]);
+  }, [editor, release]);
 
   if (!editable) return <NestRails anchor={anchor} />;
 
-  const dropLine = hit && (
-    <div className="pointer-events-none absolute z-4 rounded-full bg-focus" style={hit.line} />
-  );
+  const dropLine = <DropLine line={drag.line} />;
 
   const addFollowUp = (key: NodeKey) => editor.dispatchCommand(OPEN_FOLLOW_UP_COMMAND, key);
 
@@ -455,21 +412,27 @@ export function Gutter({ anchor }: { anchor: HTMLElement }) {
         }
       />
       <NestRails anchor={anchor} />
-      <FoldActions anchor={anchor} hovered={hovered?.key ?? null} />
-      <TitleHints anchor={anchor} hovered={hovered?.key ?? null} onFollowUp={addFollowUp} />
+      <FoldActions anchor={anchor} hovered={hovered} />
+      <TitleHints anchor={anchor} hovered={hovered} onFollowUp={addFollowUp} />
     </>
   );
 
-  const state = shown && editor.getEditorState().read(() => $describe(shown.key), { editor });
+  const state = target && editor.getEditorState().read(() => $describe(target.key), { editor });
 
-  if (!shown || !state)
+  // A page has its own menu, on the whole page; with several blocks selected, the block menu acts on them all
+  const page =
+    target && state && !state.menu.multi
+      ? editor.getEditorState().read(() => $describePage(target.key), { editor })
+      : null;
+
+  if (!target || !state)
     return (
       <>
         {dropLine}
         {modal}
       </>
     );
-  const { key } = shown;
+  const { key } = target;
 
   const remove = (whole: boolean, selected = false) =>
     update(() => {
@@ -512,6 +475,9 @@ export function Gutter({ anchor }: { anchor: HTMLElement }) {
 
         if (!node) return;
 
+        // A folded page opens, so what goes in at its top shows
+        if ($isPageBreak(node) && $settings(node).folded) $setSettings(node, { folded: undefined });
+
         // Insert after all the blocks in a folded question.
         const line =
           $isParagraphNode(node) && node.isEmpty()
@@ -542,6 +508,12 @@ export function Gutter({ anchor }: { anchor: HTMLElement }) {
       },
       { tag: SKIP_DOM_SELECTION_TAG },
     );
+
+  // A page goes with its questions, so its delete says so and offers a way back
+  const deletePage = onBlock((node) => {
+    $removeBlocks([node]);
+    $onUpdate(() => toastWithUndo(editor, "Page deleted"));
+  });
 
   const { multi } = state.menu;
 
@@ -627,55 +599,40 @@ export function Gutter({ anchor }: { anchor: HTMLElement }) {
   };
 
   const grip = (
-    <button
-      type="button"
+    <RailButton
       draggable
-      aria-label="Move this block by dragging"
-      onDragStart={(e) => {
-        if (!editor.isEditable()) return e.preventDefault();
-        e.dataTransfer.setData(DRAG_TYPE, key);
-        e.dataTransfer.effectAllowed = "move";
-        dragging.current = key;
-        const el = editor.getElementByKey(key);
-
-        if (el) e.dataTransfer.setDragImage(el, 0, 0);
-        // Once the drag is under way: hiding its handle in dragstart itself would end it
-        setTimeout(
-          () =>
-            editor.isEditable() &&
-            dragging.current &&
-            anchor.closest(".form-builder-container")?.classList.add("dragging-blocks"),
-        );
-      }}
-      onDragEnd={() => {
-        dragging.current = null;
-        setHit(null);
-        setHovered(null); // the next move finds what's under the pointer now
-        anchor.closest(".form-builder-container")?.classList.remove("dragging-blocks");
-      }}
+      // Its tooltip says it drags; its name says what it opens, the block's menu
+      aria-label="Block actions"
+      onDragStart={(e) => drag.start(e, key)}
       // Base UI opens menus on mousedown, which would swallow the drag: open on click instead
       onMouseDown={(e: BaseUIEvent<ReactMouseEvent<HTMLButtonElement>>) => e.preventBaseUIHandler()}
       onClick={() => {
         if (editor.isEditable()) setMenuOpen(true);
       }}
-      className={cn(action, "w-6 [&>svg]:w-4.25")}
+      className={railGrip}
     >
       <DotsSixVertical />
-    </button>
+    </RailButton>
   );
+
+  // Back to the caret after ⌘/, else to the handle
+  const finalFocus = () => {
+    if (!byKeyboard.current) return true;
+    byKeyboard.current = false;
+    editor.focus();
+
+    return false;
+  };
+
+  const deleteLabel = page ? deletePageLabel(page.questions) : "Delete this block";
 
   return (
     <>
       {dropLine}
       {modal}
-      <div
-        ref={strip}
-        className={cn(
-          "absolute left-0 z-3 flex w-25 justify-end px-0.5 py-0.75 in-[.dragging-blocks]:hidden max-sm:w-6.25 max-sm:px-0 max-sm:[&>button:not(:last-child)]:hidden",
-          // The caret's, for the keyboard: there for Tab, seen once it's reached
-          !hovered && "opacity-0 focus-within:opacity-100 hover:opacity-100",
-        )}
-        style={{ top: shown.top, left: shown.left }}
+      <BlockRail
+        target={target}
+        className="w-25 px-0.5 max-sm:w-6.25 max-sm:px-0 max-sm:[&>button:not(:last-child)]:hidden"
       >
         <Tip
           side="left"
@@ -685,38 +642,36 @@ export function Gutter({ anchor }: { anchor: HTMLElement }) {
               <>
                 <em>Click</em> to delete {state.whole}
                 <br />
-                <em>{altKey}-click</em> to delete this block
+                <Kbd>{altKey}</Kbd>-<em>click</em> to delete this block
               </>
             ) : (
-              "Delete this block"
+              deleteLabel
             )
           }
         >
-          <button
-            type="button"
-            aria-label="Delete this block"
-            onClick={(e) => remove(!e.altKey, true)}
-            className={cn(action, "w-6 hover:bg-red-10 [&>svg]:w-4.25 hover:[&>svg]:text-red-80")}
+          <RailButton
+            aria-label={deleteLabel}
+            onClick={(e) => (page ? deletePage() : remove(!e.altKey, true))}
+            className="hover:bg-red-10 [&>svg]:w-4.25 hover:[&>svg]:text-red-80"
           >
             <Trash />
-          </button>
+          </RailButton>
         </Tip>
         <Tip side="left" content="Insert block below">
-          <button
-            type="button"
+          <RailButton
             aria-label="Insert block below"
             onClick={insertBelow}
-            className={cn(action, "w-6 [&>svg]:size-4.5")}
+            className="[&>svg]:size-4.5"
           >
             <Plus />
-          </button>
+          </RailButton>
         </Tip>
         <Menu.Root
           open={menuOpen}
           onOpenChange={(open) => {
             setMenuOpen(open && editor.isEditable());
 
-            if (!open && byKeyboard.current) setHovered(null);
+            if (!open && byKeyboard.current) release();
           }}
         >
           <Tip
@@ -726,26 +681,28 @@ export function Gutter({ anchor }: { anchor: HTMLElement }) {
               <>
                 <em>Drag</em> to move
                 <br />
-                <em>Click</em> or <em>{menuKey}</em> to open menu
+                <em>Click</em> or <Kbd>{menuKey}</Kbd> to open menu
               </>
             }
           >
             <Menu.Trigger render={grip} />
           </Tip>
-          {/* Back to the caret after ⌘/, else to the handle */}
-          <BlockMenu
-            model={state.menu}
-            actions={actions}
-            finalFocus={() => {
-              if (!byKeyboard.current) return true;
-              byKeyboard.current = false;
-              editor.focus();
-
-              return false;
-            }}
-          />
+          {page ? (
+            <PageMenu
+              model={page}
+              actions={{
+                onMove: (down) => onBlock((node) => $moveBlocks([node], down))(),
+                onDuplicate: onBlock($duplicateQuestion),
+                onMerge: onBlock($mergeWithPreviousPage),
+                onDelete: deletePage,
+              }}
+              finalFocus={finalFocus}
+            />
+          ) : (
+            <BlockMenu model={state.menu} actions={actions} finalFocus={finalFocus} />
+          )}
         </Menu.Root>
-      </div>
+      </BlockRail>
     </>
   );
 }

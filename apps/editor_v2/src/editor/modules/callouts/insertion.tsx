@@ -7,7 +7,7 @@ export const calloutEntries: readonly ContentEntry[] = [
     id: "INSET_TEXT",
     title: "Inset text",
     icon: <Info />,
-    keywords: "callout, note, highlight",
+    aliases: ["callout", "note", "highlight"],
     kind: "inset",
     renderPreview: ({ text }) => (
       <div className="border-l-4 border-blue-20 bg-highlight px-5 py-3 leading-[1.5]">{text}</div>
@@ -23,7 +23,8 @@ export const calloutEntries: readonly ContentEntry[] = [
     id: "WARNING_TEXT",
     title: "Warning text",
     icon: <WarningCircle />,
-    keywords: "callout, alert, important, caution",
+    aliases: ["alert", "important", "caution"],
+    keywords: "callout",
     kind: "warning",
     renderPreview: ({ text }) => (
       <div className="flex items-start gap-3 border-l-4 border-yellow-80 px-5 py-3 leading-[1.5]">

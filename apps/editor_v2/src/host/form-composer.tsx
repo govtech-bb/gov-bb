@@ -1,9 +1,10 @@
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { $getRoot } from "lexical";
-import type { ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import type { EditorDefinition } from "../editor/core/definition";
 import { EditorComposer } from "../editor/react/composer";
-import { $createFormTitleNode } from "../forms/editor/nodes";
-import type { DraftStore } from "../persistence/draft-store";
+import { $createFormTitleNode, $isFormTitleNode } from "../forms/editor/nodes";
+import { draftPause, type DraftStore } from "../persistence/draft-store";
 import { DraftEditorBinding, DraftProvider, useDraft } from "./source-ui";
 
 /** Optional application binding; reusable form canvases do not require a draft store. */
@@ -43,13 +44,27 @@ export function DraftCanvas({ children }: { children: ReactNode }) {
       </p>
     );
 
+  // The form's document bar says why it's paused (PausedNotice)
   return (
-    <div
-      className="contents"
-      inert={draft.dirty || !!draft.conflict}
-      aria-label={draft.dirty ? "Canvas paused while source changes are unapplied" : undefined}
-    >
+    <div className="contents" inert={!!draftPause(draft)}>
       {children}
     </div>
   );
+}
+
+/** The form's name as it's typed, the service name over every page on the canvas: for the document's h1. */
+export function FormTitle() {
+  const [editor] = useLexicalComposerContext();
+
+  const title = useSyncExternalStore(
+    (notify) => editor.registerUpdateListener(notify),
+    () =>
+      editor.getEditorState().read(() => {
+        const first = $getRoot().getFirstChild();
+
+        return first && $isFormTitleNode(first) ? first.getTextContent() : "";
+      }),
+  );
+
+  return title.trim() || "Untitled form";
 }

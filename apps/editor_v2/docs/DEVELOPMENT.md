@@ -34,7 +34,7 @@ Use [Code quality](CODE-QUALITY.md) for formatting commands and the validation e
 
 TanStack Start builds a static shell and renders the workspace in the browser. The root document must remain safe to render during the build; `localStorage` and document sessions belong to the client-only workspace layout. The configuration follows the official [Start setup](https://tanstack.com/start/latest/docs/framework/react/build-from-scratch), [SPA mode](https://tanstack.com/start/latest/docs/framework/react/guide/spa-mode) and [client entry](https://tanstack.com/start/latest/docs/framework/react/guide/client-entry-point) guides.
 
-Routes use `/services`, `/services/$serviceId` and `/services/$serviceId/$documentId`. Old `/#/services/...` links are replaced on startup. The persistent workspace keeps visited editors mounted so each document retains its undo history. Navigation flushes the current draft before changing documents; save failures and unresolved recovery block navigation.
+Routes use `/services`, `/services/$serviceId` and `/services/$serviceId/$documentId`; `/` opens Services. Old `/#/services/...` links are replaced on startup. The persistent workspace keeps visited editors mounted so each document retains its undo history. Navigation flushes the current draft before changing documents; save failures and unresolved recovery block navigation.
 
 Start generates `src/routeTree.gen.ts` during development and builds. Keep that file checked in so standalone typechecks work on a fresh checkout. It is excluded from linting and formatting; edit route files instead. Vitest uses its own configuration without the Start plugin.
 
@@ -51,7 +51,7 @@ PLAYWRIGHT_MODULE_PATH=/path/to/playwright-core \
 
 The runner resolves an existing `playwright` or `playwright-core` installation, with `PLAYWRIGHT_MODULE_PATH` as an alternative. Chromium must be available to that installation. Each suite uses an isolated browser context.
 
-App UI suites supply an employee session at the HTTP boundary through `scripts/browser/auth-fixture.mjs`; production has no authentication bypass. `authentication.mjs` separately exercises anonymous automatic login, callback confirmation, cancellation, unavailable authentication, sign-out and preservation of drafts that cannot be saved, using intercepted API/GitHub HTTP responses. Real GitHub consent and deployment cookies require a configured deployment smoke test.
+App UI suites supply an employee session at the HTTP boundary through `scripts/browser/auth-fixture.mjs`; production has no authentication bypass. A new browser has no form, so form suites seed one at the storage boundary through `scripts/browser/form-fixture.mjs`: `openDemoForm` writes the documented demo as the browser's original form draft and opens it at its own route, and `seedFormDraft` and `formDraftUrl` do the same for a suite's own source. `authentication.mjs` separately exercises anonymous automatic login, callback confirmation, cancellation, unavailable authentication, sign-out and preservation of drafts that cannot be saved, using intercepted API/GitHub HTTP responses. Real GitHub consent and deployment cookies require a configured deployment smoke test.
 
 `remote-page-editing.mjs` intercepts the content API to verify remote page editing, optimistic save conflicts, selective history restoration and storage/reload preservation. `service-workspace.mjs` separately covers browser-local services and documents; it is not remote-save coverage.
 
@@ -65,7 +65,7 @@ Avoid editing source while checking undo and document switching: a development r
 
 ## Persistence and recovery
 
-Draft keys are supplied by the host. Workspace navigation is stored at `govbb-editor:workspace:v1`; documents use `govbb-editor:documents:<uuid>:...`. Earlier registry drafts use `govbb-editor:forms:<uuid>:...` and are discovered through `govbb-editor:active-draft`.
+Draft keys are supplied by the host. Workspace navigation is stored at `govbb-editor:workspace:v1`, and a collapsed service sidebar at `govbb-editor:sidebar-collapsed`; documents use `govbb-editor:documents:<uuid>:...`. Earlier registry drafts use `govbb-editor:forms:<uuid>:...` and are discovered through `govbb-editor:active-draft`.
 
 The original form draft uses these keys:
 
@@ -98,7 +98,7 @@ Paths below are relative to `src`. Symbols not listed as renamed keep their name
 | `workspace/api-pages.ts` service mapping | `workspace/service-pages.ts`: `apiPageDocument` → `pageDocumentFromApi`, `serviceDocuments` → `servicePageDocuments`, `roleOf` → `inferServicePageRole` |
 | `workspace/api-pages.ts` Markdown helpers | `api/page-markdown.ts`: `restoredMarkdown` → `pageVersionToDraftMarkdown`, `fieldLabel` → `pageFieldLabel` |
 | `workspace/api-page.tsx` | `workspace/remote-page-pane.tsx`: `ApiPagePane` → `RemotePagePane`, private `ApiPageEditor` → `RemotePageEditor`, `useServerBase` → `useServerPageBaseline`, `notifyServerBase` → `notifyServerPageBaseline` |
-| `workspace/api-service.tsx` | `workspace/service-pages-nav.tsx`: `ApiServiceNav` → `ServicePagesNav` |
+| `workspace/api-service.tsx` | `workspace/service-nav.tsx`: `ApiServiceNav` → `ServiceNav`, which also lists services drafted in the browser |
 | `workspace/api-history.tsx` | `workspace/page-history-dialog.tsx`; `PageHistoryDialog` unchanged |
 | `workspace/api-dialogs.tsx` | `workspace/remote-page-dialogs.tsx`: `ApiServiceDialog` → `CreateRemoteServiceDialog`, `ApiPageDialog` → `CreateRemotePageDialog`, `DeletePageDialog` → `DeleteRemotePageDialog` |
 | `workspace/dialogs.tsx` | `workspace/local-document-dialogs.tsx`: `ServiceDialog` → `LocalServiceDialog`, `DocumentDialog` → `AddLocalDocumentDialog`; shared `WorkspaceDialog` moves to `workspace/workspace-dialog.tsx`, `inputClass` → `workspaceDialogInputClass` |

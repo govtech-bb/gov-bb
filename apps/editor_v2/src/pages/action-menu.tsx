@@ -1,9 +1,19 @@
 import type { ReactNode } from "react";
 import { sectioned, type EditorAction } from "../editor/core/actions";
-import { ItemLabel, item, sectionLabel } from "../ui/item";
+import { RowContent } from "../ui/menu";
+import { buttonRow, group, groupLabel, listEmpty, row } from "../ui/surface";
 
+/** The list of page content to insert: room for a group or two, then it scrolls. */
+export const actionList =
+  "group/popup max-h-[min(24rem,55dvh)] overflow-y-auto overscroll-contain py-1 [scrollbar-width:thin]";
+
+/**
+ * The blocks a page can insert: grouped before a search, and while searching one ranked list. Each row shows the
+ * Markdown that makes its block, and the highlighted block's description goes in the menu's footer (`listFooter`).
+ */
 export function PageActionList({
   actions,
+  searching,
   selectedIndex,
   onHighlight,
   onSelect,
@@ -12,6 +22,8 @@ export function PageActionList({
   error,
 }: {
   actions: readonly EditorAction[];
+  /** A search ranked the actions, so they go in one list rather than their groups. */
+  searching: boolean;
   selectedIndex: number;
   onHighlight: (index: number) => void;
   onSelect: (action: EditorAction, index: number) => void;
@@ -19,40 +31,47 @@ export function PageActionList({
   optionRef?: (index: number, element: HTMLButtonElement | null) => void;
   error?: string;
 }) {
+  const option = (action: EditorAction, index: number) => (
+    <button
+      type="button"
+      tabIndex={-1}
+      role="option"
+      id={optionId(index)}
+      ref={(element) => optionRef?.(index, element)}
+      key={action.id}
+      className={row}
+      aria-label={action.title}
+      aria-selected={index === selectedIndex}
+      data-highlighted={index === selectedIndex ? "" : undefined}
+      // Only a pointer that moves: one resting where the menu opens leaves Enter's choice alone
+      onMouseMove={() => onHighlight(index)}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={() => onSelect(action, index)}
+    >
+      <RowContent icon={action.icon} detail={action.markdown}>
+        {action.title}
+      </RowContent>
+    </button>
+  );
+
   return (
     <>
       {error && (
-        <p className="page-menu-error" role="alert">
+        <p className="m-2 text-error" role="alert">
           {error}
         </p>
       )}
-      {!actions.length && <p className="page-menu-empty">No content blocks match your search.</p>}
-      {sectioned(actions).map(({ group, items }) => (
-        <div className="page-action-group" role="group" aria-label={group} key={group}>
-          <div className={`${sectionLabel} px-3.5`} aria-hidden="true">
-            {group}
-          </div>
-          {items.map(({ item: action, index }) => (
-            <button
-              type="button"
-              tabIndex={-1}
-              role="option"
-              id={optionId(index)}
-              ref={(element) => optionRef?.(index, element)}
-              key={action.id}
-              className={item}
-              aria-label={action.title}
-              aria-selected={index === selectedIndex}
-              data-highlighted={index === selectedIndex ? "" : undefined}
-              onMouseEnter={() => onHighlight(index)}
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => onSelect(action, index)}
-            >
-              <ItemLabel icon={action.icon}>{action.title}</ItemLabel>
-            </button>
+      {!actions.length && <p className={listEmpty}>No content blocks match your search.</p>}
+      {searching
+        ? actions.map(option)
+        : sectioned(actions).map(({ group: heading, items }) => (
+            <div className={group} role="group" aria-label={heading} key={heading}>
+              <div className={groupLabel} aria-hidden="true">
+                {heading}
+              </div>
+              {items.map(({ item, index }) => option(item, index))}
+            </div>
           ))}
-        </div>
-      ))}
     </>
   );
 }
@@ -66,12 +85,8 @@ export function PageMenuRow({
   icon?: ReactNode;
 } & Omit<import("react").ComponentProps<"button">, "children">) {
   return (
-    <button
-      type="button"
-      className={`${item} hover:bg-blue-80 hover:text-white hover:[&_svg]:text-white focus-visible:bg-blue-80 focus-visible:text-white focus-visible:[&_svg]:text-white disabled:cursor-not-allowed disabled:opacity-40`}
-      {...props}
-    >
-      <ItemLabel icon={icon}>{children}</ItemLabel>
+    <button type="button" className={buttonRow} {...props}>
+      <RowContent icon={icon}>{children}</RowContent>
     </button>
   );
 }

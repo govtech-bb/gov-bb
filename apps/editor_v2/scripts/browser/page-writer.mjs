@@ -1,6 +1,7 @@
 import { authenticatedContext } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { chromium } from "./playwright.mjs";
+import { openDemoForm } from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -40,28 +41,36 @@ const insertion = page.getByRole("listbox", { name: "Insert page content" });
 
 const title = page.getByRole("textbox", { name: "Page title", exact: true });
 
-const details = page.locator(".page-metadata-details:visible");
+// Beside the page on a wide screen, a drawer over it on a narrow one
+const settings = page
+  .getByRole("complementary", { name: "Page settings" })
+  .or(page.getByRole("dialog", { name: "Page settings" }));
 
-const description = details.getByLabel("Description", { exact: true });
+const description = settings.getByLabel("Description", { exact: true });
 
 const introduction = page.getByRole("textbox", { name: "Introduction", exact: true });
 
-const addCategory = details.getByLabel("Add category", { exact: true });
+const addCategory = settings.getByLabel("Add category", { exact: true });
 
-const visibility = details.getByLabel("Visibility", { exact: true });
+const visibility = settings.getByLabel("Visibility", { exact: true });
 
-const publicationDate = details.getByLabel("Publication date", { exact: true });
+const publicationDate = settings.getByLabel("Publication date", { exact: true });
 
-const formId = details.getByLabel("Form ID", { exact: true });
+const formId = settings.getByLabel("Form ID", { exact: true });
 
-const pageDetails = details.locator("summary");
+const pageSettings = page.getByRole("button", { name: "Page settings", exact: true });
 
 const navigation = page.getByRole("navigation", { name: "Service documents" });
 
-async function setPageDetailsOpen(open) {
-  if ((await pageDetails.evaluate((element) => element.parentElement.open)) !== open)
-    await pageDetails.click();
+async function setPageSettingsOpen(open) {
+  if ((await pageSettings.getAttribute("aria-expanded")) !== String(open))
+    await pageSettings.click();
 }
+
+// Phones have touch screens, where fields and rows grow to 44px
+const devtools = await context.newCDPSession(page);
+
+const touch = (enabled) => devtools.send("Emulation.setTouchEmulationEnabled", { enabled });
 
 async function reset(content) {
   await page.getByRole("button", { name: /^Markdown/ }).click();
@@ -69,7 +78,7 @@ async function reset(content) {
   await button("Apply changes").click();
   await button("Close source").click();
   await body.waitFor();
-  await setPageDetailsOpen(false);
+  await setPageSettingsOpen(false);
 }
 
 async function menuAt(locator) {
@@ -224,7 +233,7 @@ async function insideViewport(locator) {
 }
 
 try {
-  await page.goto(url);
+  await openDemoForm(page, url);
   await page.getByRole("textbox", { name: "Form", exact: true }).waitFor();
   await button("Create service").click();
   await page.getByLabel("Service name", { exact: true }).fill("Writer interaction tests");
@@ -233,7 +242,7 @@ try {
     .getByRole("button", { name: "Create service", exact: true })
     .click();
   await body.waitFor();
-  await setPageDetailsOpen(false);
+  await setPageSettingsOpen(false);
 
   await body.click();
   await page.keyboard.type("New text");
@@ -562,10 +571,13 @@ try {
     assert.equal(await markdown(), beforeIndent);
     await button("Redo").click();
     assert.equal(await markdown(), afterIndent);
-    await page.locator('[role="status"][title="Saved"]:visible').waitFor();
+    await page
+      .locator("[data-document-bar]:visible")
+      .getByText("Saved in this browser", { exact: true })
+      .waitFor();
     await page.reload();
     await body.waitFor();
-    await setPageDetailsOpen(false);
+    await setPageSettingsOpen(false);
     await menuAt(body.getByText("Two", { exact: true }));
     await button("Outdent list").click();
     assert.deepEqual(await body.locator(":scope > :is(ul, ol) > li").allTextContents(), [
@@ -627,10 +639,13 @@ try {
     await actionButton.evaluate((element) => element.classList.contains("page-action-secondary")),
     true,
   );
-  await page.locator('[role="status"][title="Saved"]:visible').waitFor();
+  await page
+    .locator("[data-document-bar]:visible")
+    .getByText("Saved in this browser", { exact: true })
+    .waitFor();
   await page.reload();
   await body.waitFor();
-  await setPageDetailsOpen(false);
+  await setPageSettingsOpen(false);
   assert.equal(
     await actionButton.evaluate((element) => getComputedStyle(element).backgroundColor),
     secondaryBackground,
@@ -669,10 +684,13 @@ try {
     await page.keyboard.type(" online");
     const edited = await markdown();
     assert.match(edited, /<a data-start-link href="\/edited">Start now online<\/a>/);
-    await page.locator('[role="status"][title="Saved"]:visible').waitFor();
+    await page
+      .locator("[data-document-bar]:visible")
+      .getByText("Saved in this browser", { exact: true })
+      .waitFor();
     await page.reload();
     await nestedStart.waitFor();
-    await setPageDetailsOpen(false);
+    await setPageSettingsOpen(false);
     assert.equal(await nestedStart.textContent(), "Start now online");
     assert.equal(await nestedStart.getAttribute("data-destination"), "/edited");
   }
@@ -691,10 +709,13 @@ try {
   await button("Redo").click();
   await startButton.locator("strong").waitFor();
   assert.equal(await markdown(), formattedStart);
-  await page.locator('[role="status"][title="Saved"]:visible').waitFor();
+  await page
+    .locator("[data-document-bar]:visible")
+    .getByText("Saved in this browser", { exact: true })
+    .waitFor();
   await page.reload();
   await startButton.locator("strong").waitFor();
-  await setPageDetailsOpen(false);
+  await setPageSettingsOpen(false);
   assert.equal(await markdown(), formattedStart);
   await button("Preview page").click();
   await page.locator(".page-document-preview a[data-start-link] strong").waitFor();
@@ -722,6 +743,11 @@ try {
   await button("Apply changes").click();
   assert.equal(await source.getAttribute("aria-invalid"), "true");
   await button("Discard changes").click();
+  // Discarding asks first
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Discard changes", exact: true })
+    .click();
 
   await source.fill(
     currentSource.replace(
@@ -731,7 +757,7 @@ try {
   );
   await button("Apply changes").click();
   await button("Close source").click();
-  await setPageDetailsOpen(true);
+  await setPageSettingsOpen(true);
   assert.equal(await publicationDate.inputValue(), "2026-99-99");
   assert.equal(await publicationDate.getAttribute("readonly"), "");
   assert.equal(await addCategory.count(), 0);
@@ -749,7 +775,7 @@ try {
   await source.fill(withMetadata);
   await button("Apply changes").click();
   await button("Close source").click();
-  await setPageDetailsOpen(true);
+  await setPageSettingsOpen(true);
   assert.equal(await introduction.inputValue(), "A short introduction.");
   assert.equal(await description.inputValue(), "A page description.");
   assert.equal(await visibility.inputValue(), "");
@@ -813,10 +839,13 @@ try {
   await button("Redo").click();
   assert.equal(await formId.inputValue(), "writer-form");
   assert.equal(await markdown(), editedSource);
-  await page.locator('[role="status"][title="Saved"]:visible').waitFor();
+  await page
+    .locator("[data-document-bar]:visible")
+    .getByText("Saved in this browser", { exact: true })
+    .waitFor();
   await page.reload();
   await body.waitFor();
-  await setPageDetailsOpen(true);
+  await setPageSettingsOpen(true);
   assert.equal(await description.inputValue(), "Updated page description.");
   assert.equal(await introduction.inputValue(), "Updated introduction.");
   assert.equal(await visibility.inputValue(), "preview");
@@ -842,14 +871,13 @@ try {
   const clearedSource = await markdown();
   assert.doesNotMatch(clearedSource, /^(visibility|publish_date):/m);
 
-  await pageDetails.focus();
-  await pageDetails.press("Enter");
+  await pageSettings.focus();
+  await pageSettings.press("Enter");
   await description.waitFor({ state: "hidden" });
-  await focused(pageDetails);
-  await pageDetails.press("Space");
+  await focused(pageSettings);
+  await pageSettings.press("Space");
   await description.waitFor();
-  await pageDetails.press("Tab");
-  await focused(description);
+  await focused(pageSettings);
   await button("Preview page").click();
   const metadataPreview = page.getByRole("article", { name: "Page preview" });
   await metadataPreview.getByText("Updated introduction.", { exact: true }).waitFor();
@@ -904,7 +932,7 @@ try {
   await page.getByRole("article", { name: "Page preview" }).waitFor();
   assert.equal(await body.isVisible(), false);
   await button("Back to editing").click();
-  await setPageDetailsOpen(true);
+  await setPageSettingsOpen(true);
 
   await title.fill(
     "A very long service page title that must wrap without hiding any words on a narrow screen",
@@ -923,6 +951,9 @@ try {
       true,
     );
 
+    await touch(true);
+    await setPageSettingsOpen(true);
+
     for (const field of [description, addCategory, visibility, publicationDate, formId]) {
       await insideViewport(field);
       assert.ok((await field.boundingBox()).height >= 44);
@@ -932,6 +963,9 @@ try {
     }
 
     await insideViewport(button("Remove family-birth-relationships"));
+    await page.keyboard.press("Escape");
+    await settings.waitFor({ state: "hidden" });
+    await touch(false);
     await button("Add content").click();
     await search.waitFor();
     await insideViewport(page.locator(".page-insert-menu"));
@@ -943,7 +977,7 @@ try {
 
   assert.deepEqual(errors, []);
   console.log(
-    "PASS page writer: hover-only gutter targeting/alignment, insertion keyboard/focus, nested slash, selected table row, native drag preview/destination, grouped drag undo/redo, cancellation/read-only isolation, move/delete undo, component settings and styles, Start label formatting/undo/reload/preview, list hierarchy after reload/outdent, table preview alignment, metadata source validation/preservation, page details editing/undo/reload/preview/keyboard/collapse, toolbar undo typing branches, native reader disclosure styles/keyboard, hidden/preview portals and narrow layouts",
+    "PASS page writer: hover-only gutter targeting/alignment, insertion keyboard/focus, nested slash, selected table row, native drag preview/destination, grouped drag undo/redo, cancellation/read-only isolation, move/delete undo, component settings and styles, Start label formatting/undo/reload/preview, list hierarchy after reload/outdent, table preview alignment, metadata source validation/preservation, page settings editing/undo/reload/preview/keyboard/toggle/drawer, toolbar undo typing branches, native reader disclosure styles/keyboard, hidden/preview portals and narrow layouts",
   );
 } catch (error) {
   await page.screenshot({ path: "/tmp/page-writer-failure.png", fullPage: true });

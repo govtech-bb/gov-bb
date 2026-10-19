@@ -6,30 +6,34 @@ import {
   Outlet,
   Scripts,
 } from "@tanstack/react-router";
+import type { QueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import type { EditorApi } from "../api/client";
 import type { EditorAuth } from "../auth/session";
 import stylesheet from "../../index.css?url";
+import { EmptyState } from "../ui/empty-state";
+import { LoadingState } from "../ui/loading-state";
+import { TextLink } from "../ui/text-link";
+import { Toaster } from "../ui/toast";
+import { ScreenTitle } from "../workspace/screen-title";
 
-/** Static document with explicit runtime dependencies supplied by getRouter. */
-export const Route = createRootRouteWithContext<{ auth: EditorAuth; api: EditorApi }>()({
+/** Static document with explicit runtime dependencies supplied by getRouter; route loaders fill its query client. */
+export const Route = createRootRouteWithContext<{
+  auth: EditorAuth;
+  api: EditorApi;
+  queryClient: QueryClient;
+}>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "GovBB service editor" },
     ],
     links: [{ rel: "stylesheet", href: stylesheet }],
   }),
   component: () => (
-    <ClientOnly
-      fallback={
-        <p role="status" className="p-6">
-          Loading editor…
-        </p>
-      }
-    >
+    <ClientOnly fallback={<LoadingState size="page" label="Loading editor…" />}>
       <Outlet />
+      <Toaster />
     </ClientOnly>
   ),
   shellComponent: RootDocument,
@@ -41,6 +45,8 @@ function RootDocument({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        {/* The editor's name, the tab's title until a screen names it: that title, mounted later, comes first */}
+        <ScreenTitle names={[]} />
       </head>
       <body>
         {children}
@@ -52,11 +58,15 @@ function RootDocument({ children }: { children: ReactNode }) {
 
 function NotFound() {
   return (
-    <main className="p-6">
-      <h1 className="mb-4 text-xl font-bold">Page not found</h1>
-      <Link to="/services" className="underline">
-        Go to Services
-      </Link>
+    <main>
+      <ScreenTitle names={["Page not found"]} />
+      <EmptyState
+        kind="not-found"
+        size="page"
+        title="Page not found"
+        description="If you typed the address, check it is correct."
+        actions={<TextLink render={<Link to="/services" />}>Go to Services</TextLink>}
+      />
     </main>
   );
 }

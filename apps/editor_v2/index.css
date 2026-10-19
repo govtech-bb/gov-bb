@@ -73,6 +73,7 @@
   --color-red-10: var(--govbb-red-10);
   --color-red-20: var(--govbb-red-20);
   --color-red-80: var(--govbb-red-80);
+  --color-red-90: var(--govbb-red-90);
   --color-green-10: var(--govbb-green-10);
   --color-green-80: var(--govbb-green-80);
   --color-yellow-20: var(--govbb-yellow-20);
@@ -102,20 +103,34 @@
   --color-hover: var(--govbb-grey-20); /* grey-10 is the desk: a hover has to show on it too */
   --color-input: #fff;
 
-  /* Named by px, valued in rem. No line-heights: components set them. */
+  /* Named by px, valued in rem, each with its line-height on the 4px grid. The chrome keeps to 12 (meta), 14 (UI),
+     16 (lead), 20 (panel titles) and 28 (page titles); the rest are for drawing page and form content.
+     A leading-* still overrides */
   --text-*: initial;
   --text-12: 0.75rem;
+  --text-12--line-height: 1rem;
   --text-13: 0.8125rem;
+  --text-13--line-height: 1.125rem;
   --text-14: 0.875rem;
+  --text-14--line-height: 1.25rem;
   --text-15: 0.9375rem;
+  --text-15--line-height: 1.375rem;
   --text-16: 1rem;
+  --text-16--line-height: 1.5rem;
   --text-18: 1.125rem;
+  --text-18--line-height: 1.75rem;
   --text-20: 1.25rem;
+  --text-20--line-height: 1.75rem;
   --text-22: 1.375rem;
+  --text-22--line-height: 1.875rem;
   --text-24: 1.5rem;
+  --text-24--line-height: 2rem;
   --text-28: 1.75rem;
+  --text-28--line-height: 2.25rem;
   --text-32: 2rem;
+  --text-32--line-height: 2.5rem;
   --text-40: 2.5rem;
+  --text-40--line-height: 3rem;
 
   /* GovBB has one radius */
   --radius-xs: 2px;
@@ -131,6 +146,8 @@
   --shadow-input-hover: inset 0 0 0 1px var(--govbb-color-ink);
   --shadow-input-focus: inset 0 0 0 2px var(--govbb-color-ink), 0 0 0 3px var(--govbb-color-focus);
   --shadow-input-active: inset 0 0 0 2px var(--govbb-color-interactive);
+  /* A field whose value can't be used: a red edge, which focus replaces with its own */
+  --shadow-input-error: inset 0 0 0 2px var(--govbb-color-error);
   /* GovBB controls' hover: the pressed-paper inset */
   --shadow-press: var(--govbb-shadow-form-hover);
   /* The tool floats over the form, the form never does: popups lift off it in navy-tinted shade (blue-90), so a
@@ -148,6 +165,13 @@
   --default-transition-duration: 120ms;
   --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
   --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
+  /* Popups arriving: off the mark at once, then a long settle */
+  --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* The height of every bar: the header, a document's bar and a drawer's (src/ui/bar.tsx) */
+:root {
+  --bar-height: 3.5rem;
 }
 
 /*
@@ -162,15 +186,44 @@
   --form-gap: 1rem; /* space under a question's answer; the next label's 24px top padding adds to it */
 }
 
+/* A block's state in words on the canvas, such as Hidden or Disabled, so it is never a picture alone. One look for the
+   tags block-dom.ts builds and for a hidden block's own (its container's after:state-tag) */
+@utility state-tag {
+  font-family: var(--font-sans);
+  font-size: var(--text-12);
+  line-height: var(--text-12--line-height);
+  font-weight: 600;
+  letter-spacing: normal;
+  color: var(--color-muted);
+}
+
 /* SSB's field widths (ui.width, gov-bb's ADR 0034): from 768px up, a question's label, hint and box stop at a fixed
-   measure. markBlocks (behaviors.ts) puts data-width on the question's blocks */
+   measure. markBlocks (behaviors.ts) puts data-width on the question's blocks, and an insert preview on its drawing */
 @media (min-width: 768px) {
-  [data-lexical-editor] [data-width="short"] {
+  [data-width="short"] {
     --field-width: 24ch;
   }
-  [data-lexical-editor] [data-width="medium"] {
+  [data-width="medium"] {
     --field-width: 38ch;
   }
+}
+
+/* GovBB's button (govbb-button), at the form's control height and text size: Back and Continue on the form canvas, and
+   a page's Start and action buttons, which page.css draws with it. src/ui/govbb.ts names them for the canvas */
+@utility govbb-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--form-control);
+  padding-inline: calc(var(--spacing) * 5);
+  border-radius: var(--radius-sm);
+  font-size: var(--form-text);
+  color: var(--color-white);
+  background-color: var(--color-interactive);
+  text-decoration: none;
+}
+@utility govbb-button-secondary {
+  color: var(--color-ink);
+  background-color: var(--color-line);
 }
 
 @layer base {
@@ -199,5 +252,12 @@
   }
   :focus-visible:not(.outline-none, [contenteditable]) {
     box-shadow: 0 0 0 2px var(--color-ink);
+  }
+  /* Under a document's bar pinned to the top, what the page brings into view, such as the next field the keyboard
+     reaches, stops below the bar rather than behind it */
+  html:has([data-document-bar]:not([hidden])) {
+    @variant md {
+      scroll-padding-top: var(--bar-height);
+    }
   }
 }

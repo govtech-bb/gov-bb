@@ -1,6 +1,8 @@
 import { ArrowDown, ArrowUp, Plus, Trash } from "@phosphor-icons/react";
 import { useRef } from "react";
+import { cn } from "../../../cn";
 import { Button } from "../../../ui/button";
+import { govbbCheckbox, govbbOptional } from "../../../ui/govbb";
 import {
   compileGroups,
   groupedChoices,
@@ -59,7 +61,7 @@ function LegacyGroupedChoices({ nodeKey, settings }: WidgetProps) {
         if (!(event.metaKey || event.ctrlKey) && event.key !== "Escape") event.stopPropagation();
       }}
     >
-      <span data-optional="" hidden aria-hidden="true" className="text-16 text-muted">
+      <span data-optional="" hidden aria-hidden="true" className={cn("text-16", govbbOptional)}>
         (optional)
       </span>
       {groups.map((group, groupIndex) => (
@@ -133,7 +135,7 @@ function LegacyGroupedChoices({ nodeKey, settings }: WidgetProps) {
                     <span
                       aria-hidden="true"
                       data-drawn=""
-                      className="size-5 shrink-0 border-2 border-ink"
+                      className={cn(govbbCheckbox, "size-5")}
                     />
                     <input
                       aria-label={`Category ${groupIndex + 1} option ${index + 1} label`}
@@ -251,7 +253,7 @@ function LegacyGroupedChoices({ nodeKey, settings }: WidgetProps) {
 }
 
 export function CheckboxAccordionPreview({ options = [] }: { options?: string[] }) {
-  const control = "rounded-sm border-2 border-ink bg-input";
+  const control = cn(govbbCheckbox, "size-5");
 
   return (
     <div className="space-y-3">
@@ -260,14 +262,14 @@ export function CheckboxAccordionPreview({ options = [] }: { options?: string[] 
         <div className="mt-2 space-y-2 ps-3">
           {options.map((label) => (
             <div key={label} className="flex items-center gap-2">
-              <span className={`${control} size-5`} />
+              <span className={control} />
               {label}
             </div>
           ))}
         </div>
       </div>
       <div className="flex items-center gap-2 border-2 border-line p-3">
-        <span className={`${control} size-5`} />
+        <span className={control} />
         <strong>Single-option category</strong>
       </div>
     </div>

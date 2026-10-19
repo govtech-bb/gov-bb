@@ -1,24 +1,11 @@
-import { cn } from "../../../cn";
 import { setDOMUnmanaged } from "lexical";
 import { $static } from "../../../editor/react/block-dom";
-import { frame } from "../../editor/answer-dom";
-import type { FieldPreviewProps } from "../../editor/field-module";
-
-export function LongAnswerPreview({ width }: FieldPreviewProps) {
-  return (
-    <div
-      className={cn(
-        "rounded-sm border-2 border-ink bg-white h-24",
-        width === "short" ? "max-w-[24ch]" : width === "medium" ? "max-w-[38ch]" : undefined,
-      )}
-    />
-  );
-}
+import { govbbBox, govbbFieldWidth } from "../../../ui/govbb";
 
 export function $drawLongAnswer() {
   const box = $static(
     "div",
-    `relative flex min-h-26 w-full max-w-[var(--field-width,100%)] cursor-default p-3 ${frame}`,
+    `relative flex min-h-26 w-full cursor-default p-3 ${govbbFieldWidth} ${govbbBox}`,
     { "data-drawn": "" },
   );
 

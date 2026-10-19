@@ -1,7 +1,6 @@
 import { defineRenderer } from "../../../editor/react/contributions";
 import type { FormModule } from "../../field";
 import { formInsertionAction } from "../../editor/insertion-action";
-import { AuthoringInsertionPreview } from "../../react/authoring-preview";
 import { CalculatedFields } from "./presentation";
 import { calculatedFieldsContent, calculationActions } from "./definition";
 import { calculatedFieldsEntry } from "./insertion";
@@ -37,9 +36,7 @@ export function CalculationsModule(): FormModule {
         calculatedFieldsEntry,
         "Advanced blocks",
         4001,
-        <AuthoringInsertionPreview>
-          {calculatedFieldsEntry.renderPreview(calculatedFieldsEntry.sample)}
-        </AuthoringInsertionPreview>,
+        calculatedFieldsEntry.renderPreview(calculatedFieldsEntry.sample),
       ),
     ],
     renderers: [defineRenderer("widget:calculated-fields", CalculatedFields)],

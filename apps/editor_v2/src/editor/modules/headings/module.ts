@@ -2,9 +2,9 @@ import { HeadingNode } from "@lexical/rich-text";
 import { COMMAND_PRIORITY_NORMAL, INSERT_PARAGRAPH_COMMAND, mergeRegister } from "lexical";
 import type { EditorModule } from "../../core/module";
 import { container, ghost } from "../../react/block-dom";
-import { $atEdge, $caretBlock, registerContentShortcuts } from "../formatting/editing";
-import { contentActions, $insertContent } from "../formatting/insertion";
-import { $enterHeading, headingShortcuts } from "./editing";
+import { $atEdge, $caretBlock } from "../formatting/editing";
+import { contentActions } from "../formatting/insertion";
+import { $enterHeading } from "./editing";
 import { headingEntries } from "./insertion";
 
 export const headingTheme = {
@@ -53,7 +53,6 @@ export function HeadingsModule({ browser = true, actions = true } = {}): EditorM
                   },
                   COMMAND_PRIORITY_NORMAL,
                 ),
-                registerContentShortcuts(editor, headingShortcuts, $insertContent),
               ),
           },
         ]

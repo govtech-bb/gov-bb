@@ -1,14 +1,21 @@
 import type { EditorState, LexicalEditor } from "lexical";
 import type { FormEditorDefinition } from "../forms/definition";
 import { readFormState } from "../forms/editor/context";
-import { NativeBindingError, serializedToNativeForm } from "../forms/editor/native-bindings";
+import {
+  $withDefaultFormMessages,
+  NativeBindingError,
+  serializedToNativeForm,
+} from "../forms/editor/native-bindings";
 import {
   validateFormDefinition,
   type NativeValidationResult,
   type NativeDiagnostic,
 } from "../forms/schema";
 
-/** Export reads the owning editor without normalizing or allocating identities. */
+/**
+ * Export reads the owning editor without normalizing or allocating identities. A message nobody wrote is worded from
+ * its question's label here, so drafts keep none.
+ */
 export function lexicalToFormSchema(
   state: EditorState,
   definition: FormEditorDefinition,
@@ -20,7 +27,12 @@ export function lexicalToFormSchema(
       definition,
       () => {
         const diagnostics: NativeDiagnostic[] = [];
-        const schema = serializedToNativeForm(state.toJSON(), definition, diagnostics);
+
+        const schema = $withDefaultFormMessages(
+          serializedToNativeForm(state.toJSON(), definition, diagnostics),
+          definition,
+        );
+
         const validated = validateFormDefinition(schema, definition.nativeCapabilities);
 
         return diagnostics.length

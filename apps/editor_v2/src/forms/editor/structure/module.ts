@@ -13,6 +13,7 @@ import {
   QuestionNode,
 } from "../nodes";
 import { registerSourceKeys } from "../source-keys";
+import { formTurnInto } from "../turn-into";
 import { validatePageNode } from "../page-settings";
 import { $bindNativeAuthoring, registerNativeAuthoring } from "../native-authoring";
 import { registerBehaviors } from "./index";
@@ -25,6 +26,7 @@ export function FormStructureModule(): FormModule {
     requires: ["text", "form-pages", "form-repetition"],
     provides: ["form", "history"],
     historyOwner: "form-structure",
+    turnInto: formTurnInto,
     nodes: [QuestionNode, InputNode, OptionNode, WidgetNode].map((node) => ({
       type: node.getType(),
       node,

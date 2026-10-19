@@ -27,6 +27,7 @@ import {
 } from "./native-text";
 import { nativeQuestionSettings } from "./native-settings";
 import { nativeFormSettings } from "./native-form-settings";
+import { $withDefaultMessages } from "./native-field-controls";
 
 export class NativeBindingError extends Error {
   constructor(readonly diagnostic: NativeDiagnostic) {
@@ -922,4 +923,44 @@ export function serializedToNativeForm(
     ]);
 
   return { ...structuredClone(form), title: serviceName, blocks };
+}
+
+/** A label's words as the canvas shows them: a line break is a space, an answer reference its fallback. */
+const labelText = (text: RichText): string =>
+  typeof text === "string"
+    ? text
+    : text
+        .map((part) =>
+          typeof part === "string"
+            ? part
+            : "text" in part
+              ? part.text
+              : "link" in part
+                ? labelText(part.content)
+                : "break" in part
+                  ? " "
+                  : (part.fallback ?? ""),
+        )
+        .join("");
+
+/**
+ * The form as exported: each question's messages that nobody wrote are worded from its current label
+ * ($withDefaultMessages), so a published form says “Enter your National ID number”, never “Enter an answer”.
+ */
+export function $withDefaultFormMessages(
+  form: AnyFormDefinition,
+  definition: FormEditorDefinition,
+): AnyFormDefinition {
+  return {
+    ...form,
+    blocks: form.blocks.map((block) =>
+      block.type === "question"
+        ? $withDefaultMessages(block, {
+            kind: resolveNativeField(block, definition)?.kind ?? block.kind,
+            label: labelText(block.label),
+            optionCount: block.options?.length ?? 0,
+          })
+        : block,
+    ),
+  };
 }

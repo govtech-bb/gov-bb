@@ -488,6 +488,7 @@ function permitted(from: string, to: string, typeOnly: boolean) {
           "src/cn.ts",
           "src/editor/react/contributions.tsx",
           "src/editor/react/composer.tsx",
+          "src/ui/preview-sheet.tsx",
         ].includes(to))
     );
 

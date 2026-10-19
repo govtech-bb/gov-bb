@@ -13,6 +13,7 @@ import {
   type PropsSingle,
 } from "react-day-picker";
 import { cn } from "../cn";
+import { hiddenControlFocus } from "./focus";
 
 export { addToRange } from "react-day-picker";
 
@@ -57,10 +58,14 @@ const classNames: Partial<ClassNames> = {
   months: "rdp-months relative flex w-full flex-1 flex-wrap gap-8",
   nav: "rdp-nav absolute inset-x-0 top-0 flex h-8 items-center justify-between",
   month: "rdp-month w-full flex-1",
-  month_caption: "rdp-month_caption flex h-8 items-center text-18 font-bold",
+  month_caption: "rdp-month_caption flex h-8 items-center text-16 font-semibold",
   dropdowns:
-    "rdp-dropdowns relative mx-auto inline-flex items-center gap-2 font-medium hover:cursor-pointer",
-  dropdown_root: "rdp-dropdown_root relative inline-flex items-center",
+    "rdp-dropdowns relative mx-auto inline-flex items-center gap-2 font-semibold hover:cursor-pointer",
+  // The see-through select inside takes the focus, so the ring goes around its caption
+  dropdown_root: cn(
+    "rdp-dropdown_root relative inline-flex items-center rounded-sm",
+    hiddenControlFocus,
+  ),
   // A see-through native select over the label and its ghost chevron
   dropdown:
     "rdp-dropdown absolute inset-y-0 left-0 z-2 m-0 w-full cursor-pointer appearance-none border-0 p-0 opacity-0",
@@ -70,7 +75,7 @@ const classNames: Partial<ClassNames> = {
   chevron: "rdp-chevron flex aspect-square h-full items-center justify-center rounded-sm text-ink",
   month_grid: "rdp-month_grid w-full flex-1 border-collapse",
   weekdays: "rdp-weekdays h-7 text-12 font-normal text-muted",
-  weekday: "rdp-weekday py-2 text-center text-[smaller] font-medium opacity-75",
+  weekday: "rdp-weekday py-2 text-center font-semibold",
   day_button: cn(
     "rdp-day_button mx-auto flex cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent p-0 text-inherit disabled:cursor-default",
     daySize,
@@ -88,12 +93,12 @@ function Day({ day: _day, modifiers: m, className, ...props }: DayProps) {
         m.hidden
           ? "invisible"
           : [
-              "p-0 text-center text-16 font-medium text-muted",
+              "p-0 text-center text-16 text-muted",
               m.today && "text-interactive",
               !m.selected &&
                 !m.disabled &&
                 "hover:rounded-sm hover:bg-interactive-subtle hover:text-interactive",
-              m.selected && "rounded-sm bg-interactive font-medium text-(--color-white)!",
+              m.selected && "rounded-sm bg-interactive font-semibold text-(--color-white)!",
               m.range_start && !m.range_end && "rounded-r-none",
               m.range_end && !m.range_start && "rounded-l-none",
               m.range_middle && "rounded-none bg-interactive-subtle text-interactive",
@@ -129,9 +134,10 @@ function Nav({ onPreviousClick, onNextClick, previousMonth, nextMonth, ...props 
   );
 }
 
+// A select's caret, 14px like every other
 const Chevron = ({ className }: ChevronProps) => (
   <span className={className}>
-    <CaretDown className="size-4" />
+    <CaretDown className="size-3.5" />
   </span>
 );
 

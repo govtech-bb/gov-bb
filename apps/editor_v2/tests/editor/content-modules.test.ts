@@ -91,7 +91,10 @@ test("content composition owns its nodes, editing and toolbar without form docum
         .toJSON()
         .root.children.map((node) => node.type),
     ).toEqual(["paragraph"]);
-    expect(definition.slots.map((slot) => slot.slot)).toEqual(["editor.overlay"]);
+    expect(definition.slots.map((slot) => [slot.key, slot.slot])).toEqual([
+      ["formatting-toolbar", "editor.overlay"],
+      ["link-at-caret", "editor.overlay"],
+    ]);
     expect(definition.registrations.filter((item) => item.key === "text-editing")).toHaveLength(1);
     expect(definition.registrations.filter((item) => item.key === "history")).toHaveLength(1);
     expect(definition.moduleKeys.some((key) => /^(form|storage|ssb|rule)(-|$)/.test(key))).toBe(

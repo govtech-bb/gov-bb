@@ -3,6 +3,7 @@ import { Sigma } from "@phosphor-icons/react";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
 import { pill, pillIcon, PillInput } from "../../../ui/pill";
 import { Button } from "../../../ui/button";
+import { Checkbox } from "../../../ui/checkbox";
 import { $native } from "../../editor/native-state";
 import { useEditableUpdate, useRead } from "../../react/logic-hooks";
 import { focusPillInput, Pick } from "../../react/logic-pickers";
@@ -96,7 +97,7 @@ export function NativeCalculatedField({
             </>
           ) : (
             <Button
-              size="sm"
+              size="xs"
               onClick={() =>
                 save({
                   expression:
@@ -114,24 +115,21 @@ export function NativeCalculatedField({
                 value={block.key ?? ""}
                 onChange={(key) => save({ key: key || undefined })}
               />
-              <label className="flex items-center gap-2 text-14">
-                <input
-                  type="checkbox"
-                  checked={block.expression !== undefined}
-                  onChange={(event) =>
-                    save({
-                      expression: event.target.checked
-                        ? block.valueType === "number"
-                          ? 0
-                          : block.valueType === "boolean"
-                            ? false
-                            : ""
-                        : undefined,
-                    })
-                  }
-                />
-                Set an initial calculation
-              </label>
+              <Checkbox
+                label="Set an initial calculation"
+                checked={block.expression !== undefined}
+                onCheckedChange={(checked) =>
+                  save({
+                    expression: checked
+                      ? block.valueType === "number"
+                        ? 0
+                        : block.valueType === "boolean"
+                          ? false
+                          : ""
+                      : undefined,
+                  })
+                }
+              />
               {block.expression !== undefined ? (
                 <NativeExpressionEditor
                   value={block.expression}
@@ -140,14 +138,11 @@ export function NativeCalculatedField({
                   onChange={(expression) => save({ expression })}
                 />
               ) : null}
-              <label className="flex items-center gap-2 text-14">
-                <input
-                  type="checkbox"
-                  checked={block.submit === true}
-                  onChange={(event) => save({ submit: event.target.checked })}
-                />
-                Include this value with submitted answers
-              </label>
+              <Checkbox
+                label="Include this value with submitted answers"
+                checked={block.submit === true}
+                onCheckedChange={(submit) => save({ submit })}
+              />
             </div>
           </LogicPopover>
         </fieldset>

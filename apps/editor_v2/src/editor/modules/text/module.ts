@@ -1,4 +1,4 @@
-import { container, ghost } from "../../react/block-dom";
+import { container, lineHint } from "../../react/block-dom";
 import { registerRichText } from "@lexical/rich-text";
 import {
   $createParagraphNode,
@@ -28,7 +28,7 @@ const textNodes: DocumentNodeDefinition[] = [
 export function TextModule({ initialize = true, browser = true } = {}): EditorModule {
   const module: EditorModule = {
     key: "text",
-    theme: { paragraph: `${container} ${ghost} pt-1 pb-2 leading-[1.5]` },
+    theme: { paragraph: `${container} ${lineHint} pt-1 pb-2 leading-[1.5]` },
     provides: ["text"],
     nodes: textNodes,
     registrations: browser

@@ -165,8 +165,10 @@ try {
   const otherVersion = current.updated_at;
   await title.fill("My conflicting title");
   await button("Save").click();
+  // Shown under the bar, and read out by the page's save state
   await page
     .getByText("A newer version of this page has been saved since you opened it.")
+    .first()
     .waitFor();
   assert.equal(writes.length, 2);
   assert.equal(writes[1].ifUpdatedAt, savedVersion);

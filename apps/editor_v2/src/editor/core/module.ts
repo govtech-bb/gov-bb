@@ -8,6 +8,7 @@ import type {
 } from "lexical";
 import type { EditorAction } from "./actions";
 import type { EditorRenderer, EditorSlotContribution } from "./contributions";
+import type { TurnInto } from "./turn-into";
 
 export type DocumentNode = SerializedLexicalNode & {
   children?: DocumentNode[];
@@ -40,6 +41,8 @@ export type EditorModule = {
   readonly requires?: readonly string[];
   readonly provides?: readonly string[];
   readonly historyOwner?: string;
+  /** How the editor's text blocks turn into each other; one module owns it. */
+  readonly turnInto?: TurnInto;
   /** One-shot document preparation, separate from live registrations. */
   readonly $normalizeInitial?: () => void;
   readonly $initialize?: () => void;

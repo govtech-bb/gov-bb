@@ -1,14 +1,22 @@
+import { ClockCounterClockwise } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useBlocker, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { ApiPage, EditorApi } from "../api/client";
 import { pageToMarkdown, pickerCategories, pageFieldLabel } from "../api/page-markdown";
-import { pageQuery, taxonomyQuery } from "../api/queries";
+import { PRELOAD_FRESH, pageQuery, servicesQuery, taxonomyQuery } from "../api/queries";
 import { browserDraftStorage } from "../host/govbb-draft";
 import { PageDraftEditor } from "../host/page-editor";
 import { download } from "../host/source-ui";
 import { readPageMetadata } from "../pages";
+import type { DraftStore } from "../persistence/draft-store";
+import { Banner } from "../ui/banner";
+import { Bar } from "../ui/bar";
 import { Button } from "../ui/button";
+import { EmptyState } from "../ui/empty-state";
+import { LoadingState } from "../ui/loading-state";
+import type { SaveStateProps } from "../ui/save-state";
+import { toast } from "../ui/toast";
 import { PageHistoryDialog } from "./page-history-dialog";
 import {
   parseServerPageBaseline,
@@ -48,15 +56,20 @@ export function useServerPageBaseline(id: string) {
   return useMemo(() => parseServerPageBaseline(source, id), [source, id]);
 }
 
+/** Told which draft a page's editor holds once it opens, and told again when the editor closes. */
+type StoreListener = (id: string, store: DraftStore | undefined) => void;
+
 /** A page from the content API, placed in its browser draft before the editor opens it. */
 export function RemotePagePane({
   api,
   id,
   active,
+  onStore,
 }: {
   api: EditorApi;
   id: string;
   active: boolean;
+  onStore: StoreListener;
 }) {
   const client = useQueryClient();
 
@@ -65,7 +78,8 @@ export function RemotePagePane({
     queryKey: ["opened", id],
     queryFn: async () => {
       const [page, categories] = await Promise.all([
-        client.fetchQuery(pageQuery(api, id)),
+        // A page preloaded just now, as its link was pointed at, opens without asking again
+        client.fetchQuery({ ...pageQuery(api, id), staleTime: PRELOAD_FRESH }),
         client.ensureQueryData(taxonomyQuery(api)),
       ]);
 
@@ -78,38 +92,36 @@ export function RemotePagePane({
     gcTime: Infinity,
   });
 
-  if (opened.isPending)
-    return active ? (
-      <p role="status" className="p-8 text-muted">
-        Loading page…
-      </p>
-    ) : null;
+  if (opened.isPending) return active ? <LoadingState size="page" label="Loading page…" /> : null;
 
   if (opened.isError)
     return active ? (
-      <section className="p-8">
-        <p role="alert" className="mb-4">
-          We could not load this page. Check you are still signed in, then try again.
-        </p>
-        <Button variant="secondary" onClick={() => void opened.refetch()}>
-          Try again
-        </Button>
-      </section>
+      <EmptyState
+        kind="failed"
+        size="page"
+        title="We could not load this page"
+        description="Check you are still signed in, then try again."
+        actions={
+          <Button variant="secondary" onClick={() => void opened.refetch()}>
+            Try again
+          </Button>
+        }
+      />
     ) : null;
 
-  return <RemotePageEditor api={api} page={opened.data} active={active} />;
+  return <RemotePageEditor api={api} page={opened.data} active={active} onStore={onStore} />;
 }
-
-const noticeClass = "page-document-paused flex flex-wrap items-center gap-x-3 gap-y-2";
 
 function RemotePageEditor({
   api,
   page,
   active,
+  onStore,
 }: {
   api: EditorApi;
   page: ApiPage;
   active: boolean;
+  onStore: StoreListener;
 }) {
   const [store] = useState(() =>
     openDocument(
@@ -118,6 +130,12 @@ function RemotePageEditor({
     ),
   );
 
+  useEffect(() => {
+    onStore(page.id, store);
+
+    return () => onStore(page.id, undefined);
+  }, [onStore, page.id, store]);
+
   const client = useQueryClient();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -125,6 +143,14 @@ function RemotePageEditor({
   const base = useServerPageBaseline(page.id);
   const categories = useQuery(taxonomyQuery(api)).data ?? [];
   const server = useQuery(pageQuery(api, page.id)).data ?? page;
+  // Links find the site's services by name; the content API lists their entry pages
+  const services = useQuery(servicesQuery(api)).data;
+
+  const linkPages = useMemo(
+    () => services?.map((service) => ({ title: service.title, url: service.url })),
+    [services],
+  );
+
   const [failure, setFailure] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -206,27 +232,69 @@ function RemotePageEditor({
     if (store.apply()) rebase({ page: server, markdown });
   };
 
+  const newerVersion = "A newer version of this page has been saved since you opened it.";
+  const downloadMine = () => download(draft.committed, "page.md");
+
+  // Where the page stands in the content API, read out by its save state. A problem with its browser copy outranks
+  // this, as the one to fix first (useDraftSave)
+  const standing = (): SaveStateProps => {
+    const conflict = stale ? newerVersion : undefined;
+
+    if (save.isPending) return { status: "saving", conflict };
+
+    if (outcome?.kind === "missing")
+      return {
+        status: "failed",
+        error:
+          "This page has been deleted, so your changes can't be saved. Download a copy to keep them.",
+        conflict,
+        onDownload: downloadMine,
+      };
+
+    if (unsaved && outcome?.kind === "failed")
+      return {
+        status: "failed",
+        error: "We could not save this page. Your changes are kept in this browser.",
+        conflict,
+        onRetry: saveDraft,
+        onDownload: downloadMine,
+      };
+
+    const live = visibility === "public";
+
+    return {
+      status: unsaved ? (live ? "unpublished" : "unsaved") : live ? "published" : "saved",
+      conflict,
+    };
+  };
+
+  // The save state reads out the newer version, so its notice doesn't too
   const notice = stale ? (
-    <div role="alert" className={noticeClass}>
-      <p className="me-auto">A newer version of this page has been saved since you opened it.</p>
-      {unsaved && (
-        <Button
-          variant="secondary"
-          onClick={() => rebase({ page: server, markdown: pageToMarkdown(server, categories) })}
-        >
-          Keep my version
-        </Button>
-      )}
-      <Button variant="secondary" disabled={blocked} onClick={loadSaved}>
-        Load saved version
-      </Button>
-      {unsaved && (
-        <Button onClick={() => download(draft.committed, "page.md")}>Download my version</Button>
-      )}
-    </div>
+    <Banner
+      tone="warning"
+      layout="strip"
+      role="none"
+      actions={
+        <>
+          {unsaved && (
+            <Button
+              variant="secondary"
+              onClick={() => rebase({ page: server, markdown: pageToMarkdown(server, categories) })}
+            >
+              Keep my version
+            </Button>
+          )}
+          <Button variant="secondary" disabled={blocked} onClick={loadSaved}>
+            Load saved version
+          </Button>
+          {unsaved && <Button onClick={downloadMine}>Download my version</Button>}
+        </>
+      }
+    >
+      {newerVersion}
+    </Banner>
   ) : outcome?.kind === "invalid" ? (
-    <div role="alert" className="page-document-paused">
-      <p className="font-semibold">There is a problem</p>
+    <Banner tone="error" layout="strip" title="There is a problem">
       <ul className="mt-1 list-disc ps-5">
         {errors.map((error) => (
           <li key={`${error.field}:${error.message}`}>
@@ -234,73 +302,65 @@ function RemotePageEditor({
           </li>
         ))}
       </ul>
-    </div>
+    </Banner>
   ) : outcome?.kind === "signed-out" ? (
-    <div role="alert" className={noticeClass}>
-      <p className="me-auto">
-        Your session has ended. Sign in again to save; your changes are kept in this browser.
-      </p>
-      <Button
-        variant="secondary"
-        onClick={() =>
-          void navigate({
-            to: "/auth",
-            search: { state: "sign-in", returnTo: pathname, reason: "provider" },
-          })
-        }
-      >
-        Sign in again
-      </Button>
-    </div>
-  ) : outcome?.kind === "missing" ? (
-    <div role="alert" className={noticeClass}>
-      <p className="me-auto">This page is no longer in the content API.</p>
-      <Button onClick={() => download(draft.committed, "page.md")}>Download my version</Button>
-    </div>
-  ) : outcome?.kind === "failed" ? (
-    <div role="alert" className={noticeClass}>
-      <p className="me-auto">We could not save this page. Your changes are kept in this browser.</p>
-      <Button variant="secondary" onClick={saveDraft}>
-        Try again
-      </Button>
-    </div>
+    <Banner
+      tone="warning"
+      layout="strip"
+      role="alert"
+      actions={
+        <Button
+          variant="secondary"
+          onClick={() =>
+            void navigate({
+              to: "/auth",
+              search: { state: "sign-in", returnTo: pathname, reason: "provider" },
+            })
+          }
+        >
+          Sign in again
+        </Button>
+      }
+    >
+      Your session has ended. Sign in again to save; your changes are kept in this browser.
+    </Banner>
   ) : undefined;
 
   return (
     <>
-      {failure && (
-        <div role="alert" className="border-s-4 border-error bg-white px-6 py-3 text-error">
-          {failure}
-        </div>
-      )}
       <PageDraftEditor
         store={store}
         active={active}
-        saveStatus={
-          save.isPending
-            ? "saving"
-            : unsaved && outcome && outcome.kind !== "saved"
-              ? "failed"
-              : unsaved
-                ? "unsaved"
-                : "saved"
+        server={standing()}
+        versions={
+          <Bar.Tool
+            icon={<ClockCounterClockwise />}
+            label="History"
+            onClick={() => setHistoryOpen(true)}
+          />
         }
-        tools={
+        publish={
+          <Button
+            variant="accent"
+            disabled={!unsaved || stale || blocked || save.isPending || outcome?.kind === "missing"}
+            onClick={saveDraft}
+          >
+            {visibility === "public" ? "Publish changes" : "Save"}
+          </Button>
+        }
+        notice={
           <>
-            <Button onClick={() => setHistoryOpen(true)}>History</Button>
-            <Button
-              variant="accent"
-              disabled={
-                !unsaved || stale || blocked || save.isPending || outcome?.kind === "missing"
-              }
-              onClick={saveDraft}
-            >
-              {visibility === "public" ? "Publish changes" : "Save"}
-            </Button>
+            {/* Leaving was stopped, as the page's browser copy isn't safe yet */}
+            {failure && (
+              <Banner tone="error" layout="strip">
+                {failure}
+              </Banner>
+            )}
+            {notice}
           </>
         }
-        notice={notice}
-        details={{
+        linkPages={linkPages}
+        settings={{
           ...(server.parent_id === null && {
             categories: pickerCategories(categories),
             single: true,
@@ -318,7 +378,14 @@ function RemotePageEditor({
           close={() => setHistoryOpen(false)}
           restore={(markdown) => {
             store.edit(markdown);
-            store.apply();
+
+            // The dialog closes on the restored page, which isn't saved yet
+            if (store.apply())
+              toast("Version restored", {
+                tone: "info",
+                description:
+                  visibility === "public" ? "Publish changes to make it live." : "Save to keep it.",
+              });
             setHistoryOpen(false);
           }}
         />

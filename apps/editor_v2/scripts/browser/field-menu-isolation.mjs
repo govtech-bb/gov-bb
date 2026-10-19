@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { chromium } from "./playwright.mjs";
+import { formDraftUrl } from "./form-fixture.mjs";
 
 const url = process.argv[2];
 
@@ -18,13 +19,13 @@ try {
     (source) => localStorage.setItem("govbb-editor:draft:markdown:v2", source),
     source,
   );
-  await page.goto(url);
+  await page.goto(formDraftUrl(url));
   const form = page.locator('[contenteditable="true"][aria-label="Form"]');
   await form.waitFor();
 
   const openMenu = async (block) => {
     await block.hover();
-    await page.getByRole("button", { name: "Move this block by dragging", exact: true }).click();
+    await page.getByRole("button", { name: "Block actions", exact: true }).click();
     await page.getByRole("menu").first().waitFor();
   };
 

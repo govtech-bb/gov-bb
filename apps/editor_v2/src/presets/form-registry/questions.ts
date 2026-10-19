@@ -20,7 +20,7 @@ export function componentQuestion(
     ...(overrides.required !== undefined && {
       required: {
         value: overrides.required,
-        message: component.required?.message ?? "Enter an answer",
+        message: component.required?.message ?? "",
       },
     }),
     ...(overrides.visible !== undefined && { visible: overrides.visible }),

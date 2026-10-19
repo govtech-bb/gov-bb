@@ -2,6 +2,7 @@ import { authenticatedContext, authenticatedPage } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "./playwright.mjs";
+import { formDraftUrl, openDemoForm } from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -29,7 +30,7 @@ const warning =
   "Keep only text, headings and lists on the confirmation page. Move other blocks to an earlier page.";
 
 try {
-  await page.goto(process.argv[2] ?? "http://localhost:3013/");
+  await openDemoForm(page, process.argv[2] ?? "http://localhost:3013/");
   await root.waitFor();
   await page.evaluate(() => document.fonts.ready);
   const initial = await state();
@@ -135,8 +136,8 @@ try {
     if (!localStorage.getItem("govbb-editor:draft"))
       localStorage.setItem("govbb-editor:draft", original);
   }, original);
-  await recoveryPage.goto(process.argv[2] ?? "http://localhost:3013/");
-  await recoveryPage.getByText("Recover draft", { exact: true }).waitFor();
+  await recoveryPage.goto(formDraftUrl(process.argv[2] ?? "http://localhost:3013/"));
+  await recoveryPage.getByText("Saving paused", { exact: true }).waitFor();
   assert.equal(
     await recoveryPage.locator('[contenteditable="true"][aria-label="Form"]').count(),
     0,
@@ -164,7 +165,7 @@ try {
   const download = await downloadPromise;
   assert.equal(await readFile(await download.path(), "utf8"), original);
   await recoveryPage.reload();
-  await recoveryPage.getByText("Recover draft", { exact: true }).waitFor();
+  await recoveryPage.getByText("Saving paused", { exact: true }).waitFor();
   await recoveryContext.close();
   assert.deepEqual(errors, []);
   console.log(

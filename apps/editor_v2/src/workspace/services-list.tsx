@@ -1,74 +1,75 @@
-import { ArrowUpRight } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useId, useMemo } from "react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import type { EditorApi, ServiceSummary } from "../api/client";
 import { servicesQuery } from "../api/queries";
-import { cn } from "../cn";
-import { visibilityLabels } from "../pages";
+import { visibilityLabels, visibilityTones } from "../pages";
+import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import { settingsInput } from "../ui/input";
+import { Checkbox } from "../ui/checkbox";
+import { EmptyState } from "../ui/empty-state";
+import { Field } from "../ui/field";
+import { Input } from "../ui/input";
+import { NativeSelect } from "../ui/native-select";
+import { TextLink } from "../ui/text-link";
 import { createAppColumnHelper, useAppTable, useTableContext } from "../ui/table/table-hooks";
+import {
+  filteredBy,
+  pagedTo,
+  searchedFor,
+  servicesTableState,
+  sortedBy,
+  type ServicesSearch,
+} from "./services-search";
 
 const column = createAppColumnHelper<ServiceSummary>();
 
-// A stable empty list: a new [] each render would reset the table's page every render.
+// A stable empty list: a new [] each render would make the table recount its rows every render
 const loading: ServiceSummary[] = [];
+
+/** A table state change, which is the new state or makes it from the old one. */
+const resolve = <T,>(change: T | ((old: T) => T), old: T) =>
+  change instanceof Function ? change(old) : change;
 
 const visibilities = ["public", "preview", "draft"] as const;
 
 const visibilityLabel = (visibility: string) => visibilityLabels.get(visibility) ?? visibility;
 
-// Status tags: live is green, link-only is yellow, draft is grey, and the words carry the meaning.
-const tones = {
-  public: "bg-green-10 text-green-80",
-  preview: "bg-yellow-20 text-ink",
-  draft: "bg-grey-20 text-grey-80",
-};
-
+// Status tags: the words carry the meaning, the page settings' colours back them up
 function VisibilityTag({ visibility }: { visibility: ServiceSummary["visibility"] }) {
   return (
-    <strong
-      className={cn(
-        "inline-block rounded-sm px-2 py-0.5 text-13 font-semibold whitespace-nowrap",
-        tones[visibility],
-      )}
-    >
-      {visibilityLabel(visibility)}
-    </strong>
+    <Badge tone={visibilityTones.get(visibility) ?? "neutral"}>{visibilityLabel(visibility)}</Badge>
   );
 }
 
 function ServiceCell({ service, href }: { service: ServiceSummary; href: string | undefined }) {
   return (
     <div className="min-w-0 py-0.5 @3xl:min-w-72">
-      <Link
-        to="/services/$serviceId/$documentId"
-        params={{ serviceId: service.id, documentId: service.id }}
-        className="text-15 leading-snug font-semibold text-interactive underline-offset-4 hover:underline"
+      <TextLink
+        render={
+          <Link
+            to="/services/$serviceId/$documentId"
+            params={{ serviceId: service.id, documentId: service.id }}
+          />
+        }
+        className="text-14 font-semibold"
       >
         {service.title}
-      </Link>
+      </TextLink>
       {href ? (
-        <a
+        <TextLink
+          external
           href={href}
-          target="_blank"
-          rel="noreferrer"
-          className="group/path mt-0.5 block font-mono text-12 wrap-break-word text-muted hover:text-ink hover:underline hover:underline-offset-4"
+          className="mt-0.5 block w-fit font-mono text-12 wrap-break-word text-muted"
         >
           {service.url}
-          <ArrowUpRight
-            aria-hidden="true"
-            className="ms-1 inline size-3 text-muted group-hover/path:text-ink"
-          />
-          <span className="sr-only"> (opens in a new tab)</span>
-        </a>
+        </TextLink>
       ) : (
         <span className="mt-0.5 block font-mono text-12 wrap-break-word text-muted">
           {service.url}
         </span>
       )}
-      <span className="mt-2 hidden flex-wrap items-center gap-x-2 gap-y-1 text-13 text-muted @max-3xl:flex">
+      <span className="mt-2 hidden flex-wrap items-center gap-x-2 gap-y-1 text-12 text-muted @max-3xl:flex">
         <VisibilityTag visibility={service.visibility} />
         {service.category.title}
       </span>
@@ -105,8 +106,8 @@ const serviceColumns = (api: EditorApi) =>
       meta: { secondary: true },
       cell: ({ cell }) => <cell.DateCell />,
     }),
-    column.accessor((service) => visibilityLabel(service.visibility), {
-      id: "visibility",
+    // Filtered by the status itself, the word the list's address keeps; its label sorts the same way
+    column.accessor("visibility", {
       header: "Status",
       sortFn: "text",
       filterFn: "oneOf",
@@ -119,7 +120,6 @@ const serviceColumns = (api: EditorApi) =>
 /** Filters beside the list: search, one category, any of the statuses. */
 function ServiceFilters({ categories }: { categories: readonly string[] }) {
   const table = useTableContext();
-  const id = useId();
 
   // SAFETY: Only these filters set the column filters, always as the string arrays oneOf reads.
   const chosen = (column: string) =>
@@ -132,25 +132,15 @@ function ServiceFilters({ categories }: { categories: readonly string[] }) {
 
   return (
     <div role="search" aria-label="Filter services" className="flex flex-col gap-6 text-14">
-      <div>
-        <label htmlFor={`${id}-search`} className="mb-1.5 block font-semibold">
-          Search title or URL
-        </label>
-        <input
-          id={`${id}-search`}
+      <Field label="Search title or URL">
+        <Input
           type="search"
-          className={settingsInput}
           value={table.state.globalFilter ?? ""}
           onChange={(event) => table.setGlobalFilter(event.target.value)}
         />
-      </div>
-      <div>
-        <label htmlFor={`${id}-category`} className="mb-1.5 block font-semibold">
-          Category
-        </label>
-        <select
-          id={`${id}-category`}
-          className={cn(settingsInput, "cursor-pointer")}
+      </Field>
+      <Field label="Category">
+        <NativeSelect
           value={chosen("category")[0] ?? ""}
           onChange={(event) => choose("category", event.target.value ? [event.target.value] : [])}
         >
@@ -160,41 +150,55 @@ function ServiceFilters({ categories }: { categories: readonly string[] }) {
               {category}
             </option>
           ))}
-        </select>
-      </div>
+        </NativeSelect>
+      </Field>
       <fieldset>
         <legend className="mb-1.5 font-semibold">Status</legend>
-        {visibilities.map((visibility) => {
-          const label = visibilityLabel(visibility);
-
-          return (
-            <label key={visibility} className="flex cursor-pointer items-center gap-2 py-1">
-              <input
-                type="checkbox"
-                className="size-4 cursor-pointer accent-interactive"
-                checked={statuses.includes(label)}
-                onChange={(event) =>
-                  choose(
-                    "visibility",
-                    event.target.checked
-                      ? [...statuses, label]
-                      : statuses.filter((value) => value !== label),
-                  )
-                }
-              />
-              {label}
-            </label>
-          );
-        })}
+        {visibilities.map((visibility) => (
+          <Checkbox
+            key={visibility}
+            label={visibilityLabel(visibility)}
+            className="py-1"
+            checked={statuses.includes(visibility)}
+            onCheckedChange={(checked) =>
+              choose(
+                "visibility",
+                checked
+                  ? [...statuses, visibility]
+                  : statuses.filter((value) => value !== visibility),
+              )
+            }
+          />
+        ))}
       </fieldset>
     </div>
   );
 }
 
-/** The api_v2 estate, newest change first; each service opens in the editor at its entry page. */
-export function ServicesList({ api, onCreate }: { api: EditorApi; onCreate: () => void }) {
+/**
+ * The api_v2 estate, newest change first; each service opens in the editor at its entry page. It opens at `search`,
+ * the place in the list its address keeps, and tells `onSearch` each new place so the address keeps that.
+ */
+export function ServicesList({
+  api,
+  search,
+  onSearch,
+  onCreate,
+}: {
+  api: EditorApi;
+  search: ServicesSearch;
+  onSearch: (search: ServicesSearch) => void;
+  onCreate: () => void;
+}) {
   const services = useQuery(servicesQuery(api));
   const columns = useMemo(() => serviceColumns(api), [api]);
+
+  // The list answers each change at once, and the address follows
+  const [place, setPlace] = useState(search);
+  const state = useMemo(() => servicesTableState(place), [place]);
+  const remember = useEffectEvent(onSearch);
+
+  useEffect(() => remember(place), [place]);
 
   const categories = useMemo(
     () =>
@@ -208,17 +212,49 @@ export function ServicesList({ api, onCreate }: { api: EditorApi; onCreate: () =
     columns,
     data: services.data ?? loading,
     getRowId: (service) => service.id,
-    initialState: {
-      sorting: [{ id: "updated_at", desc: true }],
-      pagination: { pageIndex: 0, pageSize: 25 },
-    },
+    state,
+    // A new search, filter or sort goes back to the first page itself, so a page from the address survives the load
+    autoResetPageIndex: false,
+    onGlobalFilterChange: (change) =>
+      setPlace((old) => searchedFor(old, String(resolve(change, old.q ?? "") ?? ""))),
+    onColumnFiltersChange: (change) =>
+      setPlace((old) => {
+        const filters = resolve(change, servicesTableState(old).columnFilters);
+
+        // SAFETY: Only the filters beside the list set these, always as the string arrays oneOf reads.
+        const chosen = (id: string) =>
+          filters.find((filter) => filter.id === id)?.value as string[] | undefined;
+
+        return filteredBy(old, { category: chosen("category")?.[0], status: chosen("visibility") });
+      }),
+    // Without a column chosen, such as after a third click on one, the list is newest change first again
+    onSortingChange: (change) =>
+      setPlace((old) => {
+        const [sorted] = resolve(change, servicesTableState(old).sorting);
+
+        return sortedBy(old, sorted?.id ?? "updated_at", sorted?.desc ?? true);
+      }),
+    onPaginationChange: (change) =>
+      setPlace((old) => {
+        const { pageIndex, pageSize } = resolve(change, servicesTableState(old).pagination);
+
+        return pagedTo(old, pageIndex, pageSize);
+      }),
   });
+
+  // An address past the last page, such as an old link to a list that has since shrunk, shows the last page
+  const pages = table.getPageCount();
+
+  useEffect(() => {
+    if (services.data && pages > 0 && state.pagination.pageIndex >= pages)
+      setPlace((old) => pagedTo(old, pages - 1, old.size ?? 25));
+  }, [services.data, pages, state.pagination.pageIndex]);
 
   return (
     <table.AppTable>
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-32 font-semibold tracking-tight">Services</h1>
-        <Button variant="accent" size="lg" onClick={onCreate}>
+        <h1 className="text-28 font-semibold">Services</h1>
+        <Button variant="accent" size="md" onClick={onCreate}>
           Create service
         </Button>
       </div>
@@ -226,20 +262,28 @@ export function ServicesList({ api, onCreate }: { api: EditorApi; onCreate: () =
         <ServiceFilters categories={categories} />
         <div className="@container min-w-0 rounded-sm bg-white shadow-sheet">
           {services.isError ? (
-            <div role="alert" className="px-4 py-16 text-center">
-              <p className="text-16 font-semibold">We could not load services</p>
-              <p className="mt-1 text-muted">Check you are still signed in, then try again.</p>
-              <Button variant="secondary" className="mt-4" onClick={() => void services.refetch()}>
-                Try again
-              </Button>
-            </div>
+            <EmptyState
+              kind="failed"
+              title="We could not load services"
+              description="Check you are still signed in, then try again."
+              actions={
+                <Button variant="secondary" onClick={() => void services.refetch()}>
+                  Try again
+                </Button>
+              }
+            />
           ) : (
             <table.DataTable
               caption="Services"
               loading={services.isPending}
               empty={{
                 title: "No services yet",
-                hint: "Services appear here when pages are added to the content API.",
+                description: "Create a service to start adding its pages.",
+                actions: (
+                  <Button variant="secondary" onClick={onCreate}>
+                    Create service
+                  </Button>
+                ),
               }}
             />
           )}

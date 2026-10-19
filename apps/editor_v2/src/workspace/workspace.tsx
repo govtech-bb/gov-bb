@@ -1,57 +1,72 @@
 import logo from "@govtech-bb/frontend/assets/images/govbb-logo.svg?raw";
-import { Link, useBlocker, useNavigate, useParams, useRouterState } from "@tanstack/react-router";
+import { Files } from "@phosphor-icons/react";
+import { Link, useBlocker, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ApiFailure, type EditorApi } from "../api/client";
-import { serviceQuery, estateVersionQuery } from "../api/queries";
+import { serviceQuery, servicesQuery, estateVersionQuery } from "../api/queries";
+import { EditorSessionProvider } from "../editor/react/composer";
 import {
   CreateRemotePageDialog,
   CreateRemoteServiceDialog,
   DeleteRemotePageDialog,
 } from "./remote-page-dialogs";
 import { RemotePagePane } from "./remote-page-pane";
-import { servicePageDocuments } from "./service-pages";
-import { ServicePagesNav } from "./service-pages-nav";
+import {
+  browserFormFor,
+  listedServiceRows,
+  localServiceRows,
+  remoteServiceRows,
+} from "./service-pages";
+import { ServiceNav } from "./service-nav";
 import { workspaceLink } from "./navigation";
+import { Banner } from "../ui/banner";
+import { Bar } from "../ui/bar";
 import { Button } from "../ui/button";
+import { EmptyState } from "../ui/empty-state";
+import { LoadingState } from "../ui/loading-state";
+import { TextLink } from "../ui/text-link";
+import { Sidebar, useSidebar } from "../ui/sidebar";
 import { browserDraftStorage } from "../host/govbb-draft";
 import { PageDraftEditor } from "../host/page-editor";
-import { DocumentLabel } from "./document-label";
+import { useScreenPlace } from "./screen-place";
+import { ScreenTitle } from "./screen-title";
 import type { DraftStore } from "../persistence/draft-store";
 import { AddLocalDocumentDialog, LocalServiceDialog } from "./local-document-dialogs";
 import { openDocument, openWorkspace } from "./documents";
+import { DocumentSessions, keptViews } from "./document-views";
 import { WorkspaceFormEditor } from "./form-editor";
 import { ServicesList } from "./services-list";
+import type { ServicesSearch } from "./services-search";
 import {
+  documentKeys,
   documentLabel,
   flushDocument,
+  localDocumentAt,
   WORKSPACE_KEY,
   type WorkspaceDocument,
   type WorkspaceLocation,
   type WorkspaceRepository,
 } from "./model";
 
-type Account = { email: string; onSignOut: () => Promise<string | undefined> };
+type Account = {
+  email: string;
+  onSignOut: () => Promise<string | undefined>;
+  /** A problem with the app from outside the workspace, such as a session that couldn't be checked. */
+  notice?: string;
+};
+
+// Where this browser remembers that the author collapsed the service sidebar
+const SIDEBAR_KEY = "govbb-editor:sidebar-collapsed";
 
 type OpenDocument = { document: WorkspaceDocument; store: DraftStore };
 
 type Boot = { repository: WorkspaceRepository; location: WorkspaceLocation; panes: OpenDocument[] };
 
-function boot(requested: WorkspaceLocation, selectInitial: boolean): Boot {
-  const { repository, initialLocation } = openWorkspace(
-    browserDraftStorage,
-    Object.keys(window.localStorage),
-  );
+function boot(location: WorkspaceLocation): Boot {
+  const { repository } = openWorkspace(browserDraftStorage, Object.keys(window.localStorage));
 
-  const first = repository.index.services[0];
-
-  const location = selectInitial
-    ? (initialLocation ?? (first && { serviceId: first.id, documentId: first.documents[0]?.id }))
-    : requested;
-
-  const document = repository.index.services
-    .find((service) => service.id === location?.serviceId)
-    ?.documents.find((item) => item.id === location?.documentId);
+  const document = localDocumentAt(repository.index, location);
 
   return {
     repository,
@@ -73,9 +88,8 @@ function downloadWorkspace() {
 }
 
 /** Open local drafts only after the host has authenticated the employee. */
-export function ServiceWorkspace({ api, email, onSignOut }: Account & { api: EditorApi }) {
+export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { api: EditorApi }) {
   const params = useParams({ strict: false });
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   const [initial] = useState(() => {
     try {
@@ -84,7 +98,6 @@ export function ServiceWorkspace({ api, email, onSignOut }: Account & { api: Edi
           params.serviceId
             ? { serviceId: params.serviceId, documentId: params.documentId }
             : undefined,
-          pathname === "/",
         ),
       };
     } catch (error) {
@@ -96,20 +109,39 @@ export function ServiceWorkspace({ api, email, onSignOut }: Account & { api: Edi
 
   if (!initial.ready)
     return (
-      <main className="mx-auto max-w-160 p-8 text-ink">
-        <h1 className="text-28 font-semibold">Open the service workspace</h1>
-        <p role="alert" className="my-4">
-          {initial.error}
-        </p>
-        <p className="mb-4">
-          Existing drafts have been kept. Download the service list before repairing it.
-        </p>
-        <Button onClick={downloadWorkspace}>Download service list</Button>
-        <Button onClick={() => window.location.reload()}>Try again</Button>
+      <main className="text-ink">
+        <ScreenTitle names={["We could not open the service workspace"]} />
+        <EmptyState
+          kind="failed"
+          size="page"
+          title="We could not open the service workspace"
+          description={
+            <>
+              <p>{initial.error}</p>
+              <p className="mt-2">
+                Existing drafts have been kept. Download the service list before repairing it.
+              </p>
+            </>
+          }
+          actions={
+            <>
+              <Button onClick={downloadWorkspace}>Download service list</Button>
+              <Button onClick={() => window.location.reload()}>Try again</Button>
+            </>
+          }
+        />
       </main>
     );
 
-  return <Workspace initial={initial.ready} api={api} email={email} onSignOut={onSignOut} />;
+  return (
+    <Workspace
+      initial={initial.ready}
+      api={api}
+      email={email}
+      onSignOut={onSignOut}
+      notice={notice}
+    />
+  );
 }
 
 function Workspace({
@@ -117,28 +149,59 @@ function Workspace({
   api,
   email,
   onSignOut,
+  notice,
 }: { initial: Boot; api: EditorApi } & Account) {
   const repository = initial.repository;
   const [index, setIndex] = useState(repository.index);
   const params = useParams({ strict: false });
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const routerNavigate = useNavigate();
+  const listSearch = useSearch({ from: "/_workspace/services", shouldThrow: false });
 
-  const location =
-    pathname === "/"
-      ? initial.location
-      : params.serviceId
-        ? { serviceId: params.serviceId, documentId: params.documentId }
-        : undefined;
+  // Where the author last was in the Services list, for every way back to it
+  const [servicesSearch, setServicesSearch] = useState<ServicesSearch>({});
+
+  const location = params.serviceId
+    ? { serviceId: params.serviceId, documentId: params.documentId }
+    : undefined;
 
   const [panes, setPanes] = useState(initial.panes);
 
   // Pages from the content API, kept mounted once visited like the browser's own documents.
   const [apiPanes, setApiPanes] = useState(() =>
     initial.location?.documentId &&
-    !repository.index.services.some((item) => item.id === initial.location?.serviceId)
+    !repository.index.services.some((item) => item.id === initial.location?.serviceId) &&
+    !localDocumentAt(repository.index, initial.location)
       ? [initial.location.documentId]
       : [],
+  );
+
+  // The documents whose views are mounted, the one on screen first. The rest have closed, leaving their sessions.
+  const [views, setViews] = useState(() =>
+    initial.location?.documentId ? [initial.location.documentId] : [],
+  );
+
+  const [sessions] = useState(() => new DocumentSessions());
+
+  // Their editors' drafts, once open, so the sidebar names each page as its draft has it
+  const [apiStores, setApiStores] = useState<ReadonlyMap<string, DraftStore>>(() => new Map());
+
+  const trackApiStore = useCallback(
+    (id: string, store: DraftStore | undefined) =>
+      setApiStores((previous) => {
+        if (previous.get(id) === store) return previous;
+        const next = new Map(previous);
+
+        if (store) next.set(id, store);
+        else next.delete(id);
+
+        return next;
+      }),
+    [],
+  );
+
+  const stores = useMemo(
+    () => new Map([...panes.map((pane) => [pane.document.id, pane.store] as const), ...apiStores]),
+    [panes, apiStores],
   );
 
   const [dialog, setDialog] = useState<
@@ -147,9 +210,8 @@ function Workspace({
 
   const [error, setError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
+  const sidebar = useSidebar(SIDEBAR_KEY);
   const service = index.services.find((item) => item.id === location?.serviceId);
-  const selected = service?.documents.find((item) => item.id === location?.documentId);
-  const current = panes.find((pane) => pane.document.id === selected?.id);
 
   const client = useQueryClient();
 
@@ -160,15 +222,50 @@ function Workspace({
     enabled: !!location && !service,
   });
 
-  const remoteDocuments = remote.data ? servicePageDocuments(remote.data) : [];
+  // What the services list, once loaded, says of the service, to draw its sidebar and name it while it loads
+  const listed = useQuery({ ...servicesQuery(api), enabled: false }).data?.find(
+    (item) => item.id === location?.serviceId,
+  );
+
+  // The service's form, when this browser drafts it, is listed with the service's pages
+  const joinedForm = useMemo(
+    () => remote.data && browserFormFor(index, remote.data.service.form_id),
+    [index, remote.data],
+  );
+
+  const remoteRows = useMemo(
+    () => (remote.data ? remoteServiceRows(remote.data, joinedForm) : []),
+    [remote.data, joinedForm],
+  );
+
+  const remoteDocuments = useMemo(
+    () => remoteRows.flatMap((row) => (row.document.kind === "page" ? [row.document] : [])),
+    [remoteRows],
+  );
+
   const remoteSelected = remoteDocuments.find((item) => item.id === location?.documentId);
+
+  const selected = service
+    ? service.documents.find((item) => item.id === location?.documentId)
+    : joinedForm && joinedForm.id === location?.documentId
+      ? joinedForm
+      : undefined;
+
+  const current = panes.find((pane) => pane.document.id === selected?.id);
 
   const missing =
     !!location &&
     (service
       ? !!location.documentId && !selected
       : (remote.error instanceof ApiFailure && remote.error.status === 404) ||
-        (!!remote.data && !!location.documentId && !remoteSelected));
+        (!!remote.data && !!location.documentId && !remoteSelected && !selected));
+
+  const place = useScreenPlace(
+    { service, document: selected, store: current?.store },
+    { service: remote.data, document: remoteSelected },
+  );
+
+  const serviceName = place.service ?? listed?.title;
 
   useBlocker({
     enableBeforeUnload: () => {
@@ -185,12 +282,43 @@ function Workspace({
         flushDocument(current?.store);
 
         if (next.routeId === "/_workspace/services/$serviceId/$documentId") {
-          const local = repository.index.services.find((item) => item.id === next.params.serviceId);
+          const { serviceId, documentId } = next.params;
+          const local = repository.index.services.some((item) => item.id === serviceId);
+          const document = localDocumentAt(repository.index, { serviceId, documentId });
+          const opened = document?.id ?? (local ? undefined : documentId);
 
-          const document = local?.documents.find((item) => item.id === next.params.documentId);
-          const documentId = next.params.documentId;
+          // How a document's draft is saved, which tells a closed view's session whether it still fits on return
+          const saved = (id: string) => {
+            const draft =
+              id === document?.id
+                ? document
+                : panes.find((pane) => pane.document.id === id)?.document;
 
-          if (!local && documentId)
+            return browserDraftStorage.getItem((draft?.keys ?? documentKeys(id)).committed);
+          };
+
+          if (opened) {
+            // Views beyond the few most recent close once their drafts are saved, keeping their sessions for later
+            const kept = keptViews(views, opened, (id) => {
+              try {
+                flushDocument(stores.get(id));
+
+                return true;
+              } catch {
+                return false;
+              }
+            });
+
+            const closed = new Set(views.filter((id) => !kept.includes(id)));
+
+            for (const id of closed) sessions.close(id, saved(id));
+            sessions.open(opened, saved(opened));
+            setViews(kept);
+            setPanes((previous) => previous.filter((pane) => !closed.has(pane.document.id)));
+            setApiPanes((previous) => previous.filter((id) => !closed.has(id)));
+          }
+
+          if (!local && !document && documentId)
             setApiPanes((previous) =>
               previous.includes(documentId) ? previous : [...previous, documentId],
             );
@@ -219,12 +347,8 @@ function Workspace({
     },
   });
 
-  useEffect(() => {
-    if (pathname === "/")
-      void routerNavigate({ ...workspaceLink(initial.location), replace: true });
-  }, [pathname, routerNavigate, initial.location]);
-
-  const navigate = (next: WorkspaceLocation) => routerNavigate(workspaceLink(next));
+  const navigate = (next: WorkspaceLocation) =>
+    routerNavigate(next ? workspaceLink(next) : { to: "/services", search: servicesSearch });
 
   const openDialog = (
     next: "service" | "rename" | "document" | "api-service" | "api-page" | "api-delete",
@@ -260,6 +384,11 @@ function Workspace({
 
   return (
     <div className="isolate flex min-h-dvh flex-col bg-grey-10 text-ink">
+      <ScreenTitle
+        names={
+          missing ? ["Document not found"] : location ? [place.document, serviceName] : ["Services"]
+        }
+      />
       <a
         href="#workspace-content"
         onClick={(event) => {
@@ -270,159 +399,130 @@ function Workspace({
       >
         Skip to content
       </a>
-      <header className="flex min-h-14 flex-wrap items-center gap-3 bg-brand-dark px-4 py-2 text-14 font-semibold text-white sm:px-6">
-        <span
-          className="h-6 shrink-0 [&>svg]:h-full [&>svg]:w-auto"
-          aria-label="GovBB"
-          dangerouslySetInnerHTML={{ __html: logo }}
-        />
-        <Link
-          to="/services"
-          className="rounded-sm px-2 py-2 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-focus"
-        >
-          Services
-        </Link>
-        {service && (
-          <>
-            <span aria-hidden="true" className="text-blue-20">
-              /
-            </span>
-            <span className="min-w-0 max-w-100 truncate">{service.title}</span>
-          </>
-        )}
-        {!service && remote.data && (
-          <>
-            <span aria-hidden="true" className="text-blue-20">
-              /
-            </span>
-            <span className="min-w-0 max-w-100 truncate">{remote.data.service.title}</span>
-          </>
-        )}
-        <span className="ms-auto max-w-64 truncate text-14" title={email}>
-          {email}
-        </span>
-        <Button
-          className="text-white hover:text-white"
-          disabled={signingOut}
-          onClick={() => void signOut()}
-        >
-          {signingOut ? "Signing out…" : "Sign out"}
-        </Button>
-      </header>
-      {error && (
-        <div role="alert" className="border-s-4 border-error bg-white px-6 py-3 text-error">
-          {error}
-        </div>
-      )}
-      <div
-        className={
-          service || remote.data
-            ? "grid flex-1 grid-cols-[15rem_minmax(0,1fr)] max-lg:grid-cols-1"
-            : "flex flex-1 flex-col"
-        }
-      >
-        {!service && remote.data && location && (
-          <ServicePagesNav
-            serviceId={location.serviceId}
-            documents={remoteDocuments}
-            selectedId={remoteSelected?.id}
-            onAdd={() => openDialog("api-page")}
-            onDelete={() => openDialog("api-delete")}
+      <header>
+        <Bar.Root tone="dark" className="font-semibold">
+          <span
+            className="h-6 shrink-0 [&>svg]:h-full [&>svg]:w-auto"
+            aria-label="GovBB"
+            dangerouslySetInnerHTML={{ __html: logo }}
           />
+          <Link
+            to="/services"
+            search={servicesSearch}
+            className="rounded-sm px-2 py-2 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-focus"
+          >
+            Services
+          </Link>
+          {serviceName && (
+            <>
+              <span aria-hidden="true" className="text-blue-20">
+                /
+              </span>
+              <span className="min-w-0 max-w-100 truncate">{serviceName}</span>
+            </>
+          )}
+          {serviceName && (
+            <Sidebar.Toggle sidebar={sidebar} variant="inverse">
+              Pages
+            </Sidebar.Toggle>
+          )}
+          <Bar.Actions>
+            <Bar.Status className="max-w-64 truncate font-normal" title={email}>
+              {email}
+            </Bar.Status>
+            <Button variant="inverse" disabled={signingOut} onClick={() => void signOut()}>
+              {signingOut ? "Signing out…" : "Sign out"}
+            </Button>
+          </Bar.Actions>
+        </Bar.Root>
+      </header>
+      {/* The app's problems, all here under its header (Banner) */}
+      {notice && (
+        <Banner tone="error" layout="strip">
+          {notice}
+        </Banner>
+      )}
+      {error && (
+        <Banner tone="error" layout="strip">
+          {error}
+        </Banner>
+      )}
+      <div className="flex flex-1">
+        {service ? (
+          <ServiceNav
+            sidebar={sidebar}
+            serviceId={service.id}
+            rows={localServiceRows(service)}
+            selectedId={selected?.id}
+            stores={stores}
+            onAdd={() => openDialog("document")}
+            onRename={() => openDialog("rename")}
+          />
+        ) : (
+          location &&
+          !missing &&
+          (remote.data || remote.isPending) && (
+            // Drawn at once, with what the services list knows until the service's pages arrive
+            <ServiceNav
+              sidebar={sidebar}
+              serviceId={location.serviceId}
+              rows={remote.data ? remoteRows : listed ? listedServiceRows(listed) : []}
+              loading={!remote.data}
+              selectedId={location.documentId}
+              stores={stores}
+              onAdd={() => openDialog("api-page")}
+              onDelete={() => openDialog("api-delete")}
+              // The API refuses to delete a page with pages under it, so say so before the author confirms
+              deleteBlocked={
+                remoteSelected &&
+                remote.data?.pages.some((page) => page.parent_id === remoteSelected.id)
+                  ? "Delete or move the pages under this page first."
+                  : undefined
+              }
+            />
+          )
         )}
-        {service && (
-          <aside className="border-e border-line bg-white px-4 py-5 max-lg:border-e-0 max-lg:border-b">
-            <details open>
-              <summary className="cursor-pointer font-semibold">Service documents</summary>
-              <nav aria-label="Service documents" className="mt-4">
-                <h2 className="mb-2 text-14 font-semibold text-muted">Pages</h2>
-                <ul className="flex flex-col gap-1">
-                  {service.documents.flatMap((document) =>
-                    document.kind === "page"
-                      ? [
-                          <li key={document.id}>
-                            <Link
-                              to="/services/$serviceId/$documentId"
-                              params={{ serviceId: service.id, documentId: document.id }}
-                              aria-current={selected?.id === document.id ? "page" : undefined}
-                              className="block rounded-sm px-3 py-2 text-14 hover:bg-hover focus-visible:outline-2 focus-visible:outline-focus aria-[current=page]:bg-blue-10 aria-[current=page]:font-semibold"
-                            >
-                              <DocumentLabel
-                                document={document}
-                                store={
-                                  panes.find((pane) => pane.document.id === document.id)?.store
-                                }
-                              />
-                            </Link>
-                          </li>,
-                        ]
-                      : [],
-                  )}
-                </ul>
-                {!service.documents.some((document) => document.kind === "page") && (
-                  <p className="py-2 text-14 text-muted">
-                    Add an entry page to explain this service.
-                  </p>
-                )}
-                <div className="my-4 border-t border-line" />
-                {service.documents.flatMap((document) =>
-                  document.kind === "form"
-                    ? [
-                        <Link
-                          key={document.id}
-                          to="/services/$serviceId/$documentId"
-                          params={{ serviceId: service.id, documentId: document.id }}
-                          aria-current={selected?.id === document.id ? "page" : undefined}
-                          className="block rounded-sm px-3 py-2 text-14 hover:bg-hover focus-visible:outline-2 focus-visible:outline-focus aria-[current=page]:bg-blue-10 aria-[current=page]:font-semibold"
-                        >
-                          <DocumentLabel
-                            document={document}
-                            store={panes.find((pane) => pane.document.id === document.id)?.store}
-                          />
-                        </Link>,
-                      ]
-                    : [],
-                )}
-                <div className="mt-5 flex flex-wrap gap-2">
-                  <Button variant="secondary" onClick={() => openDialog("document")}>
-                    Add document
-                  </Button>
-                  <Button onClick={() => openDialog("rename")}>Rename service</Button>
-                </div>
-              </nav>
-            </details>
-          </aside>
-        )}
-        <main id="workspace-content" tabIndex={-1} className="min-w-0 outline-none">
+        <main id="workspace-content" tabIndex={-1} className="min-w-0 flex-1 outline-none">
           {missing && (
-            <section className="p-8">
-              <h1 className="text-28 font-semibold">Document not found</h1>
-              <p role="alert" className="my-3 text-muted">
-                This service or document is not in the content API or this browser's workspace.
-              </p>
-              <Link to="/services" className="text-interactive underline underline-offset-4">
-                Back to services
-              </Link>
-            </section>
+            <EmptyState
+              kind="not-found"
+              size="page"
+              title="Document not found"
+              description="It may have been deleted, or the address may be wrong."
+              actions={
+                <TextLink render={<Link to="/services" search={servicesSearch} />}>
+                  Back to services
+                </TextLink>
+              }
+            />
           )}
           {!service && !missing && location && remote.isPending && (
-            <p role="status" className="p-8 text-muted">
-              Loading service…
-            </p>
+            <LoadingState size="page" label="Loading service…" />
           )}
           {!service && !missing && remote.isError && (
-            <section className="p-8">
-              <p role="alert" className="mb-4">
-                We could not load this service. Check you are still signed in, then try again.
-              </p>
-              <Button variant="secondary" onClick={() => void remote.refetch()}>
-                Try again
-              </Button>
-            </section>
+            <EmptyState
+              kind="failed"
+              size="page"
+              title="We could not load this service"
+              description="Check you are still signed in, then try again."
+              actions={
+                <Button variant="secondary" onClick={() => void remote.refetch()}>
+                  Try again
+                </Button>
+              }
+            />
           )}
           {!location && (
             <section className="mx-auto w-full max-w-300 px-6 py-10">
-              <ServicesList api={api} onCreate={() => openDialog("api-service")} />
+              <ServicesList
+                api={api}
+                search={listSearch ?? {}}
+                onSearch={(search) => {
+                  setServicesSearch(search);
+                  void routerNavigate({ to: "/services", search, replace: true });
+                }}
+                onCreate={() => openDialog("api-service")}
+              />
               {index.services.length > 0 && (
                 <div className="mt-12 mb-4 flex flex-wrap items-center justify-between gap-3">
                   <h2 className="text-20 font-semibold">Drafts in this browser</h2>
@@ -438,7 +538,7 @@ function Workspace({
                       {...workspaceLink({ serviceId: item.id, documentId: item.documents[0]?.id })}
                       className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-sm px-3 py-2 hover:bg-tint"
                     >
-                      <span className="truncate text-15 text-ink">{item.title}</span>
+                      <span className="truncate text-14 font-semibold text-ink">{item.title}</span>
                       <span className="text-14 text-muted tabular-nums">
                         {item.documents.length}{" "}
                         {item.documents.length === 1 ? "document" : "documents"}
@@ -450,22 +550,30 @@ function Workspace({
             </section>
           )}
           {service && !selected && !missing && (
-            <section className="p-8">
-              <h1 className="text-28 font-semibold">{service.title}</h1>
-              <p className="my-3 text-muted">Choose a document or add one to this service.</p>
-              <Button variant="accent" onClick={() => openDialog("document")}>
-                Add document
-              </Button>
-            </section>
+            <EmptyState
+              size="page"
+              icon={<Files />}
+              title={service.title}
+              description="Choose a document or add one to this service."
+              actions={
+                <Button variant="accent" onClick={() => openDialog("document")}>
+                  Add document
+                </Button>
+              }
+            />
           )}
           {!service && remote.data && !location?.documentId && (
-            <section className="p-8">
-              <h1 className="text-28 font-semibold">{remote.data.service.title}</h1>
-              <p className="my-3 text-muted">Choose a document or add one to this service.</p>
-              <Button variant="accent" onClick={() => openDialog("api-page")}>
-                Add document
-              </Button>
-            </section>
+            <EmptyState
+              size="page"
+              icon={<Files />}
+              title={remote.data.service.title}
+              description="Choose a document or add one to this service."
+              actions={
+                <Button variant="accent" onClick={() => openDialog("api-page")}>
+                  Add document
+                </Button>
+              }
+            />
           )}
           {apiPanes.map((id) => (
             <section
@@ -476,7 +584,14 @@ function Workspace({
                 remoteDocuments.find((item) => item.id === id)?.title ?? "Page from the content API"
               }
             >
-              <RemotePagePane api={api} id={id} active={id === remoteSelected?.id} />
+              <EditorSessionProvider session={sessions.get(id)}>
+                <RemotePagePane
+                  api={api}
+                  id={id}
+                  active={id === remoteSelected?.id}
+                  onStore={trackApiStore}
+                />
+              </EditorSessionProvider>
             </section>
           ))}
           {panes.map((pane) => (
@@ -486,14 +601,16 @@ function Workspace({
               inert={pane.document.id !== selected?.id}
               aria-label={documentLabel(pane.document)}
             >
-              {pane.document.kind === "form" ? (
-                <WorkspaceFormEditor
-                  store={pane.store}
-                  active={pane.document.id === selected?.id}
-                />
-              ) : (
-                <PageDraftEditor store={pane.store} active={pane.document.id === selected?.id} />
-              )}
+              <EditorSessionProvider session={sessions.get(pane.document.id)}>
+                {pane.document.kind === "form" ? (
+                  <WorkspaceFormEditor
+                    store={pane.store}
+                    active={pane.document.id === selected?.id}
+                  />
+                ) : (
+                  <PageDraftEditor store={pane.store} active={pane.document.id === selected?.id} />
+                )}
+              </EditorSessionProvider>
             </section>
           ))}
         </main>
@@ -539,6 +656,8 @@ function Workspace({
             const deleted = remoteSelected.id;
             setDialog(undefined);
             setApiPanes((previous) => previous.filter((id) => id !== deleted));
+            setViews((previous) => previous.filter((id) => id !== deleted));
+            sessions.forget(deleted);
             navigate(
               deleted === location.serviceId
                 ? undefined

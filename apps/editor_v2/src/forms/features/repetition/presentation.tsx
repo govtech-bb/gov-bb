@@ -2,6 +2,10 @@ import { $getNearestNodeFromDOMNode, type LexicalEditor } from "lexical";
 import { Repeat } from "@phosphor-icons/react";
 import { useId } from "react";
 import { cn } from "../../../cn";
+import { Field } from "../../../ui/field";
+import { Input } from "../../../ui/input";
+import { govbbMarkerLabel, govbbRadio } from "../../../ui/govbb";
+import { Switch } from "../../../ui/switch";
 import { BoundsFields, SsbField } from "../../react/settings-controls";
 import { $fieldArrayDrawingOf } from "./queries";
 import {
@@ -125,8 +129,8 @@ export function RepeatEndPreview({ end, room }: { end: RepeatEnd; room?: boolean
           <p className="pt-1 pb-2 font-bold">{end.question}</p>
           {["Yes", "No"].map((label) => (
             <div key={label} className="flex items-start gap-4 pb-2">
-              <span className="size-(--form-marker) shrink-0 rounded-full border-2 border-ink bg-white" />
-              <span className="pt-[calc((var(--form-marker)_-_1.5em)/2)]">{label}</span>
+              <span className={govbbRadio} />
+              <span className={govbbMarkerLabel}>{label}</span>
             </div>
           ))}
         </>
@@ -156,22 +160,14 @@ export function RepeatSettings({
 
   return (
     <section className="mt-3 border-t border-line pt-3">
-      <button
-        type="button"
-        role="switch"
-        aria-checked={!!value}
-        onClick={() => onChange(value ? undefined : { ...DEFAULT_REPEATABLE })}
-        className="flex h-8 w-full items-center justify-between text-14 leading-5 font-semibold text-ink"
-      >
-        Repeat this page
-        <span
-          data-on={value ? "" : undefined}
-          className="relative h-4.5 w-7.5 shrink-0 rounded-full bg-grey-60 data-on:bg-interactive"
-        >
-          <span className="absolute top-0.5 left-0.5 size-3.5 rounded-full bg-white in-data-on:left-3.5" />
-        </span>
-      </button>
-      <p className="mt-1.5 text-12 leading-4 text-muted">
+      <Switch
+        label="Repeat this page"
+        checked={!!value}
+        onCheckedChange={(on) => onChange(on ? { ...DEFAULT_REPEATABLE } : undefined)}
+        aria-describedby={`${id}-hint`}
+        className="h-8 justify-between leading-5 font-semibold"
+      />
+      <p id={`${id}-hint`} className="mt-1.5 text-12 leading-4 text-muted">
         People fill in this page more than once, such as once for each child.
       </p>
       {value && (
@@ -182,22 +178,19 @@ export function RepeatSettings({
             max={value.max}
             onChange={(bounds) => onChange({ ...value, ...bounds })}
           />
-          <label
-            htmlFor={id}
-            className="mt-3 mb-1.5 block text-14 leading-5 font-semibold text-ink"
+          <Field
+            size="sm"
+            label="Entry label"
+            hint="Numbers the entries after the first, like ‘Child 2’, and goes into the question."
+            className="mt-3"
           >
-            Entry label
-          </label>
-          <input
-            id={id}
-            defaultValue={value.instanceLabel ?? ""}
-            placeholder="For example, Child"
-            onChange={(e) => onChange(withText(value, "instanceLabel", e.target.value))}
-            className="h-9 w-full rounded-sm bg-white px-2.5 text-14 text-ink shadow-input outline-none placeholder:text-placeholder hover:shadow-input-hover focus:shadow-input-focus max-sm:text-16"
-          />
-          <p className="mt-2 text-12 leading-4 text-muted">
-            Numbers the entries after the first, like ‘Child 2’, and goes into the question.
-          </p>
+            <Input
+              size="sm"
+              defaultValue={value.instanceLabel ?? ""}
+              placeholder="For example, Child"
+              onChange={(e) => onChange(withText(value, "instanceLabel", e.target.value))}
+            />
+          </Field>
           {value.min < value.max && (
             <div className="-mx-3.5 mt-2">
               <SsbField

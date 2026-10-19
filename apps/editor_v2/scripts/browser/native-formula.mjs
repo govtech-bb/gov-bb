@@ -2,6 +2,7 @@ import { authenticatedPage } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "./playwright.mjs";
+import { openDemoForm } from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -130,7 +131,7 @@ async function noOverflow() {
 }
 
 try {
-  await page.goto(process.argv[2] ?? "http://localhost:3015/");
+  await openDemoForm(page, process.argv[2] ?? "http://localhost:3015/");
   await root.waitFor();
   await importFixture();
   const baseline = await exported();
@@ -229,7 +230,10 @@ try {
     op: "multiply",
     args: [{ answer: "amount" }, 0.25],
   });
-  await page.locator('[role="status"][title="Saved"]:visible').waitFor();
+  await page
+    .locator("[data-document-bar]:visible")
+    .getByText("Saved in this browser", { exact: true })
+    .waitFor();
   await page.reload();
   await root.waitFor();
   assert.deepEqual(await exported(), mentioned, "formula mentions and fractions survive reload");

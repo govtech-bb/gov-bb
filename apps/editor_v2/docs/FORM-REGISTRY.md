@@ -62,7 +62,7 @@ The preview reads the same native declaration and resolves its renderer through 
 
 ## Persistence and evidence
 
-Changing or removing a registry entry does not alter previously inserted questions. The editor stores their native metadata and text through the existing Markdown draft channel. The [demo asset](../src/presets/form-registry/demo.ts) is shared by fresh drafts and complete-form creation.
+Changing or removing a registry entry does not alter previously inserted questions. The editor stores their native metadata and text through the existing Markdown draft channel. The [demo asset](../src/presets/form-registry/demo.ts) supplies complete-form creation; a new browser starts without a form.
 
 Historical Markdown preset profiles and SSB provenance remain frozen compatibility data in `forms/source/legacy` and `forms/core/legacy-provenance-v1.json`. They are separate from current native registry declarations and must not be regenerated when catalog defaults change.
 

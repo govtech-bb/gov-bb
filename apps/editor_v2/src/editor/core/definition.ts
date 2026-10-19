@@ -24,6 +24,9 @@ export function defineEditor(modules: readonly EditorModule[], namespace = "modu
   const owners = modules.flatMap((module) => (module.historyOwner ? [module.historyOwner] : []));
 
   if (owners.length > 1) throw new Error(`Multiple history owners: ${owners.join(", ")}`);
+  const turnInto = modules.flatMap((module) => (module.turnInto ? [module.turnInto] : []));
+
+  if (turnInto.length > 1) throw new Error("Multiple Turn into owners");
   const nodes = new Map<string, DocumentNodeDefinition>();
 
   for (const module of modules)
@@ -138,6 +141,7 @@ export function defineEditor(modules: readonly EditorModule[], namespace = "modu
     slots,
     browserExtensions: Object.freeze(modules.flatMap((module) => module.browserExtensions ?? [])),
     theme: resolvedTheme,
+    turnInto: turnInto[0],
     $initialize: initializers[0],
     $normalizeInitial: () => {
       for (const normalize of normalizers) normalize();

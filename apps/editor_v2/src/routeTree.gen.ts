@@ -13,6 +13,8 @@ import { Route as WorkspaceRouteImport } from './routes/_workspace'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as WorkspaceIndexRouteImport } from './routes/_workspace.index'
 import { Route as WorkspaceServicesRouteImport } from './routes/_workspace.services'
+import { Route as PrototypesComponentsRouteImport } from './routes/prototypes.components'
+import { Route as PrototypesTridentLoaderRouteImport } from './routes/prototypes.trident-loader'
 import { Route as WorkspaceServicesServiceIdRouteImport } from './routes/_workspace.services.$serviceId'
 import { Route as WorkspaceServicesServiceIdDocumentIdRouteImport } from './routes/_workspace.services.$serviceId.$documentId'
 
@@ -35,6 +37,16 @@ const WorkspaceServicesRoute = WorkspaceServicesRouteImport.update({
   path: '/services',
   getParentRoute: () => WorkspaceRoute,
 } as any)
+const PrototypesComponentsRoute = PrototypesComponentsRouteImport.update({
+  id: '/prototypes/components',
+  path: '/prototypes/components',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrototypesTridentLoaderRoute = PrototypesTridentLoaderRouteImport.update({
+  id: '/prototypes/trident-loader',
+  path: '/prototypes/trident-loader',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WorkspaceServicesServiceIdRoute =
   WorkspaceServicesServiceIdRouteImport.update({
     id: '/$serviceId',
@@ -52,12 +64,16 @@ export interface FileRoutesByFullPath {
   '/': typeof WorkspaceIndexRoute
   '/auth': typeof AuthRoute
   '/services': typeof WorkspaceServicesRouteWithChildren
+  '/prototypes/components': typeof PrototypesComponentsRoute
+  '/prototypes/trident-loader': typeof PrototypesTridentLoaderRoute
   '/services/$serviceId': typeof WorkspaceServicesServiceIdRouteWithChildren
   '/services/$serviceId/$documentId': typeof WorkspaceServicesServiceIdDocumentIdRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/services': typeof WorkspaceServicesRouteWithChildren
+  '/prototypes/components': typeof PrototypesComponentsRoute
+  '/prototypes/trident-loader': typeof PrototypesTridentLoaderRoute
   '/': typeof WorkspaceIndexRoute
   '/services/$serviceId': typeof WorkspaceServicesServiceIdRouteWithChildren
   '/services/$serviceId/$documentId': typeof WorkspaceServicesServiceIdDocumentIdRoute
@@ -67,6 +83,8 @@ export interface FileRoutesById {
   '/_workspace': typeof WorkspaceRouteWithChildren
   '/auth': typeof AuthRoute
   '/_workspace/services': typeof WorkspaceServicesRouteWithChildren
+  '/prototypes/components': typeof PrototypesComponentsRoute
+  '/prototypes/trident-loader': typeof PrototypesTridentLoaderRoute
   '/_workspace/': typeof WorkspaceIndexRoute
   '/_workspace/services/$serviceId': typeof WorkspaceServicesServiceIdRouteWithChildren
   '/_workspace/services/$serviceId/$documentId': typeof WorkspaceServicesServiceIdDocumentIdRoute
@@ -77,12 +95,16 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/services'
+    | '/prototypes/components'
+    | '/prototypes/trident-loader'
     | '/services/$serviceId'
     | '/services/$serviceId/$documentId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
     | '/services'
+    | '/prototypes/components'
+    | '/prototypes/trident-loader'
     | '/'
     | '/services/$serviceId'
     | '/services/$serviceId/$documentId'
@@ -91,6 +113,8 @@ export interface FileRouteTypes {
     | '/_workspace'
     | '/auth'
     | '/_workspace/services'
+    | '/prototypes/components'
+    | '/prototypes/trident-loader'
     | '/_workspace/'
     | '/_workspace/services/$serviceId'
     | '/_workspace/services/$serviceId/$documentId'
@@ -99,6 +123,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   WorkspaceRoute: typeof WorkspaceRouteWithChildren
   AuthRoute: typeof AuthRoute
+  PrototypesComponentsRoute: typeof PrototypesComponentsRoute
+  PrototypesTridentLoaderRoute: typeof PrototypesTridentLoaderRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -130,6 +156,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/services'
       preLoaderRoute: typeof WorkspaceServicesRouteImport
       parentRoute: typeof WorkspaceRoute
+    }
+    '/prototypes/components': {
+      id: '/prototypes/components'
+      path: '/prototypes/components'
+      fullPath: '/prototypes/components'
+      preLoaderRoute: typeof PrototypesComponentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prototypes/trident-loader': {
+      id: '/prototypes/trident-loader'
+      path: '/prototypes/trident-loader'
+      fullPath: '/prototypes/trident-loader'
+      preLoaderRoute: typeof PrototypesTridentLoaderRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_workspace/services/$serviceId': {
       id: '/_workspace/services/$serviceId'
@@ -191,6 +231,8 @@ const WorkspaceRouteWithChildren = WorkspaceRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   WorkspaceRoute: WorkspaceRouteWithChildren,
   AuthRoute: AuthRoute,
+  PrototypesComponentsRoute: PrototypesComponentsRoute,
+  PrototypesTridentLoaderRoute: PrototypesTridentLoaderRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

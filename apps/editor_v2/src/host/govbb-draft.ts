@@ -1,7 +1,6 @@
 import { DraftStore, initialDraft } from "../persistence/draft-store";
 import type { DraftKeys, DraftStorage } from "../persistence/types";
-import { $demo } from "../presets/demo";
-import { govbbFormCodec, govbbFormRuntime } from "../presets/govbb-form";
+import { govbbFormCodec } from "../presets/govbb-form";
 
 export const MARKDOWN_KEY = "govbb-editor:draft:markdown:v2";
 
@@ -30,10 +29,15 @@ export function createGovbbDraft(
   storage: DraftStorage = browserDraftStorage,
   keys: DraftKeys = govbbDraftKeys,
 ) {
-  // Access storage inside its methods so a blocked browser opens the recovery UI.
+  // Access storage inside its methods so a blocked browser opens the recovery UI. A form opens only from what the
+  // browser holds: with nothing stored, it opens for recovery rather than as a form the author never made.
   const initial = initialDraft(
     storage,
-    () => govbbFormRuntime.prepare(undefined, $demo, "legacy"),
+    () => {
+      throw new Error(
+        "This form’s draft is no longer in this browser. Open a copy of its source to restore it.",
+      );
+    },
     govbbFormCodec,
     keys,
   );

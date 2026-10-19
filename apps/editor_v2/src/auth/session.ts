@@ -61,6 +61,27 @@ export interface EditorAuth {
   signOut(): Promise<AuthResult<void>>;
 }
 
+/**
+ * Admits the workspace. Entering it asks the API; moving between its own screens trusts the session it was entered
+ * with until that expires, since App asks the API again then and whenever the window regains focus. Otherwise every
+ * click between screens waits on the API, and one failed request mid-session sends the author to the sign-in page.
+ */
+export function workspaceAdmission(now: () => number) {
+  let admitted: EmployeeSession | undefined;
+
+  return async (
+    cause: "enter" | "stay",
+    check: () => Promise<AuthResult<EmployeeSession | null>>,
+  ): Promise<AuthResult<EmployeeSession | null>> => {
+    if (cause === "stay" && admitted && admitted.expiresAt > now())
+      return { ok: true, value: admitted };
+    const result = await check();
+    admitted = result.ok && result.value ? result.value : undefined;
+
+    return result;
+  };
+}
+
 /** Parse the public API origin once at browser/router composition. */
 export function parseApiOrigin(value: string | undefined, production: boolean): AuthResult<string> {
   const candidate = value ?? (production ? "" : "http://localhost:3020");

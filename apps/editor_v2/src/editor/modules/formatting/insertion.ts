@@ -16,6 +16,9 @@ export type ContentEntry = {
   icon: ReactNode;
   description: string;
   keywords?: string;
+  aliases?: readonly string[];
+  /** The Markdown that makes the block at the start of a line, shown beside its title in the menus. */
+  markdown?: string;
   sample?: { label?: string; hint?: string; options?: string[]; text?: string; items?: string[] };
   shortcuts?: readonly string[];
   renderPreview?: (sample: NonNullable<ContentEntry["sample"]>) => ReactNode;

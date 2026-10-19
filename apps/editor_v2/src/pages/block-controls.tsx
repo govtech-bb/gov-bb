@@ -1,4 +1,3 @@
-import { Popover } from "@base-ui/react/popover";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
 import {
@@ -22,8 +21,10 @@ import {
   $isRootNode,
   $isTextNode,
   $setSelection,
+  COMMAND_PRIORITY_LOW,
   HISTORY_PUSH_TAG,
   INDENT_CONTENT_COMMAND,
+  KEY_DOWN_COMMAND,
   OUTDENT_CONTENT_COMMAND,
   type BaseSelection,
   type LexicalNode,
@@ -46,27 +47,44 @@ import { useEffect, useId, useRef, useState } from "react";
 import {
   $availableActions,
   $executeAction,
-  matchesAction,
+  rankActions,
   type EditorAction,
 } from "../editor/core/actions";
-import { useEditorDefinition } from "../editor/react/composer";
-import { Button, blockHandle } from "../ui/button";
-import { compactInput } from "../ui/input";
-import { panel } from "../ui/select";
+import {
+  BlockRail,
+  DropLine,
+  firstLineMiddle,
+  menuKey,
+  RailButton,
+  railGrip,
+  useBlockDrag,
+  useRailTarget,
+} from "../editor/react/block-rail";
+import { useEditorDefinition, useLinkPages } from "../editor/react/composer";
+import { cn } from "../cn";
+import { altKey } from "../editor/react/shortcut";
+import { turnIntoOptions } from "../editor/react/turn-into";
+import { Button } from "../ui/button";
+import { Field } from "../ui/field";
+import { Input } from "../ui/input";
+import { Kbd } from "../ui/kbd";
+import { LinkPicker } from "../ui/link-picker";
+import { NativeSelect } from "../ui/native-select";
+import { Popover } from "../ui/popover";
+import { group, groupLabel, listFooter } from "../ui/surface";
 import { Tip } from "../ui/tooltip";
-import { PageActionList, PageMenuRow } from "./action-menu";
-import { $pageInsertionTarget } from "./insertion";
+import { TurnIntoMenu } from "../ui/turn-into";
+import { actionList, PageActionList, PageMenuRow } from "./action-menu";
+import { $writeAtEnd } from "./block-exit";
+import { $blockLines, $pageChoices, $turnPageLines } from "./turn-into";
+import { $rootBlock, type PagePlace } from "./insertion";
+import { startWriting } from "./slash-menu";
 import { PageMetadataNode } from "./metadata";
 import { PageComponentNode } from "./nodes";
 import { $nearestPageList, $setPageListType } from "./modules/lists";
+import { normalizeLinkUrl } from "../editor/modules/links/url";
 import { safePageUrl } from "./modules/text";
-import { usePageBlockDrag } from "./block-drag";
-
-function $rootBlock(node: LexicalNode | null): LexicalNode | null {
-  while (node?.getParent() && !$isRootNode(node.getParent())) node = node.getParent();
-
-  return node && !$isRootNode(node) && !(node instanceof PageMetadataNode) ? node : null;
-}
+import { $dropPageBlock, $pageDropAt, PAGE_BLOCK_DRAG } from "./block-drag";
 
 function $validPoint(point: PointType) {
   const node = $getNodeByKey(point.key);
@@ -102,13 +120,13 @@ function $pageBlockDescendant(key: string | null, block: LexicalNode) {
   return node?.isAttached() && $rootBlock(node)?.is(block) ? node : null;
 }
 
-type Rail = { key: string; top: number };
-
 type OpenMenu = {
   kind: "insert" | "block";
   anchor: HTMLElement;
   key: string | null;
   contextKey: string | null;
+  /** Where the insert menu's block goes beside its block. */
+  place: PagePlace;
   selection: BaseSelection | null;
 };
 
@@ -120,53 +138,49 @@ export function PageBlockControls({ anchor, hintId }: { anchor: HTMLElement; hin
 
 function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId: string }) {
   const [editor] = useLexicalComposerContext();
-  const drag = usePageBlockDrag(anchor);
-  const [rail, setRail] = useState<Rail | null>(null);
   const [empty, setEmpty] = useState(false);
   const [menu, setMenu] = useState<OpenMenu | null>(null);
-  const hovered = useRef<string | null>(null);
-  const hoveredContext = useRef<string | null>(null);
   const caret = useRef<string | null>(null);
   const savedSelection = useRef<BaseSelection | null>(null);
+  const grip = useRef<HTMLButtonElement>(null);
+  // Add content opens the insert menu at the page's end; the rail's Insert, at its block
+  const addContent = useId();
+  const insertOpen = menu?.kind === "insert" && menu.anchor.id !== addContent;
+  // The block menu came from ⌘/: closing it lets the pointer lead the rail again
+  const byKeyboard = useRef(false);
+
+  const { target, pin, release } = useRailTarget(anchor, {
+    // Over the gutter or the rail, the rail stays with its block
+    $blockAt: (element) =>
+      editor.getRootElement()?.contains(element)
+        ? ($rootBlock($getNearestNodeFromDOMNode(element))?.getKey() ?? null)
+        : undefined,
+    // The caret's block, kept while the selection is somewhere else for a moment
+    $caretBlock: () => {
+      const selection = $getSelection();
+      const block = $isRangeSelection(selection) ? $rootBlock(selection.anchor.getNode()) : null;
+
+      if (block) caret.current = block.getKey();
+
+      return caret.current && $getNodeByKey(caret.current)?.isAttached() ? caret.current : null;
+    },
+    $place: (key) => firstLineMiddle(editor, anchor, key),
+  });
+
+  const drag = useBlockDrag(anchor, {
+    type: PAGE_BLOCK_DRAG,
+    $at: (key, point) => $pageDropAt(editor, anchor, key, point),
+    $drop: $dropPageBlock,
+    onEnd: release,
+  });
 
   useEffect(() => {
-    const measure = () => {
-      const key = hovered.current ?? caret.current;
-      const element = key && editor.getElementByKey(key);
-      let next: Rail | null = null;
-
-      if (element && element.getClientRects().length) {
-        const style = getComputedStyle(element);
-        const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2;
-
-        next = {
-          key,
-          top:
-            element.getBoundingClientRect().top -
-            anchor.getBoundingClientRect().top +
-            parseFloat(style.borderTopWidth) +
-            parseFloat(style.paddingTop) +
-            lineHeight / 2,
-        };
-      }
-
-      setRail((previous) =>
-        previous?.key === next?.key && previous?.top === next?.top ? previous : next,
-      );
-    };
-
-    const update = () => {
+    const update = () =>
       editor.getEditorState().read(
         () => {
           const selection = $getSelection();
 
           if (selection) savedSelection.current = selection.clone();
-
-          const block = $isRangeSelection(selection)
-            ? $rootBlock(selection.anchor.getNode())
-            : null;
-
-          if (block) caret.current = block.getKey();
 
           const content = $getRoot()
             .getChildren()
@@ -180,121 +194,158 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
         },
         { editor },
       );
-      measure();
-    };
 
-    const onMove = (event: PointerEvent) => {
-      const target = event.target;
-
-      if (!(target instanceof Node) || !editor.getRootElement()?.contains(target)) return;
-      editor.getEditorState().read(
-        () => {
-          const node = $getNearestNodeFromDOMNode(target);
-          const block = $rootBlock(node);
-          const previous = hoveredContext.current ? $getNodeByKey(hoveredContext.current) : null;
-          hovered.current = block?.getKey() ?? null;
-
-          // Crossing ancestor padding to the root rail must retain the nested settings target.
-          if (!node || !previous?.isAttached() || !node.isParentOf(previous))
-            hoveredContext.current = block ? (node?.getKey() ?? null) : null;
-        },
-        { editor },
-      );
-      measure();
-    };
-
-    const onLeave = () => {
-      hovered.current = null;
-      hoveredContext.current = null;
-      measure();
-    };
-
-    const observer = new ResizeObserver(measure);
-    observer.observe(anchor);
-    anchor.addEventListener("pointermove", onMove);
-    anchor.addEventListener("pointerleave", onLeave);
-    window.addEventListener("resize", measure);
-    const unregister = editor.registerUpdateListener(update);
     update();
 
-    return () => {
-      unregister();
-      observer.disconnect();
-      anchor.removeEventListener("pointermove", onMove);
-      anchor.removeEventListener("pointerleave", onLeave);
-      window.removeEventListener("resize", measure);
-    };
-  }, [editor, anchor]);
+    return editor.registerUpdateListener(update);
+  }, [editor]);
 
-  const open = (kind: OpenMenu["kind"], element: HTMLElement, key: string | null) => {
+  const open = (
+    kind: OpenMenu["kind"],
+    element: HTMLElement,
+    key: string | null,
+    contextKey: string | null = null,
+    place: PagePlace = "below",
+  ) => {
     if (!editor.isEditable()) return;
-    let target = key;
-
-    if (kind === "insert" && key === caret.current) {
-      editor.getEditorState().read(
-        () => {
-          target = $pageInsertionTarget()?.getKey() ?? key;
-        },
-        { editor },
-      );
-    }
-
     setMenu({
       kind,
       anchor: element,
-      key: target,
-      contextKey: kind === "block" ? hoveredContext.current : null,
+      key,
+      contextKey,
+      place,
       selection: savedSelection.current?.clone() ?? null,
     });
   };
 
+  // ⌘/ opens the caret's block menu, as in the form editor
+  useEffect(
+    () =>
+      editor.registerCommand(
+        KEY_DOWN_COMMAND,
+        (event) => {
+          if (
+            !editor.isEditable() ||
+            !(event.metaKey || event.ctrlKey) ||
+            event.altKey ||
+            event.key !== "/"
+          )
+            return false;
+          const key = caret.current;
+
+          if (!key || !grip.current) return false;
+          event.preventDefault();
+          byKeyboard.current = true;
+          pin(key);
+          open("block", grip.current, key);
+
+          return true;
+        },
+        COMMAND_PRIORITY_LOW,
+      ),
+    // open reads only refs and state setters
+    [editor, pin],
+  );
+
+  const close = () => {
+    setMenu(null);
+
+    if (!byKeyboard.current) return;
+    byKeyboard.current = false;
+    release();
+  };
+
   return (
     <>
-      {drag.hit && <div className="page-drop-line" style={drag.hit.line} aria-hidden="true" />}
-      <p id={hintId} className={empty ? "page-empty-prompt" : "sr-only"}>
-        Start writing, or type / to add content.
+      <DropLine line={drag.line} />
+      {/* An empty page shrinks to its first line (see PageEditor) */}
+      <p id={hintId} data-empty-prompt={empty ? "" : undefined} className="sr-only">
+        {startWriting}
       </p>
-      {rail && (
-        <div className="page-block-rail" style={{ top: rail.top }}>
-          <Tip content="Insert page content">
-            <button
-              type="button"
-              className={`${blockHandle} page-rail-button w-6 [&>svg]:size-4.5`}
+      {target && (
+        // page-block-rail: the tests' hook
+        <BlockRail target={target} className="page-block-rail w-(--page-gutter) pe-2 max-md:pe-1">
+          <Tip
+            hint
+            content={
+              <>
+                <em>Click</em> to add content below
+                <br />
+                <em>{altKey}-click</em> to add it above
+              </>
+            }
+          >
+            <RailButton
               aria-label="Insert page content"
+              aria-haspopup="dialog"
+              aria-expanded={insertOpen}
+              className="[&>svg]:size-4.5"
               onMouseDown={(event) => event.preventDefault()}
-              onClick={(event) => open("insert", event.currentTarget, rail.key)}
+              onClick={(event) =>
+                open(
+                  "insert",
+                  event.currentTarget,
+                  target.key,
+                  null,
+                  event.altKey ? "above" : "below",
+                )
+              }
             >
               <Plus />
-            </button>
+            </RailButton>
           </Tip>
-          <Tip content="Drag to move, or click for block options">
-            <button
-              type="button"
-              className={`${blockHandle} page-rail-button page-drag-handle w-6 [&>svg]:w-4.25`}
+          <Tip
+            hint
+            content={
+              <>
+                <em>Drag</em> to move
+                <br />
+                <em>Click</em> or <Kbd>{menuKey}</Kbd> for block options
+              </>
+            }
+          >
+            <RailButton
+              ref={grip}
               aria-label="Block options"
+              aria-haspopup="dialog"
+              aria-expanded={menu?.kind === "block"}
               draggable
+              className={railGrip}
               onDragStart={(event) => {
                 setMenu(null);
-                drag.start(event, rail.key);
+                drag.start(event, target.key);
               }}
-              onDragEnd={drag.finish}
-              onClick={(event) => open("block", event.currentTarget, rail.key)}
+              onClick={(event) => open("block", event.currentTarget, target.key, target.context)}
             >
               <DotsSixVertical />
-            </button>
+            </RailButton>
           </Tip>
-        </div>
+        </BlockRail>
       )}
+      {/* Below the last block, a click goes on writing at the end of the page */}
+      <div
+        aria-hidden="true"
+        className="h-6 cursor-text"
+        onMouseDown={(event) => {
+          if (event.button !== 0 || !editor.isEditable()) return;
+          event.preventDefault();
+          editor.update($writeAtEnd);
+          editor.focus();
+        }}
+      />
       <Button
-        className="page-add-content"
+        id={addContent}
+        aria-haspopup="dialog"
+        aria-expanded={menu?.kind === "insert" && !insertOpen}
+        className="font-normal"
         icon={<Plus />}
         onMouseDown={(event) => event.preventDefault()}
         onClick={(event) => open("insert", event.currentTarget, null)}
       >
         Add content
       </Button>
-      {menu?.kind === "insert" && <PageInsertMenu menu={menu} onClose={() => setMenu(null)} />}
-      {menu?.kind === "block" && <PageBlockMenu menu={menu} onClose={() => setMenu(null)} />}
+      {menu?.kind === "insert" && <PageInsertMenu menu={menu} onClose={close} />}
+      {menu?.kind === "block" && <PageBlockMenu menu={menu} onClose={close} />}
     </>
   );
 }
@@ -313,8 +364,9 @@ function PageInsertMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void
       const target = menu.key ? $getNodeByKey(menu.key) : $getRoot().getLastChild();
 
       return target
-        ? $availableActions(editor, definition, { targetKey: target.getKey() }).filter((action) =>
-            matchesAction(action, query),
+        ? rankActions(
+            query,
+            $availableActions(editor, definition, { targetKey: target.getKey(), mode: menu.place }),
           )
         : [];
     },
@@ -339,6 +391,7 @@ function PageInsertMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void
 
         const result = $executeAction(editor, definition, action.id, {
           targetKey: target.getKey(),
+          mode: menu.place,
         });
 
         if (result.executed) {
@@ -353,67 +406,69 @@ function PageInsertMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void
 
   return (
     <Popover.Root open onOpenChange={(value) => !value && onClose()}>
-      <Popover.Portal>
-        <Popover.Positioner
-          anchor={menu.anchor}
-          side="bottom"
-          align="start"
-          sideOffset={6}
-          className="z-50 outline-none"
+      <Popover.Content
+        aria-label="Insert page content"
+        anchor={menu.anchor}
+        side="bottom"
+        align="start"
+        finalFocus={() => editor.getRootElement()}
+        // Room for every block a page offers before a search, as far as the screen allows
+        className="page-insert-menu flex w-[min(21rem,calc(100vw-2rem))] flex-col overflow-hidden p-0 text-14"
+      >
+        <label className="mx-1.5 mt-1.5 flex items-center gap-2.5 border-b border-line px-2 pt-2.5 pb-3.5 text-muted [&>svg]:size-4 [&>svg]:shrink-0">
+          <MagnifyingGlass aria-hidden="true" />
+          <input
+            role="combobox"
+            aria-label="Search page content"
+            placeholder="Search content…"
+            value={query}
+            aria-expanded
+            aria-controls={`${ids}-list`}
+            aria-activedescendant={selected ? `${ids}-${index}` : undefined}
+            className="w-full min-w-0 text-16 text-ink outline-offset-4"
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setIndex(0);
+              setError(undefined);
+            }}
+            onKeyDown={(event) => {
+              if ((event.key === "ArrowDown" || event.key === "ArrowUp") && actions.length) {
+                event.preventDefault();
+                setIndex(
+                  (current) =>
+                    (current + (event.key === "ArrowDown" ? 1 : -1) + actions.length) %
+                    actions.length,
+                );
+              } else if (event.key === "Enter" && selected) {
+                event.preventDefault();
+                insert(selected);
+              }
+            }}
+          />
+        </label>
+        <div
+          ref={list}
+          id={`${ids}-list`}
+          className={cn(actionList, "max-h-[34rem] min-h-0")}
+          role="listbox"
+          aria-label="Insert page content"
         >
-          <Popover.Popup
-            className={`page-insert-menu ${panel}`}
-            finalFocus={() => editor.getRootElement()}
-          >
-            <label className="page-menu-search">
-              <MagnifyingGlass aria-hidden="true" />
-              <input
-                role="combobox"
-                aria-label="Search page content"
-                placeholder="Search content…"
-                value={query}
-                aria-expanded
-                aria-controls={`${ids}-list`}
-                aria-activedescendant={selected ? `${ids}-${index}` : undefined}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setIndex(0);
-                  setError(undefined);
-                }}
-                onKeyDown={(event) => {
-                  if ((event.key === "ArrowDown" || event.key === "ArrowUp") && actions.length) {
-                    event.preventDefault();
-                    setIndex(
-                      (current) =>
-                        (current + (event.key === "ArrowDown" ? 1 : -1) + actions.length) %
-                        actions.length,
-                    );
-                  } else if (event.key === "Enter" && selected) {
-                    event.preventDefault();
-                    insert(selected);
-                  }
-                }}
-              />
-            </label>
-            <div
-              ref={list}
-              id={`${ids}-list`}
-              className="page-action-list"
-              role="listbox"
-              aria-label="Insert page content"
-            >
-              <PageActionList
-                actions={actions}
-                selectedIndex={index}
-                onHighlight={setIndex}
-                onSelect={insert}
-                optionId={(i) => `${ids}-${i}`}
-                error={error}
-              />
-            </div>
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
+          <PageActionList
+            actions={actions}
+            searching={!!query.trim()}
+            selectedIndex={index}
+            onHighlight={setIndex}
+            onSelect={insert}
+            optionId={(i) => `${ids}-${i}`}
+            error={error}
+          />
+        </div>
+        {selected?.description && (
+          <p className={listFooter} aria-hidden="true">
+            {selected.description}
+          </p>
+        )}
+      </Popover.Content>
     </Popover.Root>
   );
 }
@@ -437,6 +492,8 @@ function PageBlockMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void 
       let component: PageComponentNode | null = null;
       const list = $nearestPageList(node);
       let table = $isTableNode(block);
+      // Turn into takes a whole text block: its line, a quote's lines or every item in a list
+      const lines = block instanceof PageComponentNode ? null : $blockLines(block);
 
       while (node && !$isRootNode(node)) {
         if (!component && node instanceof PageComponentNode) component = node;
@@ -451,6 +508,7 @@ function PageBlockMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void 
         up:
           !!block.getPreviousSibling() && !(block.getPreviousSibling() instanceof PageMetadataNode),
         down: !!block.getNextSibling(),
+        turnInto: lines?.length ? $pageChoices(lines) : null,
         component: component
           ? {
               key: component.getKey(),
@@ -510,201 +568,208 @@ function PageBlockMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void 
 
   return (
     <Popover.Root open onOpenChange={(value) => !value && onClose()}>
-      <Popover.Portal>
-        <Popover.Positioner
-          anchor={menu.anchor}
-          side="bottom"
-          align="start"
-          sideOffset={6}
-          className="z-50 outline-none"
-        >
-          <Popover.Popup
-            className={`page-block-menu ${panel}`}
-            finalFocus={() => editor.getRootElement()}
+      <Popover.Content
+        aria-label="Block options"
+        anchor={menu.anchor}
+        side="bottom"
+        align="start"
+        finalFocus={() => editor.getRootElement()}
+        className="page-block-menu max-h-[min(38rem,80dvh,var(--available-height))] w-[min(21rem,calc(100vw-2rem))] p-0 py-1 text-14"
+      >
+        <div className={groupLabel}>Block options</div>
+        {error && (
+          <p className="m-2 text-error" role="alert">
+            {error}
+          </p>
+        )}
+        {model.component && (
+          <ComponentSettings
+            component={model.component}
+            onChange={(patch) =>
+              change((block) => {
+                const node = $pageBlockDescendant(model.component!.key, block);
+
+                if (node instanceof PageComponentNode)
+                  node.setAttributes({ ...node.getAttributes(), ...patch });
+              }, false)
+            }
+          />
+        )}
+        {model.component &&
+          (model.component.kind === "action" || model.component.kind === "actions") && (
+            <PageMenuRow
+              icon={<Plus />}
+              onClick={() =>
+                change((block) => {
+                  const node = $pageBlockDescendant(model.component!.key, block);
+
+                  if (!(node instanceof PageComponentNode)) return;
+
+                  const button = new PageComponentNode("action", {
+                    href: "#",
+                    variant: "secondary",
+                  }).append($createTextNode("Get help"));
+
+                  if (node.getKind() === "actions") node.append(button);
+                  else node.insertAfter(button);
+                  button.selectStart();
+                })
+              }
+            >
+              Add another button
+            </PageMenuRow>
+          )}
+        {model.turnInto && (
+          <div className={group}>
+            <TurnIntoMenu
+              value={model.turnInto.value}
+              options={turnIntoOptions(model.turnInto)}
+              onValueChange={(value) =>
+                change((block) => {
+                  const lines = $blockLines(block);
+
+                  if (lines) $turnPageLines(lines, value);
+                })
+              }
+            />
+          </div>
+        )}
+        {model.table && (
+          <div className={group}>
+            <PageMenuRow
+              icon={<Table />}
+              onClick={() =>
+                table(() => {
+                  $insertTableRowAtSelection(true);
+                })
+              }
+            >
+              Add row
+            </PageMenuRow>
+            <PageMenuRow
+              icon={<Table />}
+              onClick={() =>
+                table(() => {
+                  $insertTableColumnAtSelection(true);
+                })
+              }
+            >
+              Add column
+            </PageMenuRow>
+            <PageMenuRow onClick={() => table($deleteTableRowAtSelection)}>Delete row</PageMenuRow>
+            <PageMenuRow onClick={() => table($deleteTableColumnAtSelection)}>
+              Delete column
+            </PageMenuRow>
+          </div>
+        )}
+        {model.list && (
+          <div className={group}>
+            {model.list.type !== "bullet" && (
+              <PageMenuRow
+                icon={<ListBullets />}
+                onClick={() =>
+                  change((block) => {
+                    $setPageListType($pageBlockDescendant(model.list!.key, block), "bullet");
+                  })
+                }
+              >
+                Change to bulleted list
+              </PageMenuRow>
+            )}
+            {model.list.type !== "number" && (
+              <PageMenuRow
+                icon={<ListNumbers />}
+                onClick={() =>
+                  change((block) => {
+                    $setPageListType($pageBlockDescendant(model.list!.key, block), "number");
+                  })
+                }
+              >
+                Change to numbered list
+              </PageMenuRow>
+            )}
+            <PageMenuRow
+              icon={<TextIndent />}
+              onClick={() =>
+                change(() => {
+                  editor.dispatchCommand(INDENT_CONTENT_COMMAND, undefined);
+                })
+              }
+            >
+              Indent list
+            </PageMenuRow>
+            <PageMenuRow
+              icon={<TextOutdent />}
+              onClick={() =>
+                change(() => {
+                  editor.dispatchCommand(OUTDENT_CONTENT_COMMAND, undefined);
+                })
+              }
+            >
+              Outdent list
+            </PageMenuRow>
+          </div>
+        )}
+        <div className={group}>
+          <PageMenuRow
+            icon={<ArrowUp />}
+            disabled={!model.up}
+            onClick={() =>
+              change((block) => {
+                const previous = block.getPreviousSibling();
+
+                if (previous && !(previous instanceof PageMetadataNode))
+                  previous.insertBefore(block);
+              })
+            }
           >
-            <div className="page-block-menu-title">Block options</div>
-            {error && (
-              <p className="page-menu-error" role="alert">
-                {error}
-              </p>
-            )}
-            {model.component && (
-              <ComponentSettings
-                component={model.component}
-                onChange={(patch) =>
-                  change((block) => {
-                    const node = $pageBlockDescendant(model.component!.key, block);
+            Move up
+          </PageMenuRow>
+          <PageMenuRow
+            icon={<ArrowDown />}
+            disabled={!model.down}
+            onClick={() =>
+              change((block) => {
+                block.getNextSibling()?.insertAfter(block);
+              })
+            }
+          >
+            Move down
+          </PageMenuRow>
+          <PageMenuRow
+            icon={<Plus />}
+            onClick={() =>
+              change((block) => {
+                const paragraph = $createParagraphNode();
+                block.insertAfter(paragraph);
+                paragraph.select();
+              })
+            }
+          >
+            Add text after block
+          </PageMenuRow>
+          <PageMenuRow
+            icon={<Trash />}
+            onClick={() =>
+              change((block) => {
+                const next = block.getNextSibling();
+                const previous = block.getPreviousSibling();
+                block.remove();
+                const target = next ?? (previous instanceof PageMetadataNode ? null : previous);
 
-                    if (node instanceof PageComponentNode)
-                      node.setAttributes({ ...node.getAttributes(), ...patch });
-                  }, false)
+                if ($isElementNode(target)) target.selectEnd();
+                else {
+                  const paragraph = $createParagraphNode();
+                  $getRoot().append(paragraph);
+                  paragraph.select();
                 }
-              />
-            )}
-            {model.component &&
-              (model.component.kind === "action" || model.component.kind === "actions") && (
-                <PageMenuRow
-                  icon={<Plus />}
-                  onClick={() =>
-                    change((block) => {
-                      const node = $pageBlockDescendant(model.component!.key, block);
-
-                      if (!(node instanceof PageComponentNode)) return;
-
-                      const button = new PageComponentNode("action", {
-                        href: "#",
-                        variant: "secondary",
-                      }).append($createTextNode("Get help"));
-
-                      if (node.getKind() === "actions") node.append(button);
-                      else node.insertAfter(button);
-                      button.selectStart();
-                    })
-                  }
-                >
-                  Add another button
-                </PageMenuRow>
-              )}
-            {model.table && (
-              <div className="page-menu-section">
-                <PageMenuRow
-                  icon={<Table />}
-                  onClick={() =>
-                    table(() => {
-                      $insertTableRowAtSelection(true);
-                    })
-                  }
-                >
-                  Add row
-                </PageMenuRow>
-                <PageMenuRow
-                  icon={<Table />}
-                  onClick={() =>
-                    table(() => {
-                      $insertTableColumnAtSelection(true);
-                    })
-                  }
-                >
-                  Add column
-                </PageMenuRow>
-                <PageMenuRow onClick={() => table($deleteTableRowAtSelection)}>
-                  Delete row
-                </PageMenuRow>
-                <PageMenuRow onClick={() => table($deleteTableColumnAtSelection)}>
-                  Delete column
-                </PageMenuRow>
-              </div>
-            )}
-            {model.list && (
-              <div className="page-menu-section">
-                {model.list.type !== "bullet" && (
-                  <PageMenuRow
-                    icon={<ListBullets />}
-                    onClick={() =>
-                      change((block) => {
-                        $setPageListType($pageBlockDescendant(model.list!.key, block), "bullet");
-                      })
-                    }
-                  >
-                    Change to bulleted list
-                  </PageMenuRow>
-                )}
-                {model.list.type !== "number" && (
-                  <PageMenuRow
-                    icon={<ListNumbers />}
-                    onClick={() =>
-                      change((block) => {
-                        $setPageListType($pageBlockDescendant(model.list!.key, block), "number");
-                      })
-                    }
-                  >
-                    Change to numbered list
-                  </PageMenuRow>
-                )}
-                <PageMenuRow
-                  icon={<TextIndent />}
-                  onClick={() =>
-                    change(() => {
-                      editor.dispatchCommand(INDENT_CONTENT_COMMAND, undefined);
-                    })
-                  }
-                >
-                  Indent list
-                </PageMenuRow>
-                <PageMenuRow
-                  icon={<TextOutdent />}
-                  onClick={() =>
-                    change(() => {
-                      editor.dispatchCommand(OUTDENT_CONTENT_COMMAND, undefined);
-                    })
-                  }
-                >
-                  Outdent list
-                </PageMenuRow>
-              </div>
-            )}
-            <div className="page-menu-section">
-              <PageMenuRow
-                icon={<ArrowUp />}
-                disabled={!model.up}
-                onClick={() =>
-                  change((block) => {
-                    const previous = block.getPreviousSibling();
-
-                    if (previous && !(previous instanceof PageMetadataNode))
-                      previous.insertBefore(block);
-                  })
-                }
-              >
-                Move up
-              </PageMenuRow>
-              <PageMenuRow
-                icon={<ArrowDown />}
-                disabled={!model.down}
-                onClick={() =>
-                  change((block) => {
-                    block.getNextSibling()?.insertAfter(block);
-                  })
-                }
-              >
-                Move down
-              </PageMenuRow>
-              <PageMenuRow
-                icon={<Plus />}
-                onClick={() =>
-                  change((block) => {
-                    const paragraph = $createParagraphNode();
-                    block.insertAfter(paragraph);
-                    paragraph.select();
-                  })
-                }
-              >
-                Add text after block
-              </PageMenuRow>
-              <PageMenuRow
-                icon={<Trash />}
-                onClick={() =>
-                  change((block) => {
-                    const next = block.getNextSibling();
-                    const previous = block.getPreviousSibling();
-                    block.remove();
-                    const target = next ?? (previous instanceof PageMetadataNode ? null : previous);
-
-                    if ($isElementNode(target)) target.selectEnd();
-                    else {
-                      const paragraph = $createParagraphNode();
-                      $getRoot().append(paragraph);
-                      paragraph.select();
-                    }
-                  })
-                }
-              >
-                Delete block
-              </PageMenuRow>
-            </div>
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
+              })
+            }
+          >
+            Delete block
+          </PageMenuRow>
+        </div>
+      </Popover.Content>
     </Popover.Root>
   );
 }
@@ -724,16 +789,19 @@ function ComponentSettings({
   const [href, setHref] = useState(component.attributes.href ?? "");
   const [variant, setVariant] = useState(component.attributes.variant ?? "primary");
   const [error, setError] = useState<string>();
+  const pages = useLinkPages();
 
   if (!["details", "start", "action"].includes(component.kind)) return null;
 
   return (
     <form
-      className="page-component-settings"
+      className="page-component-settings grid gap-4 border-b border-line px-3.5 pt-2 pb-4"
       onSubmit={(event) => {
         event.preventDefault();
 
-        if (!safePageUrl(href)) {
+        const destination = normalizeLinkUrl(href);
+
+        if (!safePageUrl(destination)) {
           setError("Enter a relative link, or an http, https, email or telephone link.");
 
           return;
@@ -749,55 +817,49 @@ function ComponentSettings({
           component.kind === "details"
             ? { summary }
             : {
-                href: href || (component.kind === "start" ? undefined : "#"),
+                href: destination || (component.kind === "start" ? undefined : "#"),
                 ...(component.kind === "action" && { variant }),
               },
         );
+        setHref(destination);
         setError(undefined);
       }}
     >
       {component.kind === "details" ? (
-        <label>
-          Details summary
-          <input
-            className={compactInput}
-            value={summary}
-            onChange={(event) => setSummary(event.target.value)}
-          />
-        </label>
+        <Field size="sm" label="Details summary">
+          <Input size="sm" value={summary} onChange={(event) => setSummary(event.target.value)} />
+        </Field>
       ) : (
         <>
-          <label>
-            Button destination
-            <input
-              className={compactInput}
-              type="text"
+          <Field size="sm" label="Button destination">
+            <LinkPicker
+              size="sm"
               value={href}
-              placeholder={component.kind === "start" ? "Use linked form" : "/next-page"}
-              onChange={(event) => setHref(event.target.value)}
+              pages={pages}
+              placeholder={component.kind === "start" ? "Use linked form" : undefined}
+              onValueChange={setHref}
             />
-          </label>
+          </Field>
           {component.kind === "action" && (
-            <label>
-              Button style
-              <select
-                className={compactInput}
+            <Field size="sm" label="Button style">
+              <NativeSelect
+                size="sm"
                 value={variant}
                 onChange={(event) => setVariant(event.target.value)}
               >
                 <option value="primary">Primary</option>
                 <option value="secondary">Secondary</option>
-              </select>
-            </label>
+              </NativeSelect>
+            </Field>
           )}
         </>
       )}
       {error && (
-        <p className="page-menu-error" role="alert">
+        <p className="text-error" role="alert">
           {error}
         </p>
       )}
-      <Button type="submit" variant="secondary">
+      <Button type="submit" variant="secondary" className="justify-self-start">
         Apply settings
       </Button>
     </form>

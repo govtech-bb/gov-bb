@@ -1,4 +1,3 @@
-import { Popover } from "@base-ui/react/popover";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
   $createParagraphNode,
@@ -11,9 +10,12 @@ import {
   type LexicalNode,
   type NodeKey,
 } from "lexical";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "../../../cn";
-import { panel } from "../../../ui/select";
+import { Field } from "../../../ui/field";
+import { govbbButton, govbbSecondaryButton } from "../../../ui/govbb";
+import { Input } from "../../../ui/input";
+import { Popover } from "../../../ui/popover";
 import { Tip } from "../../../ui/tooltip";
 import { SsbField } from "../../react/settings-controls";
 import { $pageBlocks, $isPageBreak, $setSettings, $settings } from "../../editor/nodes";
@@ -178,7 +180,6 @@ export function PageButtons() {
 /** Preview the page's submit or continue button; clicking beside it creates a text line. */
 function PageButton({ editor, button }: { editor: LexicalEditor; button: PageButtonAt }) {
   const [open, setOpen] = useState(false);
-  const field = useId();
 
   // The field sits outside the editor: keep Lexical from pulling the focus back into it
   const setLabel = (label: string) => {
@@ -258,7 +259,7 @@ function PageButton({ editor, button }: { editor: LexicalEditor; button: PageBut
         <span
           aria-hidden="true"
           onClick={(e) => e.stopPropagation()}
-          className="mr-3 inline-flex h-(--form-control) cursor-default items-center rounded-sm bg-line px-5 text-(length:--form-text) text-ink select-none"
+          className={cn(govbbSecondaryButton, "mr-3 cursor-default select-none")}
         >
           {button.backLabel}
         </span>
@@ -267,63 +268,54 @@ function PageButton({ editor, button }: { editor: LexicalEditor; button: PageBut
         <Tip content="Edit button text. The button does nothing in the builder.">
           <Popover.Trigger
             onClick={(e) => e.stopPropagation()}
-            className="inline-flex h-(--form-control) cursor-pointer items-center rounded-sm bg-interactive px-5 text-(length:--form-text) text-white outline-offset-2 transition-colors hover:bg-interactive-active focus-visible:outline-3 focus-visible:outline-focus"
+            className={cn(
+              govbbButton,
+              "cursor-pointer outline-offset-2 transition-colors hover:bg-interactive-active focus-visible:outline-3 focus-visible:outline-focus",
+            )}
           >
             {button.label}
           </Popover.Trigger>
         </Tip>
-        <Popover.Portal>
-          <Popover.Positioner
-            side="bottom"
-            align="start"
-            sideOffset={6}
-            className="z-50 outline-none"
+        {/* Clicks stay in the popover: in React they'd reach the canvas block that holds the button */}
+        <Popover.Content
+          aria-label="Edit button text"
+          side="bottom"
+          align="start"
+          onClick={(e) => e.stopPropagation()}
+          className="w-72"
+        >
+          <Field
+            size="sm"
+            label="Button text"
+            hint={
+              button.fallback === "Submit"
+                ? "Leave blank to use “Submit”, or name the action, such as “Submit application”."
+                : "Leave blank to use “Continue”."
+            }
           >
-            <Popover.Popup
-              onClick={(e) => e.stopPropagation()}
-              className={cn(
-                panel,
-                "w-72 p-3 transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0",
-              )}
-            >
-              <label
-                htmlFor={field}
-                className="mb-1.5 block text-14 leading-5 font-semibold text-ink"
-              >
-                Button text
-              </label>
-              <input
-                id={field}
-                autoFocus
-                defaultValue={custom ? button.label : ""}
-                placeholder={button.fallback}
-                onChange={(e) => setLabel(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && setOpen(false)}
-                className="h-9 w-full rounded-sm bg-white px-2.5 text-14 text-ink shadow-input outline-none placeholder:text-placeholder hover:shadow-input-hover focus:shadow-input-focus max-sm:text-16"
-              />
-              <p className="mt-2 text-12 leading-4 text-muted">
-                {button.fallback === "Submit"
-                  ? "Leave blank to use “Submit”, or name the action, such as “Submit application”."
-                  : "Leave blank to use “Continue”."}
-              </p>
-              <div className="-mx-3.5 mt-2">
-                <SsbField
-                  label="Page ID"
-                  value={button.pageId.id}
-                  pinned={button.pageId.pinned}
-                  fixed={button.pageId.fixed}
-                  clash={button.pageId.clash}
-                  mono
-                  validate={(id) =>
-                    checkId(id, new Set(button.takenIds), RESERVED_PAGE_IDS, "page")
-                  }
-                  onChange={setPageId}
-                />
-              </div>
-              {button.repeat && <RepeatSettings repeat={button.repeat} onChange={setRepeat} />}
-            </Popover.Popup>
-          </Popover.Positioner>
-        </Popover.Portal>
+            <Input
+              size="sm"
+              autoFocus
+              defaultValue={custom ? button.label : ""}
+              placeholder={button.fallback}
+              onChange={(e) => setLabel(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && setOpen(false)}
+            />
+          </Field>
+          <div className="-mx-3.5 mt-2">
+            <SsbField
+              label="Page ID"
+              value={button.pageId.id}
+              pinned={button.pageId.pinned}
+              fixed={button.pageId.fixed}
+              clash={button.pageId.clash}
+              mono
+              validate={(id) => checkId(id, new Set(button.takenIds), RESERVED_PAGE_IDS, "page")}
+              onChange={setPageId}
+            />
+          </div>
+          {button.repeat && <RepeatSettings repeat={button.repeat} onChange={setRepeat} />}
+        </Popover.Content>
       </Popover.Root>
     </div>
   );

@@ -1,12 +1,13 @@
-import { Popover } from "@base-ui/react/popover";
 import { $isLinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
   $findMatchingParent,
   $getSelection,
   $isRangeSelection,
+  $setTextFormat,
   COMMAND_PRIORITY_NORMAL,
   FORMAT_TEXT_COMMAND,
+  HISTORY_PUSH_TAG,
   KEY_DOWN_COMMAND,
   KEY_ESCAPE_COMMAND,
   mergeRegister,
@@ -14,10 +15,16 @@ import {
   type LexicalNode,
   type TextFormatType,
 } from "lexical";
-import { LinkBreak, LinkSimple, TextB, TextItalic } from "@phosphor-icons/react";
+import {
+  CaretDown,
+  LinkBreak,
+  LinkSimple,
+  TextB,
+  TextItalic,
+  TextTSlash,
+} from "@phosphor-icons/react";
 import {
   useEffect,
-  useId,
   useMemo,
   useReducer,
   useRef,
@@ -26,18 +33,21 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import { panel } from "../../../ui/select";
+import { Popover } from "../../../ui/popover";
 import { Button } from "../../../ui/button";
+import { LinkForm } from "../../../ui/link-picker";
 import { Tip } from "../../../ui/tooltip";
+import { TurnIntoMenu } from "../../../ui/turn-into";
+import { useEditorDefinition, useLinkPages } from "../../react/composer";
+import { turnIntoOptions } from "../../react/turn-into";
 import { composing } from "./editing";
-import { isSafeLinkUrl } from "../links/url";
+import { isSafeLinkUrl, linkAddress } from "../links/url";
 
-/** Formatting controls apply only to non-empty selections in rich-text blocks. */
-export function $textSelection(isPlainText: (node: LexicalNode) => boolean) {
+/** The caret or selection, when all of it is in rich-text blocks, where text can be formatted. */
+export function $formattable(isPlainText: (node: LexicalNode) => boolean) {
   const selection = $getSelection();
 
-  if (!$isRangeSelection(selection) || selection.isCollapsed() || !selection.getTextContent())
-    return null;
+  if (!$isRangeSelection(selection)) return null;
   const nodes = [selection.anchor.getNode(), selection.focus.getNode(), ...selection.getNodes()];
 
   return nodes.every((node) => {
@@ -48,6 +58,25 @@ export function $textSelection(isPlainText: (node: LexicalNode) => boolean) {
     ? selection
     : null;
 }
+
+/** Formatting controls apply only to non-empty selections in rich-text blocks. */
+export function $textSelection(isPlainText: (node: LexicalNode) => boolean) {
+  const selection = $formattable(isPlainText);
+
+  return selection && !selection.isCollapsed() && selection.getTextContent() ? selection : null;
+}
+
+// Everything Clear formatting takes off, links aside
+const plain = {
+  bold: false,
+  italic: false,
+  strikethrough: false,
+  code: false,
+  underline: false,
+  subscript: false,
+  superscript: false,
+  highlight: false,
+};
 
 const $link = (selection: RangeSelection) =>
   [selection.anchor, selection.focus]
@@ -72,6 +101,8 @@ export function Toolbar({
   isValidLink = isSafeLinkUrl,
 }: ToolbarPolicy = {}) {
   const [editor] = useLexicalComposerContext();
+  const { turnInto } = useEditorDefinition();
+  const pages = useLinkPages();
   const [open, setOpen] = useState(false);
   const [linking, setLinking] = useState(false);
   const [, rerender] = useReducer((n: number) => n + 1, 0);
@@ -155,8 +186,12 @@ export function Toolbar({
             return true;
           }
 
-          // Require selected text for bold; underline has no Markdown representation.
-          if (!event.shiftKey && ((key === "b" && !selected) || key === "u"))
+          // Bold and italic start at the caret too, but only where the block takes formatting; underline has no
+          // Markdown representation
+          if (
+            !event.shiftKey &&
+            (((key === "b" || key === "i") && !$formattable(isPlainText)) || key === "u")
+          )
             return (event.preventDefault(), true);
 
           return false;
@@ -185,6 +220,7 @@ export function Toolbar({
             bold: selection.hasFormat("bold"),
             italic: selection.hasFormat("italic"),
             link: $link(selection)?.getURL() ?? null,
+            turnInto: turnInto?.$choices() ?? null,
           }
         );
       },
@@ -197,6 +233,25 @@ export function Toolbar({
     if (editor.isEditable()) editor.dispatchCommand(FORMAT_TEXT_COMMAND, type);
   };
 
+  // Each turn is a step of its own in the undo history
+  const turn = (value: string) => {
+    if (!editor.isEditable()) return;
+    editor.update(() => turnInto?.$turnInto(value), { tag: HISTORY_PUSH_TAG });
+  };
+
+  // A step of its own in the undo history, as a format change is
+  const clear = () => {
+    if (editor.isEditable())
+      editor.update(
+        () => {
+          const selection = $getSelection();
+
+          if ($isRangeSelection(selection)) $setTextFormat(selection, plain);
+        },
+        { tag: HISTORY_PUSH_TAG },
+      );
+  };
+
   const link = (url: string | null) => {
     if (editor.isEditable())
       editor.dispatchCommand(
@@ -207,69 +262,88 @@ export function Toolbar({
 
   return (
     <Popover.Root open onOpenChange={(next) => !next && setOpen(false)}>
-      <Popover.Portal>
-        {/* Above the selection, so it never covers the line being read next */}
-        <Popover.Positioner
-          anchor={anchor}
-          side="top"
-          align="start"
-          sideOffset={8}
-          className="z-50 outline-none"
-        >
-          <Popover.Popup
-            initialFocus={false}
-            finalFocus={false}
-            className="flex items-center gap-0.5 rounded-sm bg-white px-1 font-sans shadow-popup outline-none transition-opacity duration-180 ease-out-cubic data-ending-style:opacity-0 data-starting-style:opacity-0"
-          >
-            <Action tip="Bold" active={state.bold} icon={<TextB />} onClick={format("bold")} />
-            <Action
-              tip="Italic"
-              active={state.italic}
-              icon={<TextItalic />}
-              onClick={format("italic")}
-            />
-            {linksEnabled && (
-              <>
-                <Divider />
-                {/* Closing the field without a link (Esc) puts the focus back on the selected text */}
-                <Popover.Root
-                  open={linking}
-                  onOpenChange={(next) => (setLinking(next), !next && editor.focus())}
+      {/* Above the selection, so it never covers the line being read next. It only fades, as it comes and goes with
+          every selection */}
+      <Popover.Content
+        aria-label="Text formatting"
+        anchor={anchor}
+        side="top"
+        align="start"
+        sideOffset={8}
+        initialFocus={false}
+        finalFocus={false}
+        className="flex items-center gap-0.5 overflow-visible p-0 px-1 motion-safe:data-starting-style:scale-100 motion-safe:data-ending-style:scale-100"
+      >
+        {state.turnInto && (
+          <>
+            <TurnIntoMenu
+              value={state.turnInto.value}
+              options={turnIntoOptions(state.turnInto)}
+              onValueChange={turn}
+              // Back to the text, with its selection, rather than the button
+              finalFocus={() => editor.focus()}
+              trigger={
+                <Button
+                  iconEnd={<CaretDown />}
+                  onMouseDown={keepSelection}
+                  className="my-1 font-normal text-ink"
                 >
-                  <Action
-                    tip={state.link ? "Edit link" : "Add link"}
-                    active={!!state.link}
-                    icon={<LinkSimple />}
-                    render={(button) => <Popover.Trigger render={button} />}
-                  />
-                  <Popover.Portal>
-                    <Popover.Positioner
-                      side="bottom"
-                      align="start"
-                      sideOffset={5}
-                      className="z-50 outline-none"
-                    >
-                      <Popover.Popup finalFocus={false} className={panel}>
-                        <LinkField
-                          url={state.link ?? ""}
-                          isValidLink={isValidLink}
-                          onApply={(url) => {
-                            link(url);
-                            setLinking(false);
-                          }}
-                        />
-                      </Popover.Popup>
-                    </Popover.Positioner>
-                  </Popover.Portal>
-                </Popover.Root>
-                {state.link && (
-                  <Action tip="Remove link" icon={<LinkBreak />} onClick={() => link(null)} />
-                )}
-              </>
+                  <span className="sr-only">Turn into: </span>
+                  {state.turnInto.choices.find((choice) => choice.value === state.turnInto?.value)
+                    ?.label ?? "Turn into"}
+                </Button>
+              }
+            />
+            <Divider />
+          </>
+        )}
+        <Action tip="Bold" active={state.bold} icon={<TextB />} onClick={format("bold")} />
+        <Action
+          tip="Italic"
+          active={state.italic}
+          icon={<TextItalic />}
+          onClick={format("italic")}
+        />
+        <Action tip="Clear formatting" icon={<TextTSlash />} onClick={clear} />
+        {linksEnabled && (
+          <>
+            <Divider />
+            {/* Closing the field without a link (Esc) puts the focus back on the selected text */}
+            <Popover.Root
+              open={linking}
+              onOpenChange={(next) => (setLinking(next), !next && editor.focus())}
+            >
+              <Action
+                tip={state.link ? "Edit link" : "Add link"}
+                active={!!state.link}
+                icon={<LinkSimple />}
+                render={(button) => <Popover.Trigger render={button} />}
+              />
+              <Popover.Content
+                aria-label={state.link ? "Edit link" : "Add link"}
+                side="bottom"
+                align="start"
+                sideOffset={5}
+                finalFocus={false}
+                className="p-0"
+              >
+                <LinkForm
+                  url={state.link ?? ""}
+                  pages={pages}
+                  toAddress={(typed) => linkAddress(typed, isValidLink)}
+                  onApply={(url) => {
+                    link(url);
+                    setLinking(false);
+                  }}
+                />
+              </Popover.Content>
+            </Popover.Root>
+            {state.link && (
+              <Action tip="Remove link" icon={<LinkBreak />} onClick={() => link(null)} />
             )}
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
+          </>
+        )}
+      </Popover.Content>
     </Popover.Root>
   );
 }
@@ -299,74 +373,9 @@ function Action({
       icon={icon}
       onMouseDown={keepSelection}
       onClick={onClick}
-      className="my-1 aria-pressed:bg-blue-10 aria-pressed:text-blue-80 not-disabled:aria-pressed:hover:bg-blue-10 not-disabled:aria-pressed:hover:text-blue-80"
+      className="my-1"
     />
   );
 
   return <Tip content={tip}>{render(button)}</Tip>;
-}
-
-function LinkField({
-  url,
-  isValidLink,
-  onApply,
-}: {
-  url: string;
-  isValidLink: (url: string) => boolean;
-  onApply: (url: string) => void;
-}) {
-  const [value, setValue] = useState(url);
-  const [error, setError] = useState<string>();
-  const errorId = useId();
-
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-
-        const next = value.trim();
-
-        if (!next) {
-          setError("Enter a link destination.");
-
-          return;
-        }
-
-        if (!isValidLink(next)) {
-          setError(
-            "Enter a relative link or a supported address, such as https, email or telephone.",
-          );
-
-          return;
-        }
-
-        onApply(next);
-      }}
-      className="flex w-90 max-w-[calc(100vw-2rem)] flex-wrap p-2"
-    >
-      <input
-        type="text"
-        inputMode="url"
-        autoFocus
-        defaultValue={url}
-        placeholder="https://example.gov.bb or /guidance"
-        aria-label="Link"
-        aria-invalid={!!error}
-        aria-describedby={error ? errorId : undefined}
-        onChange={(e) => {
-          setValue(e.target.value);
-          setError(undefined);
-        }}
-        className="mr-2 h-8 min-w-0 flex-1 rounded-sm bg-white px-2 text-14 text-ink shadow-input outline-none placeholder:text-placeholder hover:shadow-input-hover focus:shadow-input-focus max-sm:text-16"
-      />
-      <Button type="submit" variant="accent">
-        Apply
-      </Button>
-      {error && (
-        <p id={errorId} role="alert" className="mt-2 w-full text-14 text-error">
-          {error}
-        </p>
-      )}
-    </form>
-  );
 }

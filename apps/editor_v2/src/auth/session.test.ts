@@ -1,10 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+  AuthFailure,
   authCallback,
   localReturnPath,
   parseApiOrigin,
   parseAuthSearch,
   parseEmployeeSession,
+  workspaceAdmission,
 } from "./session";
 
 describe("authentication boundaries", () => {
@@ -84,5 +86,47 @@ describe("authentication boundaries", () => {
       { ...session, session: { expiresAt: "invalid" } },
     ])
       expect(parseEmployeeSession(value, now).ok).toBe(false);
+  });
+});
+
+describe("workspace admission", () => {
+  const employee = { email: "officer@govtech.bb", expiresAt: 5_000 };
+
+  it("asks the API on entering the workspace, then trusts that session between its screens until it expires", async () => {
+    let time = 1_000;
+    const admit = workspaceAdmission(() => time);
+    const check = vi.fn(async () => ({ ok: true as const, value: employee }));
+
+    expect(await admit("enter", check)).toEqual({ ok: true, value: employee });
+    expect(await admit("stay", check)).toEqual({ ok: true, value: employee });
+    await admit("stay", check);
+    expect(check).toHaveBeenCalledTimes(1);
+
+    time = 5_000;
+    await admit("stay", check);
+    expect(check).toHaveBeenCalledTimes(2);
+
+    // Entering again always asks
+    time = 1_000;
+    await admit("enter", check);
+    expect(check).toHaveBeenCalledTimes(3);
+  });
+
+  it("forgets the session once a check fails or finds the author signed out", async () => {
+    const admit = workspaceAdmission(() => 1_000);
+
+    await admit("enter", async () => ({ ok: true, value: employee }));
+
+    const failed = await admit("enter", async () => ({
+      ok: false,
+      error: new AuthFailure("unavailable"),
+    }));
+
+    expect(failed.ok).toBe(false);
+
+    const signedOut = vi.fn(async () => ({ ok: true as const, value: null }));
+
+    expect(await admit("stay", signedOut)).toEqual({ ok: true, value: null });
+    expect(signedOut).toHaveBeenCalledTimes(1);
   });
 });

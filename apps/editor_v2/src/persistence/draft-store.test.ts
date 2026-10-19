@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { SerializedEditorState } from "lexical";
-import { DraftStore, initialDraft } from "./draft-store";
+import { DraftStore, draftPause, initialDraft } from "./draft-store";
 import {
   SourceError,
   type DraftCodec,
@@ -307,4 +307,52 @@ test("disconnect flushes pending work and stops the editor subscription", () => 
   expect(listener).toBeUndefined();
   expect(storage.values.get(configured.committed)).toBe("Pending content");
   expect(store.getSnapshot().status).toBe("saved");
+});
+
+test("one pause rule names why editing is paused, and the canvas follows it", () => {
+  const configured = keys("pause"),
+    storage = memory({ [configured.committed]: "Saved" });
+
+  const store = new DraftStore(storage, initial("Saved"), codec, configured);
+  const editable: boolean[] = [];
+
+  const disconnect = store.connect({
+    prepare: () => () => {},
+    getState: () => state("Saved"),
+    setEditable: (value) => void editable.push(value),
+    subscribe: () => () => {},
+  });
+
+  expect(draftPause(store.getSnapshot())).toBeUndefined();
+  expect(editable.at(-1)).toBe(true);
+
+  store.edit("Unapplied Markdown");
+  expect(draftPause(store.getSnapshot())).toBe("source");
+  expect(editable.at(-1)).toBe(false);
+
+  // Another tab's change is settled before the Markdown waiting here
+  storage.values.set(configured.committed, "Another tab's version");
+  store.externalChange(configured.committed);
+  expect(draftPause(store.getSnapshot())).toBe("conflict");
+  store.useLocal();
+  expect(draftPause(store.getSnapshot())).toBe("source");
+
+  store.discard();
+  expect(draftPause(store.getSnapshot())).toBeUndefined();
+  expect(editable.at(-1)).toBe(true);
+
+  const healthy = store.getSnapshot();
+
+  expect(draftPause({ ...healthy, mode: "source", valid: false, dirty: true })).toBe("invalid");
+  expect(
+    draftPause({ ...healthy, recovery: { kind: "replacement", original: "Saved" }, dirty: true }),
+  ).toBe("replacement");
+  expect(draftPause({ ...healthy, recovery: { kind: "migration", original: "Saved" } })).toBe(
+    "migration",
+  );
+  // A canvas edit that couldn't be saved isn't a pause: editing on is how it's put right, and Try again retries it
+  expect(
+    draftPause({ ...healthy, status: "error", recovery: { kind: "canvas", original: "{}" } }),
+  ).toBeUndefined();
+  disconnect();
 });

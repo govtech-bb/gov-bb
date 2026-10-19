@@ -1,6 +1,7 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { Button } from "../ui/button";
 import { parseAuthSearch } from "../auth/session";
+import { ScreenTitle } from "../workspace/screen-title";
 
 /** Public recovery and OAuth completion route; it never guards itself. */
 export const Route = createFileRoute("/auth")({
@@ -37,6 +38,12 @@ function AuthPage() {
   const signedOut = search.state === "signed-out";
   const pending = !signedOut && !failure;
 
+  const heading = signedOut
+    ? "You are signed out"
+    : pending
+      ? "Signing you in…"
+      : "Unable to sign in";
+
   const message =
     failure === "session"
       ? "Your sign-in could not be confirmed. Allow cookies for the editor and API, then try again."
@@ -46,9 +53,8 @@ function AuthPage() {
 
   return (
     <main className="mx-auto max-w-160 px-6 py-12 text-ink">
-      <h1 className="text-28 font-semibold">
-        {signedOut ? "You are signed out" : pending ? "Signing you in…" : "Unable to sign in"}
-      </h1>
+      <ScreenTitle names={[heading]} />
+      <h1 className="text-28 font-semibold">{heading}</h1>
       <p role={pending ? "status" : failure ? "alert" : undefined} className="my-4">
         {signedOut
           ? "Your drafts remain in this browser."

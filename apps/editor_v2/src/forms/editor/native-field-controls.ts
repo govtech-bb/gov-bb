@@ -2,6 +2,7 @@ import { $getRoot, type LexicalNode } from "lexical";
 import { $setSettings } from "../../editor/core/document-state";
 import type { NativeScalar, ValidationRule } from "../schema/types";
 import type { ErrorMessage, RuleName } from "../adapters/ssb/rules";
+import { isAuthoredMessage } from "../core/validation-messages";
 import { defaultMessage } from "./ssb";
 import { $native, $setNative, type NativeNodeData } from "./native-state";
 import { nativeQuestionSettings } from "./native-settings";
@@ -115,20 +116,22 @@ function ruleDefault(rule: ValidationRule, context: MessageContext): string {
   }
 }
 
+/** A question's messages for the menu: each the author's own (pinned), or else its default from the current label. */
 export function nativeErrorMessages(
   question: Question,
   context: MessageContext,
 ): NativeErrorMessage[] {
   const messages: NativeErrorMessage[] = (question.validation ?? []).map((rule) => {
     const fallback = ruleDefault(rule, context);
+    const own = isAuthoredMessage(rule.message);
 
     return {
       native: true,
       rule: rule.id,
       label: ruleLabels[rule.type],
-      message: rule.message || fallback,
+      message: own ? rule.message : fallback,
       default: fallback,
-      pinned: !!rule.message.trim() && rule.message !== fallback,
+      pinned: own && rule.message !== fallback,
     };
   });
 
@@ -156,20 +159,38 @@ export function nativeErrorMessages(
 
   if (question.required?.value) {
     const fallback = defaultMessage("required", context);
+    const own = isAuthoredMessage(question.required.message);
     messages.unshift({
       native: true,
       rule: "required",
       required: true,
       label: "Required",
-      message: question.required.message || fallback,
+      message: own ? question.required.message : fallback,
       default: fallback,
-      pinned: !!question.required.message.trim() && question.required.message !== fallback,
+      pinned: own && question.required.message !== fallback,
     });
   }
 
   return messages;
 }
 
+/**
+ * A question as exported: each message nobody wrote says what the question asks, worded from its current label
+ * (“Enter your National ID number”), as the menu shows it.
+ */
+export function $withDefaultMessages<T extends Question>(question: T, context: MessageContext): T {
+  const next = structuredClone(question);
+
+  if (next.required?.value && !isAuthoredMessage(next.required.message))
+    next.required.message = defaultMessage("required", context);
+
+  for (const rule of next.validation ?? [])
+    if (!isAuthoredMessage(rule.message)) rule.message = ruleDefault(rule, context);
+
+  return next;
+}
+
+/** Writes the author's message, or none, so the default from the label applies again (Reset to default). */
 export function $setNativeErrorMessage(
   node: LexicalNode,
   error: NativeErrorMessage,
@@ -178,7 +199,11 @@ export function $setNativeErrorMessage(
   const question = $native(node).question;
 
   if (!question) return;
-  const message = text?.trim() ? text : error.default;
+  const message = text?.trim() ? text : "";
+
+  // An email or phone format message is only stored once the author writes one
+  if (error.format && !message && !question.validation?.some((rule) => rule.id === error.rule))
+    return;
 
   const next: Question = {
     ...question,

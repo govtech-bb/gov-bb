@@ -2,15 +2,13 @@ import {
   $getSelection,
   $isParagraphNode,
   $isRangeSelection,
-  BLUR_COMMAND,
   COMMAND_PRIORITY_CRITICAL,
-  COMMAND_PRIORITY_LOW,
   CUT_COMMAND,
   KEY_DOWN_COMMAND,
   mergeRegister,
-  setDOMUnmanaged,
   type LexicalEditor,
 } from "lexical";
+import { $stateTag } from "../../../editor/react/block-dom";
 import {
   $blockGroup,
   $blockKind,
@@ -40,45 +38,33 @@ export function isolateDecorators(editor: LexicalEditor) {
   );
 }
 
-/** Mark the caret’s block and retain the add-option affordance while the caret remains inside its option list. */
+/** Retain the add-option affordance while the caret remains inside its option list. */
 export function markCurrentBlock(editor: LexicalEditor) {
-  let current: HTMLElement | null = null;
   let adding: HTMLElement | null = null;
 
-  const mark = (el: HTMLElement | null) => {
-    current?.removeAttribute("data-current");
-    current = el;
-    current?.setAttribute("data-current", "");
-  };
+  return editor.registerUpdateListener(({ editorState }) => {
+    if (document.activeElement !== editor.getRootElement()) return;
+    editorState.read(
+      () => {
+        const selection = $getSelection();
 
-  return mergeRegister(
-    editor.registerUpdateListener(({ editorState }) => {
-      if (document.activeElement !== editor.getRootElement()) return;
-      editorState.read(
-        () => {
-          const selection = $getSelection();
+        const block = $isRangeSelection(selection)
+          ? selection.anchor.getNode().getTopLevelElement()
+          : null;
 
-          const block = $isRangeSelection(selection)
-            ? selection.anchor.getNode().getTopLevelElement()
-            : null;
+        if (!block) return;
 
-          mark(block && editor.getElementByKey(block.getKey()));
+        const last = $isOptionNode(block)
+          ? $blockGroup(block).filter($isOptionNode).at(-1)
+          : undefined;
 
-          if (!block) return;
-
-          const last = $isOptionNode(block)
-            ? $blockGroup(block).filter($isOptionNode).at(-1)
-            : undefined;
-
-          adding?.removeAttribute("data-adding");
-          adding = last && !$nested(last).length ? editor.getElementByKey(last.getKey()) : null;
-          adding?.setAttribute("data-adding", "");
-        },
-        { editor },
-      );
-    }),
-    editor.registerCommand(BLUR_COMMAND, () => (mark(null), false), COMMAND_PRIORITY_LOW),
-  );
+        adding?.removeAttribute("data-adding");
+        adding = last && !$nested(last).length ? editor.getElementByKey(last.getKey()) : null;
+        adding?.setAttribute("data-adding", "");
+      },
+      { editor },
+    );
+  });
 }
 
 /**
@@ -125,14 +111,11 @@ export function markBlocks(editor: LexicalEditor) {
           let disabledTag = dom.querySelector<HTMLElement>(":scope > [data-disabled-tag]");
 
           if ($isInput(block) && disabled && !disabledTag) {
-            disabledTag = dom.ownerDocument.createElement("span");
+            disabledTag = $stateTag("Disabled", "mb-2 inline-flex", {
+              text: "People cannot answer this field. You can still edit its question and settings.",
+              side: "top",
+            });
             disabledTag.dataset.disabledTag = "";
-            disabledTag.contentEditable = "false";
-            disabledTag.className = "mb-2 inline-block text-12 font-semibold text-muted";
-            disabledTag.textContent = "Disabled";
-            disabledTag.title =
-              "People cannot answer this field. You can still edit its question and settings.";
-            setDOMUnmanaged(disabledTag);
             dom.prepend(disabledTag);
           }
 

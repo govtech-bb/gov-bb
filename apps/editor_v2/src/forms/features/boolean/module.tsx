@@ -4,7 +4,9 @@ import { defineField } from "../../field";
 import { nativeField } from "../../native";
 import { fieldModule } from "../../editor/field-module";
 import { $createDrawnInput } from "../../editor/field-nodes";
+import { cn } from "../../../cn";
 import { $static, el } from "../../../editor/react/block-dom";
+import { govbbRadio } from "../../../ui/govbb";
 import { SettingsGroup, Switch } from "../../react/settings-controls";
 import { InputStatus, InputHints, InputEnd, type FieldControlsProps } from "../shared/controls";
 
@@ -28,10 +30,7 @@ export const booleanField = defineField({
 
     for (const label of ["Yes", "No"]) {
       const row = el("span", "flex items-center gap-2");
-      row.append(
-        el("span", "size-6 rounded-full border-2 border-ink"),
-        document.createTextNode(label),
-      );
+      row.append(el("span", cn(govbbRadio, "size-6")), document.createTextNode(label));
       box.append(row);
     }
 
@@ -51,15 +50,6 @@ function BooleanControls({ m, a }: FieldControlsProps) {
   );
 }
 
-function BooleanPreview() {
-  return (
-    <div className="flex gap-6">
-      <span>○ Yes</span>
-      <span>○ No</span>
-    </div>
-  );
-}
-
 export const BooleanModule = () =>
   fieldModule({
     field: booleanField,
@@ -72,5 +62,4 @@ export const BooleanModule = () =>
       answer: { description: "A yes or no answer under an existing question." },
     },
     Controls: BooleanControls,
-    Preview: BooleanPreview,
   });

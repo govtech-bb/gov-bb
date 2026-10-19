@@ -1,0 +1,28 @@
+- You own the generic parts of `src/ui`. Build each component once, with a test beside it and a section in the gallery (`src/routes/prototypes.components.tsx`), then move every look-alike in the app onto it.
+- **ui-gaps:**
+  - `Select` takes a Field label and wraps itself in Field.
+  - Add `Kbd`, one keycap chip for every keyboard hint: the block menu hints, the fold and Alt hints in `forms/react/chrome.tsx`, the slash menus, and tooltips. `src/editor/react/shortcut.ts`'s `shortcut()` stays the one formatter. `src/ui` can't import editor code, so Kbd takes the formatted text, or keys already formatted by the caller.
+  - Delete `PillSelect` only if nothing uses it.
+  - Keep an export named `panel` working from `ui/select`: the user has an uncommitted prototype that imports it. Point it at `surface`.
+  - Use one caret size.
+- **buttons-links:**
+  - Button gets a `link` variant and a pressed state from `aria-pressed`.
+  - Add `TextLink`: a router Link, or an external link with an icon and visually hidden "(opens in a new tab)".
+  - Use the shared Bar and DocumentBar for workspace and document header actions.
+- **touch-target:** add a `touchTarget` token in `surface.ts`: 44px under `pointer: coarse`, or an invisible hit area where the visible size must stay small. Apply it to Button, the Select and pill triggers, the toast close, the table pager, the sidebar rows in `workspace/sidebar.ts`, the rail buttons in `editor/react/block-rail.tsx`, and the category chip's remove button (which becomes Tag).
+- **popup-names:**
+  - `Popover` and `Menu` content take a required accessible name, through `aria-label` or `aria-labelledby`, enforced by the types. Give every call site one.
+  - The page editor's Insert and Block options buttons get `aria-haspopup` and `aria-expanded`.
+  - The form fold buttons get `aria-expanded`, and their names include the count they show.
+  - The form gutter's grip is named "Block actions".
+- **confirm-dialog:**
+  - `ConfirmDialog` is a Base UI AlertDialog with the question as its title, the consequence in plain words, a verb on the button, a pending label, an inline error, and close locked while pending.
+  - Button gets a `pending` state.
+  - `Dialog.Actions` holds the buttons.
+  - `WorkspaceDialog` takes `body` and `footer`, so no dialog can skip them.
+  - Move the remote page delete dialog, `host/source-ui.tsx`'s confirmation (around lines 329-338; frame owns the rest of that file) and the gallery's confirm demo onto it.
+- **empty-loading:**
+  - `EmptyState` covers empty, not found and failed, at page, section and inline sizes, with icon, title, description and actions.
+  - `LoadingState` wraps the existing trident `Loader` in `src/ui/loader.tsx`. Keep that loader; it's the user's design.
+  - Extend the existing `listEmpty` line in `surface.ts` rather than adding another.
+  - Replace every hand-made copy, about 20, and list them in your report. Keep sidebar and services-list changes focused on empty and loading states.

@@ -7,6 +7,7 @@ import { $setPageMetadata, readPageMetadata } from "../../src/pages";
 import { demoForm } from "../../src/presets/demo";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import { govbbPageCodec, govbbPageEditor } from "../../src/presets/govbb-page";
+import { withDefaultMessages } from "../../tests/helpers/native-form";
 import {
   createExampleStore,
   convertExample,
@@ -19,7 +20,8 @@ test("documented form is the current native demo and survives Markdown without s
   expect(result.reloadedSource).toBe(result.source);
   expect(result.output.status).toBe("ready");
   expect(result.output.diagnostics).toEqual([]);
-  expect(nativeSemanticEqual(result.output.schema, demoForm)).toBe(true);
+  // The demo stores no error messages; export words each from its question's label
+  expect(nativeSemanticEqual(result.output.schema, withDefaultMessages(demoForm))).toBe(true);
   const demoPath = new URL("./demo-form.md", import.meta.url);
 
   if (process.env.EDITOR_GENERATE_DEMO === "1") writeFileSync(demoPath, result.source);
@@ -104,7 +106,7 @@ test("documented form store saves through the host connection and reloads the sa
       );
 
       expect(output.status).toBe("ready");
-      expect(nativeSemanticEqual(output.schema, demoForm)).toBe(true);
+      expect(nativeSemanticEqual(output.schema, withDefaultMessages(demoForm))).toBe(true);
     } finally {
       reloadedEditor.dispose();
     }

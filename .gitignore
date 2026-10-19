@@ -161,5 +161,6 @@ cicd-policy*.json
 # @-mention (the file picker respects .gitignore). A PreToolUse hook
 # (.claude/hooks/block-commit-plans.sh) blocks staging/committing them.
 
-# Playwright live-run output (smoke / a11y)
+# Playwright test output
+**/playwright-report/
 apps/forms/test-results/

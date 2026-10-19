@@ -89,6 +89,12 @@ export type DraftSnapshot = {
   previous?: string;
 };
 
+/**
+ * Why editing a draft is paused: its saved copy couldn't be read, applying a replacement didn't finish, the original
+ * couldn't be backed up before an update, another tab changed it, or Markdown changes are waiting to be applied.
+ */
+export type DraftPause = "invalid" | "replacement" | "migration" | "conflict" | "source";
+
 export type InitialDraft = {
   snapshot: DraftSnapshot;
   state?: SerializedEditorState;

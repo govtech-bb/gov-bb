@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { chromium } from "./playwright.mjs";
+import { formDraftUrl } from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -53,7 +54,7 @@ try {
     if (!localStorage.getItem("govbb-editor:draft:markdown:v2"))
       localStorage.setItem("govbb-editor:draft:markdown:v2", source);
   }, source);
-  await page.goto(process.argv[2] ?? "http://localhost:3013/");
+  await page.goto(formDraftUrl(process.argv[2] ?? "http://localhost:3013/"));
   await form().waitFor();
   await settle();
   assert.equal(await form().locator("h2").count(), 0, "both widgets are untitled");

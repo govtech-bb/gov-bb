@@ -1,7 +1,6 @@
 import { defineRenderer, defineSlot } from "../../../editor/react/contributions";
 import type { FormModule } from "../../field";
 import { formInsertionAction } from "../../editor/insertion-action";
-import { AuthoringInsertionPreview } from "../../react/authoring-preview";
 import { ConditionalLogic } from "./presentation";
 import { LogicRuleLinks } from "./rule-links";
 import { logicActions, logicContent } from "./definition";
@@ -45,9 +44,7 @@ export function ConditionalLogicModule(): FormModule {
         conditionalLogicEntry,
         "Advanced blocks",
         4000,
-        <AuthoringInsertionPreview>
-          {conditionalLogicEntry.renderPreview(conditionalLogicEntry.sample)}
-        </AuthoringInsertionPreview>,
+        conditionalLogicEntry.renderPreview(conditionalLogicEntry.sample),
       ),
     ],
     renderers: [defineRenderer("widget:conditional-logic", ConditionalLogic)],

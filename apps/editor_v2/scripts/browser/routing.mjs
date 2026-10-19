@@ -64,7 +64,11 @@ const title = page.getByRole("textbox", { name: "Page title", exact: true });
 
 const navigation = page.getByRole("navigation", { name: "Service documents" });
 
-const saved = () => page.locator('[role="status"][title="Saved"]:visible').waitFor();
+const saved = () =>
+  page
+    .locator("[data-document-bar]:visible")
+    .getByText("Saved in this browser", { exact: true })
+    .waitFor();
 
 async function historyMove(delta, expected) {
   await Promise.all([

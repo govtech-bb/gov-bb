@@ -3,6 +3,12 @@ import type { EditorApi, EstateVersion } from "./client";
 
 // Every content read sits under "content", so one invalidation refreshes them all.
 
+/**
+ * How long something fetched ahead, such as a page preloaded as the author points at its link, counts as fresh: as
+ * long as the router counts its own preloads fresh.
+ */
+export const PRELOAD_FRESH = 30_000;
+
 export const servicesQuery = (api: EditorApi) =>
   queryOptions({ queryKey: ["content", "services"], queryFn: () => api.services() });
 

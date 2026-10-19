@@ -2,6 +2,7 @@ import { authenticatedPage } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "./playwright.mjs";
+import { formDraftUrl } from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -29,7 +30,7 @@ const settle = () => page.waitForTimeout(180);
 
 const addRule = async (question, action) => {
   await question.hover();
-  await page.getByRole("button", { name: "Move this block by dragging" }).click();
+  await page.getByRole("button", { name: "Block actions" }).click();
   assert.equal(await page.getByRole("menuitem", { name: /Change label with answers/ }).count(), 0);
   assert.equal(await page.getByRole("menuitem", { name: /Change title with answers/ }).count(), 0);
   await page.getByRole("menuitem", { name: /^Add conditional logic/ }).click();
@@ -57,7 +58,7 @@ try {
       localStorage.setItem("legacy-logic-proof", "1");
     }
   }, legacySource);
-  await page.goto(process.argv[2] ?? "http://localhost:3013/");
+  await page.goto(formDraftUrl(process.argv[2] ?? "http://localhost:3013/"));
   await root.waitFor();
   await page.evaluate(() => document.fonts.ready);
   await settle();

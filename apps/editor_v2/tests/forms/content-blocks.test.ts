@@ -15,7 +15,6 @@ import {
   type LexicalNode,
 } from "lexical";
 import { $enter } from "../../src/forms/editor/structure/editing";
-import { shortcuts } from "../../src/forms/editor/structure/keyboard";
 import { $registryBlocks as $govbbField } from "../../src/forms/editor/registry-module";
 import { $insertBlocks } from "../../src/forms/editor/insertion";
 import { $insertionGroups } from "../helpers/insertion";
@@ -106,16 +105,17 @@ const $text = <T extends ElementNode>(node: T, text: string) => node.append($cre
 
 const $top = <T extends LexicalNode>(node: T) => $setDepth(node, 0);
 
-test("list shortcuts make bullets and numbers, keeping the insertion depth", () => {
+test("a line turned into a list, as Markdown's “- ” and “1. ” turn it, keeps its depth", () => {
   const editor = newEditor();
   run(editor, () => {
     const section = $createShowHideNode();
     const line = $setDepth($createParagraphNode(), 1);
     $getRoot().append($createFormTitleNode(), section, line);
-    expect(shortcuts["- "]!()[0]!.getType()).toBe("bullet");
-    expect(shortcuts["* "]!()[0]!.getType()).toBe("bullet");
-    expect(shortcuts["1. "]!()[0]!.getType()).toBe("number");
-    $insertBlocks(shortcuts["1. "]!(), line);
+    line.select();
+    govbbFormEditor.turnInto!.$turnInto("BULLETED_LIST");
+    expect($getRoot().getLastChild()!.getType()).toBe("bullet");
+    govbbFormEditor.turnInto!.$turnInto("NUMBERED_LIST");
+    expect($getRoot().getLastChild()!.getType()).toBe("number");
     expect($depth($getRoot().getLastChild()!)).toBe(1);
   });
 });

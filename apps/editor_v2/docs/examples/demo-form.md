@@ -34,16 +34,13 @@ You will need\:
 - a site plan if you need to close a road
 
 ::text[Event name]{#event-name fieldId="event-name" required}
-::error{rule="required" message="Enter an answer"}
 
 ::dropdown[Which parish is the event in?]{#event-parish fieldId="event-parish" required}
-::error{rule="required" message="Enter an answer"}
 - :option[Christ Church]{#christ-church optionValue="Christ Church"}
 - :option[Saint Michael]{#saint-michael optionValue="Saint Michael"}
 
 ::date[Event date]{#event-date fieldId="event-date" required relativeDate="futureOrToday"}
 ::hint[For example, 27 3 2026]
-::error{rule="required" message="Enter an answer"}
 ::error{rule="dateAfter" message="Enter today or a future date"}
 
 ::text[National Identification (ID) number]{#national-id-number fieldId="national-id-number" required width="medium" mask="999999-9999" pattern="^\\d{6}-\\d{4}$"}
@@ -69,11 +66,9 @@ If you don’t have a National ID number, you can use your passport number inste
 ::page{#page-break pageId="road-closure"}
 
 ::multiple-choice[Do you need to close a road?]{#close-road fieldId="close-road" required}
-::error{rule="required" message="Enter an answer"}
 - :option[Yes]{#yes optionValue="Yes"}
 
   ::text[How long will the road be closed?]{#closure-duration fieldId="closure-duration" required hidden}
-  ::error{rule="required" message="Enter an answer"}
 
   ::block{#apply-at-least-14-days-before-the-event-if-you-need-to-close}
   ::warning[Apply at least 14 days before the event if you need to close a road.]
@@ -115,7 +110,6 @@ If you don’t have a National ID number, you can use your passport number inste
 ::error{rule="required" message="Enter the roads"}
 
 ::file-upload[Upload a site plan]{#site-plan fieldId="site-plan" required}
-::error{rule="required" message="Enter an answer"}
 
 ---
 
@@ -124,13 +118,10 @@ If you don’t have a National ID number, you can use your passport number inste
 ::page{#page-break-2 pageId="sound-systems"}
 
 ::text[Type of sound system]{#sound-type fieldId="sound-type" required}
-::error{rule="required" message="Enter an answer"}
 
 ::number[Number of speakers]{#speakers fieldId="speakers" required}
-::error{rule="required" message="Enter an answer"}
 
 ::text[Speaker brand]{#speaker-brand fieldId="speaker-brand" required}
-::error{rule="required" message="Enter an answer"}
 
 ---
 
@@ -379,7 +370,7 @@ We will email you within 5 working days.
               "kind": "text",
               "required": {
                 "value": true,
-                "message": "Enter an answer"
+                "message": ""
               },
               "type": "question"
             },
@@ -422,7 +413,7 @@ We will email you within 5 working days.
               "kind": "date",
               "required": {
                 "value": true,
-                "message": "Enter an answer"
+                "message": ""
               },
               "validation": [
                 {
@@ -555,7 +546,7 @@ We will email you within 5 working days.
               "kind": "text",
               "required": {
                 "value": true,
-                "message": "Enter an answer"
+                "message": ""
               },
               "visible": false,
               "layout": {
@@ -636,7 +627,7 @@ We will email you within 5 working days.
               "kind": "file",
               "required": {
                 "value": true,
-                "message": "Enter an answer"
+                "message": ""
               },
               "type": "question"
             },
@@ -667,7 +658,7 @@ We will email you within 5 working days.
               "kind": "text",
               "required": {
                 "value": true,
-                "message": "Enter an answer"
+                "message": ""
               },
               "type": "question"
             },
@@ -698,7 +689,7 @@ We will email you within 5 working days.
               "kind": "number",
               "required": {
                 "value": true,
-                "message": "Enter an answer"
+                "message": ""
               },
               "type": "question"
             },
@@ -736,7 +727,7 @@ We will email you within 5 working days.
               "kind": "text",
               "required": {
                 "value": true,
-                "message": "Enter an answer"
+                "message": ""
               },
               "repeat": {
                 "min": 1,
@@ -856,7 +847,7 @@ We will email you within 5 working days.
             "kind": "choice",
             "required": {
               "value": true,
-              "message": "Enter an answer"
+              "message": ""
             },
             "config": {
               "selection": "single",
@@ -883,7 +874,7 @@ We will email you within 5 working days.
             "kind": "choice",
             "required": {
               "value": true,
-              "message": "Enter an answer"
+              "message": ""
             },
             "config": {
               "selection": "single",
@@ -981,7 +972,7 @@ We will email you within 5 working days.
             "kind": "choice",
             "required": {
               "value": true,
-              "message": "Enter an answer"
+              "message": ""
             },
             "config": {
               "selection": "single",
@@ -1008,7 +999,7 @@ We will email you within 5 working days.
             "kind": "choice",
             "required": {
               "value": true,
-              "message": "Enter an answer"
+              "message": ""
             },
             "config": {
               "selection": "single",

@@ -3,7 +3,12 @@ import { createHeadlessEditor } from "../editor/core/create-editor";
 import type { FormEditorDefinition } from "../forms/definition";
 import { formSchemaToLexical } from "../converters/form-schema-to-lexical";
 import { lexicalToFormSchema } from "../converters/lexical-to-form-schema";
-import { nativeSemanticEqual, type NativeDiagnostic } from "../forms/schema";
+import {
+  nativeSemanticEqual,
+  type AnyFormDefinition,
+  type NativeDiagnostic,
+} from "../forms/schema";
+import { $withDefaultFormMessages } from "../forms/editor/native-bindings";
 import type { DraftStore } from "../persistence/draft-store";
 import type {
   DraftCodec,
@@ -64,7 +69,13 @@ export function prepareNativeImport(
 
       if (result.status === "blocked") return { ...original, diagnostics: result.diagnostics };
 
-      if (!nativeSemanticEqual(value, result.schema))
+      const expected = editor.getEditorState().read(
+        // SAFETY: formSchemaToLexical validated this value as a native form definition before it was imported.
+        () => $withDefaultFormMessages(value as AnyFormDefinition, definition),
+        { editor },
+      );
+
+      if (!nativeSemanticEqual(expected, result.schema))
         return {
           ...original,
           diagnostics: [

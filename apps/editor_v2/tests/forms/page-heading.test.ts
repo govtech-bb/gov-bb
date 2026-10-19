@@ -57,6 +57,7 @@ import {
   $pageTitle,
   $shareQuestionSettings,
   $typedPageTitle,
+  $wholePage,
   CHECK_ANSWERS_DESCRIPTION,
 } from "../../src/forms/editor/nodes";
 import { $createInputNode, $createWidgetNode } from "../../src/forms/editor/answer-nodes";
@@ -242,12 +243,15 @@ test("page groups include the head, content readers exclude it, and helpers reso
     expect($headEnd(start)).toBe(intro);
     expect($headEnd(heading)).toBe(intro);
     expect($headEnd(body)).toBe(body);
+    expect($wholePage(start)).toEqual([start, heading, intro, body]);
+    // Folding a page changes what shows, never what its group is
     $setSettings(start, { folded: true });
-    expect($blockGroup(start)).toEqual([start, heading, intro, body]);
+    expect($blockGroup(start)).toEqual([start, heading, intro]);
+    expect($wholePage(start)).toEqual([start, heading, intro, body]);
   });
 });
 
-test("removing and duplicating a page break carries its title and description", () => {
+test("removing and duplicating a page takes its title, description and blocks", () => {
   const editor = newEditor();
   run(editor, () => {
     const start = page(),
@@ -257,12 +261,12 @@ test("removing and duplicating a page break carries its title and description", 
 
     $getRoot().append($createFormTitleNode(), start, heading, intro, body);
     $duplicateQuestion(start);
-    const copy = intro.getNextSibling()!;
+    const copy = body.getNextSibling()!;
     expect($isPageBreak(copy)).toBe(true);
     expect($pageHead(copy).map((node) => node.getTextContent())).toEqual(["Contact", "Intro"]);
-    expect($headEnd(copy).getNextSibling()).toBe(body);
+    expect($pageBlocks(copy).map((node) => node.getTextContent())).toEqual(["Body"]);
     $removeBlocks([start]);
-    expect([start, heading, intro].every((node) => !node.isAttached())).toBe(true);
+    expect([start, heading, intro, body].every((node) => !node.isAttached())).toBe(true);
     expect(copy.isAttached()).toBe(true);
   });
 });
@@ -489,7 +493,7 @@ test("page catalog entries and the shortcut create an editable title with the ca
     () => entry("PAGE_BREAK").create(),
     () => entry("REPEATING_PAGE").create(),
     () => entry("CONFIRMATION_PAGE").create(),
-    shortcuts["---"]!,
+    shortcuts.get("---")!,
   ]) {
     const editor = newEditor();
     run(editor, () => {

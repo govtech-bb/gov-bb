@@ -22,6 +22,8 @@ export type Entry = {
   description: string;
 
   keywords?: string;
+  aliases?: readonly string[];
+  markdown?: string;
   /** The kind $blockKind reports for the block, so the block menu can show the same icon. */
   kind?: string;
   /** What the insert modal's preview draws the block with. */

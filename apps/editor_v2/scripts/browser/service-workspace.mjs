@@ -2,6 +2,7 @@ import { authenticatedContext } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "./playwright.mjs";
+import { openDemoForm } from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -26,7 +27,11 @@ const navigation = page.getByRole("navigation", { name: "Service documents" });
 const fixture = (path) =>
   readFile(new URL(`../../tests/fixtures/pages/corpus/${path}`, import.meta.url), "utf8");
 
-const saved = () => page.locator('[role="status"][title="Saved"]:visible').waitFor();
+const saved = () =>
+  page
+    .locator("[data-document-bar]:visible")
+    .getByText("Saved in this browser", { exact: true })
+    .waitFor();
 
 async function downloadSource(label = "Download source") {
   const event = page.waitForEvent("download");
@@ -232,7 +237,7 @@ async function checkMissingExternalDraft() {
 }
 
 try {
-  await page.goto(url);
+  await openDemoForm(page, url);
   await page.getByRole("textbox", { name: "Form", exact: true }).waitFor();
   await saved();
   const originalRoute = page.url();
@@ -277,7 +282,7 @@ try {
       );
     };
   });
-  await page.getByLabel("Open Markdown file", { exact: true }).setInputFiles({
+  await page.getByLabel("Markdown file to replace from", { exact: true }).setInputFiles({
     name: "slow.md",
     mimeType: "text/markdown",
     buffer: Buffer.from("Older file content"),
@@ -290,6 +295,11 @@ try {
   await page.getByText(/Your changes were kept/).waitFor();
   assert.equal(await source.inputValue(), beforeUpload + "\nKeep my newer typing.\n");
   await button("Discard changes").click();
+  // Discarding asks first
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Discard changes", exact: true })
+    .click();
   const birth = await fixture("get-birth-certificate/index.md");
   await source.fill(birth);
   await button("Apply changes").click();
@@ -373,6 +383,11 @@ try {
   await openSource();
   assert.equal(await source.inputValue(), tableSource + "\nUnapplied supporting page note\n");
   await button("Discard changes").click();
+  // Discarding asks first
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Discard changes", exact: true })
+    .click();
   await button("Close source").click();
 
   await addDocument("calculator", "Certificate fee calculator");
@@ -423,6 +438,11 @@ try {
   await page.reload();
   assert.equal(await source.inputValue(), invalid);
   await button("Discard changes").click();
+  // Discarding asks first
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Discard changes", exact: true })
+    .click();
   await source.fill("---\ntitle: Simple guidance\n---\n\nWrite here.\n");
   await button("Apply changes").click();
   await body.waitFor();

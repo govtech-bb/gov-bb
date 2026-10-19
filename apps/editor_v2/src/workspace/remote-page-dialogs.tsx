@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useId, useState } from "react";
+import { useState } from "react";
 import {
   ApiFailure,
   type EditorApi,
@@ -8,8 +8,14 @@ import {
 } from "../api/client";
 import { suggestedUrl, urlProblem, pageFieldLabel } from "../api/page-markdown";
 import { pageQuery, taxonomyQuery } from "../api/queries";
+import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
-import { workspaceDialogInputClass, WorkspaceDialog } from "./workspace-dialog";
+import { ConfirmDialog } from "../ui/confirm-dialog";
+import { Field } from "../ui/field";
+import { Input } from "../ui/input";
+import { NativeSelect } from "../ui/native-select";
+import { toast } from "../ui/toast";
+import { WorkspaceDialog } from "./workspace-dialog";
 import { documentLabel, type PageDocument } from "./model";
 
 /** Create a page as a draft, then hand its id over once the API has it. */
@@ -40,40 +46,49 @@ function refusals(error: Error | null, otherwise: string) {
   return error.errors.map((item) => `${pageFieldLabel(item.field)}: ${item.message}`);
 }
 
+/** One problem as a sentence, several as a list. */
+function problemText(messages: readonly string[]) {
+  return messages.length === 1 ? (
+    messages[0]
+  ) : (
+    <ul className="list-disc ps-5">
+      {messages.map((message) => (
+        <li key={message}>{message}</li>
+      ))}
+    </ul>
+  );
+}
+
+/** Everything stopping the dialog, read out as one alert. */
 function Problems({ messages }: { messages: readonly string[] }) {
-  return messages.map((message) => (
-    <p key={message} role="alert" className="mt-3 text-error">
-      {message}
-    </p>
-  ));
+  if (messages.length === 0) return null;
+
+  return (
+    <Banner tone="error" className="mt-4">
+      {problemText(messages)}
+    </Banner>
+  );
 }
 
 function PathField({
-  id,
   value,
   onChange,
   readOnly = false,
 }: {
-  id: string;
   value: string;
   onChange: (value: string) => void;
   readOnly?: boolean;
 }) {
   return (
-    <>
-      <label htmlFor={id} className="mb-2 mt-4 block font-semibold">
-        Path
-      </label>
-      <input
-        id={id}
-        className={workspaceDialogInputClass}
+    <Field label="Path" className="mt-4">
+      <Input
         value={value}
         readOnly={readOnly}
         spellCheck={false}
         autoCapitalize="off"
         onChange={(event) => onChange(event.target.value)}
       />
-    </>
+    </Field>
   );
 }
 
@@ -93,7 +108,6 @@ export function CreateRemoteServiceDialog({
   const [edited, setEdited] = useState<string>();
   const [problems, setProblems] = useState<string[]>([]);
   const create = useCreatePage(api, done);
-  const id = useId();
   const category = categories.find((item) => item.id === categoryId);
   const path = edited ?? suggestedUrl(category?.url ?? "", title);
 
@@ -102,73 +116,64 @@ export function CreateRemoteServiceDialog({
       title="Create a service"
       description="The service starts as a draft entry page. Add its start page and supporting pages once it exists."
       close={close}
-    >
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
+      onSubmit={() => {
+        const badPath = urlProblem(path);
 
-          const badPath = urlProblem(path);
+        const found = [
+          ...(title.trim() ? [] : ["Enter a service name"]),
+          ...(category ? [] : ["Choose a category"]),
+          ...(badPath ? [badPath] : []),
+        ];
 
-          const found = [
-            ...(title.trim() ? [] : ["Enter a service name"]),
-            ...(category ? [] : ["Choose a category"]),
-            ...(badPath ? [badPath] : []),
-          ];
+        setProblems(found);
 
-          setProblems(found);
-
-          if (found.length === 0 && category)
-            create.mutate({
-              url: path,
-              title: title.trim(),
-              category_id: category.id,
-              visibility: "draft",
-              body_markdown: "",
-            });
-        }}
-      >
-        <label htmlFor={`${id}-title`} className="mb-2 block font-semibold">
-          Service name
-        </label>
-        <input
-          id={`${id}-title`}
-          className={workspaceDialogInputClass}
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-        />
-        <label htmlFor={`${id}-category`} className="mb-2 mt-4 block font-semibold">
-          Category
-        </label>
-        <select
-          id={`${id}-category`}
-          className={workspaceDialogInputClass}
-          value={categoryId}
-          onChange={(event) => setCategoryId(event.target.value)}
-        >
-          <option value="">Choose a category</option>
-          {categories.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.parent_id ? `— ${item.title}` : item.title}
-            </option>
-          ))}
-        </select>
-        <PathField id={`${id}-path`} value={path} onChange={setEdited} />
-        <Problems
-          messages={[
-            ...problems,
-            ...refusals(create.error, "The page could not be created. Try again."),
-          ]}
-        />
-        <div className="mt-5 flex gap-2">
-          <Button type="submit" variant="accent" size="lg" disabled={create.isPending}>
-            Create service
-          </Button>
-          <Button size="lg" onClick={close}>
+        if (found.length === 0 && category)
+          create.mutate({
+            url: path,
+            title: title.trim(),
+            category_id: category.id,
+            visibility: "draft",
+            body_markdown: "",
+          });
+      }}
+      body={
+        <>
+          <Field label="Service name">
+            <Input value={title} onChange={(event) => setTitle(event.target.value)} />
+          </Field>
+          <Field label="Category" className="mt-4">
+            <NativeSelect
+              value={categoryId}
+              onChange={(event) => setCategoryId(event.target.value)}
+            >
+              <option value="">Choose a category</option>
+              {categories.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.parent_id ? `— ${item.title}` : item.title}
+                </option>
+              ))}
+            </NativeSelect>
+          </Field>
+          <PathField value={path} onChange={setEdited} />
+          <Problems
+            messages={[
+              ...problems,
+              ...refusals(create.error, "The page could not be created. Try again."),
+            ]}
+          />
+        </>
+      }
+      footer={
+        <>
+          <Button size="md" onClick={close}>
             Cancel
           </Button>
-        </div>
-      </form>
-    </WorkspaceDialog>
+          <Button type="submit" variant="accent" size="md" pending={create.isPending}>
+            {create.isPending ? "Creating service…" : "Create service"}
+          </Button>
+        </>
+      }
+    />
   );
 }
 
@@ -191,7 +196,6 @@ export function CreateRemotePageDialog({
   const [edited, setEdited] = useState<string>();
   const [problems, setProblems] = useState<string[]>([]);
   const create = useCreatePage(api, done);
-  const id = useId();
   const start = kind === "start";
   const name = title.trim() || (start ? "Before you start" : "");
   const path = start ? `${entry.url}/start` : (edited ?? suggestedUrl(entry.url, title));
@@ -201,64 +205,52 @@ export function CreateRemotePageDialog({
       title="Add a page"
       description="The page starts as a draft beneath this service's entry page. Forms stay in this browser's drafts."
       close={close}
-    >
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
+      onSubmit={() => {
+        const badPath = urlProblem(path);
+        const found = [...(name ? [] : ["Enter a page title"]), ...(badPath ? [badPath] : [])];
 
-          const badPath = urlProblem(path);
-          const found = [...(name ? [] : ["Enter a page title"]), ...(badPath ? [badPath] : [])];
+        setProblems(found);
 
-          setProblems(found);
-
-          if (found.length === 0)
-            create.mutate({
-              url: path,
-              title: name,
-              parent_id: entry.id,
-              visibility: "draft",
-              body_markdown: "",
-            });
-        }}
-      >
-        <label htmlFor={`${id}-kind`} className="mb-2 block font-semibold">
-          Document type
-        </label>
-        <select
-          id={`${id}-kind`}
-          className={workspaceDialogInputClass}
-          value={kind}
-          onChange={(event) => setKind(event.target.value)}
-        >
-          {!hasStart && <option value="start">Start page</option>}
-          <option value="supporting">Supporting page</option>
-        </select>
-        <label htmlFor={`${id}-title`} className="mb-2 mt-4 block font-semibold">
-          {start ? "Page title (optional)" : "Page title"}
-        </label>
-        <input
-          id={`${id}-title`}
-          className={workspaceDialogInputClass}
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-        />
-        <PathField id={`${id}-path`} value={path} onChange={setEdited} readOnly={start} />
-        <Problems
-          messages={[
-            ...problems,
-            ...refusals(create.error, "The page could not be created. Try again."),
-          ]}
-        />
-        <div className="mt-5 flex gap-2">
-          <Button type="submit" variant="accent" size="lg" disabled={create.isPending}>
-            Add page
-          </Button>
-          <Button size="lg" onClick={close}>
+        if (found.length === 0)
+          create.mutate({
+            url: path,
+            title: name,
+            parent_id: entry.id,
+            visibility: "draft",
+            body_markdown: "",
+          });
+      }}
+      body={
+        <>
+          <Field label="Document type">
+            <NativeSelect value={kind} onChange={(event) => setKind(event.target.value)}>
+              {!hasStart && <option value="start">Start page</option>}
+              <option value="supporting">Supporting page</option>
+            </NativeSelect>
+          </Field>
+          <Field label={start ? "Page title (optional)" : "Page title"} className="mt-4">
+            <Input value={title} onChange={(event) => setTitle(event.target.value)} />
+          </Field>
+          <PathField value={path} onChange={setEdited} readOnly={start} />
+          <Problems
+            messages={[
+              ...problems,
+              ...refusals(create.error, "The page could not be created. Try again."),
+            ]}
+          />
+        </>
+      }
+      footer={
+        <>
+          <Button size="md" onClick={close}>
             Cancel
           </Button>
-        </div>
-      </form>
-    </WorkspaceDialog>
+          <Button type="submit" variant="accent" size="md" pending={create.isPending}>
+            {create.isPending ? "Adding page…" : "Add page"}
+          </Button>
+        </>
+      }
+    />
   );
 }
 
@@ -280,30 +272,34 @@ export function DeleteRemotePageDialog({
     mutationFn: () => api.deletePage(page.id),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["content"] });
+      // The editor leaves the page, so say it went
+      toast("Page deleted");
       done();
     },
   });
 
+  // A service is its entry page: deleting that page deletes the service
+  const service = page.role === "entry";
+
+  // An alert dialog: a stray click outside doesn't dismiss it, and it can't be closed while the page is going
   return (
-    <WorkspaceDialog
-      title="Delete this page"
-      description={`${documentLabel(page)} is removed from the content API and, if it is public, from the site. Its draft in this browser is kept.`}
-      close={close}
-    >
-      <Problems messages={refusals(remove.error, "The page could not be deleted. Try again.")} />
-      <div className="mt-5 flex gap-2">
-        <Button
-          variant="accent"
-          size="lg"
-          disabled={remove.isPending}
-          onClick={() => remove.mutate()}
-        >
-          Delete page
-        </Button>
-        <Button size="lg" onClick={close}>
-          Cancel
-        </Button>
-      </div>
-    </WorkspaceDialog>
+    <ConfirmDialog
+      open
+      onClose={close}
+      title={service ? "Delete this service?" : "Delete this page?"}
+      description={
+        service
+          ? `${documentLabel(page)} is this service's entry page, so deleting it deletes the service. It's removed from the content API and, if it's public, from the site. Its draft in this browser is kept.`
+          : `${documentLabel(page)} is removed from the content API and, if it is public, from the site. Its draft in this browser is kept.`
+      }
+      confirm={service ? "Delete service" : "Delete page"}
+      pendingLabel={service ? "Deleting service…" : "Deleting page…"}
+      pending={remove.isPending}
+      error={
+        remove.error &&
+        problemText(refusals(remove.error, "The page could not be deleted. Try again."))
+      }
+      onConfirm={() => remove.mutate()}
+    />
   );
 }

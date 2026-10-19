@@ -1,20 +1,29 @@
 import { setDOMUnmanaged } from "lexical";
 import { cn } from "../../cn";
 import { $static } from "../../editor/react/block-dom";
+import { govbbOptional } from "../../ui/govbb";
 
 export const $logicMount = () =>
   $static("div", "", { "data-dynamic-wording": "", "aria-hidden": "false" });
+
+/**
+ * What a drawn answer is, for a screen reader: the box is a picture, so after the question it reads “Answer: Email
+ * address”, not a blank line. `label` is the field's, as the insert menu names it.
+ */
+export function $answerText(label: string) {
+  const text = $static("span", "sr-only", { "aria-hidden": "false", "data-answer": "" });
+
+  text.textContent = `Answer: ${label}`;
+
+  return text;
+}
 
 /**
  * GovBB marks what's optional, never what's required: "(optional)" after the label, muted and regular weight (its
  * `govbb-label__optional`). markBlocks shows it on an optional question's first block.
  */
 export function $optional(position: string) {
-  const mark = $static(
-    "span",
-    cn("font-normal whitespace-nowrap text-muted select-none", position),
-    { "data-optional": "" },
-  );
+  const mark = $static("span", cn(govbbOptional, position), { "data-optional": "" });
 
   mark.textContent = "(optional)";
   mark.hidden = true;
@@ -51,9 +60,6 @@ export function $repeatParts(box: HTMLElement) {
 export const onEdge = "absolute -top-7 right-0 text-16 leading-6";
 
 export const optionalRoom = "has-[[data-optional]:not([hidden])]:pt-7";
-
-// GovBB's form control (`govbb-input`), a step denser: a 2px ink border and its one radius
-export const frame = "rounded-sm border-2 border-ink bg-input";
 
 // The space under a question's answer (GovBB's form group margin)
 export const answerGap = "mb-(--form-gap)";

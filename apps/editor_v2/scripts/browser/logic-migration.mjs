@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "./playwright.mjs";
+import { formDraftUrl } from "./form-fixture.mjs";
 
 const old = await readFile(new URL("./fixtures/legacy-markdown-v1.md", import.meta.url), "utf8");
 
@@ -17,7 +18,7 @@ const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
 
 try {
-  await page.goto(process.argv[2] ?? "http://localhost:3019/");
+  await page.goto(formDraftUrl(process.argv[2] ?? "http://localhost:3019/"));
   await page.evaluate(
     ({ previous, old }) => {
       localStorage.clear();

@@ -1,4 +1,3 @@
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
   $addUpdateTag,
   $getNodeByKey,
@@ -8,16 +7,16 @@ import {
   type LexicalEditor,
   type LexicalNode,
 } from "lexical";
-import { useCallback, useEffect, useRef, useState, type DragEvent as ReactDragEvent } from "react";
+import type { Line } from "../editor/react/block-rail";
 import { PageMetadataNode } from "./metadata";
 
-const DRAG_TYPE = "application/x-page-block";
+// Where a page's dragged block may land. The rail's drag (useBlockDrag) does the rest.
 
-type Hit = {
-  key: string;
-  before: boolean;
-  line: { top: number; left: number; width: number };
-};
+/** The drag's data type: page blocks drop only on pages. */
+export const PAGE_BLOCK_DRAG = "application/x-page-block";
+
+/** Before or after one of the page's top-level blocks, with the line that shows it. */
+export type PageDrop = { key: string; before: boolean; line: Line };
 
 function $isContentBlock(node: LexicalNode | null): node is LexicalNode {
   return (
@@ -34,12 +33,13 @@ function $canDrop(source: LexicalNode | null, target: LexicalNode | null, before
   );
 }
 
-function $hitAt(
+/** Blocks move whole: a block lands before the first block whose middle is below the point, or after the last. */
+export function $pageDropAt(
   editor: LexicalEditor,
   anchor: HTMLElement,
   sourceKey: string,
   point: { x: number; y: number },
-): Hit | null {
+): PageDrop | null {
   const bounds = anchor.getBoundingClientRect();
   const body = editor.getRootElement()?.getBoundingClientRect();
 
@@ -84,172 +84,13 @@ function $hitAt(
   };
 }
 
-export function usePageBlockDrag(anchor: HTMLElement) {
-  const [editor] = useLexicalComposerContext();
-  const [hit, setHit] = useState<Hit | null>(null);
-  const session = useRef<{ key: string; element: HTMLElement } | null>(null);
-  const point = useRef<{ x: number; y: number } | null>(null);
-  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+export function $dropPageBlock(sourceKey: string, at: PageDrop) {
+  const source = $getNodeByKey(sourceKey);
+  const target = $getNodeByKey(at.key);
 
-  const finish = useCallback(() => {
-    if (feedbackTimer.current !== null) clearTimeout(feedbackTimer.current);
-    feedbackTimer.current = null;
-    session.current?.element.removeAttribute("data-page-dragging");
-    session.current = null;
-    point.current = null;
-    setHit(null);
-  }, []);
+  if (!source || !target || !$canDrop(source, target, at.before)) return;
+  $addUpdateTag(HISTORY_PUSH_TAG);
 
-  useEffect(() => {
-    const ours = (event: DragEvent) => event.dataTransfer?.types.includes(DRAG_TYPE);
-
-    const updateHit = () => {
-      const current = session.current;
-      const position = point.current;
-
-      if (!current) return;
-
-      const valid =
-        editor.isEditable() &&
-        editor.getEditorState().read(() => $isContentBlock($getNodeByKey(current.key)), { editor });
-
-      if (!valid) {
-        finish();
-
-        return;
-      }
-
-      if (!position) return;
-
-      const next = editor
-        .getEditorState()
-        .read(() => $hitAt(editor, anchor, current.key, position), { editor });
-
-      setHit((previous) =>
-        previous?.key === next?.key &&
-        previous?.before === next?.before &&
-        previous?.line.top === next?.line.top &&
-        previous?.line.left === next?.line.left &&
-        previous?.line.width === next?.line.width
-          ? previous
-          : next,
-      );
-    };
-
-    const over = (event: DragEvent) => {
-      if (!ours(event)) return;
-      event.preventDefault();
-      event.stopPropagation();
-
-      if (!editor.isEditable() || !session.current) {
-        if (event.dataTransfer) event.dataTransfer.dropEffect = "none";
-
-        return;
-      }
-
-      point.current = { x: event.clientX, y: event.clientY };
-      updateHit();
-
-      if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
-    };
-
-    const drop = (event: DragEvent) => {
-      if (!ours(event)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      const current = session.current;
-
-      if (
-        editor.isEditable() &&
-        current &&
-        event.dataTransfer?.getData(DRAG_TYPE) === current.key
-      ) {
-        editor.update(
-          () => {
-            const destination = $hitAt(editor, anchor, current.key, {
-              x: event.clientX,
-              y: event.clientY,
-            });
-
-            if (!destination) return;
-            const source = $getNodeByKey(current.key);
-            const target = $getNodeByKey(destination.key);
-
-            if (!source || !target || !$canDrop(source, target, destination.before)) return;
-            $addUpdateTag(HISTORY_PUSH_TAG);
-
-            if (destination.before) target.insertBefore(source);
-            else target.insertAfter(source);
-          },
-          { discrete: true },
-        );
-      }
-
-      finish();
-    };
-
-    const leave = (event: DragEvent) => {
-      if (!(event.relatedTarget instanceof Node) || !anchor.contains(event.relatedTarget)) {
-        point.current = null;
-        setHit(null);
-      }
-    };
-
-    const cancel = (event: KeyboardEvent) => {
-      if (event.key === "Escape") finish();
-    };
-
-    anchor.addEventListener("dragover", over, true);
-    anchor.addEventListener("drop", drop, true);
-    anchor.addEventListener("dragleave", leave, true);
-    document.addEventListener("dragend", finish, true);
-    document.addEventListener("keydown", cancel, true);
-    window.addEventListener("scroll", updateHit, true);
-    window.addEventListener("resize", updateHit);
-
-    const unregisterUpdate = editor.registerUpdateListener(updateHit);
-
-    const unregisterEditable = editor.registerEditableListener((editable) => {
-      if (!editable) finish();
-    });
-
-    return () => {
-      finish();
-      unregisterUpdate();
-      unregisterEditable();
-      anchor.removeEventListener("dragover", over, true);
-      anchor.removeEventListener("drop", drop, true);
-      anchor.removeEventListener("dragleave", leave, true);
-      document.removeEventListener("dragend", finish, true);
-      document.removeEventListener("keydown", cancel, true);
-      window.removeEventListener("scroll", updateHit, true);
-      window.removeEventListener("resize", updateHit);
-    };
-  }, [anchor, editor, finish]);
-
-  const start = (event: ReactDragEvent<HTMLButtonElement>, key: string) => {
-    finish();
-    const element = editor.getElementByKey(key);
-
-    const valid = editor
-      .getEditorState()
-      .read(() => $isContentBlock($getNodeByKey(key)), { editor });
-
-    if (!editor.isEditable() || !valid || !element?.getClientRects().length) {
-      event.preventDefault();
-
-      return;
-    }
-
-    session.current = { key, element };
-    event.dataTransfer.setData(DRAG_TYPE, key);
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setDragImage(element, 0, 0);
-    // Let the browser capture the full-opacity preview before dimming its source.
-    feedbackTimer.current = setTimeout(() => {
-      if (session.current?.key === key) element.setAttribute("data-page-dragging", "");
-    });
-  };
-
-  return { hit, start, finish };
+  if (at.before) target.insertBefore(source);
+  else target.insertAfter(source);
 }

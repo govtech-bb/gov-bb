@@ -1,7 +1,11 @@
 import type { SerializedEditorState } from "lexical";
 import type { FormEditorDefinition } from "../forms/definition";
 import { createHeadlessEditor } from "../editor/core/create-editor";
-import { nativeFormToSerialized, NativeBindingError } from "../forms/editor/native-bindings";
+import {
+  $withDefaultFormMessages,
+  nativeFormToSerialized,
+  NativeBindingError,
+} from "../forms/editor/native-bindings";
 import { lexicalToFormSchema } from "./lexical-to-form-schema";
 import {
   validateFormDefinition,
@@ -41,7 +45,12 @@ export function formSchemaToLexical(
 
       if (exported.status === "blocked") return blocked(exported.diagnostics);
 
-      if (!nativeSemanticEqual(validated.schema, exported.schema))
+      // The editor keeps the file's messages; export words a blank or placeholder one from its label, so compare alike
+      const expected = editor
+        .getEditorState()
+        .read(() => $withDefaultFormMessages(validated.schema, definition), { editor });
+
+      if (!nativeSemanticEqual(expected, exported.schema))
         return blocked([
           {
             code: "native-preservation",

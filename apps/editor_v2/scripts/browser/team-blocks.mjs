@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { chromium } from "./playwright.mjs";
+import { openDemoForm } from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -19,7 +20,7 @@ const menu = async () => {
 
   await label.scrollIntoViewIfNeeded();
   await label.hover();
-  await page.getByRole("button", { name: "Move this block by dragging" }).click();
+  await page.getByRole("button", { name: "Block actions" }).click();
 };
 
 const format = async () => {
@@ -42,7 +43,7 @@ const saved = async () =>
   });
 
 try {
-  await page.goto(process.argv[2] ?? "http://localhost:3019/");
+  await openDemoForm(page, process.argv[2] ?? "http://localhost:3019/");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await root.waitFor();

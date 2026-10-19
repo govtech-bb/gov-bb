@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { chromium } from "./playwright.mjs";
+import { openDemoForm } from "./form-fixture.mjs";
 
 const url = process.argv[2];
 
@@ -71,7 +72,7 @@ const closeMenus = async (page) => {
 const openMenu = async (page, label) => {
   await closeMenus(page);
   await question(page, label).hover();
-  await page.getByRole("button", { name: "Move this block by dragging", exact: true }).click();
+  await page.getByRole("button", { name: "Block actions", exact: true }).click();
   await page.getByRole("menu").first().waitFor();
 };
 
@@ -102,7 +103,9 @@ const saveSource = async (page, title, marker) => {
       return (
         saved?.includes(title) &&
         saved.includes(marker) &&
-        !!document.querySelector('[role="status"][title="Saved"]')
+        [...document.querySelectorAll("[data-document-bar] span")].some(
+          (status) => status.textContent === "Saved in this browser",
+        )
       );
     },
     { key: storageKey, title, marker },
@@ -132,10 +135,13 @@ try {
     const page = await context.newPage();
     current = page;
     page.on("pageerror", (error) => errors.push(error.message));
-    await page.goto(url);
+    await openDemoForm(page, url);
     await form(page).waitFor();
     await page.evaluate(() => document.fonts.ready);
-    await page.locator('[role="status"][title="Saved"]').waitFor();
+    await page
+      .locator("[data-document-bar]:visible")
+      .getByText("Saved in this browser", { exact: true })
+      .waitFor();
 
     const intro = form(page)
       .locator(":scope > *")

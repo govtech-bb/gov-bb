@@ -79,12 +79,13 @@ export function nativeQuestionSettings(question: QuestionData): Settings {
   if (object(question.config).multiple !== undefined)
     // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- The settings panel retains the draft file-selection flag; native export validates its boolean contract.
     settings.hasMultipleFiles = object(question.config).multiple as boolean;
+  // Messages as stored; a blank one is no message, so it has no ::error line in the draft
   const errors: Settings = {};
 
-  if (question.required) errors.required = question.required.message;
+  if (question.required?.message.trim()) errors.required = question.required.message;
 
   for (const rule of question.validation ?? []) {
-    errors[rule.type] = rule.message;
+    if (rule.message.trim()) errors[rule.type] = rule.message;
     const limit = limits.find(([, , type]) => type === rule.type);
 
     if (limit && "value" in rule) {
@@ -152,11 +153,9 @@ export function applyNativeQuestionSettings(
 ): QuestionData {
   const next = structuredClone(question);
 
+  // No message until the author writes one: export words it from the label (native-bindings.ts)
   if ("required" in patch)
-    next.required = {
-      value: patch.required === true,
-      message: question.required?.message ?? "Enter an answer",
-    };
+    next.required = { value: patch.required === true, message: question.required?.message ?? "" };
 
   if ("isDisabled" in patch) next.disabled = patch.isDisabled === true;
 
@@ -217,7 +216,7 @@ export function applyNativeQuestionSettings(
       ...previous,
       id: previous?.id ?? `${next.id}-${type}`,
       type,
-      message: previous?.message ?? "Enter a valid answer",
+      message: previous?.message ?? "",
       ...value,
     } as ValidationRule;
 
@@ -266,7 +265,7 @@ export function applyNativeQuestionSettings(
     const nextRule = {
       ...previous,
       id: previous?.id ?? `${next.id}-${type}${today ? "-today" : ""}`,
-      message: previous?.message ?? "Enter a date in the permitted range",
+      message: previous?.message ?? "",
       type,
       ...value,
     } as ValidationRule;

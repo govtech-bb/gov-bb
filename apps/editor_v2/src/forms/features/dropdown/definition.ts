@@ -9,6 +9,7 @@ import type { Settings } from "../../core/settings";
 
 import { widthIssues } from "../shared/settings";
 
+import { govbbSelect, govbbSelectCaret } from "../../../ui/govbb";
 import { choicePresentation } from "../choices/presentation";
 import { icon } from "../../../editor/react/block-dom";
 import caretDown from "@phosphor-icons/core/assets/fill/caret-down-fill.svg?raw";
@@ -55,13 +56,9 @@ export const dropdownField = defineField({
     leading: (index) => {
       if (index !== 0) return null;
 
-      const select = $static(
-        "div",
-        "mb-2 flex h-(--form-control) max-w-[var(--field-width,30rem)] items-stretch rounded-sm border-2 border-ink bg-white",
-        { "data-select": "" },
-      );
+      const select = $static("div", `mb-2 ${govbbSelect}`, { "data-select": "" });
 
-      select.innerHTML = `<span class="flex-1"></span><span class="flex w-12 items-center justify-center border-l-2 border-ink bg-grey-10">${icon(caretDown, 14)}</span>`;
+      select.innerHTML = `<span class="flex-1"></span><span class="${govbbSelectCaret}">${icon(caretDown, 14)}</span>`;
 
       return select;
     },

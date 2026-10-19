@@ -87,12 +87,7 @@ export function App({
   return (
     <IconContext.Provider value={icons}>
       <TipProvider delay={300}>
-        {notice && (
-          <p role="alert" className="border-s-4 border-error bg-white px-6 py-3 text-error">
-            {notice}
-          </p>
-        )}
-        <ServiceWorkspace api={api} email={employee.email} onSignOut={signOut} />
+        <ServiceWorkspace api={api} email={employee.email} onSignOut={signOut} notice={notice} />
       </TipProvider>
     </IconContext.Provider>
   );

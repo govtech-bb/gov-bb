@@ -2,15 +2,12 @@ import { setDOMUnmanaged } from "lexical";
 import caretUp from "@phosphor-icons/core/assets/fill/caret-up-fill.svg?raw";
 import caretDown from "@phosphor-icons/core/assets/fill/caret-down-fill.svg?raw";
 import { $static, icon } from "../../../editor/react/block-dom";
-import { frame } from "../../editor/answer-dom";
-import { cn } from "../../../cn";
-import { previewBox, previewWidth } from "../shared/presentation";
-import type { FieldPreviewProps } from "../../editor/field-module";
+import { govbbBox } from "../../../ui/govbb";
 
 export function $drawNumber() {
   const box = $static(
     "div",
-    `relative flex h-(--form-control) w-full cursor-default items-center justify-end gap-2 pl-3 max-w-44 ${frame}`,
+    `relative flex h-(--form-control) w-full cursor-default items-center justify-end gap-2 pl-3 max-w-44 ${govbbBox}`,
     { "data-drawn": "" },
   );
 
@@ -25,8 +22,4 @@ export function $drawNumber() {
   box.append(stepper);
 
   return box;
-}
-
-export function NumberPreview({ width }: FieldPreviewProps) {
-  return <div className={cn(previewBox, "max-w-36", previewWidth(width))} />;
 }

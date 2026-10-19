@@ -1,15 +1,19 @@
-import { Dialog } from "@base-ui/react/dialog";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { ArrowDown, ArrowUp, X } from "@phosphor-icons/react";
-import { useEffect, useId, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, BracketsCurly } from "@phosphor-icons/react";
+import { useEffect, useRef, useState } from "react";
 import { useEditorDefinition } from "../editor/react/composer";
 import { formDefinition } from "../forms/definition";
 import { createFormRuntime } from "../forms/editor/runtime";
 import { createFormDraftCodec } from "../forms/editor/codec";
 import { nativeDiagnosticPath, type NativeDiagnostic } from "../forms/schema";
 import type { DraftReplacementToken } from "../persistence/types";
+import { Banner } from "../ui/banner";
+import { Bar } from "../ui/bar";
 import { Button } from "../ui/button";
-import { useDraft } from "./source-ui";
+import { Dialog } from "../ui/dialog";
+import { Field } from "../ui/field";
+import { Textarea } from "../ui/textarea";
+import { useDraft, type DialogOutcome } from "./source-ui";
 import {
   applyNativeImport,
   beginNativeImport,
@@ -40,11 +44,10 @@ export function FormJsonDialog() {
   }>();
 
   const [diagnostics, setDiagnostics] = useState<NativeDiagnostic[]>([]);
-  const [notice, setNotice] = useState("");
+  const [outcome, setOutcome] = useState<DialogOutcome>();
   const sequence = useRef(0);
   const upload = useRef<HTMLInputElement>(null);
   const pending = staged?.pending;
-  const field = useId();
   const unavailable = nativeIOUnavailable(draft.store, editor);
   const forced = !!draft.replacement;
   useEffect(
@@ -56,29 +59,22 @@ export function FormJsonDialog() {
 
   return (
     <Dialog.Root open={open || forced} onOpenChange={setOpen}>
-      <Dialog.Trigger className="inline-flex h-8 items-center gap-1.5 rounded-sm px-2 text-14 text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
-        JSON
-      </Dialog.Trigger>
-      <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 bg-ink/40" />
-        <Dialog.Popup className="fixed inset-4 z-50 mx-auto flex max-w-300 flex-col overflow-hidden rounded-sm bg-white p-5 shadow-popup outline-none max-sm:inset-0 max-sm:p-3">
-          <div className="flex items-center justify-between gap-3">
-            <Dialog.Title className="text-24 font-semibold text-ink">Form JSON</Dialog.Title>
-            <Dialog.Close
-              disabled={forced}
-              render={<Button icon={<X />} aria-label="Close form JSON" />}
-            />
-          </div>
-          <Dialog.Description className="mt-1 text-14 text-muted">
+      <Dialog.Trigger render={<Bar.Tool icon={<BracketsCurly />} label="JSON" />} />
+      <Dialog.Content size="full" close={!forced} closeLabel="Close form JSON">
+        <Dialog.Header>
+          <Dialog.Title>Form JSON</Dialog.Title>
+          <Dialog.Description>
             Download this form or open a v2 form definition. Review an opened file before applying
             it.
           </Dialog.Description>
+        </Dialog.Header>
+        <Dialog.Body className="flex flex-col">
           {unavailable && (
-            <p role="status" className="mt-3 text-14 text-muted">
+            <p role="status" className="mb-3 text-14 text-muted">
               {unavailable}
             </p>
           )}
-          <div className="my-3 flex flex-wrap gap-2">
+          <div className="mb-3 flex flex-wrap gap-2">
             <Button
               icon={<ArrowDown />}
               onClick={() => {
@@ -87,7 +83,7 @@ export function FormJsonDialog() {
 
                 if (result.source) {
                   downloadJson(result.source, "form.json");
-                  setNotice("Form JSON downloaded");
+                  setOutcome({ tone: "success", text: "Form JSON downloaded" });
                 }
               }}
             >
@@ -114,7 +110,11 @@ export function FormJsonDialog() {
                 const begun = beginNativeImport(draft.store, editor);
                 setStaged(undefined);
                 setDiagnostics([]);
-                setNotice(begun.error ?? "Reading form JSON…");
+                setOutcome(
+                  begun.error
+                    ? { tone: "error", text: begun.error }
+                    : { tone: "info", text: "Reading form JSON…" },
+                );
 
                 try {
                   const source = await file.text();
@@ -129,16 +129,23 @@ export function FormJsonDialog() {
 
                   setStaged({ pending: next, token: begun.token });
                   setDiagnostics(next.diagnostics);
-                  setNotice(
-                    begun.error ??
-                      (next.status === "ready"
-                        ? "Ready to review and apply"
-                        : "The file was retained. Correct its errors before importing it."),
+                  setOutcome(
+                    begun.error
+                      ? { tone: "error", text: begun.error }
+                      : next.status === "ready"
+                        ? { tone: "info", text: "Ready to review and apply" }
+                        : {
+                            tone: "error",
+                            text: "The file was retained. Correct its errors before importing it.",
+                          },
                   );
                 } catch {
                   if (sequence.current === request) {
                     setStaged(undefined);
-                    setNotice("The file could not be read. Open it again.");
+                    setOutcome({
+                      tone: "error",
+                      text: "The file could not be read. Open it again.",
+                    });
                   }
                 }
               }}
@@ -156,18 +163,14 @@ export function FormJsonDialog() {
             </p>
           )}
           {pending && (
-            <>
-              <label htmlFor={field} className="mb-1 text-14 font-semibold">
-                Opened form JSON
-              </label>
-              <textarea
-                id={field}
+            <Field label="Opened form JSON" className="flex-1">
+              <Textarea
                 readOnly
                 value={pending.source}
                 spellCheck={false}
-                className="min-h-32 min-w-0 flex-1 resize-none rounded-sm border border-line bg-grey-10 p-3 font-mono text-14 leading-6 text-ink"
+                className="min-h-32 flex-1 resize-none bg-grey-10 p-3 font-mono leading-6"
               />
-            </>
+            </Field>
           )}
           {diagnostics.length > 0 && (
             <ul
@@ -189,8 +192,10 @@ export function FormJsonDialog() {
               <Button
                 onClick={() => {
                   const result = draft.store.recoverReplacement("candidate");
-                  setNotice(
-                    result.status === "committed" ? "Imported form recovered" : result.message,
+                  setOutcome(
+                    result.status === "committed"
+                      ? { tone: "success", text: "Imported form recovered" }
+                      : { tone: "error", text: result.message },
                   );
                 }}
               >
@@ -199,8 +204,10 @@ export function FormJsonDialog() {
               <Button
                 onClick={() => {
                   const result = draft.store.recoverReplacement("original");
-                  setNotice(
-                    result.status === "committed" ? "Original form restored" : result.message,
+                  setOutcome(
+                    result.status === "committed"
+                      ? { tone: "success", text: "Original form restored" }
+                      : { tone: "error", text: result.message },
                   );
                 }}
               >
@@ -222,31 +229,42 @@ export function FormJsonDialog() {
               )}
             </div>
           )}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Button
-              disabled={pending?.status !== "ready" || !staged?.token || !!unavailable}
-              onClick={() => {
-                if (!staged?.token) return;
-                const result = applyNativeImport(staged.pending, staged.token, draft.store, editor);
-                setNotice(
-                  result.status === "committed"
-                    ? result.cleanupPending
-                      ? "Form imported. Finish saving to clear recovery data."
-                      : "Form imported. Undo returns to your previous form."
-                    : result.message,
-                );
+          {/* What came of it, done or failed, each in its own tone */}
+          {outcome && (
+            <Banner tone={outcome.tone} className="mt-3">
+              {outcome.text}
+            </Banner>
+          )}
+        </Dialog.Body>
+        <Dialog.Actions>
+          <Button
+            variant="accent"
+            size="md"
+            disabled={pending?.status !== "ready" || !staged?.token || !!unavailable}
+            onClick={() => {
+              if (!staged?.token) return;
+              const result = applyNativeImport(staged.pending, staged.token, draft.store, editor);
+              setOutcome(
+                result.status !== "committed"
+                  ? { tone: "error", text: result.message }
+                  : result.cleanupPending
+                    ? {
+                        tone: "warning",
+                        text: "Form imported. Finish saving to clear recovery data.",
+                      }
+                    : {
+                        tone: "success",
+                        text: "Form imported. Undo returns to your previous form.",
+                      },
+              );
 
-                if (result.status === "committed") setStaged(undefined);
-              }}
-            >
-              Apply import
-            </Button>
-            <span role="status" className="ms-auto text-14 text-muted">
-              {notice}
-            </span>
-          </div>
-        </Dialog.Popup>
-      </Dialog.Portal>
+              if (result.status === "committed") setStaged(undefined);
+            }}
+          >
+            Apply import
+          </Button>
+        </Dialog.Actions>
+      </Dialog.Content>
     </Dialog.Root>
   );
 }

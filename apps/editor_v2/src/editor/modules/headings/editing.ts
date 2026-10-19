@@ -1,12 +1,6 @@
-import { $createHeadingNode, $isHeadingNode } from "@lexical/rich-text";
+import { $isHeadingNode } from "@lexical/rich-text";
 import { $createParagraphNode, type ElementNode, type RangeSelection } from "lexical";
-import { $paragraphBefore, type ContentShortcuts } from "../formatting/editing";
-
-export const headingShortcuts: ContentShortcuts = {
-  "# ": () => [$createHeadingNode("h1")],
-  "## ": () => [$createHeadingNode("h2")],
-  "### ": () => [$createHeadingNode("h3")],
-};
+import { $paragraphBefore } from "../formatting/editing";
 
 /** A heading split continues in body text; Enter at its start opens a line above it. */
 export function $enterHeading(

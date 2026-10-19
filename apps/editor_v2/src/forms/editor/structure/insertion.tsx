@@ -2,6 +2,7 @@ import { BookmarkSimple } from "@phosphor-icons/react";
 import { $createQuestionNode } from "../nodes";
 import { defineContent } from "../../content";
 import { nativeContent } from "../../native";
+import { PreviewQuestion } from "../../../ui/preview-sheet";
 
 export const questionLabelContent = defineContent({
   kind: "title",
@@ -25,14 +26,5 @@ export const questionLabelEntry = {
 };
 
 export function QuestionLabelPreview() {
-  return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none mt-5 rounded-sm bg-grey-10 p-4 select-none"
-    >
-      <div className="overflow-hidden rounded-sm bg-white p-5 text-(length:--form-text) shadow-sheet [--form-control:2.75rem] [--form-marker:1.75rem] [--form-text:1rem]">
-        <div className="font-bold leading-[1.5]">{questionLabelEntry.sample.label}</div>
-      </div>
-    </div>
-  );
+  return <PreviewQuestion label={questionLabelEntry.sample.label} />;
 }

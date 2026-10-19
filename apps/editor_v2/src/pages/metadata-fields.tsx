@@ -1,33 +1,45 @@
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
-import { CaretDown, CaretRight, X } from "@phosphor-icons/react";
 import {
+  $getRoot,
+  $getSelection,
+  $isElementNode,
+  $isRangeSelection,
+  COMMAND_PRIORITY_LOW,
   HISTORIC_TAG,
-  HISTORY_MERGE_TAG,
   HISTORY_PUSH_TAG,
+  KEY_ARROW_UP_COMMAND,
   REDO_COMMAND,
+  SKIP_DOM_SELECTION_TAG,
   UNDO_COMMAND,
+  type LexicalEditor,
 } from "lexical";
 import {
   useEffect,
-  useId,
   useLayoutEffect,
   useRef,
   useSyncExternalStore,
-  type ComponentProps,
   type KeyboardEvent,
-  type ReactNode,
 } from "react";
 import { parseDocument } from "yaml";
-import { cn } from "../cn";
+import { HISTORY_START_TAG } from "../editor/core/history";
+import { Field, FieldGroup, FieldText } from "../ui/field";
+import { Input } from "../ui/input";
+import { NativeSelect } from "../ui/native-select";
+import { SidePanel } from "../ui/side-panel";
+import { Tag } from "../ui/tag";
+import { StatusDot, type StatusTone } from "../ui/status-dot";
+import { Textarea } from "../ui/textarea";
 import {
   $pageMetadataNode,
   $setPageMetadata,
+  PageMetadataNode,
   pageMetadataFromYaml,
   type PageMetadata,
 } from "./metadata";
 
-function usePageMetadata() {
+/** The page's metadata as the editor holds it, kept current as it changes. */
+export function usePageMetadata() {
   const [editor] = useLexicalComposerContext();
 
   const yaml = useSyncExternalStore(
@@ -53,8 +65,13 @@ function useMetadataUpdate() {
 
   const update = (values: PageMetadata, discrete = false) => {
     if (!editable) return;
+    // Typing in a field starts an undo step and continues it, as typing on the page does
+    const history = discrete ? HISTORY_PUSH_TAG : typing.current ? undefined : HISTORY_START_TAG;
+    // At once, so the field already holds its new value when React checks it: a later update would move the caret.
+    // The field keeps the focus: otherwise the page's last selection is put back, and the typing follows it there
     editor.update(() => $setPageMetadata(values), {
-      tag: discrete || !typing.current ? HISTORY_PUSH_TAG : HISTORY_MERGE_TAG,
+      discrete: true,
+      tag: history ? [SKIP_DOM_SELECTION_TAG, history] : SKIP_DOM_SELECTION_TAG,
     });
     typing.current = !discrete;
   };
@@ -111,26 +128,117 @@ function useAutoHeight(value: string | undefined) {
   return input;
 }
 
+// The page's first block, where its body starts
+const $firstBlock = () =>
+  $getRoot()
+    .getChildren()
+    .find((node) => !(node instanceof PageMetadataNode));
+
+/** Whether the caret is on the first line of the page's body, where ArrowUp goes back to the introduction. */
+function onFirstLine(editor: LexicalEditor) {
+  const first = editor.getEditorState().read(
+    () => {
+      const selection = $getSelection();
+      const block = $firstBlock();
+
+      return $isRangeSelection(selection) &&
+        selection.isCollapsed() &&
+        block &&
+        (block.is(selection.anchor.getNode()) || block.isParentOf(selection.anchor.getNode()))
+        ? block.getKey()
+        : null;
+    },
+    { editor },
+  );
+
+  const element = first && editor.getElementByKey(first);
+  const selection = window.getSelection();
+  const caret = selection?.rangeCount ? selection.getRangeAt(0).getClientRects()[0] : undefined;
+
+  // An empty line has no caret box to measure, and is one line
+  return !!element && (!caret || caret.top - element.getBoundingClientRect().top < caret.height);
+}
+
+const composing = (event: KeyboardEvent<HTMLTextAreaElement>) =>
+  event.nativeEvent.isComposing || event.keyCode === 229;
+
+const plain = (event: KeyboardEvent) =>
+  !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey;
+
+const atEnd = (field: HTMLTextAreaElement) =>
+  field.selectionStart === field.value.length && field.selectionEnd === field.value.length;
+
+/** Moves the focus into a field, with the caret at the end of its text. */
+function enter(field: HTMLTextAreaElement | null) {
+  field?.focus();
+  field?.setSelectionRange(field.value.length, field.value.length);
+}
+
+/**
+ * The page's title and introduction, which run into its body as one piece of writing: Enter, or ArrowDown at the end
+ * of a field, goes on to the next, and ArrowUp at the start of one, or on the body's first line, goes back.
+ */
 export function PageTitleField({ error }: { error?: string }) {
   const { editor, metadata, editable, update, historyKeys } = useMetadataUpdate();
   const title = useAutoHeight(metadata.title);
   const lede = useAutoHeight(metadata.lede);
 
+  useEffect(
+    () =>
+      editor.registerCommand(
+        KEY_ARROW_UP_COMMAND,
+        (event) => {
+          if (event?.shiftKey || !onFirstLine(editor)) return false;
+          event?.preventDefault();
+          enter(lede.current);
+
+          return true;
+        },
+        COMMAND_PRIORITY_LOW,
+      ),
+    [editor, lede],
+  );
+
+  // To the body's start
+  // Into the body, at its start: focused first, so the browser's own caret doesn't land after
+  const toBody = () => {
+    editor.focus();
+    editor.update(
+      () => {
+        const first = $firstBlock();
+
+        if ($isElementNode(first)) first.selectStart();
+      },
+      { discrete: true },
+    );
+  };
+
   return (
-    <div className="page-document-heading">
-      <label className="page-title-label">
+    <div className="mb-9">
+      <label className="block">
         <span className="sr-only">Page title</span>
         <textarea
           ref={title}
           aria-label="Page title"
           rows={1}
-          className="page-title-input outline-none"
+          className="block min-h-[1.2em] w-full resize-none overflow-hidden rounded-sm text-[clamp(1.875rem,3vw,2.5rem)] leading-[1.2] font-bold tracking-tight text-balance text-ink outline-none placeholder:text-subtle"
           value={metadata.title ?? ""}
           readOnly={!editable}
           placeholder="Untitled page"
-          onChange={(event) => editor.update(() => $setPageMetadata({ title: event.target.value }))}
+          onChange={(event) => update({ title: event.target.value })}
+          {...historyKeys}
           onKeyDown={(event) => {
-            if (event.key === "Enter") event.preventDefault();
+            if (composing(event)) return;
+
+            if (
+              event.key === "Enter" ||
+              (event.key === "ArrowDown" && plain(event) && atEnd(event.currentTarget))
+            ) {
+              // A title is one line: Enter goes on to the introduction
+              event.preventDefault();
+
+              if (plain(event) || event.key === "ArrowDown") enter(lede.current);
+            } else historyKeys.onKeyDown(event);
           }}
           aria-invalid={error ? true : undefined}
         />
@@ -140,12 +248,28 @@ export function PageTitleField({ error }: { error?: string }) {
         ref={lede}
         aria-label="Introduction"
         rows={1}
-        className="page-lede-input outline-none"
+        className="mt-5 block w-full resize-none overflow-hidden rounded-sm text-20 leading-[1.6] text-muted outline-none placeholder:text-subtle"
         value={metadata.lede ?? ""}
         readOnly={!editable}
         placeholder="Add an introduction (optional)"
         onChange={(event) => update({ lede: event.target.value || undefined })}
         {...historyKeys}
+        onKeyDown={(event) => {
+          const field = event.currentTarget;
+
+          if (composing(event) || !plain(event)) historyKeys.onKeyDown(event);
+          else if (event.key === "Enter" || (event.key === "ArrowDown" && atEnd(field))) {
+            event.preventDefault();
+            toBody();
+          } else if (
+            event.key === "ArrowUp" &&
+            field.selectionStart === 0 &&
+            field.selectionEnd === 0
+          ) {
+            event.preventDefault();
+            enter(title.current);
+          }
+        }}
       />
     </div>
   );
@@ -157,90 +281,13 @@ export type PageCategory = {
   subcategories?: readonly { slug: string; title: string }[];
 };
 
-const focusRing =
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink focus-visible:ring-4 focus-visible:ring-focus";
-
-// A value reads as text until it is used: hovering tints it, and editing raises a white box,
-// which is its focus indicator in place of the global ring (outline-none opts out of that).
-const control = cn(
-  "block w-full min-w-0 min-h-8 rounded-sm bg-transparent px-2 py-1 text-14 leading-normal text-ink outline-none placeholder:text-subtle disabled:cursor-default [&[readonly]]:cursor-default [&:not(:disabled,[readonly])]:hover:bg-tint focus:bg-white focus:shadow-sheet focus:ring-1 focus:ring-line-strong @max-[30rem]:min-h-11 @max-[30rem]:text-16 pointer-coarse:min-h-11",
-);
-
-const codeControl = cn(control, "font-mono text-13 @max-[30rem]:text-16");
-
-const labelClass = "py-1 leading-normal text-muted @max-[30rem]:py-0";
-
-const hintClass = "px-2 py-1 text-13 leading-normal wrap-anywhere text-muted";
-
-/** A select that reads as its chosen value, optionally led by a coloured dot. */
-function PropertySelect({ dot, className, ...props }: ComponentProps<"select"> & { dot?: string }) {
-  return (
-    <span className="relative block max-w-80">
-      {dot && (
-        <span
-          aria-hidden="true"
-          className={cn(
-            "pointer-events-none absolute start-2.5 top-1/2 size-1.5 -translate-y-1/2 rounded-full",
-            dot,
-          )}
-        />
-      )}
-      <select
-        {...props}
-        className={cn(control, "cursor-pointer appearance-none pe-7", dot && "ps-6", className)}
-      />
-      <CaretDown
-        aria-hidden="true"
-        className="pointer-events-none absolute end-2 top-1/2 size-3.5 -translate-y-1/2 text-muted"
-      />
-    </span>
-  );
-}
-
 // Live is green, link-only is amber, draft is grey; the label always travels with the colour.
-const visibilityDots = new Map([
-  ["", "bg-green-80"],
-  ["public", "bg-green-80"],
-  ["preview", "bg-yellow-80"],
-  ["draft", "bg-grey-60"],
+export const visibilityTones = new Map<string, StatusTone>([
+  ["", "success"],
+  ["public", "success"],
+  ["preview", "warning"],
+  ["draft", "neutral"],
 ]);
-
-function PageDetail({
-  id,
-  label,
-  children,
-  unsupported = false,
-  plain = false,
-  error,
-}: {
-  id: string;
-  label: string;
-  children: ReactNode;
-  unsupported?: boolean;
-  /** The value is text to read, with no control for a label to name. */
-  plain?: boolean;
-  error?: string;
-}) {
-  return (
-    <div className="grid grid-cols-[9rem_minmax(0,1fr)] items-start gap-x-4 gap-y-1.5 @max-[30rem]:grid-cols-1">
-      {unsupported || plain ? (
-        <span className={labelClass}>{label}</span>
-      ) : (
-        <label className={labelClass} htmlFor={id}>
-          {label}
-        </label>
-      )}
-      <div className="min-w-0">
-        {unsupported ? (
-          <p className={hintClass}>This value is preserved. Edit it in Markdown.</p>
-        ) : (
-          children
-        )}
-        {error && <p className="px-2 pt-1 text-13 text-error">{error}</p>}
-      </div>
-    </div>
-  );
-}
 
 export const visibilityLabels = new Map([
   ["", "Public"],
@@ -251,9 +298,16 @@ export const visibilityLabels = new Map([
 
 const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" });
 
-const shortControl = "max-w-80";
+/** A value the panel can't offer a control for, such as a list where it expects text: kept as written. */
+function Preserved({ label, error }: { label: string; error?: string }) {
+  return (
+    <FieldText label={label} error={error}>
+      <span className="text-muted">This value is preserved. Edit it in Markdown.</span>
+    </FieldText>
+  );
+}
 
-export type PageDetailsOptions = {
+export type PageSettingsOptions = {
   categories?: readonly PageCategory[];
   /** A page files under one category, so the picker hides once one is chosen. */
   single?: boolean;
@@ -263,14 +317,14 @@ export type PageDetailsOptions = {
   errors?: Readonly<Record<string, string>>;
 };
 
-export function PageDetailsFields({
+/** The page's settings, in sections for its side panel: how it's published, its details and where it's filed. */
+export function PageSettings({
   categories = [],
   single = false,
   publishedAt,
   errors = {},
-}: PageDetailsOptions) {
+}: PageSettingsOptions) {
   const { metadata, yaml, editable, update, historyKeys } = useMetadataUpdate();
-  const id = useId();
   const document = parseDocument(yaml);
 
   const unsupported = (key: keyof PageMetadata) =>
@@ -299,15 +353,6 @@ export function PageDetailsFields({
       Number.isNaN(parsedDate.getTime()) ||
       parsedDate.toISOString().slice(0, 10) !== date);
 
-  const summary = [
-    !unsupported("visibility") && (visibilityLabels.get(visibility) ?? visibility),
-    date && !unusualDate && dateFormat.format(parsedDate),
-    metadata.form_id && `Form: ${metadata.form_id}`,
-    !metadata.description && !unsupported("description") && "No description",
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
   const changeCategories = (next: string[]) => {
     const patch: PageMetadata = {
       category: next.length === 1 ? next[0] : undefined,
@@ -327,111 +372,155 @@ export function PageDetailsFields({
     update(patch, true);
   };
 
+  const filed = categories.length > 0 || document.has("category") || document.has("categories");
+
+  const subcategory = subcategories.length > 0 || document.has("subcategory");
+
   return (
-    <details className="page-metadata-details group/metadata @container -mt-2 mb-8 text-14 open:border-b open:border-line open:pb-6">
-      <summary
-        className={cn(
-          "group/summary flex min-h-9 cursor-pointer list-none items-center gap-3 rounded-sm text-muted after:h-px after:min-w-8 after:flex-1 after:bg-line group-open/metadata:after:hidden pointer-coarse:min-h-11 [&::-webkit-details-marker]:hidden",
-          focusRing,
+    // The fields' undo and redo are the editor's, so the page keeps one history
+    <fieldset className="contents" disabled={!editable} {...historyKeys}>
+      <SidePanel.Section title="Publishing">
+        {unsupported("visibility") ? (
+          <Preserved label="Visibility" error={errors.visibility} />
+        ) : (
+          <Field label="Visibility" error={errors.visibility}>
+            <NativeSelect
+              icon={<StatusDot tone={visibilityTones.get(visibility) ?? "neutral"} />}
+              value={visibility === "public" ? "" : visibility}
+              onChange={(event) => update({ visibility: event.target.value || undefined }, true)}
+            >
+              {["", "preview", "draft"].map((value) => (
+                <option key={value} value={value}>
+                  {visibilityLabels.get(value)}
+                </option>
+              ))}
+              {unusualVisibility && (
+                <option value={visibility}>{visibility} (from Markdown)</option>
+              )}
+            </NativeSelect>
+          </Field>
         )}
-      >
-        <span className="-ms-1 flex flex-none items-center gap-1.5 rounded-sm px-1 py-1.5 font-semibold group-hover/summary:bg-tint group-hover/summary:text-ink">
-          <CaretRight className="size-3.5 group-open/metadata:rotate-90" aria-hidden="true" /> Page
-          details
-        </span>
-        <span className="min-w-0 truncate group-open/metadata:hidden">{summary}</span>
-      </summary>
-      <fieldset
-        className="mt-3 grid min-w-0 gap-0.5 @max-[30rem]:gap-4"
-        disabled={!editable}
-        {...historyKeys}
-      >
-        <legend className="sr-only">Page details</legend>
-        {document.has("url") && (
-          <PageDetail
-            id={`${id}-url`}
-            label="Path"
-            unsupported={unsupported("url")}
-            error={errors.url}
-          >
-            <input
-              id={`${id}-url`}
-              className={codeControl}
-              value={metadata.url ?? ""}
-              spellCheck={false}
-              autoCapitalize="off"
-              onChange={(event) => update({ url: event.target.value })}
-            />
-          </PageDetail>
-        )}
-        <PageDetail id={`${id}-description`} label="Description" error={errors.description}>
-          <textarea
-            id={`${id}-description`}
-            className={cn(
-              control,
-              "resize-none supports-[field-sizing:content]:field-sizing-content",
+        {unsupported("publish_date") ? (
+          <Preserved label="Publication date" error={errors.publish_date} />
+        ) : publishedAt !== undefined ? (
+          <FieldText label="Publication date" error={errors.publish_date}>
+            {date ? (
+              dateFormat.format(parsedDate)
+            ) : (
+              <span className="text-muted">Set when the page is first made public</span>
             )}
+          </FieldText>
+        ) : (
+          <Field
+            label="Publication date"
+            hint={unusualDate ? "This date is preserved. Edit it in Markdown." : undefined}
+            error={errors.publish_date}
+          >
+            {unusualDate ? (
+              <Input value={date} readOnly />
+            ) : (
+              <Input
+                type="date"
+                value={date}
+                onChange={(event) => {
+                  if (event.target.validity.valid)
+                    update({ publish_date: event.target.value || undefined }, true);
+                }}
+              />
+            )}
+          </Field>
+        )}
+      </SidePanel.Section>
+      <SidePanel.Section title="Details">
+        {document.has("url") &&
+          (unsupported("url") ? (
+            <Preserved label="Path" error={errors.url} />
+          ) : (
+            <Field label="Path" error={errors.url}>
+              {/* One line that wraps, so the whole path shows in the narrow panel */}
+              <Textarea
+                rows={1}
+                className="resize-none font-mono wrap-anywhere supports-[field-sizing:content]:field-sizing-content"
+                value={metadata.url ?? ""}
+                spellCheck={false}
+                autoCapitalize="off"
+                onKeyDown={(event) => event.key === "Enter" && event.preventDefault()}
+                onChange={(event) => update({ url: event.target.value.replaceAll("\n", "") })}
+              />
+            </Field>
+          ))}
+        <Field
+          label="Description"
+          hint="A short summary for listings and search."
+          error={errors.description}
+        >
+          <Textarea
             rows={2}
+            className="resize-none supports-[field-sizing:content]:field-sizing-content"
             value={metadata.description ?? ""}
-            placeholder="Short summary for listings and search"
             onChange={(event) => update({ description: event.target.value || undefined })}
           />
-        </PageDetail>
-        {(categories.length > 0 || document.has("category") || document.has("categories")) && (
-          <PageDetail
-            id={`${id}-category`}
-            label="Categories"
-            unsupported={unsupported("category") || unsupported("categories")}
-            error={errors.category ?? errors.category_id}
-          >
-            {single ? (
-              <PropertySelect
-                id={`${id}-category`}
-                value={selected[0] ?? ""}
-                onChange={(event) =>
-                  changeCategories(event.target.value ? [event.target.value] : [])
-                }
-              >
-                <option value="">Choose a category</option>
-                {selected[0] && !categories.some((category) => category.slug === selected[0]) && (
-                  <option value={selected[0]}>{selected[0]} (from Markdown)</option>
-                )}
-                {categories.map((category) => (
-                  <option key={category.slug} value={category.slug}>
-                    {category.title}
-                  </option>
-                ))}
-              </PropertySelect>
+        </Field>
+        <Field label="Form ID" error={errors.form_id}>
+          <Input
+            className="font-mono"
+            value={metadata.form_id ?? ""}
+            placeholder="No form linked"
+            spellCheck={false}
+            autoCapitalize="off"
+            onChange={(event) => update({ form_id: event.target.value || undefined })}
+          />
+        </Field>
+      </SidePanel.Section>
+      {(filed || subcategory) && (
+        <SidePanel.Section title="Categories">
+          {filed &&
+            (unsupported("category") || unsupported("categories") ? (
+              <Preserved label="Categories" error={errors.category ?? errors.category_id} />
+            ) : single ? (
+              <Field label="Category" error={errors.category ?? errors.category_id}>
+                <NativeSelect
+                  value={selected[0] ?? ""}
+                  onChange={(event) =>
+                    changeCategories(event.target.value ? [event.target.value] : [])
+                  }
+                >
+                  <option value="">Choose a category</option>
+                  {selected[0] && !categories.some((category) => category.slug === selected[0]) && (
+                    <option value={selected[0]}>{selected[0]} (from Markdown)</option>
+                  )}
+                  {categories.map((category) => (
+                    <option key={category.slug} value={category.slug}>
+                      {category.title}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
             ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {selected.map((slug) => {
-                  const title =
-                    categories.find((category) => category.slug === slug)?.title ?? slug;
+              <FieldGroup label="Filed under" error={errors.category ?? errors.category_id}>
+                {selected.length > 0 && (
+                  <ul className="flex flex-wrap gap-1.5">
+                    {selected.map((slug) => {
+                      const title =
+                        categories.find((category) => category.slug === slug)?.title ?? slug;
 
-                  return (
-                    <span
-                      className="inline-flex min-h-9 max-w-full items-center rounded-sm bg-blue-10 ps-2.5 leading-normal text-ink"
-                      key={slug}
-                    >
-                      <span className="min-w-0 wrap-anywhere">{title}</span>
-                      <button
-                        type="button"
-                        aria-label={`Remove ${title}`}
-                        className={cn(
-                          "grid min-w-9 flex-none cursor-pointer place-items-center self-stretch rounded-sm hover:bg-tint hover:text-ink pointer-fine:active:scale-[0.97] @max-[30rem]:min-h-11 @max-[30rem]:min-w-11 pointer-coarse:min-h-11 pointer-coarse:min-w-11",
-                          focusRing,
-                        )}
-                        onClick={() => changeCategories(selected.filter((value) => value !== slug))}
-                      >
-                        <X className="size-3.5" aria-hidden="true" />
-                      </button>
-                    </span>
-                  );
-                })}
-                <PropertySelect
-                  id={`${id}-category`}
+                      return (
+                        <li key={slug} className="max-w-full">
+                          <Tag
+                            removeLabel={`Remove ${title}`}
+                            onRemove={() =>
+                              changeCategories(selected.filter((value) => value !== slug))
+                            }
+                          >
+                            {title}
+                          </Tag>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                <NativeSelect
                   aria-label="Add category"
-                  className="w-[min(100%,20rem)]"
                   disabled={categories.length === 0}
                   value=""
                   onChange={(event) => {
@@ -450,104 +539,37 @@ export function PageDetailsFields({
                           </option>,
                         ],
                   )}
-                </PropertySelect>
-              </div>
-            )}
-          </PageDetail>
-        )}
-        {(subcategories.length > 0 || document.has("subcategory")) && (
-          <PageDetail
-            id={`${id}-subcategory`}
-            label="Subcategory"
-            unsupported={unsupported("subcategory")}
-            error={errors.subcategory}
-          >
-            <PropertySelect
-              id={`${id}-subcategory`}
-              value={metadata.subcategory ?? ""}
-              onChange={(event) => update({ subcategory: event.target.value || undefined }, true)}
-            >
-              <option value="">None</option>
-              {metadata.subcategory &&
-                !subcategories.some((item) => item.slug === metadata.subcategory) && (
-                  <option value={metadata.subcategory}>
-                    {metadata.subcategory} (from Markdown)
-                  </option>
-                )}
-              {subcategories.map((item) => (
-                <option key={item.slug} value={item.slug}>
-                  {item.title}
-                </option>
-              ))}
-            </PropertySelect>
-          </PageDetail>
-        )}
-        <PageDetail
-          id={`${id}-visibility`}
-          label="Visibility"
-          unsupported={unsupported("visibility")}
-          error={errors.visibility}
-        >
-          <PropertySelect
-            id={`${id}-visibility`}
-            dot={visibilityDots.get(visibility) ?? "bg-grey-60"}
-            value={visibility === "public" ? "" : visibility}
-            onChange={(event) => update({ visibility: event.target.value || undefined }, true)}
-          >
-            {["", "preview", "draft"].map((value) => (
-              <option key={value} value={value}>
-                {visibilityLabels.get(value)}
-              </option>
+                </NativeSelect>
+              </FieldGroup>
             ))}
-            {unusualVisibility && <option value={visibility}>{visibility} (from Markdown)</option>}
-          </PropertySelect>
-        </PageDetail>
-        <PageDetail
-          id={`${id}-date`}
-          label="Publication date"
-          unsupported={unsupported("publish_date")}
-          plain={publishedAt !== undefined}
-          error={errors.publish_date}
-        >
-          {publishedAt !== undefined ? (
-            <p className={cn("px-2 py-1 leading-normal", date ? "text-ink" : "text-subtle")}>
-              {date ? dateFormat.format(parsedDate) : "Set when the page is first made public"}
-            </p>
-          ) : unusualDate ? (
-            <>
-              <input
-                id={`${id}-date`}
-                className={cn(control, shortControl)}
-                value={date}
-                readOnly
-              />
-              <p className={hintClass}>This date is preserved. Edit it in Markdown.</p>
-            </>
-          ) : (
-            <input
-              id={`${id}-date`}
-              className={cn(control, shortControl)}
-              type="date"
-              value={date}
-              onChange={(event) => {
-                if (event.target.validity.valid)
-                  update({ publish_date: event.target.value || undefined }, true);
-              }}
-            />
-          )}
-        </PageDetail>
-        <PageDetail id={`${id}-form`} label="Form ID" error={errors.form_id}>
-          <input
-            id={`${id}-form`}
-            className={cn(codeControl, shortControl)}
-            value={metadata.form_id ?? ""}
-            placeholder="No form linked"
-            spellCheck={false}
-            autoCapitalize="off"
-            onChange={(event) => update({ form_id: event.target.value || undefined })}
-          />
-        </PageDetail>
-      </fieldset>
-    </details>
+          {subcategory &&
+            (unsupported("subcategory") ? (
+              <Preserved label="Subcategory" error={errors.subcategory} />
+            ) : (
+              <Field label="Subcategory" error={errors.subcategory}>
+                <NativeSelect
+                  value={metadata.subcategory ?? ""}
+                  onChange={(event) =>
+                    update({ subcategory: event.target.value || undefined }, true)
+                  }
+                >
+                  <option value="">None</option>
+                  {metadata.subcategory &&
+                    !subcategories.some((item) => item.slug === metadata.subcategory) && (
+                      <option value={metadata.subcategory}>
+                        {metadata.subcategory} (from Markdown)
+                      </option>
+                    )}
+                  {subcategories.map((item) => (
+                    <option key={item.slug} value={item.slug}>
+                      {item.title}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+            ))}
+        </SidePanel.Section>
+      )}
+    </fieldset>
   );
 }

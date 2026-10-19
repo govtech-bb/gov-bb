@@ -8,7 +8,8 @@ export const listEntries: readonly ContentEntry[] = [
     shortcuts: ["- ", "* "],
     title: "Bulleted list",
     icon: <ListBullets />,
-    keywords: "bullets, unordered, ul, -",
+    aliases: ["bullets", "unordered list", "ul"],
+    markdown: "-",
     kind: "bullet",
     renderPreview: ({ text, items = [] }) => (
       <>
@@ -33,7 +34,8 @@ export const listEntries: readonly ContentEntry[] = [
     shortcuts: ["1. "],
     title: "Numbered list",
     icon: <ListNumbers />,
-    keywords: "numbers, ordered, steps, ol, 1.",
+    aliases: ["numbers", "ordered list", "steps", "ol"],
+    markdown: "1.",
     kind: "number",
     renderPreview: ({ text, items = [] }) => (
       <>

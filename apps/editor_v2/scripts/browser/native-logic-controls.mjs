@@ -2,6 +2,7 @@ import { authenticatedPage } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "./playwright.mjs";
+import { openDemoForm } from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -63,7 +64,7 @@ async function withinViewport(locator) {
 }
 
 try {
-  await page.goto(url);
+  await openDemoForm(page, url);
   await root.waitFor();
   const baseline = await exported();
   const original = baseline.blocks.find((block) => block.type === "logic");
@@ -433,7 +434,10 @@ try {
     op: "all",
     conditions: [{ op: "any", conditions: children }, true],
   });
-  await page.locator('[role="status"][title="Saved"]:visible').waitFor();
+  await page
+    .locator("[data-document-bar]:visible")
+    .getByText("Saved in this browser", { exact: true })
+    .waitFor();
   await page.reload();
   await root.waitFor();
   assert.deepEqual(

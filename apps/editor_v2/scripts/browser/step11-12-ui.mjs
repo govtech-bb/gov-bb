@@ -22,7 +22,7 @@ const question = (title) =>
 const menu = async (title) => {
   await question(title).scrollIntoViewIfNeeded();
   await question(title).hover();
-  await page.getByRole("button", { name: "Move this block by dragging" }).click();
+  await page.getByRole("button", { name: "Block actions" }).click();
 };
 
 const close = async () => {
@@ -179,7 +179,7 @@ try {
   const titles = root.locator("h2").filter({ hasText: "Services offered" });
   assert.equal(await titles.count(), 2);
   await titles.last().hover();
-  await page.getByRole("button", { name: "Move this block by dragging" }).click();
+  await page.getByRole("button", { name: "Block actions" }).click();
   await page.getByRole("menuitem", { name: /^Delete/ }).click();
   await settle();
   assert.equal(await titles.count(), 1);

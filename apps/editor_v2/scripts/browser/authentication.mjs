@@ -134,7 +134,10 @@ try {
   });
   session = employeeSession();
   await title.fill("Saved before sign-out");
-  await page.locator('[role="status"][title="Saved"]:visible').waitFor();
+  await page
+    .locator("[data-document-bar]:visible")
+    .getByText("Saved in this browser", { exact: true })
+    .waitFor();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await page.getByRole("heading", { name: "You are signed out" }).waitFor();
   assert.equal(signOuts, 1);

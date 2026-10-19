@@ -22,7 +22,12 @@ import { validateFormDefinition } from "../../src/forms/schema";
 import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
 import { govbbFormEditor, govbbFormModules } from "../../src/presets/govbb-form";
 import { demoForm, demoFormEntry } from "../../src/presets/form-registry/demo";
-import { emptyNativeForm, nativeHost, nativeOutput } from "../helpers/native-form";
+import {
+  emptyNativeForm,
+  nativeHost,
+  nativeOutput,
+  withDefaultMessages,
+} from "../helpers/native-form";
 
 const fragment = (
   blocks: Parameters<typeof prepareRegistryEntry>[0]["blocks"],
@@ -282,7 +287,7 @@ test("native complete-form registry creation remaps identities while ordinary JS
   const editor = createHeadlessEditor(govbbFormEditor, loaded.state);
 
   try {
-    expect(nativeOutput(editor)).toEqual(demoForm);
+    expect(nativeOutput(editor)).toEqual(withDefaultMessages(demoForm));
   } finally {
     editor.dispose();
   }

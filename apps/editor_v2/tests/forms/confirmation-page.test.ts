@@ -4,7 +4,7 @@ import { HeadingNode } from "@lexical/rich-text";
 import { expect, test } from "vitest";
 import { $createParagraphNode, $createTextNode, $getRoot } from "lexical";
 import { $insertionGroups } from "../helpers/insertion";
-import { matchesAction as matches } from "../../src/editor/core/actions";
+import { rankActions } from "../../src/editor/core/actions";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import { compileForm, preflight } from "../helpers/default-form";
 import { fromEditor, readMarkdown, toEditor, writeMarkdown } from "../helpers/default-form";
@@ -153,7 +153,7 @@ test("confirmation insertion offers supported content without answer or logic en
   );
   const entry = govbbFormEditor.actions.find((entry) => entry.id === "CONFIRMATION_PAGE")!;
   expect(entry.title).toBe("Confirmation page");
-  expect(matches(entry, "confirmation")).toBe(true);
+  expect(rankActions("confirmation", [entry])).toEqual([entry]);
 });
 
 test("confirmation Markdown keeps its page purpose and invalid content through reload", () => {

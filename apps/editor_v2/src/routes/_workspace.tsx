@@ -1,13 +1,15 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { App } from "../app";
-import { localReturnPath } from "../auth/session";
+import { localReturnPath, workspaceAdmission } from "../auth/session";
+
+const admit = workspaceAdmission(Date.now);
 
 /** Gate workspace rendering; preloading must never initiate OAuth. */
 export const Route = createFileRoute("/_workspace")({
   ssr: false,
-  beforeLoad: async ({ context, location, preload }) => {
+  beforeLoad: async ({ context, location, preload, cause }) => {
     if (preload) return {};
-    const result = await context.auth.session();
+    const result = await admit(cause === "stay" ? "stay" : "enter", () => context.auth.session());
 
     if (result.ok && result.value) return { employee: result.value };
     throw redirect({

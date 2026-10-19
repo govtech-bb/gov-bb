@@ -1,7 +1,9 @@
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import type { ComponentType, ReactNode } from "react";
-import type { LexicalNode } from "lexical";
+import { $getDocument, type LexicalNode } from "lexical";
 import { defineRenderer, defineSlot } from "../../editor/react/contributions";
-import type { FormModule, ResolvedField } from "../field";
+import { PreviewQuestion } from "../../ui/preview-sheet";
+import type { ChoicePresentation, FormModule, ResolvedField } from "../field";
 import type { BlockMenuActions, BlockMenuModel } from "../react/block-settings";
 import { formInsertionAction } from "./insertion-action";
 import { $createFieldLabel } from "./field-nodes";
@@ -22,38 +24,88 @@ export type FieldPreviewProps = {
   more?: number;
 };
 
+/**
+ * Something the form canvas draws, shown in a preview: `draw` builds the canvas's own DOM, as a read of the editor, so a
+ * preview and the canvas can't disagree about a field. `width` is the question's field width, as on the canvas.
+ */
+export function CanvasDrawing({
+  draw,
+  width,
+}: {
+  draw: () => Node;
+  width?: FieldPreviewProps["width"];
+}) {
+  const [editor] = useLexicalComposerContext();
+
+  return (
+    <div
+      data-width={width}
+      ref={(drawing) => {
+        drawing?.replaceChildren(editor.getEditorState().read(draw, { editor }));
+      }}
+    />
+  );
+}
+
+/** Each option as the canvas draws it, holding its label. */
+function $drawOptions(choice: ChoicePresentation, options: readonly string[]) {
+  const drawing = $getDocument().createDocumentFragment();
+
+  for (const [index, option] of options.entries()) {
+    const dom = choice.createDOM(index, () => {});
+    dom.querySelector("[data-text]")!.textContent = option;
+    drawing.append(dom);
+  }
+
+  return drawing;
+}
+
+/** A field previews as the canvas draws it, unless its module brings a preview: its options, or the box `draw` makes. */
+function canvasPreview({ choice, draw, defaults, capabilities }: ResolvedField) {
+  return function CanvasPreview({
+    width = capabilities.width,
+    mask,
+    options = ["Yes", "No"],
+    more = 0,
+  }: FieldPreviewProps) {
+    return (
+      <>
+        <CanvasDrawing
+          width={width}
+          draw={() =>
+            choice ? $drawOptions(choice, options) : draw!(mask ? { ...defaults, mask } : defaults)
+          }
+        />
+        {more > 0 && <p className="leading-[1.5] text-muted">and {more} more</p>}
+      </>
+    );
+  };
+}
+
 /** One installed unit owns its answer, menus, inspector and renderer contributions. */
 export function fieldModule({
   field,
   key = `field:${field.kind}`,
   insertion,
   Controls,
-  Preview,
+  Preview = canvasPreview(field),
   Renderer,
 }: {
   key?: string;
   field: ResolvedField;
   insertion: FieldInsertion;
   Controls: ComponentType<{ m: BlockMenuModel; a: BlockMenuActions }>;
-  Preview: ComponentType<FieldPreviewProps>;
+  Preview?: ComponentType<FieldPreviewProps>;
   Renderer?: ComponentType<import("../react/widget-settings").WidgetProps>;
 }): FormModule {
-  const preview = (titled: boolean): ReactNode => (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none mt-5 rounded-sm bg-grey-10 p-4 select-none"
-    >
-      <div className="overflow-hidden rounded-sm bg-white p-5 text-(length:--form-text) shadow-sheet [--form-control:2.75rem] [--form-marker:1.75rem] [--form-text:1rem]">
-        {titled && <div className="font-bold leading-[1.5]">{insertion.question.label}</div>}
-        {titled && insertion.question.hint && (
-          <div className="leading-[1.5] text-muted">{insertion.question.hint}</div>
-        )}
-        <div className="mt-2">
-          <Preview options={insertion.question.options} />
-        </div>
-      </div>
-    </div>
-  );
+  const preview = (titled: boolean): ReactNode =>
+    titled ? (
+      <PreviewQuestion label={insertion.question.label} hint={insertion.question.hint}>
+        <Preview options={insertion.question.options} />
+      </PreviewQuestion>
+    ) : (
+      <Preview options={insertion.question.options} />
+    );
 
   function Inspector({ m, a }: { m: BlockMenuModel; a: BlockMenuActions }) {
     return !!m.header && m.kind === field.kind ? <Controls m={m} a={a} /> : null;

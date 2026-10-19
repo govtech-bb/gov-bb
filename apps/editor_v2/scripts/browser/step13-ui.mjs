@@ -25,7 +25,7 @@ try {
   // Conditional wording now uses the unified-logic browser flow.
   const dateLabel = root.locator("h2").filter({ hasText: "Event date" });
   await dateLabel.hover();
-  await page.getByRole("button", { name: "Move this block by dragging" }).click();
+  await page.getByRole("button", { name: "Block actions" }).click();
   await page.getByRole("menuitem", { name: "Add conditional logic" }).click();
 
   const logic = page

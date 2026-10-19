@@ -1,6 +1,7 @@
 import { authenticatedContext } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { chromium } from "./playwright.mjs";
+import { openDemoForm } from "./form-fixture.mjs";
 
 const url = process.argv[2] ?? "http://localhost:3013/";
 
@@ -22,7 +23,7 @@ try {
     const page = await context.newPage();
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    await page.goto(url);
+    await openDemoForm(page, url);
     const root = page.locator('[contenteditable="true"][aria-label="Form"]');
     await root.waitFor();
     await page.evaluate(() => document.fonts.ready);
@@ -33,7 +34,10 @@ try {
     await confirmation.click();
     await page.waitForTimeout(100);
     assert.equal(await confirmation.getAttribute("aria-checked"), "false");
-    await page.locator('[role="status"][title="Saved"]').waitFor();
+    await page
+      .locator("[data-document-bar]:visible")
+      .getByText("Saved in this browser", { exact: true })
+      .waitFor();
     // Reload the saved question page so setup cannot become part of the undo sequence.
     await page.reload();
     await root.waitFor();

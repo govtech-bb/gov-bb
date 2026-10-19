@@ -5,10 +5,10 @@ import {
   mergeRegister,
 } from "lexical";
 import type { EditorModule } from "../../core/module";
-import { $atEdge, $caretBlock, registerContentShortcuts } from "../formatting/editing";
-import { contentActions, $insertContent } from "../formatting/insertion";
+import { $atEdge, $caretBlock } from "../formatting/editing";
+import { contentActions } from "../formatting/insertion";
 import { BulletNode, NumberNode } from "./nodes";
-import { $enterList, $exitList, listShortcuts } from "./editing";
+import { $enterList, $exitList } from "./editing";
 import { listEntries } from "./insertion";
 
 export function ListsModule({ browser = true, actions = true } = {}): EditorModule {
@@ -61,7 +61,6 @@ export function ListsModule({ browser = true, actions = true } = {}): EditorModu
                   },
                   COMMAND_PRIORITY_NORMAL,
                 ),
-                registerContentShortcuts(editor, listShortcuts, $insertContent),
               ),
           },
         ]

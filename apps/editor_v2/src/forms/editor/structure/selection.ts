@@ -3,6 +3,7 @@ import {
   $getNearestNodeFromDOMNode,
   $getNodeByKey,
   $isElementNode,
+  $onUpdate,
   $setSelection,
   COMMAND_PRIORITY_LOW,
   KEY_ARROW_DOWN_COMMAND,
@@ -16,7 +17,8 @@ import {
   type LexicalEditor,
   type LexicalNode,
 } from "lexical";
-import { $headEnd, $headStart, $isFormTitleNode, $pageHead } from "../nodes";
+import { toastWithUndo } from "../../../editor/react/undo-toast";
+import { $headEnd, $headStart, $isFormTitleNode, $isPageBreak, $wholePage } from "../nodes";
 import { $moveBlocks, $next, $removeBlocks, $selectedBlocks, $selectNodes } from "./blocks";
 import { $caretBlock, $isDrawnInput } from "./editing";
 import { composing } from "./keyboard";
@@ -41,7 +43,13 @@ export function selectBlocks(editor: LexicalEditor) {
     const r = el?.getBoundingClientRect();
 
     if (r && !(r.top >= 0 && r.left >= 0 && r.bottom <= innerHeight && r.right <= innerWidth))
-      el!.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Smoothly, unless the author has asked for less motion
+      el!.scrollIntoView({
+        behavior: globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "center",
+      });
   };
 
   const $beyond = (from: LexicalNode, down: boolean) => {
@@ -94,8 +102,15 @@ export function selectBlocks(editor: LexicalEditor) {
 
     if (!blocks.length) return false;
     event.preventDefault();
+    const pages = blocks.filter($isPageBreak).length;
     $removeBlocks(blocks);
     $setSelection(null);
+
+    // A page goes with its questions: say so, with a way back
+    if (pages)
+      $onUpdate(() =>
+        toastWithUndo(editor, pages === 1 ? "Page deleted" : `${pages} pages deleted`),
+      );
 
     return true;
   };
@@ -106,8 +121,9 @@ export function selectBlocks(editor: LexicalEditor) {
       for (const el of marked) el.removeAttribute("data-selected");
       marked = editorState.read(
         () =>
+          // A selected page is the whole page, as Delete, Duplicate and Copy take it
           $selectedBlocks()
-            .flatMap((node) => [node, ...$pageHead(node)])
+            .flatMap((node) => ($isPageBreak(node) ? $wholePage(node) : [node]))
             .flatMap((node) => editor.getElementByKey(node.getKey()) ?? []),
         { editor },
       );

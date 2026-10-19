@@ -164,6 +164,7 @@ export function PageTablesModule(): PageModule {
           order: 30,
           icon: <Table />,
           description: "Compare information in rows and columns.",
+          aliases: ["grid", "rows", "columns"],
         },
       ),
     ],

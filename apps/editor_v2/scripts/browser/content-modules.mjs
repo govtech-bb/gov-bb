@@ -118,6 +118,31 @@ try {
     () => document.querySelector('[aria-label="First"]')?.contentEditable === "true",
   );
 
+  // A slash in a sentence closes the menu at its first space, so Enter is still a new line
+  await reset("");
+  await first.pressSequentially("yes / no", { delay: 25 });
+  await page.waitForTimeout(100);
+  assert.equal(
+    await page.getByRole("option").count(),
+    0,
+    "a slash mid-sentence closes at its space",
+  );
+  await page.keyboard.press("Enter");
+  assert.deepEqual(
+    (await state("First")).root.children.map((node) => node.type),
+    ["paragraph", "paragraph"],
+    "Enter after a slash mid-sentence starts a new line",
+  );
+
+  // A slash dismissed with Escape stays dismissed as the line goes on
+  await reset("");
+  await first.pressSequentially("/Heading", { delay: 25 });
+  await page.getByRole("option", { name: /Heading 2/ }).waitFor();
+  await page.keyboard.press("Escape");
+  await first.pressSequentially(" 2", { delay: 25 });
+  await page.waitForTimeout(100);
+  assert.equal(await page.getByRole("option").count(), 0, "a dismissed slash stays dismissed");
+
   await reset("");
   await first.pressSequentially("/Heading 2", { delay: 25 });
   await page.getByRole("option", { name: /Heading 2/ }).waitFor();
@@ -220,6 +245,30 @@ try {
   await page.waitForFunction(
     () => document.querySelector('[aria-label="First"]')?.contentEditable === "true",
   );
+  // Bold starts at the caret, as italic does
+  await reset("Plain");
+  await select("First");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ControlOrMeta+b");
+  await first.pressSequentially(" bold", { delay: 25 });
+  assert.deepEqual(
+    (await state("First")).root.children[0].children.map((node) => [node.text, node.format & 1]),
+    [
+      ["Plain", 0],
+      [" bold", 1],
+    ],
+    "Cmd+B at the caret makes what follows bold",
+  );
+
+  // Clear formatting takes the selection's formats off
+  await select("First");
+  await page.getByRole("button", { name: "Clear formatting", exact: true }).click();
+  assert.deepEqual(
+    (await state("First")).root.children[0].children.map((node) => [node.text, node.format]),
+    [["Plain bold", 0]],
+    "Clear formatting removes bold",
+  );
+
   await reset("# ");
   await page.evaluate(() => window.contentFixture.setReadOnly(true));
   await page.waitForFunction(
@@ -245,7 +294,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "PASS content-only: installed slash/toolbar, bold/link/reload, headings/lists/callouts/disclosure, exact undo/redo, editor isolation, live read-only and no storage access",
+    "PASS content-only: installed slash/toolbar, ordinary and dismissed slashes, bold at the caret, clear formatting, bold/link/reload, headings/lists/callouts/disclosure, exact undo/redo, editor isolation, live read-only and no storage access",
   );
   await context.close();
 } catch (error) {

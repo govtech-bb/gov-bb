@@ -1,0 +1,23 @@
+- **Build on wave 1:** SidePanel, DocumentBar, ConfirmDialog, Tag, TextLink, EmptyState and LoadingState. Read them first.
+- **history-panel:**
+  - A History section in the side panel lists the versions.
+  - A `VersionView` swaps the canvas for a read-only render, with Older and Newer, Show changes (a diff against the current draft), and Restore with a ConfirmDialog.
+  - Build it once for pages; forms adopt it when they have server history.
+  - Remove the old pop-up dialog (`workspace/page-history-dialog.tsx`) once nothing uses it.
+- **panel-details:**
+  - Add read-only Last saved and Created.
+  - Add a Search section with a description length guide and keywords as Tags.
+  - Add controls for the remaining frontmatter fields (`api/page-markdown.ts`).
+  - Owner, SEO title and noindex need api_v2: leave them out and say so.
+- **distraction-free:**
+  - A toggle in the document bar, plus ⌘⇧\, works in both editors. It hides the header, sidebar and panel, keeps their state, and keeps the document bar pinned.
+  - Esc doesn't leave the mode; the same toggle does.
+  - Announce the change.
+- **source-dialogs:**
+  - Add FileButton, `saveFile`, a code Textarea, a Diagnostics list that jumps to its line, a RecoveryBanner and a status slot in Dialog.Footer.
+  - Build both the Markdown dialog (`host/source-ui.tsx`) and the JSON dialog (`host/form-json-dialog.tsx`) from them, plus the local document dialogs.
+- **page-header:**
+  - Add `PageHeader`.
+  - Show browser drafts in the same DataTable as API services.
+  - Keep one filter pattern: the table's own toolbar. Delete the unused filter parts.
+  - The services list's URL state (from the nav work) must keep working.

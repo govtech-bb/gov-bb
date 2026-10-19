@@ -1,6 +1,7 @@
 // Every surface and state of the editor, for a design review: node review-shots.mjs <outdir> [url]
 import { mkdirSync } from "node:fs";
 import { chromium } from "./playwright.mjs";
+import { openDemoForm } from "./form-fixture.mjs";
 
 const dir = process.argv[2] ?? "review";
 
@@ -18,7 +19,7 @@ async function fresh(viewport, scale = 1) {
   const page = await browser.newPage({ viewport, deviceScaleFactor: scale });
   page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
   page.on("console", (m) => m.type() === "error" && errors.push(`console: ${m.text()}`));
-  await page.goto(url);
+  await openDemoForm(page, url);
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.locator('[aria-label="Form"]').waitFor();
@@ -54,7 +55,7 @@ const caretAtEnd = async (page, locator) => {
   await shot(page, "03-gutter-hover");
 
   // Block menu of the dropdown
-  await page.getByRole("button", { name: "Move this block by dragging" }).click();
+  await page.getByRole("button", { name: "Block actions" }).click();
   await page.locator("[role=menu]").waitFor();
   await shot(page, "04-block-menu");
   await page.keyboard.press("Escape");
@@ -128,13 +129,13 @@ const caretAtEnd = async (page, locator) => {
   await page.keyboard.press("Escape");
 
   // Folded question
-  await page.locator('button[aria-label="Fold blocks"]').first().click();
+  await page.locator('button[aria-label^="Fold "]').first().click();
   await shot(page, "12-folded-question");
 
   // Bulk insert dialog, from the folded dropdown's block menu (unfold first)
-  await page.locator('button[aria-label="Unfold blocks"]').first().click();
+  await page.locator('button[aria-label^="Unfold "]').first().click();
   await block(page, "Which parish").hover({ position: { x: 20, y: 30 } });
-  await page.getByRole("button", { name: "Move this block by dragging" }).click();
+  await page.getByRole("button", { name: "Block actions" }).click();
   await page.getByRole("menuitem", { name: /Bulk insert options/ }).click();
   await page.waitForTimeout(300);
   await shot(page, "13-bulk-insert");
@@ -142,7 +143,7 @@ const caretAtEnd = async (page, locator) => {
 
   // Date settings: the date question's menu with Before/After limits
   await block(page, "Event date").hover({ position: { x: 20, y: 30 } });
-  await page.getByRole("button", { name: "Move this block by dragging" }).click();
+  await page.getByRole("button", { name: "Block actions" }).click();
   await page.locator("[role=menu]").waitFor();
   await shot(page, "14-date-menu");
   await page.keyboard.press("Escape");

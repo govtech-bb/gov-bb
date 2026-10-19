@@ -6,7 +6,6 @@ import { $getNodeByKey, HISTORY_PUSH_TAG, SKIP_DOM_SELECTION_TAG, type NodeKey }
 import {
   ArrowsSplit,
   CaretDown,
-  Check,
   Copy,
   Divide,
   Equals,
@@ -24,8 +23,9 @@ import {
 import { useMemo, type ReactNode } from "react";
 import { cn } from "../../../cn";
 import { Button } from "../../../ui/button";
+import { Input } from "../../../ui/input";
 import { pill } from "../../../ui/pill";
-import { check, list, option, popup } from "../../../ui/select";
+import { SelectOption, SelectPopup } from "../../../ui/select";
 import { Tip } from "../../../ui/tooltip";
 import type { Action, CalculateOperator, Condition, LogicalOperator } from "../../core/logic";
 import { ageConditionError, conditionMode } from "../../core/logic-age";
@@ -46,7 +46,6 @@ import {
   Scroll,
   More,
   pillValue,
-  popupLayer,
   Pick,
   OptionsPick,
   FieldCombobox,
@@ -165,7 +164,7 @@ export function Conditions({
           />
           {!within && (
             <ConditionMenu
-              size="sm"
+              size="xs"
               handlers={{
                 ...handlers,
                 unwrap:
@@ -188,7 +187,7 @@ export function Conditions({
   });
 }
 
-export function ConditionMenu({ handlers: h, size }: { handlers: Handlers; size?: "sm" }) {
+export function ConditionMenu({ handlers: h, size }: { handlers: Handlers; size?: "xs" }) {
   return (
     <More
       label="Add, remove, and more..."
@@ -220,34 +219,18 @@ export function Match({
       <Select.Root<LogicalOperator> value={value} onValueChange={(v) => v && onChange(v)}>
         <Select.Trigger
           aria-label={value === "OR" ? "any" : "all"}
-          className="inline-flex min-h-6 cursor-pointer items-center gap-0.5 rounded-xs px-1 outline-none hover:bg-hover focus-visible:outline-3 focus-visible:outline-offset-1 focus-visible:outline-focus [&>svg]:size-3"
+          className="inline-flex min-h-6 cursor-pointer items-center gap-0.5 rounded-xs px-1 outline-none hover:bg-hover focus-visible:outline-3 focus-visible:outline-offset-1 focus-visible:outline-focus [&>svg]:size-3.5"
         >
           {value === "OR" ? "any" : "all"}
           <CaretDown />
         </Select.Trigger>
-        <Select.Portal>
-          <Select.Positioner
-            alignItemWithTrigger={false}
-            align="start"
-            sideOffset={6}
-            className={popupLayer}
-          >
-            <Select.Popup className={popup}>
-              <Select.List className={list}>
-                {(["AND", "OR"] as const).map((op) => (
-                  <Select.Item key={op} value={op} className={option}>
-                    <Select.ItemText className="min-w-0 flex-1">
-                      {op === "OR" ? "any" : "all"}
-                    </Select.ItemText>
-                    <Select.ItemIndicator className={check}>
-                      <Check />
-                    </Select.ItemIndicator>
-                  </Select.Item>
-                ))}
-              </Select.List>
-            </Select.Popup>
-          </Select.Positioner>
-        </Select.Portal>
+        <SelectPopup>
+          {(["AND", "OR"] as const).map((op) => (
+            <SelectOption key={op} value={op}>
+              {op === "OR" ? "any" : "all"}
+            </SelectOption>
+          ))}
+        </SelectPopup>
       </Select.Root>
       match
     </>
@@ -288,7 +271,8 @@ export function ConditionRow({
     value =
       field?.kind === "date" && c.transform === "yearsSince" ? (
         <label className="flex flex-col gap-1">
-          <input
+          <Input
+            size="sm"
             aria-label="Age in years"
             type="number"
             min="0"
@@ -297,7 +281,8 @@ export function ConditionRow({
             onChange={(event) =>
               set({ value: event.target.value === "" ? "" : Number(event.target.value) })
             }
-            className="h-8 w-24 rounded-sm bg-white px-2 text-14 text-ink shadow-input outline-none focus:shadow-input-focus"
+            aria-invalid={!!ageConditionError(c, field.kind)}
+            className="w-24"
           />
           {ageConditionError(c, field.kind) && (
             <span className="max-w-52 text-12 text-error">{ageConditionError(c, field.kind)}</span>
@@ -373,7 +358,7 @@ export function ConditionRow({
             {JSON.stringify(c.value)}
           </span>
           <Button
-            size="sm"
+            size="xs"
             onClick={() =>
               set({ transform: undefined, comparison: comparisons(field)[0], value: "" })
             }
@@ -384,7 +369,7 @@ export function ConditionRow({
       ) : c.valueIsLiteral ? (
         <span className="flex items-center gap-2 text-12">
           <span>Imported value: {JSON.stringify(c.value)}</span>
-          <Button size="sm" onClick={() => set({ value: "" })}>
+          <Button size="xs" onClick={() => set({ value: "" })}>
             Change value
           </Button>
         </span>
@@ -489,12 +474,13 @@ export function ActionRow({
             onSelect={(field) => setPayload({ [key]: { ...change, target: field.key } })}
           />
         )}
-        <input
+        <Input
+          size="sm"
           aria-label={pageTitle ? "Replacement page heading" : "Replacement question label"}
           placeholder={pageTitle ? "New page heading" : "New question label"}
           value={change.text ?? ""}
           onChange={(event) => setPayload({ [key]: { ...change, text: event.target.value } })}
-          className="h-8 w-64 rounded-sm bg-white px-2 text-14 text-ink shadow-input outline-none placeholder:text-placeholder focus:shadow-input-focus"
+          className="w-64"
         />
       </>
     );
@@ -733,7 +719,7 @@ function LegacyConditionalLogic({ nodeKey, settings }: WidgetProps) {
             <p>
               Some Show targets are visible initially.{" "}
               <Button
-                size="sm"
+                size="xs"
                 onClick={() =>
                   update(
                     () => {

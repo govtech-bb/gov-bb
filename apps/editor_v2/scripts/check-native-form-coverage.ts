@@ -12,6 +12,7 @@ import { lexicalToFormSchema } from "../src/converters/lexical-to-form-schema";
 import { lexicalToFormMarkdown } from "../src/converters/lexical-to-form-markdown";
 import { formMarkdownToLexical } from "../src/converters/form-markdown-to-lexical";
 import { createHeadlessEditor } from "../src/editor/core/create-editor";
+import { $withDefaultFormMessages } from "../src/forms/editor/native-bindings";
 
 export type CapabilityRow = {
   category: "field" | "content" | "page" | "action" | "operator" | "format" | "registry";
@@ -369,7 +370,12 @@ export function checkNativeCoverageEvidence(
       try {
         const exported = lexicalToFormSchema(editor.getEditorState(), definition, editor);
 
-        if (exported.status !== "ready" || !nativeSemanticEqual(document, exported.schema))
+        // Export words a message nobody wrote from its label, so the evidence is compared as exported
+        const expected = editor
+          .getEditorState()
+          .read(() => $withDefaultFormMessages(document, definition), { editor });
+
+        if (exported.status !== "ready" || !nativeSemanticEqual(expected, exported.schema))
           errors.push(`Native round-trip differs ${path} (${document.id})`);
       } finally {
         editor.dispose();

@@ -6,6 +6,7 @@ import type { RichText, QuestionBase } from "../../forms/schema";
 import { useEditorDefinition } from "../../editor/react/composer";
 import { cn } from "../../cn";
 import { RendererHost } from "../../editor/react/contributions";
+import { PreviewQuestion } from "../../ui/preview-sheet";
 
 const text = (rich: RichText): string =>
   typeof rich === "string"
@@ -93,33 +94,16 @@ export function registryPreviewQuestions(
 export function RegistryEntryPreview({ entry }: { entry: FormRegistryEntry }) {
   const definition = formDefinition(useEditorDefinition());
 
-  return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none mt-5 rounded-sm bg-grey-10 p-4 select-none"
-    >
-      <div className="overflow-hidden rounded-sm bg-white p-5 text-(length:--form-text) shadow-sheet [--form-control:2.75rem] [--form-marker:1.75rem] [--form-text:1rem]">
-        {registryPreviewQuestions(entry, definition).map(
-          ({ key, label, hint, kind, required, width, mask, options, more, under }) => (
-            <div
-              key={key}
-              className={cn("not-first:mt-5", under && "ml-2.5 border-l-8 border-highlight pl-7")}
-            >
-              <div className="font-bold leading-[1.5]">
-                {label}
-                {!required && <span className="font-normal text-muted"> (optional)</span>}
-              </div>
-              {hint && <div className="leading-[1.5] text-muted">{hint}</div>}
-              <div className="mt-2">
-                <RendererHost
-                  name={`field-preview:${kind}`}
-                  props={{ width, mask, more, options }}
-                />
-              </div>
-            </div>
-          ),
-        )}
+  return registryPreviewQuestions(entry, definition).map(
+    ({ key, label, hint, kind, required, width, mask, options, more, under }) => (
+      <div
+        key={key}
+        className={cn("not-first:mt-5", under && "ml-2.5 border-l-8 border-highlight pl-7")}
+      >
+        <PreviewQuestion label={label} hint={hint} optional={!required}>
+          <RendererHost name={`field-preview:${kind}`} props={{ width, mask, more, options }} />
+        </PreviewQuestion>
       </div>
-    </div>
+    ),
   );
 }

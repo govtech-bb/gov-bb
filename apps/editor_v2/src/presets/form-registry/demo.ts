@@ -3,7 +3,8 @@ import { content, question, option, rule } from "../../forms/registry/builders";
 import type { AnyFormDefinition, QuestionBase } from "../../forms/schema";
 import { componentQuestion } from "./questions";
 
-const required = { value: true, message: "Enter an answer" };
+// No message: export words each from its question's label, “Enter event name”
+const required = { value: true, message: "" };
 
 const field = (
   id: string,

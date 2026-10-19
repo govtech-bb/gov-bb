@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { $getRoot } from "lexical";
-import { executeAction, matchesAction } from "../../src/editor/core/actions";
+import { executeAction, rankActions } from "../../src/editor/core/actions";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import { govbbFormRegistryEntries } from "../../src/presets/form-registry/entries";
 import { registryPreviewQuestions } from "../../src/presets/form-registry/preview";
@@ -70,5 +70,5 @@ test("all 22 catalog IDs retain their order and search aliases; complete forms s
 
   for (const action of actions)
     for (const query of ["Team blocks", "GovBB fields", "Form registry"])
-      expect(matchesAction(action, query)).toBe(true);
+      expect(rankActions(query, [action])).toEqual([action]);
 });

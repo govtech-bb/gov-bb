@@ -99,7 +99,7 @@ export function NativeGroupsEditor({
           </label>
           <div className="flex gap-2">
             <Button
-              size="sm"
+              size="xs"
               disabled={groupIndex === 0}
               onClick={() => {
                 const next = [...groups];
@@ -113,7 +113,7 @@ export function NativeGroupsEditor({
               Move category up
             </Button>
             <Button
-              size="sm"
+              size="xs"
               onClick={() =>
                 onChange(
                   groups.filter((item) => item.id !== group.id),
@@ -159,7 +159,7 @@ export function NativeGroupsEditor({
                   </label>
                   <div className="flex gap-2">
                     <Button
-                      size="sm"
+                      size="xs"
                       disabled={index === 0}
                       onClick={() => {
                         const optionIds = [...group.optionIds];
@@ -173,7 +173,7 @@ export function NativeGroupsEditor({
                       Move option up
                     </Button>
                     <Button
-                      size="sm"
+                      size="xs"
                       onClick={() =>
                         onChange(
                           groups.map((item) =>
@@ -196,7 +196,7 @@ export function NativeGroupsEditor({
             })}
           </div>
           <Button
-            size="sm"
+            size="xs"
             onClick={() => {
               const id = crypto.randomUUID();
               onChange(

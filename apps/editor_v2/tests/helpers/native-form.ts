@@ -4,6 +4,7 @@ import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical
 import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
 import type { FormEditorDefinition } from "../../src/forms/definition";
 import type { AnyFormDefinition } from "../../src/forms/schema";
+import { $withDefaultFormMessages } from "../../src/forms/editor/native-bindings";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 
 export const emptyNativeForm: AnyFormDefinition = {
@@ -26,6 +27,20 @@ export function nativeHost(definition = govbbFormEditor, form = emptyNativeForm)
   editor.update(() => $getRoot().append($createParagraphNode()), { discrete: true });
 
   return editor;
+}
+
+/** A form as export words it: each message nobody wrote, from its question's label. */
+export function withDefaultMessages(
+  form: AnyFormDefinition,
+  definition: FormEditorDefinition = govbbFormEditor,
+) {
+  const editor = createHeadlessEditor(definition, undefined, { prepare: false });
+
+  try {
+    return editor.read(() => $withDefaultFormMessages(form, definition));
+  } finally {
+    editor.dispose();
+  }
 }
 
 export function nativeOutput(

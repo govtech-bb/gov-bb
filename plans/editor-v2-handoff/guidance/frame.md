@@ -1,0 +1,27 @@
+- **bar:**
+  - Add `Bar` to `src/ui`: light and dark tones, with title, status, actions and separator parts. When it has a label, it's a named Base UI Toolbar.
+  - Build these from it: the workspace header, which is the dark tone (its Sign out uses Button's `inverse` variant, fixing the clashing hover), both document bars, the side panel drawer's header (`ui/side-panel.tsx`) and the gallery demo.
+  - Align the service sidebar header with the shared Bar.
+- **document-bar:**
+  - `DocumentBar` has fixed slots in a fixed order: the document's title as the h1, save status, undo and redo, Preview and Markdown (JSON for forms), publish, and the settings toggle. One notice area sits beneath it.
+  - The browser-draft page editor, the API page pane and the form editor all render it, and hosts fill its slots instead of passing loose tools.
+  - Forms fill what exists today: undo and redo if the form editor has history (check `src/editor/core/history.ts`), JSON and save status. A later forms package adds the form Preview and the settings toggle; leave those slots empty for forms.
+- **sticky-bar:** the document bar is sticky from `md` up. Move the side panel's sticky top down by the bar's height. Use a CSS variable for the height, not a magic number in two places.
+- **titles-headings:**
+  - Each screen gets its title from the route: "Page – Service – GovBB editor" ("Services – GovBB editor" on the list).
+  - The document title is the bar's h1. The title field on the canvas is an input, so there's no second h1.
+  - `SidePanel.Section` takes its heading level from context.
+  - Keep the title source reusable for breadcrumbs: one hook or route-context value.
+- **save-state:**
+  - One `SaveState` in `src/ui` is both the status and the action. It shows "Saved in this browser", "Unpublished changes", "Saving…", "Published", or an error strip with the reason, Try again and Download a copy.
+  - It announces only failures, conflicts and saves the author asked for, through a polite live region. Typing pauses stay silent.
+  - It's used for browser-draft pages, API pages and forms.
+  - A later publishing package adds PublishControl and the conflict banner, so leave clear room for them.
+- **paused-notice:**
+  - One `PausedNotice` sits in the document bar's notice area for both editors. It names why editing is paused and carries the button that fixes it, such as "Review Markdown changes".
+  - The Markdown file upload becomes "Replace from file".
+  - `DraftStore` gets one pause rule.
+- **notice-rule:**
+  - Write the rule where developers will see it: the doc comment of `src/ui/banner.tsx` (or a short `src/ui/README.md`) and a gallery section. App problems go under the header; document problems in the document bar's notice area; dialog outcomes as a box Banner in the dialog's body; field problems on the field; after-the-fact results as toasts.
+  - Move every listed message onto it. A failed import must look different from a successful one.
+- Reuse the shared Button variants and states, Kbd, TextLink, ConfirmDialog and EmptyState.

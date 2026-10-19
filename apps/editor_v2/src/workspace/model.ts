@@ -48,6 +48,21 @@ export function documentLabel(document: WorkspaceDocument) {
       : document.title || "Untitled page";
 }
 
+/**
+ * The browser's own document a route opens: one of its service's documents, or, under a service from the content
+ * API, the form this browser drafts for that service.
+ */
+export function localDocumentAt(index: WorkspaceIndex, location: WorkspaceLocation) {
+  if (!location?.documentId) return;
+  const service = index.services.find((item) => item.id === location.serviceId);
+
+  const documents = service
+    ? service.documents
+    : index.services.flatMap((item) => item.documents).filter((item) => item.kind === "form");
+
+  return documents.find((item) => item.id === location.documentId);
+}
+
 export function locationHash(location: WorkspaceLocation) {
   if (!location) return "#/services";
 

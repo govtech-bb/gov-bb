@@ -1,22 +1,34 @@
-import { Dialog } from "@base-ui/react/dialog";
-import { X } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
-import { Button } from "../ui/button";
+import { Dialog } from "../ui/dialog";
 
-export const workspaceDialogInputClass =
-  "w-full rounded-sm border border-line-strong bg-white px-3 py-2 text-16 text-ink focus-visible:outline-2 focus-visible:outline-focus";
-
+/**
+ * A workspace task: a title, what the task does, its fields or what it shows, and its buttons, the one that finishes
+ * the task last. With onSubmit the fields and buttons are a form, so Enter in a field sends it.
+ */
 export function WorkspaceDialog({
   title,
   description,
-  children,
+  body,
+  footer,
+  onSubmit,
   close,
 }: {
   title: string;
   description: string;
-  children: ReactNode;
+  /** The task's fields, or what it shows. */
+  body: ReactNode;
+  /** The task's buttons. */
+  footer: ReactNode;
+  onSubmit?: () => void;
   close: () => void;
 }) {
+  const task = (
+    <>
+      <Dialog.Body>{body}</Dialog.Body>
+      <Dialog.Actions>{footer}</Dialog.Actions>
+    </>
+  );
+
   return (
     <Dialog.Root
       open
@@ -24,19 +36,25 @@ export function WorkspaceDialog({
         if (!open) close();
       }}
     >
-      <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 bg-ink/40" />
-        <Dialog.Popup className="fixed start-1/2 top-1/2 z-50 flex max-h-[90dvh] w-[min(38rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-y-auto overscroll-contain rounded-sm bg-white p-6 text-ink shadow-popup outline-none">
-          <div className="flex items-start justify-between gap-3">
-            <Dialog.Title className="text-24 font-semibold">{title}</Dialog.Title>
-            <Dialog.Close
-              render={<Button icon={<X />} aria-label={`Close ${title.toLowerCase()}`} />}
-            />
-          </div>
-          <Dialog.Description className="my-3 text-16 text-muted">{description}</Dialog.Description>
-          {children}
-        </Dialog.Popup>
-      </Dialog.Portal>
+      <Dialog.Content closeLabel={`Close ${title.toLowerCase()}`}>
+        <Dialog.Header>
+          <Dialog.Title>{title}</Dialog.Title>
+          <Dialog.Description>{description}</Dialog.Description>
+        </Dialog.Header>
+        {onSubmit ? (
+          <form
+            className="contents"
+            onSubmit={(event) => {
+              event.preventDefault();
+              onSubmit();
+            }}
+          >
+            {task}
+          </form>
+        ) : (
+          task
+        )}
+      </Dialog.Content>
     </Dialog.Root>
   );
 }

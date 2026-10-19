@@ -1,6 +1,4 @@
 import { Combobox } from "@base-ui/react/combobox";
-import { Menu } from "@base-ui/react/menu";
-import { Popover } from "@base-ui/react/popover";
 import { Select } from "@base-ui/react/select";
 import { isSameDay } from "date-fns";
 import {
@@ -34,12 +32,26 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../../cn";
+import { rankActions } from "../../editor/core/actions";
 import { Button } from "../../ui/button";
 import { Calendar } from "../../ui/calendar";
 import { formatDay, parseDay, shortDate } from "../core/dates";
-import { ItemLabel, item } from "../../ui/item";
 import { PillInput, pill, pillChevron, pillIcon } from "../../ui/pill";
-import { check, list, option, popup } from "../../ui/select";
+import { Menu } from "../../ui/menu";
+import { NativeSelect } from "../../ui/native-select";
+import { Popover } from "../../ui/popover";
+import { SelectOption, SelectPopup } from "../../ui/select";
+import {
+  fieldList,
+  fieldPopup,
+  group,
+  groupLabel,
+  row as listRow,
+  rowCheck,
+  rowIcon,
+  rowLabel,
+  listEmpty,
+} from "../../ui/surface";
 import { Tip } from "../../ui/tooltip";
 import type { LogicValue } from "../core/logic";
 import { kindIcon } from "./logic-icons";
@@ -313,34 +325,28 @@ export function More({
 }: {
   label: string;
   items: (MenuItem | false)[];
-  size?: "sm";
+  size?: "xs";
 }) {
   return (
     <Menu.Root>
       <Menu.Trigger
         render={<Button size={size} icon={<DotsThreeVertical />} aria-label={label} />}
       />
-      <Menu.Portal>
-        <Menu.Positioner sideOffset={4} align="end" className="z-50">
-          <Menu.Popup className="max-h-(--available-height) w-55 max-w-[calc(100vw-24px)] overflow-y-auto rounded-sm bg-white py-1.5 font-sans shadow-popup">
-            {items.map((entry) => {
-              if (!entry) return null;
-              const [text, Icon, run] = entry;
+      <Menu.Content aria-label={label} align="end" sideOffset={4} className="w-55">
+        {items.map((entry) => {
+          if (!entry) return null;
+          const [text, Icon, run] = entry;
 
-              return (
-                <Menu.Item key={text} onClick={run} className={item}>
-                  <ItemLabel icon={<Icon />}>{text}</ItemLabel>
-                </Menu.Item>
-              );
-            })}
-          </Menu.Popup>
-        </Menu.Positioner>
-      </Menu.Portal>
+          return (
+            <Menu.Item key={text} icon={<Icon />} onClick={run}>
+              {text}
+            </Menu.Item>
+          );
+        })}
+      </Menu.Content>
     </Menu.Root>
   );
 }
-
-export const listIcon = "[&>svg]:size-3.5";
 
 export const divider = <span className="ml-1 h-4 w-px shrink-0 bg-grey-30" />;
 
@@ -357,7 +363,7 @@ export const searchBar =
   "flex min-h-9 w-full shrink-0 items-center gap-2 border-b border-line bg-white pr-2.5 pl-3.5 [&>svg:first-child]:size-4 [&>svg:first-child]:shrink-0 [&>svg:first-child]:text-subtle";
 
 export const searchInput =
-  "min-w-0 flex-1 bg-transparent p-0 text-14 leading-5 text-ink outline-none placeholder:text-placeholder max-[480px]:text-16";
+  "min-w-0 flex-1 bg-transparent p-0 text-14 text-ink outline-none placeholder:text-placeholder max-sm:text-16";
 
 // Clicking the surrounding control should focus its input too.
 export function focusPillInput(e: MouseEvent<HTMLElement>) {
@@ -425,29 +431,13 @@ export function Pick<T extends string>({
       }}
     >
       {iconOnly && current ? <Tip content={current.label}>{trigger}</Tip> : trigger}
-      <Select.Portal>
-        <Select.Positioner
-          alignItemWithTrigger={false}
-          align="start"
-          sideOffset={6}
-          className={popupLayer}
-        >
-          <Select.Popup className={popup}>
-            <Select.List className={list}>
-              {items.map((i) => (
-                <Select.Item key={i.value} value={i.value} className={cn(option, listIcon)}>
-                  {i.icon}
-                  <Select.ItemText className="min-w-0 flex-1 truncate">{i.label}</Select.ItemText>
-                  <Select.ItemIndicator className={check}>
-                    <Check />
-                  </Select.ItemIndicator>
-                </Select.Item>
-              ))}
-            </Select.List>
-            {footer && <div className="shrink-0 border-t border-line p-3">{footer}</div>}
-          </Select.Popup>
-        </Select.Positioner>
-      </Select.Portal>
+      <SelectPopup footer={footer}>
+        {items.map((i) => (
+          <SelectOption key={i.value} value={i.value} icon={i.icon}>
+            {i.label}
+          </SelectOption>
+        ))}
+      </SelectPopup>
     </Select.Root>
   );
 }
@@ -499,27 +489,13 @@ export function OptionsPick({
           <CaretDown />
         </Select.Icon>
       </Select.Trigger>
-      <Select.Portal>
-        <Select.Positioner
-          alignItemWithTrigger={false}
-          align="start"
-          sideOffset={6}
-          className={popupLayer}
-        >
-          <Select.Popup className={popup}>
-            <Select.List className={list}>
-              {options.map(([v, l]) => (
-                <Select.Item key={v} value={v} className={option}>
-                  <Select.ItemText className="min-w-0 flex-1 truncate">{l}</Select.ItemText>
-                  <Select.ItemIndicator className={check}>
-                    <Check />
-                  </Select.ItemIndicator>
-                </Select.Item>
-              ))}
-            </Select.List>
-          </Select.Popup>
-        </Select.Positioner>
-      </Select.Portal>
+      <SelectPopup>
+        {options.map(([v, l]) => (
+          <SelectOption key={v} value={v}>
+            {l}
+          </SelectOption>
+        ))}
+      </SelectPopup>
     </Select.Root>
   );
 }
@@ -550,7 +526,6 @@ export function FieldCombobox({
   onClear?: () => void;
   footer?: ReactNode;
 }) {
-  const { contains } = Combobox.useFilter({ sensitivity: "base" });
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<string | null>(null);
@@ -560,7 +535,7 @@ export function FieldCombobox({
   const selected = all.find((f) => f.key === value) ?? null;
 
   const shown = groups
-    .map((g) => ({ ...g, items: g.items.filter((f) => contains(f.title, query)) }))
+    .map((g) => ({ ...g, items: rankActions(query, g.items) }))
     .filter((g) => g.items.length);
 
   const searching = shown.reduce((n, g) => n + g.items.length, 0) >= 10 || !!query;
@@ -668,7 +643,7 @@ export function FieldCombobox({
           className={popupLayer}
         >
           <Combobox.Popup
-            className={popup}
+            className={fieldPopup}
             finalFocus={() => (typed !== undefined && anchor?.querySelector("input")) || true}
           >
             {searching && (
@@ -677,7 +652,7 @@ export function FieldCombobox({
                 <Combobox.Input ref={search} placeholder="Search" className={searchInput} />
                 {query && (
                   <Button
-                    size="sm"
+                    size="xs"
                     tabIndex={-1}
                     aria-label="Clear"
                     icon={<X />}
@@ -689,24 +664,25 @@ export function FieldCombobox({
                 )}
               </div>
             )}
-            <Combobox.Empty className="px-3.75 py-2.5 text-14 text-subtle empty:hidden">
-              {emptyText}
-            </Combobox.Empty>
-            <Combobox.List className={cn(list, "gap-1.25 data-empty:p-0")}>
-              {(group: FieldGroup) => (
-                <Combobox.Group key={group.label} items={group.items}>
+            <Combobox.Empty className={listEmpty}>{emptyText}</Combobox.Empty>
+            <Combobox.List className={cn(fieldList, "data-empty:p-0")}>
+              {(fields: FieldGroup) => (
+                <Combobox.Group key={fields.label} items={fields.items} className={group}>
                   {shown.length > 1 && (
-                    <Combobox.GroupLabel className="px-2.5 py-1.25 text-12 font-semibold text-subtle">
-                      {group.label}
-                    </Combobox.GroupLabel>
+                    <Combobox.GroupLabel className={groupLabel}>{fields.label}</Combobox.GroupLabel>
                   )}
                   <Combobox.Collection>
                     {(f: Field) => (
-                      <Combobox.Item key={f.key} value={f} className={cn(option, listIcon)}>
-                        {fieldIcon(f)}
-                        <span className="min-w-0 flex-1 truncate">{f.title}</span>
-                        <Combobox.ItemIndicator className={check}>
-                          <Check />
+                      <Combobox.Item key={f.key} value={f} className={listRow}>
+                        <span data-icon="" className={rowIcon}>
+                          {fieldIcon(f)}
+                        </span>
+                        <span className={rowLabel}>{f.title}</span>
+                        <Combobox.ItemIndicator
+                          keepMounted
+                          className={cn(rowCheck, "invisible group-data-selected/row:visible")}
+                        >
+                          <Check weight="bold" />
                         </Combobox.ItemIndicator>
                       </Combobox.Item>
                     )}
@@ -778,21 +754,18 @@ export function PillPopover({
           <CaretDown />
         </span>
       </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Positioner align="start" sideOffset={6} className={popupLayer}>
-          <Popover.Popup aria-label={placeholder} className={cn(popup, "overflow-hidden")}>
-            {children(() => setOpen(false))}
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
+      <Popover.Content
+        align="start"
+        aria-label={placeholder}
+        className="flex min-w-(--anchor-width) flex-col overflow-hidden p-0"
+      >
+        {children(() => setOpen(false))}
+      </Popover.Content>
     </Popover.Root>
   );
 }
 
 export const pad = (n: number) => String(n).padStart(2, "0");
-
-export const timeSelect =
-  "h-8 cursor-pointer appearance-none rounded-sm bg-white px-2 text-14 text-ink shadow-input outline-none hover:shadow-input-hover focus-visible:shadow-input-focus";
 
 /** Selecting the current date again clears it. */
 export function DatePick({
@@ -848,29 +821,29 @@ export function TimePick({
     <PillPopover text={h && m ? `${h}:${m}` : undefined} placeholder="Time">
       {(close) => (
         <div className="flex items-center gap-1.5 p-2">
-          <select
+          <NativeSelect
+            size="sm"
             aria-label="Hour"
             value={hour}
             onChange={(e) => pick(e.target.value, minutes, close)}
-            className={timeSelect}
           >
             <option value="">Hour</option>
             {Array.from({ length: 24 }, (_, i) => (
               <option key={i}>{pad(i)}</option>
             ))}
-          </select>
+          </NativeSelect>
           <span className="font-semibold text-muted">:</span>
-          <select
+          <NativeSelect
+            size="sm"
             aria-label="Minutes"
             value={minutes}
             onChange={(e) => pick(hour, e.target.value, close)}
-            className={timeSelect}
           >
             <option value="">Minutes</option>
             {Array.from({ length: 60 }, (_, i) => (
               <option key={i}>{pad(i)}</option>
             ))}
-          </select>
+          </NativeSelect>
         </div>
       )}
     </PillPopover>
@@ -1276,7 +1249,7 @@ export function BlocksPick({
             />
             {query && (
               <Button
-                size="sm"
+                size="xs"
                 tabIndex={-1}
                 aria-label="Clear"
                 icon={<X />}
@@ -1305,7 +1278,7 @@ export function BlocksPick({
                 />
               ))
             ) : (
-              <div className="px-3.75 py-2.5 text-14 text-muted">No results</div>
+              <div className={listEmpty}>No results</div>
             )}
           </div>
         </ContextMenu>

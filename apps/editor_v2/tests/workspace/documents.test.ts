@@ -81,10 +81,6 @@ test("bootstrap attaches active, previous, original and discovered drafts withou
 
   const before = new Map(h.values);
   const opened = openWorkspace(h.storage, [...h.values.keys()]);
-  expect(opened.initialLocation).toEqual({
-    serviceId: `existing-${activeId}`,
-    documentId: `form-${activeId}`,
-  });
   expect(opened.repository.index.services).toHaveLength(5);
   expect(h.writes).toEqual([WORKSPACE_KEY]);
 
@@ -113,6 +109,39 @@ test("bootstrap attaches active, previous, original and discovered drafts withou
   recovery.flush();
   expect(h.values.has(backup.committed)).toBe(false);
   expect(h.writes).toEqual([WORKSPACE_KEY]);
+});
+
+test("a new browser starts with no services rather than a demo form", () => {
+  const h = memory();
+
+  expect(openWorkspace(h.storage).repository.index.services).toEqual([]);
+  expect(h.writes).toEqual([WORKSPACE_KEY]);
+});
+
+test("old-style form drafts are attached only when the browser still holds them", () => {
+  const activeId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+
+  // The pointer names a draft whose bytes are gone; the original draft has only its legacy backup
+  const h = memory([
+    [ACTIVE_DRAFT_KEY, JSON.stringify({ version: 1, id: activeId })],
+    [govbbDraftKeys.legacy, "{broken original JSON\n"],
+  ]);
+
+  const opened = openWorkspace(h.storage, [...h.values.keys()]);
+  expect(opened.repository.index.services.map((service) => service.id)).toEqual([
+    "existing-original",
+  ]);
+  expect(h.writes).toEqual([WORKSPACE_KEY]);
+});
+
+test("a listed form whose draft has gone opens for recovery, never as a form the author didn't make", () => {
+  const { document } = newForm("Licence application", "application");
+  const store = openDocument(document, memory().storage);
+
+  expect(store.getSnapshot()).toMatchObject({ valid: false, status: "recovery", source: "" });
+  expect(store.getSnapshot().error).toBe(
+    "This form’s draft is no longer in this browser. Open a copy of its source to restore it.",
+  );
 });
 
 test("bootstrap index failure retains all existing draft records and the active pointer", () => {

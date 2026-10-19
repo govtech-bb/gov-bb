@@ -4,9 +4,12 @@ export {
   DraftStatus,
   SourceEditor,
   useDraft,
+  useDraftSave,
 } from "./source-ui";
 
-export { FormComposer, DraftCanvas } from "./form-composer";
+export { FormComposer, DraftCanvas, FormTitle } from "./form-composer";
+
+export { PausedNotice } from "./paused-notice";
 
 export { draftEditorConnection } from "./draft-editor";
 

@@ -15,7 +15,7 @@ export const govbbPageEditor = definePageEditor([
   HistoryModule(),
   PageComponentsModule(),
   PageTextModule(),
-  LinksModule(),
+  LinksModule({ isValidLink: isSupportedLinkUrl }),
   PageListsModule(),
   PageTablesModule(),
   FormattingModule({ isValidLink: isSupportedLinkUrl }),

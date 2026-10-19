@@ -5,6 +5,7 @@ import { createEditorAuth } from "./auth/better-auth-client";
 import { bypassAuth } from "./auth/bypass";
 import { parseApiOrigin } from "./auth/session";
 import { routeTree } from "./routeTree.gen";
+import { LoadingState } from "./ui/loading-state";
 
 /** Compose browser authentication once per router without running OAuth during shell builds. */
 export function getRouter() {
@@ -33,18 +34,17 @@ export function getRouter() {
 
   return createRouter({
     routeTree,
-    context: { auth, api },
+    context: { auth, api, queryClient },
     Wrap: ({ children }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     ),
-    defaultPreload: false,
+    // A link pointed at or focused starts loading its screen, so it opens at once when followed
+    defaultPreload: "intent",
     notFoundMode: "root",
-    defaultPendingComponent: () => (
-      <p role="status" className="p-6">
-        Loading editor…
-      </p>
-    ),
+    defaultPendingComponent: () => <LoadingState size="page" label="Loading editor…" />,
     scrollRestoration: true,
+    // By page rather than by visit, so going back to a page by any link returns to where it was read
+    getScrollRestorationKey: (location) => location.pathname,
   });
 }
 

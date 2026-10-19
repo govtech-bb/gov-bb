@@ -17,14 +17,15 @@ export {
 
 export { $pageMetadata, $setPageMetadata, type PageMetadata } from "./metadata";
 
-export { PageEditor, PageHistoryControls } from "./editor";
+export { PageEditor } from "./editor";
 
 export {
   PageTitleField,
-  PageDetailsFields,
+  PageSettings,
   visibilityLabels,
+  visibilityTones,
   type PageCategory,
-  type PageDetailsOptions,
+  type PageSettingsOptions,
 } from "./metadata-fields";
 
 export { PagePreview } from "./preview";

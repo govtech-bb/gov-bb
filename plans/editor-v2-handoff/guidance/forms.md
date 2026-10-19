@@ -1,0 +1,21 @@
+- **form-page-object (decided with the user):**
+  - A form page's menu always acts on the whole page:
+    - Move up and Move down.
+    - Duplicate, which copies the page with its questions.
+    - Delete, which names how many questions go ("Delete page and 4 questions"), then shows a "Page deleted" toast with Undo. Use the existing `toast()` in `src/ui/toast.tsx`; add an action to it if it has none.
+    - Merge with previous page.
+  - Question settings never show on a page, and folding a page never changes what its actions do.
+  - Each action is one undo step (`HISTORY_PUSH_TAG`; see `src/editor/core/history.ts`).
+- **error-message-defaults (decided with the user):**
+  - Store no message until the author writes one. Export fills an empty message from the question's current label, using `ssb.ts`'s wording, so a published form says "Enter your National ID number".
+  - Saved drafts that stored the old generic "Enter an answer" verbatim count as not set, so they get the better default. Old drafts must still load, and exports of existing forms must not lose a message an author really wrote.
+  - In today's settings UI (the block menu), label each message "Default" or "Custom", with Reset to default. A later package moves question settings into a side panel; don't build it.
+- **canvas-text:**
+  - Every visual type or state gets a text twin: one shared state tag for Hidden (visible text, not just a picture), visually hidden "Answer: Email", tips that open on focus as well as hover, and a selection edge of at least 3:1.
+  - Preserve the shared line hints in `src/editor/react/block-dom.ts`.
+- **preview-sheet:** one `PreviewSheet` and `PreviewQuestion` wrap every preview in the insert dialog, page blocks included.
+- **drawing-kit:**
+  - One GovBB drawing kit (box, markers, select, buttons, field width, optional mark) is used by the form canvas, the insert previews and the GovBB button rules in `src/pages/page.css`. Each preview reuses its field's canvas drawing.
+  - What looks right today must look the same afterwards: compare DOM and computed styles, and take before and after screenshots of the form canvas and the insert dialog in your scratch folder.
+- Preserve `aria-expanded` and counts on fold buttons in `forms/react/chrome.tsx`, the gutter grip's "Block actions" name in `forms/react/gutter.tsx`, and shared Kbd hints.
+- Use the [browser fixture helpers](../BROWSER.md) to open seeded form routes; `/` opens Services.

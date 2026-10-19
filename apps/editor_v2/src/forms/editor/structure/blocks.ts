@@ -1,7 +1,8 @@
-import { $isHeadingNode } from "@lexical/rich-text";
+import { $createHeadingNode, $isHeadingNode } from "@lexical/rich-text";
 import {
   $addUpdateTag,
   $createNodeSelection,
+  $createParagraphNode,
   $getNodeByKey,
   $getRoot,
   $getSelection,
@@ -33,9 +34,12 @@ import {
   $isInput,
   $isOptionNode,
   $isPageBreak,
+  $isPageTitleNode,
   $isQuestionNode,
   $isShowHideNode,
   $nextBlock,
+  $pageBlocks,
+  $pageHead,
   $prevBlock,
   $questionKey,
   $rebase,
@@ -43,6 +47,7 @@ import {
   $setHidden,
   $setSettings,
   $settings,
+  $wholePage,
   $withNested,
 } from "../nodes";
 import { $step } from "./editing";
@@ -69,12 +74,16 @@ export function $selectedBlocks() {
   return $sorted(selection.getNodes().filter((node) => $isRootNode(node.getParent())));
 }
 
-/** Blocks with what goes with them: a title's whole question, a folded page's blocks. */
+/** Blocks with what goes with them: a title's whole question, a page's whole page, folded or not. */
 export function $withGroups(blocks: LexicalNode[]) {
   return $sorted(
     $withNested(
       blocks.flatMap((block) =>
-        $isQuestionNode(block) || $isPageBreak(block) ? $blockGroup(block) : [block],
+        $isQuestionNode(block)
+          ? $blockGroup(block)
+          : $isPageBreak(block)
+            ? $wholePage(block)
+            : [block],
       ),
     ),
   );
@@ -85,6 +94,44 @@ export function $removeBlocks(blocks: LexicalNode[]) {
   $addUpdateTag(HISTORY_PUSH_TAG);
 
   for (const block of $withGroups(blocks)) if (!$isFormTitleNode(block)) block.remove();
+}
+
+/** How many questions a page asks: its answers' questions, follow-ups included. */
+export const $pageQuestionCount = (start: LexicalNode) =>
+  $pageBlocks(start).filter(
+    (block) => $isInput(block) && $blockGroup(block).find($isInput) === block,
+  ).length;
+
+/** The page before or after, past any pages moving with it; never page 1, which starts with the form title. */
+function $pageBeside(page: LexicalNode[], down: boolean) {
+  let other = down ? $nextBlock(page.at(-1)!) : $prevBlock(page[0]!);
+
+  while (other && !($isPageBreak(other) && !page.some((block) => block.is(other))))
+    other = down ? $nextBlock(other) : $prevBlock(other);
+
+  return other;
+}
+
+/** Whether a page can move up past the page before it, or down past the one after it. */
+export const $canMovePage = (start: LexicalNode, down: boolean) =>
+  $isPageBreak(start) && !!$pageBeside($wholePage(start), down);
+
+/**
+ * Merge with previous page: the page's blocks join the page before it. Its heading stays as a heading and its
+ * description as text, so nothing the author wrote is lost; an empty one goes.
+ */
+export function $mergeWithPreviousPage(start: LexicalNode) {
+  if (!$isPageBreak(start)) return;
+  $addUpdateTag(HISTORY_PUSH_TAG);
+
+  for (const head of $pageHead(start))
+    if (!head.getTextContent().trim()) head.remove();
+    else
+      head.replace(
+        $setDepth($isPageTitleNode(head) ? $createHeadingNode("h2") : $createParagraphNode(), 0),
+        true,
+      );
+  start.remove();
 }
 
 /** Option values are local to a question; clear them only when copies join existing options. */
@@ -184,19 +231,24 @@ export function $copyAfter(blocks: LexicalNode[], addQuestionTitle = false) {
 
 export const $duplicateBlocks = (blocks: LexicalNode[]) => $copyAfter($withGroups(blocks));
 
-/** ⌘D and the block menu's Duplicate for one block: it, or its whole question ($blockGroup), copied after itself. */
+/**
+ * ⌘D and the block menu's Duplicate for one block: it, or its whole question ($blockGroup), copied after itself. A page
+ * is copied with its blocks.
+ */
 export const $duplicateQuestion = (node: LexicalNode) => {
-  const blocks = $withNested($blockGroup(node));
+  const blocks = $isPageBreak(node) ? $wholePage(node) : $withNested($blockGroup(node));
   // Untitled options would otherwise join the original question's run.
   $copyAfter(blocks, $isOptionNode(blocks[0]));
 };
 
 /**
- * Dragging a question label or folded page moves its group. An untitled question's first block also moves the group,
- * unless the drop target is inside that question, where individual blocks can be reordered.
+ * Dragging a question label or a page moves its group, a page with its blocks. An untitled question's first block also
+ * moves the group, unless the drop target is inside that question, where individual blocks can be reordered.
  */
 export function $dragged(node: LexicalNode, target?: LexicalNode | null): LexicalNode[] {
-  if ($isQuestionNode(node) || $isPageBreak(node)) return $withNested($blockGroup(node));
+  if ($isPageBreak(node)) return $wholePage(node);
+
+  if ($isQuestionNode(node)) return $withNested($blockGroup(node));
   const group = $blockGroup(node);
   const untitledStart = $isInput(node) && !group.some($isQuestionNode) && group[0]!.is(node);
 
@@ -255,14 +307,14 @@ export const isFolded = (node: LexicalNode) => $isPageBreak(node) && !!$settings
 
 /**
  * Keep options inside their own question and other non-text blocks outside another question's answer group.
- * Folded-page targets accept only page breaks. A folded page highlights page boundaries, even when a drop inside
+ * Folded-page targets accept only page breaks. A dragged page highlights page boundaries, even when a drop inside
  * a page is allowed, because the whole page will move to that page's end.
  */
 export function $dropCheck(node: LexicalNode, zone: DropZone) {
   const drop = $zoneCheck(node, zone);
   const target = $getNodeByKey(zone.target);
 
-  return { drop, lit: drop && !(isFolded(node) && target && !$endsPage(target)) };
+  return { drop, lit: drop && !($isPageBreak(node) && target && !$endsPage(target)) };
 }
 
 export function $zoneCheck(node: LexicalNode, zone: DropZone) {
@@ -292,7 +344,7 @@ export function $zoneCheck(node: LexicalNode, zone: DropZone) {
   return !!$questionHolding(node)?.[0]?.is(question[0]!) || target.is(question.at(-1)!);
 }
 
-/** Insert after the target’s folded group; whole folded pages move to the next page boundary. */
+/** Insert after the target’s folded group; whole pages move to the next page boundary. */
 export function $dropBlocks(node: LexicalNode, zone: DropZone) {
   if (!$dropCheck(node, zone).drop) return;
   const target = $getNodeByKey(zone.target)!;
@@ -309,7 +361,7 @@ export function $dropBlocks(node: LexicalNode, zone: DropZone) {
   const depth = $depthAt(end, moving);
   const selected = $selectedBlocks();
 
-  if ((selected.some((block) => block.is(node)) ? selected : [node]).every(isFolded)) {
+  if ((selected.some((block) => block.is(node)) ? selected : [node]).every($isPageBreak)) {
     let at: LexicalNode | null = end.getNextSibling();
 
     while (at && !($isPageBreak(at) && !moving.some((block) => block.is(at))))
@@ -381,11 +433,24 @@ export const $next = (node: LexicalNode | null | undefined, down: boolean) => {
   return null;
 };
 
-/** Move the selected groups one visible block up or down. */
+/** Move the selected groups one visible block up or down; a page moves past the whole page beside it. */
 export function $moveBlocks(blocks: LexicalNode[], down: boolean) {
   const all = $withGroups(blocks);
 
   if (!all.length) return;
+
+  if ($isPageBreak(all[0])) {
+    const other = $pageBeside(all, down);
+
+    if (!other) return;
+    $addUpdateTag(HISTORY_PUSH_TAG);
+
+    if (down) all.reduce((at, block) => at.insertAfter(block), $wholePage(other).at(-1)!);
+    else for (const block of all) other.insertBefore(block);
+
+    return;
+  }
+
   const level = $depth(all[0]!);
 
   const step = (from: LexicalNode) => {
@@ -404,7 +469,9 @@ export function $moveBlocks(blocks: LexicalNode[], down: boolean) {
   if (down)
     all.reduce(
       (at, block) => at.insertAfter(block),
-      $withNested($isFolded(next) || isFolded(next) ? $blockGroup(next) : [$headEnd(next)]).at(-1)!,
+      $withNested(
+        $isFolded(next) ? $blockGroup(next) : isFolded(next) ? $wholePage(next) : [$headEnd(next)],
+      ).at(-1)!,
     );
   else for (const block of all) next.insertBefore(block);
 }
