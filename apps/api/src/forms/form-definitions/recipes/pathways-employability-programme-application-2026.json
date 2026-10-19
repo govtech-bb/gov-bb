@@ -899,18 +899,13 @@
       "title": "Application Submitted",
       "stepId": "submission-confirmation",
       "elements": [],
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "Thank you for applying to the Pathways Employability Programme. We have received your application and you will receive a confirmation email at the address you provided. If you have any questions, please contact the Employability Unit at pathways@barbados.gov.bb or call (246) 535-3863."
-        }
-      ]
+      "markdownContent": "## What happens next\n\nThank you for applying to the Pathways Employability Programme. We have received your application and you will receive a confirmation email at the address you provided. If you have any questions, please contact the Employability Unit at pathways@barbados.gov.bb or call (246) 535-3863."
     }
   ],
   "title": "Pathways Employability Programme: Application Form (2026)",
   "formId": "pathways-employability-programme-application-2026",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-10-12T17:45:45.000Z",
+  "updatedAt": "2026-10-19T00:00:00.000Z",
   "processors": [
     {
       "type": "email",
