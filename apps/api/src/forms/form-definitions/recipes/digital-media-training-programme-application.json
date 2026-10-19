@@ -691,18 +691,13 @@
       "title": "Application Submitted",
       "stepId": "submission-confirmation",
       "elements": [],
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "Thank you for applying to the Digital Media Training Programme. We have received your application and will be in touch at the email address you provided. If you have any questions, please contact the Division of Youth Affairs, Ministry of Youth, Sports and Community Empowerment."
-        }
-      ]
+      "markdownContent": "## What happens next\n\nThank you for applying to the Digital Media Training Programme. We have received your application and will be in touch at the email address you provided. If you have any questions, please contact the Division of Youth Affairs, Ministry of Youth, Sports and Community Empowerment."
     }
   ],
   "title": "Digital Media Training Programme – Application Form",
   "formId": "digital-media-training-programme-application",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-10-12T17:44:53.000Z",
+  "updatedAt": "2026-10-19T00:00:00.000Z",
   "processors": [
     {
       "type": "email",

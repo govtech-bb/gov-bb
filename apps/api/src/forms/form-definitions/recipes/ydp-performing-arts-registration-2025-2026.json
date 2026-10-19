@@ -652,18 +652,13 @@
       "title": "Registration Submitted",
       "stepId": "submission-confirmation",
       "elements": [],
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "Thank you for registering for the Youth Development Programme – Performing Arts 2025–2026. We have received your registration and you will receive a confirmation email at the address you provided. You will be contacted regarding your interview and audition date."
-        }
-      ]
+      "markdownContent": "## What happens next\n\nThank you for registering for the Youth Development Programme – Performing Arts 2025–2026. We have received your registration and you will receive a confirmation email at the address you provided. You will be contacted regarding your interview and audition date."
     }
   ],
   "title": "Youth Development Programme – Performing Arts Registration 2025–2026",
   "formId": "ydp-performing-arts-registration-2025-2026",
   "createdAt": "2025-01-01T00:00:00Z",
-  "updatedAt": "2026-10-12T17:45:45.000Z",
+  "updatedAt": "2026-10-19T00:00:00.000Z",
   "processors": [
     {
       "type": "email",
