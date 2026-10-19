@@ -43,7 +43,8 @@ export type SyncInput =
       prAuthor?: string;
     };
 
-const MERGE_TARGETS = new Set(["sandbox", "dev"]);
+// PRs merge to `main`, the trunk; sandbox/staging/prod are deploy pointers.
+const MERGE_TARGETS = new Set(["main"]);
 
 /** Pure: maps a normalized event to an ordered per-issue action plan. */
 export function decideActions(input: SyncInput): IssuePlan[] {
