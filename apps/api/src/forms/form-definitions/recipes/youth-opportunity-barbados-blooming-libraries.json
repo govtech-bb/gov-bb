@@ -210,18 +210,13 @@
       "title": "Application received",
       "stepId": "submission-confirmation",
       "elements": [],
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "The team running this opportunity will review your application. If you meet the eligibility criteria, they will get in touch using the contact details you provided. If we need anything else from you, we will reach out by email or phone. Thank you for your interest."
-        }
-      ]
+      "markdownContent": "## What happens next\n\nThe team running this opportunity will review your application. If you meet the eligibility criteria, they will get in touch using the contact details you provided. If we need anything else from you, we will reach out by email or phone. Thank you for your interest."
     }
   ],
   "title": "Apply for Barbados is Blooming (Little Libraries)",
   "formId": "youth-opportunity-barbados-blooming-libraries",
   "createdAt": "2026-05-21T00:00:00Z",
-  "updatedAt": "2026-10-05T18:32:56.000Z",
+  "updatedAt": "2026-10-19T00:00:00.000Z",
   "processors": [
     {
       "type": "email",
