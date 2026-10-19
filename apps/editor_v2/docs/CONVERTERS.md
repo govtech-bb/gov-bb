@@ -1,4 +1,4 @@
-# Converters and saved drafts
+# Converters and in-memory documents
 
 The form editor imports and exports **FormDefinitionV2**, the application's JSON contract for pages, questions, content, calculations and conditional logic. It is a custom form definition; the JSON Schema standard for answer-data validation is a separate concept. Form drafts use versioned Markdown. Service page drafts have a separate ordinary Markdown/YAML contract. Lexical holds each visual editing representation.
 
@@ -20,7 +20,7 @@ Every operation receives the installed form or page definition. The kernel does 
 
 ## Page contract
 
-`createPageDraftCodec(definition)` adapts page conversion to the shared persistence contract. `prepare` returns `mode: "visual"` with serialized editor state for supported content, or `mode: "source"` with no state for unsupported content. Both preserve the original source. Invalid YAML metadata throws `SourceError` and leaves the last committed document intact.
+`createPageDraftCodec(definition)` adapts page conversion to the shared in-memory source contract. `prepare` returns `mode: "visual"` with serialized editor state for supported content, or `mode: "source"` with no state for unsupported content. Both preserve the original source. Invalid YAML metadata throws `SourceError` and leaves the last committed document intact.
 
 Modules own Markdown import, export and preview handlers. The installed GovBB page preset supports standard text, headings, links, hard breaks, nested and multi-block lists, tables, blockquotes, separators, notice/details/action directives and Start-link markers. An implicit Start destination remains implicit; `form_id` and explicit URLs are retained. Page conversion never calls form schema conversion.
 
@@ -48,21 +48,21 @@ Custom validation/reference failures return located diagnostics. Import failures
 
 Markdown keeps per-node native bindings in the existing source-state extension and structured widget payloads in visible JSON fences. It does not conceal a complete form JSON document in one blob. Source controls and canvas controls update the same data. Markdown anchors can change without changing native IDs or submitted keys.
 
-## Existing drafts
+## Explicit source conversion
 
 The configured preparation path attempts an idempotent native-binding upgrade for existing Markdown v2 as well as v1. It preserves supported formulas and wording structurally. Unknown legacy properties and sequential accumulator semantics that cannot be mapped faithfully keep the original editable legacy payload and located conversion issues.
 
-A successful source upgrade returns `migrated: true` and the exact `migrationOriginal`. The host backs that original up before its first native-bound canonical write. A different existing backup or failed backup write blocks replacement. Dirty working Markdown remains separate until Apply or Discard. Existing committed, working, previous and legacy key names are unchanged; a per-draft migration-backup key is additional.
+A successful explicit source conversion reports `migrated: true` and the exact `migrationOriginal`. This is converter evidence, not browser migration or a durable backup. The in-memory store uses the explicitly supplied source or conversion result; no old draft keys are read or written.
 
-## Application operations
+## Reusable host operations
 
-The app's **JSON** dialog ([`FormJsonDialog`](../src/host/form-json-dialog.tsx)) downloads the visible native form or stages an uploaded file for review. Staging retains exact uploaded bytes and does not replace the canvas. Dirty Markdown, conflicts, recovery or read-only state block applying/exporting a stale canvas. A captured token rejects imports if the editor changes during file reading.
+The reusable **JSON** dialog ([`FormJsonDialog`](../src/host/form-json-dialog.tsx)) downloads native JSON or stages a file for review. It retains uploaded bytes in memory without replacing the canvas. Unapplied/invalid source, serialization errors and read-only state block stale-canvas operations. Snapshot-bound tokens reject imports if the editor changes during file reading.
 
-`DraftStore.replacePrepared` prepares an editor closure, checks concurrency, writes a recovery journal, rechecks storage, commits canonical Markdown, then applies one history step. Precommit failures retain the old canvas. Failure after canonical commit freezes editing and retains both states for explicit recovery; cleanup failures report a successful content commit with cleanup pending. Cleanup verifies journal bytes and transaction identity. JSON import can be undone/redone and autosaved.
+`DraftStore.replacePrepared` validates and prepares the candidate, checks its captured snapshot token, then applies one undoable replacement in memory. Rejected or failed replacements preserve available prior/candidate data for download. There is no journal, cleanup/retry transaction, autosave or browser recovery.
 
-The service workspace's **Add a document** operation creates a page, application form or calculator, opens a page Markdown/form JSON file, or instantiates a complete form registry entry. Registry forms receive fresh identities. Each document has its own storage namespace and editor history. Navigation preserves existing sessions and unapplied Markdown; failed saves and unresolved conflicts prevent leaving the current document. The earlier form-draft host APIs remain available to independently embedded editors.
+The workspace's Add document operation creates API start/supporting pages only. Reusable form editors, registry creation and native import/export remain available to embedding hosts and test-only fixtures. Registry creation allocates fresh identities; ordinary JSON import preserves authored identities.
 
-Generic persistence receives only codec/prepared-state contracts; it imports no native form schema. Content-only editors can inject a different codec. Host read-only state remains independent of draft pauses.
+Generic editing state receives explicit source and codec/prepared-state contracts; it imports no native schema. Content-only editors can inject a different codec. Host read-only state remains independent of source pauses.
 
 ## Checks
 

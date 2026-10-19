@@ -2,7 +2,7 @@ import { authenticatedContext } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "./playwright.mjs";
-import { openDemoForm } from "./form-fixture.mjs";
+import { openDemoForm, reloadEditorFromSource } from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -37,12 +37,11 @@ async function exported() {
 
 try {
   await openDemoForm(page, url);
-  await page.evaluate(() => localStorage.clear());
-  await page.reload();
+  await reloadEditorFromSource(page);
   await page.locator('[contenteditable="true"][aria-label="Form"]').waitFor();
   await page
     .locator("[data-document-bar]:visible")
-    .getByText("Saved in this browser", { exact: true })
+    .getByText("Unsaved changes", { exact: true })
     .waitFor();
   await openJson();
   const demo = await exported();
@@ -191,7 +190,7 @@ try {
       );
     }
 
-    await page.reload();
+    await reloadEditorFromSource(page);
     await page.locator('[contenteditable="true"][aria-label="Form"]').waitFor();
     await openJson();
     assert.deepEqual(await exported(), actual);
@@ -217,7 +216,7 @@ try {
   );
   assert.deepEqual(await exported(), before);
   await closeJson();
-  await page.getByRole("button", { name: /^Markdown/ }).click();
+  await page.getByRole("button", { name: /^Markdown(?:$| —)/ }).click();
   const markdown = page.getByRole("textbox", { name: "Markdown source", exact: true });
   const original = await markdown.inputValue();
   await markdown.fill(original + "\nUnapplied source retained\n");
@@ -233,24 +232,12 @@ try {
     })
     .waitFor();
   await closeJson();
-  const previousDocument = page.url();
-  await page.getByRole("button", { name: "Create service", exact: true }).click();
-  await page.getByLabel("Service name", { exact: true }).fill("Registry copy");
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Create service", exact: true })
-    .click();
-  await page.getByRole("button", { name: "Add document", exact: true }).click();
-  await page
-    .getByLabel("Document type")
-    .selectOption({ label: "Loud music permit — form from registry" });
-  await page.getByRole("dialog").getByRole("button", { name: "Add document", exact: true }).click();
-  await page.locator('[contenteditable="true"][aria-label="Form"]').waitFor();
-  await openJson();
-  assert.match((await exported()).title, /loud music/i);
-  await closeJson();
-  await page.goto(previousDocument);
-  await page.getByRole("button", { name: /^Markdown/ }).click();
+  const other = await context.newPage();
+  await openDemoForm(other, url);
+  await other.getByRole("textbox", { name: "Form", exact: true }).waitFor();
+  await other.getByRole("heading", { name: /loud music/i }).waitFor();
+  await other.close();
+  await page.getByRole("button", { name: /^Markdown(?:$| —)/ }).click();
   assert.match(await markdown.inputValue(), /Unapplied source retained/);
   await page.getByRole("button", { name: "Discard changes", exact: true }).click();
   // Discarding asks first
@@ -452,14 +439,14 @@ try {
   assert.deepEqual(await canvasExport(), removed);
   await page
     .locator("[data-document-bar]:visible")
-    .getByText("Saved in this browser", { exact: true })
+    .getByText("Unsaved changes", { exact: true })
     .waitFor();
-  await page.reload();
+  await reloadEditorFromSource(page);
   await root.waitFor();
   assert.deepEqual(
     await canvasExport(),
     removed,
-    "real edits and native identities survive Markdown persistence",
+    "real edits and native identities survive explicit Markdown export and reopening",
   );
   await root.getByRole("heading", { name: "Base payment", exact: true }).hover();
   await page.getByRole("button", { name: "Delete this block", exact: true }).click();
@@ -479,7 +466,7 @@ try {
   await closeJson();
   assert.deepEqual(errors, []);
   console.log(
-    "PASS native JSON actual App: seven complete fixtures, review heading order, download/import/reload, consecutive/delayed/failed/out-of-order uploads, failed input retention, dirty source gating, independent registry form, retained source, boolean/result edits, calculations, copy/delete-first-option, undo/redo, export diagnostics and reload",
+    "PASS native JSON in-memory host: seven complete fixtures, review heading order, download/import/reload, consecutive/delayed/failed/out-of-order uploads, failed input retention, dirty source gating, independent form host, retained source, boolean/result edits, calculations, copy/delete-first-option, undo/redo, export diagnostics and reload",
   );
 } catch (error) {
   await page.screenshot({ path: "/tmp/lexical-native-form-failure.png", fullPage: true });

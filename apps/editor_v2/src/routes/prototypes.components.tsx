@@ -441,7 +441,7 @@ function ComponentsPreview() {
               <Bar.Root label="Page tools">
                 <Bar.Title>Renew a passport</Bar.Title>
                 <Bar.Status>
-                  <SaveState.Status status="local" />
+                  <SaveState.Status status="unsaved" />
                 </Bar.Status>
                 <Bar.Actions>
                   {undoRedo}
@@ -492,7 +492,7 @@ function ComponentsPreview() {
               <DocumentBar
                 label="Form tools"
                 title="Apply for a permit to play loud music"
-                save={{ status: "local" }}
+                save={{ status: "unsaved" }}
                 undo={undoRedo}
                 source={
                   <>
@@ -512,7 +512,7 @@ function ComponentsPreview() {
         >
           <Specimen
             title="Where it stands"
-            note="A browser draft is only saved in this browser. A page from the content API waits there until it's saved, or published if it's public."
+            note="Edits stay in memory until Save or Publish succeeds. Leaving without saving loses those changes."
           >
             <dl className="flex w-full max-w-sm flex-col gap-3 text-14">
               {saveStates.map(([status, when]) => (
@@ -532,7 +532,7 @@ function ComponentsPreview() {
             <div className="w-full overflow-hidden rounded-sm border border-line">
               <SaveState.Failure
                 status="failed"
-                error="We could not save this page. Your changes are kept in this browser."
+                error="We could not save this page. Keep the editor open to retry, or download your changes."
                 onRetry={() => {}}
                 onDownload={() => {}}
               />
@@ -915,7 +915,8 @@ function ComponentsPreview() {
                 layout="strip"
                 actions={<Button variant="secondary">Try again</Button>}
               >
-                We could not save this page. Your changes are kept in this browser.
+                We could not save this page. Keep the editor open to retry, or download your
+                changes.
               </Banner>
               <Banner
                 tone="warning"
@@ -1235,7 +1236,6 @@ const messagePlaces = [
 // Each save state, and when it's seen
 const saveStates: [SaveStatus, string][] = [
   ["saving", "Between keystrokes, or sending"],
-  ["local", "A browser draft"],
   ["unsaved", "A page that isn't public, changed"],
   ["saved", "A page that isn't public, saved"],
   ["unpublished", "A public page, changed"],

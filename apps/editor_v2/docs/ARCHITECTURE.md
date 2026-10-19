@@ -1,6 +1,6 @@
 # Editor system
 
-The reusable editor kernel supports content editing without importing the form system. Page modules add Markdown writing; form modules add questions, form pages, logic and the form source format. The workspace selects the document, chooses its preset and connects persistence.
+The reusable editor kernel supports content editing without importing the form system. Page modules add Markdown writing; form modules add questions, form pages, logic and the form source format. The workspace selects the document, uses the page preset and provides explicit API persistence.
 
 Form-wide configuration and page metadata panels belong to the host. The editors preserve that data through converters; they provide no form-wide settings or checks dashboard.
 
@@ -14,7 +14,7 @@ This guide describes the installed module system. [Architecture decision records
 | `src/forms` | Typed fields/content adapters, form composition, Form registry builders, form canvas and converters |
 | `src/forms/modules` | Supported built-in form modules and content adapters for application-owned presets |
 | `src/pages` | Page module composition, Markdown conversion, title editing, writing canvas and preview |
-| `src/persistence` | Injected draft storage, codec/connection contracts and recovery/conflict state |
+| `src/persistence` | In-memory source/canvas state, codec/connection contracts and failure preservation |
 | `src/host` | Optional React draft provider, source controls and Lexical connection |
 | `src/presets/content` | Ready-made content editor definition |
 | `src/presets/govbb-form` | GovBB module list, form definition, runtime and Markdown codec |
@@ -40,8 +40,8 @@ src/pages                    page composition, metadata, Markdown handlers, writ
 src/converters               Markdown, native form import/export, explicit legacy SSB export
 src/presets                  selected modules and built-in Form registry data
 src/persistence              storage-independent draft state machine
-src/host                     browser storage/events and application binding
-src/workspace                service/document index, navigation and document creation/import
+src/host                     source controls, downloads and application binding
+src/workspace                API service/page navigation, explicit saves and leave protection
 src/api                      api_v2 transport, query options and page/Markdown adaptation
 src/ui/table                 shared list table: features and components once; each list adds columns and data
 src/routes                   TanStack routes and server-safe document shell
@@ -49,7 +49,7 @@ src/routes                   TanStack routes and server-safe document shell
 
 The TypeScript boundary checker enforces these dependency boundaries. Generic editor code cannot import forms, presets, the app or persistence. Pure layers cannot reach browser globals or React UI. Form behavior is owned by installed form contributions; it is not selected from a second global catalog.
 
-The app uses TanStack Start in SPA mode. Its root document can render at build time; the workspace layout disables SSR and owns browser storage and document sessions. Route changes select a document within that persistent layout instead of remounting the editor. Framework imports stay in the app shell and workspace navigation, outside the reusable editor and persistence layers.
+The app uses TanStack Start in SPA mode. Its root document can render at build time; the client-only workspace owns in-memory document sessions. Route changes reuse clean cached editors. Framework imports stay outside reusable editor/state layers.
 
 ## Module lifecycle
 
@@ -66,7 +66,7 @@ Several features may reuse the same node declaration object. Separate declaratio
 
 `EditorComposer` prepares the same definition for React and installs its browser behavior. `definition` is fixed per mount; remount to change installed modules. `initialState` is initial input, not a controlled-state prop. `readOnly` can change while mounted. `Editor` supplies a content-editable surface, slash menu and overlay slot; `FormEditor` supplies the form canvas inside a composer. Neither requires browser storage.
 
-The `readOnly` prop on `EditorComposer` controls host-owned editability. The draft connection owns a separate temporary pause for unapplied source or conflicts. Autosave, Apply and Discard can clear the draft pause but cannot clear the host's read-only state, including when that state changes while source is already paused.
+The `readOnly` prop controls host-owned editability independently of temporary pauses for unapplied/invalid source or serialization failures. Apply, Discard and serialization retry cannot clear the host's read-only gate.
 
 A registration returns its cleanup function. Each editor owns its history and listeners; loading a document establishes its undo baseline. The shared browser router tracks the focused editor, including its portals, while native inputs keep their own undo. Unmounting one editor must not remove another editor's routing or listeners.
 
@@ -82,25 +82,17 @@ Form composition adds typed field/content/source capabilities. The default struc
 
 Form Markdown version 2 is the form draft format; service page drafts use ordinary Markdown and YAML frontmatter. Lexical is the editing representation; native FormDefinitionV2 JSON is the form definition exchanged with other systems. SSB is available through an explicit legacy converter. [Converters](CONVERTERS.md) receive the installed definition and never infer document kind from an ambiguous canvas.
 
-A `DraftStore` receives storage, initial state, a codec and host-owned keys, including optional migration-backup and replacement-journal keys. It does not know the GovBB preset or browser globals. An editor connection parses prepared state before any write and returns a callback that applies it. Document replacement proceeds in this order:
+A `DraftStore` receives explicit source and a codec: `new DraftStore(source, codec)`. It has no storage interface, keys, timer, journal or browser-event listeners. Source changes pause the canvas until Apply or Discard. Apply validates before replacing the document. Asynchronous imports carry snapshot-bound tokens, so stale reads cannot overwrite newer work. Replacement is one undo step; failures retain available original/candidate data in memory for download.
 
-1. Validate and parse the candidate.
-2. Check for conflicts.
-3. Journal the exact prior and candidate bytes.
-4. Commit canonical source.
-5. Apply the replacement as one history step.
+`dirty` means unapplied Markdown, not unsaved-to-server changes. `ready` means applied in memory, never a durable save. Only the API host can report Saved/Published. Invalid or unavailable input remains exact; no browser drafts are discovered or migrated.
 
-Failures after commit freeze the editor for explicit recovery, while cleanup failure retains transaction evidence for retry. Invalid or unavailable content stays recoverable rather than being silently rewritten.
-
-The host owns `localStorage`, storage/page lifecycle listeners and copy/download UI. Two editors can share a storage object with distinct key sets. The composer can also run without a store.
-
-`PreparedSource` distinguishes a visual document with serialized editor state from a valid source-only document without it. `DraftProvider` supplies persistence independently of Lexical; `DraftEditorBinding` connects a mounted editor when visual state exists. Source-only Apply, saving, downloads, working buffers and conflict handling therefore do not depend on an invisible editor.
+`PreparedSource` distinguishes visual state from valid source-only content. `DraftProvider` supplies the in-memory document independently of Lexical; `DraftEditorBinding` connects a visual editor. Source-only Apply, explicit server saves and downloads need no hidden editor. The composer can also run without a store.
 
 ## Service pages and workspace
 
-`workspace/page-sync.ts` reconciles a remote page with its browser draft and saves it with optimistic concurrency. Its `ServerPageBaseline` is the last server copy held by this browser, not server-side execution. `workspace/service-pages.ts` maps API pages to the service sidebar's rows: workspace document references in display order, with each page's depth and visibility, and the service's browser form joined by its form ID. `api/page-markdown.ts` owns page/save-input conversion and selective version restoration. These modules reuse the existing API client and draft storage; they do not introduce another service or persistence layer.
+`workspace/page-sync.ts` compares a working copy with an in-memory `ServerPageBaseline` and saves explicitly using its `updated_at` token. A response acknowledges the submitted snapshot, never later edits. Background refresh does not overwrite the working copy or silently advance its write token. `workspace/service-pages.ts` maps only API pages into sidebar rows. `api/page-markdown.ts` owns page/save conversion and selective history restoration.
 
-Workspace references (`WorkspaceFormDocument`, `PageDocument`, `WorkspaceService`) are navigation metadata, not the form Markdown AST or API service DTOs. `ServicePageRole` describes entry/start/supporting content; the form schema's `PageRole` describes questions/review/declaration/confirmation/result pages.
+`PageDocument` contains API navigation metadata, not content or storage keys. `ServicePageRole` describes entry/start/supporting content; the reusable form schema's `PageRole` describes questions/review/declaration/confirmation/result pages.
 
 Authoring controls share the form builder's visual primitives in `src/ui`: buttons, block grips, menu rows, popup panels and settings fields. Page layout, content spacing and insertion choices are specific to writing. Page drag/drop moves whole root content blocks; form drag/drop retains its question grouping and nesting rules. Neither editor imports the other's document structure.
 
@@ -108,9 +100,9 @@ Authoring controls share the form builder's visual primitives in `src/ui`: butto
 
 Page metadata lives in a hidden document node, retaining its YAML document, original source and initial canonical fingerprint. Editing the title shares the body's undo and save operation. Export returns original bytes until content or metadata changes; afterwards it normalizes Markdown without discarding unknown YAML fields, link targets or body structure. Unsupported content makes the whole page source-only, so conversion cannot silently flatten part of it.
 
-The workspace index stores services and document references, roles, navigation labels and storage keys. Page content remains in its draft; form content remains in its existing contract. Services support an entry page, optional start page, supporting pages and one application form or calculator. The host retains independent document sessions, flushes changes before navigation and preserves unapplied source. The initial workspace attaches existing local form drafts without rewriting their stored documents. [ADR 0007](decisions/0007-service-workspaces-and-markdown-pages.md) records these boundaries.
+Services and pages come only from the API. Form IDs remain page metadata, without a browser-form join. The workspace keeps three clean views and pins any additional dirty/error/pending views. Reopened clean sessions compare API versions; confirmed discard also drops undo. One coordinated guard covers page/workspace departure, sign-out and unload. Cancel changes neither location nor working copies. Old local workspace/draft keys are inert and left untouched. Historical ADR 0007 describes the former local workspace.
 
-Remote page sessions live in `workspace/remote-page-pane.tsx`; page history and service-page navigation have their own purpose-named UI modules. `remote-page-dialogs.tsx` performs API-backed creation/deletion; `local-document-dialogs.tsx` creates/imports browser-local documents. Both reuse the presentation-only shell in `workspace-dialog.tsx`. Component names describe this distinction without changing product labels or routes.
+Remote page sessions live in `workspace/remote-page-pane.tsx`; page history and navigation have their own UI modules. `remote-page-dialogs.tsx` performs API creation/deletion through the existing `workspace-dialog.tsx` shell. There are no local-document dialogs or production form-editor route.
 
 ## Extension proofs
 

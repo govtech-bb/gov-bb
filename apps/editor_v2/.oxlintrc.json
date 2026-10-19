@@ -705,35 +705,11 @@
     },
     {
       "files": [
-        "src/host/form-drafts.ts"
-      ],
-      "rules": {
-        "anti-slop/no-runtime-typeof": "off"
-      }
-    },
-    {
-      "files": [
         "src/persistence/draft-store.test.ts"
       ],
       "rules": {
         "anti-slop/no-runtime-typeof": "off",
         "anti-slop/no-unknown-parameters": "off"
-      }
-    },
-    {
-      "files": [
-        "src/persistence/replacement.test.ts"
-      ],
-      "rules": {
-        "anti-slop/no-runtime-typeof": "off"
-      }
-    },
-    {
-      "files": [
-        "src/persistence/replacement.ts"
-      ],
-      "rules": {
-        "anti-slop/no-runtime-typeof": "off"
       }
     },
     {

@@ -4,7 +4,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, test, vi } from "vitest";
 import { createEditorApi } from "../../src/api/client";
-import { documentKeys, type PageDocument } from "../../src/workspace/model";
+import type { PageDocument } from "../../src/workspace/model";
 import { DeleteRemotePageDialog } from "../../src/workspace/remote-page-dialogs";
 
 afterEach(() => {
@@ -17,7 +17,6 @@ const page: PageDocument = {
   title: "Fees",
   kind: "page",
   role: "supporting",
-  keys: documentKeys("44444444-4444-4444-8444-444444444444"),
 };
 
 test("deleting a page asks in an alert dialog, which can't be closed while the page goes", async () => {

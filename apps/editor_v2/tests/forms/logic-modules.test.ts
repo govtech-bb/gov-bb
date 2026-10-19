@@ -12,13 +12,7 @@ import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { defineFormEditor } from "../../src/forms/definition";
 import { govbbFormEditor, govbbFormModules } from "../../src/presets/govbb-form";
 import { createFormRuntime } from "../../src/forms/editor/runtime";
-import {
-  createFormDraftCodec,
-  initialDraft,
-  MARKDOWN_KEY,
-  WORKING_KEY,
-  type DraftStorage,
-} from "../helpers/default-form";
+import { createFormDraftCodec, DraftStore } from "../helpers/default-form";
 import { lexicalToLegacySsb } from "../../src/converters/lexical-to-legacy-ssb";
 import {
   $blockId,
@@ -115,23 +109,6 @@ function fixture() {
   return { editor, page, rule };
 }
 
-const memory = (source: string): DraftStorage => {
-  const entries = new Map([
-    [MARKDOWN_KEY, source],
-    [WORKING_KEY, source + "\nUnapplied text\n"],
-  ]);
-
-  return {
-    getItem: (key) => entries.get(key) ?? null,
-    setItem: (key, value) => {
-      entries.set(key, value);
-    },
-    removeItem: (key) => {
-      entries.delete(key);
-    },
-  };
-};
-
 test("logic, calculation and mention modules own their insertion, source, renderers and overlays exactly once", () => {
   const actions = govbbFormEditor.logicActions;
   expect(actions.map((action) => action.type)).toEqual([
@@ -199,36 +176,17 @@ test("removed modules reject their documents while retaining canonical and unapp
       const absentRuntime = createFormRuntime(absent),
         absentCodec = createFormDraftCodec(absentRuntime);
 
-      const storage = memory(canonical),
-        working = storage.getItem(WORKING_KEY)!;
-
-      const unavailable = initialDraft(
-        storage,
-        () => {
-          throw Error("Never replace unavailable source with a demo");
-        },
-        absentCodec,
-        absentRuntime,
-      );
-
-      expect(unavailable.snapshot.valid).toBe(false);
+      const working = canonical + "\nUnapplied text\n";
+      const store = new DraftStore(canonical, absentCodec);
+      store.edit(working);
+      const unavailable = store.getSnapshot();
+      expect(unavailable.valid).toBe(false);
       expect(unavailable.state).toBeUndefined();
-      expect(unavailable.snapshot.recovery?.original).toBe(canonical);
-      expect(storage.getItem(MARKDOWN_KEY)).toBe(canonical);
-      expect(storage.getItem(WORKING_KEY)).toBe(working);
-
-      const restored = initialDraft(
-        storage,
-        () => {
-          throw Error("Never overwrite a retained draft");
-        },
-        codec,
-        runtime,
-      );
-
-      expect(restored.snapshot.valid).toBe(true);
-      expect(restored.snapshot.dirty).toBe(true);
-      expect(restored.snapshot.source).toBe(working);
+      expect(unavailable.recovery?.original).toBe(canonical);
+      expect(unavailable.source).toBe(working);
+      const restored = new DraftStore(canonical, codec);
+      restored.edit(working);
+      expect(restored.getSnapshot()).toMatchObject({ valid: true, dirty: true, source: working });
     }
   } finally {
     editor.dispose();

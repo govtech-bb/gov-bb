@@ -3,9 +3,9 @@ import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { ServiceDetail } from "../../src/api/client";
-import type { DraftStorage } from "../../src/persistence/types";
-import { openDocument } from "../../src/workspace/documents";
-import { documentKeys, type PageDocument } from "../../src/workspace/model";
+import { DraftStore } from "../../src/persistence/draft-store";
+import { govbbPageCodec } from "../../src/presets/govbb-page";
+import type { PageDocument } from "../../src/workspace/model";
 import { useScreenPlace } from "../../src/workspace/screen-place";
 import { ScreenTitle, screenTitle } from "../../src/workspace/screen-title";
 import { pageDocumentFromApi } from "../../src/workspace/service-pages";
@@ -52,42 +52,21 @@ test("a screen's title takes the tab over from the editor's name, and gives it b
   expect(document.title).toBe("GovBB editor");
 });
 
-function Place(props: Parameters<typeof useScreenPlace>[0] & { remote?: ServiceDetail }) {
-  const { remote, ...local } = props;
-  const remoteDocument = remote && pageDocumentFromApi(remote.pages[0]!);
-  const place = useScreenPlace(local, { service: remote, document: remoteDocument });
+function Place({
+  service,
+  document,
+  store,
+}: {
+  service: ServiceDetail;
+  document: PageDocument;
+  store?: DraftStore;
+}) {
+  const place = useScreenPlace(service, document, store);
 
   return <p>{`${place.document} | ${place.service}`}</p>;
 }
 
-function memoryStorage(): DraftStorage {
-  const values = new Map<string, string>();
-
-  return {
-    getItem: (key) => values.get(key) ?? null,
-    setItem: (key, value) => void values.set(key, value),
-    removeItem: (key) => void values.delete(key),
-  };
-}
-
-test("the place names a browser draft's page as it's typed, and an API page as the sidebar does", async () => {
-  const storage = memoryStorage();
-  const keys = documentKeys("fees");
-  storage.setItem(keys.committed, "---\ntitle: Fees\n---\n\nWhat it costs.\n");
-
-  const fees: PageDocument = { id: "fees", title: "Fees", kind: "page", role: "supporting", keys };
-  const store = openDocument(fees, storage);
-  const service = { id: "passports", title: "Passport renewals", documents: [fees] };
-
-  await render(<Place service={service} document={fees} store={store} />);
-  expect(host.textContent).toBe("Fees | Passport renewals");
-
-  await act(async () => {
-    store.edit("---\ntitle: Fees and payment\n---\n\nWhat it costs.\n");
-    store.apply();
-  });
-  expect(host.textContent).toBe("Fees and payment | Passport renewals");
-
+test("the place uses the API service and the open page's in-memory title", async () => {
   const remote: ServiceDetail = {
     service: {
       id: "s1",
@@ -115,6 +94,15 @@ test("the place names a browser draft's page as it's typed, and an API page as t
     ],
   };
 
-  await render(<Place remote={remote} />);
+  await render(<Place service={remote} document={pageDocumentFromApi(remote.pages[0]!)} />);
   expect(host.textContent).toBe("Entry page | Apply for a hotel licence");
+  const fees = pageDocumentFromApi({ id: "fees", title: "Fees", role: "supporting" });
+  const store = new DraftStore("---\ntitle: Fees\n---\n\nWhat it costs.", govbbPageCodec);
+  await render(<Place service={remote} document={fees} store={store} />);
+  expect(host.textContent).toBe("Fees | Apply for a hotel licence");
+  await act(async () => {
+    store.edit("---\ntitle: Fees and payment\n---\n\nWhat it costs.");
+    store.apply();
+  });
+  expect(host.textContent).toBe("Fees and payment | Apply for a hotel licence");
 });

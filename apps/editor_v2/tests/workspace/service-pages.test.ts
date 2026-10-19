@@ -1,13 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ApiPage, ServiceDetail, ServicePage } from "../../src/api/client";
-import { newForm, newPage } from "../../src/workspace/documents";
-import type { WorkspaceIndex } from "../../src/workspace/model";
-import {
-  browserFormFor,
-  listedServiceRows,
-  localServiceRows,
-  remoteServiceRows,
-} from "../../src/workspace/service-pages";
+import { listedServiceRows, remoteServiceRows } from "../../src/workspace/service-pages";
 
 const page: ApiPage = {
   id: "page-1",
@@ -93,42 +86,12 @@ describe("an opened service", () => {
     expect(rows.map((row) => [row.document.id, row.depth])).toEqual([["page-1", 0]]);
   });
 
-  it("lists the form this browser drafts for it last, joined by the form ID its pages name", () => {
-    const application = newForm("Severance application", "application").document;
-    const other = newForm("Other application", "application").document;
-    const entry = newPage("Severance", "entry").document;
-
-    const index: WorkspaceIndex = {
-      version: 1,
-      services: [
-        { id: "local-1", title: "Other", documents: [entry, other] },
-        { id: "local-2", title: "Severance", documents: [application] },
-      ],
-    };
-
-    const opened = detail([servicePage("entry-1", null, "entry")], application.formId);
-    const form = browserFormFor(index, opened.service.form_id);
-
-    expect(form).toBe(application);
-    expect(remoteServiceRows(opened, form).map((row) => [row.document.id, row.depth])).toEqual([
-      ["entry-1", 0],
-      [application.id, 0],
-    ]);
-    expect(browserFormFor(index, null)).toBeUndefined();
-    expect(browserFormFor(index, "no-such-form")).toBeUndefined();
-  });
-});
-
-describe("a service drafted in this browser", () => {
-  it("lists its documents in the order they were added, at one level and unpublished", () => {
-    const entry = newPage("Licence", "entry").document;
-    const form = newForm("Licence application", "application").document;
-    const rows = localServiceRows({ id: "local", title: "Licence", documents: [entry, form] });
-
-    expect(rows).toEqual([
-      { document: entry, depth: 0 },
-      { document: form, depth: 0 },
-    ]);
+  it("a service's form ID does not create a browser-only form row", () => {
+    expect(
+      remoteServiceRows(detail([servicePage("entry-1", null, "entry")], "existing-form")).map(
+        (row) => row.document.id,
+      ),
+    ).toEqual(["entry-1"]);
   });
 });
 

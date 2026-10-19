@@ -35,7 +35,7 @@ const shell = "flex min-h-[calc(100dvh-var(--bar-height))] flex-col bg-white";
 /** What a host adds to a page draft's frame: the page's settings, where it stands there, and its slots in the bar. */
 type PageHost = {
   settings?: PageSettingsOptions;
-  /** Where the page stands in the host's own store, once its browser copy is safe. */
+  /** Where the page stands against the host's last server save. */
   server?: SaveStateProps;
   /** The versions saved before this one. */
   versions?: ReactNode;

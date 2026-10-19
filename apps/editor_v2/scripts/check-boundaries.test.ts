@@ -501,7 +501,7 @@ test("page modules use generic editor contracts without depending on forms, pres
     ["src/forms/editor/nodes.tsx", ""],
     ["src/presets/govbb-page.ts", ""],
     ["src/host/page-editor.tsx", ""],
-    ["src/workspace/documents.ts", ""],
+    ["src/workspace/page-sync.ts", ""],
   ]);
 
   const check = (source: string) =>
@@ -521,7 +521,7 @@ test("page modules use generic editor contracts without depending on forms, pres
     'import { FormTitleNode } from "../../forms/editor/nodes";',
     'import { govbbPageEditor } from "../../presets/govbb-page";',
     'const load = () => import("../../host/page-editor");',
-    'export { openDocument } from "../../workspace/documents";',
+    'export { savePageDraft } from "../../workspace/page-sync";',
   ])
     expect(check(source)).toHaveLength(1);
 });
@@ -561,7 +561,7 @@ test("workspace composition may assemble both document domains while reusable la
     ["src/host/page-editor.tsx", ""],
     ["src/presets/govbb-page.ts", ""],
     ["src/persistence/draft-store.ts", ""],
-    ["src/workspace/documents.ts", ""],
+    ["src/workspace/page-sync.ts", ""],
   ]);
 
   expect(
@@ -588,7 +588,7 @@ test("workspace composition may assemble both document domains while reusable la
           ...files,
           [
             file,
-            `import { openDocument } from "${file.startsWith("src/editor/") ? "../../" : "../"}workspace/documents";`,
+            `import { savePageDraft } from "${file.startsWith("src/editor/") ? "../../" : "../"}workspace/page-sync";`,
           ],
         ]),
       ),

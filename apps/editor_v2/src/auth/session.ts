@@ -57,7 +57,7 @@ export interface EditorAuth {
   session(): Promise<AuthResult<EmployeeSession | null>>;
   /** Start GitHub OAuth and return its authorization URL without navigating. */
   signIn(editorOrigin: string, returnTo: string): Promise<AuthResult<string>>;
-  /** Revoke the API session without removing browser drafts. */
+  /** Revoke the API session; the host confirms leaving unsaved work first. */
   signOut(): Promise<AuthResult<void>>;
 }
 

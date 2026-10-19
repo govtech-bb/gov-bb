@@ -45,14 +45,14 @@ test("asks its question in an alert dialog, with the action's verb on its button
       open
       onClose={onClose}
       title="Delete this page?"
-      description="Its browser draft is kept."
+      description="Unsaved changes will be lost."
       confirm="Delete page"
       onConfirm={onConfirm}
     />,
   );
 
   expect(text(dialog().getAttribute("aria-labelledby"))).toBe("Delete this page?");
-  expect(text(dialog().getAttribute("aria-describedby"))).toBe("Its browser draft is kept.");
+  expect(text(dialog().getAttribute("aria-describedby"))).toBe("Unsaved changes will be lost.");
   await act(async () => button("Delete page").click());
   expect(onConfirm).toHaveBeenCalledOnce();
   await escape();
@@ -68,7 +68,7 @@ test("while the action works, says so on its button and can't be closed or press
       open
       onClose={onClose}
       title="Delete this page?"
-      description="Its browser draft is kept."
+      description="Unsaved changes will be lost."
       confirm="Delete page"
       pendingLabel="Deleting page…"
       pending
@@ -93,7 +93,7 @@ test("shows why the action failed in the dialog, which stays open", async () => 
       open
       onClose={() => {}}
       title="Delete this page?"
-      description="Its browser draft is kept."
+      description="Unsaved changes will be lost."
       confirm="Delete page"
       error="The page could not be deleted. Try again."
       onConfirm={() => {}}

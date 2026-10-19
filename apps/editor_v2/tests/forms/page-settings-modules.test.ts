@@ -7,12 +7,7 @@ import { $setFormSettings } from "../../src/forms/editor/form-metadata";
 import { TextModule } from "../../src/editor/modules/text/module";
 import { WidgetNode } from "../../src/forms/editor/answer-nodes";
 import { createFormRuntime } from "../../src/forms/editor/runtime";
-import {
-  createFormDraftCodec,
-  initialDraft,
-  MARKDOWN_KEY,
-  WORKING_KEY,
-} from "../helpers/default-form";
+import { createFormDraftCodec, initialDraft } from "../helpers/default-form";
 
 const source =
   "---\nformat: govbb-form\nformatVersion: 2\ntitle: Page contracts\n---\n\n# First page\n\n::page{#first}\n\n::text[Name]{#name required}\n\n---\n\n# Next page\n\n::page{#next}\n\nSome text\n";
@@ -63,40 +58,13 @@ test("removing pages removes page actions and rejects saved page structure witho
   expect(() =>
     definition.validateDocument({ root: { type: "root", children: [{ type: "widget" }] } }),
   ).toThrow("page-break");
-  const working = source + "\nAn unfinished working edit [\n";
-
-  const values = new Map([
-    [MARKDOWN_KEY, source],
-    [WORKING_KEY, working],
-  ]);
-
-  const storage = {
-    getItem: (key: string) => values.get(key) ?? null,
-    setItem: (key: string, value: string) => {
-      values.set(key, value);
-    },
-    removeItem: (key: string) => {
-      values.delete(key);
-    },
-  };
-
   const runtime = createFormRuntime(definition);
-
-  const recovery = initialDraft(
-    storage,
-    () => {
-      throw Error("Unavailable pages must not load a demo");
-    },
-    createFormDraftCodec(runtime),
-    runtime,
-  );
+  const recovery = initialDraft(source, createFormDraftCodec(runtime));
 
   expect(recovery.state).toBeUndefined();
   expect(recovery.snapshot.valid).toBe(false);
   expect(recovery.snapshot.recovery).toEqual({ kind: "markdown", original: source });
-  expect(recovery.snapshot.source).toBe(working);
-  expect(values.get(MARKDOWN_KEY)).toBe(source);
-  expect(values.get(WORKING_KEY)).toBe(working);
+  expect(recovery.snapshot.source).toBe(source);
   expect(formMarkdownToLexical(source, govbbFormEditor).state).toBeDefined();
 });
 

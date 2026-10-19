@@ -1,20 +1,5 @@
 import type { SerializedEditorState } from "lexical";
 
-export type DraftStorage = {
-  getItem(key: string): string | null;
-  setItem(key: string, value: string): void;
-  removeItem(key: string): void;
-};
-
-export type DraftKeys = Readonly<{
-  committed: string;
-  working: string;
-  previous: string;
-  legacy: string;
-  nativeMigrationBackup?: string;
-  replacementJournal?: string;
-}>;
-
 export type DraftDiagnostic = {
   code: string;
   message: string;
@@ -42,69 +27,41 @@ export type DraftCodec<Prepared extends PreparedSource = PreparedSource> = {
   prepareLegacy(value: unknown): SerializedEditorState;
 };
 
-export type DraftRecovery = {
-  kind: "markdown" | "legacy" | "storage" | "canvas" | "migration" | "replacement";
-  original: string;
-  existingBackup?: string;
-};
+/** Original input retained in memory when parsing or canvas serialization fails. */
+export type DraftRecovery = { kind: "markdown" | "canvas"; original: string };
 
-export type ReplacementJournal = {
-  version: 1;
-  transactionId: string;
-  prior: { committed: string | null; working: string | null; source: string };
-  candidate: string;
-  original?: string;
-};
-
-export type DraftReplacement = {
-  journal: ReplacementJournal;
-  bytes: string;
-  phase: "uncommitted" | "committed" | "cleanup" | "conflict";
-  resolution?: "candidate" | "original";
-};
-
-/** Tokens are tied to the store and snapshot which issued them, not just their text. */
+/** Tokens belong to the store and snapshot which issued them, not just their text. */
 export type DraftReplacementToken = Readonly<{ source: string }>;
 
-export type ReplacementOptions = { original?: string; canCommit?: () => boolean };
+export type ReplacementOptions = { canCommit?: () => boolean };
 
 export type ReplacementResult =
-  | { status: "committed"; cleanupPending: boolean; history: "preserved" }
-  | { status: "rejected"; message: string }
-  | { status: "recovery-required"; message: string };
+  | { status: "committed"; history: "preserved" }
+  | { status: "rejected"; message: string };
 
+/** "ready" means applied to the editor, never saved to a server. */
 export type DraftSnapshot = {
   mode: "visual" | "source";
   state?: SerializedEditorState;
   source: string;
   committed: string;
+  /** Markdown edits not yet applied to the canvas; not the host's server-save state. */
   dirty: boolean;
   valid: boolean;
-  status: "saved" | "saving" | "source" | "error" | "recovery" | "conflict";
+  status: "ready" | "source" | "error";
   diagnostics: DraftDiagnostic[];
   error?: string;
   recovery?: DraftRecovery;
-  replacement?: DraftReplacement;
-  conflict?: { source: string | null; working: string | null };
-  previous?: string;
 };
 
-/**
- * Why editing a draft is paused: its saved copy couldn't be read, applying a replacement didn't finish, the original
- * couldn't be backed up before an update, another tab changed it, or Markdown changes are waiting to be applied.
- */
-export type DraftPause = "invalid" | "replacement" | "migration" | "conflict" | "source";
+export type DraftPause = "invalid" | "source";
 
 export type InitialDraft = {
   snapshot: DraftSnapshot;
   state?: SerializedEditorState;
-  observed: string | null;
-  working: string | null;
-  needsSave: boolean;
-  migrationOriginal?: string;
 };
 
-/** Parsing happens before storage writes; the returned closure applies that parsed state. */
+/** Parsing happens before replacing state; the returned closure applies that parsed state. */
 export type DraftConnection = {
   prepare(state: SerializedEditorState): () => void;
   getState(): SerializedEditorState;

@@ -32,14 +32,13 @@ const shown = () => host.firstElementChild?.textContent;
 
 test("each state says who can see the work", async () => {
   const words = new Map([
-    ["local", "Saved in this browser"],
     ["unsaved", "Unsaved changes"],
     ["saved", "Saved"],
     ["unpublished", "Unpublished changes"],
     ["published", "Published"],
     ["saving", "Saving…"],
     ["failed", "Not saved"],
-    ["paused", "Saving paused"],
+    ["paused", "Editing paused"],
   ] as const);
 
   for (const [state, text] of words) {
@@ -48,23 +47,21 @@ test("each state says who can see the work", async () => {
   }
 });
 
-test("a draft saving itself as the author pauses typing stays silent", async () => {
-  await status({ status: "local" });
-  await status({ status: "saving" });
-  await status({ status: "local" });
-  await status({ status: "saving" });
-  await status({ status: "local" });
-
+test("ordinary typing and unapplied source stay silent", async () => {
+  await status({ status: "saved" });
+  await status({ status: "unsaved" });
+  await status({ status: "paused" });
+  await status({ status: "unsaved" });
   expect(said()).toBe("");
 });
 
-test("a failure is read out with its reason, and so is getting past it", async () => {
-  await status({ status: "local" });
-  await status({ status: "failed", error: "Not saved: Storage quota reached." });
-  expect(said()).toBe("Not saved: Storage quota reached.");
-
-  await status({ status: "local" });
-  expect(said()).toBe("Changes saved in this browser");
+test("a failure is read out with its reason, and so is a successful server retry", async () => {
+  await status({ status: "unsaved" });
+  await status({ status: "failed", error: "The API could not be reached." });
+  expect(said()).toBe("The API could not be reached.");
+  await status({ status: "saving" });
+  await status({ status: "saved" });
+  expect(said()).toBe("Changes saved");
 });
 
 test("a save the author asked for is read out each time it goes through", async () => {
@@ -102,7 +99,7 @@ test("a failed save shows why, with Try again and Download a copy", async () => 
   const failure = (props: SaveStateProps) =>
     render(<SaveState.Failure onRetry={retry} onDownload={download} {...props} />);
 
-  await failure({ status: "local" });
+  await failure({ status: "saved" });
   expect(host.childElementCount).toBe(0);
 
   await failure({ status: "failed", error: "We could not save this page." });

@@ -2,7 +2,7 @@ import { authenticatedPage } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "./playwright.mjs";
-import { openDemoForm } from "./form-fixture.mjs";
+import { openDemoForm, reloadEditorFromSource } from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -199,7 +199,7 @@ try {
     await logic.getByText("When", { exact: true }).waitFor();
     await logic.getByText("Then", { exact: true }).waitFor();
     await logic.getByRole("combobox", { name: "Question", exact: true }).click();
-    await withinViewport(page.getByRole("listbox"));
+    await withinViewport(page.getByRole("listbox").filter({ visible: true }));
     await page.keyboard.press("Escape");
     await logic.getByRole("button", { name: "Blocks and question parts", exact: true }).click();
     await withinViewport(targetPopup);
@@ -436,9 +436,9 @@ try {
   });
   await page
     .locator("[data-document-bar]:visible")
-    .getByText("Saved in this browser", { exact: true })
+    .getByText("Unsaved changes", { exact: true })
     .waitFor();
-  await page.reload();
+  await reloadEditorFromSource(page);
   await root.waitFor();
   assert.deepEqual(
     await exported(),

@@ -20,13 +20,13 @@ Use these component names in insertion menus: Text input, Textarea, Radios, Chec
 
 Use sentence case. Mark optional questions with “(optional)” and leave required questions unmarked. Keep labels visible; editor placeholders do not replace respondent labels.
 
-Use `type="confirmation"` in Markdown, `role: "confirmation"` in native JSON and `confirmation` for the editor setting. There are no alternative names for this page purpose. Unsupported page encodings are rejected, with original drafts retained for recovery.
+Use `type="confirmation"` in Markdown, `role: "confirmation"` in native JSON and `confirmation` for the editor setting. Unsupported page encodings are rejected with the original input retained in memory for download.
 
 ## Code names and ownership
 
 - `pages` owns authored service content; `forms/features/pages` owns pages within a form; `routes` owns application URLs. Keep the existing editor, form, workspace, API, host, persistence, preset and UI boundaries.
-- `workspace` groups services and document sessions. A local service lives in browser storage; a remote service is an API entry page and its descendants. Use `local` or `remote` when that difference affects behavior, not `api` on every component that displays fetched data.
-- `api` owns transport and HTTP contracts. `host` means browser/application binding, not HTTP hosting. A server-page baseline is a browser-held copy used for draft comparison and optimistic saves, not server-executed code.
+- `workspace` groups API services and in-memory page sessions; a service is an API entry page and its descendants. There is no browser-local service branch.
+- `api` owns transport/HTTP contracts. `host` means application binding, not HTTP hosting. A server-page baseline is an in-memory API copy for dirty comparison and versioned saves, not server-executed code.
 - Use kebab-case filenames, PascalCase components/types, camelCase functions, and `use-…` hook filenames. Prefer domain plus responsibility, such as `page-history-dialog.tsx`, `FormJsonDialog`, and `savePageDraft`. Keep framework names (`__root`, `_workspace`, route parameters, generated files) and the app identifiers unchanged.
 - Converters name their source and destination: `lexicalToFormMarkdown` is distinct from `lexicalToPageMarkdown`. Native form JSON is the custom `FormDefinitionV2` contract, not the JSON Schema standard. Keep `native`, `legacy`, and version qualifiers where they identify supported formats.
 - Keep established primitives and module vocabulary (`Button`, `cn`, `DraftStore`, `EditorModule`, Lexical `$create…` helpers), thin entry-point barrels, and meaningful feature folders. Do not mass-prefix feature role files or move tests just for uniformity.

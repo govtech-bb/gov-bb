@@ -203,7 +203,7 @@ export function CreateRemotePageDialog({
   return (
     <WorkspaceDialog
       title="Add a page"
-      description="The page starts as a draft beneath this service's entry page. Forms stay in this browser's drafts."
+      description="The page starts as a draft beneath this service's entry page."
       close={close}
       onSubmit={() => {
         const badPath = urlProblem(path);
@@ -289,8 +289,8 @@ export function DeleteRemotePageDialog({
       title={service ? "Delete this service?" : "Delete this page?"}
       description={
         service
-          ? `${documentLabel(page)} is this service's entry page, so deleting it deletes the service. It's removed from the content API and, if it's public, from the site. Its draft in this browser is kept.`
-          : `${documentLabel(page)} is removed from the content API and, if it is public, from the site. Its draft in this browser is kept.`
+          ? `${documentLabel(page)} is this service's entry page, so deleting it deletes the service. It's removed from the content API and, if it's public, from the site. Any unsaved changes will be lost.`
+          : `${documentLabel(page)} is removed from the content API and, if it is public, from the site. Any unsaved changes will be lost.`
       }
       confirm={service ? "Delete service" : "Delete page"}
       pendingLabel={service ? "Deleting service…" : "Deleting page…"}

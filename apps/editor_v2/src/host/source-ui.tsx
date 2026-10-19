@@ -31,26 +31,6 @@ const SourceOpenContext = createContext<SourceOpen>({ open: false, setOpen: () =
 export function DraftProvider({ store, children }: { store: DraftStore; children: ReactNode }) {
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    store.start();
-    const external = (event: StorageEvent) => store.externalChange(event.key);
-
-    const visibility = () => {
-      if (document.visibilityState === "hidden") store.flush();
-    };
-
-    window.addEventListener("storage", external);
-    window.addEventListener("pagehide", store.flush);
-    document.addEventListener("visibilitychange", visibility);
-
-    return () => {
-      window.removeEventListener("storage", external);
-      window.removeEventListener("pagehide", store.flush);
-      document.removeEventListener("visibilitychange", visibility);
-      store.flush();
-    };
-  }, [store]);
-
   return (
     <DraftContext value={store}>
       <SourceOpenContext value={{ open, setOpen }}>{children}</SourceOpenContext>
@@ -122,9 +102,7 @@ export function SourceEditor({
     [],
   );
 
-  const forcedOpen =
-    (!draft.valid || !!draft.conflict || draft.recovery?.kind === "migration") &&
-    !draft.replacement;
+  const forcedOpen = !draft.valid;
 
   const open = requestedOpen || forcedOpen;
   const fatal = draft.diagnostics.some((issue) => issue.severity === "fatal");
@@ -170,56 +148,6 @@ export function SourceEditor({
           </Banner>
         )
       )}
-      {draft.conflict && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button onClick={() => draft.store.useLocal()}>Keep my version</Button>
-          <Button onClick={() => draft.store.useExternal()}>Load other tab’s version</Button>
-          <Button
-            onClick={() =>
-              download(
-                draft.conflict?.working ?? draft.conflict?.source ?? "",
-                "other-tab-source.md",
-              )
-            }
-          >
-            Download other version
-          </Button>
-        </div>
-      )}
-      {draft.replacement && (
-        <div className="my-3 flex flex-wrap gap-2">
-          <Button
-            onClick={() => {
-              const result = draft.store.recoverReplacement("candidate");
-              setOutcome(
-                result.status === "committed"
-                  ? { tone: "success", text: "Applied changes recovered" }
-                  : { tone: "error", text: result.message },
-              );
-            }}
-          >
-            Recover applied changes
-          </Button>
-          <Button
-            onClick={() => {
-              const result = draft.store.recoverReplacement("original");
-              setOutcome(
-                result.status === "committed"
-                  ? { tone: "success", text: "Original draft restored" }
-                  : { tone: "error", text: result.message },
-              );
-            }}
-          >
-            Restore original draft
-          </Button>
-          <Button onClick={() => download(draft.replacement!.bytes, "draft-recovery.json")}>
-            Download recovery copy
-          </Button>
-          {draft.replacement.phase === "cleanup" && (
-            <Button onClick={() => draft.store.retryReplacementCleanup()}>Finish saving</Button>
-          )}
-        </div>
-      )}
       <div className="my-3 flex flex-wrap items-center gap-2">
         <Button icon={<Copy />} onClick={copy}>
           Copy source
@@ -227,11 +155,7 @@ export function SourceEditor({
         <Button icon={<ArrowDown />} onClick={() => download(draft.source, fileName)}>
           Download source
         </Button>
-        <Button
-          icon={<ArrowUp />}
-          disabled={!!draft.replacement}
-          onClick={() => upload.current?.click()}
-        >
+        <Button icon={<ArrowUp />} onClick={() => upload.current?.click()}>
           Replace from file
         </Button>
         <input
@@ -280,18 +204,11 @@ export function SourceEditor({
             onClick={() =>
               download(
                 draft.recovery!.original,
-                draft.recovery!.kind === "legacy" || draft.recovery!.kind === "canvas"
-                  ? "recovered-draft.json"
-                  : "recovered-source.md",
+                draft.recovery!.kind === "canvas" ? "recovered-draft.json" : "recovered-source.md",
               )
             }
           >
-            Download original draft
-          </Button>
-        )}
-        {draft.previous !== undefined && (
-          <Button onClick={() => download(draft.previous!, "previous-source.md")}>
-            Download previous version
+            Download original input
           </Button>
         )}
       </div>
@@ -299,7 +216,6 @@ export function SourceEditor({
         <Textarea
           ref={source}
           value={draft.source}
-          readOnly={!!draft.replacement}
           onChange={(event) => {
             draft.store.edit(event.target.value);
             setOutcome(undefined);
@@ -359,11 +275,7 @@ export function SourceEditor({
       <span role="status" className="me-auto text-14 text-muted">
         {draft.dirty ? "Unapplied changes" : ""}
       </span>
-      <Button
-        size="md"
-        onClick={() => setDiscarding(true)}
-        disabled={!draft.valid || !draft.dirty || !!draft.conflict || !!draft.replacement}
-      >
+      <Button size="md" onClick={() => setDiscarding(true)} disabled={!draft.valid || !draft.dirty}>
         Discard changes
       </Button>
       {/* The Markdown can't be had back once discarded, so ask; the focus then goes back to it */}
@@ -380,12 +292,7 @@ export function SourceEditor({
           setDiscarding(false);
         }}
       />
-      <Button
-        variant="accent"
-        size="md"
-        onClick={apply}
-        disabled={!!draft.conflict || !!draft.replacement}
-      >
+      <Button variant="accent" size="md" onClick={apply}>
         Apply changes
       </Button>
     </>
@@ -436,11 +343,7 @@ export function SourceEditor({
   );
 }
 
-/**
- * The draft's save state. A problem with the browser copy outranks the host's own, as it's the one to fix first: a
- * failed save, with Try again and Download a copy, or saving held back while a conflict or a draft to recover is
- * settled. Otherwise it's the host's, such as a page's against the content API, or saved in this browser.
- */
+/** Source errors outrank server save feedback; an applied local edit is never a durable save. */
 export function useDraftSave(fileName: string, server?: SaveStateProps): SaveStateProps {
   const draft = useDraft();
 
@@ -449,15 +352,17 @@ export function useDraftSave(fileName: string, server?: SaveStateProps): SaveSta
       status: "failed",
       error: draft.error,
       conflict: server?.conflict,
-      onRetry: draft.store.retry,
-      onDownload: () => download(draft.source, fileName),
+      onRetry: draft.recovery?.kind === "canvas" ? draft.store.retry : undefined,
+      onDownload: () =>
+        download(
+          draft.recovery?.kind === "canvas" ? draft.recovery.original : draft.source,
+          draft.recovery?.kind === "canvas" ? "editor-state.json" : fileName,
+        ),
     };
 
-  // The source dialog opens itself to settle these, and says why
-  if (draft.status === "conflict" || draft.status === "recovery")
-    return { status: "paused", conflict: server?.conflict };
+  if (!draft.valid || draft.dirty) return { status: "paused", conflict: server?.conflict };
 
-  return server ?? { status: draft.status === "saving" ? "saving" : "local" };
+  return server ?? { status: "unsaved" };
 }
 
 /** The draft's save state, for a host that shows it without a document bar. */

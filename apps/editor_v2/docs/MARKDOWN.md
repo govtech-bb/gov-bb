@@ -8,7 +8,7 @@ Page files use GovBB YAML frontmatter followed by freely authored Markdown. `tit
 
 The title is edited directly above the body. `lede` is edited directly beneath the title. The collapsed Page details section below it summarises current values and edits `description`, `category` / `categories`, `subcategory`, `visibility`, `publish_date` and `form_id`. Category options are a host-supplied stub, currently empty, with no taxonomy or backend connection; the row appears only when options or imported categories exist, and imported categories remain visible and preserved. Categories retain their order, with the first primary. Imported category representation is preserved until a category edit; editing stores one selection as `category`, several as ordered `categories`, and removes the alternate key.
 
-Visibility offers Public, Preview link only and Draft link only. Public leaves `visibility` absent; an imported `visibility: public` is kept until changed. Publication date uses `YYYY-MM-DD`. Optional fields remain absent until edited; clearing removes their keys. Unfamiliar imported values, comments and unrelated frontmatter survive other field edits. Specialist frontmatter remains editable in Markdown. Metadata changes share body undo and local autosave, pause with unapplied source changes or draft recovery, and do not publish or schedule content. Editing `form_id` does not rewrite action destinations.
+Visibility offers Public, Preview link only and Draft link only. Public leaves `visibility` absent; an imported `visibility: public` is kept until changed. Publication date uses `YYYY-MM-DD`. Optional fields remain absent until edited; clearing removes their keys. Unfamiliar imported values, comments and unrelated frontmatter survive other field edits. Specialist frontmatter remains editable in Markdown. Metadata changes share body undo and in-memory source state, pause with unapplied/invalid source, and do not publish until an explicit Save/Publish. Editing `form_id` does not rewrite action destinations.
 
 A margin insertion menu and slash commands add content; selection formatting and block menus expose relevant controls. The grip drags a whole body block, including the contents of a list, table or component. The block preview and insertion line show what moves and where it will land. A drop is one undo step; metadata stays fixed. Move up/down remain available in the block menu. The writing controls reuse the form builder's shared styling.
 
@@ -41,9 +41,9 @@ The checked-in [GovBB page fixtures](../tests/fixtures/pages/README.md) retain 1
 
 ### Storage and source editing
 
-Markdown is the browser draft and the editable source. The original form draft, from before services, uses `govbb-editor:draft:markdown:v2` for its text. Workspace documents have their own storage namespaces; see [Persistence and recovery](DEVELOPMENT.md#persistence-and-recovery).
+Markdown is the editable source, held in memory. The workspace persists API pages only through explicit Save/Publish; reusable form hosts own any separate persistence integration.
 
-The older `govbb-editor:draft:markdown:v1` and `govbb-editor:draft` records are retained for recovery when migrated. Unapplied source edits have a separate working buffer; they suspend canvas editing until Apply or Discard. An existing version 2 storage record takes precedence, including an empty or invalid record, so startup cannot silently replace it with an older form.
+Old browser draft records are intentionally ignored and left untouched. Unapplied source pauses the canvas until Apply or Discard and is lost on reload or confirmed departure.
 
 ### Frontmatter
 
@@ -112,10 +112,10 @@ The optional final `:::source-state` container has one fenced JSON object with t
 
 Node state contains only optional `settings`, supported element `properties`, additional raw `state`, and retained `identity`. It contains no body text, selection, DOM or second Lexical document. Use `::block{#anchor}` before a targeted content block. Question labels and answers use the implicit targets `question:label` and `question:answer`. Unknown state with opaque identity dependencies conservatively retains original identities; unsupported hydration fails visibly instead of discarding it.
 
-### Apply, save and recovery
+### Apply, explicit save and in-session recovery
 
 Apply first parses and hydrates an isolated document and compares authoring meaning. Migration follows that validation and is idempotent. A failed Apply leaves both canvas and committed source intact.
 
-Autosave validates generated source before writing; **Saved** appears only after storage succeeds. Storage failures retain unsaved changes for retry.
+Canvas serialization validates generated source in memory. **Saved/Published** means the page matches its API baseline; typing and Apply never save to the server. Failed conversion or saving retains work only in the open session.
 
-Unapplied source survives migration byte for byte, including an empty working buffer. Conflicting browser-tab writes pause saving until a version is selected. The source dialog can copy or download even invalid edits, open `.md` files, restore its committed text and recover conflicting browser-tab writes. Source Apply uses a separate undo step.
+The source dialog can copy or download invalid input, open `.md` files and restore its applied text. Source Apply is a separate undo step. Stale file reads cannot overwrite newer edits. No browser-tab reconciliation or durable recovery is provided.

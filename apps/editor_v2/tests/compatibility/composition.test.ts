@@ -20,15 +20,7 @@ import { HistoryModule } from "../../src/editor/modules/history/module";
 import { govbbFormEditor as legacyFormDefinition } from "../../src/presets/govbb-form";
 import { createFormRuntime } from "../../src/forms/editor/runtime";
 import { defineFormEditor } from "../../src/forms/definition";
-import {
-  createFormDraftCodec,
-  initialDraft,
-  LEGACY_KEY,
-  MARKDOWN_KEY,
-  WORKING_KEY,
-  SourceError,
-  type DraftStorage,
-} from "../helpers/default-form";
+import { createFormDraftCodec, initialDraft, SourceError } from "../helpers/default-form";
 
 const text = (editor: LexicalEditor) =>
   editor.getEditorState().read(() => $getRoot().getTextContent(), { editor: editor });
@@ -46,20 +38,6 @@ const write = (editor: LexicalEditor, value: string) =>
 const serialized = <N extends SerializedLexicalNode>(node: N): SerializedEditorState => ({
   root: { type: "root", version: 1, children: [node], direction: null, format: "", indent: 0 },
 });
-
-function memory(seed: Record<string, string>): DraftStorage {
-  const entries = new Map(Object.entries(seed));
-
-  return {
-    getItem: (key) => entries.get(key) ?? null,
-    setItem: (key, value) => {
-      entries.set(key, value);
-    },
-    removeItem: (key) => {
-      entries.delete(key);
-    },
-  };
-}
 
 test("content-only composition initializes a paragraph and reloads text/tab nodes without form state", () => {
   const definition = defineEditor([TextModule(), HistoryModule()]);
@@ -271,16 +249,9 @@ test("raw unsupported form subtypes are rejected before Lexical can replace them
     expect(() => createHeadlessEditor(legacyFormDefinition, state)).toThrow("Unavailable");
     expect(() => createFormRuntime(legacyFormDefinition).hydrate(state)).toThrow("Unavailable");
     expect(JSON.stringify(state)).toBe(original);
-    const storage = memory({ [LEGACY_KEY]: original });
-
-    const loaded = initialDraft(storage, () => {
-      throw Error("Do not replace unsupported content");
-    });
-
-    expect(loaded.snapshot.valid).toBe(false);
-    expect(loaded.snapshot.recovery?.original).toBe(original);
-    expect(storage.getItem(LEGACY_KEY)).toBe(original);
-    expect(storage.getItem(MARKDOWN_KEY)).toBeNull();
+    expect(() =>
+      createFormDraftCodec(createFormRuntime(legacyFormDefinition)).prepareLegacy(state),
+    ).toThrow("Unavailable");
   }
 });
 
@@ -292,16 +263,7 @@ test("unsupported subtype in Markdown source-state stays recoverable before hydr
     codec = createFormDraftCodec(runtime);
 
   expect(() => codec.prepare(source)).toThrow(SourceError);
-  const storage = memory({ [MARKDOWN_KEY]: source });
-
-  const loaded = initialDraft(
-    storage,
-    () => {
-      throw Error("Do not load a demo");
-    },
-    codec,
-    runtime,
-  );
+  const loaded = initialDraft(source, codec);
 
   expect(loaded.snapshot.valid).toBe(false);
   expect(loaded.snapshot.recovery?.original).toBe(source);
@@ -310,7 +272,6 @@ test("unsupported subtype in Markdown source-state stays recoverable before hydr
       issue.message.includes("Unavailable input field or block: future-input"),
     ),
   ).toBe(true);
-  expect(storage.getItem(MARKDOWN_KEY)).toBe(source);
 });
 
 test("injected source codec obeys the host's installed nodes and retains original recovery bytes", () => {
@@ -325,16 +286,7 @@ test("injected source codec obeys the host's installed nodes and retains origina
 
   const codec = createFormDraftCodec(runtime);
   expect(() => codec.prepare(source)).toThrow(SourceError);
-  const storage = memory({ [MARKDOWN_KEY]: source, [WORKING_KEY]: "unfinished source\n" });
-
-  const loaded = initialDraft(
-    storage,
-    () => {
-      throw Error("Do not load a demo");
-    },
-    codec,
-    runtime,
-  );
+  const loaded = initialDraft(source, codec);
 
   expect(loaded.snapshot.valid).toBe(false);
   expect(loaded.snapshot.recovery?.original).toBe(source);
@@ -343,7 +295,5 @@ test("injected source codec obeys the host's installed nodes and retains origina
       issue.message.includes("Unsupported node form-title"),
     ),
   ).toBe(true);
-  expect(loaded.snapshot.source).toBe("unfinished source\n");
-  expect(storage.getItem(MARKDOWN_KEY)).toBe(source);
-  expect(storage.getItem(WORKING_KEY)).toBe("unfinished source\n");
+  expect(loaded.snapshot.source).toBe(source);
 });

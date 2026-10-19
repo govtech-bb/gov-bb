@@ -1,13 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { ApiFailure, type ApiPage, type SavePageInput } from "../../src/api/client";
 import { pageToMarkdown } from "../../src/api/page-markdown";
-import {
-  parseServerPageBaseline,
-  savePageDraft,
-  seedPageDraftFromServer,
-  serverPageBaselineKey,
-} from "../../src/workspace/page-sync";
-import { documentKeys } from "../../src/workspace/model";
+import { savePageDraft, pageHasUnsavedChanges } from "../../src/workspace/page-sync";
+import { DraftStore } from "../../src/persistence/draft-store";
+import { govbbPageCodec } from "../../src/presets/govbb-page";
 
 const page: ApiPage = {
   id: "page-1",
@@ -32,119 +28,19 @@ const newer: ApiPage = {
   updated_at: "2026-10-07T13:00:00.000Z",
 };
 
-const keys = documentKeys(page.id);
-
 const markdown = pageToMarkdown(page, []);
 
-function browser(entries: [string, string][] = []) {
-  const values = new Map(entries);
-
-  return {
-    values,
-    storage: {
-      getItem: (key: string) => values.get(key) ?? null,
-      setItem: (key: string, value: string) => void values.set(key, value),
-      removeItem: (key: string) => void values.delete(key),
-    },
-  };
-}
-
-const based = (base: ApiPage, committed: string, ...rest: [string, string][]) =>
-  browser([
-    [keys.committed, committed],
-    [serverPageBaselineKey(page.id), JSON.stringify({ page: base, markdown })],
-    ...rest,
-  ]);
-
-const baseOf = (values: Map<string, string>) =>
-  parseServerPageBaseline(values.get(serverPageBaselineKey(page.id)) ?? null, page.id);
-
-describe("seeding a page from the content API", () => {
-  it("writes the server's version when this browser has no draft", () => {
-    const { values, storage } = browser();
-    seedPageDraftFromServer(storage, page, []);
-
-    expect(values.get(keys.committed)).toBe(markdown);
-    expect(baseOf(values)).toEqual({ page, markdown });
-    expect(serverPageBaselineKey(page.id)).toBe("govbb-editor:documents:page-1:server");
-    expect(values.get("govbb-editor:documents:page-1:server")).toBe(
-      JSON.stringify({ page, markdown }),
-    );
-  });
-
-  it("follows the server when the draft has nothing unsaved", () => {
-    const { values, storage } = based(page, markdown);
-    seedPageDraftFromServer(storage, newer, []);
-
-    expect(values.get(keys.committed)).toBe(pageToMarkdown(newer, []));
-    expect(baseOf(values)?.page).toEqual(newer);
-  });
-
-  it("keeps a draft with unsaved changes and the version it was edited from", () => {
-    const { values, storage } = based(page, `${markdown}\n\nMore`);
-    seedPageDraftFromServer(storage, newer, []);
-
-    expect(values.get(keys.committed)).toBe(`${markdown}\n\nMore`);
-    expect(baseOf(values)?.page).toEqual(page);
-  });
-
-  it("keeps a draft whose Markdown has not been applied yet", () => {
-    const { values, storage } = based(page, markdown, [keys.working, `${markdown}\n\nTyping`]);
-    seedPageDraftFromServer(storage, newer, []);
-
-    expect(values.get(keys.committed)).toBe(markdown);
-    expect(baseOf(values)?.page).toEqual(page);
-  });
-
-  it("reopens the existing storage format without rewriting an unsaved draft or its baseline", () => {
-    const saved = JSON.stringify({ page, markdown });
-
-    const { values, storage } = browser([
-      ["govbb-editor:documents:page-1:server", saved],
-      ["govbb-editor:documents:page-1:markdown", `${markdown}\n\nUnsaved`],
-      ["govbb-editor:documents:page-1:working", "Unapplied source"],
-    ]);
-
-    expect(seedPageDraftFromServer(storage, newer, [])).toEqual({ page, markdown });
-    expect([...values]).toEqual([
-      ["govbb-editor:documents:page-1:server", saved],
-      ["govbb-editor:documents:page-1:markdown", `${markdown}\n\nUnsaved`],
-      ["govbb-editor:documents:page-1:working", "Unapplied source"],
-    ]);
-  });
-
-  it("keeps a draft with an interrupted replacement journal", () => {
-    const { values, storage } = based(page, markdown, [
-      "govbb-editor:documents:page-1:replacement",
-      "Retained recovery journal",
-    ]);
-
-    seedPageDraftFromServer(storage, newer, []);
-
-    expect(values.get(keys.committed)).toBe(markdown);
-    expect(baseOf(values)).toEqual({ page, markdown });
-    expect(values.get("govbb-editor:documents:page-1:replacement")).toBe(
-      "Retained recovery journal",
-    );
-  });
-
-  it("keeps a draft this browser never matched to the server, against the server's version", () => {
-    const { values, storage } = browser([[keys.committed, "Written before the API"]]);
-    seedPageDraftFromServer(storage, page, []);
-
-    expect(values.get(keys.committed)).toBe("Written before the API");
-    expect(baseOf(values)?.page).toEqual(page);
-  });
-
-  it("ignores a stored version it cannot read, or one for another page", () => {
-    expect(parseServerPageBaseline("{", page.id)).toBeUndefined();
-    expect(
-      parseServerPageBaseline(
-        JSON.stringify({ page: { ...page, id: "page-2" }, markdown }),
-        page.id,
-      ),
-    ).toBeUndefined();
-  });
+it("counts both applied changes and unapplied source against an in-memory server baseline", () => {
+  const store = new DraftStore(markdown, govbbPageCodec);
+  const session = { store, getBaseline: () => ({ page, markdown }), isSaving: () => false };
+  expect(pageHasUnsavedChanges(session)).toBe(false);
+  store.edit("invalid source");
+  expect(pageHasUnsavedChanges(session)).toBe(true);
+  store.discard();
+  expect(pageHasUnsavedChanges(session)).toBe(false);
+  store.edit(markdown + "\n\nEdited");
+  expect(store.apply()).toBe(true);
+  expect(pageHasUnsavedChanges(session)).toBe(true);
 });
 
 describe("saving a page", () => {

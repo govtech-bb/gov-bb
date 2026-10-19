@@ -2,7 +2,12 @@ import { authenticatedContext, authenticatedPage } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "./playwright.mjs";
-import { formDraftUrl, openDemoForm } from "./form-fixture.mjs";
+import {
+  formFixtureUrl,
+  seedFormSource,
+  openDemoForm,
+  reloadEditorFromSource,
+} from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -47,9 +52,7 @@ try {
     email: "permits@example.gov.bb",
   });
   const pageId = confirmation(initial).$?.id;
-  await page.waitForFunction(() =>
-    localStorage.getItem("govbb-editor:draft:markdown:v2")?.includes('type="confirmation"'),
-  );
+  await page.waitForFunction(() => window.editorFixture.source().includes('type="confirmation"'));
   const toggle = page.getByRole("switch", { name: "Confirmation page", exact: true });
   assert.equal(await toggle.getAttribute("aria-checked"), "true");
 
@@ -100,7 +103,7 @@ try {
   await page.getByText(warning, { exact: true }).waitFor();
   assert.equal(await toggle.getAttribute("aria-checked"), "true");
   await page.waitForTimeout(700);
-  await page.reload();
+  await reloadEditorFromSource(page);
   await root.waitFor();
   assert.equal(
     confirmation(await state())?.$?.id,
@@ -126,46 +129,30 @@ try {
 
   const recoveryContext = await authenticatedContext(browser);
   const recoveryPage = await recoveryContext.newPage();
-  const prior = structuredClone(initial);
-  settings(confirmation(prior)).pageType = "unsupported-page";
 
-  const original = JSON.stringify(prior);
+  const original = (await page.evaluate(() => window.editorFixture.source())).replace(
+    'type="confirmation"',
+    'type="unsupported-page"',
+  );
 
+  assert.match(original, /unsupported-page/);
   recoveryPage.on("pageerror", (error) => errors.push(error.message));
-  await recoveryContext.addInitScript((original) => {
-    if (!localStorage.getItem("govbb-editor:draft"))
-      localStorage.setItem("govbb-editor:draft", original);
-  }, original);
-  await recoveryPage.goto(formDraftUrl(process.argv[2] ?? "http://localhost:3013/"));
-  await recoveryPage.getByText("Saving paused", { exact: true }).waitFor();
+  await seedFormSource(recoveryPage, original);
+  await recoveryPage.goto(formFixtureUrl(process.argv[2] ?? "http://localhost:3000/"));
+  await recoveryPage.getByRole("dialog", { name: "Form source", exact: true }).waitFor();
   assert.equal(
     await recoveryPage.locator('[contenteditable="true"][aria-label="Form"]').count(),
     0,
-    "unsupported page settings cannot load as an ordinary question page",
-  );
-
-  const recovered = await recoveryPage.evaluate(() => ({
-    source: localStorage.getItem("govbb-editor:draft:markdown:v2"),
-    original: localStorage.getItem("govbb-editor:draft"),
-  }));
-
-  assert.equal(
-    recovered.source,
-    null,
-    "unsupported settings must not be autosaved as valid source",
   );
   assert.equal(
-    recovered.original,
+    await recoveryPage.getByRole("textbox", { name: "Markdown source", exact: true }).inputValue(),
     original,
-    "the original draft backup remains byte-for-byte intact",
   );
-  await recoveryPage.getByRole("dialog", { name: "Form source", exact: true }).waitFor();
   const downloadPromise = recoveryPage.waitForEvent("download");
-  await recoveryPage.getByRole("button", { name: "Download original draft", exact: true }).click();
-  const download = await downloadPromise;
-  assert.equal(await readFile(await download.path(), "utf8"), original);
+  await recoveryPage.getByRole("button", { name: "Download original input", exact: true }).click();
+  assert.equal(await readFile(await (await downloadPromise).path(), "utf8"), original);
   await recoveryPage.reload();
-  await recoveryPage.getByText("Saving paused", { exact: true }).waitFor();
+  await recoveryPage.getByRole("dialog", { name: "Form source", exact: true }).waitFor();
   await recoveryContext.close();
   assert.deepEqual(errors, []);
   console.log(

@@ -1,7 +1,7 @@
 import { authenticatedContext } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { chromium } from "./playwright.mjs";
-import { openDemoForm } from "./form-fixture.mjs";
+import { openPageFixture, reloadEditorFromSource } from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -26,7 +26,7 @@ async function editLink() {
 }
 
 async function savedSource() {
-  await page.getByRole("button", { name: /^Markdown/ }).click();
+  await page.getByRole("button", { name: /^Markdown(?:$| —)/ }).click();
 
   const value = await page
     .getByRole("textbox", { name: "Markdown source", exact: true })
@@ -38,14 +38,7 @@ async function savedSource() {
 }
 
 try {
-  await openDemoForm(page, process.argv[2] ?? "http://localhost:3015/");
-  await page.getByRole("textbox", { name: "Form", exact: true }).waitFor();
-  await button("Create service").click();
-  await page.getByLabel("Service name", { exact: true }).fill("Link editing checks");
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Create service", exact: true })
-    .click();
+  await openPageFixture(page, process.argv[2] ?? "http://localhost:3000/");
   await body.waitFor();
   await body.fill("Read the guidance");
 
@@ -63,7 +56,7 @@ try {
     await page.keyboard.press("Escape");
     assert.equal(await body.locator("a").getAttribute("href"), destination);
     await savedSource();
-    await page.reload();
+    await reloadEditorFromSource(page);
     await body.waitFor();
     assert.equal(await body.locator("a").getAttribute("href"), destination);
   }
@@ -97,7 +90,7 @@ try {
   assert.equal(await savedSource(), before);
   await button("Redo").click();
   assert.ok((await savedSource()).includes("../before-you-start"));
-  await page.reload();
+  await reloadEditorFromSource(page);
   await body.waitFor();
   assert.equal(await body.locator("a").getAttribute("href"), "../before-you-start");
   assert.deepEqual(errors, []);

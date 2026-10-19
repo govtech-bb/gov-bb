@@ -5,7 +5,7 @@ const MOUNTED_VIEWS = 3;
 
 /**
  * The documents whose views stay mounted once `id` comes on screen, most recent first: it and the two before it, and
- * any older one that can't close yet, such as a draft that couldn't be saved. The others close.
+ * any older one with unsaved work or a pending save. The others close.
  */
 export const keptViews = (
   views: readonly string[],
@@ -18,7 +18,7 @@ export const keptViews = (
 
 /**
  * Each document's editor session, kept while its view is closed so it opens again with its undo history and
- * selection. A draft saved differently since its view closed, such as by another tab, opens with a fresh session.
+ * selection. A page whose server version changed since its view closed opens with a fresh session.
  */
 export class DocumentSessions {
   private kept = new Map<string, { session: EditorSession; closedOn?: string | null }>();
@@ -31,20 +31,20 @@ export class DocumentSessions {
     return entry.session;
   }
 
-  /** Its view closes, with its draft saved as `draft`. */
-  close(id: string, draft: string | null) {
+  /** Its clean view closes on this API version. */
+  close(id: string, version: string | null) {
     const entry = this.kept.get(id);
 
-    if (entry) entry.closedOn = draft;
+    if (entry) entry.closedOn = version;
   }
 
-  /** Its view opens again, with its draft saved as `draft`: if that's not how the view left it, it begins afresh. */
-  open(id: string, draft: string | null) {
+  /** Reopening against a different API version drops the old undo/selection session. */
+  open(id: string, version: string | null) {
     const entry = this.kept.get(id);
 
     if (entry?.closedOn === undefined) return;
 
-    if (entry.closedOn === draft) entry.closedOn = undefined;
+    if (entry.closedOn === version) entry.closedOn = undefined;
     else this.kept.delete(id);
   }
 

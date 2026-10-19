@@ -3,30 +3,20 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, test, vi } from "vitest";
 import { DraftProvider, SourceEditor } from "../../src/host/source-ui";
-import type { DraftStorage } from "../../src/persistence/types";
-import { newPage, openDocument } from "../../src/workspace/documents";
+import { DraftStore } from "../../src/persistence";
+import { govbbPageCodec } from "../../src/presets/govbb-page";
 
 afterEach(() => {
   document.body.replaceChildren();
   vi.unstubAllGlobals();
 });
 
-const memory = (): DraftStorage => {
-  const items = new Map<string, string>();
-
-  return {
-    getItem: (key) => items.get(key) ?? null,
-    setItem: (key, value) => void items.set(key, value),
-    removeItem: (key) => void items.delete(key),
-  };
-};
-
 const button = (within: ParentNode, name: string) =>
   [...within.querySelectorAll("button")].find((item) => item.textContent === name)!;
 
 test("Discard changes asks first, and discards the Markdown only when the author says so", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  const store = openDocument(newPage("Renew a passport", "entry").document, memory());
+  const store = new DraftStore("---\ntitle: Renew a passport\n---\n\n", govbbPageCodec);
   const root = createRoot(document.body.appendChild(document.createElement("div")));
 
   await act(async () =>

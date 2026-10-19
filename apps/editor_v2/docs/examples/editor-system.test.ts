@@ -64,38 +64,17 @@ test("documented page import preserves unsupported content and rejects invalid Y
   );
 });
 
-test("documented form store saves through the host connection and reloads the same native form", () => {
-  const values = new Map<string, string>();
-
-  const storage = {
-    getItem: (key: string) => values.get(key) ?? null,
-    setItem: (key: string, value: string) => {
-      values.set(key, value);
-    },
-    removeItem: (key: string) => {
-      values.delete(key);
-    },
-  };
-
-  const keys = {
-    committed: "example:source",
-    working: "example:working",
-    previous: "example:v1",
-    legacy: "example:json",
-    nativeMigrationBackup: "example:native-original",
-    replacementJournal: "example:replacement",
-  };
-
-  const store = createExampleStore(storage, keys);
+test("documented form store connects in memory and explicitly exported source reopens as the same native form", () => {
+  const store = createExampleStore();
   expect(store.initial.snapshot.valid).toBe(true);
   const editor = createHeadlessEditor(govbbFormEditor, store.initial.state);
   const disconnect = store.connect(draftEditorConnection(editor));
 
   try {
-    expect(store.getSnapshot().status).toBe("saved");
-    expect(values.get(keys.committed)).toBe(convertExample().source);
-    const reopened = createExampleStore(storage, keys);
-    expect(reopened.initial.snapshot.status).toBe("saved");
+    expect(store.getSnapshot().status).toBe("ready");
+    expect(store.getSnapshot().committed).toBe(convertExample().source);
+    const reopened = createExampleStore(store.getSnapshot().committed);
+    expect(reopened.initial.snapshot.status).toBe("ready");
     const reloadedEditor = createHeadlessEditor(govbbFormEditor, reopened.initial.state);
 
     try {

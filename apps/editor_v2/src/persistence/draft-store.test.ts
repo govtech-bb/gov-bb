@@ -1,358 +1,226 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import type { SerializedEditorState } from "lexical";
 import { DraftStore, draftPause, initialDraft } from "./draft-store";
-import {
-  SourceError,
-  type DraftCodec,
-  type DraftConnection,
-  type DraftKeys,
-  type InitialDraft,
-} from "./types";
+import { SourceError, type DraftCodec, type DraftConnection } from "./types";
 
-const state = (source: string): SerializedEditorState & { source: string } => ({
-  source,
-  root: { type: "root", version: 1, children: [], direction: null, format: "", indent: 0 },
+const state = (text: string): SerializedEditorState => ({
+  root: {
+    type: "root",
+    version: 1,
+    children: [{ type: text, version: 1 }],
+    direction: null,
+    format: "",
+    indent: 0,
+  },
 });
 
 const codec: DraftCodec = {
-  prepare: (source) => ({ state: state(source), source, diagnostics: [] }),
-  encode: (value) => {
-    if (!("source" in value) || typeof value.source !== "string")
-      throw Error("Missing test document source");
+  prepare(source) {
+    if (source.startsWith("invalid:"))
+      throw new SourceError("Invalid source", [
+        { code: "syntax", severity: "fatal", message: "Invalid source", line: 2, column: 1 },
+      ]);
 
-    return value.source;
+    return { source, state: state(source), diagnostics: [] };
   },
+  encode: (value) => value.root.children[0]!.type,
   prepareLegacy: () => {
-    throw Error("This host does not accept legacy documents");
+    throw Error("Legacy input is not read");
   },
 };
 
-const keys = (name: string) => ({
-  committed: `${name}:saved`,
-  working: `${name}:working`,
-  previous: `${name}:old`,
-  legacy: `${name}:legacy`,
-});
-
-const initial = (source: string): InitialDraft => ({
-  state: state(source),
-  observed: source,
-  working: null,
-  needsSave: false,
-  snapshot: {
-    mode: "visual",
-    source,
-    committed: source,
-    dirty: false,
-    valid: true,
-    status: "saved",
-    diagnostics: [],
-  },
-});
-
-function memory(seed: Record<string, string> = {}) {
-  const values = new Map(Object.entries(seed)),
-    operations: string[] = [];
-
-  return {
-    values,
-    operations,
-    getItem: (key: string) => {
-      operations.push(`read:${key}`);
-
-      return values.get(key) ?? null;
-    },
-    setItem: (key: string, value: string) => {
-      operations.push(`write:${key}`);
-      values.set(key, value);
-    },
-    removeItem: (key: string) => {
-      operations.push(`remove:${key}`);
-      values.delete(key);
-    },
-  };
-}
-
-test("two stores share storage without sharing keys, working buffers or conflicts", () => {
-  const firstKeys = keys("first"),
-    originalKeys = { ...firstKeys },
-    secondKeys = keys("second");
-
-  const storage = memory({
-    [firstKeys.committed]: "First saved",
-    [secondKeys.committed]: "Second saved",
-  });
-
-  const first = new DraftStore(storage, initial("First saved"), codec, firstKeys);
-  const second = new DraftStore(storage, initial("Second saved"), codec, secondKeys);
-  // A caller retaining its configuration cannot redirect an already connected draft.
-  firstKeys.committed = secondKeys.committed;
-  firstKeys.working = secondKeys.working;
-  first.edit("First unapplied source");
-  second.externalChange(originalKeys.working);
-  second.externalChange(null);
-  expect(second.getSnapshot().conflict).toBeUndefined();
-  expect(storage.values.get(originalKeys.working)).toBe("First unapplied source");
-  expect(storage.values.has(secondKeys.working)).toBe(false);
-  storage.setItem(originalKeys.committed, "First competing source");
-  first.externalChange(originalKeys.committed);
-  second.externalChange(originalKeys.committed);
-  expect(first.getSnapshot().conflict?.source).toBe("First competing source");
-  expect(second.getSnapshot().status).toBe("saved");
-  second.canvasChanged(state("Second canvas edit"));
-  second.flush();
-  expect(storage.values.get(secondKeys.committed)).toBe("Second canvas edit");
-  expect(storage.values.get(originalKeys.committed)).toBe("First competing source");
-  first.useLocal();
-  first.apply();
-  expect(storage.values.get(originalKeys.committed)).toBe("First unapplied source");
-  expect(storage.values.get(secondKeys.committed)).toBe("Second canvas edit");
-  expect(storage.values.has(originalKeys.working)).toBe(false);
-});
-
-test("Apply parses before competing-tab reads or writes and a parse failure preserves both saved bytes and working source", () => {
-  const configured = keys("parse"),
-    storage = memory({ [configured.committed]: "Saved" });
-
-  const store = new DraftStore(storage, initial("Saved"), codec, configured);
+function connected(source = "Original", configured = codec) {
+  const store = new DraftStore(source, configured);
+  let current = store.initial.state ?? state("Unavailable");
+  let listener: ((state: SerializedEditorState) => void) | undefined;
 
   const connection: DraftConnection = {
-    prepare: () => {
-      storage.operations.push("parse");
-      throw Error("Unsupported editor node");
+    prepare: vi.fn((value) => () => {
+      current = value;
+      listener?.(value);
+    }),
+    getState: () => current,
+    setEditable: vi.fn(),
+    subscribe: (next) => {
+      listener = next;
+
+      return () => {
+        listener = undefined;
+      };
     },
-    getState: () => state("Saved"),
-    setEditable: () => {},
-    subscribe: () => () => {},
   };
 
   const disconnect = store.connect(connection);
-  store.edit("Valid source with an unsupported editor node");
-  storage.operations.length = 0;
-  expect(store.apply()).toBe(false);
-  expect(storage.operations).toEqual(["parse"]);
-  expect(storage.values.get(configured.committed)).toBe("Saved");
-  expect(storage.values.get(configured.working)).toBe(
-    "Valid source with an unsupported editor node",
-  );
-  expect(store.getSnapshot().dirty).toBe(true);
-  expect(store.getSnapshot().error).toContain("Unsupported editor node");
-  disconnect();
-});
 
-test("Apply parses once, writes before replacement, and suppresses its own editor update", () => {
-  const configured = keys("apply"),
-    storage = memory({ [configured.committed]: "Saved" });
-
-  const store = new DraftStore(storage, initial("Saved"), codec, configured);
-
-  let listener: ((value: SerializedEditorState) => void) | undefined,
-    parses = 0,
-    applies = 0;
-
-  const disconnect = store.connect({
-    prepare: (value) => {
-      parses++;
-      storage.operations.push("parse");
-
-      return () => {
-        applies++;
-        storage.operations.push("apply");
-        listener?.(value);
-      };
-    },
-    getState: () => state("Saved"),
-    setEditable: () => {},
-    subscribe: (next) => {
-      listener = next;
-
-      return () => {
-        listener = undefined;
-      };
-    },
-  });
-
-  store.edit("New source");
-  storage.operations.length = 0;
-  expect(store.apply()).toBe(true);
-  expect(storage.operations.slice(0, 5)).toEqual([
-    "parse",
-    `read:${configured.committed}`,
-    `read:${configured.working}`,
-    `write:${configured.committed}`,
-    "apply",
-  ]);
-  expect(parses).toBe(1);
-  expect(applies).toBe(1);
-  expect(store.getSnapshot().status).toBe("saved");
-  expect(storage.values.get(configured.committed)).toBe("New source");
-  expect(storage.values.has(configured.working)).toBe(false);
-  expect(store.apply()).toBe(true);
-  expect(parses).toBe(2);
-  expect(applies).toBe(1);
-  disconnect();
-});
-
-test("a successful parse followed by a failed write never applies the prepared editor state", () => {
-  const configured = keys("failed-write"),
-    storage = memory({ [configured.committed]: "Saved" });
-
-  let fail = false,
-    applied = 0;
-
-  const store = new DraftStore(
-    {
-      ...storage,
-      setItem(key, value) {
-        if (fail) throw Error("Storage is full");
-        storage.setItem(key, value);
-      },
-    },
-    initial("Saved"),
-    codec,
-    configured,
-  );
-
-  const disconnect = store.connect({
-    prepare: () => () => {
-      applied++;
-    },
-    getState: () => state("Saved"),
-    setEditable: () => {},
-    subscribe: () => () => {},
-  });
-
-  store.edit("New source");
-  fail = true;
-  expect(store.apply()).toBe(false);
-  expect(applied).toBe(0);
-  expect(storage.values.get(configured.committed)).toBe("Saved");
-  expect(storage.values.get(configured.working)).toBe("New source");
-  disconnect();
-});
-
-test("legacy recovery uses the injected host decoder and retains original bytes and diagnostics", () => {
-  const configured: DraftKeys = keys("custom");
-
-  const original = '{ "customDocument": "unchanged" }\n',
-    storage = memory({
-      [configured.legacy]: original,
-      [configured.working]: "Unfinished source\n",
-    });
-
-  const diagnostics = [
-    {
-      code: "custom-capability",
-      severity: "fatal" as const,
-      message: "Missing custom capability",
-      line: 3,
-      column: 4,
-    },
-  ];
-
-  let received: unknown;
-
-  const customCodec = {
-    ...codec,
-    prepareLegacy(value: unknown): SerializedEditorState {
-      received = value;
-      throw new SourceError("Cannot load custom draft", diagnostics);
-    },
+  return {
+    store,
+    connection,
+    disconnect,
+    current: () => codec.encode(current),
+    edit: (text: string) => listener?.(state(text)),
   };
+}
 
-  const loaded = initialDraft(
-    storage,
-    () => {
-      throw Error("Must not substitute a demo");
-    },
-    customCodec,
-    configured,
-  );
+test("explicit documents and source buffers remain independent without storage or timers", () => {
+  vi.useFakeTimers();
 
-  expect(received).toEqual({ customDocument: "unchanged" });
-  expect(loaded.snapshot.recovery).toEqual({ kind: "legacy", original });
-  expect(loaded.snapshot.source).toBe("Unfinished source\n");
-  expect(loaded.snapshot.diagnostics).toBe(diagnostics);
-  expect(storage.values.get(configured.legacy)).toBe(original);
-  expect(storage.values.has(configured.committed)).toBe(false);
+  try {
+    const a = connected("A"),
+      b = connected("B");
+
+    a.edit("A edited");
+    a.store.edit("A source");
+    expect(a.store.getSnapshot()).toMatchObject({
+      committed: "A edited",
+      source: "A source",
+      dirty: true,
+    });
+    expect(b.store.getSnapshot()).toMatchObject({ committed: "B", dirty: false, status: "ready" });
+    expect(vi.getTimerCount()).toBe(0);
+    a.store.discard();
+    expect(a.store.getSnapshot()).toMatchObject({
+      source: "A edited",
+      status: "ready",
+      dirty: false,
+    });
+    a.disconnect();
+    a.edit("Detached");
+    expect(a.store.getSnapshot().committed).toBe("A edited");
+    b.disconnect();
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
-test("disconnect flushes pending work and stops the editor subscription", () => {
-  const configured = keys("disconnect"),
-    storage = memory({ [configured.committed]: "Saved" });
+test("invalid initial input is retained exactly and can be repaired", () => {
+  const source = "invalid:  exact bytes\n";
+  expect(initialDraft(source, codec).snapshot).toMatchObject({
+    valid: false,
+    source,
+    committed: source,
+    recovery: { original: source },
+    diagnostics: [{ code: "syntax", line: 2 }],
+  });
+  const store = new DraftStore(source, codec);
+  expect(draftPause(store.getSnapshot())).toBe("invalid");
+  store.edit("Repaired");
+  expect(store.apply()).toBe(true);
+  expect(store.getSnapshot()).toMatchObject({
+    valid: true,
+    committed: "Repaired",
+    status: "ready",
+  });
+});
 
-  const store = new DraftStore(storage, initial("Saved"), codec, configured);
+test("Apply validates before replacing, pauses the canvas, and no-op Apply adds no history", () => {
+  const h = connected();
+  h.store.edit("invalid: text");
+  h.edit("Stale canvas");
+  expect(h.store.apply()).toBe(false);
+  expect(h.connection.prepare).not.toHaveBeenCalled();
+  expect(h.store.getSnapshot()).toMatchObject({ committed: "Original", source: "invalid: text" });
+  expect(draftPause(h.store.getSnapshot())).toBe("source");
+  h.store.edit("Applied");
+  expect(h.store.apply()).toBe(true);
+  expect(h.current()).toBe("Applied");
+  expect(h.store.getSnapshot()).toMatchObject({
+    committed: "Applied",
+    dirty: false,
+    status: "ready",
+  });
+  const before = h.store.getSnapshot().state;
+  expect(h.store.apply()).toBe(true);
+  expect(h.store.getSnapshot().state).toEqual(before);
+  expect(h.connection.setEditable).toHaveBeenLastCalledWith(true);
+  h.disconnect();
+});
 
-  let listener: ((value: SerializedEditorState) => void) | undefined,
-    removed = 0;
+test("replacement rejects mismatched source, dirty buffers, foreign/stale tokens and a read-only host", () => {
+  const h = connected();
+  const candidate = codec.prepare("Imported");
+  const token = h.store.captureReplacementToken();
+  expect(h.store.replacePrepared({ ...candidate, source: "Different" }, token).status).toBe(
+    "rejected",
+  );
+  expect(h.store.replacePrepared(candidate, token, { canCommit: () => false }).status).toBe(
+    "rejected",
+  );
+  expect(
+    h.store.replacePrepared(candidate, new DraftStore("Original", codec).captureReplacementToken())
+      .status,
+  ).toBe("rejected");
+  h.store.edit("Unapplied");
+  expect(h.store.replacePrepared(candidate, h.store.captureReplacementToken()).status).toBe(
+    "rejected",
+  );
+  h.store.discard();
+  expect(h.store.replacePrepared(candidate, token).status).toBe("rejected");
+  expect(h.current()).toBe("Original");
+  h.disconnect();
+});
 
-  const disconnect = store.connect({
-    prepare: () => () => {},
-    getState: () => state("Saved"),
-    setEditable: () => {},
-    subscribe: (next) => {
-      listener = next;
+test("a reentrant change during replacement preparation invalidates its token", () => {
+  const h = connected();
+  const token = h.store.captureReplacementToken();
+  vi.mocked(h.connection.prepare).mockImplementation(() => {
+    h.store.edit("Intervening source");
 
-      return () => {
-        listener = undefined;
-        removed++;
-      };
+    return () => {
+      throw Error("Must not apply");
+    };
+  });
+  expect(h.store.replacePrepared(codec.prepare("Imported"), token).status).toBe("rejected");
+  expect(h.store.getSnapshot().source).toBe("Intervening source");
+  h.disconnect();
+});
+
+test("replacement-hook failure keeps prior and candidate source in memory and pauses editing", () => {
+  const h = connected();
+  vi.mocked(h.connection.prepare).mockReturnValue(() => {
+    throw Error("Update hook failed");
+  });
+  expect(
+    h.store.replacePrepared(codec.prepare("Candidate"), h.store.captureReplacementToken()).status,
+  ).toBe("rejected");
+  expect(h.store.getSnapshot()).toMatchObject({
+    valid: false,
+    status: "error",
+    committed: "Original",
+    source: "Candidate",
+    recovery: { original: "Original" },
+  });
+  expect(h.connection.setEditable).toHaveBeenLastCalledWith(false);
+  vi.mocked(h.connection.prepare).mockReturnValue(() => {});
+  expect(h.store.apply()).toBe(true);
+  expect(h.store.getSnapshot()).toMatchObject({ valid: true, committed: "Candidate" });
+  h.disconnect();
+});
+
+test("serialization failure retains exact editor state; retry never claims a server save", () => {
+  let fail = true;
+
+  const h = connected("Original", {
+    ...codec,
+    encode(value) {
+      if (codec.encode(value) === "Unsupported" && fail) throw Error("Unsupported node");
+
+      return codec.encode(value);
     },
   });
 
-  listener?.(state("Pending content"));
-  expect(store.getSnapshot().status).toBe("saving");
-  disconnect();
-  expect(removed).toBe(1);
-  expect(listener).toBeUndefined();
-  expect(storage.values.get(configured.committed)).toBe("Pending content");
-  expect(store.getSnapshot().status).toBe("saved");
-});
-
-test("one pause rule names why editing is paused, and the canvas follows it", () => {
-  const configured = keys("pause"),
-    storage = memory({ [configured.committed]: "Saved" });
-
-  const store = new DraftStore(storage, initial("Saved"), codec, configured);
-  const editable: boolean[] = [];
-
-  const disconnect = store.connect({
-    prepare: () => () => {},
-    getState: () => state("Saved"),
-    setEditable: (value) => void editable.push(value),
-    subscribe: () => () => {},
+  h.edit("Unsupported");
+  h.store.retry();
+  expect(h.store.getSnapshot()).toMatchObject({
+    status: "error",
+    committed: "Original",
+    recovery: { kind: "canvas", original: JSON.stringify(state("Unsupported")) },
   });
-
-  expect(draftPause(store.getSnapshot())).toBeUndefined();
-  expect(editable.at(-1)).toBe(true);
-
-  store.edit("Unapplied Markdown");
-  expect(draftPause(store.getSnapshot())).toBe("source");
-  expect(editable.at(-1)).toBe(false);
-
-  // Another tab's change is settled before the Markdown waiting here
-  storage.values.set(configured.committed, "Another tab's version");
-  store.externalChange(configured.committed);
-  expect(draftPause(store.getSnapshot())).toBe("conflict");
-  store.useLocal();
-  expect(draftPause(store.getSnapshot())).toBe("source");
-
-  store.discard();
-  expect(draftPause(store.getSnapshot())).toBeUndefined();
-  expect(editable.at(-1)).toBe(true);
-
-  const healthy = store.getSnapshot();
-
-  expect(draftPause({ ...healthy, mode: "source", valid: false, dirty: true })).toBe("invalid");
-  expect(
-    draftPause({ ...healthy, recovery: { kind: "replacement", original: "Saved" }, dirty: true }),
-  ).toBe("replacement");
-  expect(draftPause({ ...healthy, recovery: { kind: "migration", original: "Saved" } })).toBe(
-    "migration",
-  );
-  // A canvas edit that couldn't be saved isn't a pause: editing on is how it's put right, and Try again retries it
-  expect(
-    draftPause({ ...healthy, status: "error", recovery: { kind: "canvas", original: "{}" } }),
-  ).toBeUndefined();
-  disconnect();
+  fail = false;
+  h.store.retry();
+  expect(h.store.getSnapshot()).toMatchObject({
+    committed: "Unsupported",
+    status: "ready",
+    recovery: undefined,
+  });
+  h.disconnect();
 });

@@ -9,21 +9,9 @@ function explain(pause: DraftPause, document: string) {
   switch (pause) {
     case "invalid":
       return {
-        reason: `This ${document}'s saved draft couldn't be read.`,
-        fix: "Recover the draft",
-      };
-    case "replacement":
-      return {
-        reason: `Applying changes to this ${document} didn't finish.`,
-        fix: "Choose a version",
-      };
-    case "migration":
-      return {
-        reason: `This ${document} couldn't be updated, as its original couldn't be backed up first.`,
+        reason: `This ${document}'s source could not be applied.`,
         fix: "Review Markdown",
       };
-    case "conflict":
-      return { reason: `This ${document} was changed in another tab.`, fix: "Choose a version" };
     case "source":
       return {
         reason: "Your Markdown changes haven't been applied.",

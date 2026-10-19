@@ -27,7 +27,7 @@ test("with a label it's a named toolbar, its groups ruled off by separators", as
   await render(
     <Bar.Root label="Page tools">
       <Bar.Title render={<h1 />}>Renew a passport</Bar.Title>
-      <Bar.Status>Saved in this browser</Bar.Status>
+      <Bar.Status>Unsaved changes</Bar.Status>
       <Bar.Actions>
         <button type="button">Undo</button>
         <Bar.Separator />

@@ -19,19 +19,19 @@ The editor supports GovBB Markdown pages and native v2 forms. Start with the [ap
 
 ## Try the workspace
 
-Run `pnpm dev:editor_v2` from the GovBB repository root and open `http://localhost:3000`. Saved drafts are restored; a fresh workspace opens the loud-music permit form.
+Run `pnpm dev:editor_v2` and open `http://localhost:3000`. Sign in to open the API Services list; old browser drafts are not restored.
 
 - Create a service to get an entry page. Edit its title and body, inspect **Markdown**, and open **Preview page**.
-- Choose **Add document**, then **Loud music permit — form from registry** to create an independent example form. It includes road-closure logic and a repeating sound-system page. **JSON** shows its native definition; **Markdown** shows its editable draft.
-- Choose **Application form** or **Calculator** to start with a blank question page.
+- Choose **Add document** for an API start or supporting page. Save explicitly; use Publish changes for public content.
+- Reusable form capabilities are shown in the examples and test-only browser host; they are not a workspace workflow.
 
-[workspace.tsx](../src/workspace/workspace.tsx) composes the app. [Document operations](../src/workspace/documents.ts) select codecs and storage keys; [PageDraftEditor](../src/host/page-editor.tsx) and [WorkspaceFormEditor](../src/workspace/form-editor.tsx) connect authoring, source controls and local drafts.
+[workspace.tsx](../src/workspace/workspace.tsx) composes API navigation and leave protection. [RemotePagePane](../src/workspace/remote-page-pane.tsx) owns server baselines/saves; [PageDraftEditor](../src/host/page-editor.tsx) connects the in-memory canvas and source controls.
 
 ## Examples
 
 | Example | What it covers |
 | --- | --- |
-| [Page and form composition](examples/editor-system.tsx) | Public imports, the app's presets, separate codecs, source-only pages and host-supplied storage |
+| [Page and form composition](examples/editor-system.tsx) | Public imports, the app's presets, separate codecs, source-only pages and in-memory source binding |
 | [Native demo definition](../src/presets/form-registry/demo.ts) | Question kinds, submitted keys, option values, logic, repetition and page roles |
 | [Demo Markdown](examples/demo-form.md) | Converter output checked against the native demo, including its retained bindings |
 | [Custom extension composition](../tests/browser/external-extensions.tsx) | Test modules for a Notice, Reference field and Applicant registry entry |

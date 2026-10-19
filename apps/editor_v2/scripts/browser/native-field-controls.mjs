@@ -2,7 +2,7 @@ import { authenticatedContext } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "./playwright.mjs";
-import { openDemoForm } from "./form-fixture.mjs";
+import { openDemoForm, reloadEditorFromSource } from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -280,9 +280,13 @@ try {
   const persisted = await exported();
   assert.equal(question(persisted, "text").options[0].value, "2");
   await page.waitForTimeout(1000);
-  await page.reload();
+  await reloadEditorFromSource(page);
   await root.waitFor();
-  assert.deepEqual(await exported(), persisted, "Field edits survive Markdown autosave and reload");
+  assert.deepEqual(
+    await exported(),
+    persisted,
+    "Field edits survive explicit source export and reopening",
+  );
   assert.deepEqual(errors, []);
   console.log(
     "Native field controls: custom messages, per-rule edits/reset, typed option values, duplicate/invalid rejection, Undo/Redo, export and reload passed.",

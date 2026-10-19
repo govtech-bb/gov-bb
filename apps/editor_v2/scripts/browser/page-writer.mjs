@@ -1,7 +1,7 @@
 import { authenticatedContext } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { chromium } from "./playwright.mjs";
-import { openDemoForm } from "./form-fixture.mjs";
+import { openPageFixture, reloadEditorFromSource } from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -35,6 +35,8 @@ const body = page.getByRole("textbox", { name: "Page content", exact: true });
 
 const source = page.getByRole("textbox", { name: "Markdown source", exact: true });
 
+const dropLine = page.locator('[data-dragging] > [aria-hidden="true"][style]');
+
 const search = page.getByRole("combobox", { name: "Search page content" });
 
 const insertion = page.getByRole("listbox", { name: "Insert page content" });
@@ -60,7 +62,7 @@ const formId = settings.getByLabel("Form ID", { exact: true });
 
 const pageSettings = page.getByRole("button", { name: "Page settings", exact: true });
 
-const navigation = page.getByRole("navigation", { name: "Service documents" });
+const navigation = page.getByRole("navigation", { name: "Fixture pages" });
 
 async function setPageSettingsOpen(open) {
   if ((await pageSettings.getAttribute("aria-expanded")) !== String(open))
@@ -73,7 +75,7 @@ const devtools = await context.newCDPSession(page);
 const touch = (enabled) => devtools.send("Emulation.setTouchEmulationEnabled", { enabled });
 
 async function reset(content) {
-  await page.getByRole("button", { name: /^Markdown/ }).click();
+  await page.getByRole("button", { name: /^Markdown(?:$| —)/ }).click();
   await source.fill(`---\ntitle: Writer interactions\n---\n\n${content}\n`);
   await button("Apply changes").click();
   await button("Close source").click();
@@ -99,7 +101,7 @@ async function hoverNestedMenu(locator) {
 }
 
 async function markdown() {
-  await page.getByRole("button", { name: /^Markdown/ }).click();
+  await page.getByRole("button", { name: /^Markdown(?:$| —)/ }).click();
   const value = await source.inputValue();
   await button("Close source").click();
 
@@ -134,7 +136,7 @@ async function dragFromGrip(block, target, side = "after") {
   const y = destination.y + destination.height * (side === "before" ? 0.2 : 0.8);
   await page.mouse.move(x, y, { steps: 12 });
   await page.mouse.move(x + 1, y);
-  await page.locator("[data-page-dragging]").waitFor();
+  await page.locator("[data-dragging]").waitFor();
   assert.deepEqual(
     await page.evaluate(() => JSON.parse(document.documentElement.dataset.writerDragPreview)),
     expectedPreview,
@@ -206,13 +208,13 @@ async function crossToRail(block, control) {
 
 async function finishDrag() {
   await page.mouse.up();
-  await page.locator(".page-drop-line").waitFor({ state: "hidden" });
-  await page.locator("[data-page-dragging]").waitFor({ state: "hidden" });
+  await dropLine.waitFor({ state: "hidden" });
+  await page.locator("[data-dragging]").waitFor({ state: "hidden" });
 }
 
 async function reorder(block, target, side = "after") {
   await dragTo(block, target, side);
-  await page.locator(".page-drop-line").waitFor({ state: "visible" });
+  await dropLine.waitFor({ state: "visible" });
   await finishDrag();
 }
 
@@ -224,7 +226,13 @@ async function focused(locator) {
 }
 
 async function insideViewport(locator) {
-  const bounds = await locator.boundingBox();
+  const element = await locator.elementHandle();
+  assert.ok(element);
+  // Drawers must finish moving before their field geometry is measured.
+  await element.waitForElementState("stable");
+
+  const bounds = await element.boundingBox();
+  await element.dispose();
   assert.ok(bounds);
   assert.ok(
     bounds.x >= -1 && bounds.x + bounds.width <= page.viewportSize().width + 1,
@@ -233,14 +241,7 @@ async function insideViewport(locator) {
 }
 
 try {
-  await openDemoForm(page, url);
-  await page.getByRole("textbox", { name: "Form", exact: true }).waitFor();
-  await button("Create service").click();
-  await page.getByLabel("Service name", { exact: true }).fill("Writer interaction tests");
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Create service", exact: true })
-    .click();
+  await openPageFixture(page, url);
   await body.waitFor();
   await setPageSettingsOpen(false);
 
@@ -322,9 +323,13 @@ try {
     "Caret stays in this paragraph.",
   );
   await dragFromGrip(headingOne, body.locator(":scope > p").last());
-  await page.locator(".page-drop-line").waitFor({ state: "visible" });
+  await dropLine.waitFor({ state: "visible" });
   await finishDrag();
-  assert.equal(await body.locator(":scope > :last-child").textContent(), "Heading one");
+  // The editor keeps an empty paragraph after a trailing heading.
+  assert.equal(
+    await headingOne.evaluate((element) => element.previousElementSibling.textContent),
+    "Last paragraph.",
+  );
   await button("Undo").click();
   assert.equal(await markdown(), hoverBaseline);
 
@@ -348,6 +353,7 @@ try {
     await insertion.getByRole("group", { name: group, exact: true }).waitFor();
   await search.fill("Heading");
   await search.press("ArrowDown");
+  await search.press("ArrowUp");
   await search.press("Enter");
   await body.locator("h2").waitFor();
   await focused(body);
@@ -419,7 +425,7 @@ try {
   await reset("First paragraph.\n\nSecond paragraph.\n\nThird paragraph.");
   const beforeDrag = await markdown();
   await dragTo(body.locator("p").first(), body.locator("p").last());
-  await page.locator(".page-drop-line").waitFor({ state: "visible" });
+  await dropLine.waitFor({ state: "visible" });
   assert.deepEqual(await body.locator("p").allTextContents(), [
     "First paragraph.",
     "Second paragraph.",
@@ -440,11 +446,11 @@ try {
   assert.equal(await markdown(), beforeDrag);
 
   await dragTo(body.locator("p").first(), body.locator("p").first(), "before");
-  assert.equal(await page.locator(".page-drop-line").count(), 0);
+  assert.equal(await dropLine.count(), 0);
   await finishDrag();
   assert.equal(await markdown(), beforeDrag);
   await dragTo(body.locator("p").first(), body.locator("p").last());
-  await page.locator(".page-drop-line").waitFor({ state: "visible" });
+  await dropLine.waitFor({ state: "visible" });
   // Playwright consumes Escape in its drag interceptor before it reaches the document.
   await page.keyboard.press("Escape");
   const keyboard = await context.newCDPSession(page);
@@ -465,7 +471,7 @@ try {
   assert.equal(await markdown(), beforeDrag);
 
   await dragTo(body.locator("p").first(), body.locator("p").last());
-  await page.locator(".page-drop-line").waitFor({ state: "visible" });
+  await dropLine.waitFor({ state: "visible" });
   await button("Preview page").evaluate((element) => element.click());
   await page.getByRole("article", { name: "Page preview" }).waitFor();
   await finishDrag();
@@ -486,9 +492,9 @@ try {
 
   await reset("Temporary drag source.\n\nDrop target.");
   await dragTo(body.locator("p").first(), body.locator("p").last());
-  await page.locator(".page-drop-line").waitFor({ state: "visible" });
+  await dropLine.waitFor({ state: "visible" });
   await button("Undo").evaluate((element) => element.click());
-  await page.locator("[data-page-dragging]").waitFor({ state: "hidden" });
+  await page.locator("[data-dragging]").waitFor({ state: "hidden" });
   await finishDrag();
   assert.equal(await markdown(), beforeDrag, "undo removing the drag source cancels the move");
 
@@ -507,8 +513,8 @@ try {
   assert.deepEqual(await groupedList.locator("li").allTextContents(), nestedItems);
   assert.equal(await groupedList.locator("ul").count(), 1);
   assert.equal(
-    await body.locator(":scope > :last-child").evaluate((element) => element.tagName),
-    "OL",
+    await groupedList.evaluate((element) => element.previousElementSibling.textContent),
+    "After.",
   );
   await reorder(groupedTable, body.locator(":scope > p").first(), "before");
   assert.deepEqual(await groupedTable.locator("tr").allTextContents(), tableRows);
@@ -573,9 +579,9 @@ try {
     assert.equal(await markdown(), afterIndent);
     await page
       .locator("[data-document-bar]:visible")
-      .getByText("Saved in this browser", { exact: true })
+      .getByText("Unsaved changes", { exact: true })
       .waitFor();
-    await page.reload();
+    await reloadEditorFromSource(page);
     await body.waitFor();
     await setPageSettingsOpen(false);
     await menuAt(body.getByText("Two", { exact: true }));
@@ -641,9 +647,9 @@ try {
   );
   await page
     .locator("[data-document-bar]:visible")
-    .getByText("Saved in this browser", { exact: true })
+    .getByText("Unsaved changes", { exact: true })
     .waitFor();
-  await page.reload();
+  await reloadEditorFromSource(page);
   await body.waitFor();
   await setPageSettingsOpen(false);
   assert.equal(
@@ -686,9 +692,9 @@ try {
     assert.match(edited, /<a data-start-link href="\/edited">Start now online<\/a>/);
     await page
       .locator("[data-document-bar]:visible")
-      .getByText("Saved in this browser", { exact: true })
+      .getByText("Unsaved changes", { exact: true })
       .waitFor();
-    await page.reload();
+    await reloadEditorFromSource(page);
     await nestedStart.waitFor();
     await setPageSettingsOpen(false);
     assert.equal(await nestedStart.textContent(), "Start now online");
@@ -711,9 +717,9 @@ try {
   assert.equal(await markdown(), formattedStart);
   await page
     .locator("[data-document-bar]:visible")
-    .getByText("Saved in this browser", { exact: true })
+    .getByText("Unsaved changes", { exact: true })
     .waitFor();
-  await page.reload();
+  await reloadEditorFromSource(page);
   await startButton.locator("strong").waitFor();
   await setPageSettingsOpen(false);
   assert.equal(await markdown(), formattedStart);
@@ -736,8 +742,8 @@ try {
     "Before",
   );
 
-  assert.equal(await button("Page settings").count(), 0);
-  await page.getByRole("button", { name: /^Markdown/ }).click();
+  assert.equal(await pageSettings.getAttribute("aria-expanded"), "false");
+  await page.getByRole("button", { name: /^Markdown(?:$| —)/ }).click();
   const currentSource = await source.inputValue();
   await source.fill(currentSource.replace("title: Writer interactions", "title: [unfinished"));
   await button("Apply changes").click();
@@ -771,7 +777,7 @@ try {
     "title: Writer interactions\nlede: A short introduction.\ndescription: A page description.\ncategories:\n  - family-birth-relationships\n  - youth-and-community\nsubcategory: youth-development-leadership\n# Keep this comment\ncustom_note: Keep this metadata",
   );
 
-  await page.getByRole("button", { name: /^Markdown/ }).click();
+  await page.getByRole("button", { name: /^Markdown(?:$| —)/ }).click();
   await source.fill(withMetadata);
   await button("Apply changes").click();
   await button("Close source").click();
@@ -841,9 +847,9 @@ try {
   assert.equal(await markdown(), editedSource);
   await page
     .locator("[data-document-bar]:visible")
-    .getByText("Saved in this browser", { exact: true })
+    .getByText("Unsaved changes", { exact: true })
     .waitFor();
-  await page.reload();
+  await reloadEditorFromSource(page);
   await body.waitFor();
   await setPageSettingsOpen(true);
   assert.equal(await description.inputValue(), "Updated page description.");
@@ -913,18 +919,14 @@ try {
   await button("Back to editing").click();
   assert.equal(await introduction.inputValue(), "Updated introduction.");
 
-  await button("Add document").click();
-  const documentDialog = page.getByRole("dialog");
-  await documentDialog.getByLabel("Document type").selectOption("supporting");
-  await documentDialog.getByLabel("Page title (optional)").fill("Other page");
-  await documentDialog.getByRole("button", { name: "Add document", exact: true }).click();
+  await navigation.getByRole("button", { name: "Other page", exact: true }).click();
   await body.waitFor();
-  await navigation.getByRole("link", { name: "Entry page", exact: true }).click();
+  await navigation.getByRole("button", { name: "Entry page", exact: true }).click();
   await button("Add content").click();
   await search.waitFor();
-  await navigation.getByRole("link", { name: "Other page", exact: true }).click();
+  await navigation.getByRole("button", { name: "Other page", exact: true }).click();
   await search.waitFor({ state: "hidden" });
-  await navigation.getByRole("link", { name: "Entry page", exact: true }).click();
+  await navigation.getByRole("button", { name: "Entry page", exact: true }).click();
   assert.equal(await search.count(), 0);
   await button("Add content").click();
   await button("Preview page").click();

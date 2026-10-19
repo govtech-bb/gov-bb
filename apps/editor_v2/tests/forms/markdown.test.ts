@@ -669,7 +669,7 @@ test("opaque form and node state retain the identities their unknown values may 
   }
 });
 
-test("hard breaks in bullet and numbered items survive storage with nested option content", async () => {
+test("hard breaks in bullet and numbered items survive Markdown with nested option content", async () => {
   const { $createLineBreakNode, $isElementNode } = await import("lexical");
   const { draftCodec, prepareSource } = await import("../helpers/default-form");
   const { semanticFingerprint } = await import("../helpers/default-form");
@@ -703,60 +703,36 @@ test("hard breaks in bullet and numbered items survive storage with nested optio
   expect(draftCodec.encode(after.state)).toBe(saved);
 });
 
-test("safe JSON frontmatter keys remain parseable through startup and canonical saving", async () => {
-  const { draftCodec, prepareSource, initialDraft, DraftStore, MARKDOWN_KEY } =
+test("safe JSON frontmatter keys remain parseable through initialization and canonical conversion", async () => {
+  const { draftCodec, prepareSource, initialDraft, DraftStore } =
     await import("../helpers/default-form");
 
   const original = source("A note", 'future: {"with space":{"dot.key":2,"1":3,"鍵":4,"":5}}\n');
   const prepared = prepareSource(original);
   expect(read(prepared.source).unknown).toEqual(read(original).unknown);
   expect(draftCodec.encode(prepared.state)).toBe(prepared.source);
-  const records = new Map([[MARKDOWN_KEY, original]]);
-
-  const storage = {
-    getItem: (key: string) => records.get(key) ?? null,
-    setItem: (key: string, value: string) => {
-      records.set(key, value);
-    },
-    removeItem: (key: string) => {
-      records.delete(key);
-    },
-  };
-
-  const initial = initialDraft(storage, () => {
-    throw Error("Saved source must take precedence");
-  });
-
+  const initial = initialDraft(original);
   expect(initial.snapshot.valid).toBe(true);
-  expect(() => new DraftStore(storage, initial)).not.toThrow();
-  expect(records.get(MARKDOWN_KEY)).toBe(original);
+  expect(new DraftStore(original).getSnapshot().source).toBe(original);
 });
 
-test("multiline choice labels preserve configured options and nested followups through storage", async () => {
+test("multiline choice labels preserve configured options and nested followups through Markdown", async () => {
   const { $createLineBreakNode } = await import("lexical");
   const { $isOptionNode } = await import("../../src/forms/editor/nodes");
 
-  const { draftCodec, prepareSource, initialDraft, LEGACY_KEY } =
-    await import("../helpers/default-form");
+  const { draftCodec, prepareSource } = await import("../helpers/default-form");
 
   const legacy = await readFile(
     new URL("../../scripts/browser/fixtures/legacy-step9.json", import.meta.url),
     "utf8",
   );
 
-  const migrated = initialDraft(
-    {
-      getItem: (key) => (key === LEGACY_KEY ? legacy : null),
-      setItem: () => {},
-      removeItem: () => {},
-    },
-    () => {
-      throw Error("Use the legacy draft");
-    },
-  );
+  const migrated = prepareSource(
+    draftCodec.encode(draftCodec.prepareLegacy(JSON.parse(legacy))),
+  ).state;
 
   const legacyEditor = editor();
-  legacyEditor.setEditorState(legacyEditor.parseEditorState(migrated.state!));
+  legacyEditor.setEditorState(legacyEditor.parseEditorState(migrated));
 
   const nestedEditor = hydrate(
     source(

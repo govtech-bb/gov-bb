@@ -6,11 +6,10 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { FormComposer } from "../../src/host/form-composer";
 import { FormJsonDialog } from "../../src/host/form-json-dialog";
-import { createGovbbDraft, MARKDOWN_KEY } from "../../src/host/govbb-draft";
+import { DraftStore } from "../../src/persistence";
+import { govbbPageCodec } from "../../src/presets/govbb-page";
 import { DraftProvider, SourceEditor } from "../../src/host/source-ui";
-import type { DraftStorage } from "../../src/persistence/types";
-import { govbbFormEditor } from "../../src/presets/govbb-form";
-import { newPage, openDocument } from "../../src/workspace/documents";
+import { govbbFormEditor, govbbFormCodec } from "../../src/presets/govbb-form";
 import pension from "../fixtures/forms/v2/pension.json";
 
 let root: Root;
@@ -31,23 +30,6 @@ afterEach(async () => {
   document.body.replaceChildren();
   vi.unstubAllGlobals();
 });
-
-/** A browser's storage that can be made to refuse writes, as when it's full. */
-function storage() {
-  const values = new Map<string, string>();
-  const state = { full: false };
-
-  const store: DraftStorage = {
-    getItem: (key) => values.get(key) ?? null,
-    setItem: (key, value) => {
-      if (state.full) throw new DOMException("Storage quota reached", "QuotaExceededError");
-      values.set(key, value);
-    },
-    removeItem: (key) => void values.delete(key),
-  };
-
-  return { store, state };
-}
 
 const button = (name: string) =>
   [...document.querySelectorAll("button")].find((item) => item.textContent === name);
@@ -70,8 +52,7 @@ async function choose(label: string, file: File) {
 }
 
 test("the Markdown dialog shows what came of each action in its body, in its own tone", async () => {
-  const { store: browser, state } = storage();
-  const store = openDocument(newPage("Renew a passport", "entry").document, browser);
+  const store = new DraftStore("---\ntitle: Renew a passport\n---\n\n", govbbPageCodec);
 
   await act(async () =>
     root.render(
@@ -98,27 +79,17 @@ test("the Markdown dialog shows what came of each action in its body, in its own
   expect(failed?.getAttribute("role")).toBe("alert");
   expect(failed?.className).toContain("bg-red-10");
   expect(outcome("Changes applied")).toBeUndefined();
-
-  // A failed save says why in the dialog, with its way out, rather than a button in the footer
-  state.full = true;
-  await act(async () => store.edit(`${store.getSnapshot().source}\nAnother line.\n`));
-  expect(document.body.textContent).toContain("Storage quota reached");
-  expect(button("Try again")).toBeDefined();
-  expect(button("Download a copy")).toBeDefined();
-  expect(button("Try saving again")).toBeUndefined();
 });
 
 test("a failed form import looks different from one that worked", async () => {
-  const browser = storage().store;
-  // jsdom's import.meta.url isn't a file, so the fixture is read from the app's folder, where the tests run
-  browser.setItem(
-    MARKDOWN_KEY,
+  const store = new DraftStore(
     readFileSync(resolve("tests/fixtures/forms/demo.canonical.md"), "utf8"),
+    govbbFormCodec,
   );
 
   await act(async () =>
     root.render(
-      <FormComposer definition={govbbFormEditor} store={createGovbbDraft(browser)}>
+      <FormComposer definition={govbbFormEditor} store={store}>
         <FormJsonDialog />
       </FormComposer>,
     ),

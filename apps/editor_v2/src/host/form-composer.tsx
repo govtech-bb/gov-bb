@@ -23,7 +23,7 @@ export function FormComposer({
     <EditorComposer
       definition={definition}
       readOnly={readOnly}
-      initialState={store.initial.state}
+      initialState={store.getSnapshot().state}
       initialize={() => $getRoot().append($createFormTitleNode())}
     >
       <DraftProvider store={store}>
@@ -40,7 +40,7 @@ export function DraftCanvas({ children }: { children: ReactNode }) {
   if (!draft.valid)
     return (
       <p className="p-8 text-16 text-muted">
-        Open the saved source to recover this form. The original draft is available to download.
+        Review the source to edit this form. The original input is available to download.
       </p>
     );
 

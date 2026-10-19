@@ -49,7 +49,6 @@ export function FormJsonDialog() {
   const upload = useRef<HTMLInputElement>(null);
   const pending = staged?.pending;
   const unavailable = nativeIOUnavailable(draft.store, editor);
-  const forced = !!draft.replacement;
   useEffect(
     () => () => {
       sequence.current++;
@@ -58,9 +57,9 @@ export function FormJsonDialog() {
   );
 
   return (
-    <Dialog.Root open={open || forced} onOpenChange={setOpen}>
+    <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger render={<Bar.Tool icon={<BracketsCurly />} label="JSON" />} />
-      <Dialog.Content size="full" close={!forced} closeLabel="Close form JSON">
+      <Dialog.Content size="full" closeLabel="Close form JSON">
         <Dialog.Header>
           <Dialog.Title>Form JSON</Dialog.Title>
           <Dialog.Description>
@@ -184,51 +183,6 @@ export function FormJsonDialog() {
               ))}
             </ul>
           )}
-          {draft.replacement && (
-            <div className="my-3 flex flex-wrap gap-2">
-              <p role="alert" className="w-full text-14 text-error">
-                {draft.error ?? "Recover this interrupted import before editing."}
-              </p>
-              <Button
-                onClick={() => {
-                  const result = draft.store.recoverReplacement("candidate");
-                  setOutcome(
-                    result.status === "committed"
-                      ? { tone: "success", text: "Imported form recovered" }
-                      : { tone: "error", text: result.message },
-                  );
-                }}
-              >
-                Recover imported form
-              </Button>
-              <Button
-                onClick={() => {
-                  const result = draft.store.recoverReplacement("original");
-                  setOutcome(
-                    result.status === "committed"
-                      ? { tone: "success", text: "Original form restored" }
-                      : { tone: "error", text: result.message },
-                  );
-                }}
-              >
-                Restore original form
-              </Button>
-              <Button
-                onClick={() =>
-                  downloadJson(
-                    draft.replacement!.journal.original ??
-                      JSON.stringify(draft.replacement!.journal, null, 2),
-                    "import-recovery.json",
-                  )
-                }
-              >
-                Download recovery copy
-              </Button>
-              {draft.replacement.phase === "cleanup" && (
-                <Button onClick={() => draft.store.retryReplacementCleanup()}>Finish saving</Button>
-              )}
-            </div>
-          )}
           {/* What came of it, done or failed, each in its own tone */}
           {outcome && (
             <Banner tone={outcome.tone} className="mt-3">
@@ -247,15 +201,10 @@ export function FormJsonDialog() {
               setOutcome(
                 result.status !== "committed"
                   ? { tone: "error", text: result.message }
-                  : result.cleanupPending
-                    ? {
-                        tone: "warning",
-                        text: "Form imported. Finish saving to clear recovery data.",
-                      }
-                    : {
-                        tone: "success",
-                        text: "Form imported. Undo returns to your previous form.",
-                      },
+                  : {
+                      tone: "success",
+                      text: "Form imported. Undo returns to your previous form.",
+                    },
               );
 
               if (result.status === "committed") setStaged(undefined);

@@ -5,7 +5,7 @@ import { createHeadlessEditor, EditorComposer } from "../../src/editor";
 import { FormEditor, formSchemaToLexical, lexicalToFormSchema } from "../../src/forms";
 import { DraftCanvas, FormComposer, SourceEditor } from "../../src/host";
 import { PageEditor, PageTitleField } from "../../src/pages";
-import { DraftStore, initialDraft, type DraftKeys, type DraftStorage } from "../../src/persistence";
+import { DraftStore } from "../../src/persistence";
 import { demoForm } from "../../src/presets/demo";
 import { govbbFormCodec, govbbFormEditor } from "../../src/presets/govbb-form";
 import { govbbPageCodec, govbbPageEditor } from "../../src/presets/govbb-page";
@@ -56,10 +56,9 @@ export function convertExample() {
   }
 }
 
-export function createExampleStore(storage: DraftStorage, keys: DraftKeys) {
-  const initial = initialDraft(storage, initialForm, govbbFormCodec, keys);
-
-  return new DraftStore(storage, initial, govbbFormCodec, keys);
+/** Source and unsaved edits stay in memory; the embedding host owns explicit persistence. */
+export function createExampleStore(source = govbbFormCodec.encode(initialForm())) {
+  return new DraftStore(source, govbbFormCodec);
 }
 
 /** Client canvases without persistence. Remount to load a different initial document. */
@@ -91,22 +90,16 @@ export function ExampleEditors({ pageSource = examplePageSource }: { pageSource?
   );
 }
 
-/** Optional host binding. The host supplies storage and distinct keys for each draft. */
-export function ExamplePersistedForm({
-  storage,
-  keys,
-}: {
-  storage: DraftStorage;
-  keys: DraftKeys;
-}) {
-  const [store] = useState(() => createExampleStore(storage, keys));
+/** In-memory source/canvas binding. Remount to load a different initial document. */
+export function ExampleForm({ source }: { source?: string }) {
+  const [store] = useState(() => createExampleStore(source));
 
   return (
     <Tooltip.Provider>
       <FormComposer definition={govbbFormEditor} store={store}>
         <SourceEditor />
         <DraftCanvas>
-          <FormEditor label="Saved application form" />
+          <FormEditor label="Application form" />
         </DraftCanvas>
       </FormComposer>
     </Tooltip.Provider>

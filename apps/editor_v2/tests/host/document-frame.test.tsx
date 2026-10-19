@@ -4,23 +4,11 @@ import { $createTextNode, $getRoot, $isElementNode, type LexicalEditor } from "l
 import { act } from "react";
 import { beforeEach, expect, test, vi } from "vitest";
 import { FormComposer, FormTitle } from "../../src/host/form-composer";
-import { createGovbbDraft } from "../../src/host/govbb-draft";
 import { PageDraftEditor } from "../../src/host/page-editor";
-import type { DraftStorage } from "../../src/persistence/types";
-import { govbbFormEditor } from "../../src/presets/govbb-form";
-import { openDocument } from "../../src/workspace/documents";
-import { documentKeys } from "../../src/workspace/model";
+import { DraftStore } from "../../src/persistence";
+import { govbbPageCodec } from "../../src/presets/govbb-page";
+import { govbbFormEditor, govbbFormCodec } from "../../src/presets/govbb-form";
 import { renderInPage } from "../helpers/page-editor";
-
-function memoryStorage(): DraftStorage {
-  const values = new Map<string, string>();
-
-  return {
-    getItem: (key) => values.get(key) ?? null,
-    setItem: (key, value) => void values.set(key, value),
-    removeItem: (key) => void values.delete(key),
-  };
-}
 
 beforeEach(() => {
   // The settings panel sits beside the page, as on a wide screen
@@ -44,16 +32,9 @@ const type = (input: HTMLTextAreaElement, value: string) =>
   });
 
 test("a page's bar is headed by its title, as the title is typed", async () => {
-  const storage = memoryStorage();
-  const keys = documentKeys("page");
-  storage.setItem(
-    keys.committed,
+  const store = new DraftStore(
     "---\ntitle: Renew a passport\n---\n\nBring your old passport.\n",
-  );
-
-  const store = openDocument(
-    { id: "page", title: "Renew a passport", kind: "page", role: "entry", keys },
-    storage,
+    govbbPageCodec,
   );
 
   await renderInPage(<PageDraftEditor store={store} />);
@@ -80,9 +61,17 @@ test("a form's bar is headed by the form's name, as it's typed", async () => {
     return null;
   }
 
-  // An empty browser opens a new, unnamed form
+  // Explicitly initialize a new, unnamed form.
   await renderInPage(
-    <FormComposer definition={govbbFormEditor} store={createGovbbDraft(memoryStorage())}>
+    <FormComposer
+      definition={govbbFormEditor}
+      store={
+        new DraftStore(
+          '---\nformat: govbb-form\nformatVersion: 2\ntitle: ""\n---\n\n# Page\n\n::page{#page}\n',
+          govbbFormCodec,
+        )
+      }
+    >
       <Capture />
       <h1>
         <FormTitle />

@@ -139,15 +139,13 @@ try {
     "rejection preserves the redo branch and its exact identities",
   );
 
-  await page.getByRole("button", { name: "Save source", exact: true }).click();
-  assert.equal(
-    await page.evaluate(() => localStorage.getItem("registry-insertion-fixture")),
-    saved,
-  );
   await page.reload();
+  await page.evaluate((source) => {
+    window.registryInitialSource = source;
+  }, saved);
   await mount();
   await count(2);
-  assert.equal(await source(), saved, "canonical source survives a real page reload exactly");
+  assert.equal(await source(), saved, "explicitly exported source reopens exactly");
   assert.deepEqual(errors, []);
   assert.ok(baseline.root.children.length < two.root.children.length);
   console.log(

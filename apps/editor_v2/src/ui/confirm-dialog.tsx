@@ -13,6 +13,8 @@ type ConfirmDialogProps = {
   description: ReactNode;
   /** The verb on the button that does it, such as “Delete page”. */
   confirm: string;
+  /** Wait for a separate operation without preventing cancellation of this question. */
+  confirmDisabled?: boolean;
   /** The button's words while the action works, such as “Deleting page…”. */
   pendingLabel?: string;
   pending?: boolean;
@@ -36,6 +38,7 @@ export function ConfirmDialog({
   title,
   description,
   confirm,
+  confirmDisabled = false,
   pendingLabel,
   pending = false,
   error,
@@ -65,7 +68,13 @@ export function ConfirmDialog({
           <Button size="md" disabled={pending} onClick={onClose}>
             Cancel
           </Button>
-          <Button size="md" variant={tone} pending={pending} onClick={onConfirm}>
+          <Button
+            size="md"
+            variant={tone}
+            pending={pending}
+            disabled={confirmDisabled}
+            onClick={onConfirm}
+          >
             {pending && pendingLabel ? pendingLabel : confirm}
           </Button>
         </Dialog.Actions>

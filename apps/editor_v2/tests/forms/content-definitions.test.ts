@@ -10,13 +10,7 @@ import { createFormSourceDialect } from "../../src/forms/source/dialect";
 import { govbbFormModules } from "../../src/presets/govbb-form";
 import { lexicalToLegacySsb } from "../../src/converters/lexical-to-legacy-ssb";
 import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
-import {
-  createFormDraftCodec,
-  initialDraft,
-  MARKDOWN_KEY,
-  WORKING_KEY,
-  type DraftStorage,
-} from "../helpers/default-form";
+import { createFormDraftCodec, DraftStore } from "../helpers/default-form";
 import type { ContentSourceHandler } from "../../src/forms/source/content";
 
 class NoticeNode extends ElementNode {
@@ -69,24 +63,6 @@ const configured = (legacy = true) =>
 
 const source =
   '---\nformat: govbb-form\nformatVersion: 2\ntitle: Notices\n---\n\n# Read this\n\n::page{#notices}\n\n::notice[Keep **these details**.]\n\n---\n\n# Declaration\n\n::page{#declaration type="declaration"}\n\n::checkboxes[Declaration]{#legal required}\n- I confirm the information I have given is correct\n\n---\n\n# Complete\n\n::page{#complete type="confirmation"}\n';
-
-function memory(seed: Record<string, string>): DraftStorage {
-  const entries = new Map(Object.entries(seed));
-
-  return {
-    getItem: (key) => entries.get(key) ?? null,
-    setItem: (key, value) => {
-      entries.set(key, value);
-    },
-    removeItem: (key) => {
-      entries.delete(key);
-    },
-  };
-}
-
-const noDemo = () => {
-  throw Error("Unavailable content must stay recoverable");
-};
 
 test("content syntax ownership rejects duplicate, reserved and invalid directives", () => {
   const make = (kind: string, syntax: ContentSourceHandler["syntax"]) =>
@@ -244,18 +220,16 @@ test("removing a content module retains canonical and working source for recover
   const absent = defineFormEditor({ modules: govbbFormModules }),
     absentRuntime = createFormRuntime(absent);
 
-  const storage = memory({ [MARKDOWN_KEY]: canonical, [WORKING_KEY]: working });
-  const loaded = initialDraft(storage, noDemo, createFormDraftCodec(absentRuntime), absentRuntime);
-  expect(loaded.snapshot.valid).toBe(false);
+  const store = new DraftStore(canonical, createFormDraftCodec(absentRuntime));
+  store.edit(working);
+  const loaded = store.getSnapshot();
+  expect(loaded.valid).toBe(false);
   expect(loaded.state).toBeUndefined();
-  expect(loaded.snapshot.recovery?.original).toBe(canonical);
-  expect(loaded.snapshot.source).toBe(working);
-  expect(storage.getItem(MARKDOWN_KEY)).toBe(canonical);
-  expect(storage.getItem(WORKING_KEY)).toBe(working);
-  const restored = initialDraft(storage, noDemo, codec, runtime);
-  expect(restored.snapshot.valid).toBe(true);
-  expect(restored.snapshot.source).toBe(working);
-  expect(restored.snapshot.dirty).toBe(true);
+  expect(loaded.recovery?.original).toBe(canonical);
+  expect(loaded.source).toBe(working);
+  const restored = new DraftStore(canonical, codec);
+  restored.edit(working);
+  expect(restored.getSnapshot()).toMatchObject({ valid: true, source: working, dirty: true });
 });
 
 test("retained NodeState cannot conceal an unavailable content subtype", () => {

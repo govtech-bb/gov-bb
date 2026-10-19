@@ -8,7 +8,7 @@ import { localReturnPath, type EditorAuth, type EmployeeSession } from "./auth/s
 
 const icons = { weight: "bold" as const };
 
-/** Authenticated shell; changing sessions never changes browser draft storage. */
+/** Authenticated shell; the workspace protects unsaved in-memory work before leaving. */
 export function App({
   auth,
   api,
@@ -38,14 +38,14 @@ export function App({
 
       if (!result.ok) {
         setNotice(
-          "We could not check your session. Your drafts remain in this browser. Return to this window to try again.",
+          "We could not check your session. Keep this editor open to retain unsaved changes, or download a copy.",
         );
 
         return;
       }
 
       if (!result.value) {
-        // Router navigation runs the workspace's draft flush/blocker before leaving.
+        // Router navigation asks before discarding unsaved work, including on session expiry.
         await navigate({
           to: "/auth",
           search: { state: "sign-in", returnTo: localReturnPath(href), reason: "provider" },

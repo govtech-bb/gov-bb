@@ -74,7 +74,7 @@ try {
   const source = (kind) => page.evaluate((kind) => window.externalFixture.source(kind), kind);
 
   const saved = (kind) =>
-    page.waitForFunction((kind) => window.externalFixture.status(kind) === "saved", kind);
+    page.waitForFunction((kind) => window.externalFixture.status(kind) === "ready", kind);
 
   const bodyKey = async (key = "Control+z") => {
     await page.evaluate(() => {
@@ -247,7 +247,7 @@ try {
   assert.equal(
     await page.evaluate(() => window.externalFixture.editable("form")),
     false,
-    "pending autosave must not unlock an externally read-only editor",
+    "source synchronization must not unlock an externally read-only editor",
   );
 
   if (await prefix.isVisible()) await prefix.fill("BAD");
@@ -279,12 +279,14 @@ try {
     contentSaved = await source("content");
 
   assert.notEqual(formSaved, contentSaved);
-  assert.equal(await page.evaluate(() => localStorage.getItem("external:form:saved")), formSaved);
-  assert.equal(
-    await page.evaluate(() => localStorage.getItem("external:content:saved")),
-    contentSaved,
-  );
+  // Transfer exported source explicitly; a reload alone would restore only the fixture's input.
   await page.reload();
+  await page.evaluate(
+    ({ content, form }) => {
+      window.externalSources = { content, form };
+    },
+    { content: contentSaved, form: formSaved },
+  );
   await mount();
   assert.equal(await source("form"), formSaved);
   assert.equal(await source("content"), contentSaved);
@@ -313,9 +315,9 @@ try {
   await page.getByRole("button", { name: "Unmount content", exact: true }).click();
   await page.waitForFunction(() => !window.externalFixture.mounted("content"));
   const listeners = await page.evaluate(() => window.externalListeners());
-  assert.equal(listeners["window:storage"], 0);
-  assert.equal(listeners["window:pagehide"], 0);
-  assert.equal(listeners["document:visibilitychange"], 0);
+  assert.equal(listeners["window:storage"] ?? 0, 0);
+  assert.equal(listeners["window:pagehide"] ?? 0, 0);
+  assert.equal(listeners["document:visibilitychange"] ?? 0, 0);
   assert.equal(
     listeners["document:keydown"],
     0,
@@ -324,7 +326,7 @@ try {
   assert.deepEqual(errors, []);
   assert.notDeepEqual(startForm, applied);
   console.log(
-    "PASS public Notice/field/registry; two real stores; scoped body/portal/native-input history; formatting/gutter inspectors; atomic source Apply, independent reload, late read-only, unmount cleanup; no browser errors",
+    "PASS public Notice/field/registry; two real stores; scoped body/portal/native-input history; formatting/gutter inspectors; atomic source Apply, explicit source roundtrip, late read-only, unmount cleanup; no browser errors",
   );
 } catch (error) {
   if (page && !page.isClosed()) {

@@ -1,0 +1,357 @@
+/** @vitest-environment jsdom */
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
+import { act, type ReactNode } from "react";
+import { afterEach, expect, test, vi } from "vitest";
+import { createEditorApi, type ApiPage, type ServiceDetail } from "../../src/api/client";
+import { AuthFailure, type EditorAuth } from "../../src/auth/session";
+import { routeTree } from "../../src/routeTree.gen";
+import { renderInPage } from "../helpers/page-editor";
+
+const stamp = "2026-10-07T12:00:00.000Z";
+
+const pages = new Map(
+  ["service", "fees", "other", "fourth"].map((id) => [
+    id,
+    {
+      id,
+      title: id,
+      url: `/family/service/${id}`,
+      slug: id,
+      parent_id: id === "service" ? null : "service",
+      category_id: null,
+      visibility: "draft",
+      form_id: null,
+      body_markdown: `Body of ${id}`,
+      frontmatter: {},
+      description: null,
+      published_at: null,
+      created_at: stamp,
+      updated_at: stamp,
+    } satisfies ApiPage,
+  ]),
+);
+
+const detail: ServiceDetail = {
+  service: {
+    id: "service",
+    title: "API service",
+    url: "/family/service",
+    category: { slug: "family", title: "Family" },
+    visibility: "draft",
+    form_id: "existing-form",
+    has_start_page: false,
+    page_count: 4,
+    updated_at: stamp,
+  },
+  pages: [...pages.values()].map((page) => ({
+    ...page,
+    role: page.id === "service" ? "entry" : "supporting",
+  })),
+};
+
+const clients: QueryClient[] = [];
+
+afterEach(() => {
+  clients.splice(0).forEach((client) => client.clear());
+});
+
+async function mountWorkspace(path = "/services/service/fees") {
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches: true,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }));
+  vi.stubGlobal("scrollTo", () => {});
+
+  const auth: EditorAuth = {
+    session: vi.fn<EditorAuth["session"]>(async () => ({
+      ok: true,
+      value: { email: "author@govtech.bb", expiresAt: Date.now() + 3600000 },
+    })),
+    signIn: vi.fn<EditorAuth["signIn"]>(async (_origin, returnTo) => ({
+      ok: true,
+      value: returnTo,
+    })),
+    signOut: vi.fn<EditorAuth["signOut"]>(async () => ({ ok: true, value: undefined })),
+  };
+
+  const writes: RequestInit[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init?: RequestInit) => {
+      const path = new URL(url).pathname;
+
+      if (path === "/services") return Response.json([detail.service]);
+
+      if (path === "/services/service") return Response.json(detail);
+
+      if (path === "/taxonomy") return Response.json({ categories: [] });
+
+      if (path === "/version") return Response.json({ count: 1, latest: stamp });
+      const page = pages.get(path.replace("/pages/", ""));
+
+      if (page && init?.method === "PUT") {
+        writes.push(init);
+
+        return Response.json({
+          ...page,
+          ...JSON.parse(String(init.body)),
+          updated_at: "2026-10-07T13:00:00.000Z",
+        });
+      }
+
+      return page ? Response.json(page) : Response.json({}, { status: 404 });
+    }),
+  );
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  clients.push(client);
+  // The real app routes, without nesting an HTML document inside the test's div.
+  Object.assign(routeTree.options, {
+    shellComponent: ({ children }: { children: ReactNode }) => <>{children}</>,
+  });
+
+  const router = createRouter({
+    routeTree,
+    context: { auth, api: createEditorApi("http://localhost:3020"), queryClient: client },
+    history: createMemoryHistory({ initialEntries: [path] }),
+    Wrap: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+  });
+
+  await renderInPage(<RouterProvider router={router} />);
+  await act(async () => router.load());
+  await act(async () => {
+    await vi.waitFor(() =>
+      expect(document.querySelector("header")?.textContent).toContain("Sign out"),
+    );
+  });
+
+  return { router, auth, writes, client };
+}
+
+const until = (ready: () => void) =>
+  act(async () => {
+    await vi.waitFor(ready);
+  });
+
+test("malformed old workspaces and drafts cannot shadow API pages or create browser-only flows", async () => {
+  localStorage.setItem("govbb-editor:workspace:v1", "{broken");
+  localStorage.setItem("govbb-editor:documents:fees:markdown", "Old local page");
+  localStorage.setItem("govbb-editor:draft:markdown:v2", "Old local form");
+  const read = vi.spyOn(Storage.prototype, "getItem");
+  const write = vi.spyOn(Storage.prototype, "setItem");
+  await mountWorkspace();
+  await until(() =>
+    expect(document.querySelector('[aria-label="Page content"]')?.textContent).toContain(
+      "Body of fees",
+    ),
+  );
+  expect(document.body.textContent).not.toMatch(
+    /Old local|Drafts in this browser|Create browser draft|Application form/,
+  );
+  expect(read.mock.calls.every(([key]) => key === "govbb-editor:sidebar-collapsed")).toBe(true);
+  expect(write).not.toHaveBeenCalled();
+});
+
+test("old local URLs use normal API not-found behavior", async () => {
+  localStorage.setItem(
+    "govbb-editor:workspace:v1",
+    JSON.stringify({
+      version: 1,
+      services: [{ id: "local", title: "Old service", documents: [] }],
+    }),
+  );
+  await mountWorkspace("/services/local/form-original");
+  await until(() => expect(document.body.textContent).toContain("Document not found"));
+  expect(document.body.textContent).not.toContain("Old service");
+});
+
+const control = (label: string, scope: ParentNode = document) => {
+  const button = [...scope.querySelectorAll("button")].find(
+    (item) => item.textContent === label || item.getAttribute("aria-label") === label,
+  );
+
+  if (!button) throw Error("Missing button: " + label);
+
+  return button;
+};
+
+const activeTitle = () =>
+  [...document.querySelectorAll<HTMLTextAreaElement>('textarea[aria-label="Page title"]')].find(
+    (input) => !input.closest("[hidden]"),
+  )!;
+
+const question = () => document.querySelector<HTMLElement>('[role="alertdialog"]')!;
+
+async function editTitle(value: string) {
+  await act(async () => {
+    const input = activeTitle();
+    input.focus();
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(
+      input,
+      value,
+    );
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+const click = (label: string, scope: ParentNode = document) =>
+  act(async () => control(label, scope).click());
+
+test("Cancel preserves route, edited title and focus; confirmed Leave cannot resurrect discarded edits or undo", async () => {
+  const h = await mountWorkspace();
+  await editTitle("Unsaved title");
+  await act(async () => {
+    void h.router.navigate({ to: "/services" });
+  });
+  await until(() => expect(question()?.textContent).toContain("Leave without saving?"));
+  expect(h.router.state.location.pathname).toBe("/services/service/fees");
+  await until(() => expect(document.activeElement).toBe(control("Cancel", question())));
+  await click("Cancel", question());
+  await until(() => expect(question()).toBeNull());
+  expect(activeTitle().value).toBe("Unsaved title");
+  expect(h.writes).toHaveLength(0);
+  await act(async () => {
+    void h.router.navigate({ to: "/services" });
+  });
+  await until(() => expect(question()).not.toBeNull());
+  await click("Leave without saving", question());
+  await until(() => expect(h.router.state.location.pathname).toBe("/services"));
+  await act(async () =>
+    h.router.navigate({
+      to: "/services/$serviceId/$documentId",
+      params: { serviceId: "service", documentId: "fees" },
+    }),
+  );
+  await until(() => expect(activeTitle()?.value).toBe("fees"));
+  expect(control("Undo").disabled).toBe(true);
+});
+
+test("sign-out asks before revoking auth and does not show a second route prompt", async () => {
+  const h = await mountWorkspace();
+  await editTitle("Keep before sign-out");
+  await click("Sign out");
+  await until(() => expect(question()?.textContent).toContain("Sign out?"));
+  expect(h.auth.signOut).not.toHaveBeenCalled();
+  await click("Cancel", question());
+  expect(activeTitle().value).toBe("Keep before sign-out");
+  await click("Sign out");
+  await click("Sign out", question());
+  await until(() => expect(h.router.state.location.pathname).toBe("/auth"));
+  expect(h.auth.signOut).toHaveBeenCalledOnce();
+  expect(question()).toBeNull();
+  expect(document.body.textContent).not.toContain("remain in this browser");
+});
+
+test("failed sign-out and a cancelled session-expiry redirect keep the working copy", async () => {
+  const h = await mountWorkspace();
+  await editTitle("Keep on auth failure");
+  vi.mocked(h.auth.signOut).mockResolvedValue({ ok: false, error: new AuthFailure("unavailable") });
+  await click("Sign out");
+  await click("Sign out", question());
+  await until(() => expect(document.body.textContent).toContain("We could not sign you out"));
+  expect(activeTitle().value).toBe("Keep on auth failure");
+  vi.mocked(h.auth.session).mockResolvedValue({ ok: true, value: null });
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  await until(() => expect(question()).not.toBeNull());
+  await click("Cancel", question());
+  expect(h.router.state.location.pathname).toBe("/services/service/fees");
+  expect(activeTitle().value).toBe("Keep on auth failure");
+  expect(h.auth.signIn).not.toHaveBeenCalled();
+});
+
+test("unapplied invalid Markdown also blocks leaving and Escape keeps it", async () => {
+  const h = await mountWorkspace();
+  await until(() => expect(activeTitle()).toBeDefined());
+  const trigger = control("Markdown");
+
+  const sourceInput = () => {
+    const label = [...document.querySelectorAll("label")].find(
+      (item) => item.textContent === "Markdown source",
+    )!;
+
+    return document.querySelector<HTMLTextAreaElement>(`textarea[id="${label.htmlFor}"]`)!;
+  };
+
+  await act(async () => trigger.click());
+  const source = sourceInput();
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(
+      source,
+      "---\ntitle: [unfinished",
+    );
+    source.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await click("Close source");
+  await act(async () => {
+    void h.router.navigate({ to: "/services" });
+  });
+  await until(() => expect(question()).not.toBeNull());
+  await act(async () =>
+    question().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
+  );
+  await until(() => expect(question()).toBeNull());
+  expect(h.router.state.location.pathname).toBe("/services/service/fees");
+  await act(async () => trigger.click());
+  expect(sourceInput().value).toBe("---\ntitle: [unfinished");
+});
+
+test("pending saves block departure but the navigation question can still be cancelled", async () => {
+  const h = await mountWorkspace();
+  await editTitle("Saving title");
+  let complete: (response: Response) => void = () => {};
+
+  const response = new Promise<Response>((resolve) => {
+    complete = resolve;
+  });
+
+  const originalFetch = fetch;
+  vi.stubGlobal("fetch", (url: RequestInfo | URL, init?: RequestInit) =>
+    init?.method === "PUT" ? response : originalFetch(url, init),
+  );
+  await click("Save");
+  await act(async () => {
+    void h.router.navigate({ to: "/services" });
+  });
+  await until(() => expect(question()?.textContent).toContain("A save is in progress"));
+  expect(control("Leave without saving", question()).disabled).toBe(true);
+  expect(control("Cancel", question()).disabled).toBe(false);
+  await click("Cancel", question());
+  expect(h.router.state.location.pathname).toBe("/services/service/fees");
+  await act(async () => {
+    complete(
+      Response.json({
+        ...pages.get("fees"),
+        title: "Saving title",
+        updated_at: "2026-10-07T13:00:00.000Z",
+      }),
+    );
+  });
+  await until(() => expect(control("Save").disabled).toBe(true));
+});
+
+test("clean navigation keeps at most three page views and retains API navigation", async () => {
+  const h = await mountWorkspace();
+
+  for (const documentId of ["other", "fourth", "service"]) {
+    await act(async () =>
+      h.router.navigate({
+        to: "/services/$serviceId/$documentId",
+        params: { serviceId: "service", documentId },
+      }),
+    );
+    await until(() => expect(activeTitle()?.value).toBe(documentId));
+    expect(question()).toBeNull();
+  }
+
+  expect(document.querySelectorAll("main > section[aria-label]").length).toBe(3);
+  await act(async () =>
+    h.router.navigate({
+      to: "/services/$serviceId/$documentId",
+      params: { serviceId: "service", documentId: "fees" },
+    }),
+  );
+  await until(() => expect(activeTitle()?.value).toBe("fees"));
+  expect(question()).toBeNull();
+});

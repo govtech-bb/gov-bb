@@ -39,7 +39,7 @@ test("the title is the screen's h1, and the tools keep their places whatever ord
       source={button("Markdown")}
       preview={button("Preview page")}
       undo={button("Undo")}
-      save={{ status: "local" }}
+      save={{ status: "saved" }}
       title="Renew a passport"
       notices={<p>Page editing is paused.</p>}
     />,
@@ -82,12 +82,10 @@ test("where the work stands sits beside the title, and a failed save's message c
 
   // Saved again, the message goes, and the notices with nothing to say go with it
   await render(
-    <DocumentBar label="Page tools" title="Renew a passport" save={{ status: "local" }} />,
+    <DocumentBar label="Page tools" title="Renew a passport" save={{ status: "saved" }} />,
   );
   expect(host.childElementCount).toBe(1);
-  expect(host.textContent).toBe(
-    "Renew a passportSaved in this browserChanges saved in this browser",
-  );
+  expect(host.textContent).toBe("Renew a passportSavedChanges saved");
 });
 
 test("a form fills the slots it has, and the bar closes up round the rest", async () => {

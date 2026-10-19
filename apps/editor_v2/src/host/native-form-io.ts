@@ -34,7 +34,7 @@ const issue = (message: string, code = "native-import"): NativeDiagnostic => ({
   path: [],
 });
 
-/** Preparation owns no live editor or storage; exact uploaded bytes survive every failure. */
+/** Preparation owns no live editor; exact uploaded bytes stay available after failure. */
 export function prepareNativeImport(
   source: string,
   definition: FormEditorDefinition,
@@ -80,7 +80,7 @@ export function prepareNativeImport(
           ...original,
           diagnostics: [
             issue(
-              "Markdown draft storage cannot preserve every property of this form",
+              "Markdown conversion cannot preserve every property of this form",
               "native-storage-preservation",
             ),
           ],
@@ -111,17 +111,15 @@ export function prepareNativeImport(
 export function nativeIOUnavailable(store: DraftStore, editor: LexicalEditor): string | undefined {
   const draft = store.getSnapshot();
 
-  if (draft.replacement || draft.recovery)
-    return "Recover the draft before importing or exporting JSON";
-
-  if (draft.conflict) return "Resolve the draft conflict before importing or exporting JSON";
+  if (draft.recovery) return "Resolve the source error before importing or exporting JSON";
 
   if (draft.dirty)
     return "Apply or discard your Markdown changes before importing or exporting JSON";
 
   if (!draft.valid || !editor.isEditable()) return "This form is currently read only";
 
-  if (draft.status !== "saved") return "Save the current draft before importing or exporting JSON";
+  if (draft.status === "error")
+    return "Resolve the editor error before importing or exporting JSON";
 }
 
 /** Capture before asynchronous file reading; later intervening edits invalidate this token. */
@@ -129,7 +127,6 @@ export function beginNativeImport(
   store: DraftStore,
   editor: LexicalEditor,
 ): { token?: DraftReplacementToken; error?: string } {
-  store.flush();
   const error = nativeIOUnavailable(store, editor);
 
   return error ? { error } : { token: store.captureReplacementToken() };
@@ -152,7 +149,6 @@ export function applyNativeImport(
     };
 
   return store.replacePrepared(pending.prepared, token, {
-    original: pending.source,
     canCommit: () => editor.isEditable(),
   });
 }
@@ -162,7 +158,6 @@ export function exportNativeForm(
   editor: LexicalEditor,
   definition: FormEditorDefinition,
 ) {
-  store.flush();
   const unavailable = nativeIOUnavailable(store, editor);
 
   if (unavailable) return { diagnostics: [issue(unavailable, "draft-unavailable")] };

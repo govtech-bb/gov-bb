@@ -2,7 +2,7 @@ import { authenticatedPage } from "./auth-fixture.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "./playwright.mjs";
-import { formDraftUrl } from "./form-fixture.mjs";
+import { formFixtureUrl, seedFormSource, reloadEditorFromSource } from "./form-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -51,14 +51,8 @@ try {
     "utf8",
   );
 
-  await page.addInitScript((source) => {
-    if (!localStorage.getItem("legacy-logic-proof")) {
-      localStorage.clear();
-      localStorage.setItem("govbb-editor:draft:markdown:v2", source);
-      localStorage.setItem("legacy-logic-proof", "1");
-    }
-  }, legacySource);
-  await page.goto(formDraftUrl(process.argv[2] ?? "http://localhost:3013/"));
+  await seedFormSource(page, legacySource);
+  await page.goto(formFixtureUrl(process.argv[2] ?? "http://localhost:3013/"));
   await root.waitFor();
   await page.evaluate(() => document.fonts.ready);
   await settle();
@@ -217,9 +211,7 @@ try {
   );
 
   await page.waitForFunction(() =>
-    localStorage
-      .getItem("govbb-editor:draft:markdown:v2")
-      ?.includes("List the roads you will close"),
+    window.editorFixture.source().includes("List the roads you will close"),
   );
   const saved = await state();
   assert.ok(
@@ -229,7 +221,7 @@ try {
         settings(node).conditionalTitle === undefined,
     ),
   );
-  await page.reload();
+  await reloadEditorFromSource(page);
   await root.waitFor();
   assert.equal(
     await page.getByLabel("Replacement page heading").inputValue(),

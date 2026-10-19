@@ -16,9 +16,23 @@ const service = servicesFixture[0];
 
 const id = "44444444-4444-4444-8444-444444444444";
 
-const baselineKey = `govbb-editor:documents:${id}:server`;
+await page.addInitScript((id) => {
+  localStorage.setItem("govbb-editor:workspace:v1", "{broken old workspace");
+  localStorage.setItem(`govbb-editor:documents:${id}:markdown`, "Conflicting local page");
+  localStorage.setItem(`govbb-editor:documents:${id}:server`, "{malformed baseline");
+  localStorage.setItem("govbb-editor:draft:replacement", "{unfinished old replacement");
+  window.draftStorageCalls = [];
 
-const committedKey = `govbb-editor:documents:${id}:markdown`;
+  for (const method of ["getItem", "setItem", "removeItem", "clear"]) {
+    const original = Storage.prototype[method];
+    Storage.prototype[method] = function (...args) {
+      if (method === "clear" || /govbb-editor:(documents:|draft:|workspace:)/.test(args[0]))
+        window.draftStorageCalls.push([method, ...args]);
+
+      return original.apply(this, args);
+    };
+  }
+}, id);
 
 const initial = {
   id,
@@ -128,22 +142,17 @@ const title = page.getByRole("textbox", { name: "Page title", exact: true });
 
 const body = page.getByRole("textbox", { name: "Page content", exact: true });
 
-const readBaseline = () =>
-  page.evaluate((key) => JSON.parse(localStorage.getItem(key)), baselineKey);
-
-const waitForSavedTitle = (expected) =>
-  page.waitForFunction(
-    ({ key, expected }) => JSON.parse(localStorage.getItem(key))?.page.title === expected,
-    { key: baselineKey, expected },
-  );
+const waitForSavedTitle = async (expected) => {
+  await page.locator("[data-document-bar]:visible").getByText("Saved", { exact: true }).waitFor();
+  assert.equal(current.title, expected);
+};
 
 try {
   const url = new URL(`/services/${service.id}/${id}`, process.argv[2] ?? "http://localhost:3000/");
   await page.goto(url.href);
   await title.waitFor();
   assert.equal(await title.inputValue(), initial.title);
-  assert.deepEqual((await readBaseline()).page, initial);
-  assert.deepEqual(Object.keys(await readBaseline()).sort(), ["markdown", "page"]);
+  assert.deepEqual(await page.evaluate(() => window.draftStorageCalls), []);
 
   await title.fill("Edited remote title");
   await body.fill("Edited remote body");
@@ -172,7 +181,6 @@ try {
     .waitFor();
   assert.equal(writes.length, 2);
   assert.equal(writes[1].ifUpdatedAt, savedVersion);
-  assert.equal((await readBaseline()).page.updated_at, savedVersion);
   assert.equal(await title.inputValue(), "My conflicting title");
   await button("Keep my version").click();
   await button("Save").click();
@@ -232,7 +240,7 @@ try {
   await dialog.waitFor({ state: "hidden" });
   assert.equal(await title.inputValue(), historical.title);
   assert.equal(writes.length, 3);
-  assert.equal((await readBaseline()).page.updated_at, restoreVersion);
+  assert.equal(current.updated_at, restoreVersion);
   await button("Undo").click();
   assert.equal(await title.inputValue(), "My conflicting title");
   assert.equal(writes.length, 3);
@@ -249,18 +257,22 @@ try {
   assert.equal(current.visibility, initial.visibility);
   assert.equal(current.body_markdown, historical.body_markdown);
 
-  const stored = await page.evaluate((key) => localStorage.getItem(key), committedKey);
-  const baseline = await readBaseline();
+  assert.deepEqual(await page.evaluate(() => window.draftStorageCalls), []);
   await page.reload();
   await title.waitFor();
   assert.equal(await title.inputValue(), historical.title);
   assert.equal(await body.innerText(), "Historical body\n\nPreview link");
-  assert.deepEqual(await readBaseline(), baseline);
-  assert.equal(await page.evaluate((key) => localStorage.getItem(key), committedKey), stored);
+  assert.deepEqual(await page.evaluate(() => window.draftStorageCalls), []);
+  assert.equal(
+    await page.evaluate((id) => localStorage[`govbb-editor:documents:${id}:markdown`], id),
+    "Conflicting local page",
+  );
   assert.equal(new URL(page.url()).pathname, url.pathname);
   assert.equal(writes.length, 4);
   assert.deepEqual(errors, []);
-  console.log("PASS remote page save, conflict, history restoration, storage and reload");
+  console.log(
+    "PASS remote page save, conflict, history restoration, inert old drafts and API reload",
+  );
 } finally {
   await context.close();
   await browser.close();

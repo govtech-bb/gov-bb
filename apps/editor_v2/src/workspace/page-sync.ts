@@ -5,72 +5,29 @@ import {
   type FieldError,
   type TaxonomyCategory,
 } from "../api/client";
-import { markdownToPageSaveInput, pageToMarkdown } from "../api/page-markdown";
-import type { DraftStorage } from "../persistence/types";
-import { documentKeys } from "./model";
+import { markdownToPageSaveInput } from "../api/page-markdown";
+import type { DraftStore } from "../persistence/draft-store";
 
-/** The server's copy of a page as this browser last loaded or saved it, and the Markdown that stood for it. */
+/** The exact page version and submitted Markdown last loaded or saved in this session. */
 export type ServerPageBaseline = { page: ApiPage; markdown: string };
 
-export const serverPageBaselineKey = (id: string) => `govbb-editor:documents:${id}:server`;
+/** Mounted page registration; live getters let navigation see edits and pending saves immediately. */
+export type PageSession = {
+  store: DraftStore;
+  getBaseline: () => ServerPageBaseline;
+  isSaving: () => boolean;
+};
 
-/** A stored server copy, or undefined when this browser holds none it can read. */
-export function parseServerPageBaseline(
-  source: string | null,
-  id: string,
-): ServerPageBaseline | undefined {
-  if (source === null) return undefined;
-
-  try {
-    const base: ServerPageBaseline = JSON.parse(source);
-
-    return base.page.id === id && typeof base.markdown === "string" ? base : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-export function writeServerPageBaseline(storage: DraftStorage, base: ServerPageBaseline) {
-  storage.setItem(serverPageBaselineKey(base.page.id), JSON.stringify(base));
-}
-
-/**
- * Whether a document's browser draft holds nothing of its own: there is none, or it is the server's copy as this
- * browser last had it, with nothing unsaved. Opening such a page shows the server's copy; any other draft is kept.
- */
-export function draftFollowsServer(storage: DraftStorage, id: string, keys = documentKeys(id)) {
-  const local = storage.getItem(keys.committed);
+/** Unapplied source and serialization failures count as unsaved, even when applied text still matches. */
+export function pageHasUnsavedChanges(session: PageSession) {
+  const draft = session.store.getSnapshot();
 
   return (
-    local === null ||
-    (local === parseServerPageBaseline(storage.getItem(serverPageBaselineKey(id)), id)?.markdown &&
-      storage.getItem(keys.working) === null &&
-      !(keys.replacementJournal && storage.getItem(keys.replacementJournal) !== null))
+    !draft.valid ||
+    draft.dirty ||
+    draft.status === "error" ||
+    draft.committed !== session.getBaseline().markdown
   );
-}
-
-/**
- * Put the server's copy of a page in front of its draft before the draft
- * opens. A draft with nothing unsaved follows the server; one with unsaved
- * changes is kept, and the editor offers choices once it sees the server has
- * moved on.
- */
-export function seedPageDraftFromServer(
-  storage: DraftStorage,
-  page: ApiPage,
-  categories: readonly TaxonomyCategory[],
-): ServerPageBaseline {
-  const keys = documentKeys(page.id);
-  const base = parseServerPageBaseline(storage.getItem(serverPageBaselineKey(page.id)), page.id);
-  const server = { page, markdown: pageToMarkdown(page, categories) };
-  const followsServer = draftFollowsServer(storage, page.id, keys);
-
-  if (followsServer) storage.setItem(keys.committed, server.markdown);
-
-  if (!followsServer && base) return base;
-  writeServerPageBaseline(storage, server);
-
-  return server;
 }
 
 export type PageSaveOutcome =

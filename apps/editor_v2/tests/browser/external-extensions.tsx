@@ -42,7 +42,7 @@ import {
   SourceEditor,
   useDraft,
 } from "../../src/host";
-import { DraftStore, initialDraft, type DraftCodec, type DraftKeys } from "../../src/persistence";
+import { DraftStore, type DraftCodec } from "../../src/persistence";
 import { govbbFormModules } from "../../src/presets/govbb-form";
 import { $createNotice, NoticeModule } from "../extensions/notice-module";
 import { NoticeFormModule } from "../extensions/notice-form";
@@ -75,13 +75,6 @@ const contentCodec: DraftCodec = {
   encode: (state) => JSON.stringify(state),
   prepareLegacy: contentDefinition.validateDocument,
 };
-
-const keys = (name: string): DraftKeys => ({
-  committed: `external:${name}:saved`,
-  working: `external:${name}:working`,
-  previous: `external:${name}:previous`,
-  legacy: `external:${name}:legacy`,
-});
 
 function initial(kind: "content" | "form") {
   if (kind === "form") {
@@ -142,17 +135,13 @@ function initial(kind: "content" | "form") {
 }
 
 const contentStore = new DraftStore(
-  localStorage,
-  initialDraft(localStorage, () => initial("content"), contentCodec, keys("content")),
+  window.externalSources?.content ?? contentCodec.encode(initial("content")),
   contentCodec,
-  keys("content"),
 );
 
 const formStore = new DraftStore(
-  localStorage,
-  initialDraft(localStorage, () => initial("form"), formCodec, keys("form")),
+  window.externalSources?.form ?? formCodec.encode(initial("form")),
   formCodec,
-  keys("form"),
 );
 
 const editors: Partial<Record<"content" | "form", LexicalEditor>> = {};
@@ -186,6 +175,7 @@ const fixture = {
 
 declare global {
   interface Window {
+    externalSources?: { content: string; form: string };
     externalFixture: typeof fixture;
   }
 }

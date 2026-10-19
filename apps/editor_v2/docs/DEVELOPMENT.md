@@ -1,6 +1,6 @@
 # Development
 
-Start and Router are pinned together for compatibility. Their history package includes the fix that restores the current URL when blocked Forward or multi-entry navigation follows a failed draft save.
+Start and Router are pinned together. Their history package restores the current URL when Back, Forward or multi-entry navigation is cancelled by the unsaved-work guard.
 
 Run the app and the Nx checks from the repository root as shown in the [README](../README.md). The commands below run from `apps/editor_v2`.
 
@@ -32,9 +32,9 @@ Use [Code quality](CODE-QUALITY.md) for formatting commands and the validation e
 
 ## App shell and routes
 
-TanStack Start builds a static shell and renders the workspace in the browser. The root document must remain safe to render during the build; `localStorage` and document sessions belong to the client-only workspace layout. The configuration follows the official [Start setup](https://tanstack.com/start/latest/docs/framework/react/build-from-scratch), [SPA mode](https://tanstack.com/start/latest/docs/framework/react/guide/spa-mode) and [client entry](https://tanstack.com/start/latest/docs/framework/react/guide/client-entry-point) guides.
+TanStack Start builds a static shell and renders the workspace in the browser. Keep the root document safe to render during builds. Editing state belongs to the client-only workspace; browser storage is used only for unrelated clipboard data and UI preferences.
 
-Routes use `/services`, `/services/$serviceId` and `/services/$serviceId/$documentId`; `/` opens Services. Old `/#/services/...` links are replaced on startup. The persistent workspace keeps visited editors mounted so each document retains its undo history. Navigation flushes the current draft before changing documents; save failures and unresolved recovery block navigation.
+Routes use `/services`, `/services/$serviceId` and `/services/$serviceId/$documentId`; `/` opens Services. Old `/#/services/...` links are replaced on startup. Clean views are cached with per-page undo; dirty/error/pending views cannot be silently evicted. Leaving unsaved work asks before changing documents. Confirmed discard removes the copy and its undo session; navigation never flushes or saves.
 
 Start generates `src/routeTree.gen.ts` during development and builds. Keep that file checked in so standalone typechecks work on a fresh checkout. It is excluded from linting and formatting; edit route files instead. Vitest uses its own configuration without the Start plugin.
 
@@ -51,9 +51,9 @@ PLAYWRIGHT_MODULE_PATH=/path/to/playwright-core \
 
 The runner resolves an existing `playwright` or `playwright-core` installation, with `PLAYWRIGHT_MODULE_PATH` as an alternative. Chromium must be available to that installation. Each suite uses an isolated browser context.
 
-App UI suites supply an employee session at the HTTP boundary through `scripts/browser/auth-fixture.mjs`; production has no authentication bypass. A new browser has no form, so form suites seed one at the storage boundary through `scripts/browser/form-fixture.mjs`: `openDemoForm` writes the documented demo as the browser's original form draft and opens it at its own route, and `seedFormDraft` and `formDraftUrl` do the same for a suite's own source. `authentication.mjs` separately exercises anonymous automatic login, callback confirmation, cancellation, unavailable authentication, sign-out and preservation of drafts that cannot be saved, using intercepted API/GitHub HTTP responses. Real GitHub consent and deployment cookies require a configured deployment smoke test.
+App UI suites supply employee/API responses at the HTTP boundary. `authentication.mjs` covers login, callback, outages, sign-out and cancelled expiry without revoking auth prematurely. Reusable form and page-canvas suites use `buildBrowserFixture` and `tests/browser/editor-host.tsx`, intercepted only by Playwright—not a production route. `openDemoForm` and `seedFormSource` supply explicit source; `reloadEditorFromSource` explicitly exports and reopens it to test conversion. A normal reload restores only fixture input. No production draft-storage seeding is needed. Real GitHub consent/cookies still require a deployment smoke test.
 
-`remote-page-editing.mjs` intercepts the content API to verify remote page editing, optimistic save conflicts, selective history restoration and storage/reload preservation. `service-workspace.mjs` separately covers browser-local services and documents; it is not remote-save coverage.
+`remote-page-editing.mjs` checks explicit saves, version conflicts, history restoration and API reloads; `service-workspace.mjs` checks API creation/deletion. `routing.mjs` checks cancelled links/Back/Forward, reload/tab-close warnings and clean-view eviction. `persistence-isolation.mjs` seeds malformed old keys and proves editing/lifecycle events neither read nor write them.
 
 Pass suite names after the URL to run a subset:
 
@@ -65,26 +65,15 @@ Avoid editing source while checking undo and document switching: a development r
 
 ## Persistence and recovery
 
-Draft keys are supplied by the host. Workspace navigation is stored at `govbb-editor:workspace:v1`, and a collapsed service sidebar at `govbb-editor:sidebar-collapsed`; documents use `govbb-editor:documents:<uuid>:...`. Earlier registry drafts use `govbb-editor:forms:<uuid>:...` and are discovered through `govbb-editor:active-draft`.
+Unsaved edits exist only in memory. Save/Publish validates and sends the applied snapshot with the baseline's `updated_at` as `if-updated-at`. Failed requests preserve work for retry or download. HTTP 409 requires an explicit conflict choice; background reads never silently advance the write token.
 
-The original form draft uses these keys:
+Apply is not Save. Invalid/unapplied source and serialization errors also count as unsaved work. Cancelled navigation/sign-out retains edits and undo. Pending saves block departure. A crash, refresh, closed tab or confirmed departure loses unsaved work; unload warnings are best-effort, not recovery.
 
-| Purpose | Key |
-| --- | --- |
-| Saved Markdown | `govbb-editor:draft:markdown:v2` |
-| Previous Markdown backup | `govbb-editor:draft:markdown:v1` |
-| Legacy JSON backup | `govbb-editor:draft` |
-| Unapplied source | `govbb-editor:draft:markdown:working` |
-| Original input before native migration | `govbb-editor:draft:native-original` |
-| Interrupted JSON replacement | `govbb-editor:draft:replacement` |
+The sidebar preference `govbb-editor:sidebar-collapsed` and clipboard storage remain. Old `govbb-editor:draft*`, `documents:*`, form/workspace and server-baseline records are left untouched and never loaded.
 
-A page from the content API keeps its browser draft under its page id, beside `govbb-editor:documents:<id>:server`: the server version it was last loaded or saved as, and the Markdown that stood for it. The draft has unsaved changes while its Markdown differs from that version's, and Save sends that version's `updated_at` as `if-updated-at`.
+API types in `src/api/openapi.d.ts` come from `apps/api_v2/openapi.json`; regenerate after an API spec change with `pnpm exec vitest run src/api/openapi.test.ts -u`.
 
-The API's types in `src/api/openapi.d.ts` are generated from `apps/api_v2/openapi.json`; when the API's spec changes, regenerate them with `pnpm exec vitest run src/api/openapi.test.ts -u`.
-
-Keep these keys stable when changing persistence. Unapplied source must survive reload, failed imports must retain the original input, and JSON replacement must retain the previous draft until recovery completes. Apply validates before replacing editor state. A storage failure must leave the unsaved work available for retry; conflicts between tabs require an explicit choice.
-
-Native IDs, answer keys, option values and Markdown anchors have different roles. Copying content remaps references and identities while retaining submitted values and opaque strings. See [Converters](CONVERTERS.md) for the preservation rules.
+Native IDs, answer keys, option values and Markdown anchors remain distinct. Imports validate before Apply and retain failed input in memory. See [Converters](CONVERTERS.md).
 
 ## Source import migration
 
@@ -94,15 +83,15 @@ Paths below are relative to `src`. Symbols not listed as renamed keep their name
 
 | Previous source | Current source |
 | --- | --- |
-| `workspace/api-pages.ts` synchronization | `workspace/page-sync.ts`: `ServerBase` → `ServerPageBaseline`, `SaveOutcome` → `PageSaveOutcome`, `serverBaseKey` → `serverPageBaselineKey`, `parseServerBase` → `parseServerPageBaseline`, `writeServerBase` → `writeServerPageBaseline`, `seedApiPage` → `seedPageDraftFromServer`, workspace `savePage` → `savePageDraft` |
-| `workspace/api-pages.ts` service mapping | `workspace/service-pages.ts`: `apiPageDocument` → `pageDocumentFromApi`, `serviceDocuments` → `servicePageDocuments`, `roleOf` → `inferServicePageRole` |
+| `workspace/api-pages.ts` synchronization | `workspace/page-sync.ts`: `ServerPageBaseline`, `PageSaveOutcome`, `savePageDraft`; browser baseline storage/seeding helpers removed |
+| `workspace/api-pages.ts` service mapping | `workspace/service-pages.ts`: `apiPageDocument` → `pageDocumentFromApi`, `roleOf` → `inferServicePageRole`; local `serviceDocuments` joins removed |
 | `workspace/api-pages.ts` Markdown helpers | `api/page-markdown.ts`: `restoredMarkdown` → `pageVersionToDraftMarkdown`, `fieldLabel` → `pageFieldLabel` |
-| `workspace/api-page.tsx` | `workspace/remote-page-pane.tsx`: `ApiPagePane` → `RemotePagePane`, private `ApiPageEditor` → `RemotePageEditor`, `useServerBase` → `useServerPageBaseline`, `notifyServerBase` → `notifyServerPageBaseline` |
-| `workspace/api-service.tsx` | `workspace/service-nav.tsx`: `ApiServiceNav` → `ServiceNav`, which also lists services drafted in the browser |
+| `workspace/api-page.tsx` | `workspace/remote-page-pane.tsx`: `RemotePagePane`, private `RemotePageEditor`; baseline state is in memory |
+| `workspace/api-service.tsx` | `workspace/service-nav.tsx`: `ServiceNav`, listing API pages only |
 | `workspace/api-history.tsx` | `workspace/page-history-dialog.tsx`; `PageHistoryDialog` unchanged |
 | `workspace/api-dialogs.tsx` | `workspace/remote-page-dialogs.tsx`: `ApiServiceDialog` → `CreateRemoteServiceDialog`, `ApiPageDialog` → `CreateRemotePageDialog`, `DeletePageDialog` → `DeleteRemotePageDialog` |
-| `workspace/dialogs.tsx` | `workspace/local-document-dialogs.tsx`: `ServiceDialog` → `LocalServiceDialog`, `DocumentDialog` → `AddLocalDocumentDialog`; shared `WorkspaceDialog` moves to `workspace/workspace-dialog.tsx`, `inputClass` → `workspaceDialogInputClass` |
-| Workspace model types only | `FormDocument` → `WorkspaceFormDocument`, `PageRole` → `ServicePageRole`, `Service` → `WorkspaceService`; the form AST/schema types are unchanged |
+| `workspace/dialogs.tsx` | Local dialogs removed; shared shell remains in `workspace/workspace-dialog.tsx` |
+| Workspace model types only | `PageDocument` and `ServicePageRole`; local service/form models removed, reusable form schema unchanged |
 | `api/client.ts` input types | `NewPage` → `CreatePageInput`, `SaveFields` → `SavePageInput`; transport method `EditorApi.savePage` unchanged |
 | `api/page-markdown.ts` save conversion | `SaveFieldsResult` → `PageSaveInputResult`, `markdownToSaveFields` → `markdownToPageSaveInput` |
 | `api/queries.ts` | `historyQuery` → `pageHistoryQuery`, `versionQuery` → `estateVersionQuery`; cache keys and timing unchanged |
@@ -117,7 +106,7 @@ Paths below are relative to `src`. Symbols not listed as renamed keep their name
 | `host/form-schema-ui.tsx` | `host/form-json-dialog.tsx`: `FormSchemaEditor` → `FormJsonDialog` |
 | `ui/table/hook.ts` | `ui/table/table-hooks.ts`; exports unchanged |
 
-There is no data migration: `govbb-editor:documents:<id>:server` still stores `{ page, markdown }`, and all existing draft/workspace keys, schema versions and routes remain unchanged. The app/package/Nx names remain `apps/editor_v2`, `@govtech-bb/editor-v2`, `editor_v2` and `dev:editor_v2`. Backend naming is a separate future review.
+Old browser draft/workspace/baseline/journal records are intentionally ignored, never migrated or cleaned up. Routes, API/schema contracts and app/package/Nx names remain unchanged. Locking, webhooks, server autosave and publication architecture are deferred.
 
 Historical probes such as `rb4.mjs`, `step3-ui.mjs`, `step5-ui.mjs` and other numbered browser scripts are deferred pending confirmation of their use. They and legacy fixtures are not renamed or counted as passing regression checks.
 
@@ -127,8 +116,7 @@ Historical probes such as `rb4.mjs`, `step3-ui.mjs`, `step5-ui.mjs` and other nu
 - Selecting Custom for a time increment does not retain a separate custom mode; the seconds editor remains visible.
 - Checks for missing declaration or confirmation pages navigate to page 1 rather than the relevant insertion point.
 - Require answer can target a field that is already required without a useful warning.
-- Closing the source dialog with unapplied edits pauses the canvas without a clear explanation.
-- Advanced → Internal alias saves in a draft, but native JSON export rejects the `name` setting. Use the visible question label in logic selectors until aliases have a native mapping.
+- Advanced → Internal alias can be edited in memory, but native JSON export rejects the `name` setting. Use the visible question label in logic selectors until aliases have a native mapping.
 - The loud-music demo requires both National ID and passport even though its Details text presents them as alternatives. Its definition needs conditional requirements; the documented demo and example test currently preserve that behavior.
 
 Address lookup and opening hours provide authoring examples, not live integrations. Calculator fixtures are regression data: NIS prototype rates have not been verified for production use, and severance cases use explicit complete-years and end-year inputs.

@@ -5,13 +5,11 @@ import { Banner } from "./banner";
 import { Button } from "./button";
 
 /**
- * Where a document's work stands, in words that say who can see it. A browser draft is only ever saved in this
- * browser. A page from the content API waits in this browser until the author saves it, or publishes it if it's
- * public. Failed is a save that went wrong; paused is saving held back while editing is paused.
+ * Where a page stands against its server baseline. Edits stay in memory until an explicit Save or Publish.
+ * Failed is a save or conversion error; paused means the source needs attention before saving.
  */
 export type SaveStatus =
   | "saving"
-  | "local"
   | "unsaved"
   | "saved"
   | "unpublished"
@@ -21,18 +19,16 @@ export type SaveStatus =
 
 const labels = new Map<SaveStatus, string>([
   ["saving", "Saving…"],
-  ["local", "Saved in this browser"],
   ["unsaved", "Unsaved changes"],
   ["saved", "Saved"],
   ["unpublished", "Unpublished changes"],
   ["published", "Published"],
   ["failed", "Not saved"],
-  ["paused", "Saving paused"],
+  ["paused", "Editing paused"],
 ]);
 
 // What's read out once a save the author asked for has gone through
 const done = new Map<SaveStatus, string>([
-  ["local", "Changes saved in this browser"],
   ["saved", "Changes saved"],
   ["published", "Changes published"],
 ]);
@@ -50,8 +46,7 @@ export type SaveStateProps = {
 };
 
 /**
- * What's read out, and only that: a failure, a conflict, or a save the author asked for having gone through. A
- * draft saving itself as the author pauses typing stays silent.
+ * Announce failures, conflicts and successful explicit saves; ordinary typing stays silent.
  */
 function useAnnouncement({ status, error, conflict }: SaveStateProps) {
   const [message, setMessage] = useState("");
@@ -69,7 +64,7 @@ function useAnnouncement({ status, error, conflict }: SaveStateProps) {
     else if (
       previous.status === "failed" ||
       previous.status === "paused" ||
-      (previous.status === "saving" && status !== "local")
+      previous.status === "saving"
     )
       setMessage(done.get(status) ?? "");
     // Emptied, so the next message is read out even if it's the same as the last
@@ -95,9 +90,7 @@ function SaveStateStatus(props: SaveStateProps) {
         <Badge tone={status === "failed" ? "error" : "warning"}>{label}</Badge>
       ) : (
         <span className="flex items-center gap-1.5 [&>svg]:size-4">
-          {(status === "local" || status === "saved" || status === "published") && (
-            <Check aria-hidden="true" />
-          )}
+          {(status === "saved" || status === "published") && <Check aria-hidden="true" />}
           {label}
         </span>
       )}

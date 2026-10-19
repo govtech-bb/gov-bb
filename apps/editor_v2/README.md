@@ -1,8 +1,8 @@
 # GovBB editor v2
 
-Page and form authoring for GovBB services. The workspace groups entry pages, supporting content and an application form or calculator, with a separate draft and undo history for each document.
+API-backed service page authoring for GovBB. The workspace groups entry, start and supporting pages, with independent in-memory edits and undo history.
 
-Pages use Markdown with YAML frontmatter. Forms use native v2 JSON for import/export and versioned Markdown for drafts. Drafts are saved in the browser. Pages from the content API are saved back to it when the author chooses Save; forms stay in the browser, and application submission is not connected.
+Pages use Markdown with YAML frontmatter. Edits remain in memory until the author chooses **Save** or **Publish changes**. There is no browser draft persistence or autosave. Reusable form editors, presets and native v2 JSON/Markdown converters remain available for embedding, but form authoring is not a workspace flow.
 
 ## Run locally
 
@@ -23,7 +23,7 @@ For local development without GitHub, run `vite dev` with `VITE_AUTH_BYPASS=true
 
 `VITE_LANDING_ORIGIN` is the optional public site origin. When set, each service's path in the Services list links to its page there.
 
-Authentication gates the workspace, and saving a page sends it to the content API with the session; drafts themselves stay in the browser. Signing out preserves local drafts and is blocked if the current draft cannot be safely saved. Browser storage remains local to this origin and is not separated by account.
+Authentication gates the workspace and saving sends the page to the content API with the session. Leaving unsaved work, signing out or an expired-session redirect asks before discarding it; a pending save blocks departure. Cancel keeps the working copy and undo history. Unsaved work is lost on a crash, refresh, closed tab or confirmed departure; download a copy before leaving if it cannot be saved.
 
 ## Checks
 
@@ -31,16 +31,16 @@ Authentication gates the workspace, and saving a page sends it to the content AP
 VITE_API_ORIGIN=https://api.example.gov.bb pnpm exec nx run-many -p editor_v2 -t build test typecheck lint format:check check:boundaries check:coverage
 ```
 
-The static app is built into `apps/editor_v2/dist/client`. Serve existing assets first, then rewrite application URLs to `/_shell.html` with HTTP 200. The generated server build is used to create the shell; static hosting does not run it. Keep the same origin when migrating a deployment so existing browser drafts remain accessible.
+The static app is built into `apps/editor_v2/dist/client`. Serve existing assets first, then rewrite application URLs to `/_shell.html` with HTTP 200. The generated server build creates the shell; static hosting does not run it. Old browser drafts are intentionally ignored and left untouched, without migration or recovery. Clipboard data and UI preferences are unchanged.
 
 `/auth` is a public SPA route for OAuth completion, errors and signed-out recovery. The GitHub provider callback is served by the API at `/api/auth/callback/github`; the editor never handles provider tokens.
 
-Tests run with Vitest and cover forms, saved drafts and page conversion, including the current content in `apps/landing/src/content`.
+Tests run with Vitest and cover in-memory editing, explicit API saves, forms and page conversion, including the current content in `apps/landing/src/content`.
 
 ## Working on the editor
 
-- [Development](docs/DEVELOPMENT.md): focused tests, browser checks, draft storage and known issues.
+- [Development](docs/DEVELOPMENT.md): focused tests, browser checks, save/leave behavior and known issues.
 - [Architecture](docs/ARCHITECTURE.md): editor modules, presets and host integration.
-- [Examples](docs/examples/editor-system.tsx): page and form editors with optional draft storage.
+- [Examples](docs/examples/editor-system.tsx): page and form editors with optional in-memory source binding.
 - [Product scope](PRODUCT.md): supported authoring workflows and design conventions.
 - [Documentation](docs/README.md): formats, converters and extension guides.

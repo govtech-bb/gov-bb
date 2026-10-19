@@ -1,59 +1,29 @@
-import { useMemo } from "react";
-import { browserDraftStorage } from "../host/govbb-draft";
+import { useMemo, useSyncExternalStore } from "react";
 import { readPageMetadata } from "../pages";
 import type { DraftStore } from "../persistence/draft-store";
-import { currentFormMode } from "./documents";
-import { documentLabel, type WorkspaceDocument } from "./model";
-import { draftFollowsServer } from "./page-sync";
-import { useDocumentDraft } from "./use-document-draft";
+import { documentLabel, type PageDocument } from "./model";
 
-/**
- * A document's name as its draft has it, so a page retitled in its editor is renamed wherever it's listed, and a
- * form's current kind. `store` is the open editor's draft; without one, the draft stored in this browser, unless that
- * is just the server's copy, in which case the document's own title is the server's latest.
- */
-export function useDocumentLabel(document?: WorkspaceDocument, store?: DraftStore) {
-  // Unreadable storage leaves the document's own title
-  const stored = useMemo(() => {
-    if (!document) return false;
+const noSubscription = () => () => {};
 
-    try {
-      return !draftFollowsServer(browserDraftStorage, document.id, document.keys);
-    } catch {
-      return false;
-    }
-  }, [document]);
+const noSnapshot = () => undefined;
 
-  const snapshot = useDocumentDraft(store || stored ? document : undefined, store);
+/** An open page's in-memory title; a closed page uses the API's title, never a stored draft. */
+export function useDocumentLabel(document?: PageDocument, store?: DraftStore) {
+  const snapshot = useSyncExternalStore(
+    store?.subscribe ?? noSubscription,
+    store?.getSnapshot ?? noSnapshot,
+  );
 
   return useMemo(() => {
     if (!document) return;
 
-    if (!snapshot?.valid || snapshot.conflict || snapshot.recovery || snapshot.replacement)
+    if (document.role !== "supporting" || !snapshot?.valid || snapshot.recovery)
       return documentLabel(document);
 
-    if (document.kind === "form") {
-      const mode = currentFormMode(snapshot.state);
-
-      return mode ? documentLabel({ ...document, mode }) : documentLabel(document);
-    }
-
-    if (document.role !== "supporting") return documentLabel(document);
-
-    try {
-      return readPageMetadata(snapshot.committed).title || "Untitled page";
-    } catch {
-      return documentLabel(document);
-    }
+    return readPageMetadata(snapshot.committed).title || "Untitled page";
   }, [document, snapshot]);
 }
 
-export function DocumentLabel({
-  document,
-  store,
-}: {
-  document: WorkspaceDocument;
-  store?: DraftStore;
-}) {
+export function DocumentLabel({ document, store }: { document: PageDocument; store?: DraftStore }) {
   return <>{useDocumentLabel(document, store)}</>;
 }

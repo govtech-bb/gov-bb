@@ -48,7 +48,7 @@ function AuthPage() {
     failure === "session"
       ? "Your sign-in could not be confirmed. Allow cookies for the editor and API, then try again."
       : failure === "unavailable"
-        ? "We could not reach the sign-in service. Your browser drafts have been kept. Try again when the service is available."
+        ? "We could not reach the sign-in service. Try again when the service is available."
         : "Sign-in was not completed. Use a GitHub account with a verified email and active govtech-bb membership to continue.";
 
   return (
@@ -57,7 +57,7 @@ function AuthPage() {
       <h1 className="text-28 font-semibold">{heading}</h1>
       <p role={pending ? "status" : failure ? "alert" : undefined} className="my-4">
         {signedOut
-          ? "Your drafts remain in this browser."
+          ? "Your saved pages remain on the server."
           : pending
             ? "Opening GitHub to sign you in."
             : message}

@@ -6,10 +6,12 @@ import {
   createRouter,
   RouterContextProvider,
 } from "@tanstack/react-router";
-import { afterEach, expect, test, vi } from "vitest";
+import { act } from "react";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { createEditorApi, type ApiPage } from "../../src/api/client";
 import { pageQuery, taxonomyQuery } from "../../src/api/queries";
 import { RemotePagePane } from "../../src/workspace/remote-page-pane";
+import { pageHasUnsavedChanges, type PageSession } from "../../src/workspace/page-sync";
 import { renderInPage } from "../helpers/page-editor";
 
 const page: ApiPage = {
@@ -36,6 +38,66 @@ const router = createRouter({
 
 afterEach(() => localStorage.clear());
 
+beforeEach(() => {
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches: true,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }));
+});
+
+async function mountPage(request: (url: string, init?: RequestInit) => Promise<Response>) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (url.endsWith("/taxonomy")) return Promise.resolve(Response.json({ categories: [] }));
+
+      if (url.endsWith("/services")) return Promise.resolve(Response.json([]));
+
+      return request(url, init);
+    }),
+  );
+  const api = createEditorApi("http://localhost:3020");
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  let session: PageSession | undefined;
+  await renderInPage(
+    <RouterContextProvider router={router}>
+      <QueryClientProvider client={client}>
+        <RemotePagePane
+          api={api}
+          id={page.id}
+          active
+          onSession={(_id, current) => {
+            session = current;
+          }}
+        />
+      </QueryClientProvider>
+    </RouterContextProvider>,
+  );
+  await act(async () => {
+    await vi.waitFor(() => expect(session).toBeDefined());
+  });
+
+  return { client, api, session: () => session! };
+}
+
+async function applySource(session: PageSession, source: string) {
+  await act(async () => {
+    session.store.edit(source);
+    expect(session.store.apply()).toBe(true);
+  });
+}
+
+async function savePage() {
+  const button = [...document.querySelectorAll("button")].find(
+    (item) => item.textContent === "Save",
+  )!;
+
+  expect(button.disabled).toBe(false);
+  await act(async () => button.click());
+}
+
 test("a page preloaded just now, as its link was pointed at, opens without waiting on the content API", async () => {
   vi.stubGlobal("matchMedia", (query: string) => ({
     matches: true,
@@ -56,7 +118,7 @@ test("a page preloaded just now, as its link was pointed at, opens without waiti
   await renderInPage(
     <RouterContextProvider router={router}>
       <QueryClientProvider client={client}>
-        <RemotePagePane api={api} id={page.id} active onStore={() => {}} />
+        <RemotePagePane api={api} id={page.id} active onSession={() => {}} />
       </QueryClientProvider>
     </RouterContextProvider>,
   );
@@ -67,3 +129,127 @@ test("a page preloaded just now, as its link was pointed at, opens without waiti
     ),
   );
 });
+
+test("old browser drafts are ignored and editing never accesses storage or sends an automatic save", async () => {
+  localStorage.setItem("govbb-editor:documents:" + page.id + ":markdown", "Old draft");
+  localStorage.setItem("govbb-editor:workspace:v1", "{broken");
+
+  const read = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+    throw Error("Storage blocked");
+  });
+
+  const write = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+    throw Error("Storage blocked");
+  });
+
+  let writes = 0;
+
+  const h = await mountPage(async (_url, init) => {
+    if (init?.method === "PUT") writes++;
+
+    return Response.json(page);
+  });
+
+  expect(h.session().store.getSnapshot().source).toContain(page.body_markdown);
+  await applySource(h.session(), h.session().store.getSnapshot().source + "\n\nUnsaved");
+  await act(async () => {
+    window.dispatchEvent(new Event("pagehide"));
+    document.dispatchEvent(new Event("visibilitychange"));
+    window.dispatchEvent(new StorageEvent("storage", { key: "govbb-editor:workspace:v1" }));
+  });
+  expect(pageHasUnsavedChanges(h.session())).toBe(true);
+  expect(read).not.toHaveBeenCalled();
+  expect(write).not.toHaveBeenCalled();
+  expect(writes).toBe(0);
+});
+
+test("a slow save acknowledges only its submitted snapshot; refetch cannot overwrite newer work or its write token", async () => {
+  let current = page;
+  let answer: (response: Response) => void = () => {};
+
+  let sent: RequestInit | undefined;
+
+  const h = await mountPage(async (_url, init) => {
+    if (init?.method === "PUT") {
+      sent = init;
+
+      return new Promise<Response>((resolve) => {
+        answer = resolve;
+      });
+    }
+
+    return Response.json(current);
+  });
+
+  const first = h.session().store.getSnapshot().committed + "\n\nFirst edit";
+  await applySource(h.session(), first);
+  await savePage();
+  expect(h.session().isSaving()).toBe(true);
+  const second = first + "\n\nTyped during save";
+  await applySource(h.session(), second);
+  const fields = JSON.parse(String(sent!.body));
+  current = { ...page, ...fields, updated_at: "2026-10-07T13:00:00.000Z" };
+  await act(async () => {
+    answer(Response.json(current));
+    await vi.waitFor(() => expect(h.session().isSaving()).toBe(false));
+  });
+  expect(h.session().getBaseline()).toEqual({ page: current, markdown: first });
+  expect(h.session().store.getSnapshot().committed).toBe(second);
+  expect(pageHasUnsavedChanges(h.session())).toBe(true);
+  expect(new Headers(sent!.headers).get("if-updated-at")).toBe(page.updated_at);
+
+  await act(async () => {
+    h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
+      ...current,
+      updated_at: "2026-10-07T14:00:00.000Z",
+      title: "Someone else's edit",
+    });
+  });
+  expect(h.session().getBaseline().page.updated_at).toBe(current.updated_at);
+  expect(h.session().store.getSnapshot().committed).toBe(second);
+  await act(async () => {
+    await vi.waitFor(() => expect(document.body.textContent).toContain("A newer version"));
+  });
+});
+
+test("a failed background read does not unmount the working copy", async () => {
+  let offline = false;
+
+  const h = await mountPage(async () => {
+    if (offline) throw Error("Offline");
+
+    return Response.json(page);
+  });
+
+  const original = h.session().store;
+  await applySource(h.session(), original.getSnapshot().source + "\n\nKeep offline edits");
+  offline = true;
+  await act(async () => {
+    await h.client.refetchQueries({ queryKey: pageQuery(h.api, page.id).queryKey });
+  });
+  expect(h.session().store).toBe(original);
+  expect(original.getSnapshot().source).toContain("Keep offline edits");
+});
+
+test.each([401, 404, 409, 422, 503, 0])(
+  "failed save %s retains the in-memory working copy and original baseline",
+  async (status) => {
+    const h = await mountPage(async (_url, init) => {
+      if (init?.method !== "PUT") return Response.json(page);
+
+      if (status === 0) throw Error("Offline");
+
+      return Response.json({ errors: [{ field: "url", message: "Taken" }] }, { status });
+    });
+
+    const source = h.session().store.getSnapshot().source + "\n\nKeep this";
+    await applySource(h.session(), source);
+    await savePage();
+    await act(async () => {
+      await vi.waitFor(() => expect(h.session().isSaving()).toBe(false));
+    });
+    expect(h.session().store.getSnapshot().committed).toBe(source);
+    expect(h.session().getBaseline().page).toEqual(page);
+    expect(pageHasUnsavedChanges(h.session())).toBe(true);
+  },
+);

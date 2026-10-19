@@ -26,8 +26,6 @@ import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical
 import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
 import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
 
-const savedKey = "registry-insertion-fixture";
-
 const rejected = defineFormRegistryEntry({
   scope: "fragment",
   key: "test/external",
@@ -85,6 +83,7 @@ const fixture = {
 
 declare global {
   interface Window {
+    registryInitialSource?: string;
     registryInsertionFixture: typeof fixture;
   }
 }
@@ -139,13 +138,6 @@ function Controls() {
           Redo insertion
         </button>
         <button onClick={() => insert("test-rejection")}>Reject external reference</button>
-        <button
-          onClick={() => {
-            localStorage.setItem(savedKey, fixture.source());
-          }}
-        >
-          Save source
-        </button>
         <output aria-label="Insertion error">{error}</output>
       </nav>
       <InsertModal request={request} onClose={() => setRequest(null)} />
@@ -153,11 +145,12 @@ function Controls() {
   );
 }
 
-const saved = localStorage.getItem(savedKey);
+const source = window.registryInitialSource;
 
-const initialState = saved === null ? undefined : formMarkdownToLexical(saved, definition).state;
+const initialState =
+  source === undefined ? undefined : formMarkdownToLexical(source, definition).state;
 
-if (saved !== null && !initialState) throw Error("The saved fixture did not reload");
+if (source !== undefined && !initialState) throw Error("The fixture source did not reload");
 
 const prepared = formSchemaToLexical(
   {

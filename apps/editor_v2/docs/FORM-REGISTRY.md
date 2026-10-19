@@ -36,7 +36,7 @@ This import assumes the example lives two directories below the repository root.
 | --- | --- | --- |
 | `fragment` | `blocks`, without pages | Insert into a compatible page |
 | `page` | `blocks`, beginning with a page | Insert at a page boundary |
-| `form` | `form`, a complete native v2 definition | Host creates a separate draft |
+| `form` | `form`, a complete native v2 definition | Embedding host creates a separate in-memory document |
 
 `question`, `option`, `content`, `group`, and `rule` are ordinary native JSON factories. `question` requires separate `id` and submitted `key`; omitted label becomes an empty string. `option` accepts `{id,label,value}`. `content` accepts `{id,kind,content,config?}`. `rule` accepts `{id,rules:[{id,when,actions}]}`. `group` flattens arrays without creating a stored wrapper. All native constraints, required messages, defaults, rich text, and repeats are authored directly. These helpers do not accept Markdown source records, Lexical NodeState, or SSB settings.
 
@@ -56,13 +56,13 @@ Visibility is explicit. The address-country group uses `layout.under` to place p
 
 `prepareRegistryEntry(entry, definition)` validates a fragment or page and converts it to editor nodes through the installed native handlers. An isolated native document checks semantic preservation; this conversion uses no Markdown envelope or positional page slicing. `$instantiateRegistryEntry(prepared, target?)` rechecks ownership, submitted-key collisions, external bindings, and destination semantics before returning live nodes. Each prepared object can be used once. Action preparation happens before slash-trigger removal, and insertion remains one undo step.
 
-Full-form entries are excluded from insertion actions. The host calls `createRegistryForm(entry, definition)` to allocate a fresh independent native form, then uses the normal isolated import pipeline and a separate draft store. Ordinary JSON import preserves authored identities; registry creation intentionally allocates new ones.
+Full-form entries are excluded from insertion actions. The host calls `createRegistryForm(entry, definition)` to allocate a fresh independent native form, then uses the normal isolated import pipeline and a separate in-memory `DraftStore`. Ordinary JSON import preserves authored identities; registry creation intentionally allocates new ones.
 
 The preview reads the same native declaration and resolves its renderer through the owning editor's installed field modules. Optional `trailingParagraph: false` suppresses the usual typing line after a final decorator. `foldedQuestions` lists local question IDs initially collapsed in the editor; long built-in choice lists use this catalog presentation preference without adding it to native form data.
 
-## Persistence and evidence
+## Conversion and evidence
 
-Changing or removing a registry entry does not alter previously inserted questions. The editor stores their native metadata and text through the existing Markdown draft channel. The [demo asset](../src/presets/form-registry/demo.ts) supplies complete-form creation; a new browser starts without a form.
+Changing or removing a registry entry does not alter inserted questions. Native metadata and text survive explicit Markdown conversion. The [demo asset](../src/presets/form-registry/demo.ts) supplies complete-form creation for embedding hosts/tests, not a browser-workspace flow.
 
 Historical Markdown preset profiles and SSB provenance remain frozen compatibility data in `forms/source/legacy` and `forms/core/legacy-provenance-v1.json`. They are separate from current native registry declarations and must not be regenerated when catalog defaults change.
 

@@ -10,9 +10,7 @@ import { DocumentLabel } from "./document-label";
 import type { ServiceNavRow } from "./service-pages";
 
 /**
- * A service's documents, whether it's drafted in this browser or comes from the content API: its pages, each under
- * the page it sits beneath and dotted with how far it's published, then its form. Each row is named as its draft has
- * it, so a page retitled in its editor is renamed here as it's saved.
+ * API pages beneath their parents, with visibility indicators and the open editor's in-memory title.
  */
 export function ServiceNav({
   sidebar,
@@ -21,7 +19,6 @@ export function ServiceNav({
   selectedId,
   stores,
   onAdd,
-  onRename,
   onDelete,
   deleteBlocked,
   loading = false,
@@ -34,8 +31,6 @@ export function ServiceNav({
   /** The open editors' drafts, by document. */
   stores: ReadonlyMap<string, DraftStore>;
   onAdd: () => void;
-  /** Renames a service drafted in this browser. */
-  onRename?: () => void;
   /** Deletes the selected page from the content API. */
   onDelete?: () => void;
   /** Why the selected page can't be deleted yet, such as the pages under it. */
@@ -44,8 +39,7 @@ export function ServiceNav({
   loading?: boolean;
 }) {
   const reason = useId();
-  const pages = rows.filter((row) => row.document.kind === "page");
-  const forms = rows.filter((row) => row.document.kind === "form");
+  const pages = rows;
 
   const item = (row: ServiceNavRow, nested: ReactNode[]) => (
     <Sidebar.Item
@@ -95,18 +89,11 @@ export function ServiceNav({
             <Sidebar.Empty>Add an entry page to explain this service.</Sidebar.Empty>
           )
         )}
-        {forms.length > 0 && (
-          <>
-            <Sidebar.Separator />
-            <Sidebar.Group>{items(forms)}</Sidebar.Group>
-          </>
-        )}
         {!loading && (
           <Sidebar.Actions>
             <Button variant="secondary" onClick={onAdd}>
               Add document
             </Button>
-            {onRename && <Button onClick={onRename}>Rename service</Button>}
             {onDelete && (
               <Button
                 disabled={!pages.some((row) => row.document.id === selectedId) || !!deleteBlocked}

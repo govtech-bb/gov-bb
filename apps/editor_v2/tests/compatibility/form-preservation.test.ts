@@ -1,40 +1,15 @@
 import { expect, test } from "vitest";
 import { readFile } from "node:fs/promises";
 import { $legacyDemo as $demo } from "../helpers/legacy-demo";
-import {
-  DraftStore,
-  initialDraft,
-  LEGACY_KEY,
-  MARKDOWN_KEY,
-  PREVIOUS_MARKDOWN_KEY,
-  prepareSource,
-  type DraftStorage,
-} from "../helpers/default-form";
-import {
-  createFormEditor,
-  inspectFormSource,
-  normalizeMigrationRowIds,
-} from "../helpers/form-editor";
+import { prepareSource, draftCodec } from "../helpers/default-form";
+import { govbbFormRuntime } from "../../src/presets/govbb-form";
+import { inspectFormSource, normalizeMigrationRowIds } from "../helpers/form-editor";
 
 const fixture = (name: string) =>
   readFile(new URL(`../fixtures/forms/${name}`, import.meta.url), "utf8");
 
 const browserFixture = (name: string) =>
   readFile(new URL(`../../scripts/browser/fixtures/${name}`, import.meta.url), "utf8");
-
-function memory(seed: Record<string, string> = {}): DraftStorage {
-  const values = new Map(Object.entries(seed));
-
-  return {
-    getItem: (key) => values.get(key) ?? null,
-    setItem: (key, value) => {
-      values.set(key, value);
-    },
-    removeItem: (key) => {
-      values.delete(key);
-    },
-  };
-}
 
 for (const name of ["demo", "legacy-v1", "legacy-step9", "field-logic-draft"]) {
   test(`${name}: canonical source and SSB projection match the recorded baseline`, async () => {
@@ -45,8 +20,6 @@ for (const name of ["demo", "legacy-v1", "legacy-step9", "field-logic-draft"]) {
     if (name === "field-logic-draft") {
       source = prepareSource(await fixture("field-logic-draft.md")).source;
     } else {
-      const key = name === "legacy-v1" ? PREVIOUS_MARKDOWN_KEY : LEGACY_KEY;
-
       const original =
         name === "demo"
           ? undefined
@@ -54,31 +27,14 @@ for (const name of ["demo", "legacy-v1", "legacy-step9", "field-logic-draft"]) {
               name === "legacy-v1" ? "legacy-markdown-v1.md" : "legacy-step9.json",
             );
 
-      const storage = memory(original === undefined ? {} : { [key]: original });
-
-      const loaded = initialDraft(
-        storage,
+      const input =
         name === "demo"
-          ? $demo
-          : () => {
-              throw Error("An existing draft must not become a demo");
-            },
-      );
+          ? draftCodec.encode(govbbFormRuntime.prepare(undefined, $demo, "legacy"))
+          : name === "legacy-v1"
+            ? original!
+            : draftCodec.encode(draftCodec.prepareLegacy(JSON.parse(original!)));
 
-      expect(loaded.snapshot.error).toBeUndefined();
-      expect(loaded.snapshot.valid).toBe(true);
-      expect(loaded.state).toBeDefined();
-      source = normalizeMigrationRowIds(loaded.snapshot.committed);
-      const store = new DraftStore(storage, loaded);
-      const disconnect = store.connect(createFormEditor(loaded.state!));
-
-      try {
-        expect(storage.getItem(MARKDOWN_KEY)).toBe(loaded.snapshot.committed);
-
-        if (original !== undefined) expect(storage.getItem(key)).toBe(original);
-      } finally {
-        disconnect();
-      }
+      source = normalizeMigrationRowIds(prepareSource(input).source);
     }
 
     expect(source).toBe(expectedSource);

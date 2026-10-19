@@ -1,23 +1,17 @@
 import logo from "@govtech-bb/frontend/assets/images/govbb-logo.svg?raw";
 import { Files } from "@phosphor-icons/react";
-import { Link, useBlocker, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiFailure, type EditorApi } from "../api/client";
 import { serviceQuery, servicesQuery, estateVersionQuery } from "../api/queries";
-import { EditorSessionProvider } from "../editor/react/composer";
 import {
   CreateRemotePageDialog,
   CreateRemoteServiceDialog,
   DeleteRemotePageDialog,
 } from "./remote-page-dialogs";
 import { RemotePagePane } from "./remote-page-pane";
-import {
-  browserFormFor,
-  listedServiceRows,
-  localServiceRows,
-  remoteServiceRows,
-} from "./service-pages";
+import { listedServiceRows, remoteServiceRows } from "./service-pages";
 import { ServiceNav } from "./service-nav";
 import { workspaceLink } from "./navigation";
 import { Banner } from "../ui/banner";
@@ -27,360 +21,152 @@ import { EmptyState } from "../ui/empty-state";
 import { LoadingState } from "../ui/loading-state";
 import { TextLink } from "../ui/text-link";
 import { Sidebar, useSidebar } from "../ui/sidebar";
-import { browserDraftStorage } from "../host/govbb-draft";
-import { PageDraftEditor } from "../host/page-editor";
 import { useScreenPlace } from "./screen-place";
 import { ScreenTitle } from "./screen-title";
-import type { DraftStore } from "../persistence/draft-store";
-import { AddLocalDocumentDialog, LocalServiceDialog } from "./local-document-dialogs";
-import { openDocument, openWorkspace } from "./documents";
 import { DocumentSessions, keptViews } from "./document-views";
-import { WorkspaceFormEditor } from "./form-editor";
 import { ServicesList } from "./services-list";
 import type { ServicesSearch } from "./services-search";
-import {
-  documentKeys,
-  documentLabel,
-  flushDocument,
-  localDocumentAt,
-  WORKSPACE_KEY,
-  type WorkspaceDocument,
-  type WorkspaceLocation,
-  type WorkspaceRepository,
-} from "./model";
+import type { WorkspaceLocation } from "./model";
+import { pageHasUnsavedChanges, type PageSession } from "./page-sync";
+import { usePageLeaveGuard } from "./page-leave-guard";
 
 type Account = {
   email: string;
   onSignOut: () => Promise<string | undefined>;
-  /** A problem with the app from outside the workspace, such as a session that couldn't be checked. */
   notice?: string;
 };
 
-// Where this browser remembers that the author collapsed the service sidebar
 const SIDEBAR_KEY = "govbb-editor:sidebar-collapsed";
 
-type OpenDocument = { document: WorkspaceDocument; store: DraftStore };
-
-type Boot = { repository: WorkspaceRepository; location: WorkspaceLocation; panes: OpenDocument[] };
-
-function boot(location: WorkspaceLocation): Boot {
-  const { repository } = openWorkspace(browserDraftStorage, Object.keys(window.localStorage));
-
-  const document = localDocumentAt(repository.index, location);
-
-  return {
-    repository,
-    location,
-    panes: document ? [{ document, store: openDocument(document, browserDraftStorage) }] : [],
-  };
-}
-
-function downloadWorkspace() {
-  const source = window.localStorage.getItem(WORKSPACE_KEY);
-
-  if (source === null) return;
-  const url = URL.createObjectURL(new Blob([source], { type: "application/json" }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "service-workspace.json";
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-/** Open local drafts only after the host has authenticated the employee. */
+/** Authenticated API services and page editors; no browser-local workspace is loaded. */
 export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { api: EditorApi }) {
-  const params = useParams({ strict: false });
-
-  const [initial] = useState(() => {
-    try {
-      return {
-        ready: boot(
-          params.serviceId
-            ? { serviceId: params.serviceId, documentId: params.documentId }
-            : undefined,
-        ),
-      };
-    } catch (error) {
-      return {
-        error: error instanceof Error ? error.message : "The service workspace could not be opened",
-      };
-    }
-  });
-
-  if (!initial.ready)
-    return (
-      <main className="text-ink">
-        <ScreenTitle names={["We could not open the service workspace"]} />
-        <EmptyState
-          kind="failed"
-          size="page"
-          title="We could not open the service workspace"
-          description={
-            <>
-              <p>{initial.error}</p>
-              <p className="mt-2">
-                Existing drafts have been kept. Download the service list before repairing it.
-              </p>
-            </>
-          }
-          actions={
-            <>
-              <Button onClick={downloadWorkspace}>Download service list</Button>
-              <Button onClick={() => window.location.reload()}>Try again</Button>
-            </>
-          }
-        />
-      </main>
-    );
-
-  return (
-    <Workspace
-      initial={initial.ready}
-      api={api}
-      email={email}
-      onSignOut={onSignOut}
-      notice={notice}
-    />
-  );
-}
-
-function Workspace({
-  initial,
-  api,
-  email,
-  onSignOut,
-  notice,
-}: { initial: Boot; api: EditorApi } & Account) {
-  const repository = initial.repository;
-  const [index, setIndex] = useState(repository.index);
   const params = useParams({ strict: false });
   const routerNavigate = useNavigate();
   const listSearch = useSearch({ from: "/_workspace/services", shouldThrow: false });
-
-  // Where the author last was in the Services list, for every way back to it
   const [servicesSearch, setServicesSearch] = useState<ServicesSearch>({});
 
   const location = params.serviceId
     ? { serviceId: params.serviceId, documentId: params.documentId }
     : undefined;
 
-  const [panes, setPanes] = useState(initial.panes);
-
-  // Pages from the content API, kept mounted once visited like the browser's own documents.
-  const [apiPanes, setApiPanes] = useState(() =>
-    initial.location?.documentId &&
-    !repository.index.services.some((item) => item.id === initial.location?.serviceId) &&
-    !localDocumentAt(repository.index, initial.location)
-      ? [initial.location.documentId]
-      : [],
-  );
-
-  // The documents whose views are mounted, the one on screen first. The rest have closed, leaving their sessions.
-  const [views, setViews] = useState(() =>
-    initial.location?.documentId ? [initial.location.documentId] : [],
-  );
-
+  const documentId = location?.documentId;
+  const [panes, setPanes] = useState<string[]>(() => (documentId ? [documentId] : []));
   const [sessions] = useState(() => new DocumentSessions());
 
-  // Their editors' drafts, once open, so the sidebar names each page as its draft has it
-  const [apiStores, setApiStores] = useState<ReadonlyMap<string, DraftStore>>(() => new Map());
+  const [pageSessions, setPageSessions] = useState<ReadonlyMap<string, PageSession>>(
+    () => new Map(),
+  );
 
-  const trackApiStore = useCallback(
-    (id: string, store: DraftStore | undefined) =>
-      setApiStores((previous) => {
-        if (previous.get(id) === store) return previous;
-        const next = new Map(previous);
+  const pageSessionsRef = useRef(pageSessions);
+  const getPages = useCallback(() => pageSessionsRef.current, []);
 
-        if (store) next.set(id, store);
-        else next.delete(id);
+  const trackPageSession = useCallback((id: string, session: PageSession | undefined) => {
+    if (pageSessionsRef.current.get(id) === session) return;
+    const next = new Map(pageSessionsRef.current);
 
-        return next;
-      }),
-    [],
+    if (session) next.set(id, session);
+    else next.delete(id);
+    pageSessionsRef.current = next;
+    setPageSessions(next);
+  }, []);
+
+  const discardPages = useCallback(
+    (ids: readonly string[]) => {
+      const next = new Map(pageSessionsRef.current);
+
+      for (const id of ids) {
+        next.delete(id);
+        sessions.forget(id);
+      }
+
+      pageSessionsRef.current = next;
+      setPageSessions(next);
+      setPanes((previous) => previous.filter((id) => !ids.includes(id)));
+    },
+    [sessions],
   );
 
   const stores = useMemo(
-    () => new Map([...panes.map((pane) => [pane.document.id, pane.store] as const), ...apiStores]),
-    [panes, apiStores],
+    () => new Map([...pageSessions].map(([id, session]) => [id, session.store])),
+    [pageSessions],
   );
 
-  const [dialog, setDialog] = useState<
-    "service" | "rename" | "document" | "api-service" | "api-page" | "api-delete"
-  >();
+  useEffect(() => {
+    if (!documentId) return;
 
+    const kept = keptViews(panes, documentId, (id) => {
+      const page = pageSessions.get(id);
+
+      return !page || (!pageHasUnsavedChanges(page) && !page.isSaving());
+    });
+
+    if (kept.length === panes.length && kept.every((id, index) => panes[index] === id)) return;
+
+    for (const id of panes.filter((id) => !kept.includes(id))) {
+      const page = pageSessions.get(id);
+
+      if (page) sessions.close(id, page.getBaseline().page.updated_at);
+    }
+
+    setPanes(kept);
+  }, [documentId, panes, pageSessions, sessions]);
+  useEffect(() => {
+    setDialog(undefined);
+  }, [documentId]);
+
+  const [dialog, setDialog] = useState<"service" | "page" | "delete">();
   const [error, setError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
   const sidebar = useSidebar(SIDEBAR_KEY);
-  const service = index.services.find((item) => item.id === location?.serviceId);
-
   const client = useQueryClient();
-
   useQuery({ ...estateVersionQuery(api, client), notifyOnChangeProps: [] });
 
   const remote = useQuery({
     ...serviceQuery(api, location?.serviceId ?? ""),
-    enabled: !!location && !service,
+    enabled: !!location,
   });
 
-  // What the services list, once loaded, says of the service, to draw its sidebar and name it while it loads
   const listed = useQuery({ ...servicesQuery(api), enabled: false }).data?.find(
     (item) => item.id === location?.serviceId,
   );
 
-  // The service's form, when this browser drafts it, is listed with the service's pages
-  const joinedForm = useMemo(
-    () => remote.data && browserFormFor(index, remote.data.service.form_id),
-    [index, remote.data],
-  );
-
-  const remoteRows = useMemo(
-    () => (remote.data ? remoteServiceRows(remote.data, joinedForm) : []),
-    [remote.data, joinedForm],
-  );
-
-  const remoteDocuments = useMemo(
-    () => remoteRows.flatMap((row) => (row.document.kind === "page" ? [row.document] : [])),
-    [remoteRows],
-  );
-
-  const remoteSelected = remoteDocuments.find((item) => item.id === location?.documentId);
-
-  const selected = service
-    ? service.documents.find((item) => item.id === location?.documentId)
-    : joinedForm && joinedForm.id === location?.documentId
-      ? joinedForm
-      : undefined;
-
-  const current = panes.find((pane) => pane.document.id === selected?.id);
+  const rows = useMemo(() => (remote.data ? remoteServiceRows(remote.data) : []), [remote.data]);
+  const selected = rows.find((row) => row.document.id === documentId)?.document;
 
   const missing =
     !!location &&
-    (service
-      ? !!location.documentId && !selected
-      : (remote.error instanceof ApiFailure && remote.error.status === 404) ||
-        (!!remote.data && !!location.documentId && !remoteSelected && !selected));
+    ((remote.error instanceof ApiFailure && remote.error.status === 404) ||
+      (!!remote.data && !!documentId && !selected));
 
   const place = useScreenPlace(
-    { service, document: selected, store: current?.store },
-    { service: remote.data, document: remoteSelected },
+    remote.data,
+    selected,
+    documentId ? stores.get(documentId) : undefined,
   );
 
   const serviceName = place.service ?? listed?.title;
 
-  useBlocker({
-    enableBeforeUnload: () => {
-      try {
-        flushDocument(current?.store);
-
-        return false;
-      } catch {
-        return true;
-      }
-    },
-    shouldBlockFn: ({ next }) => {
-      try {
-        flushDocument(current?.store);
-
-        if (next.routeId === "/_workspace/services/$serviceId/$documentId") {
-          const { serviceId, documentId } = next.params;
-          const local = repository.index.services.some((item) => item.id === serviceId);
-          const document = localDocumentAt(repository.index, { serviceId, documentId });
-          const opened = document?.id ?? (local ? undefined : documentId);
-
-          // How a document's draft is saved, which tells a closed view's session whether it still fits on return
-          const saved = (id: string) => {
-            const draft =
-              id === document?.id
-                ? document
-                : panes.find((pane) => pane.document.id === id)?.document;
-
-            return browserDraftStorage.getItem((draft?.keys ?? documentKeys(id)).committed);
-          };
-
-          if (opened) {
-            // Views beyond the few most recent close once their drafts are saved, keeping their sessions for later
-            const kept = keptViews(views, opened, (id) => {
-              try {
-                flushDocument(stores.get(id));
-
-                return true;
-              } catch {
-                return false;
-              }
-            });
-
-            const closed = new Set(views.filter((id) => !kept.includes(id)));
-
-            for (const id of closed) sessions.close(id, saved(id));
-            sessions.open(opened, saved(opened));
-            setViews(kept);
-            setPanes((previous) => previous.filter((pane) => !closed.has(pane.document.id)));
-            setApiPanes((previous) => previous.filter((id) => !closed.has(id)));
-          }
-
-          if (!local && !document && documentId)
-            setApiPanes((previous) =>
-              previous.includes(documentId) ? previous : [...previous, documentId],
-            );
-
-          if (document && !panes.some((pane) => pane.document.id === document.id)) {
-            const store = openDocument(document, browserDraftStorage);
-            setPanes((previous) =>
-              previous.some((pane) => pane.document.id === document.id)
-                ? previous
-                : [...previous, { document, store }],
-            );
-          }
-        }
-
-        setDialog(undefined);
-        setError("");
-
-        return false;
-      } catch (error) {
-        setError(
-          error instanceof Error ? error.message : "The document could not be opened. Try again.",
-        );
-
-        return true;
-      }
-    },
-  });
-
   const navigate = (next: WorkspaceLocation) =>
     routerNavigate(next ? workspaceLink(next) : { to: "/services", search: servicesSearch });
 
-  const openDialog = (
-    next: "service" | "rename" | "document" | "api-service" | "api-page" | "api-delete",
-  ) => {
-    try {
-      flushDocument(current?.store);
-      setDialog(next);
-      setError("");
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "Save this draft before continuing");
-    }
-  };
-
-  const refresh = () => setIndex(repository.index);
-
   const signOut = async () => {
+    setSigningOut(true);
+
     try {
-      flushDocument(current?.store);
-      setSigningOut(true);
       const failure = await onSignOut();
 
       if (failure) setError(failure);
-    } catch (failure) {
-      setError(
-        failure instanceof Error
-          ? failure.message
-          : "Save or download this draft before signing out.",
-      );
     } finally {
       setSigningOut(false);
     }
   };
+
+  const leave = usePageLeaveGuard({
+    getPages,
+    activeId: documentId,
+    discard: discardPages,
+    onSignOut: signOut,
+  });
 
   return (
     <div className="isolate flex min-h-dvh flex-col bg-grey-10 text-ink">
@@ -419,24 +205,21 @@ function Workspace({
                 /
               </span>
               <span className="min-w-0 max-w-100 truncate">{serviceName}</span>
+              <Sidebar.Toggle sidebar={sidebar} variant="inverse">
+                Pages
+              </Sidebar.Toggle>
             </>
-          )}
-          {serviceName && (
-            <Sidebar.Toggle sidebar={sidebar} variant="inverse">
-              Pages
-            </Sidebar.Toggle>
           )}
           <Bar.Actions>
             <Bar.Status className="max-w-64 truncate font-normal" title={email}>
               {email}
             </Bar.Status>
-            <Button variant="inverse" disabled={signingOut} onClick={() => void signOut()}>
+            <Button variant="inverse" disabled={signingOut} onClick={leave.requestSignOut}>
               {signingOut ? "Signing out…" : "Sign out"}
             </Button>
           </Bar.Actions>
         </Bar.Root>
       </header>
-      {/* The app's problems, all here under its header (Banner) */}
       {notice && (
         <Banner tone="error" layout="strip">
           {notice}
@@ -448,39 +231,22 @@ function Workspace({
         </Banner>
       )}
       <div className="flex flex-1">
-        {service ? (
+        {location && !missing && (remote.data || remote.isPending) && (
           <ServiceNav
             sidebar={sidebar}
-            serviceId={service.id}
-            rows={localServiceRows(service)}
-            selectedId={selected?.id}
+            serviceId={location.serviceId}
+            rows={remote.data ? rows : listed ? listedServiceRows(listed) : []}
+            loading={!remote.data}
+            selectedId={documentId}
             stores={stores}
-            onAdd={() => openDialog("document")}
-            onRename={() => openDialog("rename")}
+            onAdd={() => setDialog("page")}
+            onDelete={() => setDialog("delete")}
+            deleteBlocked={
+              selected && remote.data?.pages.some((page) => page.parent_id === selected.id)
+                ? "Delete or move the pages under this page first."
+                : undefined
+            }
           />
-        ) : (
-          location &&
-          !missing &&
-          (remote.data || remote.isPending) && (
-            // Drawn at once, with what the services list knows until the service's pages arrive
-            <ServiceNav
-              sidebar={sidebar}
-              serviceId={location.serviceId}
-              rows={remote.data ? remoteRows : listed ? listedServiceRows(listed) : []}
-              loading={!remote.data}
-              selectedId={location.documentId}
-              stores={stores}
-              onAdd={() => openDialog("api-page")}
-              onDelete={() => openDialog("api-delete")}
-              // The API refuses to delete a page with pages under it, so say so before the author confirms
-              deleteBlocked={
-                remoteSelected &&
-                remote.data?.pages.some((page) => page.parent_id === remoteSelected.id)
-                  ? "Delete or move the pages under this page first."
-                  : undefined
-              }
-            />
-          )
         )}
         <main id="workspace-content" tabIndex={-1} className="min-w-0 flex-1 outline-none">
           {missing && (
@@ -496,10 +262,10 @@ function Workspace({
               }
             />
           )}
-          {!service && !missing && location && remote.isPending && (
+          {!missing && location && remote.isPending && (
             <LoadingState size="page" label="Loading service…" />
           )}
-          {!service && !missing && remote.isError && (
+          {!missing && remote.isError && (
             <EmptyState
               kind="failed"
               size="page"
@@ -521,171 +287,80 @@ function Workspace({
                   setServicesSearch(search);
                   void routerNavigate({ to: "/services", search, replace: true });
                 }}
-                onCreate={() => openDialog("api-service")}
+                onCreate={() => setDialog("service")}
               />
-              {index.services.length > 0 && (
-                <div className="mt-12 mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="text-20 font-semibold">Drafts in this browser</h2>
-                  <Button variant="secondary" onClick={() => openDialog("service")}>
-                    Create browser draft
-                  </Button>
-                </div>
-              )}
-              <ul className="rounded-sm bg-white px-3 py-2 shadow-sheet empty:hidden">
-                {index.services.map((item) => (
-                  <li key={item.id}>
-                    <Link
-                      {...workspaceLink({ serviceId: item.id, documentId: item.documents[0]?.id })}
-                      className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-sm px-3 py-2 hover:bg-tint"
-                    >
-                      <span className="truncate text-14 font-semibold text-ink">{item.title}</span>
-                      <span className="text-14 text-muted tabular-nums">
-                        {item.documents.length}{" "}
-                        {item.documents.length === 1 ? "document" : "documents"}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
             </section>
           )}
-          {service && !selected && !missing && (
-            <EmptyState
-              size="page"
-              icon={<Files />}
-              title={service.title}
-              description="Choose a document or add one to this service."
-              actions={
-                <Button variant="accent" onClick={() => openDialog("document")}>
-                  Add document
-                </Button>
-              }
-            />
-          )}
-          {!service && remote.data && !location?.documentId && (
+          {remote.data && location && !documentId && (
             <EmptyState
               size="page"
               icon={<Files />}
               title={remote.data.service.title}
               description="Choose a document or add one to this service."
               actions={
-                <Button variant="accent" onClick={() => openDialog("api-page")}>
+                <Button variant="accent" onClick={() => setDialog("page")}>
                   Add document
                 </Button>
               }
             />
           )}
-          {apiPanes.map((id) => (
+          {panes.map((id) => (
             <section
               key={id}
-              hidden={id !== remoteSelected?.id}
-              inert={id !== remoteSelected?.id}
+              hidden={id !== selected?.id}
+              inert={id !== selected?.id}
               aria-label={
-                remoteDocuments.find((item) => item.id === id)?.title ?? "Page from the content API"
+                rows.find((row) => row.document.id === id)?.document.title ??
+                "Page from the content API"
               }
             >
-              <EditorSessionProvider session={sessions.get(id)}>
-                <RemotePagePane
-                  api={api}
-                  id={id}
-                  active={id === remoteSelected?.id}
-                  onStore={trackApiStore}
-                />
-              </EditorSessionProvider>
-            </section>
-          ))}
-          {panes.map((pane) => (
-            <section
-              key={pane.document.id}
-              hidden={pane.document.id !== selected?.id}
-              inert={pane.document.id !== selected?.id}
-              aria-label={documentLabel(pane.document)}
-            >
-              <EditorSessionProvider session={sessions.get(pane.document.id)}>
-                {pane.document.kind === "form" ? (
-                  <WorkspaceFormEditor
-                    store={pane.store}
-                    active={pane.document.id === selected?.id}
-                  />
-                ) : (
-                  <PageDraftEditor store={pane.store} active={pane.document.id === selected?.id} />
-                )}
-              </EditorSessionProvider>
+              <RemotePagePane
+                api={api}
+                id={id}
+                active={id === selected?.id}
+                onSession={trackPageSession}
+                sessions={sessions}
+              />
             </section>
           ))}
         </main>
       </div>
+      {leave.dialog}
       {dialog === "service" && (
-        <LocalServiceDialog
-          repository={repository}
-          close={() => setDialog(undefined)}
-          done={(created) => {
-            refresh();
-            setDialog(undefined);
-            navigate({ serviceId: created.id, documentId: created.documents[0]?.id });
-          }}
-        />
-      )}
-      {dialog === "api-service" && (
         <CreateRemoteServiceDialog
           api={api}
           close={() => setDialog(undefined)}
           done={(id) => {
             setDialog(undefined);
-            navigate({ serviceId: id, documentId: id });
+            void navigate({ serviceId: id, documentId: id });
           }}
         />
       )}
-      {dialog === "api-page" && remote.data && location && (
+      {dialog === "page" && remote.data && location && (
         <CreateRemotePageDialog
           api={api}
           detail={remote.data}
           close={() => setDialog(undefined)}
           done={(id) => {
             setDialog(undefined);
-            navigate({ serviceId: location.serviceId, documentId: id });
+            void navigate({ serviceId: location.serviceId, documentId: id });
           }}
         />
       )}
-      {dialog === "api-delete" && remoteSelected && location && (
+      {dialog === "delete" && selected && location && (
         <DeleteRemotePageDialog
           api={api}
-          page={remoteSelected}
+          page={selected}
           close={() => setDialog(undefined)}
           done={() => {
-            const deleted = remoteSelected.id;
+            const deleted = selected.id;
             setDialog(undefined);
-            setApiPanes((previous) => previous.filter((id) => id !== deleted));
-            setViews((previous) => previous.filter((id) => id !== deleted));
-            sessions.forget(deleted);
-            navigate(
+            discardPages([deleted]);
+            void navigate(
               deleted === location.serviceId
                 ? undefined
                 : { serviceId: location.serviceId, documentId: location.serviceId },
             );
-          }}
-        />
-      )}
-      {dialog === "rename" && service && (
-        <LocalServiceDialog
-          repository={repository}
-          service={service}
-          close={() => setDialog(undefined)}
-          done={() => {
-            refresh();
-            setDialog(undefined);
-          }}
-        />
-      )}
-      {dialog === "document" && service && (
-        <AddLocalDocumentDialog
-          repository={repository}
-          service={service}
-          close={() => setDialog(undefined)}
-          done={(document) => {
-            refresh();
-            setDialog(undefined);
-            navigate({ serviceId: service.id, documentId: document.id });
           }}
         />
       )}

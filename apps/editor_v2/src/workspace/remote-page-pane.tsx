@@ -1,15 +1,15 @@
 import { ClockCounterClockwise } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useBlocker, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import type { ApiPage, EditorApi } from "../api/client";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import type { ApiPage, EditorApi, TaxonomyCategory } from "../api/client";
 import { pageToMarkdown, pickerCategories, pageFieldLabel } from "../api/page-markdown";
 import { PRELOAD_FRESH, pageQuery, servicesQuery, taxonomyQuery } from "../api/queries";
-import { browserDraftStorage } from "../host/govbb-draft";
 import { PageDraftEditor } from "../host/page-editor";
 import { download } from "../host/source-ui";
 import { readPageMetadata } from "../pages";
-import type { DraftStore } from "../persistence/draft-store";
+import { DraftStore } from "../persistence/draft-store";
+import { govbbPageCodec } from "../presets/govbb-page";
 import { Banner } from "../ui/banner";
 import { Bar } from "../ui/bar";
 import { Button } from "../ui/button";
@@ -18,83 +18,31 @@ import { LoadingState } from "../ui/loading-state";
 import type { SaveStateProps } from "../ui/save-state";
 import { toast } from "../ui/toast";
 import { PageHistoryDialog } from "./page-history-dialog";
-import {
-  parseServerPageBaseline,
-  savePageDraft,
-  seedPageDraftFromServer,
-  serverPageBaselineKey,
-  writeServerPageBaseline,
-  type ServerPageBaseline,
-} from "./page-sync";
-import { pageDocumentFromApi, inferServicePageRole } from "./service-pages";
-import { openDocument } from "./documents";
-import { flushDocument } from "./model";
+import { EditorSessionProvider } from "../editor/react/composer";
+import type { DocumentSessions } from "./document-views";
+import { savePageDraft, type PageSession, type ServerPageBaseline } from "./page-sync";
 
-const baseListeners = new Set<() => void>();
+type SessionListener = (id: string, session: PageSession | undefined) => void;
 
-/** Tell this tab's readers that a server copy changed; other tabs hear the storage event. */
-export function notifyServerPageBaseline() {
-  for (const listener of baseListeners) listener();
-}
-
-function subscribeServerPageBaseline(listener: () => void) {
-  baseListeners.add(listener);
-  window.addEventListener("storage", listener);
-
-  return () => {
-    baseListeners.delete(listener);
-    window.removeEventListener("storage", listener);
-  };
-}
-
-/** The server copy of a page this browser holds, current across tabs. */
-export function useServerPageBaseline(id: string) {
-  const source = useSyncExternalStore(subscribeServerPageBaseline, () =>
-    window.localStorage.getItem(serverPageBaselineKey(id)),
-  );
-
-  return useMemo(() => parseServerPageBaseline(source, id), [source, id]);
-}
-
-/** Told which draft a page's editor holds once it opens, and told again when the editor closes. */
-type StoreListener = (id: string, store: DraftStore | undefined) => void;
-
-/** A page from the content API, placed in its browser draft before the editor opens it. */
+/** An API page opens directly into an in-memory editor, never through browser storage. */
 export function RemotePagePane({
   api,
   id,
   active,
-  onStore,
+  onSession,
+  sessions,
 }: {
   api: EditorApi;
   id: string;
   active: boolean;
-  onStore: StoreListener;
+  onSession: SessionListener;
+  sessions?: DocumentSessions;
 }) {
-  const client = useQueryClient();
+  const opened = useRef(false);
+  const page = useQuery({ ...pageQuery(api, id), staleTime: PRELOAD_FRESH });
+  const taxonomy = useQuery(taxonomyQuery(api));
 
-  // Seeding writes the draft before its store first reads it, once per page per session.
-  const opened = useQuery({
-    queryKey: ["opened", id],
-    queryFn: async () => {
-      const [page, categories] = await Promise.all([
-        // A page preloaded just now, as its link was pointed at, opens without asking again
-        client.fetchQuery({ ...pageQuery(api, id), staleTime: PRELOAD_FRESH }),
-        client.ensureQueryData(taxonomyQuery(api)),
-      ]);
-
-      seedPageDraftFromServer(browserDraftStorage, page, categories);
-      notifyServerPageBaseline();
-
-      return page;
-    },
-    staleTime: Infinity,
-    gcTime: Infinity,
-  });
-
-  if (opened.isPending) return active ? <LoadingState size="page" label="Loading page…" /> : null;
-
-  if (opened.isError)
+  if (!opened.current && (page.isError || taxonomy.isError))
     return active ? (
       <EmptyState
         kind="failed"
@@ -102,47 +50,72 @@ export function RemotePagePane({
         title="We could not load this page"
         description="Check you are still signed in, then try again."
         actions={
-          <Button variant="secondary" onClick={() => void opened.refetch()}>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              void page.refetch();
+              void taxonomy.refetch();
+            }}
+          >
             Try again
           </Button>
         }
       />
     ) : null;
 
-  return <RemotePageEditor api={api} page={opened.data} active={active} onStore={onStore} />;
+  if (!page.data || !taxonomy.data || (!opened.current && page.isFetching && page.isStale))
+    return active ? <LoadingState size="page" label="Loading page…" /> : null;
+
+  opened.current = true;
+
+  const editor = (
+    <RemotePageEditor
+      key={id}
+      api={api}
+      page={page.data}
+      categories={taxonomy.data}
+      active={active}
+      onSession={onSession}
+    />
+  );
+
+  if (!sessions) return editor;
+  sessions.open(id, page.data.updated_at);
+
+  return <EditorSessionProvider session={sessions.get(id)}>{editor}</EditorSessionProvider>;
 }
 
 function RemotePageEditor({
   api,
-  page,
+  page: server,
+  categories,
   active,
-  onStore,
+  onSession,
 }: {
   api: EditorApi;
   page: ApiPage;
+  categories: readonly TaxonomyCategory[];
   active: boolean;
-  onStore: StoreListener;
+  onSession: SessionListener;
 }) {
-  const [store] = useState(() =>
-    openDocument(
-      pageDocumentFromApi({ ...page, role: inferServicePageRole(page) }),
-      browserDraftStorage,
-    ),
-  );
+  const [base, setBase] = useState<ServerPageBaseline>(() => ({
+    page: server,
+    markdown: pageToMarkdown(server, categories),
+  }));
 
-  useEffect(() => {
-    onStore(page.id, store);
+  const [store] = useState(() => new DraftStore(base.markdown, govbbPageCodec));
+  const baseline = useRef(base);
+  const saving = useRef(false);
 
-    return () => onStore(page.id, undefined);
-  }, [onStore, page.id, store]);
+  const rebase = (next: ServerPageBaseline) => {
+    baseline.current = next;
+    setBase(next);
+  };
 
   const client = useQueryClient();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const draft = useSyncExternalStore(store.subscribe, store.getSnapshot);
-  const base = useServerPageBaseline(page.id);
-  const categories = useQuery(taxonomyQuery(api)).data ?? [];
-  const server = useQuery(pageQuery(api, page.id)).data ?? page;
   // Links find the site's services by name; the content API lists their entry pages
   const services = useQuery(servicesQuery(api)).data;
 
@@ -151,7 +124,6 @@ function RemotePageEditor({
     [services],
   );
 
-  const [failure, setFailure] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const save = useMutation({
@@ -160,39 +132,30 @@ function RemotePageEditor({
     onSuccess: (outcome) => {
       if (outcome.kind === "saved") {
         rebase(outcome.base);
-        client.setQueryData(pageQuery(api, page.id).queryKey, outcome.base.page);
+        client.setQueryData(pageQuery(api, server.id).queryKey, outcome.base.page);
         void client.invalidateQueries({ queryKey: ["content"] });
       } else if (outcome.kind === "conflict")
-        void client.invalidateQueries({ queryKey: pageQuery(api, page.id).queryKey });
+        void client.invalidateQueries({ queryKey: pageQuery(api, server.id).queryKey });
+    },
+    onSettled: () => {
+      saving.current = false;
     },
   });
 
-  useBlocker({
-    disabled: !active,
-    enableBeforeUnload: () => {
-      try {
-        flushDocument(store);
+  const session = useMemo<PageSession>(
+    () => ({
+      store,
+      getBaseline: () => baseline.current,
+      isSaving: () => saving.current,
+    }),
+    [store, base, save.isPending],
+  );
 
-        return false;
-      } catch {
-        return true;
-      }
-    },
-    shouldBlockFn: () => {
-      try {
-        flushDocument(store);
-        setFailure("");
+  useEffect(() => {
+    onSession(server.id, session);
 
-        return false;
-      } catch (error) {
-        setFailure(
-          error instanceof Error ? error.message : "Save or download this draft before leaving it.",
-        );
-
-        return true;
-      }
-    },
-  });
+    return () => onSession(server.id, undefined);
+  }, [onSession, server.id, session]);
 
   const visibility = useMemo(
     () => readPageMetadata(draft.committed).visibility || "public",
@@ -200,29 +163,20 @@ function RemotePageEditor({
   );
 
   const outcome = save.isPending ? undefined : save.data;
-  const unsaved = !!base && draft.committed !== base.markdown;
-  const stale = !!base && server.updated_at !== base.page.updated_at;
+  const unsaved = draft.committed !== base.markdown;
+  const stale = server.updated_at !== base.page.updated_at;
 
-  const blocked =
-    !draft.valid ||
-    draft.dirty ||
-    !!draft.conflict ||
-    !!draft.replacement ||
-    !!draft.recovery ||
-    draft.status === "error";
+  const blocked = !draft.valid || draft.dirty || draft.status === "error";
 
   const errors = outcome?.kind === "invalid" ? outcome.errors : [];
 
-  const rebase = (next: ServerPageBaseline) => {
-    writeServerPageBaseline(browserDraftStorage, next);
-    notifyServerPageBaseline();
-  };
-
   const saveDraft = () => {
-    store.flush();
     const snapshot = store.getSnapshot();
 
-    if (base && snapshot.status !== "error") save.mutate({ base, markdown: snapshot.committed });
+    if (saving.current || stale || !snapshot.valid || snapshot.dirty || snapshot.status === "error")
+      return;
+    saving.current = true;
+    save.mutate({ base: baseline.current, markdown: snapshot.committed });
   };
 
   const loadSaved = () => {
@@ -233,10 +187,9 @@ function RemotePageEditor({
   };
 
   const newerVersion = "A newer version of this page has been saved since you opened it.";
-  const downloadMine = () => download(draft.committed, "page.md");
+  const downloadMine = () => download(store.getSnapshot().source, "page.md");
 
-  // Where the page stands in the content API, read out by its save state. A problem with its browser copy outranks
-  // this, as the one to fix first (useDraftSave)
+  // Source errors take precedence over the server's save state (useDraftSave).
   const standing = (): SaveStateProps => {
     const conflict = stale ? newerVersion : undefined;
 
@@ -251,10 +204,11 @@ function RemotePageEditor({
         onDownload: downloadMine,
       };
 
-    if (unsaved && outcome?.kind === "failed")
+    if (unsaved && (outcome?.kind === "failed" || save.isError))
       return {
         status: "failed",
-        error: "We could not save this page. Your changes are kept in this browser.",
+        error:
+          "We could not save this page. Keep this editor open to retry, or download your changes.",
         conflict,
         onRetry: saveDraft,
         onDownload: downloadMine,
@@ -279,12 +233,13 @@ function RemotePageEditor({
           {unsaved && (
             <Button
               variant="secondary"
+              disabled={save.isPending}
               onClick={() => rebase({ page: server, markdown: pageToMarkdown(server, categories) })}
             >
               Keep my version
             </Button>
           )}
-          <Button variant="secondary" disabled={blocked} onClick={loadSaved}>
+          <Button variant="secondary" disabled={blocked || save.isPending} onClick={loadSaved}>
             Load saved version
           </Button>
           {unsaved && <Button onClick={downloadMine}>Download my version</Button>}
@@ -322,7 +277,8 @@ function RemotePageEditor({
         </Button>
       }
     >
-      Your session has ended. Sign in again to save; your changes are kept in this browser.
+      Your session has ended. Download your changes before signing in again; unsaved work will be
+      lost when you leave.
     </Banner>
   ) : undefined;
 
@@ -348,17 +304,7 @@ function RemotePageEditor({
             {visibility === "public" ? "Publish changes" : "Save"}
           </Button>
         }
-        notice={
-          <>
-            {/* Leaving was stopped, as the page's browser copy isn't safe yet */}
-            {failure && (
-              <Banner tone="error" layout="strip">
-                {failure}
-              </Banner>
-            )}
-            {notice}
-          </>
-        }
+        notice={notice}
         linkPages={linkPages}
         settings={{
           ...(server.parent_id === null && {
@@ -374,7 +320,7 @@ function RemotePageEditor({
           api={api}
           current={server}
           categories={categories}
-          canRestore={!blocked}
+          canRestore={!blocked && !save.isPending}
           close={() => setHistoryOpen(false)}
           restore={(markdown) => {
             store.edit(markdown);

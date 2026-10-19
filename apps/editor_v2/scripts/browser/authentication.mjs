@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { chromium } from "./playwright.mjs";
-import { employeeSession } from "./auth-fixture.mjs";
+import { employeeSession, servicesFixture } from "./auth-fixture.mjs";
+import { fixturePage, installPageApi } from "./page-api-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -70,31 +71,13 @@ await context.route("https://github.com/**", (route) =>
   route.fulfill({ contentType: "text/html", body: "<h1>GitHub sign-in fixture</h1>" }),
 );
 
-await context.addInitScript(() => {
-  if (localStorage.getItem("govbb-editor:workspace:v1")) return;
-
-  const keys = {
-    committed: "govbb-editor:documents:page:markdown",
-    working: "govbb-editor:documents:page:working",
-    previous: "govbb-editor:documents:page:previous",
-    legacy: "govbb-editor:documents:page:legacy",
-  };
-
-  localStorage.setItem(keys.committed, "---\ntitle: Existing page\n---\n\nPreserve this draft.\n");
-  localStorage.setItem(
-    "govbb-editor:workspace:v1",
-    JSON.stringify({
-      version: 1,
-      services: [
-        {
-          id: "team",
-          title: "Team",
-          documents: [{ id: "page", kind: "page", role: "entry", title: "Existing page", keys }],
-        },
-      ],
-    }),
-  );
-});
+await installPageApi(context, { ...servicesFixture[0], id: "team", title: "Team" }, [
+  fixturePage("page", {
+    title: "Existing page",
+    parent_id: "team",
+    body_markdown: "Preserve this page.",
+  }),
+]);
 
 try {
   const target = "/services/team/page?view=source#content";
@@ -110,42 +93,26 @@ try {
   const title = page.getByRole("textbox", { name: "Page title", exact: true });
   assert.equal(await title.inputValue(), "Existing page");
 
-  await page.evaluate(() => {
-    window.authTestOriginalSetItem = Storage.prototype.setItem;
-    Storage.prototype.setItem = function (key, value) {
-      if (key.startsWith("govbb-editor:documents:page:"))
-        throw new DOMException("Storage full", "QuotaExceededError");
-
-      return window.authTestOriginalSetItem.call(this, key, value);
-    };
-  });
   await title.fill("Keep unsaved work");
-  await page.getByText("Not saved", { exact: true }).waitFor();
+  await page.getByText("Unsaved changes", { exact: true }).waitFor();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
-  await page.getByText("Save or download this draft before leaving it. Then try again.").waitFor();
-  assert.equal(signOuts, 0, "draft failure blocks session revocation");
+  const leave = page.getByRole("alertdialog");
+  await leave.waitFor();
+  assert.equal(signOuts, 0, "confirmation happens before revoking the session");
+  await leave.getByRole("button", { name: "Cancel", exact: true }).click();
   session = null;
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await page.waitForTimeout(250);
-  assert.equal(signIns, 1, "focus expiry cannot discard a blocked draft through OAuth");
+  await leave.waitFor();
+  await leave.getByRole("button", { name: "Cancel", exact: true }).click();
+  assert.equal(signIns, 1, "cancelled expiry does not start OAuth");
   assert.equal(await title.inputValue(), "Keep unsaved work");
-  await page.evaluate(() => {
-    Storage.prototype.setItem = window.authTestOriginalSetItem;
-  });
   session = employeeSession();
-  await title.fill("Saved before sign-out");
-  await page
-    .locator("[data-document-bar]:visible")
-    .getByText("Saved in this browser", { exact: true })
-    .waitFor();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await leave.getByRole("button", { name: "Sign out", exact: true }).click();
   await page.getByRole("heading", { name: "You are signed out" }).waitFor();
   assert.equal(signOuts, 1);
   assert.equal(signIns, 1, "sign-out does not immediately restart OAuth");
-  assert.match(
-    await page.evaluate(() => localStorage.getItem("govbb-editor:documents:page:markdown")),
-    /Saved before sign-out/,
-  );
+  assert.equal(await leave.count(), 0, "no second navigation question");
 
   await page.goto(new URL("/auth?state=complete&returnTo=%2Fservices", base).href);
   await page.getByText(/Your sign-in could not be confirmed/).waitFor();

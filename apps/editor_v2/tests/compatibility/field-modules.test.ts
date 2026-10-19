@@ -19,35 +19,10 @@ import { govbbFormEditor, govbbFormModules } from "../../src/presets/govbb-form"
 import { lexicalToLegacySsb } from "../../src/converters/lexical-to-legacy-ssb";
 import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
 import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
-import {
-  createFormDraftCodec,
-  initialDraft,
-  LEGACY_KEY,
-  MARKDOWN_KEY,
-  WORKING_KEY,
-  type DraftStorage,
-} from "../helpers/default-form";
+import { createFormDraftCodec, initialDraft, DraftStore } from "../helpers/default-form";
 
 const fileSource =
   "---\nformat: govbb-form\nformatVersion: 2\ntitle: Evidence\n---\n\n# Upload evidence\n\n::page{#evidence-page}\n\n::file-upload[Evidence]{#evidence required}\n";
-
-function memory(seed: Record<string, string>): DraftStorage {
-  const entries = new Map(Object.entries(seed));
-
-  return {
-    getItem: (key) => entries.get(key) ?? null,
-    setItem: (key, value) => {
-      entries.set(key, value);
-    },
-    removeItem: (key) => {
-      entries.delete(key);
-    },
-  };
-}
-
-const noDemo = () => {
-  throw Error("An unsupported draft must not become a demo");
-};
 
 const withoutFile = () =>
   defineFormEditor({
@@ -99,31 +74,23 @@ test("removing one field module removes its actions, renderer, inspector and sou
 
 test("uninstalled canonical fields recover original and working Markdown bytes, then load after reinstatement", () => {
   const working = fileSource + "\nUnfinished source [\n";
-  const storage = memory({ [MARKDOWN_KEY]: fileSource, [WORKING_KEY]: working });
   const runtime = createFormRuntime(withoutFile());
-  const loaded = initialDraft(storage, noDemo, createFormDraftCodec(runtime), runtime);
-  expect(loaded.snapshot.valid).toBe(false);
+  const store = new DraftStore(fileSource, createFormDraftCodec(runtime));
+  store.edit(working);
+  const loaded = store.getSnapshot();
+  expect(loaded.valid).toBe(false);
   expect(loaded.state).toBeUndefined();
-  expect(loaded.needsSave).toBe(false);
-  expect(loaded.snapshot.recovery).toEqual({ kind: "markdown", original: fileSource });
-  expect(loaded.snapshot.source).toBe(working);
-  expect(storage.getItem(MARKDOWN_KEY)).toBe(fileSource);
-  expect(storage.getItem(WORKING_KEY)).toBe(working);
-  const restoredRuntime = createFormRuntime(govbbFormEditor);
+  expect(loaded.recovery).toEqual({ kind: "markdown", original: fileSource });
+  expect(loaded.source).toBe(working);
 
-  const restored = initialDraft(
-    storage,
-    noDemo,
-    createFormDraftCodec(restoredRuntime),
-    restoredRuntime,
+  const restored = new DraftStore(
+    fileSource,
+    createFormDraftCodec(createFormRuntime(govbbFormEditor)),
   );
 
-  expect(restored.snapshot.valid).toBe(true);
-  expect(restored.snapshot.source).toBe(working);
-  expect(restored.snapshot.dirty).toBe(true);
-  expect(restored.state).toBeDefined();
-  expect(storage.getItem(MARKDOWN_KEY)).toBe(fileSource);
-  expect(storage.getItem(WORKING_KEY)).toBe(working);
+  restored.edit(working);
+  expect(restored.getSnapshot()).toMatchObject({ valid: true, source: working, dirty: true });
+  expect(restored.getSnapshot().state).toBeDefined();
 });
 
 test("installed logic syntax cannot conceal an unavailable field in retained raw NodeState", () => {
@@ -159,46 +126,19 @@ test("installed logic syntax cannot conceal an unavailable field in retained raw
   ]);
   expect(parsed.original).toBe(source);
 
-  const working = source + "\nWorking copy\n",
-    storage = memory({ [MARKDOWN_KEY]: source, [WORKING_KEY]: working });
-
-  const runtime = createFormRuntime(definition),
-    loaded = initialDraft(storage, noDemo, createFormDraftCodec(runtime), runtime);
-
+  const loaded = initialDraft(source, createFormDraftCodec(createFormRuntime(definition)));
   expect(loaded.snapshot.recovery?.original).toBe(source);
-  expect(loaded.snapshot.source).toBe(working);
-  expect(storage.getItem(MARKDOWN_KEY)).toBe(source);
-  expect(storage.getItem(WORKING_KEY)).toBe(working);
+  expect(loaded.snapshot.source).toBe(source);
 });
 
-test("raw JSON drafts with an unavailable field stay byte-exact and can load when its module returns", () => {
-  const fullRuntime = createFormRuntime(govbbFormEditor),
-    fullCodec = createFormDraftCodec(fullRuntime);
-
+test("raw JSON with an unavailable field is rejected unchanged and converts when its module returns", () => {
+  const fullCodec = createFormDraftCodec(createFormRuntime(govbbFormEditor));
   const raw = JSON.stringify(fullCodec.prepare(fileSource).state, null, 3) + "\n";
-
-  const working = "A retained source edit\n",
-    storage = memory({ [LEGACY_KEY]: raw, [WORKING_KEY]: working });
-
-  const definition = withoutFile(),
-    runtime = createFormRuntime(definition);
-
-  const loaded = initialDraft(storage, noDemo, createFormDraftCodec(runtime), runtime);
-  expect(loaded.snapshot.valid).toBe(false);
-  expect(loaded.snapshot.recovery).toEqual({ kind: "legacy", original: raw });
-  expect(loaded.snapshot.diagnostics.some((issue) => issue.message.includes("file-upload"))).toBe(
-    true,
-  );
-  expect(loaded.snapshot.source).toBe(working);
-  expect(storage.getItem(LEGACY_KEY)).toBe(raw);
-  expect(storage.getItem(MARKDOWN_KEY)).toBeNull();
-  expect(storage.getItem(WORKING_KEY)).toBe(working);
-  const restored = initialDraft(storage, noDemo, fullCodec, fullRuntime);
-  expect(restored.snapshot.valid).toBe(true);
-  expect(restored.state).toBeDefined();
-  expect(restored.snapshot.source).toBe(working);
-  expect(storage.getItem(LEGACY_KEY)).toBe(raw);
-  expect(storage.getItem(WORKING_KEY)).toBe(working);
+  const value = JSON.parse(raw);
+  const absentCodec = createFormDraftCodec(createFormRuntime(withoutFile()));
+  expect(() => absentCodec.prepareLegacy(value)).toThrow("file-upload");
+  expect(JSON.stringify(value, null, 3) + "\n").toBe(raw);
+  expect(fullCodec.prepareLegacy(value)).toBeDefined();
 });
 
 test("configured conversion reads existing nodes without changing keys, bytes or the owning editor", async () => {
