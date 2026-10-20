@@ -77,7 +77,7 @@ test("lists API services newest change first, a page at a time, opening each in 
   expect(html).toContain('aria-sort="descending"');
   expect(html).toContain("Search title or URL");
   expect(html).toContain("All categories");
-  expect(html).toContain("Draft link only");
+  expect(html).toContain("Draft (hidden)");
 });
 
 let host: HTMLDivElement;

@@ -293,7 +293,7 @@ export const visibilityLabels = new Map([
   ["", "Public"],
   ["public", "Public"],
   ["preview", "Preview link only"],
-  ["draft", "Draft link only"],
+  ["draft", "Draft (hidden)"],
 ]);
 
 const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" });
@@ -383,17 +383,30 @@ export function PageSettings({
         {unsupported("visibility") ? (
           <Preserved label="Visibility" error={errors.visibility} />
         ) : (
-          <Field label="Visibility" error={errors.visibility}>
+          <Field
+            label="Visibility"
+            hint={
+              visibility === "draft"
+                ? "This page stays hidden until you choose Public or Preview and save."
+                : undefined
+            }
+            error={errors.visibility}
+          >
             <NativeSelect
               icon={<StatusDot tone={visibilityTones.get(visibility) ?? "neutral"} />}
               value={visibility === "public" ? "" : visibility}
               onChange={(event) => update({ visibility: event.target.value || undefined }, true)}
             >
-              {["", "preview", "draft"].map((value) => (
+              {["", "preview"].map((value) => (
                 <option key={value} value={value}>
                   {visibilityLabels.get(value)}
                 </option>
               ))}
+              {visibility === "draft" && (
+                <option value="draft" disabled>
+                  {visibilityLabels.get("draft")}
+                </option>
+              )}
               {unusualVisibility && (
                 <option value={visibility}>{visibility} (from Markdown)</option>
               )}

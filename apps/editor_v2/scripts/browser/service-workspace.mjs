@@ -41,7 +41,7 @@ try {
   await title.waitFor();
   assert.equal(await title.inputValue(), "API workspace checks");
   const created = api.writes.find((write) => write.method === "POST");
-  assert.equal(created.fields.visibility, "draft");
+  assert.equal(created.fields.visibility, "preview");
   assert.equal(new URL(page.url()).pathname, `/services/${created.id}/${created.id}`);
   assert.equal(await page.getByRole("link", { name: "Application form", exact: true }).count(), 0);
 
@@ -52,6 +52,18 @@ try {
     "Supporting page",
   ]);
   assert.equal(await add.locator('input[type="file"]').count(), 0);
+  await add.getByRole("button", { name: "Add page", exact: true }).click();
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll('textarea[aria-label="Page title"]')].some(
+      (input) => !input.closest("[hidden]") && input.value === "Before you start",
+    ),
+  );
+  const start = api.writes.filter((write) => write.method === "POST").at(-1);
+  assert.equal(start.fields.parent_id, created.id);
+  assert.equal(start.fields.url, `${created.fields.url}/start`);
+  assert.equal(start.fields.visibility, "preview");
+
+  await button("Add document").click();
   await add.getByLabel("Document type").selectOption("supporting");
   await add.getByLabel("Page title", { exact: true }).fill("Fees");
   await add.getByRole("button", { name: "Add page", exact: true }).click();
@@ -64,6 +76,7 @@ try {
   );
   const child = api.writes.filter((write) => write.method === "POST").at(-1);
   assert.equal(child.fields.parent_id, created.id);
+  assert.equal(child.fields.visibility, "preview");
   await page.getByLabel("Form ID", { exact: true }).fill("externally-managed-form");
   assert.equal(api.writes.filter((write) => write.method === "PUT").length, 0);
   await button("Save").click();

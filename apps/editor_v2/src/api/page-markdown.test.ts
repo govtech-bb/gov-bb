@@ -96,7 +96,7 @@ describe("page markdown", () => {
     if (prepared.mode === "source") throw new Error("The entry page should open visually");
     const editor = createHeadlessEditor(govbbPageEditor, prepared.state);
 
-    editor.update(() => $setPageMetadata({ visibility: "draft", subcategory: undefined }), {
+    editor.update(() => $setPageMetadata({ visibility: "preview", subcategory: undefined }), {
       discrete: true,
     });
     const edited = govbbPageCodec.encode(editor.getEditorState().toJSON());
@@ -109,9 +109,32 @@ describe("page markdown", () => {
     // An edit re-exports the body in the editor's normal form (a hard break becomes <br>).
     expect({ ...after.value, body_markdown: "" }).toEqual({
       ...before.value,
-      visibility: "draft",
+      visibility: "preview",
       body_markdown: "",
     });
+  });
+
+  it("keeps a legacy draft hidden when unrelated edits are saved", () => {
+    const page: ApiPage = { ...entry, visibility: "draft" };
+    const prepared = govbbPageCodec.prepare(pageToMarkdown(page, categories));
+
+    if (prepared.mode === "source") throw new Error("The draft page should open visually");
+    const editor = createHeadlessEditor(govbbPageEditor, prepared.state);
+
+    try {
+      editor.update(() => $setPageMetadata({ title: "Edited hidden page" }), { discrete: true });
+
+      const saved = markdownToPageSaveInput(
+        govbbPageCodec.encode(editor.getEditorState().toJSON()),
+        page,
+        categories,
+      );
+
+      expect(saved.ok && saved.value.title).toBe("Edited hidden page");
+      expect(saved.ok && saved.value.visibility).toBe("draft");
+    } finally {
+      editor.dispose();
+    }
   });
 
   it("files an entry page under the subcategory it names", () => {

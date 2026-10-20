@@ -18,7 +18,7 @@ import { toast } from "../ui/toast";
 import { WorkspaceDialog } from "./workspace-dialog";
 import { documentLabel, type PageDocument } from "./model";
 
-/** Create a page as a draft, then hand its id over once the API has it. */
+/** Create a page in Preview, then hand its id over once the API has it. */
 function useCreatePage(api: EditorApi, done: (id: string) => void) {
   const client = useQueryClient();
 
@@ -92,7 +92,7 @@ function PathField({
   );
 }
 
-/** A new service in the content API: a draft entry page filed under a category. */
+/** A new service in the content API: a preview-only entry page filed under a category. */
 export function CreateRemoteServiceDialog({
   api,
   close,
@@ -114,7 +114,7 @@ export function CreateRemoteServiceDialog({
   return (
     <WorkspaceDialog
       title="Create a service"
-      description="The service starts as a draft entry page. Add its start page and supporting pages once it exists."
+      description="The service starts in Preview. Add its start page and supporting pages once it exists."
       close={close}
       onSubmit={() => {
         const badPath = urlProblem(path);
@@ -132,7 +132,7 @@ export function CreateRemoteServiceDialog({
             url: path,
             title: title.trim(),
             category_id: category.id,
-            visibility: "draft",
+            visibility: "preview",
             body_markdown: "",
           });
       }}
@@ -177,7 +177,7 @@ export function CreateRemoteServiceDialog({
   );
 }
 
-/** A new draft page beneath a service's entry page: its start page or a supporting page. */
+/** A new preview-only page beneath a service's entry page: its start page or a supporting page. */
 export function CreateRemotePageDialog({
   api,
   detail,
@@ -203,7 +203,7 @@ export function CreateRemotePageDialog({
   return (
     <WorkspaceDialog
       title="Add a page"
-      description="The page starts as a draft beneath this service's entry page."
+      description="The page starts in Preview beneath this service's entry page."
       close={close}
       onSubmit={() => {
         const badPath = urlProblem(path);
@@ -216,7 +216,7 @@ export function CreateRemotePageDialog({
             url: path,
             title: name,
             parent_id: entry.id,
-            visibility: "draft",
+            visibility: "preview",
             body_markdown: "",
           });
       }}

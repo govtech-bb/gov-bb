@@ -777,7 +777,7 @@ function ComponentsPreview() {
         <Section id="badge" title="Badge" lead="A short label for a status or a property.">
           <Specimen title="Tones" note="The words carry the meaning; the tone backs them up.">
             <div className="flex flex-wrap justify-center gap-2">
-              <Badge>Draft link only</Badge>
+              <Badge>Draft (hidden)</Badge>
               <Badge tone="info">Imported</Badge>
               <Badge tone="success">Public</Badge>
               <Badge tone="warning">Preview link only</Badge>
@@ -1295,7 +1295,6 @@ function SidePanelDemo() {
               >
                 <option value="public">Public</option>
                 <option value="preview">Preview link only</option>
-                <option value="draft">Draft link only</option>
               </NativeSelect>
             </Field>
             <FieldText label="Publication date">12 Oct 2026</FieldText>
@@ -1322,7 +1321,7 @@ function VisibilityDemo() {
       onChange={(event) => setVisibility(event.target.value)}
       aria-label="Visibility"
     >
-      {["public", "preview", "draft"].map((value) => (
+      {["public", "preview"].map((value) => (
         <option key={value} value={value}>
           {visibilityLabels.get(value)}
         </option>
@@ -1947,7 +1946,7 @@ function CreateServiceDialog() {
         <Dialog.Header>
           <Dialog.Title>Create a service</Dialog.Title>
           <Dialog.Description>
-            It starts as a draft entry page. You can add a start page and a form later.
+            The service starts in Preview. Add its start page and supporting pages once it exists.
           </Dialog.Description>
         </Dialog.Header>
         <Dialog.Body className="flex flex-col gap-5">
@@ -2027,7 +2026,7 @@ const statuses: SelectItem[] = [
 const statusRows = [
   ["Apply for a hotel licence", "Preview link only", "warning"],
   ["Get a copy of a birth certificate", "Public", "success"],
-  ["What prescription colours mean", "Draft link only", "neutral"],
+  ["What prescription colours mean", "Draft (hidden)", "neutral"],
 ] as const;
 
 const typeSteps = [
