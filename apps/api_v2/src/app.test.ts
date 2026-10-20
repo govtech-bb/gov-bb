@@ -1134,16 +1134,19 @@ describe("employee access", () => {
       expect(response.statusCode).toBe(401);
       expect(response.headers["cache-control"]).toBe("no-store");
       expect(response.headers.etag).toBeUndefined();
+      // A HEAD response has no body to inspect.
+      if (method !== "HEAD")
+        expect(response.json()).toEqual({ error: "unauthenticated" });
     },
   );
 
   it.each([
-    ["expired", ok(null), 401],
-    ["outside the workspace", err(new Forbidden()), 403],
-    ["unavailable", err(new AuthUnavailable()), 503],
+    ["expired", ok(null), 401, "unauthenticated"],
+    ["outside the workspace", err(new Forbidden()), 403, "forbidden"],
+    ["unavailable", err(new AuthUnavailable()), 503, "auth_unavailable"],
   ] as const)(
     "fails closed when the session is %s",
-    async (_name, result, status) => {
+    async (_name, result, status, error) => {
       const restricted = await createTestApp(db, {
         sessions: { findSession: async () => result },
       });
@@ -1153,6 +1156,7 @@ describe("employee access", () => {
           headers: TEST_HEADERS,
         });
         expect(response.statusCode).toBe(status);
+        expect(response.json()).toEqual({ error });
         expect(response.headers["cache-control"]).toBe("no-store");
         expect(response.headers.etag).toBeUndefined();
       } finally {
@@ -1175,6 +1179,7 @@ describe("employee access", () => {
           },
         });
         expect(response.statusCode).toBe(403);
+        expect(response.json()).toEqual({ error: "forbidden" });
         expect(response.headers["cache-control"]).toBe("no-store");
       }
       expect(expectOk(await services.index.version())).toEqual({
