@@ -502,14 +502,9 @@
       "title": "Application submitted",
       "elements": [],
       "behaviours": [],
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "We have received your submission. You will receive a confirmation email at the address you provided."
-        }
-      ]
+      "markdownContent": "## What happens next\n\nWe have received your submission. You will receive a confirmation email at the address you provided."
     }
   ],
   "createdAt": "2026-06-26T10:57:46.815Z",
-  "updatedAt": "2026-10-12T17:45:45.000Z"
+  "updatedAt": "2026-10-19T00:00:00.000Z"
 }
