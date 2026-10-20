@@ -880,18 +880,13 @@
       "title": "Application Submitted",
       "stepId": "submission-confirmation",
       "elements": [],
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "Thank you for registering your child/ward for the National Summer Camp Programme 2025. We have received your submission. You will receive a confirmation email at the address you provided. For enquiries, contact us at +1 (246) 535-3835 or mysce.youthprojects@barbados.gov.bb."
-        }
-      ]
+      "markdownContent": "## What happens next\n\nThank you for registering your child/ward for the National Summer Camp Programme 2025. We have received your submission. You will receive a confirmation email at the address you provided. For enquiries, contact us at +1 (246) 535-3835 or mysce.youthprojects@barbados.gov.bb."
     }
   ],
   "title": "National Summer Camp Programme 2025: Camper Registration Form",
   "formId": "national-summer-camp-2025-registration",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-10-12T17:45:45.000Z",
+  "updatedAt": "2026-10-20T19:15:00.000Z",
   "processors": [
     {
       "type": "email",

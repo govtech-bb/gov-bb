@@ -490,18 +490,13 @@
       "title": "Request submitted",
       "stepId": "submission-confirmation",
       "elements": [],
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "The Office of the President will review your request and contact the person you named to discuss the arrangements. If you don't hear back within 4 weeks, contact the Office of the President directly at State House, Government Hill, St Michael."
-        }
-      ]
+      "markdownContent": "## What happens next\n\nThe Office of the President will review your request and contact the person you named to discuss the arrangements. If you don't hear back within 4 weeks, contact the Office of the President directly at State House, Government Hill, St Michael."
     }
   ],
   "title": "Request a Presidential Visit for a Centenarian",
   "formId": "request-a-presidential-visit-for-a-centenarian",
   "createdAt": "2026-05-21T00:00:00Z",
-  "updatedAt": "2026-10-05T18:32:56.000Z",
+  "updatedAt": "2026-10-20T19:15:00.000Z",
   "processors": [
     {
       "type": "email",
