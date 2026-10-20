@@ -98,6 +98,59 @@ describe("SubmissionPipelineService", () => {
     if (module) await module.close();
   });
 
+  // A located address's parish is read-only on the form; when the lookup that
+  // writes it failed, the coordinate supplies it rather than a 422 on a field
+  // the applicant cannot change.
+  describe("catchment-routed parish", () => {
+    const routedContract = () =>
+      mockContract({
+        steps: [
+          {
+            stepId: "event-details",
+            elements: [
+              primitiveText("event-parish", true),
+              primitiveText("event-address-coordinates"),
+            ],
+            behaviours: [],
+          },
+        ],
+        catchmentRouting: {
+          coordinatesField: "event-details.event-address-coordinates",
+          parishField: "event-details.event-parish",
+        },
+      } as unknown as Partial<ServiceContract>);
+    const routedDto = (parish: string, coordinate: string): SubmitDto => ({
+      ...baseDto(),
+      draftId: undefined,
+      values: {
+        "event-details": {
+          "event-parish": parish,
+          "event-address-coordinates": coordinate,
+        },
+      },
+    });
+
+    it("fills an empty parish from the coordinate before validating", async () => {
+      definitionsService.findByFormId.mockResolvedValue(routedContract());
+
+      const { normalizedValues } = await service.run(
+        routedDto("", "13.100000,-59.600000"),
+      );
+
+      expect(normalizedValues["event-details"]).toMatchObject({
+        "event-parish": "st-michael",
+      });
+    });
+
+    it("still requires the parish when there is no coordinate", async () => {
+      definitionsService.findByFormId.mockResolvedValue(routedContract());
+
+      await expect(service.run(routedDto("", ""))).rejects.toBeInstanceOf(
+        UnprocessableEntityException,
+      );
+    });
+  });
+
   describe("resolveDraftAndContract", () => {
     it("draft path resolves the canonical recipe by formId (#1196: no version)", async () => {
       draftsService.findById.mockResolvedValue(mockDraft());

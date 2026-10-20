@@ -43,6 +43,13 @@ export interface ClientPrimitive {
   /** For `address-lookup`: sibling fields to populate when a suggestion is
    * picked (see {@link GeocodeTargets}). */
   geocodeTargets?: GeocodeTargets;
+  /**
+   * Set on the parish an `address-lookup` on the same step fills from a located
+   * address (one that writes a routing coordinate). Its value comes from the
+   * location, so it renders read-only and is not validated on its own — the
+   * address field requires the address to be located.
+   */
+  filledByAddressLookup?: boolean;
   /** Content element (`htmlType: "content"`) markdown body. */
   content?: string;
   /** Content element presentation: "inset" | "text" | "details" | "warning". */

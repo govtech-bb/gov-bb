@@ -245,6 +245,135 @@ export async function tickCheckbox(
 }
 
 /**
+ * Canned `/geocode` answers for the places the smoke specs type. Real Barbados
+ * coordinates, each checked against `polyclinic-catchments.geojson`, so
+ * catchment routing still resolves a real polyclinic — Gun Hill sits in the
+ * Frederick Miller polygon that eho-frederick-miller-local depends on.
+ */
+const MOCK_GEOCODE_PLACES: Record<
+  string,
+  {
+    label: string;
+    lat: string;
+    lon: string;
+    line1: string;
+    line2: string;
+    parish: string;
+  }
+> = {
+  "jemmotts lane": {
+    label: "Jemmotts Lane, Bridgetown, Saint Michael, Barbados",
+    lat: "13.0935",
+    lon: "-59.6050",
+    line1: "Jemmotts Lane",
+    line2: "Bridgetown",
+    parish: "st-michael",
+  },
+  "broad street": {
+    label: "Broad Street, Bridgetown, Saint Michael, Barbados",
+    lat: "13.0967",
+    lon: "-59.6142",
+    line1: "Broad Street",
+    line2: "Bridgetown",
+    parish: "st-michael",
+  },
+  speightstown: {
+    label: "Queen Street, Speightstown, Saint Peter, Barbados",
+    lat: "13.2510",
+    lon: "-59.6420",
+    line1: "Queen Street",
+    line2: "Speightstown",
+    parish: "st-peter",
+  },
+  holetown: {
+    label: "First Street, Holetown, Saint James, Barbados",
+    lat: "13.1870",
+    lon: "-59.6370",
+    line1: "First Street",
+    line2: "Holetown",
+    parish: "st-james",
+  },
+  oistins: {
+    label: "Oistins Main Road, Oistins, Christ Church, Barbados",
+    lat: "13.0660",
+    lon: "-59.5400",
+    line1: "Oistins Main Road",
+    line2: "Oistins",
+    parish: "christ-church",
+  },
+  "gun hill": {
+    label: "Gun Hill Signal Station, Gun Hill, Saint George, Barbados",
+    lat: "13.1390",
+    lon: "-59.5560",
+    line1: "Gun Hill Signal Station",
+    line2: "Gun Hill",
+    parish: "st-george",
+  },
+};
+
+/**
+ * Answer the address lookup from {@link MOCK_GEOCODE_PLACES} instead of the
+ * API's `/geocode` endpoints, which call a metered provider (Google) with a
+ * daily cap. The smoke suite must never spend money or fail on someone else's
+ * quota (#2679), so every spec with an address-lookup field registers this in
+ * a `beforeEach`. Covers every endpoint that reaches Google:
+ *
+ * - `/geocode?q=` — suggestions. An unknown place gets none, exactly as a real
+ *   lookup that finds nothing.
+ * - `/geocode/reverse` — the address at a placed pin. Answers with the nearest
+ *   mock place's parish (the locked parish must come from the pin) and no
+ *   street address, like a pin dropped on open ground.
+ * - `/geocode/place/:id` — a picked place's coordinate. The mock suggestions
+ *   carry their coordinate, so this is never needed; answer 404 so a stray
+ *   call fails visibly rather than reaching Google.
+ *
+ * `/geocode/polyclinic` is left live: it is our own catchment lookup, not a
+ * provider call, and worth exercising.
+ */
+export async function mockGeocoder(page: Page): Promise<void> {
+  await page.route(
+    (url) => url.pathname.endsWith("/geocode"),
+    (route) => {
+      const query = (
+        new URL(route.request().url()).searchParams.get("q") ?? ""
+      ).toLowerCase();
+      const match = Object.entries(MOCK_GEOCODE_PLACES).find(([place]) =>
+        query.includes(place),
+      );
+      return route.fulfill({ json: match ? [match[1]] : [] });
+    },
+  );
+  await page.route(
+    (url) => url.pathname.endsWith("/geocode/reverse"),
+    (route) => {
+      const params = new URL(route.request().url()).searchParams;
+      const lat = Number(params.get("lat"));
+      const lon = Number(params.get("lon"));
+      const nearest = Object.values(MOCK_GEOCODE_PLACES).reduce((a, b) =>
+        (Number(a.lat) - lat) ** 2 + (Number(a.lon) - lon) ** 2 <=
+        (Number(b.lat) - lat) ** 2 + (Number(b.lon) - lon) ** 2
+          ? a
+          : b,
+      );
+      return route.fulfill({
+        json: {
+          label: "",
+          lat: lat.toFixed(6),
+          lon: lon.toFixed(6),
+          line1: "",
+          line2: "",
+          parish: nearest.parish,
+        },
+      });
+    },
+  );
+  await page.route(
+    (url) => url.pathname.includes("/geocode/place/"),
+    (route) => route.fulfill({ status: 404, json: {} }),
+  );
+}
+
+/**
  * Fill an address-lookup (geocoder) field: type the query, wait for the
  * suggestion list, pick the first match, then assert the hidden coordinates
  * field filled — that value is what the catchment router resolves the serving

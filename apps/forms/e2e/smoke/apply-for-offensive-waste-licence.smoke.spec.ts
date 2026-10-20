@@ -76,6 +76,7 @@ import {
   selectRadio,
   submitAndConfirm,
   tickCheckbox,
+  mockGeocoder,
   uploadOne,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
@@ -452,6 +453,8 @@ function logData(data: Data): void {
   if (process.env.SMOKE_LOG_DATA)
     console.log("[smoke-data]", JSON.stringify(data, null, 2));
 }
+
+test.beforeEach(({ page }) => mockGeocoder(page));
 
 test.describe("Offensive Trade Licence — Live Smoke", () => {
   test("submits a new licence for yourself, with building plans", async ({

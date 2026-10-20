@@ -11,6 +11,7 @@ import { FormDefinitionsService } from "../form-definitions/form-definitions.ser
 import { FormDraftsService } from "../form-drafts/form-drafts.service";
 import { FilesService } from "@/files/files.service";
 import { AppError } from "@/common/errors";
+import { fillRoutingParish } from "@/catchment/parish-routing-point";
 import { expandSubmission, type StepInstance } from "./submission-expand";
 import {
   foldErrors,
@@ -97,8 +98,20 @@ export class SubmissionPipelineService {
     private readonly filesService: FilesService,
   ) {}
 
-  async run(dto: SubmitDto): Promise<PipelineResult> {
-    const { draft, contract } = await this.resolveDraftAndContract(dto);
+  async run(submitted: SubmitDto): Promise<PipelineResult> {
+    const { draft, contract } = await this.resolveDraftAndContract(submitted);
+    // A located address's parish is read-only on the form; when the lookup that
+    // writes it failed, take it from the coordinate rather than refuse a field
+    // the applicant cannot change.
+    const dto = contract.catchmentRouting
+      ? {
+          ...submitted,
+          values: fillRoutingParish(
+            submitted.values,
+            contract.catchmentRouting,
+          ),
+        }
+      : submitted;
 
     const expanded = expandSubmission(contract, dto.values, {
       draftId: dto.draftId,
