@@ -98,6 +98,23 @@ async function savePage() {
   await act(async () => button.click());
 }
 
+test.each([
+  ["visual", page.body_markdown],
+  ["source", "<!-- Keep this note -->"],
+])("a %s page stays editable without history controls or requests", async (mode, body) => {
+  const h = await mountPage(async () => Response.json({ ...page, body_markdown: body }));
+
+  expect(h.session().store.getSnapshot().mode).toBe(mode);
+  const buttons = [...document.querySelectorAll("button")];
+  expect(buttons.map((button) => button.textContent)).not.toContain("History");
+  expect(buttons.map((button) => button.textContent)).not.toContain("Restore this version");
+
+  await applySource(h.session(), h.session().store.getSnapshot().source + "\n\nNew content");
+  expect(pageHasUnsavedChanges(h.session())).toBe(true);
+  expect(buttons.find((button) => button.textContent === "Save")?.disabled).toBe(false);
+  expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/history"))).toBe(false);
+});
+
 test("a page preloaded just now, as its link was pointed at, opens without waiting on the content API", async () => {
   vi.stubGlobal("matchMedia", (query: string) => ({
     matches: true,

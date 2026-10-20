@@ -37,8 +37,6 @@ type PageHost = {
   settings?: PageSettingsOptions;
   /** Where the page stands against the host's last server save. */
   server?: SaveStateProps;
-  /** The versions saved before this one. */
-  versions?: ReactNode;
   /** Sends the changes on: Publish changes, or Save. */
   publish?: ReactNode;
   notice?: ReactNode;
@@ -62,7 +60,6 @@ function PageDraft({
   active,
   settings,
   server,
-  versions,
   publish,
   notice,
   linkPages,
@@ -79,7 +76,6 @@ function PageDraft({
           label="Page tools"
           title={<SourceTitle source={draft.committed} />}
           save={save}
-          versions={versions}
           publish={publish}
           notices={notice}
         />
@@ -120,7 +116,6 @@ function PageDraft({
             />
           }
           source={active && <SourceEditor documentLabel="page" fileName="page.md" />}
-          versions={versions}
           publish={publish}
           settings={<SidePanel.Toggle panel={panel} label="Page settings" disabled={preview} />}
           notices={

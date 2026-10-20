@@ -29,11 +29,16 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { VISIBILITIES, type Frontmatter, type PageId } from "./modules/page";
-import { CHANGE_ACTIONS } from "./modules/page-history";
 
 export const pageVisibility = pgEnum("page_visibility", VISIBILITIES);
 
-export const changeAction = pgEnum("change_action", CHANGE_ACTIONS);
+export const changeAction = pgEnum("change_action", [
+  "created",
+  "updated",
+  "published",
+  "reverted",
+  "deleted",
+]);
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true, precision: 3 })
@@ -170,10 +175,3 @@ export const changeEvents = pgTable(
     ),
   ],
 );
-
-/** BetterAuth's users (migration 003), as far as the change log names its actors. */
-export const authUsers = pgTable("auth_user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull(),
-});
