@@ -4,7 +4,7 @@
 #   docker build -f apps/api_v2/Dockerfile .
 # Same shape as apps/api/Dockerfile; the comments there explain the pnpm
 # cache mount and the hoisted prod-deps install in more detail.
-FROM node:24.20-alpine3.23@sha256:0388af2af070cd4736a1567cfed02469ba117848845b4165d87a333edb53d2ca AS builder
+FROM node:24.21-alpine3.23@sha256:9ec4a2e289874ed0d722e1772ec2de45d2801541db8612f3638b26f128c69ac2 AS builder
 
 # Corepack must run as root — it writes to /usr/local/bin.
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
@@ -57,7 +57,7 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
 # Slim runtime image: plain `node`, no package manager. Migrations and the
 # seed run inside the app at boot (src/main.ts), so there is no separate
 # migrate step.
-FROM node:24.20-alpine3.23@sha256:0388af2af070cd4736a1567cfed02469ba117848845b4165d87a333edb53d2ca AS runner
+FROM node:24.21-alpine3.23@sha256:9ec4a2e289874ed0d722e1772ec2de45d2801541db8612f3638b26f128c69ac2 AS runner
 
 # Alpine security patches ahead of the base image's rebuild cadence.
 RUN apk upgrade --no-cache
