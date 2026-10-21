@@ -19,9 +19,11 @@ A spa pool is sometimes called a hot tub.
 
 You will need:
 
-- for a renewal, your current swimming pool licence number
 - how much water each pool holds, in gallons or cubic metres
-- for a new licence, a site plan of the pool or your Planning and Development application number
+- for a new licence, your Planning and Development application number
+- for a new licence, a site plan of the pool
+- for a renewal, your current swimming pool licence number for each pool, if you know it
+- the name, telephone number and email address of the person or business managing the pool, if you do not manage it yourself
 
 Planning and Development used to be called Town and Country Planning.
 
