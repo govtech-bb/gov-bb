@@ -53,7 +53,7 @@ The runner resolves an existing `playwright` or `playwright-core` installation, 
 
 App UI suites supply employee/API responses at the HTTP boundary. `authentication.mjs` covers login, callback, outages, sign-out and cancelled expiry without revoking auth prematurely. Reusable form and page-canvas suites use `buildBrowserFixture` and `tests/browser/editor-host.tsx`, intercepted only by Playwright—not a production route. `openDemoForm` and `seedFormSource` supply explicit source; `reloadEditorFromSource` explicitly exports and reopens it to test conversion. A normal reload restores only fixture input. No production draft-storage seeding is needed. Real GitHub consent/cookies still require a deployment smoke test.
 
-`remote-page-editing.mjs` checks explicit saves, version conflicts, history restoration and API reloads; `service-workspace.mjs` checks API creation/deletion. `routing.mjs` checks cancelled links/Back/Forward, reload/tab-close warnings and clean-view eviction. `persistence-isolation.mjs` seeds malformed old keys and proves editing/lifecycle events neither read nor write them.
+`remote-page-editing.mjs` checks explicit saves, version conflicts, undo/redo, safe preview links, the absence of history controls/requests and API reloads; `service-workspace.mjs` checks API creation/deletion. `routing.mjs` checks cancelled links/Back/Forward, reload/tab-close warnings and clean-view eviction. `persistence-isolation.mjs` seeds malformed old keys and proves editing/lifecycle events neither read nor write them.
 
 Pass suite names after the URL to run a subset:
 
@@ -85,16 +85,15 @@ Paths below are relative to `src`. Symbols not listed as renamed keep their name
 | --- | --- |
 | `workspace/api-pages.ts` synchronization | `workspace/page-sync.ts`: `ServerPageBaseline`, `PageSaveOutcome`, `savePageDraft`; browser baseline storage/seeding helpers removed |
 | `workspace/api-pages.ts` service mapping | `workspace/service-pages.ts`: `apiPageDocument` → `pageDocumentFromApi`, `roleOf` → `inferServicePageRole`; local `serviceDocuments` joins removed |
-| `workspace/api-pages.ts` Markdown helpers | `api/page-markdown.ts`: `restoredMarkdown` → `pageVersionToDraftMarkdown`, `fieldLabel` → `pageFieldLabel` |
+| `workspace/api-pages.ts` Markdown helpers | `api/page-markdown.ts`: `fieldLabel` → `pageFieldLabel`; `restoredMarkdown` removed with saved-page history |
 | `workspace/api-page.tsx` | `workspace/remote-page-pane.tsx`: `RemotePagePane`, private `RemotePageEditor`; baseline state is in memory |
 | `workspace/api-service.tsx` | `workspace/service-nav.tsx`: `ServiceNav`, listing API pages only |
-| `workspace/api-history.tsx` | `workspace/page-history-dialog.tsx`; `PageHistoryDialog` unchanged |
 | `workspace/api-dialogs.tsx` | `workspace/remote-page-dialogs.tsx`: `ApiServiceDialog` → `CreateRemoteServiceDialog`, `ApiPageDialog` → `CreateRemotePageDialog`, `DeletePageDialog` → `DeleteRemotePageDialog` |
 | `workspace/dialogs.tsx` | Local dialogs removed; shared shell remains in `workspace/workspace-dialog.tsx` |
 | Workspace model types only | `PageDocument` and `ServicePageRole`; local service/form models removed, reusable form schema unchanged |
 | `api/client.ts` input types | `NewPage` → `CreatePageInput`, `SaveFields` → `SavePageInput`; transport method `EditorApi.savePage` unchanged |
 | `api/page-markdown.ts` save conversion | `SaveFieldsResult` → `PageSaveInputResult`, `markdownToSaveFields` → `markdownToPageSaveInput` |
-| `api/queries.ts` | `historyQuery` → `pageHistoryQuery`, `versionQuery` → `estateVersionQuery`; cache keys and timing unchanged |
+| `api/queries.ts` | `versionQuery` → `estateVersionQuery`; polling keys and timing unchanged; `historyQuery` removed |
 | `converters/lexicalToMarkdown/index.ts` | `converters/lexical-to-form-markdown.ts`: `lexicalToMarkdown` → `lexicalToFormMarkdown` |
 | `converters/markdownToLexical/index.ts` | `converters/form-markdown-to-lexical.ts`: `markdownToLexical` → `formMarkdownToLexical` |
 | `converters/formSchemaToLexical/index.ts` | `converters/form-schema-to-lexical.ts` |

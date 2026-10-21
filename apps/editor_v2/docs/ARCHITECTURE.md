@@ -90,7 +90,7 @@ A `DraftStore` receives explicit source and a codec: `new DraftStore(source, cod
 
 ## Service pages and workspace
 
-`workspace/page-sync.ts` compares a working copy with an in-memory `ServerPageBaseline` and saves explicitly using its `updated_at` token. A response acknowledges the submitted snapshot, never later edits. Background refresh does not overwrite the working copy or silently advance its write token. `workspace/service-pages.ts` maps only API pages into sidebar rows. `api/page-markdown.ts` owns page/save conversion and selective history restoration.
+`workspace/page-sync.ts` compares a working copy with an in-memory `ServerPageBaseline` and saves explicitly using its `updated_at` token. A response acknowledges the submitted snapshot, never later edits. Background refresh does not overwrite the working copy or silently advance its write token. `workspace/service-pages.ts` maps only API pages into sidebar rows. `api/page-markdown.ts` owns page/save conversion.
 
 `PageDocument` contains API navigation metadata, not content or storage keys. `ServicePageRole` describes entry/start/supporting content; the reusable form schema's `PageRole` describes questions/review/declaration/confirmation/result pages.
 
@@ -102,7 +102,7 @@ Page metadata lives in a hidden document node, retaining its YAML document, orig
 
 Services and pages come only from the API. Form IDs remain page metadata, without a browser-form join. The workspace keeps three clean views and pins any additional dirty/error/pending views. Reopened clean sessions compare API versions; confirmed discard also drops undo. One coordinated guard covers page/workspace departure, sign-out and unload. Cancel changes neither location nor working copies. Old local workspace/draft keys are inert and left untouched. Historical ADR 0007 describes the former local workspace.
 
-Remote page sessions live in `workspace/remote-page-pane.tsx`; page history and navigation have their own UI modules. `remote-page-dialogs.tsx` performs API creation/deletion through the existing `workspace-dialog.tsx` shell. There are no local-document dialogs or production form-editor route.
+Remote page sessions live in `workspace/remote-page-pane.tsx`; navigation has its own UI modules. `remote-page-dialogs.tsx` performs API creation/deletion through the existing `workspace-dialog.tsx` shell. There are no local-document dialogs or production form-editor route.
 
 ## Extension proofs
 

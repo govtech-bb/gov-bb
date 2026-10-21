@@ -25,14 +25,6 @@ export type TaxonomyCategory = Json<
   paths["/taxonomy"]["get"]["responses"][200]
 >["categories"][number];
 
-/** One entry in a page's history. */
-export type PageVersion = Json<
-  paths["/pages/{id}/history"]["get"]["responses"][200]
->["versions"][number];
-
-/** A page as one change left it. */
-export type PageSnapshot = Json<paths["/pages/{id}/history/{version}"]["get"]["responses"][200]>;
-
 /** The estate's change token. */
 export type EstateVersion = Json<paths["/version"]["get"]["responses"][200]>;
 
@@ -97,10 +89,6 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
     taxonomy: async () => (await read<{ categories: TaxonomyCategory[] }>("/taxonomy")).categories,
     version: () => read<EstateVersion>("/version"),
     page: (id: string) => read<ApiPage>(`/pages/${id}`),
-    history: async (id: string) =>
-      (await read<{ versions: PageVersion[] }>(`/pages/${id}/history`)).versions,
-    pageVersion: (id: string, version: number) =>
-      read<PageSnapshot>(`/pages/${id}/history/${version}`),
     createPage: async (page: CreatePageInput): Promise<ApiPage> =>
       (await send("POST", "/pages", page)).json(),
     savePage: async (id: string, fields: SavePageInput, ifUpdatedAt: string): Promise<ApiPage> =>

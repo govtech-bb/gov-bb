@@ -1,4 +1,3 @@
-import { ClockCounterClockwise } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -11,13 +10,10 @@ import { readPageMetadata } from "../pages";
 import { DraftStore } from "../persistence/draft-store";
 import { govbbPageCodec } from "../presets/govbb-page";
 import { Banner } from "../ui/banner";
-import { Bar } from "../ui/bar";
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
 import { LoadingState } from "../ui/loading-state";
 import type { SaveStateProps } from "../ui/save-state";
-import { toast } from "../ui/toast";
-import { PageHistoryDialog } from "./page-history-dialog";
 import { EditorSessionProvider } from "../editor/react/composer";
 import type { DocumentSessions } from "./document-views";
 import { savePageDraft, type PageSession, type ServerPageBaseline } from "./page-sync";
@@ -123,8 +119,6 @@ function RemotePageEditor({
     () => services?.map((service) => ({ title: service.title, url: service.url })),
     [services],
   );
-
-  const [historyOpen, setHistoryOpen] = useState(false);
 
   const save = useMutation({
     mutationFn: (current: { base: ServerPageBaseline; markdown: string }) =>
@@ -283,59 +277,29 @@ function RemotePageEditor({
   ) : undefined;
 
   return (
-    <>
-      <PageDraftEditor
-        store={store}
-        active={active}
-        server={standing()}
-        versions={
-          <Bar.Tool
-            icon={<ClockCounterClockwise />}
-            label="History"
-            onClick={() => setHistoryOpen(true)}
-          />
-        }
-        publish={
-          <Button
-            variant="accent"
-            disabled={!unsaved || stale || blocked || save.isPending || outcome?.kind === "missing"}
-            onClick={saveDraft}
-          >
-            {visibility === "public" ? "Publish changes" : "Save"}
-          </Button>
-        }
-        notice={notice}
-        linkPages={linkPages}
-        settings={{
-          ...(server.parent_id === null && {
-            categories: pickerCategories(categories),
-            single: true,
-          }),
-          publishedAt: server.published_at,
-          errors: Object.fromEntries(errors.map((error) => [error.field, error.message])),
-        }}
-      />
-      {historyOpen && (
-        <PageHistoryDialog
-          api={api}
-          current={server}
-          categories={categories}
-          canRestore={!blocked && !save.isPending}
-          close={() => setHistoryOpen(false)}
-          restore={(markdown) => {
-            store.edit(markdown);
-
-            // The dialog closes on the restored page, which isn't saved yet
-            if (store.apply())
-              toast("Version restored", {
-                tone: "info",
-                description:
-                  visibility === "public" ? "Publish changes to make it live." : "Save to keep it.",
-              });
-            setHistoryOpen(false);
-          }}
-        />
-      )}
-    </>
+    <PageDraftEditor
+      store={store}
+      active={active}
+      server={standing()}
+      publish={
+        <Button
+          variant="accent"
+          disabled={!unsaved || stale || blocked || save.isPending || outcome?.kind === "missing"}
+          onClick={saveDraft}
+        >
+          {visibility === "public" ? "Publish changes" : "Save"}
+        </Button>
+      }
+      notice={notice}
+      linkPages={linkPages}
+      settings={{
+        ...(server.parent_id === null && {
+          categories: pickerCategories(categories),
+          single: true,
+        }),
+        publishedAt: server.published_at,
+        errors: Object.fromEntries(errors.map((error) => [error.field, error.message])),
+      }}
+    />
   );
 }

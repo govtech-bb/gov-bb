@@ -4,12 +4,7 @@ import { createHeadlessEditor } from "../editor/core/create-editor";
 import { $setPageMetadata } from "../pages/metadata";
 import { govbbPageCodec, govbbPageEditor } from "../presets/govbb-page";
 import type { ApiPage, TaxonomyCategory } from "./client";
-import {
-  markdownToPageSaveInput,
-  pageToMarkdown,
-  pageVersionToDraftMarkdown,
-  suggestedUrl,
-} from "./page-markdown";
+import { markdownToPageSaveInput, pageToMarkdown, suggestedUrl } from "./page-markdown";
 
 const VISIBILITIES = ["public", "preview", "draft"] as const;
 
@@ -165,32 +160,6 @@ describe("page markdown", () => {
     );
 
     expect(saved.ok ? [] : saved.errors.map((error) => error.field)).toEqual([field]);
-  });
-
-  it("brings back a version's content and keeps the page's path and visibility", () => {
-    const current: ApiPage = { ...start, url: "/money/moved", visibility: "draft" };
-
-    const old = {
-      ...start,
-      url: "/money/old",
-      title: "Old title",
-      body_markdown: "Old body",
-      frontmatter: { lede: "Old introduction" },
-    };
-
-    const restored = markdownToPageSaveInput(
-      pageVersionToDraftMarkdown(current, old, []),
-      current,
-      [],
-    );
-
-    expect(restored.ok && restored.value).toMatchObject({
-      url: "/money/moved",
-      visibility: "draft",
-      title: "Old title",
-      body_markdown: "Old body",
-      frontmatter: { lede: "Old introduction" },
-    });
   });
 
   it("suggests a new page's path from its title, beneath its prefix", () => {
