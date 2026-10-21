@@ -13,7 +13,6 @@ import {
   CaretDown,
   ChatCircle,
   CheckSquare,
-  ClockCounterClockwise,
   Code,
   Copy,
   DotsSixVertical,
@@ -232,7 +231,7 @@ function ComponentsPreview() {
             <div className="flex flex-wrap items-center justify-center gap-2">
               <Button variant="accent">Publish changes</Button>
               <Button variant="secondary">Cancel</Button>
-              <Button>History</Button>
+              <Button>Download</Button>
               <Button variant="danger" icon={<Trash />}>
                 Delete page
               </Button>
@@ -1003,7 +1002,7 @@ function ComponentsPreview() {
             title="Loading"
             note="The trident where the content will be, named for a screen reader."
           >
-            <LoadingState label="Loading history…" />
+            <LoadingState label="Loading page…" />
           </Specimen>
           <Specimen
             title="No results in a list"
@@ -1264,7 +1263,6 @@ function DocumentBarDemo() {
         undo={undoRedo}
         preview={<Bar.Tool icon={<Eye />} label="Preview page" />}
         source={<Bar.Tool icon={<Code />} label="Markdown" />}
-        versions={<Bar.Tool icon={<ClockCounterClockwise />} label="History" />}
         publish={<Button variant="accent">Publish changes</Button>}
         settings={<SidePanel.Toggle panel={panel} label="Page settings" />}
       />

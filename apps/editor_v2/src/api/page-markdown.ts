@@ -1,6 +1,6 @@
 import { isMap, isScalar, isSeq, parseDocument, stringify } from "yaml";
 import { parsePageMarkdown } from "../pages/markdown";
-import type { ApiPage, FieldError, PageSnapshot, SavePageInput, TaxonomyCategory } from "./client";
+import type { ApiPage, FieldError, SavePageInput, TaxonomyCategory } from "./client";
 
 const TEXT_FRONTMATTER = ["stage", "section", "service_type", "source_url"] as const;
 
@@ -292,26 +292,3 @@ const FIELD_LABELS = new Map([
 
 /** How the editor names a field the API refused. */
 export const pageFieldLabel = (field: string) => FIELD_LABELS.get(field) ?? field;
-
-/**
- * A past version's content over the page as it stands. Its path, category,
- * parent and visibility stay as they are: restoring an old visibility could
- * unpublish a live page.
- */
-export function pageVersionToDraftMarkdown(
-  current: ApiPage,
-  version: PageSnapshot,
-  categories: readonly TaxonomyCategory[],
-) {
-  return pageToMarkdown(
-    {
-      ...current,
-      title: version.title,
-      description: version.description,
-      form_id: version.form_id,
-      body_markdown: version.body_markdown,
-      frontmatter: version.frontmatter,
-    },
-    categories,
-  );
-}

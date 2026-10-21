@@ -17,7 +17,6 @@ import {
   TaxonomyEntry,
 } from "../modules/navigation";
 import { NewPage, PageDocument, PageId, SaveFields } from "../modules/page";
-import { PageSnapshot, PageVersion } from "../modules/page-history";
 import { PublicPage } from "../modules/page-visibility";
 import { EstateVersion } from "../services/editor-index";
 
@@ -217,45 +216,6 @@ export const SCHEMAS = {
       404: error,
       409: conflict,
       422: validationFailed,
-      500: error,
-      ...authErrors,
-    },
-  },
-
-  getPageHistory: {
-    summary: "A page's history",
-    description:
-      "Newest first: each change's version, what it did, who made it and " +
-      "when. A deleted page's history stays readable; 404 for a page that " +
-      "never existed.",
-    tags: ["pages"],
-    params: idParams,
-    security: editorSecurity,
-    response: {
-      200: z.object({ versions: z.array(PageVersion) }),
-      400: error,
-      404: error,
-      500: error,
-      ...authErrors,
-    },
-  },
-
-  getPageVersion: {
-    summary: "A page as one change left it",
-    description:
-      "To restore it, save its fields over the page with the page's current " +
-      "`updated_at` in `if-updated-at`; a deleted page comes back through " +
-      "`POST /pages` with its `id`. 404 when there is no such version, or it " +
-      "was recorded in a shape the API no longer reads.",
-    tags: ["pages"],
-    params: idParams.extend({
-      version: z.coerce.number().int().positive().max(2_147_483_647),
-    }),
-    security: editorSecurity,
-    response: {
-      200: PageSnapshot,
-      400: error,
-      404: error,
       500: error,
       ...authErrors,
     },

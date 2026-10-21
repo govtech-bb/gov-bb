@@ -11,7 +11,6 @@
 import {
   and,
   count,
-  desc,
   eq,
   inArray,
   isNull,
@@ -32,12 +31,10 @@ import {
   type PageId,
   type Visibility,
 } from "../modules/page";
-import type { PageVersion } from "../modules/page-history";
 import type { Ancestor, ResolvablePage } from "../modules/page-visibility";
 import { err, ok, type Result } from "../modules/result";
 import type { SearchChunk } from "../modules/search-text";
 import {
-  authUsers,
   categories,
   changeEvents,
   contentPages,
@@ -563,61 +560,6 @@ export class PostgresPages
     change: PageChange,
   ): Promise<Result<void, ContentStoreUnavailable>> {
     return attempt("appendChange", () => writeChange(this.db, change));
-  }
-
-  /** A page's change log, newest first, naming each actor who has an account. */
-  async versionsOf(
-    id: PageId,
-  ): Promise<Result<PageVersion[], ContentStoreUnavailable>> {
-    const rows = await attempt("versionsOf", () =>
-      this.db
-        .select({
-          version: changeEvents.versionNo,
-          action: changeEvents.action,
-          actorId: changeEvents.actor,
-          name: authUsers.name,
-          email: authUsers.email,
-          occurredAt: changeEvents.occurredAt,
-        })
-        .from(changeEvents)
-        .leftJoin(authUsers, eq(authUsers.id, changeEvents.actor))
-        .where(
-          and(
-            eq(changeEvents.entityKind, "content_page"),
-            eq(changeEvents.entityId, id),
-          ),
-        )
-        .orderBy(desc(changeEvents.versionNo)),
-    );
-    if (!rows.ok) return rows;
-    return ok(
-      rows.value.map((row) => ({
-        version: row.version,
-        action: row.action,
-        actor: { id: row.actorId, name: row.name, email: row.email },
-        occurred_at: row.occurredAt.toISOString(),
-      })),
-    );
-  }
-
-  /** The page as a change recorded it, or null when it has no such version. */
-  async snapshotAt(
-    id: PageId,
-    version: number,
-  ): Promise<Result<unknown, ContentStoreUnavailable>> {
-    const rows = await attempt("snapshotAt", () =>
-      this.db
-        .select({ snapshot: changeEvents.snapshot })
-        .from(changeEvents)
-        .where(
-          and(
-            eq(changeEvents.entityKind, "content_page"),
-            eq(changeEvents.entityId, id),
-            eq(changeEvents.versionNo, version),
-          ),
-        ),
-    );
-    return rows.ok ? ok(rows.value[0]?.snapshot ?? null) : rows;
   }
 
   /** Every page with its category, for the service index. */
