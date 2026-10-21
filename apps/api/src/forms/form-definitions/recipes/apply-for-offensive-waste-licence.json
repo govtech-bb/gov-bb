@@ -34,11 +34,12 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "current-licence-number",
-            "label": "What is your current licence number?",
+            "fieldId": "planning-application-number",
+            "label": "What is your Planning and Development application number?",
+            "hint": "The Planning and Development Department was formerly called Town and Country Planning.",
             "validations": {
               "required": {
-                "error": "Enter your current licence number.",
+                "error": "Enter your Planning and Development application number.",
                 "value": true
               }
             },
@@ -48,7 +49,7 @@
                 "targetFieldId": "application-type",
                 "targetStepId": "application-type",
                 "operator": "equal",
-                "value": "renewal"
+                "value": "new"
               }
             ],
             "ui": {
@@ -146,6 +147,32 @@
                 "value": "no"
               }
             ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "changed-planning-application-number",
+            "label": "What is your Planning and Development application number?",
+            "hint": "The Planning and Development Department was formerly called Town and Country Planning.",
+            "validations": {
+              "required": {
+                "error": "Enter your Planning and Development application number.",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "building-changes",
+                "targetStepId": "renewal-check",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "ui": {
+              "width": "short"
+            }
           }
         }
       ]
@@ -665,11 +692,11 @@
       "behaviours": [],
       "elements": [
         {
-          "ref": "components/generic-checkbox",
+          "ref": "components/generic-select",
           "overrides": {
             "fieldId": "business-activities",
             "label": "What does the business do?",
-            "hint": "Select all that apply.",
+            "hint": "Select one.",
             "validations": {
               "required": {
                 "error": "Select what the business does.",
@@ -748,6 +775,7 @@
           "overrides": {
             "fieldId": "work-address-line-1",
             "label": "Address line 1",
+            "hint": "Enter the address where you do the work, even if you have entered it earlier in this form.",
             "validations": {
               "required": {
                 "error": "Enter address line 1.",
@@ -805,7 +833,7 @@
     },
     {
       "stepId": "building-plans",
-      "title": "Upload your building plans",
+      "title": "Upload your documents",
       "behaviours": [
         {
           "type": "stepConditionalOn",
@@ -819,9 +847,9 @@
         {
           "ref": "components/upload-document",
           "overrides": {
-            "fieldId": "building-plans",
-            "label": "Building plans and specifications",
-            "hint": "Upload the plans and specifications for the building. You can upload more than one file.",
+            "fieldId": "site-plan",
+            "label": "Site plan",
+            "hint": "You can upload a site plan to help Environmental Health review your application.",
             "multiple": true,
             "validations": {
               "required": {
@@ -859,7 +887,7 @@
     },
     {
       "stepId": "changed-building-plans",
-      "title": "Upload your building plans",
+      "title": "Upload your documents",
       "behaviours": [
         {
           "type": "stepConditionalOn",
@@ -880,9 +908,9 @@
         {
           "ref": "components/upload-document",
           "overrides": {
-            "fieldId": "changed-building-plans",
-            "label": "Building plans and specifications",
-            "hint": "Upload the plans and specifications for the building. You can upload more than one file.",
+            "fieldId": "changed-site-plan",
+            "label": "Site plan",
+            "hint": "You can upload a site plan to help Environmental Health review your application.",
             "multiple": true,
             "validations": {
               "required": {
@@ -1003,7 +1031,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:33:15.101Z",
-  "updatedAt": "2026-10-12T22:56:46.000Z",
+  "updatedAt": "2026-10-21T12:00:00.000Z",
   "meta": {
     "visibility": "preview"
   },
