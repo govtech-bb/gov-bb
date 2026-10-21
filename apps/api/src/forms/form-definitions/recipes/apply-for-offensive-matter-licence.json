@@ -389,7 +389,7 @@
           "overrides": {
             "fieldId": "operator-address-line-1",
             "label": "Address line 1",
-            "hint": "Start typing the address and choose it from the list.",
+            "hint": "Start typing the address of the property and choose it from the list.",
             "validations": {
               "required": {
                 "error": "Enter the address where the business or operator is located.",
@@ -516,7 +516,7 @@
     },
     {
       "stepId": "declaration",
-      "title": "Your agreement",
+      "title": "Confirm and submit your application",
       "behaviours": [],
       "elements": [
         {
@@ -592,7 +592,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:13:52.779Z",
-  "updatedAt": "2026-10-21T10:28:52.000Z",
+  "updatedAt": "2026-10-21T10:43:44.000Z",
   "catchmentRouting": {
     "coordinatesField": "operator-address.operator-address-coordinates",
     "parishField": "operator-address.operator-parish"

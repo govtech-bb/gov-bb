@@ -16,7 +16,7 @@ Use this service to:
 
 **Offensive matter** is the legal name for sewage and certain animal or plant waste. This includes animal blood and organs, dead animals and rotting plant waste. It can also include used water from sinks, baths or grease traps.
 
-You can only move human waste between 10pm and 6am unless a Medical Officer of Health approves another time.
+You can only move human waste between 10 pm and 6 am unless a Medical Officer of Health approves another time.
 
 ## Who needs to apply
 
@@ -52,7 +52,9 @@ You can apply online or use a paper form.
 
 2. **Apply using a paper form**
 
-   You can get a paper application from your Environmental Health Service office. Complete the form and return it to the office for the area where the business or operator is located.
+   You can get a paper application from your Environmental Health Service office.
+
+   Complete the form and return it to the office for the area where the business or operator is located.
 
 ## Cost
 
@@ -71,7 +73,7 @@ Each vehicle must:
 
 Environmental Health will tell you the result.
 
-## Contact
+## Get help
 
 If you need help, contact the Environmental Health Service office for your area.
 
