@@ -307,7 +307,11 @@ describe("SubmissionConfirmation", () => {
           feedbackUrl="https://forms.gov.bb/feedback"
         />,
       );
-      expect(screen.queryByText("What happens next")).not.toBeInTheDocument();
+      // ReactMarkdown only renders inside trailingSections, so its absence
+      // proves the processing branch hides the markdown block. (Asserting on
+      // the text can't fail: the passthrough mock emits the raw "## What
+      // happens next", which queryByText's exact match never finds.)
+      expect(screen.queryByTestId("react-markdown")).not.toBeInTheDocument();
       expect(screen.queryByText("help@example.com")).not.toBeInTheDocument();
       expect(
         screen.queryByRole("link", { name: /give feedback/i }),
