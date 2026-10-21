@@ -50,7 +50,8 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-for-an-nhc-rental-unit-or-lot",
-    title: "Apply for an NHC rental unit or lot",
+    title:
+      "Apply for a National Housing Corporation (NHC) rental home or house lot",
     category: "housing",
     formId: "nhc-rental-application",
     visibility: "preview",
