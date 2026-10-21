@@ -62,6 +62,13 @@ test("the title is the screen's h1, and the tools keep their places whatever ord
   expect(host.lastElementChild?.textContent).toBe("Page editing is paused.");
 });
 
+test("a preview can keep its document title without adding a second page heading", async () => {
+  await render(<DocumentBar label="Page tools" title="Renew a passport" heading={false} />);
+
+  expect(host.querySelector("h1")).toBeNull();
+  expect(host.querySelector('[role="toolbar"]')?.textContent).toBe("Renew a passport");
+});
+
 test("where the work stands sits beside the title, and a failed save's message comes first under the bar", async () => {
   await render(
     <DocumentBar

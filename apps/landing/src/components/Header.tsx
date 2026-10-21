@@ -20,11 +20,11 @@ const RouterLink = forwardRef<HTMLAnchorElement, RouterLinkProps>(
 )
 RouterLink.displayName = 'RouterLink'
 
-export default function Header() {
+export default function Header({ assetBase }: { assetBase?: string } = {}) {
   return (
     <>
       <OfficialBanner
-        imageSrc="/images/coat-of-arms.png"
+        imageSrc={assetBase ? new URL('/images/coat-of-arms.png', assetBase).href : '/images/coat-of-arms.png'}
         imageAlt=""
         showLearnMore={false}
       />

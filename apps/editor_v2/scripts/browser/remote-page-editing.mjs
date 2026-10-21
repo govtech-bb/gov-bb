@@ -257,6 +257,16 @@ try {
   assert.equal(current.visibility, initial.visibility);
   assert.equal(current.body_markdown, historical.body_markdown);
 
+  await button("Preview page").click();
+  const sitePreview = page.locator("[data-cms-preview-article]");
+  await sitePreview.waitFor();
+  const siteLink = sitePreview.getByRole("link", { name: "Preview link", exact: true });
+  await siteLink.click();
+  assert.equal(page.url(), url.href);
+  await siteLink.press("Enter");
+  assert.equal(page.url(), url.href);
+  await button("Close preview").click();
+
   assert.deepEqual(await page.evaluate(() => window.draftStorageCalls), []);
   await page.reload();
   await title.waitFor();

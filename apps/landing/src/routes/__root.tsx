@@ -5,7 +5,8 @@ import {
   createRootRouteWithContext,
   redirect,
 } from '@tanstack/react-router'
-import { Footer, FooterLink, SkipLink } from '@govtech-bb/react'
+import { SkipLink } from '@govtech-bb/react'
+import { SiteFooter } from '../components/SiteFooter'
 import { BreadcrumbRegion } from '../components/BreadcrumbRegion'
 import Header from '../components/Header'
 import { ErrorPage } from '../components/ErrorPage'
@@ -18,20 +19,6 @@ import { buildOrganizationLd, buildWebSiteLd } from '../lib/structured-data'
 import appCss from '../styles.css?url'
 
 import type { QueryClient } from '@tanstack/react-query'
-
-const FOOTER_LINKS = [
-  { label: 'Home', href: '/', onClick: () => trackEvent('footer-home') },
-  {
-    label: 'Terms & Conditions',
-    href: '/terms-conditions',
-    onClick: () => trackEvent('footer-terms'),
-  },
-  {
-    label: 'Careers',
-    href: 'https://job-boards.greenhouse.io/govtechbarbados',
-    onClick: () => trackEvent('footer-careers'),
-  },
-]
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -232,17 +219,7 @@ function RootLayout() {
           <Outlet />
         </main>
       </BreadcrumbRegion>
-      <Footer
-        className="print:hidden"
-        coatSrc="/images/coat-of-arms.png"
-        copy={`© ${new Date().getFullYear()} Government of Barbados`}
-      >
-        {FOOTER_LINKS.map(({ label, ...link }) => (
-          <FooterLink key={label} {...link}>
-            {label}
-          </FooterLink>
-        ))}
-      </Footer>
+      <SiteFooter onNavigate={trackEvent} />
     </>
   )
 }

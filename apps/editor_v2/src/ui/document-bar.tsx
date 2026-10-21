@@ -5,8 +5,10 @@ import { SaveState, type SaveStateProps } from "./save-state";
 type DocumentBarProps = {
   /** Names its toolbar, such as “Page tools”. */
   label: string;
-  /** The document's title: the screen's h1. */
+  /** The document title, rendered as an h1 by default. */
   title: ReactNode;
+  /** Use false when the content already supplies the page heading. */
+  heading?: boolean;
   /** Where its work stands: beside the title, and a failed save's message first among the notices. */
   save?: SaveStateProps;
   /** Undo and redo. */
@@ -34,6 +36,7 @@ type DocumentBarProps = {
 export function DocumentBar({
   label,
   title,
+  heading = true,
   save,
   undo,
   preview,
@@ -74,7 +77,7 @@ export function DocumentBar({
       >
         {/* The title is cut short to make room: for the tools beside it from a tablet up, where the bar keeps to one
             row, and for where it stands on a phone, where the tools have their own row */}
-        <Bar.Title render={<h1 />} className="max-md:grow max-md:basis-0">
+        <Bar.Title render={heading ? <h1 /> : undefined} className="max-md:grow max-md:basis-0">
           {title}
         </Bar.Title>
         {save && (

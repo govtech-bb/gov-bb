@@ -29,7 +29,7 @@ export default [
     },
   },
   {
-    // .amplify-hosting is generated deploy output, not source — don't lint it.
-    ignores: ['eslint.config.js', 'prettier.config.js', '.amplify-hosting/**'],
+    // Generated deploy/renderer output is not source.
+    ignores: ['eslint.config.js', 'prettier.config.js', '.amplify-hosting/**', 'public/cms-preview/**'],
   },
 ]

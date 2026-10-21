@@ -307,8 +307,8 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
           {panes.map((id) => (
             <section
               key={id}
-              hidden={id !== selected?.id}
-              inert={id !== selected?.id}
+              hidden={missing || id !== selected?.id}
+              inert={missing || id !== selected?.id}
               aria-label={
                 rows.find((row) => row.document.id === id)?.document.title ??
                 "Page from the content API"
@@ -317,7 +317,7 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
               <RemotePagePane
                 api={api}
                 id={id}
-                active={id === selected?.id}
+                active={!missing && id === selected?.id}
                 onSession={trackPageSession}
                 sessions={sessions}
               />

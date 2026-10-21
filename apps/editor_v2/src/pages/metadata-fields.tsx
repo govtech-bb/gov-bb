@@ -50,7 +50,8 @@ export function usePageMetadata() {
   return { editor, yaml, metadata: pageMetadataFromYaml(yaml) };
 }
 
-function useMetadataUpdate() {
+/** Metadata fields share the body editor's history and read-only state. */
+export function useMetadataUpdate() {
   const { editor, yaml, metadata } = usePageMetadata();
   const editable = useLexicalEditable();
   const typing = useRef(false);
@@ -96,7 +97,8 @@ function useMetadataUpdate() {
   return { editor, yaml, metadata, editable, update, historyKeys };
 }
 
-function useAutoHeight(value: string | undefined) {
+/** Resize a metadata textarea without replacing its value or selection. */
+export function useAutoHeight(value: string | undefined) {
   const input = useRef<HTMLTextAreaElement>(null);
 
   useLayoutEffect(() => {

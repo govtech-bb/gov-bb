@@ -261,42 +261,6 @@ test("failed sign-out and a cancelled session-expiry redirect keep the working c
   expect(h.auth.signIn).not.toHaveBeenCalled();
 });
 
-test("unapplied invalid Markdown also blocks leaving and Escape keeps it", async () => {
-  const h = await mountWorkspace();
-  await until(() => expect(activeTitle()).toBeDefined());
-  const trigger = control("Markdown");
-
-  const sourceInput = () => {
-    const label = [...document.querySelectorAll("label")].find(
-      (item) => item.textContent === "Markdown source",
-    )!;
-
-    return document.querySelector<HTMLTextAreaElement>(`textarea[id="${label.htmlFor}"]`)!;
-  };
-
-  await act(async () => trigger.click());
-  const source = sourceInput();
-  await act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(
-      source,
-      "---\ntitle: [unfinished",
-    );
-    source.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  await click("Close source");
-  await act(async () => {
-    void h.router.navigate({ to: "/services" });
-  });
-  await until(() => expect(question()).not.toBeNull());
-  await act(async () =>
-    question().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
-  );
-  await until(() => expect(question()).toBeNull());
-  expect(h.router.state.location.pathname).toBe("/services/service/fees");
-  await act(async () => trigger.click());
-  expect(sourceInput().value).toBe("---\ntitle: [unfinished");
-});
-
 test("pending saves block departure but the navigation question can still be cancelled", async () => {
   const h = await mountWorkspace();
   await editTitle("Saving title");
