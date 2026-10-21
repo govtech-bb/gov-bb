@@ -578,33 +578,6 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
     expect(result.steps[0].conditionalMarkdown).toBeUndefined();
   });
 
-  it("nextSteps on a confirmation step are carried through untouched (#1292)", () => {
-    const nextSteps = [
-      {
-        title: "What happens next",
-        content: "We will be in touch.",
-        items: ["Check your email", "Keep your reference number"],
-      },
-    ];
-    const draft = makeBaseDraft({
-      steps: [
-        {
-          stepId: "submission-confirmation",
-          title: "Application submitted",
-          fields: [],
-          behaviours: [],
-          nextSteps,
-        },
-      ],
-    });
-
-    const recipe = serializeRecipeDraft(draft);
-    expect(recipe.steps[0].nextSteps).toEqual(nextSteps);
-
-    const result = deserializeRecipe(recipe);
-    expect(result.steps[0].nextSteps).toEqual(nextSteps);
-  });
-
   it("behaviours on steps survive round-trip", () => {
     const draft = makeBaseDraft({
       steps: [

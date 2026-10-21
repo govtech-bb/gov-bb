@@ -20,8 +20,7 @@ export const formStepSchema = z.object({
   behaviours: z.array(behaviourSchema).optional(),
   // Raw markdown rendered on the submission-confirmation page (parsed by the
   // forms client). Lets a recipe drive form-specific confirmation content
-  // (e.g. a "What you need to know" section) without code changes. Distinct
-  // from `nextSteps`, which renders structured title/content/items blocks.
+  // (e.g. a "What you need to know" section) without code changes.
   markdownContent: z.string().optional(),
   // Per-answer passages within `markdownContent` (#2068). Each entry fills one
   // `{token}` the markdown carries inline, so several passages of one
@@ -33,15 +32,6 @@ export const formStepSchema = z.object({
   // an anonymous form (e.g. the exit survey) that issues no meaningful
   // reference, the design shows no ID. Omitted ⇒ the ID is shown as before.
   hideReferenceNumber: z.boolean().optional(),
-  nextSteps: z
-    .array(
-      z.object({
-        title: z.string(),
-        content: z.string().optional(),
-        items: z.array(z.string()).optional(),
-      }),
-    )
-    .optional(),
 });
 export type FormStep = z.infer<typeof formStepSchema>;
 

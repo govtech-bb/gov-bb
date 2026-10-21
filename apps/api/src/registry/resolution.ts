@@ -88,9 +88,7 @@ export async function hydrateStep(
     behaviours: step.behaviours,
     elements,
     // Carry recipe-authored markdown (e.g. a confirmation "What you need to
-    // know" section) through to the citizen-facing form. Note: `nextSteps` is
-    // intentionally NOT carried here — it is unused by the live serving path,
-    // and wiring it would switch on dormant copy across many existing recipes.
+    // know" section) through to the citizen-facing form.
     markdownContent: step.markdownContent,
     // Per-answer passages inside that markdown (#2068). The live serving path
     // resolves these off the served step, so — exactly like `conditionalTitle`

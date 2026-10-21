@@ -17,7 +17,6 @@ describe("formStepSchema", () => {
       ...validStep,
       description: "Enter your details",
       behaviours: [],
-      nextSteps: [{ title: "What happens next" }],
     };
     expect(formStepSchema.safeParse(full).success).toBe(true);
   });

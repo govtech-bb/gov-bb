@@ -33,7 +33,6 @@ export function prepareFormDraft(
     const existing = draft.steps.find((item) => item.stepId === step.stepId);
     return {
       ...step,
-      nextSteps: existing?.nextSteps,
       conditionalMarkdown: existing?.conditionalMarkdown,
     };
   });

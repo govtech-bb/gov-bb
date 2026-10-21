@@ -296,13 +296,13 @@ describe("SubmissionConfirmation", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("does not render trailing next-steps, contact or feedback sections", () => {
+    it("does not render trailing markdown, contact or feedback sections", () => {
       render(
         <SubmissionConfirmation
           serviceTitle="Passport"
           stepTitle="Submitted"
           submissionState={processingState}
-          nextSteps={[{ title: "What happens next", items: ["Step 1"] }]}
+          markdownContent="## What happens next"
           contactDetails={{ email: "help@example.com" }}
           feedbackUrl="https://forms.gov.bb/feedback"
         />,
@@ -536,73 +536,6 @@ describe("SubmissionConfirmation — payment success branch", () => {
     expect(screen.getByText("$50.00")).toBeInTheDocument();
     expect(screen.getByText("PAY-REF-999")).toBeInTheDocument();
     expect(screen.getByText("19/05/2026")).toBeInTheDocument();
-  });
-});
-
-describe("SubmissionConfirmation — nextSteps rendering", () => {
-  const successState: SubmissionState = {
-    hasPayment: false,
-    serviceName: "Test Service",
-    submissionSuccess: true,
-    paymentSuccess: false,
-    referenceNumber: "NS-REF-001",
-    date: "19/05/2026",
-  };
-
-  it("renders nextSteps section title and items", () => {
-    render(
-      <SubmissionConfirmation
-        serviceTitle="Test"
-        stepTitle="Done"
-        submissionState={successState}
-        nextSteps={[
-          { title: "What happens next", items: ["Step 1", "Step 2"] },
-        ]}
-      />,
-    );
-    expect(screen.getByText("What happens next")).toBeInTheDocument();
-    expect(screen.getByText("Step 1")).toBeInTheDocument();
-    expect(screen.getByText("Step 2")).toBeInTheDocument();
-  });
-
-  it("renders nextSteps section content paragraph when content is provided", () => {
-    render(
-      <SubmissionConfirmation
-        serviceTitle="Test"
-        stepTitle="Done"
-        submissionState={successState}
-        nextSteps={[
-          {
-            title: "Important information",
-            content: "Please allow 5 business days for processing.",
-            items: ["Check your email"],
-          },
-        ]}
-      />,
-    );
-    expect(
-      screen.getByText("Please allow 5 business days for processing."),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Check your email")).toBeInTheDocument();
-  });
-
-  it("renders multiple nextSteps sections", () => {
-    render(
-      <SubmissionConfirmation
-        serviceTitle="Test"
-        stepTitle="Done"
-        submissionState={successState}
-        nextSteps={[
-          { title: "Section A", items: ["Item A1"] },
-          { title: "Section B", content: "Some content", items: ["Item B1"] },
-        ]}
-      />,
-    );
-    expect(screen.getByText("Section A")).toBeInTheDocument();
-    expect(screen.getByText("Item A1")).toBeInTheDocument();
-    expect(screen.getByText("Section B")).toBeInTheDocument();
-    expect(screen.getByText("Some content")).toBeInTheDocument();
-    expect(screen.getByText("Item B1")).toBeInTheDocument();
   });
 });
 
@@ -1050,7 +983,7 @@ describe("SubmissionConfirmation — Print button (#2132)", () => {
         serviceTitle="Passport"
         stepTitle="Submitted"
         submissionState={baseState}
-        nextSteps={[{ title: "What happens next", items: ["We review it"] }]}
+        markdownContent={"## What happens next\n\nWe review it."}
         contactDetails={{ email: "help@example.com" }}
         feedbackUrl="https://survey.example/feedback"
       />,

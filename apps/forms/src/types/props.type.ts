@@ -169,7 +169,6 @@ export interface SubmissionConfirmationProps {
    * message when absent.
    */
   processingMessage?: string;
-  nextSteps?: { title: string; content?: string; items?: string[] }[];
   /**
    * Raw markdown rendered on the confirmation page (e.g. a "What you need to
    * know" section). Sourced from the confirmation step's `markdownContent`,
