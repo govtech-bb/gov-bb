@@ -35,8 +35,7 @@
           "ref": "components/generic-text",
           "overrides": {
             "fieldId": "planning-application-number",
-            "label": "Planning and Development application number",
-            "hint": "Planning and Development used to be called Town and Country Planning.",
+            "label": "What is your Planning and Development application number?",
             "validations": {
               "required": {
                 "error": "Enter your Planning and Development application number",
@@ -1038,7 +1037,7 @@
     }
   ],
   "createdAt": "2026-08-25T00:10:51.219Z",
-  "updatedAt": "2026-10-20T12:00:00.000Z",
+  "updatedAt": "2026-10-21T09:12:30.000Z",
   "meta": {
     "visibility": "preview"
   },
