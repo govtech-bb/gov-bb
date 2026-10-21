@@ -3,11 +3,11 @@
  */
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { BreadcrumbRegion, usePreviewBreadcrumbPath } from './BreadcrumbRegion'
+import { BreadcrumbRegion } from './BreadcrumbRegion'
 
 interface MockMatch {
   status: 'success' | 'error'
-  staticData: { breadcrumbMode?: 'location' | 'preview' }
+  staticData: { breadcrumbMode?: 'location' }
 }
 
 const router = vi.hoisted(() => ({ matches: [] as MockMatch[] }))
@@ -16,14 +16,12 @@ vi.mock('@tanstack/react-router', () => ({
   useMatches: ({
     select,
   }: {
-    select: (matches: MockMatch[]) => 'location' | 'preview' | undefined
+    select: (matches: MockMatch[]) => 'location' | undefined
   }) => select(router.matches),
 }))
 
 vi.mock('./Breadcrumbs', () => ({
-  Breadcrumbs: ({ pathname }: { pathname?: string }) => (
-    <nav aria-label="Breadcrumb" data-pathname={pathname ?? 'location'} />
-  ),
+  Breadcrumbs: () => <nav aria-label="Breadcrumb" />,
 }))
 
 afterEach(() => {
@@ -70,29 +68,16 @@ describe('BreadcrumbRegion', () => {
     expect(screen.queryByRole('navigation')).toBeNull()
   })
 
-  it('renders the public path registered by the preview route', () => {
-    router.matches = [
-      {
-        status: 'success',
-        staticData: { breadcrumbMode: 'preview' },
-      },
-    ]
-
-    function PreviewRoute() {
-      usePreviewBreadcrumbPath('/services/example')
-      return <main />
-    }
+  it('does not render breadcrumbs for a route without breadcrumb metadata', () => {
+    router.matches = [{ status: 'success', staticData: {} }]
 
     render(
       <BreadcrumbRegion>
-        <PreviewRoute />
+        <main />
       </BreadcrumbRegion>,
     )
 
-    expect(
-      screen
-        .getByRole('navigation', { name: 'Breadcrumb' })
-        .getAttribute('data-pathname'),
-    ).toBe('/services/example')
+    expect(screen.queryByRole('navigation')).toBeNull()
+    expect(screen.getByRole('main')).toBeDefined()
   })
 })

@@ -26,6 +26,10 @@ const FEATURE_URLS = [
   // neither appears in the generated route tree.
 ]
 
+it('does not register the retired start-page preview route', () => {
+  expect(routeTree).not.toContain('preview-start-page')
+})
+
 describe('co-located feature routes', () => {
   it.each(FEATURE_URLS)('mounts %s in the generated route tree', (url) => {
     expect(routeTree).toContain(`'${url}'`)

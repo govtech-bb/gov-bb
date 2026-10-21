@@ -120,18 +120,21 @@ describe('$ route loader gating', () => {
     )
   })
 
-  it('falls through to notFound when a bare slug does not resolve (#2145)', async () => {
-    mocks.findPage.mockReturnValue(undefined)
-    mocks.resolveBareSlugRedirect.mockReturnValue(undefined)
+  it.each(['not-a-real-service', 'preview-start-page'])(
+    'falls through to notFound when %s does not resolve',
+    async (slug) => {
+      mocks.findPage.mockReturnValue(undefined)
+      mocks.resolveBareSlugRedirect.mockReturnValue(undefined)
 
-    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
-    const err = await loader({
-      params: { _splat: 'not-a-real-service' },
-      context: { level: 'public', serviceStatuses: [] },
-    }).catch((e: unknown) => e)
+      const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+      const err = await loader({
+        params: { _splat: slug },
+        context: { level: 'public', serviceStatuses: [] },
+      }).catch((e: unknown) => e)
 
-    expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
-  })
+      expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
+    },
+  )
 
   it('throws notFound for a /start step whose form is non-public to the public', async () => {
     const startPage: ContentPage = {

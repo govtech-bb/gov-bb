@@ -5,7 +5,11 @@ import { act, renderHook } from "../../test/ui";
 import { useEditorState } from "./use-editor-state";
 import { EMPTY_PAGE, buildDeployPayload } from "../../lib/content";
 import { serviceDraftSchema } from "@govtech-bb/form-types";
-import { getServiceDraft, listServiceDrafts } from "../../lib/service-drafts";
+import {
+  getServiceDraft,
+  listServiceDrafts,
+  saveServiceDraft,
+} from "../../lib/service-drafts";
 import {
   createPageDraft,
   newPageDrafts,
@@ -33,6 +37,7 @@ const NEW_KEY = draftKeyFor(":");
 beforeEach(() => {
   localStorage.clear();
   loadPageMock.mockReset();
+  vi.mocked(saveServiceDraft).mockReset();
   vi.useFakeTimers();
 });
 
@@ -93,6 +98,39 @@ it("advances the service revision after a sibling edit without replacing unsaved
   });
   expect(result.current.serviceDraft?.revision).toBe(2);
   expect(result.current.state.body).toBe("Unsaved content");
+
+  const helpPath = "apps/landing/src/content/example/help.md";
+  vi.mocked(listServiceDrafts).mockResolvedValue([]);
+  vi.mocked(saveServiceDraft).mockImplementation(async ({ data }) =>
+    serviceDraftSchema.parse({
+      ...data.snapshot,
+      revision: 3,
+      updatedAt: "now",
+      updatedBy: "editor",
+    }),
+  );
+  await act(async () => {
+    await result.current.createSharedPage(helpPath, {
+      ...EMPTY_PAGE,
+      title: "Help",
+      slug: "example/help",
+      body: "Help content",
+      linkType: "none",
+    });
+  });
+  expect(saveServiceDraft).toHaveBeenCalledWith({
+    data: {
+      expectedRevision: 2,
+      snapshot: expect.objectContaining({
+        pages: [
+          expect.objectContaining({ path, body: "Unsaved content" }),
+          expect.objectContaining({ path: helpPath, body: "Help content" }),
+        ],
+      }),
+    },
+  });
+  expect(result.current.dirty).toBe(false);
+  expect(result.current.serviceDraft?.revision).toBe(3);
 });
 afterEach(() => vi.useRealTimers());
 

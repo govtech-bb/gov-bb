@@ -1,11 +1,6 @@
 import { useState } from "react";
 import { Navigate, useNavigate } from "@tanstack/react-router";
-import {
-  CheckCircleIcon,
-  CircleIcon,
-  EyeIcon,
-  PlusIcon,
-} from "@phosphor-icons/react";
+import { CheckCircleIcon, CircleIcon, PlusIcon } from "@phosphor-icons/react";
 import { serviceReadiness } from "@govtech-bb/form-types";
 import { Button } from "../ui/button";
 import { useFormsList } from "../builder/use-forms-list";
@@ -33,7 +28,6 @@ import { attachServiceForm } from "../../lib/service-drafts";
 import { ServiceSetup } from "./service-setup";
 import { ServiceHistory } from "./service-history";
 import { ServiceJourney } from "./service-journey";
-import { ServicePreview } from "./service-preview";
 import type { ContentListState } from "../content/use-content-list";
 import { CreatePageDialog } from "./create-page-dialog";
 import { ServiceWorkspace } from "./service-workspace";
@@ -80,7 +74,6 @@ export function ServiceWorkbench({
   const navigate = useNavigate();
   const [addPage, setAddPage] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
-  const [preview, setPreview] = useState(false);
   const draft = workspace.draft;
   const go = (next: ServiceTab, step?: string) =>
     navigate({
@@ -384,9 +377,6 @@ export function ServiceWorkbench({
             onChanged={onChanged}
             onDeleted={() => navigate({ to: "/services", search: {} })}
           />
-          <Button icon={<EyeIcon />} onClick={() => setPreview(true)}>
-            Preview service
-          </Button>
           <Button variant="primary" onClick={cta.run}>
             {cta.label}
           </Button>
@@ -533,13 +523,6 @@ export function ServiceWorkbench({
                 "The page could not be saved. Check the service error and try again.",
               );
           }}
-        />
-      )}
-      {preview && (
-        <ServicePreview
-          snapshot={draft}
-          savedFormId={draft.recipe ? manifest.formId : null}
-          onClose={() => setPreview(false)}
         />
       )}
     </>

@@ -15,7 +15,6 @@ import { Route as ServicesRouteImport } from './routes/services'
 import { Route as ServiceUnavailableRouteImport } from './routes/service-unavailable'
 import { Route as SearchResultsRouteImport } from './routes/search-results'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
-import { Route as PreviewStartPageRouteImport } from './routes/preview-start-page'
 import { Route as JavascriptRequiredRouteImport } from './routes/javascript-required'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as SplatRouteImport } from './routes/$'
@@ -64,11 +63,6 @@ const SearchResultsRoute = SearchResultsRouteImport.update({
 const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
   id: '/robots.txt',
   path: '/robots.txt',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreviewStartPageRoute = PreviewStartPageRouteImport.update({
-  id: '/preview-start-page',
-  path: '/preview-start-page',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JavascriptRequiredRoute = JavascriptRequiredRouteImport.update({
@@ -192,7 +186,6 @@ export interface FileRoutesByFullPath {
   '/$': typeof SplatRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
-  '/preview-start-page': typeof PreviewStartPageRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/search-results': typeof SearchResultsRoute
   '/service-unavailable': typeof ServiceUnavailableRoute
@@ -220,7 +213,6 @@ export interface FileRoutesByTo {
   '/$': typeof SplatRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
-  '/preview-start-page': typeof PreviewStartPageRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/search-results': typeof SearchResultsRoute
   '/service-unavailable': typeof ServiceUnavailableRoute
@@ -247,7 +239,6 @@ export interface FileRoutesById {
   '/$': typeof SplatRoute
   '/feedback': typeof FeedbackRoute
   '/javascript-required': typeof JavascriptRequiredRoute
-  '/preview-start-page': typeof PreviewStartPageRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/search-results': typeof SearchResultsRoute
   '/service-unavailable': typeof ServiceUnavailableRoute
@@ -277,7 +268,6 @@ export interface FileRouteTypes {
     | '/$'
     | '/feedback'
     | '/javascript-required'
-    | '/preview-start-page'
     | '/robots.txt'
     | '/search-results'
     | '/service-unavailable'
@@ -305,7 +295,6 @@ export interface FileRouteTypes {
     | '/$'
     | '/feedback'
     | '/javascript-required'
-    | '/preview-start-page'
     | '/robots.txt'
     | '/search-results'
     | '/service-unavailable'
@@ -331,7 +320,6 @@ export interface FileRouteTypes {
     | '/$'
     | '/feedback'
     | '/javascript-required'
-    | '/preview-start-page'
     | '/robots.txt'
     | '/search-results'
     | '/service-unavailable'
@@ -360,7 +348,6 @@ export interface RootRouteChildren {
   SplatRoute: typeof SplatRoute
   FeedbackRoute: typeof FeedbackRoute
   JavascriptRequiredRoute: typeof JavascriptRequiredRoute
-  PreviewStartPageRoute: typeof PreviewStartPageRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SearchResultsRoute: typeof SearchResultsRoute
   ServiceUnavailableRoute: typeof ServiceUnavailableRoute
@@ -420,13 +407,6 @@ declare module '@tanstack/react-router' {
       path: '/robots.txt'
       fullPath: '/robots.txt'
       preLoaderRoute: typeof RobotsDottxtRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/preview-start-page': {
-      id: '/preview-start-page'
-      path: '/preview-start-page'
-      fullPath: '/preview-start-page'
-      preLoaderRoute: typeof PreviewStartPageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/javascript-required': {
@@ -612,7 +592,6 @@ const rootRouteChildren: RootRouteChildren = {
   SplatRoute: SplatRoute,
   FeedbackRoute: FeedbackRoute,
   JavascriptRequiredRoute: JavascriptRequiredRoute,
-  PreviewStartPageRoute: PreviewStartPageRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SearchResultsRoute: SearchResultsRoute,
   ServiceUnavailableRoute: ServiceUnavailableRoute,

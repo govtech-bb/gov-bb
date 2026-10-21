@@ -1,7 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { aiContentPatchSchema } from "@govtech-bb/form-builder";
-import { serviceSnapshotSchema } from "@govtech-bb/form-types";
 import {
   AiMagicIcon,
   ArrowReloadHorizontalIcon,
@@ -36,7 +35,6 @@ const initialPage = {
   description: "Information about becoming a library member.",
   body: "Persons desirous of obtaining membership of the National Library Service are required to present themselves at their nearest branch with documentary evidence of identity and residential address. Applicants shall complete the prescribed registration form prior to issuance of a membership card.",
 };
-const pageId = "11111111-1111-4111-8111-111111111111";
 const pagePath = "apps/landing/src/content/assistant-demo/index.md";
 const examples = [
   ["Simplify the page", "Make this page easier to understand"],
@@ -123,41 +121,6 @@ function AssistantDemo() {
   const [request, setRequest] = useState<AssistantRequest>();
   const [applied, setApplied] = useState(0);
   const editor = useRef<HTMLDivElement>(null);
-  const snapshot = serviceSnapshotSchema.parse({
-    manifest: {
-      schemaVersion: 1,
-      serviceId: "assistant-demo",
-      title: "Library card · Demo",
-      category: "education",
-      formId: null,
-      entryPoint: pageId,
-      pages: [
-        {
-          id: pageId,
-          path: pagePath,
-          title: page.title,
-          kind: "main",
-          publicPath: "/education/assistant-demo",
-        },
-      ],
-    },
-    pages: [
-      {
-        id: pageId,
-        path: pagePath,
-        frontmatter: {
-          title: page.title,
-          description: page.description,
-          category: "education",
-          visibility: "draft",
-        },
-        body: page.body,
-        baseSha: null,
-      },
-    ],
-    recipe: null,
-    pendingConfig: { mdaContactId: null, processors: null },
-  });
   return (
     <main
       data-ui="govtech"
@@ -200,7 +163,7 @@ function AssistantDemo() {
             <p className="text-[12px] leading-5 text-ui-subtle">
               Choose an example, then press Send. Use Ask to review the change,
               or switch to Auto to apply it after validation. Expand the
-              assistant to see Preview and Changes.
+              assistant to see Changes.
             </p>
             <div className="-ms-2 flex flex-wrap gap-1">
               {examples.map(([label, prompt]) => (
@@ -311,7 +274,6 @@ function AssistantDemo() {
         onOpenChange={setOpen}
         harness={harness}
         onHarnessChange={setHarness}
-        artifact={{ snapshot, pageId }}
         transport={streamDemo}
         request={request}
         onRequestHandled={() => setRequest(undefined)}

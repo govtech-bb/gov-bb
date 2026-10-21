@@ -1,8 +1,8 @@
 /**
  * Resolve an environment variable that must be set for a real deployment.
  *
- * Some form_builder config values (the forms-app origin, the landing live-preview
- * origin, the recipe PR base branch) used to fall back to a localhost/`dev`
+ * Some form_builder config values (the forms-app origin, the recipe PR base
+ * branch) used to fall back to a localhost/`dev`
  * default when unset — so a deployed build that forgot to set them silently
  * pointed at the wrong target with no signal (#1366).
  *

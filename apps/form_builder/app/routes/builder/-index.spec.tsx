@@ -7,17 +7,14 @@ import { render, screen, fireEvent, within, waitFor } from "../../test/ui";
 import userEvent from "@testing-library/user-event";
 import type { RecipeDraft, RegistryCatalog } from "@govtech-bb/form-builder";
 import { serializeRecipeDraft } from "@govtech-bb/form-builder";
-import {
-  serviceDraftSchema,
-  type ServiceDraft,
-  type ServiceSnapshot,
-} from "@govtech-bb/form-types";
+import { serviceDraftSchema, type ServiceDraft } from "@govtech-bb/form-types";
 import type { UseBlockerOpts } from "@tanstack/react-router";
 import { act } from "../../test/ui";
 
 let mockLinkedDraft: RecipeDraft | null = null;
 let mockInitialService: ServiceDraft | null = null;
-let mockAssistantSnapshot: ServiceSnapshot | undefined;
+let mockAssistantServiceId: string | undefined;
+const mockSaveServiceForm = vi.fn();
 const mockListServiceDrafts = vi.fn(async () => [] as ServiceDraft[]);
 let mockLinkedFormId: string | undefined;
 let mockSearch: {
@@ -130,14 +127,15 @@ vi.mock("../../server/publish", () => ({
   eraseRecipe: vi.fn(),
 }));
 vi.mock("../../components/builder/form-assistant", () => ({
-  FormAssistant: (props: { artifact?: { snapshot: ServiceSnapshot } }) => {
-    mockAssistantSnapshot = props.artifact?.snapshot;
+  FormAssistant: (props: { serviceId?: string }) => {
+    mockAssistantServiceId = props.serviceId;
     return null;
   },
 }));
 vi.mock("../../lib/service-drafts", async (original) => ({
   ...(await original<typeof import("../../lib/service-drafts")>()),
   listServiceDrafts: () => mockListServiceDrafts(),
+  saveServiceForm: (...args: unknown[]) => mockSaveServiceForm(...args),
 }));
 
 vi.mock("../../components/content/use-content-list", () => ({
@@ -338,6 +336,8 @@ describe("BuilderPage — service workspace links", () => {
   afterEach(() => {
     mockLinkedDraft = null;
     mockInitialService = null;
+    mockSaveServiceForm.mockReset();
+    previewRecipe.mockReset();
     mockListServiceDrafts.mockResolvedValue([]);
     mockLinkedFormId = undefined;
     mockSearch = {};
@@ -462,6 +462,7 @@ describe("BuilderPage — service workspace links", () => {
     mockInitialService = initial;
     mockListServiceDrafts.mockResolvedValue([initial]);
     renderBuilder();
+    expect(mockAssistantServiceId).toBe("example");
     fireEvent.change(screen.getByPlaceholderText("Untitled form"), {
       target: { value: "Unsaved form title" },
     });
@@ -474,8 +475,31 @@ describe("BuilderPage — service workspace links", () => {
     await act(async () => {
       window.dispatchEvent(new Event("service-draft-saved"));
     });
-    expect(mockAssistantSnapshot?.pages[0].body).toBe("Updated page");
-    expect(mockAssistantSnapshot?.recipe?.title).toBe("Unsaved form title");
+    expect(screen.getByPlaceholderText("Untitled form")).toHaveValue(
+      "Unsaved form title",
+    );
+    previewRecipe.mockRejectedValue(new Error("Preview request failed"));
+    await userEvent.click(screen.getByRole("button", { name: "Preview" }));
+    const preview = await screen.findByRole("dialog", { name: "Preview" });
+    expect(await within(preview).findByRole("alert")).toHaveTextContent(
+      "Preview request failed",
+    );
+    expect(
+      within(preview).getByRole("button", { name: "View recipe JSON" }),
+    ).toBeVisible();
+    expect(
+      within(preview).getByRole("link", { name: "Preview saved form" }),
+    ).toHaveAttribute(
+      "href",
+      `https://forms.example.test/forms/${VALID_DRAFT.formId}?draft=stub-token`,
+    );
+    expect(document.querySelector("iframe")).toBeNull();
+    expect(previewRecipe).toHaveBeenCalledWith({
+      data: expect.objectContaining({ title: "Unsaved form title" }),
+    });
+    await userEvent.click(
+      within(preview).getByRole("button", { name: "Close" }),
+    );
     mockListServiceDrafts.mockResolvedValue([
       {
         ...latest,
@@ -487,11 +511,26 @@ describe("BuilderPage — service workspace links", () => {
     await act(async () => {
       window.dispatchEvent(new Event("storage"));
     });
-    expect(mockAssistantSnapshot?.pages[0].body).toBe("Updated page");
     expect(screen.getByPlaceholderText("Untitled form")).toHaveValue(
       "Unsaved form title",
     );
-  });
+    validateRecipe.mockResolvedValue({ ok: true });
+    mockSaveServiceForm.mockResolvedValue({ ...latest, revision: 3 });
+    await userEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    const save = await screen.findByRole("dialog", { name: "Save draft" });
+    await userEvent.click(
+      within(save).getByRole("button", { name: "Save draft" }),
+    );
+    await waitFor(() =>
+      expect(mockSaveServiceForm).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          serviceId: "example",
+          expectedRevision: 2,
+          recipe: expect.objectContaining({ title: "Unsaved form title" }),
+        }),
+      }),
+    );
+  }, 30_000);
 });
 
 describe("BuilderPage — validate on Save draft click", () => {
