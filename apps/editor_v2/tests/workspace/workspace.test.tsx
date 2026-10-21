@@ -135,6 +135,61 @@ const until = (ready: () => void) =>
     await vi.waitFor(ready);
   });
 
+test.each([0, 503, 401, 403, 404])(
+  "a service refresh failure (%s) preserves the shell and draft without showing a second full-page state",
+  async (status) => {
+    const h = await mountWorkspace();
+    await editTitle("Keep during refresh");
+    const header = document.querySelector("header");
+    const currentFetch = vi.mocked(fetch).getMockImplementation()!;
+    vi.mocked(fetch).mockImplementation(async (url, init) => {
+      if (String(url).endsWith("/services/service")) {
+        if (status === 0) throw new TypeError("Offline");
+
+        return Response.json({}, { status });
+      }
+
+      return currentFetch(url, init);
+    });
+    await act(async () => {
+      await h.client.refetchQueries({ queryKey: ["content", "service", "service"] });
+    });
+    await until(() =>
+      expect(h.client.getQueryState(["content", "service", "service"])?.status).toBe("error"),
+    );
+    expect(document.querySelector("header")).toBe(header);
+    expect(document.body.textContent).not.toContain("We could not load this service");
+
+    if (status === 404) {
+      await until(() =>
+        expect(document.querySelector("#workspace-content h1")?.textContent).toBe(
+          "Document not found",
+        ),
+      );
+      expect(
+        document.querySelector('textarea[aria-label="Page title"]')?.closest("[hidden]"),
+      ).not.toBeNull();
+    } else {
+      expect(activeTitle().value).toBe("Keep during refresh");
+      await until(() =>
+        expect(document.body.textContent).toContain(
+          status === 401
+            ? "Your session has ended"
+            : status === 403
+              ? "You no longer have access to this service"
+              : "We could not refresh this service",
+        ),
+      );
+    }
+
+    vi.mocked(fetch).mockImplementation(currentFetch);
+    await act(async () => {
+      await h.client.refetchQueries({ queryKey: ["content", "service", "service"] });
+    });
+    await until(() => expect(activeTitle().value).toBe("Keep during refresh"));
+  },
+);
+
 test("malformed old workspaces and drafts cannot shadow API pages or create browser-only flows", async () => {
   localStorage.setItem("govbb-editor:workspace:v1", "{broken");
   localStorage.setItem("govbb-editor:documents:fees:markdown", "Old local page");

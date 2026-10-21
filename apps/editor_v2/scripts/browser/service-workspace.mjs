@@ -29,10 +29,84 @@ try {
     localStorage.setItem("govbb-editor:workspace:v1", "{malformed old workspace");
     localStorage.setItem("govbb-editor:draft:markdown:v2", "Old browser-only form");
   });
+  const firstRead = Promise.withResolvers();
+  await context.route("**/services", async (route) => {
+    if (route.request().resourceType() !== "document" && route.request().method() === "GET")
+      await firstRead.promise;
+
+    return route.fallback();
+  });
   await page.goto(new URL("/services", base).href);
   await page.getByRole("heading", { name: "Services", exact: true }).waitFor();
+  await page.getByText("Loading services…", { exact: true }).waitFor();
+  assert.equal(await button("Sign out").isVisible(), true);
+  assert.equal(await page.getByRole("searchbox").isVisible(), true);
+  const header = await page.locator("header").elementHandle();
+  firstRead.resolve();
+  await page.getByText("Loading services…", { exact: true }).waitFor({ state: "hidden" });
+  assert.equal(
+    await header.evaluate((element) => element.isConnected),
+    true,
+    "loading does not remount the shell",
+  );
   assert.equal(await button("Create browser draft").count(), 0);
   assert.equal(await page.getByText("Drafts in this browser", { exact: true }).count(), 0);
+
+  const detailRead = Promise.withResolvers();
+  const pageRead = Promise.withResolvers();
+  const taxonomyRead = Promise.withResolvers();
+
+  for (const [path, held] of [
+    [`/services/${service.id}`, detailRead],
+    [`/pages/${service.id}`, pageRead],
+    ["/taxonomy", taxonomyRead],
+  ]) {
+    await context.route(`**${path}`, async (route) => {
+      if (route.request().resourceType() !== "document" && route.request().method() === "GET")
+        await held.promise;
+
+      return route.fallback();
+    });
+  }
+
+  await page.getByRole("link", { name: service.title, exact: true }).click();
+  const pageLoading = page.getByRole("status").filter({ hasText: "Loading page…" });
+  await pageLoading.waitFor();
+  assert.equal(await header.evaluate((element) => element.isConnected), true);
+
+  const detailResponse = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === `/services/${service.id}` &&
+      response.request().resourceType() !== "document",
+  );
+
+  detailRead.resolve();
+  await detailResponse;
+
+  const documentResponse = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === `/pages/${service.id}`,
+  );
+
+  pageRead.resolve();
+  await documentResponse;
+  await pageLoading.waitFor();
+  assert.equal(
+    await title.count(),
+    0,
+    "taxonomy required for the initial document has not arrived",
+  );
+  taxonomyRead.resolve();
+  await title.waitFor();
+  assert.equal(await title.inputValue(), service.title);
+  assert.equal(await header.evaluate((element) => element.isConnected), true);
+  await page.locator("header").getByRole("link", { name: "Services", exact: true }).click();
+  await page.getByRole("heading", { name: "Services", exact: true }).waitFor();
+  assert.equal(
+    await page.getByRole("status").filter({ hasText: "Loading services…" }).count(),
+    0,
+    "cached navigation does not add a loader",
+  );
+
   await button("Create service").click();
   const create = page.getByRole("dialog", { name: "Create a service", exact: true });
   await create.getByLabel("Service name", { exact: true }).fill("API workspace checks");

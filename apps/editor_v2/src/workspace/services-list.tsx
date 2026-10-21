@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useEffectEvent, useMemo, useState } from "react";
-import type { EditorApi, ServiceSummary } from "../api/client";
+import { ApiFailure, type EditorApi, type ServiceSummary } from "../api/client";
 import { servicesQuery } from "../api/queries";
 import { visibilityLabels, visibilityTones } from "../pages";
 import { Badge } from "../ui/badge";
+import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
 import { EmptyState } from "../ui/empty-state";
@@ -191,6 +192,15 @@ export function ServicesList({
   onCreate: () => void;
 }) {
   const services = useQuery(servicesQuery(api));
+  const href = useRouterState({ select: (state) => state.location.href });
+  const status = services.error instanceof ApiFailure ? services.error.status : undefined;
+
+  const refreshFailed =
+    services.isError &&
+    !!services.data &&
+    (status === 0 || (status !== undefined && status >= 500));
+
+  const blocked = services.isError && !refreshFailed;
   const columns = useMemo(() => serviceColumns(api), [api]);
 
   // The list answers each change at once, and the address follows
@@ -261,15 +271,54 @@ export function ServicesList({
       <div className="grid items-start gap-8 lg:grid-cols-[15rem_minmax(0,1fr)]">
         <ServiceFilters categories={categories} />
         <div className="@container min-w-0 rounded-sm bg-white shadow-sheet">
-          {services.isError ? (
+          <p role="status" className="px-4 py-3 text-14 text-muted empty:hidden">
+            {services.isPending ? "Loading services…" : null}
+          </p>
+          {refreshFailed && (
+            <Banner
+              tone="warning"
+              layout="strip"
+              actions={
+                <Button
+                  variant="secondary"
+                  pending={services.isFetching}
+                  onClick={() => void services.refetch()}
+                >
+                  {services.isFetching ? "Refreshing services…" : "Try again"}
+                </Button>
+              }
+            >
+              We could not refresh services. Showing the last loaded list.
+            </Banner>
+          )}
+          {blocked ? (
             <EmptyState
               kind="failed"
               title="We could not load services"
-              description="Check you are still signed in, then try again."
+              description={
+                status === 401
+                  ? "Your session has ended. Sign in again to load services."
+                  : status === 403
+                    ? "You do not have access to these services."
+                    : "Check your connection, then try again."
+              }
               actions={
-                <Button variant="secondary" onClick={() => void services.refetch()}>
-                  Try again
-                </Button>
+                status === 401 ? (
+                  <TextLink
+                    render={
+                      <Link
+                        to="/auth"
+                        search={{ state: "sign-in", returnTo: href, reason: "provider" }}
+                      />
+                    }
+                  >
+                    Sign in again
+                  </TextLink>
+                ) : (
+                  <Button variant="secondary" onClick={() => void services.refetch()}>
+                    Try again
+                  </Button>
+                )
               }
             />
           ) : (
@@ -287,7 +336,7 @@ export function ServicesList({
               }}
             />
           )}
-          <table.Pagination name={["service", "services"]} />
+          {!blocked && <table.Pagination name={["service", "services"]} />}
         </div>
       </div>
     </table.AppTable>

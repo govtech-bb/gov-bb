@@ -50,11 +50,11 @@ async function historyMove(delta, expected) {
 
 async function cancelDeparture() {
   await question.waitFor();
-  assert.equal(
-    await question
-      .getByRole("button", { name: "Cancel", exact: true })
-      .evaluate((element) => element === document.activeElement),
-    true,
+  // Base UI applies initial focus after the popup becomes visible, especially in the production build.
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll('[role="alertdialog"] button')].some(
+      (element) => element.textContent === "Cancel" && element === document.activeElement,
+    ),
   );
   await question.getByRole("button", { name: "Cancel", exact: true }).click();
   await question.waitFor({ state: "hidden" });

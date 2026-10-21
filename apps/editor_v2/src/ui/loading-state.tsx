@@ -10,7 +10,7 @@ const sizes = {
 
 /**
  * The trident Loader, centred where the content will be, at the size of what it stands in for, as EmptyState's sizes
- * are. `label` says what is loading, such as “Loading page…”, to a screen reader.
+ * are. The visible label says what is loading, such as “Loading page…”, and is announced once.
  */
 export function LoadingState({
   label,
@@ -21,7 +21,13 @@ export function LoadingState({
 }) {
   return (
     <div className={sizes[size].frame}>
-      <Loader size={sizes[size].loader} label={label} />
+      <div
+        role="status"
+        className="flex flex-col items-center gap-3 px-4 text-center text-14 text-muted"
+      >
+        <Loader size={sizes[size].loader} label={null} />
+        <span>{label}</span>
+      </div>
     </div>
   );
 }

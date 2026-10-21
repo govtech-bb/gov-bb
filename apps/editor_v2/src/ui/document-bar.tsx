@@ -16,8 +16,6 @@ type DocumentBarProps = {
   preview?: ReactNode;
   /** The document's source: its Markdown, and a form's JSON. */
   source?: ReactNode;
-  /** The versions saved before this one. */
-  versions?: ReactNode;
   /** Sends the changes on for everyone: Publish changes, or Save. */
   publish?: ReactNode;
   /** Shows and hides the document's settings. */
@@ -41,17 +39,15 @@ export function DocumentBar({
   undo,
   preview,
   source,
-  versions,
   publish,
   settings,
   notices,
   hidden,
 }: DocumentBarProps) {
-  const views = (preview || source || versions) && (
+  const views = (preview || source) && (
     <>
       {preview}
       {source}
-      {versions}
     </>
   );
 

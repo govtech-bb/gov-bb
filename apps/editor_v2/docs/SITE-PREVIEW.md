@@ -87,16 +87,16 @@ Run the integrated suite again against production-built `dist/client`, serving a
 
 ## Preview-only branch verification
 
-The preview changes were isolated from `v2-rewrite` at `c88861b6`, without the separate API, authentication, collections, visibility or history-removal work. Existing saved-version history remains available in the writer; its read-only `PagePreviewSurface` is not used by the editable site preview.
+The preview branch includes `v2-rewrite` through `855dd10b`. Its newer explicit sign-in, contextual loading and removal of saved-version history are retained. Preview editing still shares the writer's local undo history. The diff against that base contains only preview integration, configuration, documentation and tests.
 
-Checks on this isolated candidate used fixture authentication/API data, not a live publishing account:
+Checks on the merged candidate used fixture authentication/API data, not a live publishing account:
 
-- All 23 non-landing Nx build targets passed (22 were cache hits), as did the full landing build and renderer build.
-- All 709 landing tests passed. The full editor suite passed 1,180 tests and failed one unchanged services-list test. The same failure was reproduced against an unmodified archive of `c88861b6`: `tests/workspace/services-list.test.tsx:175` expects “Service 01” after sorting but gets no row. Its separate fixture fix was deliberately not included.
-- Editor typechecking, lint, full formatting, all 401 boundaries and `git diff --check` passed. Landing lint passed with the three existing `no-shadow` warnings in `-preview-gating.test.ts`.
+- All 23 non-landing Nx build targets passed (22 cache hits), as did the full landing and renderer builds.
+- All 1,216 editor tests and all 709 landing tests passed. The earlier services-list failure is resolved by the upstream fixture change.
+- Editor typechecking, lint, full formatting, all 400 boundaries and `git diff --check` passed. Landing lint passed with the three existing `no-shadow` warnings in `-preview-gating.test.ts`.
 - The integrated suite passed against the production-built CMS and built renderer, with the ordinary landing development route as the reference. It checked public-page parity at 390, 800, 1000 and 1440px, inline editing/shared undo, cleanup and retries, menus, explicit saves, pending-save/conflict handling, departure guards and narrow reflow.
-- Writer and link-editing fixtures, production-CMS remote-page and service-workspace checks, and form-source regressions passed. Remote-page checks retained saved-version restoration coverage.
+- Production-CMS authentication, remote-page, service-workspace and routing checks passed, including the absence of saved-version history controls/requests. Writer, link-editing and form-source fixtures also passed.
 
-Landing typechecking still reports incompatible installed HAST 3.0.4/3.0.5 types in the unchanged `src/utils/markdown/processor.ts:43`. Neither that dependency issue nor the unrelated services-list fixture was changed to make the branch green. A fresh all-project test run was not performed.
+Landing typechecking still reports incompatible installed HAST 3.0.4/3.0.5 types in the unchanged `src/utils/markdown/processor.ts:43`. That dependency issue was not changed for preview. A fresh all-project test run was not performed.
 
 Deployed CSP/CORS, real employee authentication/API authorization, real phone/IME behavior, screen-reader use and native 200% browser zoom remain unverified.

@@ -6,7 +6,6 @@ import {
   PageEditor,
   PageSettings,
   PageTitleField,
-  PagePreview,
   readPageMetadata,
   type PageSettingsOptions,
 } from "../pages";
@@ -33,8 +32,6 @@ type PageHost = {
   settings?: PageSettingsOptions;
   /** Where the page stands against the host's last server save. */
   server?: SaveStateProps;
-  /** The versions saved before this one. */
-  versions?: ReactNode;
   /** Sends the changes on: Publish changes, or Save. */
   publish?: ReactNode;
   notice?: ReactNode;
@@ -59,7 +56,6 @@ function PageDraft({
   active,
   settings,
   server,
-  versions,
   publish,
   notice,
   linkPages,
@@ -80,7 +76,6 @@ function PageDraft({
           label="Page tools"
           title={<SourceTitle source={draft.committed} />}
           save={server}
-          versions={versions}
           notices={notice}
         />
         <EmptyState
@@ -101,7 +96,6 @@ function PageDraft({
       title={<PageTitle />}
       heading={!tools}
       save={save}
-      versions={!tools && versions}
       undo={
         tools ? (
           <>
@@ -186,22 +180,4 @@ function PageTitle() {
 /** Reads an unsupported page's title without mounting the visual editor. */
 function SourceTitle({ source }: { source: string }) {
   return useMemo(() => readPageMetadata(source).title, [source]) || "Untitled page";
-}
-
-/** A read-only page preview whose links do not navigate away from the editor. */
-export function PagePreviewSurface({ source }: { source: string }) {
-  return (
-    <div
-      className="page-document-preview"
-      onClickCapture={(event) => {
-        if (event.target instanceof Element && event.target.closest("a")) event.preventDefault();
-      }}
-      onKeyDownCapture={(event) => {
-        if (event.key === "Enter" && event.target instanceof Element && event.target.closest("a"))
-          event.preventDefault();
-      }}
-    >
-      <PagePreview source={source} definition={govbbPageEditor} />
-    </div>
-  );
 }

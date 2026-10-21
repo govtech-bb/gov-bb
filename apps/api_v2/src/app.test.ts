@@ -17,8 +17,7 @@ import { IF_UPDATED_AT } from "./routes/pages";
 import { PUBLIC_READ } from "./routes/responses";
 import type { Database } from "./db";
 import { withDefaults, type Visibility } from "./modules/page";
-import { BYPASS_EMPLOYEE } from "./adapters/auth-bypass";
-import { categories, changeEvents, contentPages, searchChunks } from "./schema";
+import { categories, changeEvents, searchChunks } from "./schema";
 import {
   aPage,
   createTestApp,
@@ -853,171 +852,17 @@ describe("PUT /pages/:id", () => {
   });
 });
 
-describe("GET /pages/:id/history", () => {
-  it("lists each change newest first, naming who made it", async () => {
-    await db.execute(
-      sql`insert into auth_user (id, name, email, "emailVerified")
-          values (${TEST_EMPLOYEE.id}, ${TEST_EMPLOYEE.name}, ${TEST_EMPLOYEE.email}, true)`,
-    );
-    const draft = await seedPage({ visibility: "draft" });
-    expectOk(
-      await services.editing.save(
-        draft.id,
-        { ...draft, visibility: "public" },
-        null,
-        BYPASS_EMPLOYEE,
-      ),
-    );
+describe("removed page history endpoints", () => {
+  it.each(["history", "history/1"])(
+    "404s %s even for an employee and an existing page",
+    async (path) => {
+      const page = await seedPage();
+      const response = await inject({ url: `/pages/${page.id}/${path}` });
 
-    const response = await inject({ url: `/pages/${draft.id}/history` });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.headers["cache-control"]).toBe("no-store");
-    expect(response.json().versions).toMatchObject([
-      {
-        version: 2,
-        action: "published",
-        actor: { id: BYPASS_EMPLOYEE.id, name: null, email: null },
-      },
-      {
-        version: 1,
-        action: "created",
-        actor: TEST_EMPLOYEE,
-      },
-    ]);
-  });
-
-  it("keeps a deleted page's history readable", async () => {
-    const page = await seedPage();
-    await inject({ method: "DELETE", url: `/pages/${page.id}` });
-
-    const response = await inject({ url: `/pages/${page.id}/history` });
-
-    expect(response.statusCode).toBe(200);
-    expect(
-      response
-        .json()
-        .versions.map((version: { action: string }) => version.action),
-    ).toEqual(["deleted", "created"]);
-  });
-
-  it("404s a page that never existed, and lists nothing for one nothing has recorded", async () => {
-    const [unrecorded] = await db
-      .insert(contentPages)
-      .values({
-        url: "/unrecorded",
-        slug: "unrecorded",
-        title: "Unrecorded",
-        bodyMarkdown: "",
-      })
-      .returning();
-    if (!unrecorded) throw new Error("The page was not inserted");
-
-    expect(
-      (
-        await inject({
-          url: "/pages/22222222-2222-4222-8222-222222222222/history",
-        })
-      ).statusCode,
-    ).toBe(404);
-    expect(
-      (await inject({ url: `/pages/${unrecorded.id}/history` })).json(),
-    ).toEqual({ versions: [] });
-  });
-});
-
-describe("GET /pages/:id/history/:version", () => {
-  it("serves the page as that change left it", async () => {
-    const created = await seedPage();
-    await inject({
-      method: "PUT",
-      url: `/pages/${created.id}`,
-      payload: { ...created, title: "Renamed" },
-    });
-
-    const response = await inject({ url: `/pages/${created.id}/history/1` });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual(created);
-  });
-
-  it("restores a version by saving it over the page with the page's current updated_at", async () => {
-    const created = await seedPage();
-    const renamed = (
-      await inject({
-        method: "PUT",
-        url: `/pages/${created.id}`,
-        payload: { ...created, title: "Renamed" },
-      })
-    ).json();
-    const first = (
-      await inject({ url: `/pages/${created.id}/history/1` })
-    ).json();
-
-    const stale = await inject({
-      method: "PUT",
-      url: `/pages/${created.id}`,
-      headers: { [IF_UPDATED_AT]: first.updated_at },
-      payload: first,
-    });
-    const restored = await inject({
-      method: "PUT",
-      url: `/pages/${created.id}`,
-      headers: { [IF_UPDATED_AT]: renamed.updated_at },
-      payload: first,
-    });
-
-    expect(stale.statusCode).toBe(409);
-    expect(restored.statusCode).toBe(200);
-    expect(restored.json().title).toBe(created.title);
-  });
-
-  it("serves an entry from before pages had parents without a parent_id, rather than a null one", async () => {
-    const created = await seedPage();
-    const { parent_id, ...unparented } = created;
-    await db.insert(changeEvents).values({
-      entityKind: "content_page",
-      entityId: created.id,
-      versionNo: 2,
-      action: "updated",
-      snapshot: unparented,
-      actor: "spike",
-    });
-
-    const response = await inject({ url: `/pages/${created.id}/history/2` });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).not.toHaveProperty("parent_id");
-  });
-
-  it("404s a version that does not exist, or one recorded before pages were markdown", async () => {
-    const created = await seedPage();
-    await db.insert(changeEvents).values({
-      entityKind: "content_page",
-      entityId: created.id,
-      versionNo: 2,
-      action: "updated",
-      snapshot: { id: created.id, doc: { type: "root", children: [] } },
-      actor: "spike",
-    });
-
-    for (const version of [2, 3]) {
-      const response = await inject({
-        url: `/pages/${created.id}/history/${version}`,
-      });
-      expect(response.statusCode, String(version)).toBe(404);
-    }
-  });
-
-  it("400s a version that is not a positive whole number", async () => {
-    const created = await seedPage();
-    for (const version of ["0", "abc", "1.5", "99999999999"]) {
-      const response = await inject({
-        url: `/pages/${created.id}/history/${version}`,
-      });
-      expect(response.statusCode, version).toBe(400);
-    }
-  });
+      expect(response.statusCode).toBe(404);
+      expect(response.json().error).toBe("not_found");
+    },
+  );
 });
 
 describe("DELETE /pages/:id", () => {
@@ -1275,8 +1120,6 @@ describe("employee access", () => {
     ["GET", "/services/not-a-uuid"],
     ["GET", "/taxonomy"],
     ["GET", "/version"],
-    ["GET", "/pages/not-a-uuid/history"],
-    ["GET", "/pages/not-a-uuid/history/1"],
     ["POST", "/pages"],
     ["PUT", "/pages/not-a-uuid"],
     ["DELETE", "/pages/not-a-uuid"],
@@ -1291,16 +1134,19 @@ describe("employee access", () => {
       expect(response.statusCode).toBe(401);
       expect(response.headers["cache-control"]).toBe("no-store");
       expect(response.headers.etag).toBeUndefined();
+      // A HEAD response has no body to inspect.
+      if (method !== "HEAD")
+        expect(response.json()).toEqual({ error: "unauthenticated" });
     },
   );
 
   it.each([
-    ["expired", ok(null), 401],
-    ["outside the workspace", err(new Forbidden()), 403],
-    ["unavailable", err(new AuthUnavailable()), 503],
+    ["expired", ok(null), 401, "unauthenticated"],
+    ["outside the workspace", err(new Forbidden()), 403, "forbidden"],
+    ["unavailable", err(new AuthUnavailable()), 503, "auth_unavailable"],
   ] as const)(
     "fails closed when the session is %s",
-    async (_name, result, status) => {
+    async (_name, result, status, error) => {
       const restricted = await createTestApp(db, {
         sessions: { findSession: async () => result },
       });
@@ -1310,6 +1156,7 @@ describe("employee access", () => {
           headers: TEST_HEADERS,
         });
         expect(response.statusCode).toBe(status);
+        expect(response.json()).toEqual({ error });
         expect(response.headers["cache-control"]).toBe("no-store");
         expect(response.headers.etag).toBeUndefined();
       } finally {
@@ -1332,6 +1179,7 @@ describe("employee access", () => {
           },
         });
         expect(response.statusCode).toBe(403);
+        expect(response.json()).toEqual({ error: "forbidden" });
         expect(response.headers["cache-control"]).toBe("no-store");
       }
       expect(expectOk(await services.index.version())).toEqual({

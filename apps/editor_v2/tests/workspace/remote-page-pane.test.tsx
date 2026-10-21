@@ -101,6 +101,20 @@ async function savePage() {
   await act(async () => button.click());
 }
 
+test("a visual page stays editable without history controls or requests", async () => {
+  const h = await mountPage(async () => Response.json(page));
+
+  expect(h.session().store.getSnapshot().mode).toBe("visual");
+  const buttons = [...document.querySelectorAll("button")];
+  expect(buttons.map((button) => button.textContent)).not.toContain("History");
+  expect(buttons.map((button) => button.textContent)).not.toContain("Restore this version");
+
+  await applySource(h.session(), h.session().store.getSnapshot().source + "\n\nNew content");
+  expect(pageHasUnsavedChanges(h.session())).toBe(true);
+  expect(buttons.find((button) => button.textContent === "Save")?.disabled).toBe(false);
+  expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/history"))).toBe(false);
+});
+
 test("a page the editor can't show opens read-only, its content left as it was saved", async () => {
   const h = await mountPage(async () =>
     Response.json({ ...page, body_markdown: "<!-- Keep this note -->" }),
@@ -110,6 +124,8 @@ test("a page the editor can't show opens read-only, its content left as it was s
   expect(document.body.textContent).toContain("This page can't be edited here");
   const names = [...document.querySelectorAll("button")].map((button) => button.textContent);
   expect(names).not.toContain("Save");
+  expect(names).not.toContain("History");
+  expect(names).not.toContain("Restore this version");
   expect(names).not.toContain("Markdown");
   expect(document.querySelector("textarea")).toBeNull();
   expect(pageHasUnsavedChanges(h.session())).toBe(false);
@@ -278,24 +294,44 @@ test("a slow save acknowledges only its submitted snapshot; refetch cannot overw
   });
 });
 
-test("a failed background read does not unmount the working copy", async () => {
-  let offline = false;
+test.each([0, 503, 401, 403, 404])(
+  "a failed background read (%s) explains the failure without unmounting the working copy",
+  async (status) => {
+    let offline = false;
 
-  const h = await mountPage(async () => {
-    if (offline) throw Error("Offline");
+    const h = await mountPage(async () => {
+      if (offline) {
+        if (status === 0) throw Error("Offline");
 
-    return Response.json(page);
-  });
+        return Response.json({}, { status });
+      }
 
-  const original = h.session().store;
-  await applySource(h.session(), original.getSnapshot().source + "\n\nKeep offline edits");
-  offline = true;
-  await act(async () => {
-    await h.client.refetchQueries({ queryKey: pageQuery(h.api, page.id).queryKey });
-  });
-  expect(h.session().store).toBe(original);
-  expect(original.getSnapshot().source).toContain("Keep offline edits");
-});
+      return Response.json(page);
+    });
+
+    const original = h.session().store;
+    await applySource(h.session(), original.getSnapshot().source + "\n\nKeep offline edits");
+    offline = true;
+    await act(async () => {
+      await h.client.refetchQueries({ queryKey: pageQuery(h.api, page.id).queryKey });
+    });
+    expect(h.session().store).toBe(original);
+    expect(original.getSnapshot().source).toContain("Keep offline edits");
+    await act(async () => {
+      await vi.waitFor(() =>
+        expect(document.body.textContent).toContain(
+          status === 401
+            ? "Your session has ended"
+            : status === 403
+              ? "You no longer have access to this page"
+              : status === 404
+                ? "This page is no longer available"
+                : "We could not refresh this page",
+        ),
+      );
+    });
+  },
+);
 
 test.each([401, 404, 409, 422, 503, 0])(
   "failed save %s retains the in-memory working copy and original baseline",

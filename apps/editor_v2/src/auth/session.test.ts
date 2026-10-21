@@ -40,6 +40,27 @@ describe("authentication boundaries", () => {
   });
 
   it.each([
+    "/categories?sort=title#list",
+    "/content-types",
+    "/content-types/new",
+    "/content-types/announcements",
+    "/collections/announcements/",
+    "/collections/announcements/new",
+    "/collections/announcements/entry-1?view=source#content",
+  ])("returns to the protected workspace destination %s", (path) => {
+    expect(localReturnPath(path)).toBe(path);
+    expect(
+      new URL(authCallback("https://editor.govtech.bb", "complete", path)).searchParams.get(
+        "returnTo",
+      ),
+    ).toBe(path);
+  });
+
+  it.each([
+    "/categories/other",
+    "/content-types-extra",
+    "/collections",
+    "/prototypes/components",
     "https://evil.example",
     "//evil.example",
     "/\\evil.example",
@@ -49,6 +70,11 @@ describe("authentication boundaries", () => {
     "/services/\n/evil",
   ])("rejects an unsafe or looping return path %s", (path) => {
     expect(localReturnPath(path)).toBe("/services");
+  });
+
+  it("opens a plain auth URL as explicit sign-in, while provider errors stay errors", () => {
+    expect(parseAuthSearch({}).state).toBe("sign-in");
+    expect(parseAuthSearch({ error: "access_denied" }).state).toBe("error");
   });
 
   it("does not convert untrusted error text or unknown states into automatic sign-in", () => {

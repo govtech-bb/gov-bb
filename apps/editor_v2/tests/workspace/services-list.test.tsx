@@ -46,7 +46,8 @@ const listed = (
   search: ServicesSearch,
   actions: { onSearch?: (search: ServicesSearch) => void; onCreate?: () => void } = {},
 ) => {
-  const client = new QueryClient();
+  // These list-interaction fixtures are already loaded; a real local API must not replace them mid-test.
+  const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
   client.setQueryData(servicesQuery(api).queryKey, services);
 
   return (
@@ -222,6 +223,89 @@ test("with no services yet, it offers to create the first", async () => {
   );
   expect(onCreate).toHaveBeenCalled();
 });
+
+test("the first services load names its results region without replacing its controls", async () => {
+  const held = Promise.withResolvers<Response>();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => held.promise),
+  );
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  await show(
+    <RouterContextProvider router={router}>
+      <QueryClientProvider client={client}>
+        <ServicesList api={api} search={{}} onSearch={() => {}} onCreate={() => {}} />
+      </QueryClientProvider>
+    </RouterContextProvider>,
+  );
+  const heading = host.querySelector("h1");
+  expect(host.textContent).toContain("Loading services…");
+  expect(searchBox()).not.toBeNull();
+  expect(host.querySelector("table")?.getAttribute("aria-busy")).toBe("true");
+  await act(async () => held.resolve(Response.json(thirty)));
+  await act(async () => {
+    await vi.waitFor(() => expect(titles()).toHaveLength(25));
+  });
+  expect(host.querySelector("h1")).toBe(heading);
+  expect(host.textContent).not.toContain("Loading services…");
+  client.clear();
+});
+
+test.each([0, 503, 401, 403, 404])(
+  "a services refresh failure (%s) is local, without presenting refused data as current",
+  async (status) => {
+    const held = Promise.withResolvers<Response>();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => held.promise),
+    );
+
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+    });
+
+    const query = servicesQuery(api);
+    client.setQueryData(query.queryKey, thirty);
+    await show(
+      <RouterContextProvider router={router}>
+        <QueryClientProvider client={client}>
+          <ServicesList api={api} search={{}} onSearch={() => {}} onCreate={() => {}} />
+        </QueryClientProvider>
+      </RouterContextProvider>,
+    );
+    let refresh: Promise<void>;
+    await act(async () => {
+      refresh = client.refetchQueries({ queryKey: query.queryKey });
+    });
+    expect(titles()).toHaveLength(25);
+    expect(host.textContent).not.toContain("Loading services…");
+    await act(async () => {
+      if (status === 0) held.reject(new TypeError("Offline"));
+      else held.resolve(Response.json({}, { status }));
+      await refresh;
+    });
+    await act(async () => {
+      await vi.waitFor(() => expect(client.getQueryState(query.queryKey)?.status).toBe("error"));
+    });
+
+    if (status === 0 || status === 503) {
+      await act(async () => {
+        await vi.waitFor(() => expect(host.textContent).toContain("We could not refresh services"));
+      });
+      expect(titles()).toHaveLength(25);
+      expect(host.textContent).toContain("We could not refresh services");
+      expect(host.textContent).not.toContain("We could not load services");
+    } else {
+      await act(async () => {
+        await vi.waitFor(() => expect(host.querySelector('[role="alert"]')).not.toBeNull());
+      });
+      expect(titles()).toHaveLength(0);
+      expect(host.querySelector('[role="alert"]')).not.toBeNull();
+    }
+
+    client.clear();
+  },
+);
 
 test("a failed load is an alert with Try again", async () => {
   const failing = new QueryClient();
