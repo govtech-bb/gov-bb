@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "serviceId": "asdgaskjdhksajdk",
+  "title": "asdgaskjdhksajdk",
+  "description": "bfdkjsfbkjsdbfkjdsbfjkdsbfjksbfjdbfjksfbjk",
+  "category": "social-empowerment",
+  "subcategory": "",
+  "formId": null,
+  "entryPoint": "05d401fc-3488-4ec6-9007-c21c60884def",
+  "pages": [
+    {
+      "id": "05d401fc-3488-4ec6-9007-c21c60884def",
+      "path": "apps/landing/src/content/asdgaskjdhksajdk/index.md",
+      "title": "dfdjfjsbfjkdsbfkjdsbfkjbsd",
+      "publicPath": "/social-empowerment/asdgaskjdhksajdk",
+      "kind": "main"
+    }
+  ],
+  "setup": {
+    "step": "about",
+    "delivery": "undecided",
+    "applicantEmail": "undecided"
+  }
+}
