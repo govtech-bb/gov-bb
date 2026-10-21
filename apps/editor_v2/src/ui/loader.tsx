@@ -204,12 +204,14 @@ export function Loader({
   className,
 }: {
   size?: number;
-  label?: string;
+  /** Null makes the trident decorative when its caller supplies visible status text. */
+  label?: string | null;
   className?: string;
 }) {
   return (
     <span
-      role="status"
+      role={label === null ? undefined : "status"}
+      aria-hidden={label === null || undefined}
       className={cn("trident-loader relative inline-block", className)}
       style={{ width: round((size * WIDTH) / HEIGHT), height: size }}
     >
@@ -234,7 +236,7 @@ export function Loader({
           <path d={band.path} />
         </svg>
       ))}
-      <span className="sr-only">{label}</span>
+      {label !== null && <span className="sr-only">{label}</span>}
     </span>
   );
 }

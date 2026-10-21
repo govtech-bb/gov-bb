@@ -6,12 +6,15 @@ import { LoadingState } from "./loading-state";
 const state = (markup: string) =>
   new DOMParser().parseFromString(markup, "text/html").body.firstElementChild!;
 
-const style = (element: Element) => element.querySelector('[role="status"]')?.getAttribute("style");
+const style = (element: Element) => element.querySelector(".trident-loader")?.getAttribute("style");
 
-test("names what is loading to a screen reader", () => {
+test("visibly names what is loading and announces it only once", () => {
   const loading = state(renderToStaticMarkup(<LoadingState label="Loading history…" />));
 
+  expect(loading.querySelectorAll('[role="status"]')).toHaveLength(1);
   expect(loading.querySelector('[role="status"]')?.textContent).toBe("Loading history…");
+  expect(loading.querySelector(".sr-only")).toBeNull();
+  expect(loading.querySelector(".trident-loader")?.getAttribute("aria-hidden")).toBe("true");
 });
 
 test("a screen's trident is larger than a dialog's, and fills the height under the bar", () => {

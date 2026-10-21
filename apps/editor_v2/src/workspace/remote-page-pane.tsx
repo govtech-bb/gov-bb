@@ -2,7 +2,7 @@ import { ClockCounterClockwise } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import type { ApiPage, EditorApi, TaxonomyCategory } from "../api/client";
+import { ApiFailure, type ApiPage, type EditorApi, type TaxonomyCategory } from "../api/client";
 import { pageToMarkdown, pickerCategories, pageFieldLabel } from "../api/page-markdown";
 import { PRELOAD_FRESH, pageQuery, servicesQuery, taxonomyQuery } from "../api/queries";
 import { PageDraftEditor } from "../host/page-editor";
@@ -76,6 +76,12 @@ export function RemotePagePane({
       categories={taxonomy.data}
       active={active}
       onSession={onSession}
+      readError={page.error ?? taxonomy.error}
+      reading={page.isFetching || taxonomy.isFetching}
+      retryRead={() => {
+        void page.refetch();
+        void taxonomy.refetch();
+      }}
     />
   );
 
@@ -91,12 +97,18 @@ function RemotePageEditor({
   categories,
   active,
   onSession,
+  readError,
+  reading,
+  retryRead,
 }: {
   api: EditorApi;
   page: ApiPage;
   categories: readonly TaxonomyCategory[];
   active: boolean;
   onSession: SessionListener;
+  readError: Error | null;
+  reading: boolean;
+  retryRead: () => void;
 }) {
   const [base, setBase] = useState<ServerPageBaseline>(() => ({
     page: server,
@@ -114,7 +126,7 @@ function RemotePageEditor({
 
   const client = useQueryClient();
   const navigate = useNavigate();
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const href = useRouterState({ select: (state) => state.location.href });
   const draft = useSyncExternalStore(store.subscribe, store.getSnapshot);
   // Links find the site's services by name; the content API lists their entry pages
   const services = useQuery(servicesQuery(api)).data;
@@ -222,6 +234,50 @@ function RemotePageEditor({
     };
   };
 
+  const signInAction = (
+    <Button
+      variant="secondary"
+      onClick={() =>
+        void navigate({
+          to: "/auth",
+          search: { state: "sign-in", returnTo: href, reason: "provider" },
+        })
+      }
+    >
+      Sign in again
+    </Button>
+  );
+
+  const readStatus = readError instanceof ApiFailure ? readError.status : undefined;
+  const readRefused = readStatus === 401 || readStatus === 403 || readStatus === 404;
+
+  const readNotice = readError && (
+    <Banner
+      tone={readRefused ? "error" : "warning"}
+      layout="strip"
+      actions={
+        <>
+          {readStatus === 401 ? (
+            signInAction
+          ) : (
+            <Button variant="secondary" pending={reading} onClick={retryRead}>
+              {reading ? "Refreshing page…" : "Try again"}
+            </Button>
+          )}
+          {readRefused && <Button onClick={downloadMine}>Download my version</Button>}
+        </>
+      }
+    >
+      {readStatus === 401
+        ? "Your session has ended. Download your changes before signing in again."
+        : readStatus === 403
+          ? "You no longer have access to this page. Download a copy to keep your changes."
+          : readStatus === 404
+            ? "This page is no longer available. Download a copy to keep your changes."
+            : "We could not refresh this page. Your open copy and unsaved changes are unchanged."}
+    </Banner>
+  );
+
   // The save state reads out the newer version, so its notice doesn't too
   const notice = stale ? (
     <Banner
@@ -259,24 +315,7 @@ function RemotePageEditor({
       </ul>
     </Banner>
   ) : outcome?.kind === "signed-out" ? (
-    <Banner
-      tone="warning"
-      layout="strip"
-      role="alert"
-      actions={
-        <Button
-          variant="secondary"
-          onClick={() =>
-            void navigate({
-              to: "/auth",
-              search: { state: "sign-in", returnTo: pathname, reason: "provider" },
-            })
-          }
-        >
-          Sign in again
-        </Button>
-      }
-    >
+    <Banner tone="warning" layout="strip" role="alert" actions={signInAction}>
       Your session has ended. Download your changes before signing in again; unsaved work will be
       lost when you leave.
     </Banner>
@@ -304,7 +343,16 @@ function RemotePageEditor({
             {visibility === "public" ? "Publish changes" : "Save"}
           </Button>
         }
-        notice={notice}
+        notice={
+          readNotice ? (
+            <>
+              {readNotice}
+              {notice}
+            </>
+          ) : (
+            notice
+          )
+        }
         linkPages={linkPages}
         settings={{
           ...(server.parent_id === null && {

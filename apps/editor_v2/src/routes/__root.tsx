@@ -12,7 +12,8 @@ import type { EditorApi } from "../api/client";
 import type { EditorAuth } from "../auth/session";
 import stylesheet from "../../index.css?url";
 import { EmptyState } from "../ui/empty-state";
-import { LoadingState } from "../ui/loading-state";
+import { AuthPending } from "../auth/auth-screen";
+import { RouteError } from "../route-error";
 import { TextLink } from "../ui/text-link";
 import { Toaster } from "../ui/toast";
 import { ScreenTitle } from "../workspace/screen-title";
@@ -31,12 +32,17 @@ export const Route = createRootRouteWithContext<{
     links: [{ rel: "stylesheet", href: stylesheet }],
   }),
   component: () => (
-    <ClientOnly fallback={<LoadingState size="page" label="Loading editor…" />}>
+    <ClientOnly fallback={<AuthPending label="Loading editor…" />}>
       <Outlet />
       <Toaster />
     </ClientOnly>
   ),
   shellComponent: RootDocument,
+  errorComponent: (props) => (
+    <main>
+      <RouteError {...props} />
+    </main>
+  ),
   notFoundComponent: NotFound,
 });
 
