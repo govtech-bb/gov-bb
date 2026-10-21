@@ -758,7 +758,7 @@ try {
   await source.fill(
     currentSource.replace(
       "title: Writer interactions",
-      "title: Writer interactions\npublish_date: 2026-99-99\ncategories: [housing, 7]",
+      "title: Writer interactions\nvisibility: draft\npublish_date: 2026-99-99\ncategories: [housing, 7]",
     ),
   );
   await button("Apply changes").click();
@@ -767,10 +767,30 @@ try {
   assert.equal(await publicationDate.inputValue(), "2026-99-99");
   assert.equal(await publicationDate.getAttribute("readonly"), "");
   assert.equal(await addCategory.count(), 0);
+  assert.equal(await visibility.inputValue(), "draft");
+  assert.equal(await visibility.locator('option[value="draft"]').isDisabled(), true);
+  assert.deepEqual(await visibility.locator("option:enabled").allTextContents(), [
+    "Public",
+    "Preview link only",
+  ]);
+  await settings
+    .getByText("This page stays hidden until you choose Public or Preview and save.")
+    .waitFor();
   await description.fill("An unrelated metadata edit.");
   const unusualSource = await markdown();
   assert.match(unusualSource, /publish_date: ["']?2026-99-99/);
   assert.match(unusualSource, /categories: \[\s*housing,\s*7\s*\]/);
+  assert.match(unusualSource, /visibility: draft/);
+  await visibility.focus();
+  await visibility.press("p");
+  assert.equal(await visibility.inputValue(), "");
+  assert.equal(await visibility.locator('option[value="draft"]').count(), 0);
+  assert.doesNotMatch(await markdown(), /^visibility:/m);
+  await button("Undo").click();
+  assert.equal(await visibility.inputValue(), "draft");
+  assert.equal(await markdown(), unusualSource);
+  await button("Redo").click();
+  assert.equal(await visibility.inputValue(), "");
 
   const withMetadata = currentSource.replace(
     "title: Writer interactions",
@@ -785,6 +805,10 @@ try {
   assert.equal(await introduction.inputValue(), "A short introduction.");
   assert.equal(await description.inputValue(), "A page description.");
   assert.equal(await visibility.inputValue(), "");
+  assert.deepEqual(await visibility.locator("option").allTextContents(), [
+    "Public",
+    "Preview link only",
+  ]);
   assert.equal(await addCategory.isDisabled(), true);
   await button("Remove family-birth-relationships").waitFor();
   await button("Remove youth-and-community").waitFor();
