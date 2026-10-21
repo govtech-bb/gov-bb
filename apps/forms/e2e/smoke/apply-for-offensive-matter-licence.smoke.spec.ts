@@ -57,7 +57,9 @@
  *    (`application-type`). It reveals nothing: Environmental Health doesn't
  *    need the current licence number (#3087). The another-person test renews
  *    vehicle 1 and applies new for vehicle 2; the business test does the
- *    reverse, so each vehicle keeps its own answer whichever comes first.
+ *    reverse. "Add another" copies the previous instance, so each test checks
+ *    every vehicle's summary section on "Check your answers" for its own
+ *    answer (`expectVehicleSummary`), whichever order they come in.
  *    `vehicle-registration-number` is asked for every vehicle. The value is
  *    "renew", not "renewal" as on the sibling offensive-waste recipe.
  *  - `vehicle-details` is a repeatable step (min 1, max 20) with no
@@ -397,6 +399,31 @@ export async function fillVehicleDetails(
   await advance(page, stepId);
 }
 
+/**
+ * On "Check your answers" each vehicle instance is its own summary section, so
+ * a vehicle's new or renewal answer must sit beside its own registration
+ * number. This is what proves "Add another" didn't carry vehicle 1's answer
+ * into vehicle 2.
+ */
+async function expectVehicleSummary(
+  page: Page,
+  registration: string,
+  applicationType: "new" | "renew",
+): Promise<void> {
+  const answers = {
+    new: "Apply for a new licence",
+    renew: "Renew the licence",
+  };
+  const section = page
+    .locator(".govbb-summary-section")
+    .filter({ hasText: registration });
+  await expect(section).toHaveCount(1);
+  await expect(section).toContainText(answers[applicationType]);
+  await expect(section).not.toContainText(
+    answers[applicationType === "new" ? "renew" : "new"],
+  );
+}
+
 /** Fill "Confirm and submit your application" and submit for real. */
 async function agreeAndSubmit(page: Page): Promise<void> {
   const step = expectStep(page, "declaration");
@@ -466,7 +493,7 @@ test.describe("Offensive Matter Licence — Live Smoke", () => {
       "no",
     );
 
-    await expect(page.getByText(data.firstVehicle).first()).toBeVisible();
+    await expectVehicleSummary(page, data.firstVehicle, "new");
     await passCheckYourAnswers(page, coordinates);
 
     await agreeAndSubmit(page);
@@ -513,8 +540,8 @@ test.describe("Offensive Matter Licence — Live Smoke", () => {
     await expect(page.getByText(data.personLastName).first()).toBeVisible();
     await expect(page.getByText(data.phone).first()).toBeVisible();
     await expect(page.getByText(data.secondPhone).first()).toBeVisible();
-    await expect(page.getByText(data.firstVehicle).first()).toBeVisible();
-    await expect(page.getByText(data.secondVehicle).first()).toBeVisible();
+    await expectVehicleSummary(page, data.firstVehicle, "renew");
+    await expectVehicleSummary(page, data.secondVehicle, "new");
     await passCheckYourAnswers(page, coordinates);
 
     await agreeAndSubmit(page);
@@ -554,6 +581,8 @@ test.describe("Offensive Matter Licence — Live Smoke", () => {
     );
 
     await expect(page.getByText(data.businessName).first()).toBeVisible();
+    await expectVehicleSummary(page, data.firstVehicle, "new");
+    await expectVehicleSummary(page, data.secondVehicle, "renew");
     await passCheckYourAnswers(page, coordinates);
 
     await agreeAndSubmit(page);
