@@ -961,7 +961,7 @@
     },
     {
       "stepId": "declaration",
-      "title": "Your agreement",
+      "title": "Confirm and submit your application",
       "behaviours": [],
       "elements": [
         {
@@ -1037,7 +1037,7 @@
     }
   ],
   "createdAt": "2026-08-25T00:10:51.219Z",
-  "updatedAt": "2026-10-21T09:12:30.000Z",
+  "updatedAt": "2026-10-21T12:15:30.000Z",
   "meta": {
     "visibility": "preview"
   },

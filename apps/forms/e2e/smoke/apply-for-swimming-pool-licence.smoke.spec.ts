@@ -433,7 +433,9 @@ export async function fillPlanningDocuments(
 /** Fill in the agreement and submit for real. */
 async function agreeAndSubmit(page: Page): Promise<void> {
   const step = expectStep(page, "declaration");
-  await expect(page.locator("h1")).toContainText("Your agreement");
+  await expect(page.locator("h1")).toContainText(
+    "Confirm and submit your application",
+  );
   await page
     .locator(`fieldset[id="${step}_declaration-confirmed"]`)
     .getByRole("checkbox")
