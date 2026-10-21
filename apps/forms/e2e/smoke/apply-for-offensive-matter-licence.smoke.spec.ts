@@ -53,13 +53,11 @@
  *    known-geocodable locations, select the first suggestion, then assert the
  *    hidden coordinates filled. That field renders as an `input[type=hidden]`,
  *    so assert its VALUE — never its visibility.
- *  - New or renewal is asked PER VEHICLE on `vehicle-details`.
- *    `current-licence` (optional) is revealed by `application-type` = "renew"
- *    with no `targetStepId`, so the condition is local to each vehicle
- *    instance. The another-person test renews vehicle 1 and applies new for
- *    vehicle 2 (licence number hidden on vehicle 2); the business test does
- *    the reverse (licence number shown on vehicle 2). Both orders matter: "Add
- *    another" copies the previous instance, so a copy must not follow it.
+ *  - New or renewal is asked PER VEHICLE on `vehicle-details`
+ *    (`application-type`). It reveals nothing: Environmental Health doesn't
+ *    need the current licence number (#3087). The another-person test renews
+ *    vehicle 1 and applies new for vehicle 2; the business test does the
+ *    reverse, so each vehicle keeps its own answer whichever comes first.
  *    `vehicle-registration-number` is asked for every vehicle. The value is
  *    "renew", not "renewal" as on the sibling offensive-waste recipe.
  *  - `vehicle-details` is a repeatable step (min 1, max 20) with no
@@ -185,7 +183,6 @@ export function buildData() {
     operatorAddress: faker.helpers.arrayElement(GEOCODABLE_ADDRESSES),
     operatorAddressLine2: faker.location.street(),
 
-    currentLicence: `OM/${faker.string.numeric(5)}`,
     firstVehicle: vehicleRegistration(),
     secondVehicle: vehicleRegistration(),
   };
@@ -384,25 +381,12 @@ export async function fillVehicleDetails(
   vehicle: {
     registration: string;
     applicationType: "new" | "renew";
-    currentLicence?: string;
   },
   addAnother: "yes" | "no",
 ): Promise<void> {
   await expect(page.locator("h1")).toContainText("Tell us about the vehicle");
 
-  const currentLicence = page.locator(`[id="${stepId}_current-licence"]`);
-  await expect(currentLicence).toBeHidden();
-
   await selectRadio(page, stepId, "application-type", vehicle.applicationType);
-  if (vehicle.applicationType === "renew") {
-    await expect(currentLicence).toBeVisible({ timeout: STEP_TIMEOUT });
-    if (vehicle.currentLicence)
-      await currentLicence.fill(vehicle.currentLicence);
-  } else {
-    // Instance-local: another vehicle's "renew" must not reveal it here.
-    await expect(currentLicence).toBeHidden();
-  }
-
   await fillField(
     page,
     stepId,
@@ -481,8 +465,6 @@ test.describe("Offensive Matter Licence — Live Smoke", () => {
     );
 
     await expect(page.getByText(data.firstVehicle).first()).toBeVisible();
-    // A new licence is never asked for a licence number.
-    await expect(page.getByText(data.currentLicence)).toHaveCount(0);
     await passCheckYourAnswers(page, coordinates);
 
     await agreeAndSubmit(page);
@@ -510,7 +492,6 @@ test.describe("Offensive Matter Licence — Live Smoke", () => {
       {
         registration: data.firstVehicle,
         applicationType: "renew",
-        currentLicence: data.currentLicence,
       },
       "yes",
     );
@@ -528,7 +509,6 @@ test.describe("Offensive Matter Licence — Live Smoke", () => {
     );
 
     await expect(page.getByText(data.personLastName).first()).toBeVisible();
-    await expect(page.getByText(data.currentLicence).first()).toBeVisible();
     await expect(page.getByText(data.phone).first()).toBeVisible();
     await expect(page.getByText(data.secondPhone).first()).toBeVisible();
     await expect(page.getByText(data.firstVehicle).first()).toBeVisible();
@@ -551,9 +531,7 @@ test.describe("Offensive Matter Licence — Live Smoke", () => {
     await fillBusinessDetails(page, data);
     const coordinates = await fillOperatorAddress(page, data);
 
-    // New first, then renew: vehicle 2 is copied from vehicle 1 by "Add
-    // another", and its licence number field must follow vehicle 2's own
-    // answer, not vehicle 1's (#2857).
+    // New first, then renew: the reverse of the another-person test.
     const firstVehicleStep = expectStep(page, "vehicle-details");
     await fillVehicleDetails(
       page,
@@ -569,13 +547,11 @@ test.describe("Offensive Matter Licence — Live Smoke", () => {
       {
         registration: data.secondVehicle,
         applicationType: "renew",
-        currentLicence: data.currentLicence,
       },
       "no",
     );
 
     await expect(page.getByText(data.businessName).first()).toBeVisible();
-    await expect(page.getByText(data.currentLicence).first()).toBeVisible();
     await passCheckYourAnswers(page, coordinates);
 
     await agreeAndSubmit(page);

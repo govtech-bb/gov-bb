@@ -31,7 +31,6 @@ You can include more than one vehicle in the same application if the licences ar
 You will need:
 
 * the registration number for each vehicle
-* the current licence number for each vehicle you are renewing
 
 Read the [Health Services (Disposal of Offensive Matter) Regulations, 1969](https://oag.gov.bb/attachments/Health%20Services%20(Disposal%20of%20Offensive%20Matter)%20Regulations,%201969%20Cap44'J.PDF) for the full legal requirements.
 
@@ -65,7 +64,7 @@ Environmental Health will review your application and inspect each vehicle.
 
 Each vehicle must:
 
-* be leakproof and in good working order
+* be completely sealed, leakproof and in good working order
 * have hoses in good condition
 * have fresh water for washing down
 * have a bucket, shovel and broom
