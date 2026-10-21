@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "serviceId": "barbados",
+  "title": "barbados",
+  "description": "djsdnjbdjsabdjabdjsabd",
+  "category": "youth-and-community",
+  "subcategory": "",
+  "formId": null,
+  "entryPoint": "a3320bd9-bb4a-437b-a6de-6d5a9110647d",
+  "pages": [
+    {
+      "id": "a3320bd9-bb4a-437b-a6de-6d5a9110647d",
+      "path": "apps/landing/src/content/barbados/index.md",
+      "title": "History Barbados",
+      "publicPath": "/youth-and-community/barbados",
+      "kind": "main"
+    }
+  ],
+  "setup": {
+    "step": "about",
+    "delivery": "undecided",
+    "applicantEmail": "undecided"
+  }
+}
