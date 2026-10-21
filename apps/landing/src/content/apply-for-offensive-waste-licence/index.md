@@ -41,9 +41,10 @@ Read the [Health Services (Offensive Trades) Regulations, 1969](https://oag.gov.
 
 You will need:
 
-* your current licence number, if you are renewing
 * the address where you do the work
-* building plans and specifications, if you are applying for a new licence or have changed the building or plan to
+* your Planning and Development application number, if you are applying for a new licence, or renewing and the building has changed or will change
+
+You can also upload a site plan to help Environmental Health review your application.
 
 ## When to apply
 

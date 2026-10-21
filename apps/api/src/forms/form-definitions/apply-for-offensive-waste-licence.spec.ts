@@ -11,8 +11,9 @@ import { BUILTIN_REGISTRY } from "@govtech-bb/registry";
 import { hydrateForm, type Resolver } from "../../registry/resolution";
 
 // The Environmental Health content review (#2858) rebuilt this journey around
-// renewal checks, one "Who are you applying for?" answer and a building-plans
-// upload asked for a new licence or a changed building. A broken condition here
+// renewal checks, one "Who are you applying for?" answer and a site-plan upload
+// asked for a new licence or a changed building; #3090 added the Planning and
+// Development number on those same two routes. A broken condition here
 // does not error: it shows a question to the wrong people or quietly never asks
 // it. So this hydrates the real recipe and evaluates the conditions the
 // submission pipeline validates against.
@@ -52,20 +53,103 @@ function activeOf(steps: string[], active: Set<string>): string[] {
   return steps.filter((s) => active.has(s));
 }
 
+// Environmental Health needs the Planning and Development number for a new
+// licence, and for a renewal only when the building has changed (#3090). Each
+// route has its own field, revealed under the answer that triggers it.
+function planningNumberAsked(cond: Awaited<ReturnType<typeof conditions>>) {
+  return {
+    new:
+      cond.activeFieldIds
+        .get("application-type")
+        ?.has("planning-application-number") ?? false,
+    renewal:
+      cond.activeFieldIds
+        .get("renewal-check")
+        ?.has("changed-planning-application-number") ?? false,
+  };
+}
+
 it.each([
-  ["new", false],
-  ["renewal", true],
+  ["new", undefined, { new: true, renewal: false }],
+  ["renewal", "no", { new: false, renewal: false }],
+  ["renewal", "yes", { new: false, renewal: true }],
 ])(
-  "a %s application asks for the current licence number on the first step: %s",
-  async (applicationType, asked) => {
-    const { activeFieldIds } = await conditions({
+  "a %s application (building changed: %s) asks for the Planning number where it should",
+  async (applicationType, buildingChanges, asked) => {
+    const cond = await conditions({
       "application-type": { "application-type": applicationType },
+      "renewal-check": { "building-changes": buildingChanges },
     });
-    expect(
-      activeFieldIds.get("application-type")!.has("current-licence-number"),
-    ).toBe(asked);
+    expect(planningNumberAsked(cond)).toEqual(asked);
   },
 );
+
+// Hidden fields are left out of Check your answers and the payload, so a number
+// typed on one route must not survive a switch to the other.
+it.each([
+  [
+    "new to renewal",
+    "new",
+    {
+      "application-type": {
+        "application-type": "renewal",
+        "planning-application-number": "PD/123",
+      },
+      "renewal-check": { "building-changes": "no" },
+    },
+  ],
+  [
+    "renewal to new",
+    "renewal",
+    {
+      "application-type": { "application-type": "new" },
+      "renewal-check": {
+        "building-changes": "yes",
+        "changed-planning-application-number": "PD/123",
+      },
+    },
+  ],
+])(
+  "drops a Planning number left behind after switching from %s",
+  async (_, typedOn, values) => {
+    const cond = await conditions(values);
+    expect(planningNumberAsked(cond)[typedOn as "new" | "renewal"]).toBe(false);
+  },
+);
+
+it.each([
+  ["application-type", "planning-application-number"],
+  ["renewal-check", "changed-planning-application-number"],
+])("%s.%s is required", async (stepId, fieldId) => {
+  const primitive = await field(stepId, fieldId);
+  expect(validateField(primitive, "", {})).toEqual([
+    "Enter your Planning and Development application number.",
+  ]);
+  expect(validateField(primitive, "PD/123", {})).toEqual([]);
+});
+
+it("no longer asks for the current licence number", async () => {
+  const form = await contract();
+  const ids = form.steps.flatMap((s) => s.elements.map((e) => e.fieldId));
+  expect(ids).not.toContain("current-licence-number");
+});
+
+// One licence covers one trade, so the 12 activities are a single choice — a
+// select, because a radio is only for exactly 2 options.
+it("asks for exactly one business activity", async () => {
+  const primitive = await field("business-activities", "business-activities");
+  expect(primitive.htmlType).toBe("select");
+  expect(primitive.options).toHaveLength(12);
+});
+
+it.each([
+  ["building-plans", "site-plan"],
+  ["changed-building-plans", "changed-site-plan"],
+])("%s asks for an optional site plan", async (stepId, fieldId) => {
+  const primitive = await field(stepId, fieldId);
+  expect(primitive.label).toBe("Site plan");
+  expect(validateField(primitive, undefined, {})).toEqual([]);
+});
 
 it.each([
   ["new", undefined, [], ["building-plans"]],
