@@ -72,7 +72,6 @@
           "overrides": {
             "label": "Address",
             "fieldId": "address",
-            "multiline": true,
             "validations": {
               "required": {
                 "error": "Address is required",
@@ -227,7 +226,6 @@
           "overrides": {
             "label": "Date",
             "fieldId": "date",
-            "type": "date",
             "validations": {
               "required": {
                 "error": "Date is required",
@@ -339,7 +337,6 @@
           "overrides": {
             "label": "Section B Total",
             "fieldId": "section-b-total",
-            "readonly": true,
             "validations": {
               "required": {
                 "error": "Section B Total is required",
@@ -360,7 +357,6 @@
           "overrides": {
             "label": "Date",
             "fieldId": "date",
-            "type": "date",
             "validations": {
               "required": {
                 "error": "Date is required",
@@ -472,7 +468,6 @@
           "overrides": {
             "label": "Section C Total",
             "fieldId": "section-c-total",
-            "readonly": true,
             "validations": {
               "required": {
                 "error": "Section C Total is required",
@@ -493,7 +488,6 @@
           "overrides": {
             "label": "Date",
             "fieldId": "date",
-            "type": "date",
             "validations": {
               "required": {
                 "error": "Date is required",
@@ -605,7 +599,6 @@
           "overrides": {
             "label": "Section D Total",
             "fieldId": "section-d-total",
-            "readonly": true,
             "validations": {
               "required": {
                 "error": "Section D Total is required",
@@ -697,9 +690,7 @@
           "ref": "components/generic-number",
           "overrides": {
             "label": "I hereby claim the sum of",
-            "prefix": "$",
             "fieldId": "claim-amount",
-            "readonly": true,
             "validations": {
               "required": {
                 "error": "Enter the sum you are claiming",
@@ -858,5 +849,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:25:58.965Z",
-  "updatedAt": "2026-10-09T14:20:00.000Z"
+  "updatedAt": "2026-10-21T16:52:59.000Z"
 }

@@ -93,6 +93,9 @@ export interface EmailTemplateContext {
    * image URL. */
   departmentName?: string;
   coatOfArmsUrl?: string;
+  /** Set by the email processor, not by `build`: true when the form syncs to
+   * CaMS via a mapped webhook, so the tracker can find the reference. */
+  trackable?: boolean;
   /** Confirmed-payment details, forwarded from the post-payment
    * `submission.created` event. Rendered on the MDA/reviewer confirmation
    * email; undefined for non-payment submissions. */

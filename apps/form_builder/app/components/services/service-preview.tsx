@@ -7,6 +7,7 @@ import { Select } from "../ui/select";
 import { Banner } from "../ui/banner";
 import { XIcon } from "@phosphor-icons/react";
 import { servicePageLabel } from "./service-model";
+import { formPreviewUrl } from "../../lib/form-url";
 
 const landingURL =
   import.meta.env.VITE_LANDING_PREVIEW_URL ||
@@ -19,11 +20,13 @@ export function ServicePreview({
   snapshot,
   initialPageId,
   initialStepId,
+  savedFormId,
   onClose,
 }: {
   snapshot: ServiceSnapshot;
   initialPageId?: string;
   initialStepId?: string;
+  savedFormId?: string | null;
   onClose: () => void;
 }) {
   return (
@@ -58,6 +61,7 @@ export function ServicePreview({
           snapshot={snapshot}
           initialPageId={initialPageId}
           initialStepId={initialStepId}
+          savedFormId={savedFormId}
         />
       </Dialog>
     </Dialog.Root>
@@ -68,11 +72,14 @@ export function ServicePreviewBody({
   snapshot,
   initialPageId,
   initialStepId,
+  savedFormId,
   compact = false,
 }: {
   snapshot: ServiceSnapshot;
   initialPageId?: string;
   initialStepId?: string;
+  /** The form's id once its recipe is stored, so the forms app can open it. */
+  savedFormId?: string | null;
   compact?: boolean;
 }) {
   // Capture once: navigation and later editor changes cannot mix revisions.
@@ -308,14 +315,31 @@ export function ServicePreviewBody({
                 The {page ? "content" : "form"} preview could not be reached.
                 Your draft is safe.
               </p>
-              <Button
-                className="mt-4"
-                onClick={() => {
-                  setAttempt((v) => v + 1);
-                }}
-              >
-                Retry
-              </Button>
+              {/* No live form preview yet (#3029): fall back to the saved recipe. */}
+              {!page && savedFormId && (
+                <p className="mt-2 text-sm text-ui-subtle">
+                  You can open the last saved version of the form in a new tab.
+                </p>
+              )}
+              <div className="mt-4 flex flex-wrap justify-center gap-3">
+                {!page && savedFormId && (
+                  <a
+                    className="rounded-lg bg-ui-brand px-4 py-2 text-sm font-medium text-ui-inverse no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ui-focus"
+                    href={formPreviewUrl(savedFormId)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Preview saved form
+                  </a>
+                )}
+                <Button
+                  onClick={() => {
+                    setAttempt((v) => v + 1);
+                  }}
+                >
+                  Retry
+                </Button>
+              </div>
             </div>
           </div>
         )}

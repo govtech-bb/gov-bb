@@ -34,11 +34,12 @@
         {
           "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "licence-number",
-            "label": "Current swimming pool licence number",
+            "fieldId": "planning-application-number",
+            "label": "What is your Planning and Development application number?",
             "validations": {
               "required": {
-                "value": false
+                "error": "Enter your Planning and Development application number",
+                "value": true
               }
             },
             "behaviours": [
@@ -46,7 +47,7 @@
                 "type": "fieldConditionalOn",
                 "targetFieldId": "application-type",
                 "operator": "equal",
-                "value": "renewal"
+                "value": "new"
               }
             ],
             "ui": {
@@ -85,14 +86,17 @@
                 "label": "A business or organisation",
                 "value": "business"
               }
-            ]
+            ],
+            "ui": {
+              "hideLabel": true
+            }
           }
         }
       ]
     },
     {
       "stepId": "permission",
-      "title": "Permission",
+      "title": "Do you have permission to apply for this swimming pool licence?",
       "behaviours": [
         {
           "type": "stepConditionalOn",
@@ -130,14 +134,17 @@
                 "label": "No",
                 "value": "no"
               }
-            ]
+            ],
+            "ui": {
+              "hideLabel": true
+            }
           }
         }
       ]
     },
     {
       "stepId": "your-role",
-      "title": "Your role",
+      "title": "What is your relationship to the owner or operator?",
       "behaviours": [
         {
           "type": "stepConditionalOn",
@@ -162,7 +169,104 @@
                 "value": true
               }
             },
-            "hint": "For example, manager, employee or attorney."
+            "hint": "For example, manager, employee or attorney.",
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "operator-details",
+      "title": "Operator details",
+      "behaviours": [],
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "manages-pool",
+            "label": "Do you manage the swimming pool?",
+            "validations": {
+              "required": {
+                "error": "Select whether you manage the swimming pool",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "pool-operator-heading",
+            "content": "## Details of the person or business managing the pool",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "manages-pool",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "pool-operator-name",
+            "label": "Name of the person or business managing the pool",
+            "validations": {
+              "required": {
+                "error": "Enter the name of the person or business managing the pool",
+                "value": true
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "manages-pool",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "pool-operator-telephone",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "manages-pool",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "pool-operator-email",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "manages-pool",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
           }
         }
       ]
@@ -199,12 +303,18 @@
                 "min": 1,
                 "max": 4
               }
-            ],
-            "hint": "Enter a Barbados or international number."
+            ]
           }
         },
         {
           "ref": "components/email"
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "your-address-heading",
+            "content": "## Your address"
+          }
         },
         {
           "ref": "components/address",
@@ -538,6 +648,13 @@
           }
         },
         {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "property-address-heading",
+            "content": "## Property address"
+          }
+        },
+        {
           "ref": "components/address-lookup",
           "overrides": {
             "fieldId": "pool-address-line-1",
@@ -653,6 +770,29 @@
           }
         },
         {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "pool-open-to-public",
+            "label": "Is this pool open to the public?",
+            "validations": {
+              "required": {
+                "error": "Select whether this pool is open to the public",
+                "value": true
+              }
+            },
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
           "ref": "components/generic-number",
           "overrides": {
             "fieldId": "pool-water-capacity-number",
@@ -693,26 +833,28 @@
           }
         },
         {
-          "ref": "components/generic-radio",
+          "ref": "components/generic-text",
           "overrides": {
-            "fieldId": "pool-open-to-public",
-            "label": "Is this pool open to the public?",
+            "fieldId": "licence-number",
+            "label": "Current swimming pool licence number",
+            "hint": "If you know the number, enter it to help us find the pool's existing licence.",
             "validations": {
               "required": {
-                "error": "Select whether this pool is open to the public",
-                "value": true
+                "value": false
               }
             },
-            "options": [
+            "behaviours": [
               {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
+                "type": "fieldConditionalOn",
+                "targetFieldId": "application-type",
+                "targetStepId": "about-application",
+                "operator": "equal",
+                "value": "renewal"
               }
-            ]
+            ],
+            "ui": {
+              "width": "short"
+            }
           }
         }
       ]
@@ -729,7 +871,7 @@
             "label": "Planning and Development site plan",
             "validations": {
               "required": {
-                "error": "Upload the Planning and Development site plan",
+                "error": "Upload your Planning and Development site plan",
                 "value": true
               },
               "fileTypes": {
@@ -738,6 +880,10 @@
                   "application/pdf",
                   "image/jpeg",
                   "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png",
                   ".doc",
                   ".docx",
                   ".xls",
@@ -758,21 +904,30 @@
                 "value": "new"
               }
             ],
-            "hint": "Planning and Development used to be called Town and Country Planning."
+            "hint": "Planning and Development used to be called Town and Country Planning.",
+            "multiple": true
           }
         },
         {
           "ref": "components/upload-document",
           "overrides": {
             "fieldId": "pool-plan",
-            "label": "Pool Plan",
+            "label": "Pool plan",
+            "hint": "You can upload a plan of the pool to help Environmental Health review your application.",
             "validations": {
+              "required": {
+                "value": false
+              },
               "fileTypes": {
                 "error": "Upload a file in PDF, JPEG, PNG, Word or Excel format",
                 "value": [
                   "application/pdf",
                   "image/jpeg",
                   "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png",
                   ".doc",
                   ".docx",
                   ".xls",
@@ -794,30 +949,6 @@
               }
             ]
           }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "town-text",
-            "label": "Planning and Development application number",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "application-type",
-                "targetStepId": "about-application",
-                "operator": "equal",
-                "value": "new"
-              }
-            ],
-            "ui": {
-              "width": "short"
-            }
-          }
         }
       ]
     },
@@ -830,35 +961,9 @@
     },
     {
       "stepId": "declaration",
-      "title": "Your agreement",
+      "title": "Confirm and submit your application",
       "behaviours": [],
       "elements": [
-        {
-          "ref": "components/name",
-          "overrides": {
-            "fieldId": "declaration-full-name",
-            "label": "Full name",
-            "validations": {
-              "required": {
-                "error": "Enter your full name",
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-date",
-          "overrides": {
-            "fieldId": "declaration-date",
-            "label": "Date",
-            "validations": {
-              "required": {
-                "error": "Enter the date",
-                "value": true
-              }
-            }
-          }
-        },
         {
           "ref": "components/confirmation",
           "overrides": {
@@ -884,7 +989,7 @@
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "behaviours": [],
-      "markdownContent": "We have received your application for a swimming pool licence.\n\nA copy of your application has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\nKeep your reference number in case you need to contact Environmental Health about your application.\n\n## What happens next\n\n- Environmental Health will review your application.\n- An officer will inspect the pool, the area around it and the safety equipment.\n- If your application is approved, Environmental Health will email you. Your licence will be posted to you, or you can collect it from the polyclinic.\n\nSubmitting an application does not mean that the licence has been granted.\n\n## Get help\n\nContact the Environmental Health Service office for your area.\n\n{polyclinicContact}",
+      "markdownContent": "We have received your application for a swimming pool licence.\n\nA copy of your application has been sent to the email address you gave and to the Environmental Health Department at **{polyclinic}**.\n\nKeep your reference number in case you need to contact Environmental Health about your application.\n\n## What happens next\n\nEnvironmental Health will review your application. They may contact you if they need more information.\n\nAn officer will inspect the pool, the area around it and the safety equipment before a licence can be issued.\n\nIf your application is approved, Environmental Health will email you and mail your licence. You can also ask to collect it from your assigned polyclinic.\n\nSubmitting an application does not mean that the licence has been granted.\n\n## Get help\n\nContact the Environmental Health Service office for your area.\n\n{polyclinicContact}",
       "elements": []
     }
   ],
@@ -932,7 +1037,7 @@
     }
   ],
   "createdAt": "2026-08-25T00:10:51.219Z",
-  "updatedAt": "2026-10-09T14:39:00.000Z",
+  "updatedAt": "2026-10-21T16:52:59.000Z",
   "meta": {
     "visibility": "preview"
   },

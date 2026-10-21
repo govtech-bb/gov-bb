@@ -63,14 +63,13 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "applicant-national-id",
-            "label": "National Registration Number",
             "validations": {
               "required": {
-                "error": "Enter your National Registration Number",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             },
-            "hint": "Enter your valid National ID Number (for example, 450702-0130)"
+            "hint": "For example, 850101-0001"
           }
         }
       ],
@@ -637,14 +636,9 @@
       "title": "Application submitted",
       "elements": [],
       "behaviours": [],
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "We have received your request for assistance and/or transportation. You will receive a confirmation email at the email address you provided. Our team at the Social Empowerment Agency will review your application and contact you within 5 working days to discuss your needs and next steps."
-        }
-      ]
+      "markdownContent": "## What happens next\n\nWe have received your request for assistance and/or transportation. You will receive a confirmation email at the email address you provided. Our team at the Social Empowerment Agency will review your application and contact you within 5 working days to discuss your needs and next steps."
     }
   ],
   "createdAt": "2026-06-17T12:36:44.986Z",
-  "updatedAt": "2026-10-08T21:50:00.000Z"
+  "updatedAt": "2026-10-21T16:52:59.000Z"
 }

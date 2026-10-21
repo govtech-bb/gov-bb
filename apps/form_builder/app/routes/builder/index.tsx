@@ -918,6 +918,7 @@ function BuilderPage() {
                   mainView === "step" ? selectedStep?.stepId : undefined
                 }
                 initialPageId="form"
+                savedFormId={loadedFromId}
                 onClose={() => setServicePreview(null)}
               />
             )}

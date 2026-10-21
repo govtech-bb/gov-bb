@@ -56,10 +56,9 @@
               }
             },
             "national-id-number": {
-              "label": "National ID Number",
               "validations": {
                 "required": {
-                  "error": "Please enter your National ID number",
+                  "error": "Barbados National Identification (ID) number is required",
                   "value": true
                 }
               }
@@ -1070,18 +1069,13 @@
       "title": "Application Submitted",
       "stepId": "submission-confirmation",
       "elements": [],
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "Thank you for applying to Project Dawn. We have received your application and you will receive a confirmation email at the address you provided. A member of the Block Transformation Unit team will be in touch with further information about your selected programme(s)."
-        }
-      ]
+      "markdownContent": "## What happens next\n\nThank you for applying to Project Dawn. We have received your application and you will receive a confirmation email at the address you provided. A member of the Block Transformation Unit team will be in touch with further information about your selected programme(s)."
     }
   ],
   "title": "Project Dawn – Block Transformation Unit Application",
   "formId": "project-dawn-application",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-10-08T21:50:00.000Z",
+  "updatedAt": "2026-10-21T16:52:59.000Z",
   "processors": [
     {
       "type": "email",

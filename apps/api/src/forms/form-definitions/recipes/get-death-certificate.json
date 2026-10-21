@@ -175,11 +175,10 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "applicant-id-number",
-            "label": "National Identification (ID) Number",
             "placeholder": "for example, 850101-0001",
             "validations": {
               "required": {
-                "error": "ID Number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             },
@@ -201,7 +200,7 @@
           "overrides": {
             "fieldId": "passport-toggle",
             "label": "Use passport number instead",
-            "hint": "If you don't have a National ID number, you can use your passport number instead."
+            "hint": "If you don't have a Barbados National Identification (ID) number, you can use your passport number instead."
           }
         },
         {
@@ -482,7 +481,6 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "deceased-id-number",
-            "label": "National Identification (ID) Number",
             "hint": "Enter only if known",
             "ui": {
               "width": "medium"
@@ -568,11 +566,11 @@
       "title": "Application submitted",
       "elements": [],
       "behaviours": [],
-      "markdownContent": "## What happens next\n\nYou will receive a confirmation email with:\n\n- your application reference number\n- the cost of the certificate(s)\n- the expected completion date"
+      "markdownContent": "## What happens next\n\nYou will receive a confirmation email with:\n\n- your application reference number\n- the cost of the certificate(s)\n\nCertificates are usually ready to collect within 10 days."
     }
   ],
   "createdAt": "2026-06-08T21:18:47.989Z",
-  "updatedAt": "2026-10-08T21:50:00.000Z",
+  "updatedAt": "2026-10-21T16:52:59.000Z",
   "meta": {
     "visibility": "public"
   }

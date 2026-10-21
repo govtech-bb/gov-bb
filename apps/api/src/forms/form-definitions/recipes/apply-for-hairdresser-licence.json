@@ -46,7 +46,7 @@
             "fieldId": "national-id-number",
             "validations": {
               "required": {
-                "error": "Enter your national ID number",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             }
@@ -420,7 +420,7 @@
     }
   ],
   "createdAt": "2026-08-19T19:09:04.486Z",
-  "updatedAt": "2026-10-08T21:50:00.000Z",
+  "updatedAt": "2026-10-21T16:52:59.000Z",
   "meta": {
     "visibility": "preview"
   },

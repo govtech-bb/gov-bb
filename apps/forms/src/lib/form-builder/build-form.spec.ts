@@ -321,7 +321,7 @@ describe("buildForm", () => {
 
       const result = buildForm(contract);
 
-      expect(result.stepConditionalTargets["step1"]).toBe("hasVisit");
+      expect(result.stepConditionalTargets["step1"]).toEqual(["hasVisit"]);
     });
 
     it("is an empty object when no steps have stepConditionalOn behaviours", () => {
@@ -348,5 +348,57 @@ describe("buildForm", () => {
       const result = buildForm(contract);
       expect(result.defaultValues["step1_country"]).toBe("Barbados");
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildForm — a located address's parish
+// ---------------------------------------------------------------------------
+
+describe("buildForm — parish filled by a located address", () => {
+  const addressStep = (geocodeTargets: ClientPrimitive["geocodeTargets"]) =>
+    makeStep("event", [
+      makeField("event-address-line-1", "event", {
+        htmlType: "address-lookup",
+        geocodeTargets,
+      }),
+      makeField("event-address-line-2", "event"),
+      makeField("event-parish", "event", { htmlType: "select" }),
+    ]);
+
+  const fieldsOf = (contract: ClientServiceContract) =>
+    buildForm(contract).steps.find((s) => s.stepId === "event")!.fields;
+
+  it("marks the parish an address field locates, and nothing else", () => {
+    const fields = fieldsOf(
+      makeContract({
+        steps: [
+          addressStep({
+            line2FieldId: "event-address-line-2",
+            parishFieldId: "event-parish",
+            coordinatesFieldId: "event-coordinates",
+          }),
+        ],
+      }),
+    );
+
+    expect(
+      fields.find((f) => f.fieldId === "event-parish")?.filledByAddressLookup,
+    ).toBe(true);
+    expect(
+      fields.find((f) => f.fieldId === "event-address-line-2")
+        ?.filledByAddressLookup,
+    ).toBeUndefined();
+  });
+
+  it("leaves the parish editable when the address writes no coordinate", () => {
+    const fields = fieldsOf(
+      makeContract({
+        steps: [addressStep({ parishFieldId: "event-parish" })],
+      }),
+    );
+    expect(
+      fields.find((f) => f.fieldId === "event-parish")?.filledByAddressLookup,
+    ).toBeUndefined();
   });
 });

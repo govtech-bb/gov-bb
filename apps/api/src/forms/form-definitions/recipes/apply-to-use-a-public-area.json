@@ -3,7 +3,7 @@
   "title": "Apply to use a public park, beach or open area",
   "description": "Apply to the National Conservation Commission for permission to hold an activity, or sell goods or services, at a public park, beach or open area in Barbados.",
   "createdAt": "2026-08-26T00:00:00Z",
-  "updatedAt": "2026-10-08T21:50:00.000Z",
+  "updatedAt": "2026-10-21T16:52:59.000Z",
   "contactDetails": {
     "title": "National Conservation Commission",
     "email": "specialprojectsoffice@ncc.gov.bb",
@@ -635,12 +635,7 @@
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "elements": [],
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "We have received your application. You will receive a confirmation email at the address you gave us.\n\nThe Commission aims to process applications within 2 weeks, as long as you have sent all the supporting information and documents we need.\n\nAfter that, contact the PR and Marketing Department to arrange collection:\n\nTelephone: 1-246-536-0662 or 1-246-536-0663\n\nEmail: specialprojectsoffice@ncc.gov.bb"
-        }
-      ]
+      "markdownContent": "## What happens next\n\nWe have received your application. You will receive a confirmation email at the address you gave us.\n\nThe Commission aims to process applications within 2 weeks, as long as you have sent all the supporting information and documents we need.\n\nAfter that, contact the PR and Marketing Department to arrange collection:\n\nTelephone: 1-246-536-0662 or 1-246-536-0663\n\nEmail: specialprojectsoffice@ncc.gov.bb"
     }
   ],
   "meta": { "visibility": "preview" }

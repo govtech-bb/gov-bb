@@ -218,6 +218,25 @@ describe("CatchmentRoutingService", () => {
     "St. Philip Polyclinic": "13.1478,-59.4424",
   };
 
+  describe("servingPolyclinicAt", () => {
+    it("names the polyclinic a point is routed to", () => {
+      expect(svc.servingPolyclinicAt(13.0901, -59.5861)).toBe(
+        "Sir Winston Scott Polyclinic",
+      );
+    });
+
+    it("names the serving polyclinic, not the catchment's own name", () => {
+      // Frederick Miller's catchment is served by St. Philip.
+      expect(svc.servingPolyclinicAt(13.1323, -59.5626)).toBe(
+        "St. Philip Polyclinic",
+      );
+    });
+
+    it("returns null for a point in no catchment (the sea)", () => {
+      expect(svc.servingPolyclinicAt(13.1, -59.8)).toBeNull();
+    });
+  });
+
   it("resolves a {polyclinicContact} line for every serving catchment", () => {
     // Every clinic the router can name must have a contact line, and that line
     // must *name that same clinic* — the confirmation body must never pair one

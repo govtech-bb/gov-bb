@@ -88,13 +88,16 @@ jobs:
             -f sha="${{ github.sha }}" -F force=false
 
   # Decide which deploy targets actually changed, so unchanged apps are skipped.
-  # The base is the last SUCCESSFUL deploy (nx-set-shas), not the push range:
+  # The base is the last SUCCESSFUL deploy (see "Derive base/head SHAs"), not the push range:
   # a target that failed to deploy stays "affected" until it ships green, where
   # a github.event.before diff would wrongly skip it on the next unrelated push.
   setup:
     name: Detect affected targets
     needs: advance-sandbox
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read # list this workflow's past runs to find the affected base
     outputs:
       api: ${{ steps.affected.outputs.api }}
       fb-api: ${{ steps.affected.outputs.fb-api }}
@@ -110,7 +113,7 @@ jobs:
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
-          # Full history so nx-set-shas can find the last successful deploy and
+          # Full history so the base step can find the last successful deploy and
           # the migration/amplify path-diffs can compare against it.
           fetch-depth: 0
 
@@ -121,18 +124,44 @@ jobs:
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
 
+      # The affected base is the commit of the last successful push-triggered
+      # deploy-sandbox run on main (trunk).
+      #
+      # This replaced nrwl/nx-set-shas. That action only accepts a past run whose
+      # commit is among the latest 100 on main (one page of GET /commits), so
+      # after 100 commits without a green deploy every run fails here and can
+      # never recover on its own. Deploy Staging hit exactly that (runs from
+      # 2026-10-10, fixed in #3035). An ancestry check against the full checkout
+      # has no window. A missing base still fails rather than falling back to
+      # HEAD~1 and under-deploying (deploy-prod.yml documents the 96-commit
+      # incident).
       - name: Derive base/head SHAs
-        uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
-        with:
-          # This workflow runs on `main` now (trunk), so the affected base is the
-          # last successful deploy-sandbox run on main. (Was `sandbox` when the
-          # workflow triggered on push:sandbox.)
-          main-branch-name: main
-          workflow-id: deploy-sandbox.yml
-          # When no successful run exists the action would silently fall back to
-          # HEAD~1 and under-deploy a multi-commit push (deploy-prod.yml documents
-          # the 96-commit incident). Fail instead; re-run with an explicit base.
-          error-on-no-successful-workflow: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "NX_HEAD=$GITHUB_SHA" >> "$GITHUB_ENV"
+
+          BASE=$(gh api \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-sandbox.yml/runs?branch=main&event=push&status=success&per_page=1" \
+            --jq '.workflow_runs[0].head_sha // empty')
+
+          [ -n "$BASE" ] || {
+            echo "❌ No successful deploy-sandbox run on main, so the affected base is unknown."
+            exit 1
+          }
+          git cat-file -e "${BASE}^{commit}" 2>/dev/null || {
+            echo "❌ The last deployed SHA ($BASE) is not in this checkout."
+            exit 1
+          }
+          # A non-ancestor means main was rewritten; diffing against it would
+          # deploy only the divergent paths.
+          git merge-base --is-ancestor "$BASE" "$GITHUB_SHA" || {
+            echo "❌ The last deployed SHA ($BASE) is not an ancestor of $GITHUB_SHA."
+            exit 1
+          }
+
+          echo "NX_BASE=$BASE" >> "$GITHUB_ENV"
+          echo "Affected window: $BASE..$GITHUB_SHA ($(git rev-list --count "${BASE}..${GITHUB_SHA}") commits)"
 
       - name: Compute affected deploy targets
         id: affected

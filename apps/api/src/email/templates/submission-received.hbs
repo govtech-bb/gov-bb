@@ -162,7 +162,9 @@
                         Please retain this reference number for tracking and follow-up
                         purposes.
                     </p>
-                    <p class="reference-note"><a href="https://tracking.alpha.gov.bb/reference">Track my application</a></p>
+                    {{#if trackable}}
+                        <p class="reference-note"><a href="https://tracking.alpha.gov.bb/reference">Track my application</a></p>
+                    {{/if}}
                 </div>
                 {{#if markdownHtml}}
                     <div class="next-content">{{{ markdownHtml }}}</div>

@@ -1,8 +1,9 @@
 /**
  * apply-for-lodging-barracks-licence.smoke.spec.ts
  *
- * Live, on-demand smoke test for the lodging house / barracks licence service
- * (formId `apply-for-lodging-barracks-licence`).
+ * Live, on-demand smoke test for the lodging house / barracks registration
+ * service (formId `apply-for-lodging-barracks-licence` — the id predates the
+ * switch from "licence" to "registration" and is kept so links do not break).
  *
  * Drives the REAL form, fills every step with valid @faker-js/faker data,
  * SUBMITS FOR REAL, and asserts the confirmation screen is reached with a
@@ -31,56 +32,53 @@
  *   FAKER_SEED       fix faker's RNG for a reproducible data set.
  *
  * Form-specific notes:
- *  - Nine authored steps: `application-type`, `your-details`,
- *    `property-owner-details`, `owner-details`, `property-details`,
- *    `unit-details-and-facilities`, `kitchen-facilities`, `amenities-other`
- *    and `supporting-documents`, then the platform's `check-your-answers` /
+ *  - Mostly one question per page. Steps in order: `application-type`,
+ *    `property-owner-details` (are you the owner?), `your-details`,
+ *    `owner-type` / `owner-details` / `owner-business-details` (not the owner
+ *    only), `property-details`, `room-size-unit`, `room-sizes` (repeatable),
+ *    `beds`, `toilets`, `showers`, `water-supply`, `lighting`,
+ *    `amenities-other`, one "have you applied" step per service ticked, and
+ *    `supporting-documents` (new registration only), then the platform's
+ *    `check-your-answers` /
  *    `declaration` / `submission-confirmation`.
- *  - `application-type` opens the form and gates two later branches:
- *    `renew-licence` reveals `licence-number` on that same step, and
- *    `new-licence` is the only route that shows the Planning application
- *    number / site plan pair on `supporting-documents`.
- *  - `unit-details-and-facilities` is the ONLY repeatable step (min 1, max 100)
- *    and has no sharedFields, so the base step IS unit 1 and carries the
- *    injected `addAnother` radio (`unit-details-and-facilities_addAnother`).
- *    Unit 2 lands on `unit-details-and-facilities~1`. NOTE the field ids on that
- *    step carry a literal `-1` suffix of their own (`barracks-name-1`,
- *    `number-of-rooms-1`, …) — that is part of the authored fieldId and does NOT
- *    change per instance; only the step id gains the `~1`. So unit 2's name
- *    field is `unit-details-and-facilities~1_barracks-name-1`.
- *  - Conditional reveals, all `fieldConditionalOn` unless noted:
- *      · `is-property-owner` = "no" reveals the applicant's role and
- *        `owner-type`, and opens the `owner-details` step (`stepConditionalOn`)
- *        for the owner's name and address. That step is its own page because
- *        the renderer nests same-step reveals inside the chosen radio option:
- *        on one step, the person's name fields split "A person" from "A
- *        business or organisation" (#2921). On `owner-details`, `owner-type`
- *        picks the person fields or the business name. It sits on an earlier
- *        step, so those fields render as plain fields, not nested ones;
- *      · `applicant-role-owner` is a SELECT — 3 options, so Rule 8 forbids a
- *        radio — and "other-role" reveals `applicant-role-other`;
- *      · `property-number-of-bunk-beds-1` >= 1 (numeric `gte`) reveals
- *        `property-number-of-bunk-bed-spaces-1`, so a property with no bunk
- *        beds is never asked how many spaces are in them;
- *      · `water-supply-bwa-1` = "no" reveals a `components/content` warning and
- *        trips a `pattern: ^yes$` rule that BLOCKS Continue. That is the
- *        service's stop condition — Environmental Health will not licence a
- *        property without a Barbados Water Authority supply — and the second
- *        test asserts the block rather than routing around it;
- *      · `lighting-type-1` is a CHECKBOX group whose "other" option
- *        (`other-lighting`) reveals `lighting-type-other-1` via the `in`
- *        operator (a checkbox submits a list);
- *      · each service ticked on `amenities-other` reveals its own "have you
- *        applied" radio, and answering "no" reveals a warning notice telling the
- *        applicant they can continue but must apply before the licence is
- *        granted;
- *      · `site-plan-toggle` is a `components/show-hide` (a native
- *        <details>/<summary>) that reveals `site-plan` and, via `optionalIf`,
- *        relaxes `planning-application-number` to optional — the either/or.
- *    An owner (`yes`) is therefore never asked who the owner is or what their
- *    role is — asserted in the first test, so a conditional that stops
- *    resolving fails loudly here rather than silently demanding an
- *    unanswerable field.
+ *  - Every conditional step uses `stepConditionalOn`, and stacked conditions
+ *    combine with AND: `owner-details` needs "not the owner" AND "a person",
+ *    `owner-business-details` needs "not the owner" AND "a business".
+ *  - `application-type` reveals a number on the same step
+ *    (`fieldConditionalOn`): `renewal` the required `registration-number`,
+ *    `new-registration` the OPTIONAL `planning-application-number`. Only
+ *    `new-registration` opens `supporting-documents` (`stepConditionalOn`),
+ *    which holds the OPTIONAL `site-plan` upload. Nothing forces one of the
+ *    number or the site plan — the review PDF's either/or is not enforced.
+ *  - `is-property-owner` = "no" reveals `applicant-role-owner` on the same
+ *    step. It is a SELECT — 3 options, so Rule 8 forbids a radio — and
+ *    "other-role" reveals `applicant-role-other`, which also repeats the "no"
+ *    condition so a leftover "other-role" cannot show it to an owner.
+ *  - `room-sizes` is the ONLY repeatable step (min 1, max 100) and has no
+ *    sharedFields, so the base step IS room size 1 and carries the injected
+ *    `addAnother` radio. Room size 2 lands on `room-sizes~1`. Its length,
+ *    width and height fields come in a metres set and a feet set; the answer
+ *    on `room-size-unit` shows one set, so each label names its unit.
+ *    `rooms-of-this-size` is capped (`max` with a cross-step reference) at
+ *    `property-details.property-number-of-rooms`; the first test asserts the
+ *    cap. The platform cannot yet cap the TOTAL across room sizes or count the
+ *    rooms left to add — the review PDF asks for both.
+ *  - `property-number-of-bunk-beds` >= 1 (numeric `gte`) reveals
+ *    `property-number-of-bunk-bed-spaces`, so a property with no bunk beds is
+ *    never asked how many beds are in them. Bed, bunk-bed, toilet, urinal and
+ *    shower counts all accept 0.
+ *  - `water-supply-bwa` = "no" reveals a `components/content` warning and
+ *    trips a `pattern: ^yes$` rule that BLOCKS Continue — the inline eligibility
+ *    stop. Environmental Health will not register a property without a
+ *    Barbados Water Authority supply, and the second test asserts the block
+ *    rather than routing around it.
+ *  - `lighting-type` is a CHECKBOX group whose "other" option
+ *    (`other-lighting`) reveals `lighting-type-other` via the `in` operator.
+ *  - `other-amenities` is optional (no "None of these" option yet — the
+ *    platform has no exclusive checkbox option). Each service ticked opens its
+ *    own "have you applied" step (`stepConditionalOn` with `in`); answering
+ *    "no" shows a warning that the applicant can continue but must apply
+ *    before the property can be registered — advisory, never a block.
  *  - The property address on `property-details` is the address-lookup
  *    (geocoder) field, so it cannot take a free-text faker address: the
  *    geocoder must return a real Barbados match to populate the hidden
@@ -90,28 +88,22 @@
  *    assert the coordinates filled. `property-address-coordinates` renders as an
  *    `input[type=hidden]`, so assert its VALUE — never its visibility.
  *  - Picking a suggestion also fills `property-address-line-2` and
- *    `property-parish`. Line 2 is optional here and a suggestion does not always
+ *    `property-parish`. Line 2 is optional and a suggestion does not always
  *    carry one, so we overwrite it with faker data for a deterministic record;
  *    `property-parish` is asserted rather than overwritten, since that value is
  *    the catchment router's fallback (`catchmentRouting.parishField`).
- *  - The applicant address on `your-details` is a plain `components/address` —
- *    free-text faker data is fine, nothing routes on it.
  *  - `applicant-contact-number` is `components/telephone`, which validates with
  *    libphonenumber-js, so the number needs a real Barbados exchange — a random
  *    `246 NNN NNNN` is rejected.
- *  - `supporting-documents-upload` is OPTIONAL (`components/upload-document`
- *    with no required override) and the step renders unconditionally. The first
- *    test uploads a document; the second skips it, proving the step advances
- *    empty. It now accepts several files (`multiple: true`), and both uploads
- *    list bare extensions alongside the MIME types so an untyped `.jpg` is not
- *    refused (#2708).
+ *  - `site-plan` lists bare extensions alongside the MIME types so an untyped
+ *    `.jpg` is not refused (#2708). The first test uploads one; the renewal
+ *    test never sees the step.
  *  - The confirmation step's `markdownContent` opens with the `{polyclinic}`
  *    placeholder, substituted with the catchment resolved from the geocoded
  *    PROPERTY address. We assert the resolved Environmental Health copy rather
- *    than a specific polyclinic name — which polyclinic depends on the address
- *    faker picked — and assert the generic "your local polyclinic" fallback is
- *    absent, because that fallback means resolution failed and the MDA's copy of
- *    the application went nowhere.
+ *    than a specific polyclinic name, and assert the generic "your local
+ *    polyclinic" fallback is absent, because that fallback means resolution
+ *    failed and the MDA's copy of the application went nowhere.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect, type Page } from "@playwright/test";
@@ -127,6 +119,7 @@ import {
   submitAndConfirm,
   tickCheckbox,
   uploadOne,
+  mockGeocoder,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
 
@@ -180,23 +173,13 @@ function bbPhoneNumber(): string {
   return `246 ${faker.helpers.arrayElement(BB_MOBILE_EXCHANGES)} ${faker.string.numeric(4)}`;
 }
 
-/** One barracks/lodging unit — the repeatable step's payload. */
-function buildUnit(label: string) {
+/** One room size — a `room-sizes` instance. Decimals are allowed. */
+function buildRoomSize(rooms: number) {
   return {
-    // Timestamped so the resulting submission is easy to find in the target env.
-    name: `Smoke Test ${label} ${new Date().toISOString()}`,
-    rooms: String(faker.number.int({ min: 1, max: 12 })),
-    dimensions: `${faker.number.int({ min: 3, max: 6 })}m x ${faker.number.int({ min: 3, max: 6 })}m per room`,
-    beds: String(faker.number.int({ min: 2, max: 20 })),
-    bunkBeds: String(faker.number.int({ min: 1, max: 10 })),
-    // Only asked when bunkBeds >= 1 — one space per person who can sleep there.
-    bunkBedSpaces: String(faker.number.int({ min: 2, max: 20 })),
-    showers: String(faker.number.int({ min: 1, max: 6 })),
-    waterClosets: String(faker.number.int({ min: 1, max: 6 })),
-    urinals: String(faker.number.int({ min: 0, max: 4 })),
-    taps: String(faker.number.int({ min: 1, max: 6 })),
-    sinks: String(faker.number.int({ min: 1, max: 6 })),
-    otherLighting: "Kerosene lamps (smoke test)",
+    length: String(faker.number.float({ min: 2, max: 6, fractionDigits: 1 })),
+    width: String(faker.number.float({ min: 2, max: 6, fractionDigits: 1 })),
+    height: String(faker.number.float({ min: 2, max: 4, fractionDigits: 1 })),
+    rooms: String(rooms),
   };
 }
 
@@ -204,11 +187,14 @@ function buildUnit(label: string) {
 export function buildData() {
   if (process.env.FAKER_SEED) faker.seed(Number(process.env.FAKER_SEED));
 
+  // Two room sizes that add up to the property's room count.
+  const firstSizeRooms = faker.number.int({ min: 1, max: 6 });
+  const secondSizeRooms = faker.number.int({ min: 1, max: 6 });
+
   return {
     firstName: faker.person.firstName(),
     middleName: faker.person.middleName(),
     lastName: faker.person.lastName(),
-    // The applicant address is plain text — nothing routes on it.
     applicantAddress: faker.location.streetAddress(),
     applicantAddressLine2: faker.location.street(),
     applicantParish: faker.helpers.arrayElement(PARISH_VALUES),
@@ -216,9 +202,9 @@ export function buildData() {
     email: "testing@govtech.bb",
     phone: bbPhoneNumber(),
 
-    // Renewals give their current licence number; new applications give a
-    // Planning and Development application number instead (or a site plan).
-    licenceNumber: `LB/${faker.string.numeric(4)}/${faker.string.numeric(2)}`,
+    // Renewals give their current registration number; new registrations give
+    // a Planning and Development application number instead (or a site plan).
+    registrationNumber: `LB/${faker.string.numeric(4)}/${faker.string.numeric(2)}`,
     planningApplicationNumber: `TCP/${faker.string.numeric(4)}/${faker.string.numeric(3)}`,
 
     ownerFirstName: faker.person.firstName(),
@@ -234,13 +220,25 @@ export function buildData() {
     // geocodable — a free-text address would resolve to no polyclinic.
     propertyAddress: faker.helpers.arrayElement(GEOCODABLE_ADDRESSES),
     propertyAddressLine2: faker.location.street(),
-    propertyRooms: String(faker.number.int({ min: 2, max: 40 })),
+    propertyRooms: String(firstSizeRooms + secondSizeRooms),
     propertyOccupants: String(faker.number.int({ min: 2, max: 80 })),
 
-    unitOne: buildUnit("Unit One"),
-    unitTwo: buildUnit("Unit Two"),
+    roomSizeOne: buildRoomSize(firstSizeRooms),
+    roomSizeTwo: buildRoomSize(secondSizeRooms),
+    // Every room in one size, for the single-size route.
+    roomSizeAll: buildRoomSize(firstSizeRooms + secondSizeRooms),
+
+    beds: String(faker.number.int({ min: 2, max: 20 })),
+    bunkBeds: String(faker.number.int({ min: 1, max: 10 })),
+    bunkBedSpaces: String(faker.number.int({ min: 2, max: 20 })),
+    toilets: String(faker.number.int({ min: 1, max: 6 })),
+    urinals: String(faker.number.int({ min: 1, max: 4 })),
+    showers: String(faker.number.int({ min: 1, max: 6 })),
+    otherLighting: "Kerosene lamps (smoke test)",
   };
 }
+
+type Data = ReturnType<typeof buildData>;
 
 /** Open the form at its first step, carrying the preview token when supplied. */
 export async function openForm(page: Page): Promise<void> {
@@ -250,90 +248,80 @@ export async function openForm(page: Page): Promise<void> {
   });
 }
 
+/** Assert the step and its heading in one go; returns the step id. */
+async function onStep(
+  page: Page,
+  stepId: string,
+  heading: string,
+): Promise<string> {
+  const step = expectStep(page, stepId, { exact: true });
+  await expect(page.locator("h1")).toContainText(heading);
+  return step;
+}
+
 /**
- * Step 1 — new licence or renewal. A renewal is asked for its current licence
- * number; a new application is not, and is the only route that later sees the
- * Planning / site-plan pair. The unused reveal is asserted hidden either way.
+ * New registration or renewal, each revealing its own number on the same
+ * step: a renewal the current registration number (required), a new
+ * registration the Planning and Development application number (optional, so
+ * `planningNumber: false` proves the step advances without it). Only a new
+ * registration later sees the site plan upload.
  */
 export async function fillApplicationType(
   page: Page,
-  data: ReturnType<typeof buildData>,
-  applicationType: "new-licence" | "renew-licence",
+  data: Data,
+  applicationType: "new-registration" | "renewal",
+  { planningNumber = true }: { planningNumber?: boolean } = {},
 ): Promise<void> {
-  const step = expectStep(page, "application-type");
-  await expect(page.locator("h1")).toContainText(
-    "Are you applying for a new licence or renewing one?",
+  const step = await onStep(
+    page,
+    "application-type",
+    "Is this a new registration or a renewal?",
   );
-
-  const licenceNumber = page.locator(`[id="${step}_licence-number"]`);
-  await expect(licenceNumber).toBeHidden();
-
+  const registrationNumber = page.locator(`[id="${step}_registration-number"]`);
+  const planningNumberInput = page.locator(
+    `[id="${step}_planning-application-number"]`,
+  );
+  await expect(registrationNumber).toBeHidden();
+  await expect(planningNumberInput).toBeHidden();
   await selectRadio(page, step, "application-type", applicationType);
 
-  if (applicationType === "renew-licence") {
-    await expect(licenceNumber).toBeVisible({ timeout: STEP_TIMEOUT });
-    await licenceNumber.fill(data.licenceNumber);
+  if (applicationType === "renewal") {
+    await expect(registrationNumber).toBeVisible({ timeout: STEP_TIMEOUT });
+    await expect(planningNumberInput).toBeHidden();
+    await registrationNumber.fill(data.registrationNumber);
   } else {
-    await expect(licenceNumber).toBeHidden();
+    await expect(planningNumberInput).toBeVisible({ timeout: STEP_TIMEOUT });
+    await expect(registrationNumber).toBeHidden();
+    if (planningNumber)
+      await planningNumberInput.fill(data.planningApplicationNumber);
   }
-
-  await advance(page, step);
-}
-
-/** Step 2 — the applicant. A plain address; nothing here routes. */
-export async function fillYourDetails(
-  page: Page,
-  data: ReturnType<typeof buildData>,
-): Promise<void> {
-  const step = expectStep(page, "your-details");
-  await expect(page.locator("h1")).toContainText("Your details");
-  await fillField(page, step, "applicant-first-name", data.firstName);
-  await fillField(page, step, "applicant-middle-name", data.middleName);
-  await fillField(page, step, "applicant-last-name", data.lastName);
-  await fillField(page, step, "address-line-1", data.applicantAddress);
-  await fillField(page, step, "address-line-2", data.applicantAddressLine2);
-  await selectDropdown(page, step, "address-parish", data.applicantParish);
-  await fillField(page, step, "applicant-email", data.email);
-  // components/telephone — validates with libphonenumber-js, so the exchange
-  // has to be a real Barbados one.
-  await fillField(page, step, "applicant-contact-number", data.phone);
   await advance(page, step);
 }
 
 /**
- * Step 3 — ownership. "yes" asks nothing further and skips the owner's details
- * step entirely; "no" reveals the applicant's role and `owner-type`, then opens
- * `owner-details` (step 3b). Role "other-role" reveals the free-text role. The
- * owner branch asserts the reveals stay hidden — that gate is the whole point
- * of the step.
+ * Are you the owner? "no" reveals the applicant's role on the same step (role
+ * "other-role" reveals the free-text role); "yes" asks for neither.
  */
-export async function fillPropertyOwnerDetails(
+export async function fillOwnership(
   page: Page,
-  data: ReturnType<typeof buildData>,
+  data: Data,
   branch: {
     isOwner: "yes" | "no";
-    ownerType?: "person" | "business";
     role?: "manager" | "attorney" | "other-role";
   },
 ): Promise<void> {
-  const step = expectStep(page, "property-owner-details");
-  await expect(page.locator("h1")).toHaveText("Property ownership");
-
-  // `applicant-role-owner` is a SELECT now (3 options, Rule 8), so it is a
-  // <select> element rather than a <fieldset> of radios.
+  const step = await onStep(
+    page,
+    "property-owner-details",
+    "Are you the property owner?",
+  );
   const roleSelect = page.locator(`select[id="${step}_applicant-role-owner"]`);
   const roleOther = page.locator(`[id="${step}_applicant-role-other"]`);
-  const ownerTypeFieldset = page.locator(`fieldset[id="${step}_owner-type"]`);
-
   await expect(roleSelect).toBeHidden();
-  await expect(ownerTypeFieldset).toBeHidden();
-
   await selectRadio(page, step, "is-property-owner", branch.isOwner);
 
   if (branch.isOwner === "no") {
     await expect(roleSelect).toBeVisible({ timeout: STEP_TIMEOUT });
-    await expect(ownerTypeFieldset).toBeVisible({ timeout: STEP_TIMEOUT });
-
     const role = branch.role ?? "manager";
     await expect(roleOther).toBeHidden();
     await selectDropdown(page, step, "applicant-role-owner", role);
@@ -343,79 +331,110 @@ export async function fillPropertyOwnerDetails(
     } else {
       await expect(roleOther).toBeHidden();
     }
+  } else {
+    await expect(roleSelect).toBeHidden();
+    await expect(roleOther).toBeHidden();
+  }
+  await advance(page, step);
+}
 
-    const ownerType = branch.ownerType ?? "person";
-    await selectRadio(page, step, "owner-type", ownerType);
-    // #2921 — the owner's details live on the next step, so nothing opens
-    // between "A person" and "A business or organisation" here.
-    await expect(
-      ownerTypeFieldset.locator('input[type="text"], select'),
-    ).toHaveCount(0);
-    await advance(page, step);
+/** The applicant. A plain address; nothing here routes. */
+export async function fillYourDetails(page: Page, data: Data): Promise<void> {
+  const step = await onStep(page, "your-details", "Tell us about yourself");
+  await fillField(page, step, "applicant-first-name", data.firstName);
+  await fillField(page, step, "applicant-middle-name", data.middleName);
+  await fillField(page, step, "applicant-last-name", data.lastName);
+  await fillField(page, step, "address-line-1", data.applicantAddress);
+  await fillField(page, step, "address-line-2", data.applicantAddressLine2);
+  await selectDropdown(page, step, "address-parish", data.applicantParish);
+  // components/telephone — validates with libphonenumber-js, so the exchange
+  // has to be a real Barbados one.
+  await fillField(page, step, "applicant-contact-number", data.phone);
+  await fillField(page, step, "applicant-email", data.email);
+  await advance(page, step);
+}
 
-    await fillOwnerDetails(page, data, ownerType);
+/**
+ * Who owns the property, then that owner's page: a person's name and address,
+ * or a business or organisation's name and address. Only asked when the
+ * applicant is not the owner.
+ */
+export async function fillOwner(
+  page: Page,
+  data: Data,
+  ownerType: "person" | "business",
+): Promise<void> {
+  const step = await onStep(page, "owner-type", "Who owns the property?");
+  await selectRadio(page, step, "owner-type", ownerType);
+  await advance(page, step);
+
+  if (ownerType === "person") {
+    const ownerStep = await onStep(
+      page,
+      "owner-details",
+      "Tell us about the property owner",
+    );
+    await fillField(page, ownerStep, "owner-first-name", data.ownerFirstName);
+    await fillField(page, ownerStep, "owner-middle-name", data.ownerMiddleName);
+    await fillField(page, ownerStep, "owner-last-name", data.ownerLastName);
+    await fillField(page, ownerStep, "owner-address-line-1", data.ownerAddress);
+    await fillField(
+      page,
+      ownerStep,
+      "owner-address-line-2",
+      data.ownerAddressLine2,
+    );
+    await selectDropdown(page, ownerStep, "owner-parish", data.ownerParish);
+    await advance(page, ownerStep);
     return;
   }
 
-  // The gate's whole purpose: an owner is not asked who the owner is, what
-  // kind of owner they are, nor what their role at their own property is —
-  // and `owner-details` is skipped (`fillPropertyDetails` asserts the next
-  // step is `property-details`).
-  await expect(roleSelect).toBeHidden();
-  await expect(roleOther).toBeHidden();
-  await expect(ownerTypeFieldset).toBeHidden();
-
-  await advance(page, step);
+  const businessStep = await onStep(
+    page,
+    "owner-business-details",
+    "Tell us about the business or organisation",
+  );
+  await fillField(
+    page,
+    businessStep,
+    "owner-business-name",
+    data.ownerBusinessName,
+  );
+  await fillField(
+    page,
+    businessStep,
+    "owner-business-address-line-1",
+    data.ownerAddress,
+  );
+  await fillField(
+    page,
+    businessStep,
+    "owner-business-address-line-2",
+    data.ownerAddressLine2,
+  );
+  await selectDropdown(
+    page,
+    businessStep,
+    "owner-business-parish",
+    data.ownerParish,
+  );
+  await advance(page, businessStep);
 }
 
 /**
- * Step 3b — the owner's details, shown only when the applicant is not the
- * owner. `owner-type` on the previous step picks a person's name or a business
- * name; both give an address.
- */
-async function fillOwnerDetails(
-  page: Page,
-  data: ReturnType<typeof buildData>,
-  ownerType: "person" | "business",
-): Promise<void> {
-  const step = expectStep(page, "owner-details", { exact: true });
-  await expect(page.locator("h1")).toContainText("Property owner's details");
-
-  const ownerFirstName = page.locator(`[id="${step}_owner-first-name"]`);
-  const ownerBusinessName = page.locator(`[id="${step}_owner-business-name"]`);
-
-  if (ownerType === "person") {
-    await expect(ownerFirstName).toBeVisible({ timeout: STEP_TIMEOUT });
-    await expect(ownerBusinessName).toBeHidden();
-    await ownerFirstName.fill(data.ownerFirstName);
-    await fillField(page, step, "owner-middle-name", data.ownerMiddleName);
-    await fillField(page, step, "owner-last-name", data.ownerLastName);
-  } else {
-    await expect(ownerBusinessName).toBeVisible({ timeout: STEP_TIMEOUT });
-    await expect(ownerFirstName).toBeHidden();
-    await ownerBusinessName.fill(data.ownerBusinessName);
-  }
-
-  // The owner's address is asked for either kind of owner.
-  await fillField(page, step, "owner-address-line-1", data.ownerAddress);
-  await fillField(page, step, "owner-address-line-2", data.ownerAddressLine2);
-  await selectDropdown(page, step, "owner-parish", data.ownerParish);
-
-  await advance(page, step);
-}
-
-/**
- * Step 4 — where the property is. This is the step the catchment routes on, so
- * the geocoder MUST resolve: the helper asserts the hidden coordinates filled
- * rather than soft-skipping, because an empty one means the submission reaches
- * no polyclinic at all.
+ * Where the property is, and its room and occupant counts. This is the step
+ * the catchment routes on, so the geocoder MUST resolve: the helper asserts the
+ * hidden coordinates filled rather than soft-skipping.
  */
 export async function fillPropertyDetails(
   page: Page,
-  data: ReturnType<typeof buildData>,
+  data: Data,
 ): Promise<string> {
-  const step = expectStep(page, "property-details");
-  await expect(page.locator("h1")).toContainText("Property details");
+  const step = await onStep(
+    page,
+    "property-details",
+    "Tell us about the property",
+  );
 
   const coordinates = await fillGeocodedAddress(
     page,
@@ -426,8 +445,6 @@ export async function fillPropertyDetails(
     },
     data.propertyAddress,
   );
-  // Line 2 is optional and a suggestion does not always carry one — overwrite
-  // it so the submitted record is deterministic.
   await fillField(
     page,
     step,
@@ -451,99 +468,150 @@ export async function fillPropertyDetails(
   return coordinates;
 }
 
+/** The unit for every room size: picks which set of L/W/H fields shows. */
+export async function fillRoomSizeUnit(
+  page: Page,
+  unit: "metres" | "feet",
+): Promise<void> {
+  const step = await onStep(
+    page,
+    "room-size-unit",
+    "Which unit will you use for the room sizes?",
+  );
+  await selectRadio(page, step, "room-size-unit", unit);
+  await advance(page, step);
+}
+
 /**
- * Step 5 — one instance of the repeatable barracks/lodging step.
- *
- * `stepId` is passed in rather than derived, because unit 2 lives on
- * `unit-details-and-facilities~1`. The field ids keep their authored `-1`
- * suffix on every instance — only the step id changes.
- *
- * `bunkBeds: "none"` proves the bunk-bed-spaces follow-up stays away when there
- * are no bunk beds. `lighting-type-1` is a checkbox group; picking its "other"
- * option reveals a free-text field via the `in` operator. Water supply is now a
- * yes/no gate rather than a source menu — "no" is a stop, so this helper only
- * takes the passing answer (the block itself is asserted separately).
+ * One `room-sizes` instance. Only the chosen unit's fields show, and their
+ * labels name the unit. `overCap` first enters more rooms than the property
+ * has, to prove the cross-step `max` blocks Continue.
  */
-export async function fillUnitDetails(
+export async function fillRoomSize(
   page: Page,
   stepId: string,
-  unit: ReturnType<typeof buildUnit>,
+  size: ReturnType<typeof buildRoomSize>,
   branch: {
-    bunkBeds: "some" | "none";
-    lighting: "mains-electricity" | "generator" | "solar" | "other-lighting";
+    unit: "metres" | "feet";
     addAnother: "yes" | "no";
-    /** Prove "no" to the water supply actually stops the application. */
-    waterSupplyStop?: boolean;
+    overCap?: number;
   },
 ): Promise<void> {
   await expect(page.locator("h1")).toContainText(
-    "Barracks/lodging information and facilities",
+    "Tell us the size of the rooms",
   );
+  const other = branch.unit === "metres" ? "feet" : "metres";
+  await expect(
+    page.locator(`[id="${stepId}_room-length-${other}"]`),
+  ).toBeHidden();
+  await expect(
+    page.getByRole("spinbutton", { name: `Length in ${branch.unit}` }),
+  ).toBeVisible();
 
-  await fillField(page, stepId, "barracks-name-1", unit.name);
-  await fillField(page, stepId, "number-of-rooms-1", unit.rooms);
-  await fillField(page, stepId, "room-dimensions-1", unit.dimensions);
-  await selectRadio(page, stepId, "sleeping-accommodation-segregated-1", "yes");
-  await fillField(page, stepId, "property-number-of-beds-1", unit.beds);
+  await fillField(page, stepId, `room-length-${branch.unit}`, size.length);
+  await fillField(page, stepId, `room-width-${branch.unit}`, size.width);
+  await fillField(page, stepId, `room-height-${branch.unit}`, size.height);
+  await selectRadio(page, stepId, "addAnother", branch.addAnother);
 
-  // ─── Bunk beds — the spaces follow-up only appears when there is at least
-  // one bunk bed (numeric `gte` conditional). ───────────────────────────────
+  if (branch.overCap !== undefined) {
+    await fillField(page, stepId, "rooms-of-this-size", String(branch.overCap));
+    await page.getByRole("button", { name: /^Continue$/ }).click();
+    await expect(page.locator(".govbb-error-summary")).toContainText(
+      "cannot be more than the number of rooms at the property",
+      { timeout: STEP_TIMEOUT },
+    );
+    expectStep(page, stepId, { exact: true });
+  }
+
+  await fillField(page, stepId, "rooms-of-this-size", size.rooms);
+  await advance(page, stepId);
+}
+
+/**
+ * Beds, bunk beds, toilets and showers. `bunkBeds: "none"` enters 0 bunk beds
+ * and proves the bunk-bed-spaces follow-up stays away; `zeros` answers 0 to
+ * every count that allows it.
+ */
+export async function fillFacilities(
+  page: Page,
+  data: Data,
+  branch: { bunkBeds: "some" | "none"; zeros?: boolean },
+): Promise<void> {
+  const bedsStep = await onStep(page, "beds", "Tell us about the beds");
   const bunkSpaces = page.locator(
-    `[id="${stepId}_property-number-of-bunk-bed-spaces-1"]`,
+    `[id="${bedsStep}_property-number-of-bunk-bed-spaces"]`,
   );
   await expect(bunkSpaces).toBeHidden();
   await fillField(
     page,
-    stepId,
-    "property-number-of-bunk-beds-1",
-    branch.bunkBeds === "some" ? unit.bunkBeds : "0",
+    bedsStep,
+    "property-number-of-beds",
+    branch.zeros ? "0" : data.beds,
+  );
+  await fillField(
+    page,
+    bedsStep,
+    "property-number-of-bunk-beds",
+    branch.bunkBeds === "some" ? data.bunkBeds : "0",
   );
   if (branch.bunkBeds === "some") {
     await expect(bunkSpaces).toBeVisible({ timeout: STEP_TIMEOUT });
-    await bunkSpaces.fill(unit.bunkBedSpaces);
+    await bunkSpaces.fill(data.bunkBedSpaces);
   } else {
     await expect(bunkSpaces).toBeHidden();
   }
+  await advance(page, bedsStep);
 
-  await selectRadio(page, stepId, "sanitary-facilities-segregated-1", "yes");
-  await fillField(page, stepId, "property-number-of-showers-1", unit.showers);
+  const toiletsStep = await onStep(
+    page,
+    "toilets",
+    "Tell us about the toilets",
+  );
   await fillField(
     page,
-    stepId,
-    "property-number-of-water-closets-1",
-    unit.waterClosets,
+    toiletsStep,
+    "property-number-of-toilets",
+    branch.zeros ? "0" : data.toilets,
   );
-  await fillField(page, stepId, "property-number-of-urinals-1", unit.urinals);
-  await fillField(page, stepId, "property-number-of-taps-1", unit.taps);
-  await fillField(page, stepId, "property-number-of-sinks-1", unit.sinks);
+  await fillField(
+    page,
+    toiletsStep,
+    "property-number-of-urinals",
+    branch.zeros ? "0" : data.urinals,
+  );
+  await advance(page, toiletsStep);
 
-  // ─── Water supply — Environmental Health will not licence a property that
-  // is not on the Barbados Water Authority supply, so "yes" is the only answer
-  // that advances. Content elements render with no id (a bare
-  // `div.govbb-warning-text`), so the notice is located by class, never by a
-  // field id that would silently match nothing. ────────────────────────────
-  await selectRadio(page, stepId, "water-supply-bwa-1", "yes");
-  await expect(page.locator(".govbb-warning-text")).toHaveCount(0);
+  const showersStep = await onStep(
+    page,
+    "showers",
+    "How many showers are there?",
+  );
+  await fillField(
+    page,
+    showersStep,
+    "property-number-of-showers",
+    branch.zeros ? "0" : data.showers,
+  );
+  await advance(page, showersStep);
+}
 
-  // ─── Lighting — same shape ────────────────────────────────────────────────
-  const otherLighting = page.locator(`[id="${stepId}_lighting-type-other-1"]`);
-  await expect(otherLighting).toBeHidden();
-  await tickCheckbox(page, stepId, "lighting-type-1", branch.lighting);
-  if (branch.lighting === "other-lighting") {
-    await expect(otherLighting).toBeVisible({ timeout: STEP_TIMEOUT });
-    await otherLighting.fill(unit.otherLighting);
-  } else {
-    await expect(otherLighting).toBeHidden();
-  }
-
-  await selectRadio(page, stepId, "addAnother", branch.addAnother);
-
-  // ─── The stop condition, asserted rather than routed around ──────────────
-  // Left until every other field on the step is answered: a half-filled step
-  // would raise required errors of its own and the summary would no longer
-  // prove which rule did the stopping.
-  if (branch.waterSupplyStop) {
-    await selectRadio(page, stepId, "water-supply-bwa-1", "no");
+/**
+ * Water supply. "yes" is the only answer that advances; `assertStop` first
+ * answers "no" and proves the inline pattern error blocks Continue. Content
+ * elements render with no id (a bare `div.govbb-warning-text`), so the notice
+ * is located by class.
+ */
+export async function fillWaterSupply(
+  page: Page,
+  assertStop = false,
+): Promise<void> {
+  const step = await onStep(
+    page,
+    "water-supply",
+    "Is the property connected to the Barbados Water Authority water supply?",
+  );
+  if (assertStop) {
+    await selectRadio(page, step, "water-supply-bwa", "no");
     await expect(page.locator(".govbb-warning-text")).toContainText(
       "Barbados Water Authority",
       { timeout: STEP_TIMEOUT },
@@ -553,32 +621,41 @@ export async function fillUnitDetails(
       "must be connected to the Barbados Water Authority",
       { timeout: STEP_TIMEOUT },
     );
-    expectStep(page, stepId, { exact: true });
-
-    // Back to a licensable property so the run can finish and submit.
-    await selectRadio(page, stepId, "water-supply-bwa-1", "yes");
-    await expect(page.locator(".govbb-warning-text")).toHaveCount(0);
-    await expect(page.locator(".govbb-error-summary")).toBeHidden();
+    expectStep(page, step, { exact: true });
   }
-
-  await advance(page, stepId);
-}
-
-/**
- * Step 6 — the single kitchen question. Three options, so it is a SELECT: a
- * radio here would break Rule 8.
- */
-export async function fillKitchenFacilities(
-  page: Page,
-  licensed: "yes" | "no" | "not-applicable",
-): Promise<void> {
-  const step = expectStep(page, "kitchen-facilities");
-  await expect(page.locator("h1")).toContainText("Kitchen facilities");
-  await selectDropdown(page, step, "kitchen-licensed", licensed);
+  await selectRadio(page, step, "water-supply-bwa", "yes");
+  await expect(page.locator(".govbb-warning-text")).toHaveCount(0);
   await advance(page, step);
 }
 
-/** The services on `amenities-other`, each with its own follow-up radio. */
+/** Lighting — a checkbox group whose "other" reveals a free-text field. */
+export async function fillLighting(
+  page: Page,
+  data: Data,
+  lighting:
+    | "barbados-light-and-power"
+    | "generator"
+    | "solar"
+    | "other-lighting",
+): Promise<void> {
+  const step = await onStep(
+    page,
+    "lighting",
+    "What type of lighting does the property use?",
+  );
+  const otherLighting = page.locator(`[id="${step}_lighting-type-other"]`);
+  await expect(otherLighting).toBeHidden();
+  await tickCheckbox(page, step, "lighting-type", lighting);
+  if (lighting === "other-lighting") {
+    await expect(otherLighting).toBeVisible({ timeout: STEP_TIMEOUT });
+    await otherLighting.fill(data.otherLighting);
+  } else {
+    await expect(otherLighting).toBeHidden();
+  }
+  await advance(page, step);
+}
+
+/** The services on `amenities-other`, each with its own follow-up step. */
 const SERVICE_FOLLOW_UPS = {
   "swimming-pool": "swimming-pool-licence-applied",
   "food-business": "food-business-licence-applied",
@@ -591,125 +668,61 @@ const SERVICE_FOLLOW_UPS = {
 type ServiceValue = keyof typeof SERVICE_FOLLOW_UPS;
 
 /**
- * Step 7 — other services at the property. The whole checkbox group is optional
- * ("leave blank if none apply" — there is no exclusive "none of these" option),
- * so the step advances with nothing ticked. Ticking a service reveals its own
- * "have you applied" radio, and answering "no" draws a warning notice saying the
- * applicant can continue but must apply before the licence is granted — an
- * advisory, never a block.
+ * Other services at the property. The group is optional, so the step
+ * advances with nothing ticked. Each ticked service opens its own "have you
+ * applied" step, in option order; "no" shows an advisory warning that must
+ * not stop the journey.
  */
 export async function fillAmenities(
   page: Page,
   services: Partial<Record<ServiceValue, "yes" | "no">>,
 ): Promise<void> {
-  const step = expectStep(page, "amenities-other");
-  await expect(page.locator("h1")).toContainText(
-    "Other amenities and facilities",
+  const step = await onStep(
+    page,
+    "amenities-other",
+    "What other services does the property have?",
   );
-
-  // Every follow-up starts hidden — nothing is asked until a service is ticked.
-  for (const fieldId of Object.values(SERVICE_FOLLOW_UPS)) {
-    await expect(
-      page.locator(`fieldset[id="${step}_${fieldId}"]`),
-    ).toBeHidden();
-  }
-
-  for (const [service, answer] of Object.entries(services) as [
-    ServiceValue,
-    "yes" | "no",
-  ][]) {
-    const fieldId = SERVICE_FOLLOW_UPS[service];
+  const ticked = (Object.keys(SERVICE_FOLLOW_UPS) as ServiceValue[]).filter(
+    (service) => service in services,
+  );
+  for (const service of ticked) {
     await tickCheckbox(page, step, "other-amenities", service);
-    await expect(page.locator(`fieldset[id="${step}_${fieldId}"]`)).toBeVisible(
-      {
-        timeout: STEP_TIMEOUT,
-      },
-    );
-    await selectRadio(page, step, fieldId, answer);
   }
-
-  // A "no" anywhere draws its advisory notice; it must not stop the journey.
-  const notices = page.locator(".govbb-warning-text");
-  const expectedNotices = Object.values(services).filter(
-    (answer) => answer === "no",
-  ).length;
-  await expect(notices).toHaveCount(expectedNotices);
-  if (expectedNotices > 0) {
-    await expect(notices.first()).toContainText(
-      "You can continue with this application",
-    );
-  }
-
   await advance(page, step);
+
+  for (const service of ticked) {
+    const fieldId = SERVICE_FOLLOW_UPS[service];
+    const followUp = expectStep(page, fieldId, { exact: true });
+    await selectRadio(page, followUp, fieldId, services[service]!);
+    const notice = page.locator(".govbb-warning-text");
+    if (services[service] === "no") {
+      await expect(notice).toContainText("You can continue now, but you must", {
+        timeout: STEP_TIMEOUT,
+      });
+      await expect(notice).toContainText(
+        "before the property can be registered",
+      );
+    } else {
+      await expect(notice).toHaveCount(0);
+    }
+    await advance(page, followUp);
+  }
 }
 
 /**
- * Step 8 — supporting documents.
- *
- * A NEW licence must account for Planning and Development: either the
- * application number, or a site plan uploaded behind the `site-plan-toggle`
- * show-hide. The toggle relaxes the number to optional (`optionalIf`), so
- * exactly one of the two is ever demanded. A RENEWAL sees neither.
- *
- * `supporting-documents-upload` is OPTIONAL and renders unconditionally, so
- * `upload: false` proves the step advances empty.
+ * The site plan upload — a NEW registration only (`stepConditionalOn`), so a
+ * renewal goes from the services straight to check-your-answers. The upload
+ * is OPTIONAL, so `upload: false` proves the step advances empty.
  */
-export async function fillSupportingDocuments(
-  page: Page,
-  data: ReturnType<typeof buildData>,
-  branch: {
-    applicationType: "new-licence" | "renew-licence";
-    planningEvidence?: "application-number" | "site-plan";
-    upload: boolean;
-  },
-): Promise<void> {
-  const step = expectStep(page, "supporting-documents");
-  await expect(page.locator("h1")).toContainText(
-    "Supporting documents and licences",
+export async function fillSitePlan(page: Page, upload: boolean): Promise<void> {
+  const step = await onStep(
+    page,
+    "supporting-documents",
+    "Upload supporting documents",
   );
-
-  const planningNumber = page.locator(
-    `[id="${step}_planning-application-number"]`,
-  );
-  const sitePlanToggle = page.locator("details.govbb-show-hide summary", {
-    hasText: "Upload a site plan instead",
-  });
-
-  if (branch.applicationType === "new-licence") {
-    await expect(planningNumber).toBeVisible({ timeout: STEP_TIMEOUT });
-
-    if (branch.planningEvidence === "site-plan") {
-      // The either/or: opening the toggle reveals the upload and relaxes the
-      // number, so the step submits with the plan and no number at all.
-      await expect(page.locator(`input[id="${step}_site-plan"]`)).toBeHidden();
-      await sitePlanToggle.click();
-      await uploadOne(page, step, "site-plan", {
-        name: "site-plan.png",
-        mimeType: TEST_PNG.mimeType,
-        buffer: TEST_PNG.buffer,
-      });
-    } else {
-      // Prove the alternative is reachable before taking the number route:
-      // opening the toggle reveals the upload (and is what relaxes the number),
-      // collapsing it takes the field back out of the form entirely.
-      const sitePlanInput = page.locator(`input[id="${step}_site-plan"]`);
-      await expect(sitePlanInput).toBeHidden();
-      await sitePlanToggle.click();
-      await expect(sitePlanInput).toBeVisible({ timeout: STEP_TIMEOUT });
-      await sitePlanToggle.click();
-      await expect(sitePlanInput).toBeHidden();
-
-      await planningNumber.fill(data.planningApplicationNumber);
-    }
-  } else {
-    // A renewal already holds a licence — Planning does not come into it.
-    await expect(planningNumber).toBeHidden();
-    await expect(sitePlanToggle).toBeHidden();
-  }
-
-  if (branch.upload) {
-    await uploadOne(page, step, "supporting-documents-upload", {
-      name: "supporting-document.png",
+  if (upload) {
+    await uploadOne(page, step, "site-plan", {
+      name: "site-plan.png",
       mimeType: TEST_PNG.mimeType,
       buffer: TEST_PNG.buffer,
     });
@@ -719,8 +732,9 @@ export async function fillSupportingDocuments(
 
 /** Tick the single declaration checkbox and submit for real. */
 async function confirmAndSubmit(page: Page): Promise<void> {
-  const step = expectStep(page, "declaration");
-  await expect(page.locator("h1")).toContainText(
+  const step = await onStep(
+    page,
+    "declaration",
     "Confirm and submit your application",
   );
   await page
@@ -733,21 +747,20 @@ async function confirmAndSubmit(page: Page): Promise<void> {
     referenceLabel: "Submission ID",
   });
 
-  // The recipe's "What happens next" copy, carried in `markdownContent`.
   await expect(
     page.getByRole("heading", { name: "What happens next" }),
   ).toBeVisible();
   // `{polyclinic}` is substituted with the catchment resolved from the geocoded
-  // property address. The generic "your local polyclinic" fallback means
-  // resolution failed, which would also mean the polyclinic never got its copy
-  // of the application — so assert a real name rather than just the copy.
+  // property address; the generic fallback means resolution failed.
   await expect(page.getByText(/Environmental Health/).first()).toBeVisible();
   await expect(page.getByText(/Polyclinic|Complex/).first()).toBeVisible();
   await expect(page.getByText("your local polyclinic")).toHaveCount(0);
 }
 
-test.describe("Lodging House / Barracks Licence — Live Smoke", () => {
-  test("submits a new licence as the property owner with one unit, never asked who owns the property", async ({
+test.beforeEach(({ page }) => mockGeocoder(page));
+
+test.describe("Lodging House / Barracks Registration — Live Smoke", () => {
+  test("registers a new property as the owner, with one room size in metres", async ({
     page,
   }) => {
     const data = buildData();
@@ -755,41 +768,38 @@ test.describe("Lodging House / Barracks Licence — Live Smoke", () => {
       console.log("[smoke-data]", JSON.stringify(data, null, 2));
 
     await openForm(page);
-    // A new licence — no licence number asked, Planning evidence required later.
-    await fillApplicationType(page, data, "new-licence");
+    // A new registration — the Planning number, not the registration number.
+    await fillApplicationType(page, data, "new-registration");
+    // An owner is not asked their role and skips every owner page.
+    await fillOwnership(page, data, { isOwner: "yes" });
     await fillYourDetails(page, data);
-    // "yes" — the role and owner-type stay hidden and `owner-details` is skipped.
-    await fillPropertyOwnerDetails(page, data, { isOwner: "yes" });
     const coordinates = await fillPropertyDetails(page, data);
 
-    const unitStep = expectStep(page, "unit-details-and-facilities");
-    await fillUnitDetails(page, unitStep, data.unitOne, {
-      bunkBeds: "some",
-      lighting: "mains-electricity",
+    await fillRoomSizeUnit(page, "metres");
+    const sizeStep = expectStep(page, "room-sizes");
+    // More rooms than the property has is refused, then every room in one size.
+    await fillRoomSize(page, sizeStep, data.roomSizeAll, {
+      unit: "metres",
       addAnother: "no",
+      overCap: Number(data.propertyRooms) + 1,
     });
 
-    await fillKitchenFacilities(page, "yes");
-    // Nothing ticked — the group is optional and no follow-up may appear.
+    // Some bunk beds; every other count is 0, which must be accepted.
+    await fillFacilities(page, data, { bunkBeds: "some", zeros: true });
+    await fillWaterSupply(page);
+    await fillLighting(page, data, "barbados-light-and-power");
+    // Nothing ticked — the group is optional and no follow-up step may appear.
     await fillAmenities(page, {});
-    await fillSupportingDocuments(page, data, {
-      applicationType: "new-licence",
-      planningEvidence: "application-number",
-      upload: true,
-    });
+    await fillSitePlan(page, true);
 
-    // ─── Check your answers ─────────────────────────────────────────────────
-    const step = expectStep(page, "check-your-answers");
-    await expect(page.locator("h1")).toContainText("Check your answers");
-    await expect(page.getByText(data.unitOne.name).first()).toBeVisible();
+    const step = await onStep(page, "check-your-answers", "Check your answers");
     await expect(
       page.getByText(data.planningApplicationNumber).first(),
     ).toBeVisible();
+    await expect(page.getByText("site-plan.png").first()).toBeVisible();
     // An owner was never asked who the owner is, so it cannot appear.
     await expect(page.getByText(data.ownerFirstName)).toHaveCount(0);
     await expect(page.getByText(data.ownerBusinessName)).toHaveCount(0);
-    // The coordinate the catchment routes on was resolved from the PROPERTY
-    // address. Logged so a real run can be traced to a polyclinic.
     if (process.env.SMOKE_LOG_DATA)
       console.log("[smoke-data] property coordinates:", coordinates);
     if (process.env.SMOKE_HOLD_CYA) await page.pause();
@@ -800,12 +810,12 @@ test.describe("Lodging House / Barracks Licence — Live Smoke", () => {
     if (process.env.SMOKE_HOLD) await page.pause();
   });
 
-  test("renews as a caretaker for another owner, with two units, and is never asked for Planning evidence", async ({
+  test("renews for another owner, with two room sizes in feet, and is never asked for Planning evidence", async ({
     page,
   }) => {
     const data = buildData();
     // Person or business, faker-picked (FAKER_SEED reproduces it), so both
-    // branches of `owner-details` get walked across runs.
+    // owner pages get walked across runs.
     const ownerType = faker.helpers.arrayElement([
       "person",
       "business",
@@ -817,67 +827,49 @@ test.describe("Lodging House / Barracks Licence — Live Smoke", () => {
       );
 
     await openForm(page);
-    // A renewal — the current licence number is asked for here.
-    await fillApplicationType(page, data, "renew-licence");
+    await fillApplicationType(page, data, "renewal");
+    // "no" + "other-role" takes every reveal on the role page.
+    await fillOwnership(page, data, { isOwner: "no", role: "other-role" });
     await fillYourDetails(page, data);
-    // "no" + "other-role" takes every reveal on the step.
-    await fillPropertyOwnerDetails(page, data, {
-      isOwner: "no",
-      ownerType,
-      role: "other-role",
-    });
+    await fillOwner(page, data, ownerType);
     const coordinates = await fillPropertyDetails(page, data);
 
-    // ─── Units — "yes" to addAnother materialises a second instance ─────────
-    const firstUnitStep = expectStep(page, "unit-details-and-facilities");
-    await fillUnitDetails(page, firstUnitStep, data.unitOne, {
-      bunkBeds: "some",
-      lighting: "other-lighting",
+    await fillRoomSizeUnit(page, "feet");
+    const firstSizeStep = expectStep(page, "room-sizes");
+    await fillRoomSize(page, firstSizeStep, data.roomSizeOne, {
+      unit: "feet",
       addAnother: "yes",
-      waterSupplyStop: true,
     });
-
-    const secondUnitStep = expectStep(page, "unit-details-and-facilities");
+    const secondSizeStep = expectStep(page, "room-sizes");
     expect(
-      secondUnitStep,
-      "answering yes to addAnother must open a new barracks/lodging instance",
-    ).not.toBe(firstUnitStep);
-    // No bunk beds on unit 2 — the spaces follow-up must stay away.
-    await fillUnitDetails(page, secondUnitStep, data.unitTwo, {
-      bunkBeds: "none",
-      lighting: "solar",
+      secondSizeStep,
+      "answering yes to addAnother must open a new room size",
+    ).not.toBe(firstSizeStep);
+    await fillRoomSize(page, secondSizeStep, data.roomSizeTwo, {
+      unit: "feet",
       addAnother: "no",
     });
 
-    await fillKitchenFacilities(page, "not-applicable");
+    // No bunk beds — the spaces follow-up must stay away.
+    await fillFacilities(page, data, { bunkBeds: "none" });
+    // "no" is refused inline before "yes" lets the run continue.
+    await fillWaterSupply(page, true);
+    await fillLighting(page, data, "other-lighting");
     // A restaurant already licensed, a spa not yet — the "no" draws the
     // advisory notice, which must not stop the application.
     await fillAmenities(page, { restaurant: "yes", spa: "no" });
-    // A renewal is asked for no Planning evidence, and the upload is optional —
-    // skipped here, so the step must still advance.
-    await fillSupportingDocuments(page, data, {
-      applicationType: "renew-licence",
-      upload: false,
-    });
 
-    const step = expectStep(page, "check-your-answers");
-    await expect(page.locator("h1")).toContainText("Check your answers");
-    // Everything the renewal and non-owner routes revealed made it into review.
-    await expect(page.getByText(data.licenceNumber).first()).toBeVisible();
+    // A renewal is never shown the site plan step.
+    const step = await onStep(page, "check-your-answers", "Check your answers");
+    await expect(page.getByText(data.registrationNumber).first()).toBeVisible();
     await expect(page.getByText(data.applicantRoleOther).first()).toBeVisible();
-    // Only the chosen kind of owner's name was asked for, so only it appears.
     const [askedName, skippedName] =
       ownerType === "person"
         ? [data.ownerFirstName, data.ownerBusinessName]
         : [data.ownerBusinessName, data.ownerFirstName];
     await expect(page.getByText(askedName).first()).toBeVisible();
     await expect(page.getByText(skippedName)).toHaveCount(0);
-    // Both units are on the review, and unit 1's "other" free-text with them.
-    await expect(page.getByText(data.unitOne.name).first()).toBeVisible();
-    await expect(page.getByText(data.unitTwo.name).first()).toBeVisible();
-    await expect(
-      page.getByText(data.unitOne.otherLighting).first(),
-    ).toBeVisible();
+    await expect(page.getByText(data.otherLighting).first()).toBeVisible();
     if (process.env.SMOKE_LOG_DATA)
       console.log("[smoke-data] property coordinates:", coordinates);
     if (process.env.SMOKE_HOLD_CYA) await page.pause();

@@ -100,7 +100,7 @@
           "overrides": {
             "validations": {
               "required": {
-                "error": "Add your National ID number",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             }
@@ -548,7 +548,7 @@
     }
   ],
   "createdAt": "2026-08-25T14:05:29.888Z",
-  "updatedAt": "2026-10-08T21:50:00.000Z",
+  "updatedAt": "2026-10-21T16:52:59.000Z",
   "meta": {
     "visibility": "preview"
   },

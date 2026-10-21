@@ -81,18 +81,13 @@
       "title": "Application submitted",
       "stepId": "submission-confirmation",
       "elements": [],
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "We have received your submission. You will receive a confirmation email at the address you provided."
-        }
-      ]
+      "markdownContent": "## What happens next\n\nWe have received your submission. You will receive a confirmation email at the address you provided."
     }
   ],
   "title": "School Registration Fee",
   "formId": "school-registration-fee",
   "createdAt": "2026-05-06T00:00:00Z",
-  "updatedAt": "2026-10-09T14:20:00.000Z",
+  "updatedAt": "2026-10-21T16:52:59.000Z",
   "processors": [
     {
       "type": "email",

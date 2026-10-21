@@ -1009,7 +1009,7 @@
             "fieldId": "child-national-id",
             "validations": {
               "required": {
-                "error": "Enter the child's Barbados National Identification (ID) number",
+                "error": "Child's Barbados National Identification (ID) number is required",
                 "value": true
               }
             }
@@ -1984,5 +1984,5 @@
     }
   ],
   "createdAt": "2026-06-12T11:02:19.069Z",
-  "updatedAt": "2026-10-09T14:30:00.000Z"
+  "updatedAt": "2026-10-21T16:52:59.000Z"
 }

@@ -26,7 +26,11 @@ const WORD_TO_NUMBER: Record<string, number> = {
   ten: 10,
 }
 
-function isDataStartLink(node: ElementContent): boolean {
+/**
+ * True for the `<a data-start-link>` CTA this plugin hides. Exported so the
+ * content tests in registry.test.ts find start links the way this plugin does.
+ */
+export function isDataStartLink(node: ElementContent): boolean {
   return (
     node.type === 'element' &&
     node.tagName === 'a' &&
@@ -86,7 +90,12 @@ function rehypeHideStartLinks(options: RehypeHideStartLinksOptions = {}) {
   }
 }
 
-function isWaysParagraph(element: Element): boolean {
+/**
+ * True for a "There are N ways…" lead-in whose count this plugin rewrites.
+ * Exported so the content guard in registry.test.ts (#2483) checks exactly
+ * the paragraphs this plugin acts on.
+ */
+export function isWaysParagraph(element: Element): boolean {
   if (element.tagName !== 'p') return false
   const text = element.children
     .filter((child) => child.type === 'text')

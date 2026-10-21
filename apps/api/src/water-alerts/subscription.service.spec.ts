@@ -1,5 +1,5 @@
 import { WaterSubscriberStatus } from "@govtech-bb/database";
-import { ServiceUnavailableException } from "@nestjs/common";
+import { Logger, ServiceUnavailableException } from "@nestjs/common";
 import type { SesMailer } from "../email/ses-mailer";
 import { SubscriptionService } from "./subscription.service";
 import type { WaterSubscriberRepository } from "./water-subscriber.repository";
@@ -233,5 +233,32 @@ describe("SubscriptionService.unsubscribe", () => {
     expect(await service.unsubscribe("nope")).toBe("invalid");
     expect(repo.update).not.toHaveBeenCalled();
     expect(repo.findOne).not.toHaveBeenCalled();
+  });
+});
+
+describe("SubscriptionService confirm-email failure log (#2971)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("never logs the resident's address, even when the error names it", async () => {
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => undefined);
+    const { service } = makeService(
+      makeRepo(),
+      vi
+        .fn()
+        .mockRejectedValue(
+          new Error("MessageRejected: identities failed: jane@example.com"),
+        ),
+    );
+
+    await expect(
+      service.subscribe("jane@example.com", "all"),
+    ).rejects.toThrow();
+
+    const line = warn.mock.calls.map(([m]) => String(m)).join("\n");
+    expect(line).toContain("j***@example.com");
+    expect(line).not.toContain("jane@");
+    expect(line).not.toContain(TOKEN); // the confirm token is a secret
   });
 });

@@ -11,17 +11,19 @@ form_id: apply-for-swimming-pool-licence
 
 Use this service to apply for or renew a swimming pool licence with Environmental Health.
 
-## Who is this licence for
+You need this licence to operate a swimming pool, wading pool or spa pool in Barbados, including at a private home.
 
-You need this licence to operate a swimming pool, wading pool or spa pool in Barbados, including at a private home. A spa pool is sometimes called a hot tub.
+A spa pool is sometimes called a hot tub.
 
-## Before you start
+## What you need
 
 You will need:
 
 - how much water each pool holds, in gallons or cubic metres
-- new licences: a site plan of the pool, and your Planning and Development application number if you have one
-- licence renewals: your current swimming pool licence number
+- for a new licence, your Planning and Development application number
+- for a new licence, a site plan of the pool
+- for a renewal, your current swimming pool licence number for each pool, if you know it
+- the name, telephone number and email address of the person or business managing the pool, if you do not manage it yourself
 
 Planning and Development used to be called Town and Country Planning.
 
@@ -29,19 +31,21 @@ Read the [Health Services (Swimming Pools) Regulations, 1970](https://oag.gov.bb
 
 ## When to apply
 
-Your licence expires on December 31 each year. Renew it by the first business day in January.
+Your licence expires on December 31 each year.
 
-## Complete the form
+Renew it by the first business day in January.
 
-There are 2 ways to apply for a swimming pool licence. You can:
+## How to apply
 
-1. **Apply for a licence online**
+There are 2 ways to apply.
+
+1. ### Apply online
 
    The form takes about 5 to 10 minutes to complete.
 
    <a data-start-link>Start now</a>
 
-2. **Get a paper application from the polyclinic**
+2. ### Get a paper application from the polyclinic
 
    Complete the form by hand and submit it to the polyclinic for the area where the pool is located.
 
@@ -51,21 +55,24 @@ There is no cost for this service.
 
 ## What happens after you apply
 
-- Your application goes to the Environmental Health Department for the area where the pool is located.
-- They will review it and may contact you if they need more information.
-- An officer will inspect the pool, the area around it and the safety equipment before a licence is issued.
-- If your application is approved, you will get a confirmation email. Your licence will be posted to you, or you can ask to collect it from the polyclinic.
+Environmental Health will review your application and may ask for more information.
+
+An officer will check the pool, the area around it and the safety equipment before you can get a licence.
+
+If approved, Environmental Health emails confirmation and mails the licence. You can also ask to collect it from the assigned polyclinic.
 
 Submitting an application does not mean that the licence has been granted.
 
-## Contact
+## Get help
 
 Contact the Environmental Health Service office for your area.
 
-- Branford Taitt Polyclinic - [(246) 536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)
-- David Thompson Health & Social Services Complex - [(246) 536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)
-- Eunice Gibson Polyclinic - [(246) 536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)
-- Maurice Byer Polyclinic - [(246) 536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)
-- Randal Phillips Polyclinic - [(246) 536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)
-- Sir Winston Scott Polyclinic - [(246) 536-3476](tel:+12465363476), [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)
-- St. Philip Polyclinic - [(246) 536-4240](tel:+12465364240), [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)
+| Office                                          | Phone          | Email                                                                 |
+| ----------------------------------------------- | -------------- | --------------------------------------------------------------------- |
+| Branford Taitt Polyclinic                       | (246) 536-3700 | [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)               |
+| David Thompson Health & Social Services Complex | (246) 536-4453 | [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)           |
+| Eunice Gibson Polyclinic                        | (246) 536-4033 | [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb) |
+| Maurice Byer Polyclinic                         | (246) 536-3214 | [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)             |
+| Randal Phillips Polyclinic                      | (246) 536-4338 | [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)               |
+| St. Philip Polyclinic                           | (246) 536-4240 | [StPhilipEHD@health.gov.bb](mailto:StPhilipEHD@health.gov.bb)         |
+| Sir Winston Scott Polyclinic                    | (246) 536-3476 | [EHD.WSPC@health.gov.bb](mailto:EHD.WSPC@health.gov.bb)               |

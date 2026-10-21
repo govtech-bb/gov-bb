@@ -318,11 +318,24 @@ export const addRepeatableStep = ({
   if (currentRepeatConfig.orderedStepIds.includes(nextStepId))
     return visibleSteps;
 
+  // The copied fields' instance-local conditions still point at the instance
+  // they were copied from (setupRepeatSteps pinned them there). Point them at
+  // the new instance, with new behaviour objects so the source keeps its own.
   const nextStepFields = generateRepeatStepFields(
     [...currentStep.fields],
     nextStepId,
     getFullFieldId(currentStep.stepId, "addAnother"),
     sharedFieldsBehaviour,
+  ).map(
+    (field): ClientPrimitive => ({
+      ...field,
+      behaviours: field.behaviours?.map((b) =>
+        (b.type === "fieldConditionalOn" || b.type === "optionalIf") &&
+        b.targetStepId === currentStep.stepId
+          ? { ...b, targetStepId: nextStepId }
+          : b,
+      ),
+    }),
   );
   if (repeatableStepCount < max - 1) {
     nextStepFields.push(

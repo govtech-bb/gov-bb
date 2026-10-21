@@ -194,7 +194,7 @@ When a conditional behaviour watches one of these fields, compare against the co
 
 ### CATEGORY 6: Voice Of The Copy You Write
 
-Component labels, error messages and option lists that come from the registry are already written in the platform voice — leave them alone (per CATEGORY 0b, do not restate them). These rules govern only the user-facing text YOU author: \`label\`, \`hint\`, option \`label\`s on generic components, the declaration statement, and the \`submission-confirmation\` step's \`nextSteps\` content.
+Component labels, error messages and option lists that come from the registry are already written in the platform voice — leave them alone (per CATEGORY 0b, do not restate them). These rules govern only the user-facing text YOU author: \`label\`, \`hint\`, option \`label\`s on generic components, the declaration statement, and the \`submission-confirmation\` step's \`markdownContent\`.
 
 #### Rule A: Plain language, aimed at a 9-year-old reading age
 
@@ -216,7 +216,7 @@ The form tells you what the service COLLECTS. It rarely tells you the fee, the p
 
 | Situation | Do NOT | Do instead |
 |-----------|--------|------------|
-| The form has no stated fee, timeline or post-submission process | Invent "$50 fee", "within 24 hours", "you will be contacted in 5 working days" | Leave it out. Keep the default \`submission-confirmation\` copy generic (see Rule 6) — do not add invented specifics to its \`nextSteps.content\` |
+| The form has no stated fee, timeline or post-submission process | Invent "$50 fee", "within 24 hours", "you will be contacted in 5 working days" | Leave it out. Keep the default \`submission-confirmation\` copy generic (see Rule 6) — do not add invented specifics to its \`markdownContent\` |
 | The form asks an unusual or sensitive question (medical condition, household income, demographic data, prior programme participation) | Write a \`hint\` inventing why it is collected ("so we can support you safely") | Either omit the hint, or write a neutral one that does not claim a purpose the form never stated |
 | A field's purpose or rule is unclear | Guess a plausible-sounding explanation | Write the plainest label the form supports and add no speculative hint |
 
@@ -292,7 +292,7 @@ Every form must have at least an email processor so the applicant receives a con
 The frontend requires a step with stepId "submission-confirmation" as the LAST step.
 
 \`\`\`json
-{"stepId": "submission-confirmation", "title": "Application submitted", "elements": [], "nextSteps": [{"title": "What happens next", "content": "We have received your submission. You will receive a confirmation email at the address you provided."}]}
+{"stepId": "submission-confirmation", "title": "Application submitted", "elements": [], "markdownContent": "## What happens next\\n\\nWe have received your submission. You will receive a confirmation email at the address you provided."}
 \`\`\`
 
 ### Rule 7: NEVER combine isHidden with required validation
@@ -487,7 +487,7 @@ A checkbox accordion carries its categories in \`groups\`, with the required rul
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "elements": [],
-      "nextSteps": [{"title": "What happens next", "content": "We have received your submission. You will receive a confirmation email at the address you provided."}]
+      "markdownContent": "## What happens next\\n\\nWe have received your submission. You will receive a confirmation email at the address you provided."
     }
   ],
   "processors": [
@@ -616,6 +616,17 @@ When a form lets the applicant supply one identifier in place of another ("Use p
 2. \`fieldConditionalOn\` on the revealed field (the passport input) targeting the toggle, so it only appears when toggled on.
 3. \`optionalIf\` on the field being replaced (the National ID input) targeting the SAME toggle, so its required validation relaxes when the alternative is in use.
 Never leave the primary field unconditionally required next to a reveal toggle — an applicant without that identifier could never submit the form.
+
+## Eligibility Stops (an answer that means the applicant cannot continue)
+Only when the source form states the rule (an income limit, an age rule, needing permission to apply for someone else — never invent one, per Output Rules), put the stop ON the question itself:
+1. Add a \`pattern\` validation to the question that accepts ONLY the eligible option's submitted \`value\` (never its label), so Continue never leaves the step on any other answer — in the browser and again when the server validates the submission. Keep its error short: it is the error-summary link text.
+2. Directly after the question, add a \`components/content\` block with \`"variant": "warning"\` and a \`fieldConditionalOn\` on the ineligible answer. It explains the rule and what the applicant can do instead.
+3. If the question is itself conditional, repeat ITS condition on the warning as well (conditions combine with AND). Hidden answers are not cleared, so without it a leftover "no" shows the warning after the applicant changes the earlier answer. A hidden question is not validated, so its pattern never blocks someone it was not shown to.
+\`\`\`json
+{"ref": "components/generic-radio", "overrides": {"fieldId": "income-eligible", "label": "Is your monthly income BDS $3,000 or less?", "options": [{"label": "Yes", "value": "yes"}, {"label": "No", "value": "no"}], "validations": {"required": {"value": true, "error": "Tell us whether your monthly income is BDS $3,000 or less"}, "pattern": {"value": "^yes$", "error": "You must have a monthly income of BDS $3,000 or less to apply"}}}}
+{"ref": "components/content", "overrides": {"fieldId": "income-ineligible-notice", "variant": "warning", "behaviours": [{"type": "fieldConditionalOn", "targetFieldId": "income-eligible", "operator": "equal", "value": "no"}], "content": "To apply, your monthly income must be BDS $3,000 or less. If your circumstances change, you can come back and apply again."}}
+\`\`\`
+NEVER build a separate "you are not eligible" step that holds a disabled (\`isDisabled\`) required field nobody can fill in. That old workaround adds a page only to trap the applicant, and its error points at a field they cannot touch.
 
 ## Step-Level vs Field-Level Behaviours
 The behaviours above (\`fieldConditionalOn\`, \`optionalIf\`) are FIELD-level: they live in a \`behaviours\` array inside an element's \`overrides\`. The next behaviours are STEP-level — \`stepConditionalOn\`, \`repeatable\` (and \`sharedFields\`) — and they live in a \`behaviours\` array on the STEP itself, as a sibling of \`elements\` (placed AFTER it), never inside an element:

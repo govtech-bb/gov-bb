@@ -11,6 +11,7 @@ import { FormsModule } from "./forms/forms.module";
 import { FilesModule } from "./files/files.module";
 import { PaymentsModule } from "./payments/payments.module";
 import { FeedbackModule } from "./feedback/feedback.module";
+import { JourneyModule } from "./journey/journey.module";
 import { ServiceStatusModule } from "./services/service-status.module";
 import { ContentModule } from "./content/content.module";
 import { GeocodeModule } from "./geocode/geocode.module";
@@ -52,6 +53,7 @@ import { envValidationSchema } from "./config/env.validation";
     FilesModule,
     PaymentsModule,
     FeedbackModule,
+    JourneyModule,
     ServiceStatusModule,
     ContentModule,
     GeocodeModule,

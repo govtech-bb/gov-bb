@@ -73,10 +73,9 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "child-id-number",
-            "label": "National Identification (ID) Number",
             "validations": {
               "required": {
-                "error": "ID number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             },
@@ -84,7 +83,6 @@
               {
                 "type": "optionalIf",
                 "targetFieldId": "child-passport-toggle",
-                "targetStepId": "child-details",
                 "operator": "equal",
                 "value": true
               }
@@ -99,7 +97,7 @@
           "overrides": {
             "fieldId": "child-passport-toggle",
             "label": "Use passport number instead",
-            "hint": "If you don't have a National ID number, you can use your passport number instead."
+            "hint": "If you don't have a Barbados National Identification (ID) number, you can use your passport number instead."
           }
         },
         {
@@ -121,7 +119,6 @@
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "child-passport-toggle",
-                "targetStepId": "child-details",
                 "operator": "equal",
                 "value": true
               }
@@ -218,7 +215,6 @@
               {
                 "type": "fieldConditionalOn",
                 "targetFieldId": "is-parent-or-guardian",
-                "targetStepId": "child-details",
                 "operator": "equal",
                 "value": "no"
               }
@@ -282,10 +278,9 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "guardian-id-number",
-            "label": "National Identification (ID) Number",
             "validations": {
               "required": {
-                "error": "ID number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             },
@@ -305,7 +300,7 @@
           "overrides": {
             "fieldId": "guardian-passport-toggle",
             "label": "Use passport number instead",
-            "hint": "If you don't have a National ID number, you can use your passport number instead."
+            "hint": "If you don't have a Barbados National Identification (ID) number, you can use your passport number instead."
           }
         },
         {
@@ -516,10 +511,9 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "applicant-id-number",
-            "label": "National Identification (ID) Number",
             "validations": {
               "required": {
-                "error": "ID Number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             },
@@ -538,7 +532,7 @@
           "overrides": {
             "fieldId": "applicant-passport-toggle",
             "label": "Use passport number instead",
-            "hint": "If you don't have a National ID number, you can use your passport number instead."
+            "hint": "If you don't have a Barbados National Identification (ID) number, you can use your passport number instead."
           }
         },
         {
@@ -751,7 +745,7 @@
     }
   ],
   "createdAt": "2026-06-11T21:35:31.794Z",
-  "updatedAt": "2026-10-08T21:50:00.000Z",
+  "updatedAt": "2026-10-21T16:52:59.000Z",
   "meta": {
     "visibility": "maintenance"
   }

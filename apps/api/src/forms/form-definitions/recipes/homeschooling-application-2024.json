@@ -79,7 +79,6 @@
         {
           "ref": "components/email",
           "overrides": {
-            "type": "email",
             "label": "Email Address",
             "fieldId": "email-address",
             "validations": {
@@ -141,7 +140,6 @@
         {
           "ref": "components/date-of-birth",
           "overrides": {
-            "type": "date",
             "label": "Date of Birth",
             "hint": "For example, 30 12 1986",
             "fieldId": "student-dob",
@@ -343,12 +341,6 @@
                 "error": "The file must be 25MB or smaller",
                 "value": 26214400
               }
-            },
-            "helperText": "Please attach the curriculum you will be following if you are not following the National Curriculum",
-            "conditional": {
-              "value": "no",
-              "fieldId": "following-national-curriculum",
-              "operator": "equals"
             }
           }
         },
@@ -378,8 +370,7 @@
                 "error": "The file must be 25MB or smaller",
                 "value": 26214400
               }
-            },
-            "helperText": "Please attach certified copies of qualifications of persons who will be teaching"
+            }
           }
         },
         {
@@ -449,5 +440,5 @@
     }
   ],
   "createdAt": "2026-06-03T00:00:00.000Z",
-  "updatedAt": "2026-10-08T21:50:00.000Z"
+  "updatedAt": "2026-10-21T16:52:59.000Z"
 }

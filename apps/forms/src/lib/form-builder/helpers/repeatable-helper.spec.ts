@@ -749,6 +749,65 @@ describe("addRepeatableStep", () => {
     );
   });
 
+  // A condition left without a targetStepId is instance-local: setupRepeatSteps
+  // points it at the instance it sits in. "Add another" copies the current
+  // instance, so the copy must point at itself, not the instance it was copied
+  // from; otherwise vehicle 2's field follows vehicle 1's answer (#2857).
+  it("re-points the copied fields' instance-local conditions at the new instance", () => {
+    const repeatBehaviour = makeRepeatableBehaviour(1, 3);
+    const step = makeStep("vehicle", ["type", "reg"], [repeatBehaviour]);
+    step.fields[1].behaviours = [
+      {
+        type: "fieldConditionalOn",
+        targetStepId: "vehicle",
+        targetFieldId: "type",
+        operator: "equal",
+        value: "renew",
+      },
+      {
+        type: "optionalIf",
+        targetStepId: "vehicle",
+        targetFieldId: "type",
+        operator: "equal",
+        value: "new",
+      },
+      {
+        type: "fieldConditionalOn",
+        targetStepId: "other-step",
+        targetFieldId: "x",
+        operator: "equal",
+        value: "y",
+      },
+    ] as ClientPrimitive["behaviours"];
+    const repeatSettings: RepeatableStepSettings = {
+      vehicle: {
+        minRepeats: 1,
+        maxRepeats: 3,
+        orderedStepIds: ["vehicle"],
+        stepData: {},
+      },
+    };
+
+    const result = addRepeatableStep({
+      currentStep: step,
+      repeatableStepSettings: repeatSettings,
+      repeatableBehaviour: repeatBehaviour,
+      visibleSteps: [step],
+      formMeta: makeFormMeta([step]),
+    });
+
+    const copied = result[1].fields.find((f) => f.fieldId === "reg");
+    expect(
+      copied?.behaviours?.map((b) => "targetStepId" in b && b.targetStepId),
+    ).toEqual(["vehicle~1", "vehicle~1", "other-step"]);
+    // The source instance keeps pointing at itself.
+    expect(
+      step.fields[1].behaviours?.map(
+        (b) => "targetStepId" in b && b.targetStepId,
+      ),
+    ).toEqual(["vehicle", "vehicle", "other-step"]);
+  });
+
   // #2205: the renderer's visibleSteps useMemo is keyed on `formMeta.steps`
   // identity. Mutating that array in place leaves the memo stale, the step guard
   // treats the new instance as inactive and bounces the citizen onward — the

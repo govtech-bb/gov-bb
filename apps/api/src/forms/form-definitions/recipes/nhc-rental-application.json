@@ -99,11 +99,10 @@
         {
           "ref": "components/national-id-number",
           "overrides": {
-            "label": "National Identification (ID) Number",
-            "hint": "For example, 870315-1234",
+            "hint": "For example, 850101-0001",
             "validations": {
               "required": {
-                "error": "Enter your National Identification (ID) Number",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             }
@@ -240,11 +239,10 @@
           "ref": "components/national-id-number",
           "overrides": {
             "fieldId": "co-applicant-national-id-number",
-            "label": "National Identification (ID) Number",
-            "hint": "For example, 870315-1234",
+            "hint": "For example, 850101-0001",
             "validations": {
               "required": {
-                "error": "Enter the co-applicant's National Identification (ID) Number",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             }
@@ -1015,7 +1013,7 @@
     }
   ],
   "createdAt": "2026-09-03T00:00:00.000Z",
-  "updatedAt": "2026-10-08T21:50:00.000Z",
+  "updatedAt": "2026-10-21T16:52:59.000Z",
   "meta": {
     "visibility": "preview"
   }

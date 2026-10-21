@@ -488,7 +488,7 @@ describe("getStepConditonalTargets", () => {
     expect(targets).toEqual({});
   });
 
-  it("maps targetStepId -> targetFieldId for a single stepConditionalOn", () => {
+  it("maps targetStepId -> [targetFieldId] for a single stepConditionalOn", () => {
     const behaviour: StepConditionalOnBehaviour = {
       type: "stepConditionalOn",
       targetStepId: "step0",
@@ -498,7 +498,7 @@ describe("getStepConditonalTargets", () => {
     };
     const steps = [makeStep("step1", [behaviour])];
     const targets = getStepConditonalTargets(steps);
-    expect(targets).toEqual({ step0: "colour" });
+    expect(targets).toEqual({ step0: ["colour"] });
   });
 
   it("uses 'temporary' as key when targetStepId is absent on StepConditionalOnBehaviour", () => {
@@ -513,7 +513,7 @@ describe("getStepConditonalTargets", () => {
 
     const steps = [makeStep("step1", [behaviour])];
     const targets = getStepConditonalTargets(steps);
-    expect(targets).toEqual({ temporary: "colour" });
+    expect(targets).toEqual({ temporary: ["colour"] });
   });
 
   it("collects targets from multiple steps", () => {
@@ -533,6 +533,49 @@ describe("getStepConditonalTargets", () => {
     };
     const steps = [makeStep("step2", [b1]), makeStep("step3", [b2])];
     const targets = getStepConditonalTargets(steps);
-    expect(targets).toEqual({ step0: "fieldA", step1: "fieldB" });
+    expect(targets).toEqual({ step0: ["fieldA"], step1: ["fieldB"] });
+  });
+
+  it("keeps every field when behaviours target different fields on the same step", () => {
+    const b1: StepConditionalOnBehaviour = {
+      type: "stepConditionalOn",
+      targetStepId: "step0",
+      targetFieldId: "applyingFor",
+      operator: "equal",
+      value: "organisation",
+    };
+    const b2: StepConditionalOnBehaviour = {
+      type: "stepConditionalOn",
+      targetStepId: "step0",
+      targetFieldId: "hasPermission",
+      operator: "equal",
+      value: "no",
+    };
+    const b3: StepConditionalOnBehaviour = {
+      type: "stepConditionalOn",
+      targetStepId: "step0",
+      targetFieldId: "other",
+      operator: "equal",
+      value: "yes",
+    };
+    const steps = [makeStep("step1", [b1, b2]), makeStep("step2", [b3])];
+    const targets = getStepConditonalTargets(steps);
+    expect(targets).toEqual({
+      step0: ["applyingFor", "hasPermission", "other"],
+    });
+  });
+
+  it("lists a field once when several behaviours target it", () => {
+    const b1: StepConditionalOnBehaviour = {
+      type: "stepConditionalOn",
+      targetStepId: "step0",
+      targetFieldId: "colour",
+      operator: "equal",
+      value: "red",
+    };
+    const b2: StepConditionalOnBehaviour = { ...b1, value: "blue" };
+    const steps = [makeStep("step1", [b1]), makeStep("step2", [b2])];
+    const targets = getStepConditonalTargets(steps);
+    expect(targets).toEqual({ step0: ["colour"] });
   });
 });

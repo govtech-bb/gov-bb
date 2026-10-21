@@ -165,6 +165,11 @@ a fully offline `build` fails on that package. When verifying locally,
 run `pnpm exec nx run-many -t build --exclude=landing` and let CI build
 everything.
 
+### Accessibility target
+
+The platform meets the WCAG version and level named on the Design System's
+[accessibility standard](https://github.com/govtech-bb/govbb-design-system/blob/main/apps/site/src/content/docs/accessibility.md).
+
 ### Pin GitHub Actions with the exact version comment, never a major alias
 
 When SHA-pinning an action, the trailing comment must be the **exact release

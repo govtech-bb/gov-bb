@@ -47,10 +47,9 @@
               }
             },
             "national-id-number": {
-              "label": "National Registration Number (ID No.)",
               "validations": {
                 "required": {
-                  "error": "Please enter your National Registration Number",
+                  "error": "Barbados National Identification (ID) number is required",
                   "value": true
                 }
               }
@@ -757,18 +756,13 @@
       "title": "Registration Submitted",
       "stepId": "submission-confirmation",
       "elements": [],
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "Thank you for registering for the National Community Cultural Training Programme 2025–2026. We have received your application and you will receive a confirmation email at the address you provided. A member of the Ministry of Youth, Sports and Community Empowerment team will be in touch with further details about your registration."
-        }
-      ]
+      "markdownContent": "## What happens next\n\nThank you for registering for the National Community Cultural Training Programme 2025–2026. We have received your application and you will receive a confirmation email at the address you provided. A member of the Ministry of Youth, Sports and Community Empowerment team will be in touch with further details about your registration."
     }
   ],
   "title": "National Community Cultural Training Programme Registration 2025–2026",
   "formId": "youth-cultural-training-registration-2025",
   "createdAt": "2025-01-01T00:00:00Z",
-  "updatedAt": "2026-10-08T21:50:00.000Z",
+  "updatedAt": "2026-10-21T16:52:59.000Z",
   "processors": [
     {
       "type": "email",
