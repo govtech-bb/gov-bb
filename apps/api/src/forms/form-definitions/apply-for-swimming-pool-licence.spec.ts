@@ -152,10 +152,12 @@ it.each([
   ],
 ])("requires %s.%s for a new licence", async (stepId, fieldId, error) => {
   expect(validateField(await field(stepId, fieldId), "", {})).toEqual([error]);
-  const active = (
-    await conditions({ "about-application": { "application-type": "new" } })
-  ).activeFieldIds.get(stepId)!;
-  expect(active.has(fieldId)).toBe(true);
+  for (const type of ["new", "renewal"] as const) {
+    const active = (
+      await conditions({ "about-application": { "application-type": type } })
+    ).activeFieldIds.get(stepId)!;
+    expect(active.has(fieldId), type).toBe(type === "new");
+  }
 });
 
 // Environmental Health needs to know who runs the pools when it is not the
