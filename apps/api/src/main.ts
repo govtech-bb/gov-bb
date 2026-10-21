@@ -1,7 +1,7 @@
 import "./tracing"; // must be first — initialises the OTEL SDK before any NestJS code
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
-import { ValidationPipe, Logger } from "@nestjs/common";
+import { ConsoleLogger, ValidationPipe, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { DataSource } from "typeorm";
@@ -17,6 +17,11 @@ import { runSeed } from "./database/seed";
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
+    // Colour only on a terminal. In ECS the output goes to CloudWatch and
+    // Datadog, where each escape code glues onto the next word
+    // ("<ESC>[32malert check" is indexed as "32malert"), so text searches and
+    // log alerts on those words never match.
+    logger: new ConsoleLogger({ colors: Boolean(process.stdout.isTTY) }),
   });
 
   // The API sits behind one hop, the ALB, which appends the client's address to
