@@ -229,24 +229,44 @@ test("a slow save acknowledges only its submitted snapshot; refetch cannot overw
   });
 });
 
-test("a failed background read does not unmount the working copy", async () => {
-  let offline = false;
+test.each([0, 503, 401, 403, 404])(
+  "a failed background read (%s) explains the failure without unmounting the working copy",
+  async (status) => {
+    let offline = false;
 
-  const h = await mountPage(async () => {
-    if (offline) throw Error("Offline");
+    const h = await mountPage(async () => {
+      if (offline) {
+        if (status === 0) throw Error("Offline");
 
-    return Response.json(page);
-  });
+        return Response.json({}, { status });
+      }
 
-  const original = h.session().store;
-  await applySource(h.session(), original.getSnapshot().source + "\n\nKeep offline edits");
-  offline = true;
-  await act(async () => {
-    await h.client.refetchQueries({ queryKey: pageQuery(h.api, page.id).queryKey });
-  });
-  expect(h.session().store).toBe(original);
-  expect(original.getSnapshot().source).toContain("Keep offline edits");
-});
+      return Response.json(page);
+    });
+
+    const original = h.session().store;
+    await applySource(h.session(), original.getSnapshot().source + "\n\nKeep offline edits");
+    offline = true;
+    await act(async () => {
+      await h.client.refetchQueries({ queryKey: pageQuery(h.api, page.id).queryKey });
+    });
+    expect(h.session().store).toBe(original);
+    expect(original.getSnapshot().source).toContain("Keep offline edits");
+    await act(async () => {
+      await vi.waitFor(() =>
+        expect(document.body.textContent).toContain(
+          status === 401
+            ? "Your session has ended"
+            : status === 403
+              ? "You no longer have access to this page"
+              : status === 404
+                ? "This page is no longer available"
+                : "We could not refresh this page",
+        ),
+      );
+    });
+  },
+);
 
 test.each([401, 404, 409, 422, 503, 0])(
   "failed save %s retains the in-memory working copy and original baseline",

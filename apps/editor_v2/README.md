@@ -15,7 +15,7 @@ pnpm dev:editor_v2
 
 Open `http://localhost:3000`. Set `PORT` to use another port, for example `PORT=3015 pnpm dev:editor_v2`. The app runs on TanStack Start and Vite in SPA mode.
 
-Run [api_v2](../api_v2/README.md) with its GitHub authentication configuration first. Opening the editor automatically starts GitHub sign-in when no session exists; use a GitHub account with a verified email and active membership in `govtech-bb`. The API session expires after eight hours. The editor checks it on navigation, window focus and expiry, and verifies the session cookie after GitHub returns. Cancellation, denied accounts, unavailable authentication and blocked cookies stop at a recovery screen instead of restarting sign-in.
+Run [api_v2](../api_v2/README.md) with its GitHub authentication configuration first. Opening the editor checks your session, then offers **Continue with GitHub** if you are signed out. Only that action starts sign-in; use a GitHub account with a verified email and active membership in `govtech-bb`. The API session expires after eight hours. The editor checks it on workspace entry, window focus and expiry, reuses an unexpired admission between workspace screens, and verifies the session cookie after GitHub returns. Cancellation, denied accounts, unavailable authentication and blocked cookies stop at a recovery screen instead of restarting sign-in.
 
 `VITE_API_ORIGIN` is the public API origin, defaulting to `http://localhost:3020` during development. Production builds require an explicit HTTPS origin. Both production origins must be on the same site for the API's host-only, SameSite cookies; the API's configured editor origin must match this app's origin exactly. Browser requests include credentials. Keep GitHub credentials and the Better Auth secret exclusively in the API environment.
 
@@ -33,7 +33,7 @@ VITE_API_ORIGIN=https://api.example.gov.bb pnpm exec nx run-many -p editor_v2 -t
 
 The static app is built into `apps/editor_v2/dist/client`. Serve existing assets first, then rewrite application URLs to `/_shell.html` with HTTP 200. The generated server build creates the shell; static hosting does not run it. Old browser drafts are intentionally ignored and left untouched, without migration or recovery. Clipboard data and UI preferences are unchanged.
 
-`/auth` is a public SPA route for OAuth completion, errors and signed-out recovery. The GitHub provider callback is served by the API at `/api/auth/callback/github`; the editor never handles provider tokens.
+`/auth` is a public SPA route for explicit sign-in, OAuth completion, errors and signed-out recovery. Session-check recovery retries the session check without automatically starting OAuth. Loading messages name the waiting task; ordinary content reads keep the workspace mounted, and transient refresh failures retain usable cached data with a local notice. The GitHub provider callback is served by the API at `/api/auth/callback/github`; the editor never handles provider tokens.
 
 Tests run with Vitest and cover in-memory editing, explicit API saves, forms and page conversion, including the current content in `apps/landing/src/content`.
 

@@ -115,7 +115,12 @@ export function localReturnPath(value: string): string {
 
   if (
     url.origin !== "https://editor.invalid" ||
-    !(url.pathname === "/" || url.pathname === "/services" || url.pathname.startsWith("/services/"))
+    !(
+      url.pathname === "/" ||
+      /^\/(?:services(?:\/[^/]+){0,2}|categories|content-types(?:\/[^/]+)?|collections\/[^/]+(?:\/[^/]+)?)\/?$/.test(
+        url.pathname,
+      )
+    )
   )
     return "/services";
 
@@ -131,7 +136,7 @@ export type AuthSearch = {
 
 /** Parse untrusted router search parameters without retaining provider error strings. */
 export function parseAuthSearch(search: Record<string, unknown>): AuthSearch {
-  const state = search.state;
+  const state = search.state === undefined && search.error === undefined ? "sign-in" : search.state;
 
   return {
     state: state === "sign-in" || state === "complete" || state === "signed-out" ? state : "error",

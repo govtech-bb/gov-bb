@@ -23,6 +23,13 @@ test("announces its label as a status", () => {
   expect(markup).toContain(">Loading page</span>");
 });
 
+test("a decorative trident leaves the status to its caller", () => {
+  const decorative = renderToStaticMarkup(<Loader label={null} />);
+  expect(decorative).toMatch(/^<span aria-hidden="true"/);
+  expect(decorative).not.toContain('role="status"');
+  expect(decorative).not.toContain("sr-only");
+});
+
 test("draws the trident in hundreds of dots, mirrored about its axis", () => {
   expect(restingDots.length).toBeGreaterThan(300);
 
