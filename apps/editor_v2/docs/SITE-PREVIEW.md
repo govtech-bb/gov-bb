@@ -100,23 +100,3 @@ Checks on this isolated candidate used fixture authentication/API data, not a li
 Landing typechecking still reports incompatible installed HAST 3.0.4/3.0.5 types in the unchanged `src/utils/markdown/processor.ts:43`. Neither that dependency issue nor the unrelated services-list fixture was changed to make the branch green. A fresh all-project test run was not performed.
 
 Deployed CSP/CORS, real employee authentication/API authorization, real phone/IME behavior, screen-reader use and native 200% browser zoom remain unverified.
-
-## EmDash source audit and attribution
-
-Reference: [EmDash](https://github.com/emdash-cms/emdash), pinned revision **`bed3e421e02429f51c2717fe0aa90ea5340ff921`**.
-
-The interaction follows region substitution in `packages/core/src/components/PortableText.astro` and same-document, out-of-prose controls in [`packages/core/src/components/inline-editor-ui.tsx`](https://github.com/emdash-cms/emdash/blob/bed3e421e02429f51c2717fe0aa90ea5340ff921/packages/core/src/components/inline-editor-ui.tsx). `packages/core/src/visual-editing/editable.ts` and `toolbar.ts` informed the edit-toggle/field-identity boundary.
-
-These are **design-pattern adaptations**, not copied EmDash components or test code. Actual rendering code is reused from GovBB landing; actual editing, selection, menus, history and saving code is reused from GovBB's existing editor. The integration and browser assertions are GovBB-specific. No TipTap, Portable Text, automatic blur/unload saving, public edit authentication or general annotation/plugin machinery was imported. This distinction is deliberate: GovBB saving a public page publishes it.
-
-Upstream notice, retained with the source attribution:
-
-> The MIT License
->
-> Copyright 2026 Cloudflare Inc.
->
-> Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
->
-> The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
->
-> THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
