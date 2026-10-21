@@ -229,7 +229,7 @@ export default function SubmissionConfirmation({
   // Submission is in flight — an idempotency-key replay returned `processing`
   // (#463). Show a neutral status panel with the reference number, but none of
   // the finished-submission furniture: no Try again (nothing failed), no
-  // payment block, and no trailing next-steps/contact/feedback (it isn't a
+  // payment block, and no trailing markdown/contact/feedback (it isn't a
   // completed submission yet).
   if (processing) {
     return (

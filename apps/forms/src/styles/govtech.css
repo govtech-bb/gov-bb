@@ -182,11 +182,7 @@
   margin-top: var(--govbb-space-m);
 }
 
-/* ---- Next steps + contact details ---------------------------------------- */
-.form-page__next-steps {
-  margin-block-start: var(--govbb-space-m);
-}
-
+/* ---- Contact details ----------------------------------------------------- */
 .form-page__contact {
   margin-block-start: var(--govbb-space-m);
   display: flex;
@@ -335,7 +331,6 @@
   .govbb-grid-row,
   .govbb-service-heading,
   .govbb-payment,
-  .form-page__next-steps,
   .form-page__contact {
     display: block !important;
   }
@@ -358,7 +353,6 @@
   /* One consistent gap between every confirmation block, both variants. */
   .form-page__reference,
   .govbb-payment,
-  .form-page__next-steps,
   .form-page__printed-answers,
   .form-page__markdown-content,
   .form-page__contact {
@@ -376,8 +370,6 @@
   .form-page__reference,
   .form-page__contact,
   .govbb-payment__row,
-  .form-page__next-steps > div,
-  .form-page__next-steps li,
   .form-page__printed-answers-section {
     break-inside: avoid;
   }
