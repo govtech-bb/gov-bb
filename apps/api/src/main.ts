@@ -1,6 +1,7 @@
 import "./tracing"; // must be first — initialises the OTEL SDK before any NestJS code
 import { NestFactory } from "@nestjs/core";
-import { ValidationPipe, Logger } from "@nestjs/common";
+import type { NestExpressApplication } from "@nestjs/platform-express";
+import { ConsoleLogger, ValidationPipe, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { DataSource } from "typeorm";
@@ -14,7 +15,21 @@ import { MetricsService } from "./telemetry/metrics.service";
 import { runSeed } from "./database/seed";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+    // Colour only on a terminal. In ECS the output goes to CloudWatch and
+    // Datadog, where each escape code glues onto the next word
+    // ("<ESC>[32malert check" is indexed as "32malert"), so text searches and
+    // log alerts on those words never match.
+    logger: new ConsoleLogger({ colors: Boolean(process.stdout.isTTY) }),
+  });
+
+  // The API sits behind one hop, the ALB, which appends the client's address to
+  // X-Forwarded-For. Trusting that one hop makes `req.ip` the citizen rather
+  // than the balancer, so ThrottlerGuard keeps a bucket per citizen instead of
+  // one shared by everyone on the task. Only the last entry (the ALB's) is
+  // trusted, so a client cannot spoof its address by sending the header.
+  app.set("trust proxy", 1);
 
   // Enable NestJS lifecycle shutdown hooks so onApplicationShutdown() fires on
   // SIGTERM/SIGINT (e.g. on deploy). Without this the SQS consumer can't drain

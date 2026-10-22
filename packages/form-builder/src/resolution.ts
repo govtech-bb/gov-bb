@@ -47,16 +47,27 @@ function resolveElementFields(
   element: { ref: string; overrides?: unknown },
   item: ComponentDefinition | BlockDefinition,
 ): Primitive[] {
-  if (element.ref.startsWith("blocks/")) {
+  // By what the ref resolved to, not its prefix: a custom component
+  // (`components/<ns>/<type>`) can be a block too.
+  if ("block" in item) {
     const childOverrides =
       (element.overrides as Record<string, FieldOverrides> | undefined) ?? {};
-    return (item as BlockDefinition).block.elements.map((child) =>
-      applyFieldOverrides(child, childOverrides[child.fieldId] ?? {}),
+    // Clone for the same singleton-aliasing reason as the component branch.
+    return item.block.elements.map((child) =>
+      applyFieldOverrides(
+        structuredClone(child),
+        childOverrides[child.fieldId] ?? {},
+      ),
     );
   }
+  // structuredClone before merging: applyFieldOverrides shallow-spreads, so
+  // without this the served element's nested objects (validations / ui /
+  // options) alias the module-level REGISTRY_* singleton. In a long-lived
+  // process a single in-place mutation would then corrupt every subsequent
+  // request. The retired api-side resolver cloned here too.
   return [
     applyFieldOverrides(
-      (item as ComponentDefinition).primitive,
+      structuredClone(item.primitive),
       (element.overrides as FieldOverrides | undefined) ?? {},
     ),
   ];
@@ -114,8 +125,6 @@ export function hydrateForm(
   recipe: ServiceContractRecipe,
   catalog: RegistryCatalog,
 ): ServiceContract {
-  const now = new Date().toISOString();
-
   // Reject up front if any ref is unresolvable — collect them all together,
   // then throw (the API resolver throws too — this keeps the preview path
   // consistent instead of silently dropping fields).
@@ -139,12 +148,31 @@ export function hydrateForm(
     return {
       stepId: recipeStep.stepId,
       title: recipeStep.title,
+      // Per-answer title overrides (#871). The live serving path reads
+      // `conditionalTitle` off the resolved step (resolveStepTitle in
+      // form-conditions), so it must survive hydration or the heading never
+      // adapts.
+      ...(recipeStep.conditionalTitle !== undefined
+        ? { conditionalTitle: recipeStep.conditionalTitle }
+        : {}),
       ...(recipeStep.description !== undefined
         ? { description: recipeStep.description }
         : {}),
       elements,
       ...(recipeStep.behaviours !== undefined
         ? { behaviours: recipeStep.behaviours }
+        : {}),
+      // Recipe-authored markdown (e.g. a confirmation "What you need to know"
+      // section) carried through to the citizen-facing form. Note: `nextSteps`
+      // is intentionally NOT carried — it is unused by the live serving path.
+      ...(recipeStep.markdownContent !== undefined
+        ? { markdownContent: recipeStep.markdownContent }
+        : {}),
+      // Per-answer passages inside that markdown (#2068). Like
+      // `conditionalTitle`, omitting it would strip the property from the
+      // served contract and leave every `{token}` in the body unfilled.
+      ...(recipeStep.conditionalMarkdown !== undefined
+        ? { conditionalMarkdown: recipeStep.conditionalMarkdown }
         : {}),
     };
   });
@@ -164,10 +192,18 @@ export function hydrateForm(
     ...(recipe.processors !== undefined
       ? { processors: recipe.processors }
       : {}),
+    // Carry coordinate-based catchment routing through to the served
+    // contract (#2137).
     ...(recipe.catchmentRouting !== undefined
       ? { catchmentRouting: recipe.catchmentRouting }
       : {}),
-    createdAt: now,
-    updatedAt: now,
+    // Preserve the recipe's own timestamps rather than regenerating them, so a
+    // client-side hydrated preview matches exactly what the API serves.
+    createdAt: recipe.createdAt,
+    updatedAt: recipe.updatedAt,
+    // Lift the optional application deadline (#1936) onto the served contract.
+    ...(recipe.meta?.closingDateTime !== undefined
+      ? { closingDateTime: recipe.meta.closingDateTime }
+      : {}),
   };
 }

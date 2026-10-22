@@ -5,6 +5,7 @@ export { buildForm } from "./build-form";
 export {
   buildFieldValidationProperties,
   collectStepErrorCodes,
+  stepPassesValidation,
 } from "./validation-builder";
 export {
   getFullFieldId,

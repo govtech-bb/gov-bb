@@ -12,8 +12,19 @@ import { expect, type Page } from "@playwright/test";
  */
 const BLOCKING_IMPACTS = new Set(["serious", "critical"]);
 
-/** WCAG 2.0/2.1 Level A + AA — the conformance target for the platform. */
-const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
+/**
+ * Level A + AA up to the WCAG version the platform targets (see CLAUDE.md).
+ * axe ships `target-size` (wcag22aa) disabled, but selecting rules by tag runs
+ * disabled rules too, so it needs no `.options()` to enable it.
+ */
+const WCAG_TAGS = [
+  "wcag2a",
+  "wcag2aa",
+  "wcag21a",
+  "wcag21aa",
+  "wcag22a",
+  "wcag22aa",
+];
 
 /**
  * Run axe against the currently-loaded page and fail the test if any

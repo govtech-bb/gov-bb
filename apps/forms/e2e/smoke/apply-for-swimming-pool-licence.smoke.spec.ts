@@ -33,13 +33,17 @@
  * Form-specific notes:
  *  - The journey follows Environmental Health's content review (#2856):
  *    `about-application`, `applying-for`, then `permission` and `your-role`
- *    (only when applying for another person or a business), `your-details`,
- *    `person-details` or `business-details`, `pool-location` (the property),
- *    `pool-details` (repeatable, one instance per pool) and
- *    `supporting-documents`.
- *  - `about-application` asks a new licence for its optional Planning and
+ *    (only when applying for another person or a business),
+ *    `operator-details` (every applicant), `your-details`, `person-details` or
+ *    `business-details`, `pool-location` (the property), `pool-details`
+ *    (repeatable, one instance per pool) and `supporting-documents`, as
+ *    revised from Environmental Health's answers (#3082).
+ *  - `about-application` asks a new licence for its required Planning and
  *    Development application number. A renewal gives each pool's optional
  *    current licence number on `pool-details` instead (one number per pool).
+ *  - `operator-details` asks once per application whether the applicant
+ *    manages the pool; "No" reveals the operator's name, telephone and email.
+ *    The first walk answers "No", the second "Yes".
  *  - There is no stop page: answering "No" to permission is refused on the
  *    `permission` step itself by a `^yes$` pattern rule (the hotel licence
  *    pattern). Neither walk takes that branch, since it cannot submit.
@@ -47,9 +51,9 @@
  *    pool 2 is `pool-details~1`; `expectStep` returns the live id, so one
  *    helper fills either. Each instance carries its own `addAnother` radio.
  *    The first walk adds two pools: a pool-to-pool condition bug (#2856 part
- *    A) once made one pool's answers decide what another was asked. Pool 1 is
- *    managed by the applicant and pool 2 by someone else, so the operator's
- *    details must appear on pool 2 only.
+ *    A) once made one pool's answers decide what another was asked, so each
+ *    pool asserts its own renewal-only licence number stays hidden on a new
+ *    licence.
  *  - Applicant name / parish / email / telephone keep their component-default
  *    ids (`first-name`, `parish`, `email`, `telephone`); the webhook maps
  *    applicant phone from `your-details.telephone`, which validates with
@@ -60,9 +64,10 @@
  *    unconditional step: `readPath` returns null for a repeatable or hidden
  *    path, and the MDA email then fails with NO_RECIPIENT. We pick from known
  *    geocodable locations and assert the coordinates and parish filled.
- *  - `supporting-documents` branches on `application-type`: "new" asks for the
- *    optional Planning and Development site plan, "renewal" for the optional
- *    pool plan. Both walks upload one anyway, to exercise the upload.
+ *  - `supporting-documents` ("Planning information and documents") branches
+ *    on `application-type`: "new" asks for the required Planning and
+ *    Development site plan, "renewal" for the optional pool plan. Both walks
+ *    upload one, to exercise the upload.
  *  - The confirmation screen's copy lives in `markdownContent`, with
  *    `{polyclinic}` substituted from the geocoded property address. We assert
  *    a real polyclinic name and that the "your local polyclinic" fallback is
@@ -81,6 +86,7 @@ import {
   selectRadio,
   submitAndConfirm,
   uploadOne,
+  mockGeocoder,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
 
@@ -141,7 +147,6 @@ type Pool = {
   unit: "gallons" | "cubic-metres";
   openToPublic: "yes" | "no";
   licenceNumber: string;
-  managesPool: "yes" | "no";
 };
 
 /** Build a complete, valid set of answers for any branch. */
@@ -181,7 +186,6 @@ export function buildData() {
         unit: "gallons",
         openToPublic: "yes",
         licenceNumber: `SPL-${faker.string.numeric(5)}`,
-        managesPool: "yes",
       },
       {
         name: `Smoke Test rooftop spa ${stamp}`,
@@ -190,7 +194,6 @@ export function buildData() {
         unit: "cubic-metres",
         openToPublic: "no",
         licenceNumber: `SPL-${faker.string.numeric(5)}`,
-        managesPool: "no",
       },
     ] satisfies Pool[],
     operatorName: `Smoke Test Pool Services Ltd ${stamp}`,
@@ -212,7 +215,7 @@ export async function openForm(page: Page): Promise<void> {
 }
 
 /**
- * New or renewal. A new licence is asked for its optional Planning and
+ * New or renewal. A new licence is asked for its required Planning and
  * Development application number; a renewal gives licence numbers per pool.
  */
 export async function fillAboutApplication(
@@ -255,6 +258,30 @@ export async function fillApplyingFor(
 
   step = expectStep(page, "your-role");
   await fillField(page, step, "relationship-to-owner", data.role);
+  await advance(page, step);
+}
+
+/**
+ * Who manages the pools, asked once per application. "No" reveals the
+ * operator's details; "Yes" must keep them hidden.
+ */
+export async function fillOperatorDetails(
+  page: Page,
+  data: Data,
+  managesPool: "yes" | "no",
+): Promise<void> {
+  const step = expectStep(page, "operator-details");
+  await expect(page.locator("h1")).toContainText("Operator details");
+  const operatorName = page.locator(`[id="${step}_pool-operator-name"]`);
+  await selectRadio(page, step, "manages-pool", managesPool);
+  if (managesPool === "no") {
+    await expect(operatorName).toBeVisible({ timeout: STEP_TIMEOUT });
+    await operatorName.fill(data.operatorName);
+    await fillField(page, step, "pool-operator-telephone", data.operatorPhone);
+    await fillField(page, step, "pool-operator-email", data.operatorEmail);
+  } else {
+    await expect(operatorName).toBeHidden();
+  }
   await advance(page, step);
 }
 
@@ -334,8 +361,7 @@ export async function fillProperty(
 /**
  * One pool — one instance of the repeatable `pool-details` step. Pool 2 runs
  * on `pool-details~1`, which `expectStep` returns as the live id. A renewal
- * gives the pool's licence number; a pool the applicant does not manage
- * reveals its operator's details.
+ * gives the pool's licence number.
  */
 export async function fillPool(
   page: Page,
@@ -362,17 +388,6 @@ export async function fillPool(
     await expect(licenceNumber).toBeHidden();
   }
 
-  const operatorName = page.locator(`[id="${step}_pool-operator-name"]`);
-  await selectRadio(page, step, "manages-pool", pool.managesPool);
-  if (pool.managesPool === "no") {
-    await expect(operatorName).toBeVisible({ timeout: STEP_TIMEOUT });
-    await operatorName.fill(data.operatorName);
-    await fillField(page, step, "pool-operator-telephone", data.operatorPhone);
-    await fillField(page, step, "pool-operator-email", data.operatorEmail);
-  } else {
-    await expect(operatorName).toBeHidden();
-  }
-
   await selectRadio(page, step, "addAnother", addAnother);
   await advance(page, step);
 }
@@ -387,7 +402,9 @@ export async function fillPlanningDocuments(
   applicationType: "new" | "renewal",
 ): Promise<void> {
   const step = expectStep(page, "supporting-documents");
-  await expect(page.locator("h1")).toContainText("Upload supporting documents");
+  await expect(page.locator("h1")).toContainText(
+    "Planning information and documents",
+  );
 
   const sitePlan = page.locator(
     `input[type=file][id="${step}_town-country-planning-plan"]`,
@@ -416,7 +433,9 @@ export async function fillPlanningDocuments(
 /** Fill in the agreement and submit for real. */
 async function agreeAndSubmit(page: Page): Promise<void> {
   const step = expectStep(page, "declaration");
-  await expect(page.locator("h1")).toContainText("Your agreement");
+  await expect(page.locator("h1")).toContainText(
+    "Confirm and submit your application",
+  );
   await page
     .locator(`fieldset[id="${step}_declaration-confirmed"]`)
     .getByRole("checkbox")
@@ -443,6 +462,8 @@ async function agreeAndSubmit(page: Page): Promise<void> {
   await expect(page.getByText("your local polyclinic")).toHaveCount(0);
 }
 
+test.beforeEach(({ page }) => mockGeocoder(page));
+
 test.describe("Swimming Pool Licence — Live Smoke", () => {
   test("submits a new licence for yourself with two pools", async ({
     page,
@@ -454,6 +475,7 @@ test.describe("Swimming Pool Licence — Live Smoke", () => {
     await openForm(page);
     await fillAboutApplication(page, data, "new");
     await fillApplyingFor(page, data, "yourself");
+    await fillOperatorDetails(page, data, "no");
     await fillYourDetails(page, data);
     await fillProperty(page, data, "private-home");
     await fillPool(page, data, data.pools[0], "new", "yes");
@@ -464,7 +486,7 @@ test.describe("Swimming Pool Licence — Live Smoke", () => {
     await expect(page.locator("h1")).toContainText("Check your answers");
     for (const pool of data.pools)
       await expect(page.getByText(pool.name).first()).toBeVisible();
-    // Only pool 2 is managed by someone else.
+    // The applicant does not manage the pools, so the operator was asked for.
     await expect(page.getByText(data.operatorName).first()).toBeVisible();
     // Applying for yourself never reaches the role question.
     await expect(page.getByText(data.role)).toHaveCount(0);
@@ -486,6 +508,7 @@ test.describe("Swimming Pool Licence — Live Smoke", () => {
     await openForm(page);
     await fillAboutApplication(page, data, "renewal");
     await fillApplyingFor(page, data, "business");
+    await fillOperatorDetails(page, data, "yes");
     await fillYourDetails(page, data);
     await fillBusinessDetails(page, data);
     await fillProperty(page, data, "other");

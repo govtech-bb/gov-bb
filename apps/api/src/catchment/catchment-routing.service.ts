@@ -175,6 +175,15 @@ export class CatchmentRoutingService implements OnModuleInit {
   }
 
   /**
+   * The polyclinic an application at this point is routed to — the serving
+   * catchment, as the confirmation page names it — or null for a point in no
+   * catchment. Shown to the applicant as soon as their address is located.
+   */
+  servingPolyclinicAt(lat: number, lon: number): string | null {
+    return this.pointHit(`${lat},${lon}`)?.servedBy ?? null;
+  }
+
+  /**
    * The single contact line for one serving catchment, read from
    * `CATCHMENT_CONTACT`. Boot validation guarantees every serving catchment has
    * a row, so a resolved resolution always yields a line — a miss here is a

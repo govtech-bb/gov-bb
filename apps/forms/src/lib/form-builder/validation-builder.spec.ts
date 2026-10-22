@@ -10,14 +10,21 @@
  *  - buildFieldValidationProperties: show-hide / no-validation pass-through,
  *    onDynamic delegating to the shared validator (structured date errors),
  *    onChangeListenTo from behaviours, and cross-field rule resolution.
+ *  - stepPassesValidation: off-screen step check for the return from a Change
  */
 
 import {
   buildValidation,
   buildFieldValidationProperties,
+  stepPassesValidation,
 } from "./validation-builder";
-import type { ClientServiceContract, ClientPrimitive } from "@forms/types";
-import type { AnyFieldApi } from "@tanstack/react-form";
+import { locatingPlace } from "../api/geocode";
+import type {
+  ClientFormStep,
+  ClientServiceContract,
+  ClientPrimitive,
+} from "@forms/types";
+import type { AnyFieldApi, AnyFormApi } from "@tanstack/react-form";
 
 // ---------------------------------------------------------------------------
 // Minimal fixture helpers
@@ -839,5 +846,171 @@ describe("buildFieldValidationProperties", () => {
       // independently of instance 1's value.
       expect(onDynamic!({ value: "", fieldApi })).toBeUndefined();
     });
+  });
+});
+
+// A routing address (one that writes a coordinate) must be located — picked
+// from the suggestions or placed on the map — not just typed.
+describe("address-lookup field that writes a routing coordinate", () => {
+  const addressField = (
+    geocodeTargets: ClientPrimitive["geocodeTargets"] = {
+      coordinatesFieldId: "event-coordinates",
+    },
+  ) =>
+    makeField("event-address", "event", {
+      htmlType: "address-lookup",
+      geocodeTargets,
+      validations: { required: { value: true, error: "Enter the address" } },
+    });
+
+  it("refuses an address that was typed but not located", () => {
+    const { onDynamic } = buildFieldValidationProperties(addressField());
+    const fieldApi = makeFieldApi({
+      "event_event-address": "Water Hall Tenantry Road",
+      "event_event-coordinates": "",
+    });
+    expect(onDynamic!({ value: "Water Hall Tenantry Road", fieldApi })).toEqual(
+      ["Choose the address from the list, or find it on the map"],
+    );
+  });
+
+  it("accepts a located address", () => {
+    const { onDynamic } = buildFieldValidationProperties(addressField());
+    const fieldApi = makeFieldApi({
+      "event_event-coordinates": "13.104995,-59.622524",
+    });
+    expect(onDynamic!({ value: "Kensington Oval", fieldApi })).toBeUndefined();
+  });
+
+  // Continue pressed while a picked place's coordinate is still on its way
+  // waits for it, rather than refusing the pick as not located.
+  it("judges a pick once its coordinate arrives", async () => {
+    const { onDynamic, onDynamicAsync } =
+      buildFieldValidationProperties(addressField());
+    const values: Record<string, unknown> = { "event_event-coordinates": "" };
+    const fieldApi = makeFieldApi(values);
+    let arrive: () => void = () => {};
+    locatingPlace(
+      "event_event-address",
+      new Promise<void>((resolve) => (arrive = resolve)),
+    );
+
+    expect(onDynamic!({ value: "Kensington Oval", fieldApi })).toBeUndefined();
+    const verdict = onDynamicAsync!({ value: "Kensington Oval", fieldApi });
+    values["event_event-coordinates"] = "13.104995,-59.622524";
+    arrive();
+    expect(await verdict).toBeUndefined();
+  });
+
+  it("refuses a pick whose coordinate could not be found", async () => {
+    const { onDynamicAsync } = buildFieldValidationProperties(addressField());
+    const fieldApi = makeFieldApi({ "event_event-coordinates": "" });
+    locatingPlace("event_event-address", Promise.reject(new Error("503")));
+
+    expect(
+      await onDynamicAsync!({ value: "Kensington Oval", fieldApi }),
+    ).toEqual(["Choose the address from the list, or find it on the map"]);
+  });
+
+  it("keeps the required message for an empty address", () => {
+    const { onDynamic } = buildFieldValidationProperties(addressField());
+    expect(onDynamic!({ value: "", fieldApi: makeFieldApi() })).toEqual([
+      "Enter the address",
+    ]);
+  });
+
+  it("lets a typed address through when the field writes no coordinate", () => {
+    const { onDynamic } = buildFieldValidationProperties(
+      addressField({ line2FieldId: "event-line-2" }),
+    );
+    expect(
+      onDynamic!({
+        value: "Water Hall Tenantry Road",
+        fieldApi: makeFieldApi(),
+      }),
+    ).toBeUndefined();
+  });
+});
+
+describe("parish filled by a located address", () => {
+  it("is not validated on its own", () => {
+    const { onDynamic } = buildFieldValidationProperties(
+      makeField("event-parish", "event", {
+        htmlType: "select",
+        filledByAddressLookup: true,
+        validations: { required: { value: true, error: "Select the parish" } },
+      }),
+    );
+    expect(onDynamic!({ value: "", fieldApi: makeFieldApi() })).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// stepPassesValidation (#2812) — real visibility + validation, no mocks
+// ---------------------------------------------------------------------------
+
+describe("stepPassesValidation", () => {
+  const required = { required: { value: true, error: "This is required" } };
+  const shownWhenStep1HasJob = {
+    type: "fieldConditionalOn" as const,
+    targetStepId: "step1",
+    targetFieldId: "hasJob",
+    operator: "equal" as const,
+    value: "yes",
+  };
+
+  function makeFormApi(values: Record<string, unknown>): AnyFormApi {
+    return {
+      state: { values },
+      getFieldValue: (id: string) => values[id],
+    } as unknown as AnyFormApi;
+  }
+
+  function step2(
+    behaviours: ClientFormStep["behaviours"] = [],
+  ): ClientFormStep {
+    return {
+      stepId: "step2",
+      title: "Step 2",
+      behaviours,
+      fields: [
+        makeField("employer", "step2", {
+          validations: required,
+          behaviours: [shownWhenStep1HasJob],
+        }),
+      ],
+    };
+  }
+
+  it("passes when a visible required field is answered", () => {
+    expect(
+      stepPassesValidation(
+        step2(),
+        makeFormApi({ step1_hasJob: "yes", step2_employer: "Acme" }),
+      ),
+    ).toBe(true);
+  });
+
+  it("fails when a cross-step condition makes an empty field required", () => {
+    // The case completion records can't see: step2 was completed while
+    // hasJob was "no", then a Change on step1 switched it to "yes".
+    expect(
+      stepPassesValidation(step2(), makeFormApi({ step1_hasJob: "yes" })),
+    ).toBe(false);
+  });
+
+  it("ignores a required field its condition hides", () => {
+    expect(
+      stepPassesValidation(step2(), makeFormApi({ step1_hasJob: "no" })),
+    ).toBe(true);
+  });
+
+  it("trusts a repeatable step without judging it", () => {
+    // Off-screen, a repeat instance's visibility can't be evaluated
+    // (getVisibleFields reads render flags for repeatables) — see #2932.
+    const repeatable = step2([{ type: "repeatable" } as never]);
+    expect(
+      stepPassesValidation(repeatable, makeFormApi({ step1_hasJob: "yes" })),
+    ).toBe(true);
   });
 });

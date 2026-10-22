@@ -103,6 +103,7 @@ import {
   tickCheckbox,
   uploadMany,
   uploadOne,
+  mockGeocoder,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
 
@@ -517,12 +518,16 @@ export async function fillFloorPlan(page: Page): Promise<void> {
   await advance(page, step);
 }
 
-/** Tick the single declaration checkbox and submit for real. */
+/** Tick the declaration and authority checkboxes and submit for real. */
 async function confirmAndSubmit(page: Page): Promise<void> {
   const step = expectStep(page, "declaration");
-  await expect(page.locator("h1")).toContainText("Declaration");
+  await expect(page.locator("h1")).toContainText("Confirm and submit");
   await page
     .locator(`fieldset[id="${step}_declaration-confirmed"]`)
+    .getByRole("checkbox")
+    .check();
+  await page
+    .locator(`fieldset[id="${step}_authority-confirmed"]`)
     .getByRole("checkbox")
     .check();
 
@@ -536,6 +541,8 @@ async function confirmAndSubmit(page: Page): Promise<void> {
   // the header note.
   await expect(page.getByText(/Environmental Health/).first()).toBeVisible();
 }
+
+test.beforeEach(({ page }) => mockGeocoder(page));
 
 test.describe("Apply for a Food Business Licence — Live Smoke", () => {
   test("submits a first-time application for an open, fixed-property business", async ({

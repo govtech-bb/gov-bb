@@ -178,8 +178,20 @@ describe("EMPTY_DRAFT", () => {
     expect(field.overrides.label).toBe("Declaration");
     expect(field.overrides.validations?.required).toEqual({
       value: true,
-      error: "You must confirm the declaration to continue",
+      error: "You must confirm the declaration to continue.",
     });
+  });
+
+  it("seeds the declaration step with the standard heading and statement (#2957)", () => {
+    const decl = EMPTY_DRAFT.steps[1];
+    expect(decl.title).toBe("Confirm and submit your application");
+    expect(decl.fields[0].overrides.options).toEqual([
+      {
+        label:
+          "I confirm that the information I have provided is true and correct to the best of my knowledge.",
+        value: "confirmed",
+      },
+    ]);
   });
 
   it("gives the seeded declaration field a non-empty editor id", () => {
@@ -535,7 +547,7 @@ describe("LOAD_DRAFT", () => {
     expect(decl.fields[0].overrides.label).toBe("Declaration");
     expect(decl.fields[0].overrides.validations?.required).toEqual({
       value: true,
-      error: "You must confirm the declaration to continue",
+      error: "You must confirm the declaration to continue.",
     });
   });
 

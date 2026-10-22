@@ -358,6 +358,19 @@ export async function attachServiceForm({
   );
 }
 
+// Forget a service in this browser: its draft and saved versions. Committed
+// pages and forms are the caller's concern.
+export async function deleteServiceDraft({
+  data,
+}: {
+  data: { serviceId: string };
+}) {
+  const key = `${await scope()}${data.serviceId}`;
+  localStorage.removeItem(key);
+  localStorage.removeItem(`${key}:versions`);
+  window.dispatchEvent(new Event("service-draft-saved"));
+}
+
 export type SavedVersion = ServiceCheckpoint & { snapshot: ServiceSnapshot };
 async function versionsKey(serviceId: string) {
   return `${await scope()}${serviceId}:versions`;
