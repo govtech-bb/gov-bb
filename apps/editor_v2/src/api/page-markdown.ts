@@ -1,6 +1,7 @@
 import { isMap, isScalar, isSeq, parseDocument, stringify } from "yaml";
 import { parsePageMarkdown } from "../pages/markdown";
 import type { ApiPage, FieldError, SavePageInput, TaxonomyCategory } from "./client";
+import { slugify } from "./slug";
 
 const TEXT_FRONTMATTER = ["stage", "section", "service_type", "source_url"] as const;
 
@@ -263,16 +264,7 @@ export function pickerCategories(categories: readonly TaxonomyCategory[]) {
 
 /** A path for a new page: its title as a slug beneath a prefix, such as its category's path. */
 export function suggestedUrl(prefix: string, title: string) {
-  const slug = title
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 200)
-    .replace(/-+$/, "");
-
-  return `${prefix}/${slug}`;
+  return `${prefix}/${slugify(title, 200)}`;
 }
 
 const FIELD_LABELS = new Map([

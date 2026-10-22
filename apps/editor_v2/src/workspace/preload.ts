@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { EditorApi } from "../api/client";
 import {
   PRELOAD_FRESH,
+  categoriesQuery,
   pageQuery,
   serviceQuery,
   servicesQuery,
@@ -34,4 +35,9 @@ export function primePage(client: QueryClient, api: EditorApi, serviceId: string
   if (!page) return;
   void client.prefetchQuery({ ...pageQuery(api, pageId), staleTime: PRELOAD_FRESH });
   void client.prefetchQuery({ ...taxonomyQuery(api), staleTime: PRELOAD_FRESH });
+}
+
+/** Starts loading the categories before their screen opens. */
+export function primeCategories(client: QueryClient, api: EditorApi) {
+  void client.prefetchQuery({ ...categoriesQuery(api), staleTime: PRELOAD_FRESH });
 }

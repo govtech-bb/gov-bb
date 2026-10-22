@@ -21,6 +21,9 @@ export const pageQuery = (api: EditorApi, id: string) =>
 export const taxonomyQuery = (api: EditorApi) =>
   queryOptions({ queryKey: ["content", "taxonomy"], queryFn: () => api.taxonomy() });
 
+export const categoriesQuery = (api: EditorApi) =>
+  queryOptions({ queryKey: ["content", "categories"], queryFn: () => api.categories() });
+
 const VERSION_KEY = ["version"];
 
 /** The estate's change token, polled; when it moves, every content read refreshes. */

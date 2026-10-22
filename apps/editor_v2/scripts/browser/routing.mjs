@@ -118,7 +118,7 @@ try {
   );
   await title.fill("Unsaved fees");
   const length = await page.evaluate(() => history.length);
-  await page.getByRole("link", { name: "Services", exact: true }).click();
+  await page.locator("header").getByRole("link", { name: "Services", exact: true }).click();
   await cancelDeparture();
 
   for (const delta of [-1, 1, -2]) {

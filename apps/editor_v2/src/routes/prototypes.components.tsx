@@ -19,6 +19,8 @@ import {
   Envelope,
   Eye,
   EyeSlash,
+  Files,
+  Folders,
   Funnel,
   Hash,
   Info,
@@ -73,6 +75,7 @@ import { NativeSelect } from "../ui/native-select";
 import { Popover } from "../ui/popover";
 import { PreviewQuestion, PreviewSheet } from "../ui/preview-sheet";
 import { SaveState, type SaveStatus } from "../ui/save-state";
+import { ScreenHeader } from "../ui/screen-header";
 import { Select, type SelectItem } from "../ui/select";
 import { SidePanel, useSidePanel } from "../ui/side-panel";
 import { Sidebar, useSidebar } from "../ui/sidebar";
@@ -106,6 +109,7 @@ const sections = [
   ["drawer", "Drawer"],
   ["side-panel", "Side panel"],
   ["sidebar", "Sidebar"],
+  ["screen-header", "Screen header"],
   ["select", "Select"],
   ["field", "Field"],
   ["checkbox", "Checkbox"],
@@ -569,7 +573,7 @@ function ComponentsPreview() {
         <Section
           id="sidebar"
           title="Sidebar"
-          lead="A service’s pages and its form, beside the page you’re working on."
+          lead="The editor’s menu, and a service’s pages and its form, beside the page you’re working on."
         >
           <Specimen
             wide
@@ -577,6 +581,37 @@ function ComponentsPreview() {
             note="Groups under labels, pages under the page they belong to, each dotted with how far it’s published, the current page tinted, a rule before the form and the service’s actions underneath. Pages hides the column and gives the page its width; narrower than 992 pixels, it opens as a drawer from the start edge."
           >
             <SidebarDemo />
+          </Specimen>
+          <Specimen
+            wide
+            title="The editor’s menu"
+            note="Where the editor’s screens are, under group labels, each row led by an icon that fills while it’s current. Inside a service it folds to a rail of icons named by tooltips, so the service’s pages have the room; narrower than 992 pixels, it opens as a drawer from Menu."
+          >
+            <MenuDemo />
+          </Specimen>
+        </Section>
+
+        <Section
+          id="screen-header"
+          title="Screen header"
+          lead="A screen’s title, what it’s for and its main action, as on Services and Categories."
+        >
+          <Specimen
+            wide
+            title="A list’s screen"
+            note="The title is the screen’s heading; the line under it, when there is one, says what the screen is for. The action sits at the end, and wraps under the title on a narrow screen."
+          >
+            <div className="w-full max-w-3xl">
+              <ScreenHeader
+                title="Categories"
+                lead="People browse these to find services on the site."
+                action={
+                  <Button variant="accent" size="md">
+                    Add category
+                  </Button>
+                }
+              />
+            </div>
           </Specimen>
         </Section>
 
@@ -1438,6 +1473,46 @@ function SidebarDemo() {
           </Sidebar.Content>
         </Sidebar.Root>
         <p className="min-w-0 flex-1 p-6 text-14 text-muted">{current}, as you’d write it.</p>
+      </div>
+    </div>
+  );
+}
+
+function MenuDemo() {
+  const sidebar = useSidebar();
+  const [rail, setRail] = useState(false);
+  const [current, setCurrent] = useState("Services");
+
+  const item = (name: string, icon: ReactNode) => (
+    <Sidebar.Item
+      icon={icon}
+      current={current === name}
+      render={
+        <button
+          type="button"
+          className={rail ? undefined : "w-full text-start"}
+          onClick={() => setCurrent(name)}
+        />
+      }
+    >
+      {name}
+    </Sidebar.Item>
+  );
+
+  return (
+    <div className="flex w-full max-w-3xl flex-col overflow-hidden rounded-sm border border-line">
+      <div className="flex min-h-14 items-center gap-3 border-b border-line px-4 text-14">
+        {!sidebar.wide && <Sidebar.Toggle sidebar={sidebar}>Menu</Sidebar.Toggle>}
+        <Switch label="Inside a service" checked={rail} onCheckedChange={setRail} />
+      </div>
+      <div className="flex min-h-72">
+        <Sidebar.Root sidebar={sidebar} label="Menu" rail={rail}>
+          <Sidebar.Content>
+            <Sidebar.Group label="Content">{item("Services", <Files />)}</Sidebar.Group>
+            <Sidebar.Group label="Manage">{item("Categories", <Folders />)}</Sidebar.Group>
+          </Sidebar.Content>
+        </Sidebar.Root>
+        <p className="min-w-0 flex-1 p-6 text-14 text-muted">{current}</p>
       </div>
     </div>
   );

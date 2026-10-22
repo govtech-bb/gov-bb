@@ -8,6 +8,8 @@ Authors can write service pages, save or publish them to the content API, and pr
 
 The editor opens on api_v2's Services list, with search, category/status filters, sorting and pagination. A title opens the service at its entry page; its path opens landing. The sidebar lists API pages beneath their parents and shows visibility. Pages toggles the sidebar, whose preference is remembered; narrow screens use a drawer. Create service creates a draft API entry page under a category. Add document creates a start or supporting page. Delete page removes the selected API page after its children are gone; it retains no browser draft.
 
+The side menu names the editor's screens: Content holds Services, and Manage holds Categories. Inside a service it folds to a rail of icons beside the service's pages; narrow screens open it as a drawer from Menu. Categories lists api_v2's categories in order, each subcategory under its parent, with its address and the services filed under it. Authors add, edit, reorder and delete categories there; one with services or subcategories filed under it can't be deleted. Until api_v2 has category writes, those changes last only for the page load, and the screen says so. Page settings and Create service keep offering api_v2's own categories.
+
 The editor owns content authoring and conversion, including common page metadata. Saving a public page publishes its changes. Reusable form authoring remains available to embedding hosts, but has no replacement server integration in this workspace. Form-wide settings panels, form-check dashboards, submissions, scheduling and respondent execution remain outside scope.
 
 ## Page authoring

@@ -11,7 +11,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { createEditorApi, type ServiceSummary } from "../../src/api/client";
+import { ApiFailure, createEditorApi, type ServiceSummary } from "../../src/api/client";
 import { servicesQuery } from "../../src/api/queries";
 import { ServicesList } from "../../src/workspace/services-list";
 import type { ServicesSearch } from "../../src/workspace/services-search";
@@ -371,6 +371,30 @@ test.each([0, 503, 401, 403, 404])(
       });
       expect(titles()).toHaveLength(0);
       expect(host.querySelector('[role="alert"]')).not.toBeNull();
+
+      const alert = host.querySelector('[role="alert"]')!;
+
+      if (status === 401) {
+        const signIn = alert.querySelector("a");
+
+        expect(alert.textContent).toContain(
+          "Your session has ended. Sign in again to load services.",
+        );
+        expect(signIn?.textContent).toBe("Sign in again");
+
+        const target = new URL(signIn!.getAttribute("href")!, "http://localhost");
+
+        expect(target.pathname).toBe("/auth");
+        expect(Object.fromEntries(target.searchParams)).toEqual({
+          state: "sign-in",
+          returnTo: "/services",
+          reason: "provider",
+        });
+        expect(button("Try again")).toBeUndefined();
+      } else if (status === 403) {
+        expect(alert.textContent).toContain("You do not have access to these services.");
+        expect(alert.querySelector("button")?.textContent).toBe("Try again");
+      }
     }
 
     client.clear();
@@ -394,4 +418,43 @@ test("a failed load is an alert with Try again", async () => {
   );
   expect(host.querySelector('[role="alert"]')?.textContent).toContain("We could not load services");
   expect(host.querySelector('[role="alert"]')?.textContent).toContain("Try again");
+});
+
+test("a failed load's Try again waits on its retry, so another press sends nothing", async () => {
+  const retried = Promise.withResolvers<Response>();
+  const send = vi.fn(() => retried.promise);
+  vi.stubGlobal("fetch", send);
+
+  // The list had loaded before the refusal, so the failure stays up while it's tried again. A failed first load goes
+  // back to loading instead.
+  const refused = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
+  refused
+    .getQueryCache()
+    .build(refused, { queryKey: servicesQuery(api).queryKey })
+    .setState({ status: "error", data: thirty, error: new ApiFailure(403), fetchStatus: "idle" });
+
+  await show(
+    <RouterContextProvider router={router}>
+      <QueryClientProvider client={refused}>
+        <ServicesList api={api} search={{}} onSearch={() => {}} onCreate={() => {}} />
+      </QueryClientProvider>
+    </RouterContextProvider>,
+  );
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+    "You do not have access to these services.",
+  );
+
+  await act(async () => button("Try again").click());
+  await act(async () => {
+    await vi.waitFor(() => expect(button("Try again").getAttribute("aria-disabled")).toBe("true"));
+  });
+  await act(async () => button("Try again").click());
+  expect(send).toHaveBeenCalledTimes(1);
+
+  await act(async () => retried.resolve(Response.json(thirty)));
+  await act(async () => {
+    await vi.waitFor(() => expect(titles()).toHaveLength(25));
+  });
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+  refused.clear();
 });

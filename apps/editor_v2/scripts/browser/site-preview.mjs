@@ -388,7 +388,7 @@ try {
   assert.equal(await page.locator("[data-cms-preview-host]").count(), 0);
 
   // Give browser Back a real in-workspace history entry, and reopen the retained session.
-  await page.getByRole("link", { name: "Services", exact: true }).click();
+  await page.locator("header").getByRole("link", { name: "Services", exact: true }).click();
   await page.getByRole("link", { name: service.title, exact: true }).click();
   await title.waitFor();
   await button("Preview page").click();
