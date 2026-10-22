@@ -2,9 +2,13 @@
  * Recipe removal guard (#2409): a PR — a builder `Publish form:` one included —
  * must not silently drop a form's delivery, routing or geocoding. Processors
  * carry no ids, so each category is compared by count against the base
- * revision, and only a drop is reported; an addition or a reshuffle passes.
- * `geocodeTargets` and `address-lookup` refs are counted anywhere in the
- * recipe, which covers a `blocks/*` ref's per-child override record too.
+ * revision, and only a drop is reported; an addition or a reshuffle passes
+ * (so does removing one item and adding another in the same category — a
+ * known limit). A webhook counts only while its config holds something, and
+ * `geocodeTargets` counts its set keys, so emptying either is a drop.
+ * `geocodeTargets` and address lookups (a `components/address-lookup` ref or
+ * an inline `htmlType: "address-lookup"`) are counted anywhere in the recipe,
+ * which covers a `blocks/*` ref's per-child override record too.
  * Returns human-readable error strings (empty when clean).
  */
 import { classifyRecipientField } from "@govtech-bb/form-types";
@@ -12,6 +16,14 @@ import { isRecord } from "./recipe-content";
 
 const nonEmptyRecord = (value: unknown) =>
   isRecord(value) && Object.keys(value).length > 0;
+
+/** True when `value` holds anything but empty strings, arrays and records. */
+const hasContent = (value: unknown): boolean =>
+  Array.isArray(value)
+    ? value.some(hasContent)
+    : isRecord(value)
+      ? Object.values(value).some(hasContent)
+      : value !== undefined && value !== null && value !== "";
 
 function processors(recipe: unknown): Record<string, unknown>[] {
   const list = isRecord(recipe) ? recipe.processors : undefined;
@@ -40,7 +52,9 @@ function countObjects(
 const CATEGORIES: [string, (recipe: unknown) => number][] = [
   [
     "webhook processors",
-    (r) => processors(r).filter((p) => p.type === "webhook").length,
+    (r) =>
+      processors(r).filter((p) => p.type === "webhook" && hasContent(p.config))
+        .length,
   ],
   [
     // Every recipient but a submitted answer (the applicant) is the MDA's.
@@ -60,11 +74,25 @@ const CATEGORIES: [string, (recipe: unknown) => number][] = [
   ],
   [
     "geocode targets",
-    (r) => countObjects(r, (o) => nonEmptyRecord(o.geocodeTargets)),
+    (r) => {
+      let n = 0;
+      for (const o of objects(r)) {
+        if (isRecord(o.geocodeTargets)) {
+          n += Object.values(o.geocodeTargets).filter(hasContent).length;
+        }
+      }
+      return n;
+    },
   ],
   [
     "address lookups",
-    (r) => countObjects(r, (o) => o.ref === "components/address-lookup"),
+    (r) =>
+      countObjects(
+        r,
+        (o) =>
+          o.ref === "components/address-lookup" ||
+          o.htmlType === "address-lookup",
+      ),
   ],
 ];
 

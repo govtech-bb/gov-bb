@@ -117,6 +117,46 @@ describe("checkRemovals", () => {
     ]);
   });
 
+  it("reports geocodeTargets that lose some of their keys", () => {
+    const targets = (geocodeTargets: object) =>
+      recipe(
+        [{ ...lookup, overrides: { fieldId: "address", geocodeTargets } }],
+        [],
+      );
+    const before = targets({
+      line2FieldId: "l2",
+      parishFieldId: "p",
+      coordinatesFieldId: "c",
+    });
+    expect(
+      checkRemovals(FILE, before, targets({ line2FieldId: "l2" })),
+    ).toEqual([
+      `${FILE}: removes geocode targets (base had 3, this change has 1). If this is deliberate, a PR can carry the recipe-removal-override label.`,
+    ]);
+  });
+
+  it.each([
+    ["an empty config", {}],
+    [
+      "a config with emptied values",
+      { mapping: { programmeCode: "", applicant: {} }, url: "" },
+    ],
+  ])("reports a webhook left with %s", (_what, config) => {
+    const after = recipe([], [{ type: "webhook", config }]);
+    expect(checkRemovals(FILE, recipe([], [webhook]), after)).toEqual([
+      removal("webhook processors"),
+    ]);
+  });
+
+  it("reports a dropped inline htmlType address lookup", () => {
+    const inline = { fieldId: "a", htmlType: "address-lookup", label: "A" };
+    const before = recipe([inline], []);
+    const after = recipe([{ ...inline, htmlType: "text" }], []);
+    expect(checkRemovals(FILE, before, after)).toEqual([
+      removal("address lookups"),
+    ]);
+  });
+
   it("counts geocodeTargets inside a block's per-child overrides", () => {
     const block = (child: object) => ({
       ref: "blocks/home-address",
