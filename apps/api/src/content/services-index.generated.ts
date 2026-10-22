@@ -259,6 +259,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "public",
   },
   {
+    slug: "archaeological-history",
+    title: "Archaeological History",
+    category: "about-barbados",
+    visibility: "preview",
+  },
+  {
     slug: "bank-holiday-calendar",
     title: "Check bank holiday dates",
     category: "work-employment",
