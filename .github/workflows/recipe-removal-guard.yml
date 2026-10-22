@@ -3,7 +3,8 @@ name: Recipe Removal Guard
 # Fails a PR whose changed recipes drop a webhook or MDA delivery email,
 # catchment routing, geocodeTargets or an address lookup against the merge
 # base (#2409). The `recipe-removal-override` label skips it for a deliberate
-# removal.
+# removal, for the commit it was applied to only: every new push removes the
+# label and runs the guard, so each push has to be approved again.
 #
 # Its own workflow, not a step in ci.yml: CI runs on the default pull_request
 # types, and a re-run reuses the original event payload, so a label added
@@ -11,8 +12,15 @@ name: Recipe Removal Guard
 # re-evaluates the guard whenever the label changes.
 #
 # No `paths:` filter on purpose: if this becomes a required check, a
-# path-filtered workflow never reports on unrelated PRs and blocks them. The
-# script exits fast when no recipe changed.
+# path-filtered workflow never reports on unrelated PRs and blocks them.
+# Instead the job checks for a recipe change first and skips the install and
+# the script when there is none, still reporting a pass.
+#
+# No `concurrency` group: with cancel-in-progress, adding any label (area,
+# subsystem, ...) cancelled a running guard and showed it as cancelled, which
+# can trip auto-merge. Skipping unrelated label events instead would report a
+# skipped (passing) check over a failing one, so every event runs. Runs are
+# cheap when no recipe changed, and GitHub shows the latest run's result.
 
 on:
   pull_request:
@@ -22,15 +30,26 @@ on:
 permissions:
   contents: read
 
-# Latest event wins, so the result reflects the PR's current labels.
-concurrency:
-  group: recipe-removal-guard-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
+  # A new push invalidates the override: drop the label. The removal uses
+  # GITHUB_TOKEN, so it starts no `unlabeled` run of its own; the guard job
+  # below runs on this push regardless of the (stale) label in the payload.
+  drop-override:
+    name: Drop override label on push
+    if: ${{ github.event.action == 'synchronize' && contains(github.event.pull_request.labels.*.name, 'recipe-removal-override') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/$PR/labels/recipe-removal-override"
+
   recipe-removal-guard:
     name: Recipe removal guard
-    if: ${{ !contains(github.event.pull_request.labels.*.name, 'recipe-removal-override') }}
+    if: ${{ github.event.action == 'synchronize' || !contains(github.event.pull_request.labels.*.name, 'recipe-removal-override') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -39,17 +58,33 @@ jobs:
           persist-credentials: false
           # Full history so the guard can diff against the merge base.
           fetch-depth: 0
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+      - name: Any recipe changed
+        id: recipes
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          base=$(git merge-base "origin/$BASE_REF" HEAD)
+          if git diff --quiet "$base" -- apps/api/src/forms/form-definitions/recipes; then
+            echo "No recipe changed against the merge base. OK."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.recipes.outputs.changed == 'true'
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - if: steps.recipes.outputs.changed == 'true'
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version-file: ".nvmrc"
           cache: "pnpm"
       # --ignore-scripts: this workflow only runs `pnpm tsx`, so no dependency
       # needs a build/lifecycle script. Disable them as defense-in-depth so a
       # poisoned lifecycle script can't execute on the runner (#307).
-      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - if: steps.recipes.outputs.changed == 'true'
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Recipe changes keep delivery, routing and geocoding
+        if: steps.recipes.outputs.changed == 'true'
         env:
           BASE_REF: ${{ github.base_ref }}
         run: pnpm validate-recipe-removals --base "origin/$BASE_REF"
