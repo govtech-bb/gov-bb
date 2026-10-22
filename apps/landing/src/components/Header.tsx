@@ -1,6 +1,6 @@
 import { forwardRef } from 'react'
 import type { ComponentPropsWithoutRef } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useRouteContext } from '@tanstack/react-router'
 import {
   Header as GovHeader,
   Link as GovLink,
@@ -8,7 +8,9 @@ import {
   OfficialBanner,
   StatusBanner,
 } from '@govtech-bb/react'
+import { CATEGORY_BY_SLUG, isCategoryVisible } from '../content/registry'
 import { CHAT_URL } from '../lib/chat-url'
+import { deriveVisibilityOverlay } from '../lib/service-status'
 import { TRACKER_URL } from '../lib/tracker-url'
 
 // The DS Header renders links via `href`; map it to TanStack Router's `to` for
@@ -20,6 +22,13 @@ const RouterLink = forwardRef<HTMLAnchorElement, RouterLinkProps>(
 RouterLink.displayName = 'RouterLink'
 
 export default function Header() {
+  const { level, serviceStatuses } = useRouteContext({ from: '__root__' })
+  const showAboutBarbados = isCategoryVisible(
+    CATEGORY_BY_SLUG['about-barbados'],
+    level,
+    deriveVisibilityOverlay(serviceStatuses),
+  )
+
   return (
     <>
       <OfficialBanner
@@ -34,9 +43,11 @@ export default function Header() {
         linkComponent={RouterLink}
         nav={
           <>
-            <GovLink href="/about-barbados" linkComponent={RouterLink}>
-              About Barbados
-            </GovLink>
+            {showAboutBarbados && (
+              <GovLink href="/about-barbados" linkComponent={RouterLink}>
+                About Barbados
+              </GovLink>
+            )}
             <GovLink href="/services" linkComponent={RouterLink}>
               Services
             </GovLink>

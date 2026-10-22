@@ -137,8 +137,7 @@ export const CATEGORY_TAXONOMY: Array<Category> = [
   {
     slug: "about-barbados",
     title: "About Barbados",
-    description:
-      "Learn about the history of Barbados and its national symbols, including the flag, anthem, pledge and coat of arms",
+    description: "Learn about the history and heritage of Barbados",
   },
 ];
 
