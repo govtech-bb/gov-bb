@@ -5,21 +5,17 @@ import type {
   RecipeProcessorDraft,
   AuthorableProcessorPreset,
 } from "@govtech-bb/form-builder";
-import { makeDefaultProcessor } from "@govtech-bb/form-builder";
+import {
+  makeDefaultProcessor,
+  REQUIRED_STEP_IDS,
+} from "@govtech-bb/form-builder";
 import type {
   Behaviour,
   ContactDetails,
   FieldOverrides,
 } from "@govtech-bb/form-types";
 
-// Listed in display order. `check-your-answers` is first so the pinned tail
-// renders as [check-your-answers, declaration, submission-confirmation] — i.e.
-// the review step sits right before the declaration.
-export const REQUIRED_STEP_IDS = [
-  "check-your-answers",
-  "declaration",
-  "submission-confirmation",
-] as const;
+export { REQUIRED_STEP_IDS };
 export type RequiredStepId = (typeof REQUIRED_STEP_IDS)[number];
 
 export function isRequiredStep(stepId: string): stepId is RequiredStepId {

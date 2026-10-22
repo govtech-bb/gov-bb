@@ -1,6 +1,16 @@
 import type { Processor } from "@govtech-bb/form-types";
 import type { AuthorableProcessorPreset } from "./types";
 
+// The steps every builder draft carries, in display order. `check-your-answers`
+// is first so the pinned tail renders as [check-your-answers, declaration,
+// submission-confirmation] — i.e. the review step sits right before the
+// declaration.
+export const REQUIRED_STEP_IDS = [
+  "check-your-answers",
+  "declaration",
+  "submission-confirmation",
+] as const;
+
 /**
  * A minimal, mostly-blank default processor for each type the builder can
  * author, used to seed a new entry when the author clicks "Add". Returns a full
@@ -44,12 +54,7 @@ export function makeDefaultProcessor(
           mapping: {
             programmeCode: "",
             applicant: { name: [], email: "", phone: "" },
-            // Mirrors the builder's REQUIRED_STEP_IDS — every draft has these.
-            excludeSteps: [
-              "check-your-answers",
-              "declaration",
-              "submission-confirmation",
-            ],
+            excludeSteps: [...REQUIRED_STEP_IDS],
             groupByStep: true,
           },
         },
