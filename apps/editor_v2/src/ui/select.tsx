@@ -34,6 +34,11 @@ const triggers = {
     "flex h-9 w-full gap-2 bg-white px-2.5 font-normal aria-invalid:shadow-input-error aria-invalid:focus-visible:shadow-input-focus data-disabled:bg-tint data-disabled:text-muted data-disabled:shadow-none max-sm:text-16",
   // A word in a sentence, such as a logic rule: as wide as its value
   pill: "inline-flex h-8 max-w-80 gap-1.5 bg-white px-2.5 font-semibold data-disabled:opacity-50",
+  // A list's filter, in the toolbar over it: Input sm's height, as wide as its value. While it narrows the list it's a
+  // Tag's chosen blue, so the filters at work stand out from those showing everything; hover and focus still edge it.
+  // Its "everything" is an item valued "" or, with `multiple`, its placeholder
+  filter:
+    "inline-flex h-8 max-w-64 gap-2 bg-white px-2.5 font-normal not-data-placeholder:bg-highlight not-data-placeholder:text-blue-80 not-data-placeholder:shadow-none max-sm:text-16",
 };
 
 // A visible label wraps the select in a Field, with its hint and error. Without one, name it
@@ -101,7 +106,13 @@ export function Select<V extends string>(props: SelectProps<V>) {
       : undefined;
 
   const byValue = new Map(items.map((item) => [item.value, item]));
-  const empty = <span className="truncate text-placeholder">{placeholder}</span>;
+
+  // A filter's placeholder is a choice in itself, everything, so it reads like one
+  const empty = (
+    <span className={cn("truncate", variant !== "filter" && "text-placeholder")}>
+      {placeholder}
+    </span>
+  );
 
   const chosen = (item: SelectItem<V>, more = 0) => (
     <>
@@ -125,7 +136,7 @@ export function Select<V extends string>(props: SelectProps<V>) {
       <BaseSelect.Value
         className={cn(
           "flex min-w-0 items-center gap-2 leading-normal",
-          variant === "field" && "flex-1",
+          variant !== "pill" && "flex-1",
         )}
       >
         {value}
