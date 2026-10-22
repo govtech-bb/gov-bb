@@ -7,8 +7,7 @@ import {
   type ServiceContract,
 } from "@govtech-bb/form-types";
 import { validate, validateField } from "@govtech-bb/form-validation";
-import { BUILTIN_REGISTRY } from "@govtech-bb/registry";
-import { hydrateForm, type Resolver } from "../../registry/resolution";
+import { getCatalog, hydrateForm } from "@govtech-bb/form-builder";
 
 // Applicants aged 25 or over must have a disability. The gate is a `^yes$`
 // pattern on `disability-eligibility`, which only shows from 25, plus a
@@ -25,12 +24,7 @@ async function hydratedContract(): Promise<ServiceContract> {
   const raw = JSON.parse(await fs.readFile(RECIPE_PATH, "utf8"));
   const recipe = serviceContractRecipeSchema.parse(raw);
   // Every ref in this recipe is a builtin, so a miss is a bug in the recipe.
-  const resolver: Resolver = async (ref) => {
-    const entry = BUILTIN_REGISTRY[ref as keyof typeof BUILTIN_REGISTRY];
-    if (!entry) throw new Error(`unresolvable ref "${ref}"`);
-    return entry;
-  };
-  return (await hydrateForm(recipe, resolver)) as unknown as ServiceContract;
+  return hydrateForm(recipe, getCatalog()) as unknown as ServiceContract;
 }
 
 function isoYearsAgo(years: number): string {
