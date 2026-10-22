@@ -134,6 +134,12 @@ export const CATEGORY_TAXONOMY: Array<Category> = [
     description:
       "Apply for National Housing Corporation homes and land, use State land, and exercise tenant rights to buy a freehold",
   },
+  {
+    slug: "about-barbados",
+    title: "About Barbados",
+    description:
+      "Learn about the history of Barbados and its national symbols, including the flag, anthem, pledge and coat of arms",
+  },
 ];
 
 export const CATEGORY_BY_SLUG: Record<string, Category> = Object.fromEntries(
