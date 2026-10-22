@@ -34,6 +34,9 @@ export default function Header() {
         linkComponent={RouterLink}
         nav={
           <>
+            <GovLink href="/about-barbados" linkComponent={RouterLink}>
+              About Barbados
+            </GovLink>
             <GovLink href="/services" linkComponent={RouterLink}>
               Services
             </GovLink>
