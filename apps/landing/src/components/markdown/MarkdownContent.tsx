@@ -2,6 +2,7 @@ import { Heading, Link, StatusBanner, Text } from '@govtech-bb/react'
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
 import type { Root } from 'hast'
+import type { ReactNode } from 'react'
 import type { Frontmatter } from '../../lib/frontmatter'
 import { hideStartLinks } from '../../utils/markdown/plugins'
 import { markdownComponents } from './MdComponents'
@@ -45,6 +46,8 @@ type MarkdownContentProps = {
   hast?: Root
   availableForms?: ReadonlySet<string>
   hideStartLink?: boolean
+  /** The CMS owns these editing surfaces; ordinary public pages supply none. */
+  editableRegions?: { title: ReactNode; lede: ReactNode; body: ReactNode }
 }
 
 export function MarkdownContent({
@@ -52,13 +55,14 @@ export function MarkdownContent({
   hast,
   availableForms,
   hideStartLink = false,
+  editableRegions,
 }: MarkdownContentProps) {
   return (
     <div className="mb-xm lg:grid lg:grid-cols-3 lg:gap-16">
       <div className="space-y-6 lg:col-span-2 lg:space-y-8">
         <div className="space-y-4 lg:space-y-6">
           <Heading as="h1" className="wrap-anywhere">
-            {frontmatter.title}
+            {editableRegions?.title ?? frontmatter.title}
           </Heading>
 
           {frontmatter.source_url ? (
@@ -78,7 +82,7 @@ export function MarkdownContent({
             </StatusBanner>
           ) : null}
 
-          {frontmatter.publish_date || frontmatter.lede ? (
+          {frontmatter.publish_date || frontmatter.lede || editableRegions ? (
             <div className="flex flex-col gap-xs">
               {frontmatter.publish_date ? (
                 <div className="border-blue-10 border-b-4 pb-4 text-grey-70">
@@ -89,21 +93,21 @@ export function MarkdownContent({
                 </div>
               ) : null}
 
-              {frontmatter.lede ? (
+              {frontmatter.lede || editableRegions ? (
                 <Text as="p" className="text-grey-70">
-                  {frontmatter.lede}
+                  {editableRegions?.lede ?? frontmatter.lede}
                 </Text>
               ) : null}
             </div>
           ) : null}
         </div>
-        {hast ? (
+        {editableRegions?.body ?? (hast ? (
           <MarkdownBody
             hast={hast}
             availableForms={availableForms}
             hideStartLink={hideStartLink}
           />
-        ) : null}
+        ) : null)}
       </div>
     </div>
   )

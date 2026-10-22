@@ -144,8 +144,8 @@ try {
   await page.locator("[data-document-bar]:visible").getByText("Saved", { exact: true }).waitFor();
   assert.equal(api.pages.get(child.id).form_id, "externally-managed-form");
   await button("Preview page").click();
-  await page.getByRole("article", { name: "Page preview" }).waitFor();
-  await button("Back to editing").click();
+  await page.locator("[data-cms-preview-article]").waitFor();
+  await button("Close preview").click();
 
   await button("Delete page").click();
   const question = page.getByRole("alertdialog");

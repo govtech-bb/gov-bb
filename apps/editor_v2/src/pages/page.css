@@ -165,9 +165,6 @@
 .page-editable > [hidden] + :is(h1, h2, h3, h4, h5, h6) {
   margin-block-start: 0;
 }
-.page-document-preview > .page-preview > h1:first-child {
-  margin-block-start: 0;
-}
 @media (max-width: 47.5rem) {
   .page-body {
     font-size: 1rem;

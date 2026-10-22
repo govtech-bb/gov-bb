@@ -24,6 +24,8 @@ declare global {
     editorFixtureInput: { source: string; kind: "form" | "page" };
     editorFixture: {
       source: () => string;
+      /** Replaces fixture content without requiring a page source editor. */
+      replace: (source: string) => boolean;
       snapshot: () => ReturnType<DraftStore["getSnapshot"]>;
       kind: "form" | "page";
     };
@@ -36,6 +38,11 @@ const store = new DraftStore(source, kind === "form" ? govbbFormCodec : govbbPag
 
 window.editorFixture = {
   source: () => store.getSnapshot().committed,
+  replace: (next) => {
+    store.edit(next);
+
+    return store.apply();
+  },
   snapshot: store.getSnapshot,
   kind,
 };

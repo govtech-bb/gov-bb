@@ -127,7 +127,7 @@ try {
 
   await button("Preview page").click();
 
-  const previewLink = page.locator(".page-document-preview").getByRole("link", {
+  const previewLink = page.locator("[data-cms-preview-article]").getByRole("link", {
     name: "Preview link",
     exact: true,
   });
@@ -136,7 +136,7 @@ try {
   assert.equal(page.url(), url.href);
   await previewLink.press("Enter");
   assert.equal(page.url(), url.href);
-  await button("Back to editing").click();
+  await button("Close preview").click();
 
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await button("History").count(), 0);

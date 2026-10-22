@@ -194,6 +194,12 @@ function PeopleComponent() {
 
 Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
 
+## CMS inline preview renderer
+
+`pnpm build:cms-preview` builds `src/preview/cms-preview.tsx` into ignored `public/cms-preview/renderer.js` and `styles.css`. Normal `dev` and `build` run this first. The entry reuses ordinary public-page components and Markdown rendering; it is not a public editing route and does not reuse the older builder preview transport.
+
+Editor v2 loads these trusted assets into its own document without changing its URL. The CMS owns authentication, the working copy, inline editing and explicit publication; this renderer has no API writes or analytics. Deploy its CORS-enabled assets before enabling the CMS configuration. See [the runtime contract and verification guide](../editor_v2/docs/SITE-PREVIEW.md).
+
 ## Analytics (Umami)
 
 The landing app sends pageview and click events to [Umami Cloud](https://umami.is/) when configured.

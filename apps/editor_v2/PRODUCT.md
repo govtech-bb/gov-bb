@@ -4,7 +4,7 @@ The GovBB editor is an internal web tool for the GovTech Barbados service team a
 
 ## Scope
 
-Authors can write service pages, save or publish them to the content API, edit or download Markdown, and preview supported content. The workspace groups an entry page, an optional start page and supporting pages. Browser-only services, pages, forms and calculators are not workspace flows.
+Authors can write service pages, save or publish them to the content API, and preview supported content. The workspace groups an entry page, an optional start page and supporting pages. Browser-only services, pages, forms and calculators are not workspace flows.
 
 The editor opens on api_v2's Services list, with search, category/status filters, sorting and pagination. A title opens the service at its entry page; its path opens landing. The sidebar lists API pages beneath their parents and shows visibility. Pages toggles the sidebar, whose preference is remembered; narrow screens use a drawer. Create service creates a draft API entry page under a category. Add document creates a start or supporting page. Delete page removes the selected API page after its children are gone; it retains no browser draft.
 
@@ -14,11 +14,15 @@ The editor owns content authoring and conversion, including common page metadata
 
 Pages support headings, paragraphs, inline formatting, links, hard breaks, blockquotes, separators, nested lists, tables, notices, details and action buttons. Authors arrange the body freely. The title is edited above the body and stored in YAML frontmatter. The introduction is edited directly beneath the title. A collapsed Page details section on the separator summarises current values and edits description, categories, subcategory, visibility, publication date and form ID. Category options come from the host. A page from the content API offers api_v2's categories: a service's entry page takes one category and an optional subcategory, and its sub-pages are filed with it. Embedded page editors can also retain imported categories, with the first primary. A page from the content API also shows its path, and the server's publication date read-only.
 
-Page details and body share undo history. They reach the API only through explicit Save or Publish changes; typing and source Apply never save or publish. A successful save acknowledges only the submitted snapshot, leaving edits made during the request unsaved. When someone saves a newer version first, the author chooses whether to keep theirs, load the saved version or download theirs, rather than either being overwritten. The editor checks the content API for changes every 30 seconds and when its window regains focus, refreshing its lists and flagging an open page saved elsewhere. Optional fields stay absent until edited, and clearing one removes its key. Unfamiliar imported values are retained; specialist frontmatter remains editable in Markdown.
+Page details and body share undo history. They reach the API only through explicit Save or Publish changes; typing never saves or publishes. A successful save acknowledges only the submitted snapshot, leaving edits made during the request unsaved. When someone saves a newer version first, the author chooses whether to keep theirs, load the saved version or download theirs, rather than either being overwritten. The editor checks the content API for changes every 30 seconds and when its window regains focus, refreshing its lists and flagging an open page saved elsewhere. Optional fields stay absent until edited, and clearing one removes its key. Unfamiliar imported values and specialist frontmatter are retained.
 
-Original Markdown is retained exactly until a visual edit. Edits preserve unknown metadata, intentionally absent fields, content structure and destinations. Unsupported HTML and specialist content remain editable in source mode. Invalid YAML keeps the working source and last committed document intact.
+Original Markdown is retained exactly until a visual edit. Edits preserve unknown metadata, intentionally absent fields, content structure and destinations. A page with unsupported HTML, specialist content or invalid YAML opens read-only, its saved content unchanged. Pages have no Markdown source editing.
 
 Page-to-form associations are explicit. Import preserves `form_id` and button URLs; editing Form ID does not rewrite button destinations. The Details body component is a reader-operated disclosure.
+
+## Editable site preview
+
+Preview page opens the normal public-page layout inside the CMS, on the same URL, under the page's own bar and nothing else. Edit content, a toggle in that bar, makes its title, introduction and body editable with the same working copy and undo history; pressing it again shows the public rendering. Close preview returns to the writer. None of these actions saves or publishes. Links, feedback and application actions cannot navigate or submit from preview; About this preview says so. Form availability is unknown in the CMS, so reading view hides Start actions rather than inventing a live one; editing shows them as buttons. Renderer failures retain the working copy. See [Site preview](docs/SITE-PREVIEW.md) for configuration and browser requirements.
 
 ## Reusable form authoring
 

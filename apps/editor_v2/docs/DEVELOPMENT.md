@@ -44,7 +44,7 @@ Only the sign-in button starts OAuth. Initial admission and callback checks use 
 
 ## Browser checks
 
-Start the app, then run the browser suites against the same URL:
+Start the app, then run the browser suites against the same URL. The full suite includes site preview: also build/start landing and set `VITE_SITE_PREVIEW_URL` in the CMS and test-process environments as described in [Site preview](SITE-PREVIEW.md). Its normal-page reference defaults to `http://127.0.0.1:3040`:
 
 ```sh
 PLAYWRIGHT_MODULE_PATH=/path/to/playwright-core \
@@ -64,6 +64,12 @@ pnpm exec node scripts/browser/run.mjs http://localhost:3000/ page-writer.mjs se
 ```
 
 Avoid editing source while checking undo and document switching: a development reload can reset in-memory editor history. The insertion/undo regression starts on a question page because confirmation pages reject answer insertion.
+
+## Editable site preview checks
+
+[Site preview](SITE-PREVIEW.md) documents the landing renderer build, `VITE_SITE_PREVIEW_URL`, local two-app setup and production asset delivery. `scripts/browser/site-preview.mjs <cms-url> [landing-url]` uses the actual authenticated route with API fixtures to verify editing/history, matched public-page rendering, style lifecycle, error recovery and explicit publication. Run it against development and production-built CMS output. `site-preview-parity.mjs <landing-url>` separately compares the fresh renderer to the ordinary mentor page.
+
+The page-writer fixture builds its own bundle, so pass `VITE_SITE_PREVIEW_URL` to the browser-test process as well as the dev server. Keep the normal landing reference available while running these suites. Real deployment headers, sign-in, assistive technology and phone IME still need manual checks; synthetic composition and narrow viewports are not substitutes.
 
 ## Persistence and recovery
 

@@ -29,7 +29,7 @@ export const Route = createRootRouteWithContext<{
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
     ],
-    links: [{ rel: "stylesheet", href: stylesheet }],
+    links: [{ id: "cms-stylesheet", rel: "stylesheet", href: stylesheet }],
   }),
   component: () => (
     <ClientOnly fallback={<AuthPending label="Loading editor…" />}>
@@ -55,7 +55,9 @@ function RootDocument({ children }: { children: ReactNode }) {
         <ScreenTitle names={[]} />
       </head>
       <body>
-        {children}
+        <div data-cms-workspace="" className="contents">
+          {children}
+        </div>
         <Scripts />
       </body>
     </html>

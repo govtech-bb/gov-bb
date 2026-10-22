@@ -10,6 +10,8 @@ import { act } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { createEditorApi, type ApiPage } from "../../src/api/client";
 import { pageQuery, taxonomyQuery } from "../../src/api/queries";
+import { govbbPageCodec } from "../../src/presets/govbb-page";
+import { Toaster } from "../../src/ui/toast";
 import { RemotePagePane } from "../../src/workspace/remote-page-pane";
 import { pageHasUnsavedChanges, type PageSession } from "../../src/workspace/page-sync";
 import { renderInPage } from "../helpers/page-editor";
@@ -72,6 +74,7 @@ async function mountPage(request: (url: string, init?: RequestInit) => Promise<R
             session = current;
           }}
         />
+        <Toaster />
       </QueryClientProvider>
     </RouterContextProvider>,
   );
@@ -98,13 +101,10 @@ async function savePage() {
   await act(async () => button.click());
 }
 
-test.each([
-  ["visual", page.body_markdown],
-  ["source", "<!-- Keep this note -->"],
-])("a %s page stays editable without history controls or requests", async (mode, body) => {
-  const h = await mountPage(async () => Response.json({ ...page, body_markdown: body }));
+test("a visual page stays editable without history controls or requests", async () => {
+  const h = await mountPage(async () => Response.json(page));
 
-  expect(h.session().store.getSnapshot().mode).toBe(mode);
+  expect(h.session().store.getSnapshot().mode).toBe("visual");
   const buttons = [...document.querySelectorAll("button")];
   expect(buttons.map((button) => button.textContent)).not.toContain("History");
   expect(buttons.map((button) => button.textContent)).not.toContain("Restore this version");
@@ -113,6 +113,71 @@ test.each([
   expect(pageHasUnsavedChanges(h.session())).toBe(true);
   expect(buttons.find((button) => button.textContent === "Save")?.disabled).toBe(false);
   expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/history"))).toBe(false);
+});
+
+test("a page the editor can't show opens read-only, its content left as it was saved", async () => {
+  const h = await mountPage(async () =>
+    Response.json({ ...page, body_markdown: "<!-- Keep this note -->" }),
+  );
+
+  expect(h.session().store.getSnapshot().mode).toBe("source");
+  expect(document.body.textContent).toContain("This page can't be edited here");
+  const names = [...document.querySelectorAll("button")].map((button) => button.textContent);
+  expect(names).not.toContain("Save");
+  expect(names).not.toContain("History");
+  expect(names).not.toContain("Restore this version");
+  expect(names).not.toContain("Markdown");
+  expect(document.querySelector("textarea")).toBeNull();
+  expect(pageHasUnsavedChanges(h.session())).toBe(false);
+  expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/history"))).toBe(false);
+});
+
+test("a rejected saved version leaves the working copy editable and its baseline unchanged", async () => {
+  const h = await mountPage(async () => Response.json(page));
+  const store = h.session().store;
+  const source = store.getSnapshot().committed + "\n\nKeep my changes.";
+  await applySource(h.session(), source);
+  const baseline = h.session().getBaseline();
+
+  await act(async () => {
+    h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
+      ...page,
+      title: "Saved elsewhere",
+      updated_at: "2026-10-07T14:00:00.000Z",
+    });
+    await vi.waitFor(() => expect(document.body.textContent).toContain("A newer version"));
+  });
+
+  const loadSaved = [...document.querySelectorAll("button")].find(
+    (button) => button.textContent === "Load saved version",
+  )!;
+
+  vi.spyOn(govbbPageCodec, "prepare").mockImplementationOnce(() => {
+    throw new Error("Cannot prepare saved version");
+  });
+
+  await act(async () => loadSaved.click());
+
+  expect(store.getSnapshot()).toMatchObject({
+    source,
+    committed: source,
+    dirty: false,
+    valid: true,
+    status: "ready",
+    error: undefined,
+  });
+  expect(h.session().getBaseline()).toEqual(baseline);
+  expect(pageHasUnsavedChanges(h.session())).toBe(true);
+  expect(
+    document.querySelector('[aria-label="Page content"]')?.getAttribute("contenteditable"),
+  ).toBe("true");
+  expect(loadSaved.disabled).toBe(false);
+  expect(document.body.textContent).toContain("The saved version couldn't be opened");
+  expect(document.body.textContent).toContain("Your open copy is unchanged.");
+  expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
+  await act(async () =>
+    document.querySelector<HTMLButtonElement>('[aria-label="Dismiss"]')!.click(),
+  );
 });
 
 test("a page preloaded just now, as its link was pointed at, opens without waiting on the content API", async () => {

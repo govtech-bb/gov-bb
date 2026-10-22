@@ -1,12 +1,11 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { Eye, PencilSimple } from "@phosphor-icons/react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
+import { Eye, PencilSimpleSlash, X } from "@phosphor-icons/react";
 import { EditorComposer } from "../editor";
 import { UndoRedo } from "../editor/react/undo-redo";
 import {
   PageEditor,
   PageSettings,
   PageTitleField,
-  PagePreview,
   readPageMetadata,
   type PageSettingsOptions,
 } from "../pages";
@@ -15,17 +14,13 @@ import { govbbPageEditor } from "../presets/govbb-page";
 import { draftPause, type DraftStore } from "../persistence/draft-store";
 import { Bar } from "../ui/bar";
 import { DocumentBar } from "../ui/document-bar";
+import { EmptyState } from "../ui/empty-state";
 import type { SaveStateProps } from "../ui/save-state";
 import type { LinkPage } from "../ui/link-picker";
 import { SidePanel, useSidePanel } from "../ui/side-panel";
-import { PausedNotice } from "./paused-notice";
-import {
-  DraftEditorBinding,
-  DraftProvider,
-  SourceEditor,
-  useDraft,
-  useDraftSave,
-} from "./source-ui";
+import { SitePreview, type SitePreviewTools } from "./site-preview";
+import type { SitePreviewContext } from "./site-preview-renderer";
+import { DraftEditorBinding, DraftProvider, useDraft, useDraftSave } from "./source-ui";
 
 // The page document's frame: its bar, notices, the canvas the page is written on and the panel of its settings
 
@@ -42,6 +37,7 @@ type PageHost = {
   notice?: ReactNode;
   /** The pages its links can find by title. */
   linkPages?: readonly LinkPage[];
+  previewContext?: SitePreviewContext;
 };
 
 export function PageDraftEditor({
@@ -63,76 +59,95 @@ function PageDraft({
   publish,
   notice,
   linkPages,
+  previewContext,
 }: { active: boolean } & PageHost) {
   const draft = useDraft();
   const save = useDraftSave("page.md", server);
   const [preview, setPreview] = useState(false);
+  const [inlineEditing, setInlineEditing] = useState(false);
+  const writerScrollY = useRef(0);
   const panel = useSidePanel();
 
+  // Unsupported pages stay read-only; no source editor or publication controls are offered.
   if (draft.mode === "source" || !draft.state)
     return active ? (
       <div className={shell}>
         <DocumentBar
           label="Page tools"
           title={<SourceTitle source={draft.committed} />}
-          save={save}
-          publish={publish}
+          save={server}
           notices={notice}
         />
-        <div className="mx-auto max-w-272 px-[clamp(1rem,4vw,3rem)] py-8">
-          <h2 className="text-28 font-semibold">Edit this page in Markdown</h2>
-          <p className="mt-3 mb-4 max-w-[65ch] text-muted">
-            This page contains content the visual editor cannot edit. Its Markdown is preserved, and
-            you can edit and download it here.
-          </p>
-          <SourceEditor inline documentLabel="page" fileName="page.md" />
-        </div>
+        <EmptyState
+          icon={<PencilSimpleSlash />}
+          title="This page can't be edited here"
+          description="It has content the editor doesn't support, such as raw HTML. The saved page stays as it is."
+        />
       </div>
     ) : null;
 
   const paused = !!draftPause(draft);
 
+  // Reuse the document bar in preview without exposing inactive writer controls.
+  const controls = (tools?: SitePreviewTools) => (
+    <DocumentBar
+      label="Page tools"
+      hidden={!active}
+      title={<PageTitle />}
+      heading={!tools}
+      save={save}
+      undo={
+        tools ? (
+          <>
+            {inlineEditing && <UndoRedo />}
+            {tools.edit}
+          </>
+        ) : (
+          <UndoRedo />
+        )
+      }
+      preview={
+        <>
+          <Bar.Tool
+            data-site-preview-trigger=""
+            icon={tools ? <X /> : <Eye />}
+            label={tools ? "Close preview" : "Preview page"}
+            disabled={!tools && paused}
+            onClick={() => {
+              // Capture before unmounting the writer; a preview retry must not replace this position.
+              if (!preview) writerScrollY.current = window.scrollY;
+              setInlineEditing(false);
+              setPreview((value) => !value);
+            }}
+          />
+          {tools?.about}
+        </>
+      }
+      publish={publish}
+      settings={!tools && <SidePanel.Toggle panel={panel} label="Page settings" />}
+      notices={notice}
+    />
+  );
+
   return (
     <EditorComposer
       definition={govbbPageEditor}
       initialState={draft.state}
-      readOnly={preview || !active}
+      readOnly={!active || (preview && !inlineEditing)}
       linkPages={linkPages}
     >
       <DraftEditorBinding />
       <div className={shell}>
-        <DocumentBar
-          label="Page tools"
-          hidden={!active}
-          title={<PageTitle />}
-          save={save}
-          undo={<UndoRedo />}
-          preview={
-            <Bar.Tool
-              icon={preview ? <PencilSimple /> : <Eye />}
-              label={preview ? "Back to editing" : "Preview page"}
-              disabled={paused}
-              onClick={() => setPreview((value) => !value)}
-            />
-          }
-          source={active && <SourceEditor documentLabel="page" fileName="page.md" />}
-          publish={publish}
-          settings={<SidePanel.Toggle panel={panel} label="Page settings" disabled={preview} />}
-          notices={
-            <>
-              {notice}
-              <PausedNotice documentLabel="page" />
-            </>
-          }
-        />
+        {!preview && controls()}
         <div className="flex flex-1">
           <div className="min-w-0 flex-1">
             <div className="mx-auto w-[min(100%,59rem)] ps-[clamp(4.75rem,7vw,6.5rem)] pe-[clamp(2rem,4vw,4rem)] pt-[clamp(2.5rem,5vw,4.5rem)] pb-28 max-md:ps-18 max-md:pe-5 max-md:pt-8">
-              <div hidden={preview} inert={paused || preview} className="page-document-writing">
-                <PageTitleField error={settings?.errors?.title} />
-                <PageEditor label="Page content" />
-              </div>
-              {preview && <PagePreviewSurface source={draft.committed} />}
+              {!preview && (
+                <div inert={paused} className="page-document-writing">
+                  <PageTitleField error={settings?.errors?.title} />
+                  <PageEditor label="Page content" />
+                </div>
+              )}
             </div>
           </div>
           {active && !preview && (
@@ -142,6 +157,17 @@ function PageDraft({
           )}
         </div>
       </div>
+      {preview && active && (
+        <SitePreview
+          source={draft.committed}
+          context={previewContext}
+          editing={inlineEditing}
+          paused={paused}
+          onEditingChange={setInlineEditing}
+          controls={controls}
+          writerScrollY={writerScrollY.current}
+        />
+      )}
     </EditorComposer>
   );
 }
@@ -151,25 +177,7 @@ function PageTitle() {
   return usePageMetadata().metadata.title || "Untitled page";
 }
 
-/** The title of a page that can only be edited as Markdown, read from its frontmatter. */
+/** Reads an unsupported page's title without mounting the visual editor. */
 function SourceTitle({ source }: { source: string }) {
   return useMemo(() => readPageMetadata(source).title, [source]) || "Untitled page";
-}
-
-/** A read-only page preview whose links do not navigate away from the editor. */
-export function PagePreviewSurface({ source }: { source: string }) {
-  return (
-    <div
-      className="page-document-preview"
-      onClickCapture={(event) => {
-        if (event.target instanceof Element && event.target.closest("a")) event.preventDefault();
-      }}
-      onKeyDownCapture={(event) => {
-        if (event.key === "Enter" && event.target instanceof Element && event.target.closest("a"))
-          event.preventDefault();
-      }}
-    >
-      <PagePreview source={source} definition={govbbPageEditor} />
-    </div>
-  );
 }

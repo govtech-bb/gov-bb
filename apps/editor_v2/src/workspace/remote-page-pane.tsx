@@ -3,7 +3,13 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ApiFailure, type ApiPage, type EditorApi, type TaxonomyCategory } from "../api/client";
 import { pageToMarkdown, pickerCategories, pageFieldLabel } from "../api/page-markdown";
-import { PRELOAD_FRESH, pageQuery, servicesQuery, taxonomyQuery } from "../api/queries";
+import {
+  PRELOAD_FRESH,
+  pageQuery,
+  serviceQuery,
+  servicesQuery,
+  taxonomyQuery,
+} from "../api/queries";
 import { PageDraftEditor } from "../host/page-editor";
 import { download } from "../host/source-ui";
 import { readPageMetadata } from "../pages";
@@ -14,6 +20,7 @@ import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
 import { LoadingState } from "../ui/loading-state";
 import type { SaveStateProps } from "../ui/save-state";
+import { toast } from "../ui/toast";
 import { EditorSessionProvider } from "../editor/react/composer";
 import type { DocumentSessions } from "./document-views";
 import { savePageDraft, type PageSession, type ServerPageBaseline } from "./page-sync";
@@ -127,6 +134,40 @@ function RemotePageEditor({
   // Links find the site's services by name; the content API lists their entry pages
   const services = useQuery(servicesQuery(api)).data;
 
+  const service = services?.find(
+    (item) => server.id === item.id || server.url.startsWith(`${item.url}/`),
+  );
+
+  const servicePages = useQuery({
+    ...serviceQuery(api, service?.id ?? ""),
+    enabled: !!service,
+  }).data;
+
+  const previewContext = useMemo(() => {
+    const path = readPageMetadata(draft.committed).url ?? server.url;
+    const breadcrumbs = [{ label: "Home", href: "/" }];
+    const parts = path.split("/").filter(Boolean);
+
+    for (let index = 1; index < parts.length; index++) {
+      const href = `/${parts.slice(0, index).join("/")}`;
+      const category = categories.find((item) => item.url === href);
+      const page = servicePages?.pages.find((item) => item.url === href);
+
+      const label =
+        category?.title ??
+        page?.title ??
+        (href === service?.url
+          ? service.title
+          : href === `/${service?.category.slug}`
+            ? service?.category.title
+            : undefined);
+
+      if (label) breadcrumbs.push({ label, href });
+    }
+
+    return { breadcrumbs, publishedAt: server.published_at };
+  }, [draft.committed, server.url, server.published_at, categories, service, servicePages]);
+
   const linkPages = useMemo(
     () => services?.map((service) => ({ title: service.title, url: service.url })),
     [services],
@@ -190,6 +231,14 @@ function RemotePageEditor({
     store.edit(markdown);
 
     if (store.apply()) rebase({ page: server, markdown });
+    else {
+      // Discard the rejected source so the existing working copy remains editable.
+      store.discard();
+      toast("The saved version couldn't be opened", {
+        tone: "error",
+        description: "Your open copy is unchanged.",
+      });
+    }
   };
 
   const newerVersion = "A newer version of this page has been saved since you opened it.";
@@ -340,6 +389,7 @@ function RemotePageEditor({
         )
       }
       linkPages={linkPages}
+      previewContext={previewContext}
       settings={{
         ...(server.parent_id === null && {
           categories: pickerCategories(categories),
