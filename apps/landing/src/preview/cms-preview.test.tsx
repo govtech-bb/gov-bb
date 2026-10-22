@@ -81,6 +81,41 @@ describe('fresh CMS site preview', () => {
     ).not.toBeNull()
   })
 
+  it('namespaces navigation IDs separately from the independently bundled CMS', async () => {
+    const { container } = await mount()
+    const navigation = container.querySelector('header nav')!
+    const menu = container.querySelector('header button[aria-controls]')!
+
+    expect(navigation.id).toContain('cms-preview-')
+    expect(menu.getAttribute('aria-controls')).toBe(navigation.id)
+    expect(document.getElementById(navigation.id)).toBe(navigation)
+  })
+
+  it.each([
+    { source_url: '' },
+    { stage: 'beta' },
+    { service_type: 'other' },
+    { keywords: [''] },
+  ])(
+    'renders API-valid metadata without changing the source: %j',
+    async (metadata) => {
+      const snapshot = {
+        ...page,
+        frontmatter: { title: 'API page', ...metadata },
+        body: 'Supported page content.',
+      }
+      const original = structuredClone(snapshot.frontmatter)
+      const { container } = await mount(snapshot)
+
+      expect(container.querySelector('h1')?.textContent).toBe('API page')
+      expect(container.querySelector('.govbb-prose')?.textContent).toBe(
+        'Supported page content.',
+      )
+      expect(container.textContent).not.toContain('View the original source')
+      expect(snapshot.frontmatter).toEqual(original)
+    },
+  )
+
   it('keeps the complete metadata and normal reader transformations', async () => {
     const { container } = await mount({
       ...page,

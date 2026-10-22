@@ -43,7 +43,13 @@ let current = {
   visibility: "public",
   form_id: metadata.form_id ?? null,
   body_markdown: bodyMarkdown,
-  frontmatter: metadata.lede ? { lede: metadata.lede } : {},
+  frontmatter: {
+    ...(metadata.lede ? { lede: metadata.lede } : {}),
+    source_url: "",
+    stage: "beta",
+    service_type: "other",
+    keywords: [""],
+  },
   published_at: "2026-01-13T12:00:00.000Z",
   created_at: "2026-01-13T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
@@ -152,6 +158,20 @@ try {
   await page.locator("[data-cms-site-preview] .govbb-prose").waitFor();
   assert.equal(page.url(), url.href, "preview never redirects to landing");
   assert.equal(await page.locator("iframe").count(), 0);
+  // The built renderer has its own React runtime; its IDs must not collide with the retained CMS.
+  assert.equal(
+    await page.locator("[data-cms-site-preview] header button[aria-controls]").evaluate((menu) => {
+      const id = menu.getAttribute("aria-controls");
+      const navigation = document.getElementById(id);
+
+      return (
+        document.querySelectorAll(`[id="${id}"]`).length === 1 &&
+        navigation === menu.closest("header").querySelector("nav")
+      );
+    }),
+    true,
+    "public menu controls the preview navigation, never a CMS element",
+  );
   assert.equal(
     await page
       .locator("[data-document-bar]:visible")

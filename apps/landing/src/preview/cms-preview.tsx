@@ -40,6 +40,13 @@ type PreparedPreview = {
   document: CmsPreviewDocument
 }
 
+// Unused API metadata need not pass static-content authoring rules.
+const PreviewFrontmatterSchema = FrontmatterSchema.omit({
+  stage: true,
+  service_type: true,
+  keywords: true,
+})
+
 // The public renderer accepts HTML. A preview runs beside CMS credentials, so it
 // must refuse executable/embedded markup even if a caller bypasses the writer's gate.
 function assertPreviewMarkup(nodes: RootContent[]) {
@@ -79,7 +86,13 @@ function assertPreviewMarkup(nodes: RootContent[]) {
 export async function prepareCmsPreview(
   document: CmsPreviewDocument,
 ): Promise<PreparedPreview> {
-  const metadata = FrontmatterSchema.parse(document.frontmatter)
+  const metadata = PreviewFrontmatterSchema.parse({
+    ...document.frontmatter,
+    source_url:
+      document.frontmatter.source_url === ''
+        ? undefined
+        : document.frontmatter.source_url,
+  })
   if (metadata.source_url && !/^https?:\/\//i.test(metadata.source_url))
     throw new Error('Site preview source URL must use HTTP or HTTPS.')
   const frontmatter: Frontmatter = {
@@ -213,7 +226,7 @@ export async function mountCmsPreview(
     routeTree: rootRoute.addChildren([content]),
     history: createMemoryHistory({ initialEntries: [initial.path] }),
   })
-  const root = createRoot(container)
+  const root = createRoot(container, { identifierPrefix: 'cms-preview-' })
   let revision = 0
   let disposed = false
   let page: PreparedPreview
