@@ -43,7 +43,8 @@ export interface ChangedRecipe {
 }
 
 /**
- * The flat recipes changed (added or modified) under the mode in `argv` in the
+ * The flat recipes changed (added or modified — a rename lists as an add, so
+ * a renamed-and-edited recipe is still checked) under the mode in `argv` in the
  * repository at `cwd`, and the base revision they are compared against.
  * Throws on a usage error or a base it cannot resolve.
  */
@@ -86,6 +87,7 @@ export function changedRecipes(
             "diff",
             "--cached",
             "--name-only",
+            "--no-renames",
             "--diff-filter=AM",
             "--",
             RECIPES_DIR,
@@ -105,6 +107,7 @@ export function changedRecipes(
     files = git([
       "diff",
       "--name-only",
+      "--no-renames",
       "--diff-filter=AM",
       baseRev,
       "--",
