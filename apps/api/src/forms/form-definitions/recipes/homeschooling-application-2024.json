@@ -319,9 +319,9 @@
         {
           "ref": "components/generic-file",
           "overrides": {
-            "label": "Curriculum (if not following National Curriculum)",
+            "label": "Curriculum you will follow",
             "fieldId": "curriculum-attachment",
-            "hint": "Please attach the curriculum you will be following if you are not following the National Curriculum",
+            "hint": "Upload a copy of the curriculum",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
@@ -450,5 +450,5 @@
     }
   ],
   "createdAt": "2026-06-03T00:00:00.000Z",
-  "updatedAt": "2026-10-15T00:30:30.000Z"
+  "updatedAt": "2026-10-22T12:04:56.000Z"
 }
