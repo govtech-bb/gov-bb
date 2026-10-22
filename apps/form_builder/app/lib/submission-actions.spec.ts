@@ -27,8 +27,12 @@ describe("submissionActionSummary — webhook", () => {
     ).toBe("Programme passport-renewal");
   });
 
-  it("asks for a programme code when it is blank", () => {
+  it("asks for a programme code when it is blank or whitespace", () => {
     expect(webhook({ mapping: { programmeCode: "" } })).toEqual({
+      title: "Send to Case Management System (CaMS)",
+      description: "Enter a programme code",
+    });
+    expect(webhook({ mapping: { programmeCode: "  " } })).toEqual({
       title: "Send to Case Management System (CaMS)",
       description: "Enter a programme code",
     });

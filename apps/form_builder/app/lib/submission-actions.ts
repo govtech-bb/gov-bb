@@ -51,7 +51,8 @@ export function submissionActionSummary(
           }
         | undefined;
       if (mapping) {
-        const { programmeCode, mdaCode, programmeShortCode } = mapping;
+        const { mdaCode, programmeShortCode } = mapping;
+        const programmeCode = mapping.programmeCode?.trim();
         return {
           title: "Send to Case Management System (CaMS)",
           description: programmeCode

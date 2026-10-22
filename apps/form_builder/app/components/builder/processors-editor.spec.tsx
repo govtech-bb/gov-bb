@@ -988,9 +988,19 @@ const CAMS_FIELDS: ResolvedFieldId[] = [
   },
 ];
 
+const CAMS_STEPS: RecipeDraft["steps"] = [
+  ["applicant", "Applicant"],
+  ["contact", "Contact"],
+  ["about", "About this service"],
+  ["check-your-answers", "Check your answers"],
+  ["declaration", "Declaration"],
+  ["submission-confirmation", "Confirmation"],
+].map(([stepId, title]) => ({ stepId, title, fields: [], behaviours: [] }));
+
 function camsDraft(extra: Partial<RecipeDraft> = {}): RecipeDraft {
   return {
     ...emptyDraft,
+    steps: CAMS_STEPS,
     mdaContactId: "11111111-1111-4111-8111-111111111111",
     processors: [
       {
@@ -1049,6 +1059,24 @@ it("uppercases the MDA code and removes it when emptied", async () => {
   expect(mapping()).not.toHaveProperty("mdaCode");
 });
 
+it("keeps only letters in the reference codes and flags a code that is too short", async () => {
+  render(<Harness initial={camsDraft()} fields={CAMS_FIELDS} />);
+  const mda = screen.getByLabelText(/^MDA code/i);
+  await userEvent.type(mda, "m-o1");
+  expect(mapping().mdaCode).toBe("MO");
+  expect(mda).toHaveAttribute("aria-invalid", "true");
+  expect(screen.getByText(/3 or 4 letters/i)).toHaveAttribute("role", "alert");
+  await userEvent.type(mda, "h");
+  expect(mapping().mdaCode).toBe("MOH");
+  expect(mda).not.toHaveAttribute("aria-invalid");
+  expect(screen.queryByText(/3 or 4 letters/i)).not.toBeInTheDocument();
+
+  const short = screen.getByLabelText(/^programme short code/i);
+  await userEvent.type(short, "r1");
+  expect(mapping().programmeShortCode).toBe("R");
+  expect(short).toHaveAttribute("aria-invalid", "true");
+});
+
 it("writes applicant name as an ordered first/last list, and phone and email paths", async () => {
   render(<Harness initial={camsDraft()} fields={CAMS_FIELDS} />);
   await chooseOption(
@@ -1073,6 +1101,80 @@ it("writes applicant name as an ordered first/last list, and phone and email pat
     email: "contact.email",
     phone: "contact.phone",
   });
+});
+
+it("never saves a blank first-name path when only a last name is picked", async () => {
+  render(<Harness initial={camsDraft()} fields={CAMS_FIELDS} />);
+  await chooseOption(
+    screen.getByLabelText(/applicant last name/i),
+    /\(applicant\.last-name\)$/,
+  );
+  expect(mapping().applicant).toMatchObject({ name: ["applicant.last-name"] });
+});
+
+it("offers contact-number and mobile fields in the CaMS phone picker", async () => {
+  const fields: ResolvedFieldId[] = [
+    ...CAMS_FIELDS,
+    {
+      fieldId: "applicant-contact-number",
+      editorFieldId: "e6",
+      stepId: "contact",
+      stepTitle: "Contact",
+      display: "Contact number",
+      isBoolean: false,
+      isNumeric: false,
+    },
+    {
+      fieldId: "mob",
+      editorFieldId: "e7",
+      stepId: "contact",
+      stepTitle: "Contact",
+      display: "Mobile",
+      isBoolean: false,
+      isNumeric: false,
+    },
+  ];
+  render(<Harness initial={camsDraft()} fields={fields} />);
+  const options = within(
+    await openSelect(screen.getByLabelText(/applicant phone/i)),
+  );
+  expect(
+    options.getByRole("option", {
+      name: "Contact number (contact.applicant-contact-number)",
+    }),
+  ).toBeInTheDocument();
+  expect(
+    options.getByRole("option", { name: "Mobile (contact.mob)" }),
+  ).toBeInTheDocument();
+  expect(
+    options.queryByRole("option", { name: /First name/ }),
+  ).not.toBeInTheDocument();
+});
+
+it("lists every draft step by title for exclusion, including content-only steps", () => {
+  render(<Harness initial={camsDraft()} fields={CAMS_FIELDS} />);
+  expect(
+    screen.getByRole("checkbox", { name: "About this service (about)" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("checkbox", { name: "Declaration (declaration)" }),
+  ).toBeInTheDocument();
+});
+
+it("edits a CaMS mapping that leaves out the defaulted excludeSteps and groupByStep", async () => {
+  const draft = camsDraft();
+  const config = draft.processors![0].config as {
+    mapping: Record<string, unknown>;
+  };
+  delete config.mapping.excludeSteps;
+  delete config.mapping.groupByStep;
+  render(<Harness initial={draft} fields={CAMS_FIELDS} />);
+  const group = screen.getByRole("checkbox", { name: /group answers/i });
+  expect(group).not.toBeChecked();
+  await userEvent.click(screen.getByRole("checkbox", { name: /declaration/i }));
+  expect(mapping().excludeSteps).toEqual(["declaration"]);
+  await userEvent.click(group);
+  expect(mapping().groupByStep).toBe(true);
 });
 
 it("toggles a step in the CaMS excluded steps", async () => {

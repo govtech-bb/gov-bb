@@ -3,16 +3,19 @@ import { Select } from "../ui/select";
 import { Input } from "../ui/input";
 import type {
   RecipeProcessorDraft,
+  RecipeStepDraft,
   ResolvedFieldId,
 } from "@govtech-bb/form-builder";
 import { ValuePathPicker } from "./value-path-picker";
 import { KeyValueEditor } from "./key-value-editor";
 import { AmountEditor } from "./amount-editor";
-import { REQUIRED_STEP_IDS } from "./recipe-reducer";
 
 interface ProcessorConfigFormProps {
   processor: RecipeProcessorDraft;
   fields: ResolvedFieldId[];
+  // The draft's steps, so a CaMS webhook can offer every step (including
+  // content-only ones with no fields) for exclusion by title.
+  steps: Pick<RecipeStepDraft, "stepId" | "title">[];
   // Receives the FULL replacement config. Each handler spreads the existing
   // config first, so unrendered keys (notably webhook `secret`) survive.
   onConfigChange: (config: Record<string, unknown>) => void;
@@ -48,9 +51,20 @@ function fieldMatches(field: ResolvedFieldId, keyword: string): boolean {
   );
 }
 
+// Phone-like fields go by several names in existing recipes
+// (`contact-number`, `mobile-telephone`, "Telephone number"), so the CaMS
+// phone picker matches any of them rather than just "phone".
+const PHONE_KEYWORDS = ["phone", "mobile", "contact-number", "contact number"];
+
+// A CaMS reference segment (MDA code / programme short code), as
+// `referenceSegment` in form-types' processor.type.ts requires.
+const REFERENCE_SEGMENT = /^[A-Z]{3,4}$/;
+const REFERENCE_SEGMENT_ERROR = "Enter 3 or 4 letters, for example MOH";
+
 export function ProcessorConfigForm({
   processor,
   fields,
+  steps,
   onConfigChange,
   hasContactEmail = false,
 }: ProcessorConfigFormProps) {
@@ -147,17 +161,22 @@ export function ProcessorConfigForm({
       // address and API key resolve per-MDA, so it gets its own fields and
       // never the URL/auth/timeout ones (#2684).
       if (config.mapping) {
+        // `excludeSteps` and `groupByStep` are zod `.default(...)`s, and the
+        // builder loads recipes unparsed, so either can be absent here.
         const mapping = config.mapping;
+        const excludeSteps = mapping.excludeSteps ?? [];
         const setMapping = (patch: Partial<typeof mapping>) =>
           onConfigChange({ ...config, mapping: { ...mapping, ...patch } });
-        // Reference segments are optional 3-4 capital letters: uppercase as
-        // typed and drop the key when emptied rather than persisting "".
+        // Reference segments are optional 3-4 capital letters: keep only
+        // letters, uppercased, and drop the key when emptied rather than
+        // persisting "".
         const setSegment = (
           key: "mdaCode" | "programmeShortCode",
-          value: string,
+          raw: string,
         ) => {
+          const value = raw.toUpperCase().replace(/[^A-Z]/g, "");
           const next = { ...mapping };
-          if (value) next[key] = value.toUpperCase();
+          if (value) next[key] = value;
           else delete next[key];
           onConfigChange({ ...config, mapping: next });
         };
@@ -168,19 +187,19 @@ export function ProcessorConfigForm({
           setMapping({
             applicant: {
               ...mapping.applicant,
-              name: last ? [first, last] : first ? [first] : [],
+              name: [first, last].filter(Boolean),
             },
           });
         // Every step the author could exclude, keeping any already-excluded id
         // that no longer matches a step so it is never silently dropped.
-        const stepTitles = new Map(fields.map((f) => [f.stepId, f.stepTitle]));
-        const stepIds = [
-          ...new Set([
-            ...stepTitles.keys(),
-            ...REQUIRED_STEP_IDS,
-            ...mapping.excludeSteps,
-          ]),
-        ];
+        const stepTitles = new Map(steps.map((s) => [s.stepId, s.title]));
+        const stepIds = [...new Set([...stepTitles.keys(), ...excludeSteps])];
+        const segmentError = (value: string | undefined) =>
+          value && !REFERENCE_SEGMENT.test(value)
+            ? REFERENCE_SEGMENT_ERROR
+            : "";
+        const mdaCodeError = segmentError(mapping.mdaCode);
+        const shortCodeError = segmentError(mapping.programmeShortCode);
         return (
           <>
             <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
@@ -205,10 +224,22 @@ export function ProcessorConfigForm({
                 type="text"
                 maxLength={4}
                 aria-describedby={fid("mdaCode-hint")}
+                aria-invalid={mdaCodeError ? true : undefined}
                 value={mapping.mdaCode ?? ""}
                 onChange={(e) => setSegment("mdaCode", e.target.value)}
                 className="w-full min-w-0"
               />
+              {mdaCodeError && (
+                <span
+                  role="alert"
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "var(--ui-danger-text)",
+                  }}
+                >
+                  {mdaCodeError}
+                </span>
+              )}
             </div>
 
             <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
@@ -219,12 +250,24 @@ export function ProcessorConfigForm({
                 id={fid("programmeShortCode")}
                 type="text"
                 maxLength={4}
+                aria-invalid={shortCodeError ? true : undefined}
                 value={mapping.programmeShortCode ?? ""}
                 onChange={(e) =>
                   setSegment("programmeShortCode", e.target.value)
                 }
                 className="w-full min-w-0"
               />
+              {shortCodeError && (
+                <span
+                  role="alert"
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "var(--ui-danger-text)",
+                  }}
+                >
+                  {shortCodeError}
+                </span>
+              )}
             </div>
 
             <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
@@ -268,7 +311,9 @@ export function ProcessorConfigForm({
               <ValuePathPicker
                 id={fid("applicantPhone")}
                 value={mapping.applicant.phone}
-                fields={fields.filter((f) => fieldMatches(f, "phone"))}
+                fields={fields.filter((f) =>
+                  PHONE_KEYWORDS.some((k) => fieldMatches(f, k)),
+                )}
                 onChange={(phone) =>
                   setMapping({ applicant: { ...mapping.applicant, phone } })
                 }
@@ -285,12 +330,12 @@ export function ProcessorConfigForm({
                   <Checkbox
                     key={stepId}
                     id={fid(`excludeStep-${stepId}`)}
-                    checked={mapping.excludeSteps.includes(stepId)}
+                    checked={excludeSteps.includes(stepId)}
                     onCheckedChange={(checked) =>
                       setMapping({
                         excludeSteps: checked
-                          ? [...mapping.excludeSteps, stepId]
-                          : mapping.excludeSteps.filter((s) => s !== stepId),
+                          ? [...excludeSteps, stepId]
+                          : excludeSteps.filter((s) => s !== stepId),
                       })
                     }
                     label={title ? `${title} (${stepId})` : stepId}
@@ -302,7 +347,7 @@ export function ProcessorConfigForm({
             <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
               <Checkbox
                 id={fid("groupByStep")}
-                checked={mapping.groupByStep}
+                checked={mapping.groupByStep ?? false}
                 onCheckedChange={(groupByStep) => setMapping({ groupByStep })}
                 label="Group answers by step"
               />
@@ -310,7 +355,9 @@ export function ProcessorConfigForm({
 
             <p className="text-sm text-ui-subtle">
               The address and API key come from this form's MDA contact — you
-              don't enter them here.
+              don't enter them here. That contact must also be set up for CaMS
+              delivery by the platform team, so check with them before you
+              deploy.
             </p>
           </>
         );
