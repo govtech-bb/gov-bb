@@ -12,7 +12,6 @@ import { EmptyState } from "../ui/empty-state";
 import { Select, type SelectItem } from "../ui/select";
 import { StatusDot } from "../ui/status-dot";
 import { TextLink } from "../ui/text-link";
-import { Search } from "../ui/table/table-components";
 import {
   createAppColumnHelper,
   useAppTable,
@@ -153,7 +152,7 @@ function ServiceFilters({ categories }: { categories: readonly string[] }) {
       aria-label="Filter services"
       className="flex flex-wrap items-center gap-2 border-b border-line p-3 @xl:px-4"
     >
-      <Search
+      <table.Search
         ref={searchBox}
         label="Search title or URL"
         placeholder="Search title or URL"

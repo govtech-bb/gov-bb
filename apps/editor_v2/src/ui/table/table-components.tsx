@@ -262,15 +262,7 @@ export function DataTable({
             <tr className="border-t border-line">
               <td colSpan={columns.length}>
                 {filters.filtered ? (
-                  <EmptyState
-                    kind="not-found"
-                    title="Nothing matches these filters"
-                    actions={
-                      <Button variant="secondary" onClick={filters.clear}>
-                        Clear filters
-                      </Button>
-                    }
-                  />
+                  <EmptyState kind="not-found" title="Nothing matches these filters" />
                 ) : (
                   <EmptyState {...empty} />
                 )}

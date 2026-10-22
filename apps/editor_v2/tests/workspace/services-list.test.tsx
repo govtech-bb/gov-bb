@@ -198,16 +198,25 @@ test("each change shows at once and gives the address the new place; a new searc
   });
 });
 
-test("Clear filters clears the search words with the filters", async () => {
+test("with no matches, one Clear filters button clears the list and returns focus to search", async () => {
   const onSearch = vi.fn();
 
   await show(listed(thirty, { q: "hotel", status: ["draft"] }, { onSearch }));
   expect(host.textContent).toContain("Nothing matches these filters");
 
-  await act(async () => host.querySelector<HTMLButtonElement>("tbody button")!.click());
+  const clearButtons = [...host.querySelectorAll<HTMLButtonElement>("button")].filter(
+    (item) => item.textContent === "Clear filters",
+  );
+
+  expect(clearButtons).toHaveLength(1);
+  await act(async () => {
+    clearButtons[0]!.focus();
+    clearButtons[0]!.click();
+  });
 
   expect(searchBox().value).toBe("");
   expect(titles()).toHaveLength(25);
+  expect(document.activeElement).toBe(searchBox());
   expect(onSearch).toHaveBeenLastCalledWith({
     page: undefined,
     q: undefined,
