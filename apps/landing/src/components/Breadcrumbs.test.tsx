@@ -67,4 +67,15 @@ describe('Breadcrumbs', () => {
       '/health-and-emergency-services/find-an-open-pharmacy',
     ])
   })
+
+  it('leaves out /government, which only redirects to its index', () => {
+    render(<Breadcrumbs pathname="/government/organisations/customs" />)
+
+    const links = screen.getAllByRole('link')
+    expect(links.map((link) => link.textContent)).toEqual([
+      'Home',
+      'Organisations',
+    ])
+    expect(links[1]?.getAttribute('href')).toBe('/government/organisations')
+  })
 })
