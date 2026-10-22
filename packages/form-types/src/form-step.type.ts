@@ -32,6 +32,13 @@ export const formStepSchema = z.object({
   // an anonymous form (e.g. the exit survey) that issues no meaningful
   // reference, the design shows no ID. Omitted ⇒ the ID is shown as before.
   hideReferenceNumber: z.boolean().optional(),
+  // Retired (#2442): confirmation copy lives in `markdownContent`, which the
+  // serving path renders; `nextSteps` was silently dropped. Reject the dead key
+  // at the schema — not just the file-scan invariant — so DB state, AI drafts
+  // and preview payloads fail loudly instead of quietly losing the copy. The
+  // builder's load path folds any legacy `nextSteps` into `markdownContent`
+  // before this ever parses (see `deserializeRecipe`).
+  nextSteps: z.never().optional(),
 });
 export type FormStep = z.infer<typeof formStepSchema>;
 

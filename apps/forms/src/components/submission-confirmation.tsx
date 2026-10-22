@@ -107,8 +107,9 @@ export default function SubmissionConfirmation({
     ({ value }) => value !== undefined && value !== null && value !== "",
   );
 
-  // Trailing sections (what-happens-next, contact, feedback) are shared by every
-  // successful state — payment or not — and rendered below the lead panel.
+  // Trailing sections (markdown, printed answers, contact, feedback) are shared
+  // by every successful state — payment or not — and rendered below the lead
+  // panel.
   const trailingSections = (
     <>
       {/* The applicant's answers, for the printed copy only (#2587). Built at

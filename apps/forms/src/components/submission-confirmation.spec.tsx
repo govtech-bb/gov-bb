@@ -988,7 +988,10 @@ describe("SubmissionConfirmation — Print button (#2132)", () => {
         stepTitle="Submitted"
         submissionState={baseState}
         markdownContent={"## What happens next\n\nWe review it."}
-        contactDetails={{ email: "help@example.com" }}
+        // A real heading in the audited DOM: markdownContent renders through the
+        // passthrough react-markdown mock (no real <h*>), so the contact block's
+        // title provides the heading the audit needs.
+        contactDetails={{ title: "Help desk", email: "help@example.com" }}
         feedbackUrl="https://survey.example/feedback"
       />,
     );

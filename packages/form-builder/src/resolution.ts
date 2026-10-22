@@ -163,8 +163,7 @@ export function hydrateForm(
         ? { behaviours: recipeStep.behaviours }
         : {}),
       // Recipe-authored markdown (e.g. a confirmation "What you need to know"
-      // section) carried through to the citizen-facing form. Note: `nextSteps`
-      // is intentionally NOT carried — it is unused by the live serving path.
+      // section) carried through to the citizen-facing form.
       ...(recipeStep.markdownContent !== undefined
         ? { markdownContent: recipeStep.markdownContent }
         : {}),

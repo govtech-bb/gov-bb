@@ -31,8 +31,14 @@ export function prepareFormDraft(
   const incoming = deserializeRecipe(parsed as ServiceContractRecipe, catalog);
   const steps = incoming.steps.map((step) => {
     const existing = draft.steps.find((item) => item.stepId === step.stepId);
+    // Keep the author's confirmation copy the assistant didn't re-author:
+    // fall back to the existing step's markdownContent (which the loader has
+    // already folded any legacy `nextSteps` into, #2442) so an AI prepare never
+    // silently drops it.
+    const markdownContent = step.markdownContent ?? existing?.markdownContent;
     return {
       ...step,
+      ...(markdownContent !== undefined ? { markdownContent } : {}),
       conditionalMarkdown: existing?.conditionalMarkdown,
     };
   });

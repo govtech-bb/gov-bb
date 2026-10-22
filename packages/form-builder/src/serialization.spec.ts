@@ -500,6 +500,60 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
     expect(result.steps[0].markdownContent).toBe(md);
   });
 
+  it("folds a legacy nextSteps step into markdownContent on load, and republishes it as markdownContent (#2442)", () => {
+    // Pre-migration builder state: `nextSteps`, no `markdownContent`.
+    const recipe = {
+      formId: "form-001",
+      title: "Test Form",
+      steps: [
+        {
+          stepId: "submission-confirmation",
+          title: "Application submitted",
+          elements: [],
+          behaviours: [],
+          nextSteps: [
+            {
+              title: "What happens next",
+              content: "We will be in touch.",
+              items: ["Check your email", "Keep your reference number"],
+            },
+          ],
+        },
+      ],
+    } as unknown as ServiceContractRecipe;
+
+    const draft = deserializeRecipe(recipe);
+    expect(draft.steps[0].markdownContent).toBe(
+      "## What happens next\n\nWe will be in touch.\n\n- Check your email\n- Keep your reference number",
+    );
+
+    // Republish writes markdownContent, never the retired nextSteps.
+    const republished = serializeRecipeDraft(draft);
+    expect(republished.steps[0].markdownContent).toContain("What happens next");
+    expect(Object.keys(republished.steps[0])).not.toContain("nextSteps");
+  });
+
+  it("prefers an existing markdownContent over a legacy nextSteps (#2442)", () => {
+    const recipe = {
+      formId: "form-001",
+      title: "Test Form",
+      steps: [
+        {
+          stepId: "submission-confirmation",
+          title: "Application submitted",
+          elements: [],
+          behaviours: [],
+          markdownContent: "## Already migrated",
+          nextSteps: [{ title: "Stale", content: "ignore me" }],
+        },
+      ],
+    } as unknown as ServiceContractRecipe;
+
+    expect(deserializeRecipe(recipe).steps[0].markdownContent).toBe(
+      "## Already migrated",
+    );
+  });
+
   it("absent markdownContent on a step is not forwarded (#1292)", () => {
     const draft = makeBaseDraft({
       steps: [

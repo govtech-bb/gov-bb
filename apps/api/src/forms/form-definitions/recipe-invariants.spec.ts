@@ -288,8 +288,11 @@ it("no recipe uses the retired nextSteps field (#2442)", async () => {
   const recipes = await readRecipeFiles();
 
   for (const { file, raw } of recipes) {
-    for (const step of (raw as { steps: (Step & { nextSteps?: unknown })[] })
-      .steps) {
+    // Read steps defensively: a malformed recipe (no steps array) is the
+    // "every recipe file parses" test's job to report, not ours to throw on.
+    const steps = (raw as { steps?: unknown }).steps;
+    if (!Array.isArray(steps)) continue;
+    for (const step of steps as (Step & { nextSteps?: unknown })[]) {
       if (step.nextSteps !== undefined) {
         problems.push(
           `${file}: step "${step.stepId}" has the retired nextSteps field — author confirmation copy in markdownContent instead`,
