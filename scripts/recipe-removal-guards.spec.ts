@@ -117,6 +117,23 @@ describe("checkRemovals", () => {
     ]);
   });
 
+  it("reports a catchmentRouting that loses one of its fields", () => {
+    const routing = (catchmentRouting: object) =>
+      recipe([], [], { catchmentRouting });
+    const both = {
+      coordinatesField: "details.address-coordinates",
+      parishField: "details.parish",
+    };
+    expect(
+      checkRemovals(
+        FILE,
+        routing(both),
+        routing({ parishField: "details.parish" }),
+      ),
+    ).toEqual([expect.stringContaining("catchment routing")]);
+    expect(checkRemovals(FILE, routing(both), routing(both))).toEqual([]);
+  });
+
   it("reports geocodeTargets that lose some of their keys", () => {
     const targets = (geocodeTargets: object) =>
       recipe(

@@ -5,7 +5,8 @@
  * revision, and only a drop is reported; an addition or a reshuffle passes
  * (so does removing one item and adding another in the same category — a
  * known limit). A webhook counts only while its config holds something, and
- * `geocodeTargets` counts its set keys, so emptying either is a drop.
+ * `catchmentRouting` and `geocodeTargets` count their set keys, so emptying
+ * any of them, or dropping one of their fields, is a drop.
  * `geocodeTargets` and address lookups (a `components/address-lookup` ref or
  * an inline `htmlType: "address-lookup"`) are counted anywhere in the recipe,
  * which covers a `blocks/*` ref's per-child override record too.
@@ -13,9 +14,6 @@
  */
 import { classifyRecipientField } from "@govtech-bb/form-types";
 import { isRecord } from "./recipe-content";
-
-const nonEmptyRecord = (value: unknown) =>
-  isRecord(value) && Object.keys(value).length > 0;
 
 /** True when `value` holds anything but empty strings, arrays and records. */
 const hasContent = (value: unknown): boolean =>
@@ -70,7 +68,10 @@ const CATEGORIES: [string, (recipe: unknown) => number][] = [
   ],
   [
     "catchment routing",
-    (r) => (isRecord(r) && nonEmptyRecord(r.catchmentRouting) ? 1 : 0),
+    (r) =>
+      isRecord(r) && isRecord(r.catchmentRouting)
+        ? Object.values(r.catchmentRouting).filter(hasContent).length
+        : 0,
   ],
   [
     "geocode targets",
