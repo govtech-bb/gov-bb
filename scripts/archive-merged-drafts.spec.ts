@@ -217,6 +217,21 @@ describe("archiveDrafts", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("spaces requests 2 s apart, not before the first", async () => {
+    const sleep = vi.fn(async () => {});
+    await archiveDrafts([{ formId: "first" }, { formId: "second" }], {
+      apiUrl: "https://api.example.com",
+      token: "secret",
+      fetch: vi.fn(
+        async () => new Response(null, { status: 204 }),
+      ) as unknown as typeof fetch,
+      sleep,
+      log: () => {},
+    });
+    expect(sleep).toHaveBeenCalledOnce();
+    expect(sleep).toHaveBeenCalledWith(2000);
+  });
+
   it("calls fetch zero times when there are no entries", async () => {
     const fetchMock = vi.fn();
     await archiveDrafts([], {
@@ -248,15 +263,24 @@ describe("archiveDrafts", () => {
     const tooMany = (headers?: Record<string, string>) =>
       new Response(null, { status: 429, headers });
 
-    it("waits Retry-After seconds and retries the same form", async () => {
+    it("waits the throttler's Retry-After-short seconds and retries the same form", async () => {
       const { result, fetchMock, sleep } = run([
-        tooMany({ "Retry-After": "3" }),
+        tooMany({ "Retry-After-short": "3" }),
         new Response(null, { status: 204 }),
       ]);
       await expect(result).resolves.toEqual([]);
       expect(sleep).toHaveBeenCalledOnce();
       expect(sleep).toHaveBeenCalledWith(3000);
       expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("waits the longest Retry-After* header when several throttlers fire", async () => {
+      const { result, sleep } = run([
+        tooMany({ "Retry-After-short": "3", "Retry-After-medium": "42" }),
+        new Response(null, { status: 204 }),
+      ]);
+      await expect(result).resolves.toEqual([]);
+      expect(sleep).toHaveBeenCalledWith(42000);
     });
 
     it("waits 10 s when there is no Retry-After header", async () => {

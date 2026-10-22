@@ -4,7 +4,9 @@
  * whose content changed.
  *
  * Inputs (env vars set by the workflow):
- *   - GITHUB_EVENT_PATH: path to the push event payload JSON.
+ *   - GITHUB_EVENT_PATH: path to the push event payload JSON, or a manual
+ *                        workflow_dispatch payload whose `before`/`after`
+ *                        inputs replay a past push (e.g. one that hit 429s).
  *   - API_URL:           base URL of the API, from the ARCHIVE_DRAFTS_API_URL
  *                        repo secret (the environment whose DB holds the drafts).
  *   - ARCHIVE_DRAFTS_TOKEN: bearer token for the admin endpoint.
@@ -19,8 +21,9 @@
  *     recipe-content.ts's definition, shared with the updatedAt guard. An
  *     added recipe, or a blob that does not parse, is archived as before.
  *   - POSTs to /admin/drafts/{formId}/archive for each.
- *   - 429 (the API allows 5 requests / 10 s) waits `Retry-After` seconds
- *     (10 when absent) and retries the same form, at most 3 times.
+ *   - Requests are spaced 2 s apart, under the API's 5 requests / 10 s.
+ *   - 429 waits the longest `Retry-After*` header's seconds (10 when absent)
+ *     and retries the same form, at most 3 times.
  *   - 204 / 404 = success. Any other status, or a failed request, is logged,
  *     the remaining forms are still attempted, and the run then exits 1.
  *
@@ -94,6 +97,7 @@ export interface ArchiveDriverDeps {
 
 const MAX_RETRIES = 3;
 const DEFAULT_RETRY_AFTER_S = 10;
+const REQUEST_SPACING_MS = 2_000;
 
 /** A draft the API did not archive, and the status or error that said so. */
 export interface ArchiveFailure {
@@ -110,7 +114,8 @@ export async function archiveDrafts(
   { apiUrl, token, fetch: fetchFn, log, sleep }: ArchiveDriverDeps,
 ): Promise<ArchiveFailure[]> {
   const failures: ArchiveFailure[] = [];
-  for (const { formId } of entries) {
+  for (const [i, { formId }] of entries.entries()) {
+    if (i > 0) await sleep(REQUEST_SPACING_MS);
     const url = `${apiUrl.replace(/\/+$/, "")}/admin/drafts/${formId}/archive`;
     try {
       let res: Response;
@@ -123,7 +128,13 @@ export async function archiveDrafts(
           },
         });
         if (res.status !== 429 || attempt === MAX_RETRIES) break;
-        const seconds = Number(res.headers.get("Retry-After"));
+        // Named throttlers suffix the header: Retry-After-short / -medium / -long.
+        const seconds = Math.max(
+          0,
+          ...["", "-short", "-medium", "-long"].map(
+            (suffix) => Number(res.headers.get(`Retry-After${suffix}`)) || 0,
+          ),
+        );
         const waitS = seconds > 0 ? seconds : DEFAULT_RETRY_AFTER_S;
         log(`RETRY [429] ${formId} — waiting ${waitS}s`);
         await sleep(waitS * 1000);
@@ -238,12 +249,18 @@ async function main(): Promise<void> {
     before?: string;
     after?: string;
     forced?: boolean;
+    inputs?: { before?: string; after?: string };
   };
-  const before = event.before;
-  const after = event.after;
+  const before = event.before ?? event.inputs?.before;
+  const after = event.after ?? event.inputs?.after;
   if (!before || !after) {
     console.error("Push event lacks before/after SHAs; nothing to do.");
     return;
+  }
+  // Dispatch inputs are typed by hand and reach `git diff` as arguments.
+  if (![before, after].every((sha) => /^[0-9a-f]{7,40}$/i.test(sha))) {
+    console.error("before/after must be commit SHAs.");
+    process.exit(1);
   }
   // First push to a branch reports before === all-zeros; nothing to diff.
   if (/^0+$/.test(before)) {
