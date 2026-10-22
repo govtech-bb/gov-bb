@@ -1,0 +1,43 @@
+---
+kind: department
+slug: welfare
+name: Welfare Department
+keywords:
+  - Welfare
+  - BWD
+  - Social Assistance
+shortDescription: >-
+  Provides professional social work services focused on resolving individual and
+  family problems, poverty alleviation, and support for disabled and
+  disadvantaged populations.
+intro: >-
+  The department provides professional social work services geared towards the
+  resolution of individual and family problems, with key focus areas including
+  personal and social development, poverty alleviation, and support for disabled
+  and disadvantaged populations.
+contact:
+  - label: Email
+    type: email
+    value: welfare.department@barbados.gov.bb
+  - label: Telephone
+    type: phone
+    value: (246) 535-1000
+  - label: Fax
+    type: phone
+    value: (246) 535-1006
+  - label: Address
+    type: address
+    value:
+      - Weymouth Corporate Center
+      - Roebuck St. Bridgetown
+      - St. Michael
+      - 'Barbados, W.I.'
+onlineServices: []
+associatedDepartments: []
+originalSource: 'https://www.gov.bb/Departments/welfare'
+---
+To provide professional social work services geared towards the resolution of individual and family problems.
+
+Enhancement of personal and social development.
+
+Alleviation of poverty Empowerment and rehabilitation of the disabled, the disadvantaged and those affected by the crisis and natural disaster.

@@ -1,0 +1,33 @@
+---
+kind: state-body
+slug: accreditation-council
+name: Barbados Accreditation Council
+keywords:
+  - BAC
+  - Accreditation
+contact:
+  - label: Address
+    type: address
+    value:
+      - First Floor
+      - The Phoenix Centre
+      - George Street
+      - St. Michael
+      - BB11114
+  - label: Telephone
+    type: phone
+    value: (246) 535-6740
+  - label: Fax
+    type: phone
+    value: (246) 622-1089
+  - label: Email
+    type: email
+    value: info@bac.gov.bb
+  - label: Website
+    type: website
+    value: 'https://bac.gov.bb/'
+onlineServices: []
+associatedDepartments: []
+originalSource: 'https://www.gov.bb/State-Bodies/accreditation-council'
+---
+
