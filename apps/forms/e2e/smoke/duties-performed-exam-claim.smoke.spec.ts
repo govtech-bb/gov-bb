@@ -70,8 +70,8 @@ test.describe("Duties Performed Exam Claim — Live Smoke", () => {
     await fillField(page, step, "supervisor", faker.person.fullName());
     await fillField(page, step, "nis-no", faker.string.numeric(9));
     await fillField(page, step, "exam-period", "May/June 2026");
-    await fillField(page, step, "claim-period-from", "2026-05-01");
-    await fillField(page, step, "claim-period-to", "2026-06-30");
+    await fillDate(page, step, "claim-period-from", 1, 5, 2026);
+    await fillDate(page, step, "claim-period-to", 30, 6, 2026);
     await advance(page, step);
 
     // ─── Section B: Duties Performed (repeatable) ────────────────────────────

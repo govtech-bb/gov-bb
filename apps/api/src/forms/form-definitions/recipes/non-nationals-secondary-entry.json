@@ -89,6 +89,7 @@
           "overrides": {
             "label": "Date of Birth of Child",
             "fieldId": "date-of-birth",
+            "hint": "For example, 12 3 2014",
             "validations": {
               "required": {
                 "error": "Date of Birth of Child is required",
@@ -297,6 +298,10 @@
               "required": {
                 "error": "Date is required",
                 "value": true
+              },
+              "pastOrToday": {
+                "error": "Date must be today or in the past",
+                "value": true
               }
             }
           }
@@ -343,6 +348,10 @@
               "required": {
                 "error": "Date is required",
                 "value": true
+              },
+              "pastOrToday": {
+                "error": "Date must be today or in the past",
+                "value": true
               }
             }
           }
@@ -364,5 +373,5 @@
     }
   ],
   "createdAt": "2026-05-28T16:03:10.475Z",
-  "updatedAt": "2026-10-15T00:30:30.000Z"
+  "updatedAt": "2026-10-22T12:04:56.000Z"
 }
