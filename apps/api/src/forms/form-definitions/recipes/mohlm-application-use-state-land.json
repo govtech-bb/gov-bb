@@ -834,7 +834,7 @@
             ],
             "validations": {
               "required": {
-                "error": "You must confirm the declaration to continue",
+                "error": "You must confirm the declaration to continue.",
                 "value": true
               }
             },
@@ -856,5 +856,5 @@
     }
   ],
   "createdAt": "2026-06-16T15:46:40.151Z",
-  "updatedAt": "2026-10-15T10:59:41.000Z"
+  "updatedAt": "2026-10-21T16:52:59.000Z"
 }

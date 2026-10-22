@@ -955,7 +955,7 @@
     },
     {
       "stepId": "declaration",
-      "title": "Your agreement",
+      "title": "Confirm and submit your application",
       "behaviours": [],
       "elements": [
         {
@@ -965,7 +965,7 @@
             "label": "Declaration",
             "validations": {
               "required": {
-                "error": "Confirm that the information you have provided is true and correct to the best of your knowledge.",
+                "error": "You must confirm the declaration to continue.",
                 "value": true
               }
             },
@@ -1031,7 +1031,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:33:15.101Z",
-  "updatedAt": "2026-10-21T12:00:00.000Z",
+  "updatedAt": "2026-10-21T16:52:59.000Z",
   "meta": {
     "visibility": "preview"
   },

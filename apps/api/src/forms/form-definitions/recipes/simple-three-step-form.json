@@ -50,14 +50,14 @@
       ]
     },
     {
-      "title": "Declaration",
+      "title": "Confirm and submit your application",
       "stepId": "declaration",
       "elements": [
         {
           "ref": "components/confirmation",
           "overrides": {
             "label": "Declaration",
-            "fieldId": "confirmation",
+            "fieldId": "declaration-confirmed",
             "options": [
               {
                 "label": "I confirm that the information I have provided is true and correct to the best of my knowledge.",
@@ -66,7 +66,7 @@
             ],
             "validations": {
               "required": {
-                "error": "You must confirm the declaration to continue",
+                "error": "You must confirm the declaration to continue.",
                 "value": true
               }
             }
@@ -84,7 +84,7 @@
   "title": "Simple Three Step Form",
   "formId": "simple-three-step-form",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-06-23T12:44:11.000Z",
+  "updatedAt": "2026-10-09T14:20:00.000Z",
   "processors": [
     {
       "type": "email",

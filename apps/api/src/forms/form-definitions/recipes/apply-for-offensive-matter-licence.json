@@ -526,7 +526,7 @@
             "label": "Agreement",
             "validations": {
               "required": {
-                "error": "Confirm that the information you have provided is true and correct.",
+                "error": "You must confirm the declaration to continue.",
                 "value": true
               }
             },
@@ -592,7 +592,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:13:52.779Z",
-  "updatedAt": "2026-10-21T10:43:44.000Z",
+  "updatedAt": "2026-10-21T16:52:59.000Z",
   "catchmentRouting": {
     "coordinatesField": "operator-address.operator-address-coordinates",
     "parishField": "operator-address.operator-parish"

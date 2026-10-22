@@ -355,7 +355,7 @@ test.describe("Request an Environmental Health Officer — Live Smoke", () => {
     expectStep(page, "declaration");
     await page
       .getByRole("checkbox", {
-        name: /I confirm that my information is correct/,
+        name: /I confirm that the information I have provided is true and correct/,
       })
       .check();
     await page
@@ -436,7 +436,7 @@ test.describe("Request an Environmental Health Officer — Live Smoke", () => {
     ).toBeHidden();
     await page
       .getByRole("checkbox", {
-        name: /I confirm that my information is correct/,
+        name: /I confirm that the information I have provided is true and correct/,
       })
       .check();
     await page

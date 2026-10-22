@@ -445,7 +445,7 @@ async function checkAndSubmit(
   await advance(page, cya);
 
   const step = expectStep(page, "declaration");
-  await expect(page.locator("h1")).toContainText("Your agreement");
+  await expect(page.locator("h1")).toContainText("Confirm and submit");
   await page
     .locator(`fieldset[id="${step}_declaration-confirmed"]`)
     .getByRole("checkbox")
