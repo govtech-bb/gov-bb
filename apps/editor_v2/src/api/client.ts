@@ -1,3 +1,15 @@
+import {
+  categoriesFrom,
+  categoryProblems,
+  categoryUrl,
+  deleteBlocker,
+  movedOrder,
+  reordered,
+  siblingsOf,
+  withServiceCounts,
+  type Category,
+  type CategoryFields,
+} from "./categories";
 import type { paths } from "./openapi";
 
 type Json<Content> = Content extends { content: { "application/json": infer Body } } ? Body : never;
@@ -83,10 +95,16 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
 
   const read = async <Body>(path: string): Promise<Body> => (await send("GET", path)).json();
 
+  const services = () => read<ServiceSummary[]>("/services");
+
+  const taxonomy = async () =>
+    (await read<{ categories: TaxonomyCategory[] }>("/taxonomy")).categories;
+
   return {
-    services: () => read<ServiceSummary[]>("/services"),
+    services,
     service: (id: string) => read<ServiceDetail>(`/services/${id}`),
-    taxonomy: async () => (await read<{ categories: TaxonomyCategory[] }>("/taxonomy")).categories,
+    taxonomy,
+    ...categoryShell(taxonomy, services),
     version: () => read<EstateVersion>("/version"),
     page: (id: string) => read<ApiPage>(`/pages/${id}`),
     createPage: async (page: CreatePageInput): Promise<ApiPage> =>
@@ -97,5 +115,129 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
       await send("DELETE", `/pages/${id}`);
     },
     landingUrl: (path: string) => (landing ? `${landing}${path}` : undefined),
+  };
+}
+
+/**
+ * Local category preview seeded from real taxonomy, with fresh service counts on each read.
+ * Changes never reach page pickers or the API; the eventual backend contract is still undecided.
+ */
+function categoryShell(
+  taxonomy: () => Promise<TaxonomyCategory[]>,
+  services: () => Promise<ServiceSummary[]>,
+) {
+  let kept: Category[] = [];
+  let loading: Promise<void> | undefined;
+  // The category each slug named when the list loaded: services name theirs by slug
+  let ids: ReadonlyMap<string, string> = new Map();
+
+  // The first read loads the list; a failed one is asked again next time
+  const load = async () => {
+    loading ??= taxonomy().then((entries) => {
+      ids = new Map(entries.map((entry) => [entry.slug, entry.id]));
+      kept = categoriesFrom(entries);
+    });
+
+    try {
+      await loading;
+    } catch (error) {
+      loading = undefined;
+      throw error;
+    }
+  };
+
+  const find = (categories: readonly Category[], id: string) => {
+    const category = categories.find((item) => item.id === id);
+
+    if (!category) throw new ApiFailure(404);
+
+    return category;
+  };
+
+  const checked = (fields: CategoryFields, categories: readonly Category[], id?: string) => {
+    const problems = categoryProblems(fields, categories, id);
+
+    if (problems.length > 0) throw new ApiFailure(422, problems);
+    const parent = categories.find((item) => item.id === fields.parent_id);
+
+    return {
+      title: fields.title.trim(),
+      slug: fields.slug,
+      parent_id: parent?.id ?? null,
+      description: fields.description.trim(),
+      url: categoryUrl(fields.slug, parent),
+    };
+  };
+
+  // With the services filed under each one now, so a count is never older than the services list
+  const counted = async () => {
+    await load();
+    const listed = await services();
+
+    return withServiceCounts(kept, listed, ids);
+  };
+
+  // After the last of its new siblings
+  const endOf = (categories: readonly Category[], parentId: string | null) =>
+    Math.max(-1, ...siblingsOf(categories, parentId).map((item) => item.position)) + 1;
+
+  return {
+    categories: counted,
+    createCategory: async (fields: CategoryFields): Promise<Category> => {
+      await load();
+      const categories = kept;
+      const values = checked(fields, categories);
+
+      const created = {
+        ...values,
+        id: crypto.randomUUID(),
+        position: endOf(categories, values.parent_id),
+        services: 0,
+        serviceCategoryTitle: values.title,
+      };
+
+      kept = [...categories, created];
+
+      return created;
+    },
+    updateCategory: async (id: string, fields: CategoryFields): Promise<Category> => {
+      await load();
+      const categories = kept;
+      const old = find(categories, id);
+      const values = checked(fields, categories, id);
+
+      const updated = {
+        ...old,
+        ...values,
+        position:
+          values.parent_id === old.parent_id ? old.position : endOf(categories, values.parent_id),
+      };
+
+      // A subcategory's address starts with its parent's slug
+      kept = categories.map((item) =>
+        item.id === id
+          ? updated
+          : item.parent_id === id
+            ? { ...item, url: categoryUrl(item.slug, updated) }
+            : item,
+      );
+
+      return updated;
+    },
+    moveCategory: async (id: string, by: -1 | 1) => {
+      await load();
+      const ids = movedOrder(kept, id, by);
+
+      kept = reordered(kept, ids);
+
+      return ids;
+    },
+    deleteCategory: async (id: string) => {
+      const categories = await counted();
+      const blocked = deleteBlocker(find(categories, id), kept);
+
+      if (blocked) throw new ApiFailure(409, [], blocked);
+      kept = kept.filter((item) => item.id !== id);
+    },
   };
 }

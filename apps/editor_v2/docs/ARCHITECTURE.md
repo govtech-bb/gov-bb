@@ -47,6 +47,8 @@ src/ui/table                 shared list table: features and components once; ea
 src/routes                   TanStack routes and server-safe document shell
 ```
 
+`src/api/client.ts` also hosts a temporary, in-memory category preview: it reads real taxonomy and service counts, uses `ApiFailure` for local validation/refusals, and never persists category edits or changes the real taxonomy used by page/service pickers. See [Development](DEVELOPMENT.md#app-shell-and-routes).
+
 The TypeScript boundary checker enforces these dependency boundaries. Generic editor code cannot import forms, presets, the app or persistence. Pure layers cannot reach browser globals or React UI. Form behavior is owned by installed form contributions; it is not selected from a second global catalog.
 
 The app uses TanStack Start in SPA mode. Its root document can render at build time; the client-only workspace owns in-memory document sessions. Route changes reuse clean cached editors. Framework imports stay outside reusable editor/state layers.

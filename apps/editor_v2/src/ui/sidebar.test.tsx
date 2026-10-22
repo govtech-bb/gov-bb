@@ -1,5 +1,6 @@
 /** @vitest-environment jsdom */
-import { act } from "react";
+import { IconContext } from "@phosphor-icons/react";
+import { act, useContext } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { Sidebar, useSidebar } from "./sidebar";
@@ -191,4 +192,87 @@ test("narrowing the window doesn't spring the drawer open over the page", async 
 
   await resize(true);
   expect(nav()?.hidden).toBe(false);
+});
+
+// An icon that shows the weight it's drawn in
+function Mark() {
+  return <svg data-weight={useContext(IconContext).weight} />;
+}
+
+function Sections({ rail = false }: { rail?: boolean }) {
+  const sidebar = useSidebar();
+
+  return (
+    <>
+      <Sidebar.Toggle sidebar={sidebar} icon={<svg data-icon="menu" />}>
+        Open menu
+      </Sidebar.Toggle>
+      <Sidebar.Root sidebar={sidebar} label="Menu" rail={rail}>
+        <Sidebar.Content>
+          <Sidebar.Group label="Content">
+            <Sidebar.Item current icon={<Mark />} render={<a href="#services" />}>
+              Services
+            </Sidebar.Item>
+          </Sidebar.Group>
+          <Sidebar.Group label="Manage">
+            <Sidebar.Item
+              icon={<Mark />}
+              status={<span>Draft</span>}
+              nested={<li>Archived</li>}
+              render={<a href="#categories" />}
+            >
+              Categories
+            </Sidebar.Item>
+          </Sidebar.Group>
+        </Sidebar.Content>
+      </Sidebar.Root>
+    </>
+  );
+}
+
+const anchor = (href: string) => document.querySelector<HTMLAnchorElement>(`a[href="${href}"]`)!;
+
+const weight = (href: string) => anchor(href).querySelector("svg")?.getAttribute("data-weight");
+
+const groupNames = () =>
+  [...host.querySelectorAll("nav > div > div > ul")].map(
+    (list) => document.getElementById(list.getAttribute("aria-labelledby")!)?.textContent,
+  );
+
+test("an item's icon leads its row, filled while the row is current", async () => {
+  await act(async () => root.render(<Sections />));
+
+  expect(weight("#services")).toBe("fill");
+  expect(weight("#categories")).toBe("regular");
+  expect(groupNames()).toEqual(["Content", "Manage"]);
+  expect(anchor("#categories").textContent).toBe("CategoriesDraft");
+});
+
+test("folded to a rail, a row is its icon alone, still named by its words", async () => {
+  await act(async () => root.render(<Sections rail />));
+
+  // The words stay for screen readers, and groups keep their names
+  expect(anchor("#services").getAttribute("aria-current")).toBe("page");
+  expect(anchor("#services").querySelector(".sr-only")?.textContent).toBe("Services");
+  expect(weight("#services")).toBe("fill");
+  expect(groupNames()).toEqual(["Content", "Manage"]);
+  // A status and nested rows need words beside them, so a rail leaves them out
+  expect(host.textContent).not.toContain("Draft");
+  expect(host.textContent).not.toContain("Archived");
+});
+
+test("as a drawer it shows whole rows, even where the column beside the page is a rail", async () => {
+  wide = false;
+  await act(async () => root.render(<Sections rail />));
+
+  const open = [...host.querySelectorAll("button")].find(
+    (button) => button.textContent === "Open menu",
+  )!;
+
+  expect(open.querySelector('[data-icon="menu"]')).not.toBeNull();
+  await act(async () => open.click());
+
+  expect(anchor("#categories").querySelector(".sr-only")).toBeNull();
+  expect(anchor("#categories").textContent).toBe("CategoriesDraft");
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Archived");
 });
