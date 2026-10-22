@@ -5,8 +5,7 @@ import {
   serviceContractRecipeSchema,
   type ServiceContract,
 } from "@govtech-bb/form-types";
-import { BUILTIN_REGISTRY } from "@govtech-bb/registry";
-import { hydrateForm, type Resolver } from "../../registry/resolution";
+import { getCatalog, hydrateForm } from "@govtech-bb/form-builder";
 
 // Each child on the repeatable `child-details` step must answer its own
 // follow-ups (same bug class as #2856). The passport and relationship
@@ -22,16 +21,10 @@ const RECIPE_PATH = path.resolve(
   "recipes/get-a-primary-school-textbook-grant.json",
 );
 
-const resolver: Resolver = async (ref) => {
-  const entry = BUILTIN_REGISTRY[ref as keyof typeof BUILTIN_REGISTRY];
-  if (!entry) throw new Error(`unresolvable ref "${ref}"`);
-  return entry;
-};
-
 async function contract(): Promise<ServiceContract> {
   const raw = JSON.parse(await fs.readFile(RECIPE_PATH, "utf8"));
   const recipe = serviceContractRecipeSchema.parse(raw);
-  return (await hydrateForm(recipe, resolver)) as unknown as ServiceContract;
+  return hydrateForm(recipe, getCatalog()) as unknown as ServiceContract;
 }
 
 /** Per child: which follow-ups are shown and whether the ID is optional. */
