@@ -6,7 +6,7 @@ visibility: preview
 ---
 ![](/images/flag.jpg)
 
-#### THE NATIONAL FLAG
+### THE NATIONAL FLAG
 
 #### 1. Dimensions of the National Flag
 
