@@ -1,4 +1,8 @@
-import { serializeRecipeDraft, deserializeRecipe } from "./serialization";
+import {
+  serializeRecipeDraft,
+  deserializeRecipe,
+  foldLegacyNextSteps,
+} from "./serialization";
 import { getCatalog } from "./catalog";
 import { serviceContractRecipeSchema } from "@govtech-bb/form-types";
 import type {
@@ -552,6 +556,41 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
     expect(deserializeRecipe(recipe).steps[0].markdownContent).toBe(
       "## Already migrated",
     );
+  });
+
+  it("foldLegacyNextSteps rewrites a raw stored row before it is parsed (#2442)", () => {
+    // Guards the server read path (resolveStoredRecipeSource): an old draft row
+    // parsed by draftRecipeSchema would otherwise throw on the retired key.
+    const row = {
+      formId: "form-001",
+      title: "Test Form",
+      steps: [
+        {
+          stepId: "submission-confirmation",
+          title: "Done",
+          elements: [],
+          nextSteps: [
+            { title: "What happens next", content: "We will be in touch." },
+          ],
+        },
+        {
+          stepId: "keep",
+          title: "Keep",
+          elements: [],
+          markdownContent: "## Keep me",
+        },
+      ],
+    };
+
+    const folded = foldLegacyNextSteps(row);
+    expect(folded.steps[0]).not.toHaveProperty("nextSteps");
+    expect(
+      (folded.steps[0] as { markdownContent?: string }).markdownContent,
+    ).toBe("## What happens next\n\nWe will be in touch.");
+    // An existing markdownContent is left untouched.
+    expect(
+      (folded.steps[1] as { markdownContent?: string }).markdownContent,
+    ).toBe("## Keep me");
   });
 
   it("absent markdownContent on a step is not forwarded (#1292)", () => {

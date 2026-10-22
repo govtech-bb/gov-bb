@@ -38,7 +38,12 @@ export const formStepSchema = z.object({
   // and preview payloads fail loudly instead of quietly losing the copy. The
   // builder's load path folds any legacy `nextSteps` into `markdownContent`
   // before this ever parses (see `deserializeRecipe`).
-  nextSteps: z.never().optional(),
+  nextSteps: z
+    .never({
+      error:
+        "nextSteps was retired (#2442): put confirmation copy in markdownContent",
+    })
+    .optional(),
 });
 export type FormStep = z.infer<typeof formStepSchema>;
 

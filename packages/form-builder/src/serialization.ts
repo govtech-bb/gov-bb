@@ -50,6 +50,29 @@ function markdownFromLegacyNextSteps(step: unknown): string | undefined {
 }
 
 /**
+ * Fold a recipe's legacy `nextSteps` into `markdownContent` and drop the retired
+ * key (#2442). Apply this to a RAW stored recipe at the point it is read, BEFORE
+ * any schema parse: `formStepSchema` now rejects `nextSteps` (`z.never`), so an
+ * old builder draft row that was never re-saved would otherwise throw on open or
+ * save in the service workbench. `deserializeRecipe` folds per step on its own;
+ * this wrapper covers the server read path that parses the row directly.
+ */
+export function foldLegacyNextSteps<T extends { steps: unknown[] }>(
+  recipe: T,
+): T {
+  return {
+    ...recipe,
+    steps: recipe.steps.map((step) => {
+      const { nextSteps: _retired, ...rest } = step as Record<string, unknown>;
+      const markdownContent =
+        (rest.markdownContent as string | undefined) ??
+        markdownFromLegacyNextSteps(step);
+      return markdownContent ? { ...rest, markdownContent } : rest;
+    }),
+  };
+}
+
+/**
  * Serialize a RecipeDraft (UI state) into a ServiceContractRecipe (persisted format).
  */
 export function serializeRecipeDraft(

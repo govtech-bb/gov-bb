@@ -21,6 +21,15 @@ describe("formStepSchema", () => {
     expect(formStepSchema.safeParse(full).success).toBe(true);
   });
 
+  it("rejects the retired nextSteps field (#2442)", () => {
+    const result = formStepSchema.safeParse({
+      ...validStep,
+      nextSteps: [{ title: "What happens next" }],
+    });
+    expect(result.success).toBe(false);
+    expect(JSON.stringify(result.error)).toContain("retired (#2442)");
+  });
+
   it("preserves an optional markdownContent string", () => {
     const parsed = formStepSchema.parse({
       ...validStep,
