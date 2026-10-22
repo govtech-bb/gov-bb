@@ -317,6 +317,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "draft",
   },
   {
+    slug: "flag-etiquette",
+    title: "Flag Etiquette",
+    category: "about-barbados",
+    visibility: "preview",
+  },
+  {
     slug: "get-a-document-notarised",
     title: "Get a document notarised",
     category: "travel-id-citizenship",
