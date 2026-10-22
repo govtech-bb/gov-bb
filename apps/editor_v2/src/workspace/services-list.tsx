@@ -1,19 +1,23 @@
+import { X } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useEffect, useEffectEvent, useMemo, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { ApiFailure, type EditorApi, type ServiceSummary } from "../api/client";
 import { servicesQuery } from "../api/queries";
 import { visibilityLabels, visibilityTones } from "../pages";
 import { Badge } from "../ui/badge";
 import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
-import { Checkbox } from "../ui/checkbox";
 import { EmptyState } from "../ui/empty-state";
-import { Field } from "../ui/field";
-import { Input } from "../ui/input";
-import { NativeSelect } from "../ui/native-select";
+import { Select, type SelectItem } from "../ui/select";
+import { StatusDot } from "../ui/status-dot";
 import { TextLink } from "../ui/text-link";
-import { createAppColumnHelper, useAppTable, useTableContext } from "../ui/table/table-hooks";
+import {
+  createAppColumnHelper,
+  useAppTable,
+  useTableFilters,
+  useTableContext,
+} from "../ui/table/table-hooks";
 import {
   filteredBy,
   pagedTo,
@@ -118,9 +122,22 @@ const serviceColumns = (api: EditorApi) =>
     }),
   ]);
 
-/** Filters beside the list: search, one category, any of the statuses. */
+// Each with the dot it has beside a page in the service's navigation
+const statusItems: SelectItem[] = visibilities.map((visibility) => ({
+  value: visibility,
+  label: visibilityLabel(visibility),
+  icon: <StatusDot tone={visibilityTones.get(visibility) ?? "neutral"} />,
+}));
+
+/**
+ * The toolbar over the list: search, one category, any of the statuses, and Clear filters while any of them leave
+ * services out. One row while there's room; on a phone the search takes a row of its own.
+ */
 function ServiceFilters({ categories }: { categories: readonly string[] }) {
   const table = useTableContext();
+  const filters = useTableFilters();
+  // Clear filters goes once pressed, so focus moves on to the search box
+  const searchBox = useRef<HTMLInputElement>(null);
 
   // SAFETY: Only these filters set the column filters, always as the string arrays oneOf reads.
   const chosen = (column: string) =>
@@ -129,49 +146,50 @@ function ServiceFilters({ categories }: { categories: readonly string[] }) {
   const choose = (column: string, values: string[]) =>
     table.getColumn(column)?.setFilterValue(values.length ? values : undefined);
 
-  const statuses = chosen("visibility");
-
   return (
-    <div role="search" aria-label="Filter services" className="flex flex-col gap-6 text-14">
-      <Field label="Search title or URL">
-        <Input
-          type="search"
-          value={table.state.globalFilter ?? ""}
-          onChange={(event) => table.setGlobalFilter(event.target.value)}
-        />
-      </Field>
-      <Field label="Category">
-        <NativeSelect
-          value={chosen("category")[0] ?? ""}
-          onChange={(event) => choose("category", event.target.value ? [event.target.value] : [])}
+    <div
+      role="search"
+      aria-label="Filter services"
+      className="flex flex-wrap items-center gap-2 border-b border-line p-3 @xl:px-4"
+    >
+      <table.Search
+        ref={searchBox}
+        label="Search title or URL"
+        placeholder="Search title or URL"
+        className="grow basis-full @xl:max-w-80 @xl:basis-60"
+      />
+      <Select
+        variant="filter"
+        aria-label="Category"
+        className="grow basis-36 @xl:grow-0 @xl:basis-auto"
+        items={[
+          { value: "", label: "All categories" },
+          ...categories.map((category) => ({ value: category, label: category })),
+        ]}
+        value={chosen("category")[0] ?? ""}
+        onValueChange={(category) => choose("category", category ? [category] : [])}
+      />
+      <Select
+        variant="filter"
+        multiple
+        aria-label="Status"
+        placeholder="All statuses"
+        className="grow basis-36 @xl:grow-0 @xl:basis-auto"
+        items={statusItems}
+        value={chosen("visibility")}
+        onValueChange={(statuses) => choose("visibility", statuses)}
+      />
+      {filters.filtered && (
+        <Button
+          icon={<X />}
+          onClick={() => {
+            filters.clear();
+            searchBox.current?.focus();
+          }}
         >
-          <option value="">All categories</option>
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </NativeSelect>
-      </Field>
-      <fieldset>
-        <legend className="mb-1.5 font-semibold">Status</legend>
-        {visibilities.map((visibility) => (
-          <Checkbox
-            key={visibility}
-            label={visibilityLabel(visibility)}
-            className="py-1"
-            checked={statuses.includes(visibility)}
-            onCheckedChange={(checked) =>
-              choose(
-                "visibility",
-                checked
-                  ? [...statuses, visibility]
-                  : statuses.filter((value) => value !== visibility),
-              )
-            }
-          />
-        ))}
-      </fieldset>
+          Clear filters
+        </Button>
+      )}
     </div>
   );
 }
@@ -268,76 +286,74 @@ export function ServicesList({
           Create service
         </Button>
       </div>
-      <div className="grid items-start gap-8 lg:grid-cols-[15rem_minmax(0,1fr)]">
+      <div className="@container min-w-0 rounded-sm bg-white shadow-sheet">
         <ServiceFilters categories={categories} />
-        <div className="@container min-w-0 rounded-sm bg-white shadow-sheet">
-          <p role="status" className="px-4 py-3 text-14 text-muted empty:hidden">
-            {services.isPending ? "Loading services…" : null}
-          </p>
-          {refreshFailed && (
-            <Banner
-              tone="warning"
-              layout="strip"
-              actions={
-                <Button
-                  variant="secondary"
-                  pending={services.isFetching}
-                  onClick={() => void services.refetch()}
+        <p role="status" className="px-4 py-3 text-14 text-muted empty:hidden">
+          {services.isPending ? "Loading services…" : null}
+        </p>
+        {refreshFailed && (
+          <Banner
+            tone="warning"
+            layout="strip"
+            actions={
+              <Button
+                variant="secondary"
+                pending={services.isFetching}
+                onClick={() => void services.refetch()}
+              >
+                {services.isFetching ? "Refreshing services…" : "Try again"}
+              </Button>
+            }
+          >
+            We could not refresh services. Showing the last loaded list.
+          </Banner>
+        )}
+        {blocked ? (
+          <EmptyState
+            kind="failed"
+            title="We could not load services"
+            description={
+              status === 401
+                ? "Your session has ended. Sign in again to load services."
+                : status === 403
+                  ? "You do not have access to these services."
+                  : "Check your connection, then try again."
+            }
+            actions={
+              status === 401 ? (
+                <TextLink
+                  render={
+                    <Link
+                      to="/auth"
+                      search={{ state: "sign-in", returnTo: href, reason: "provider" }}
+                    />
+                  }
                 >
-                  {services.isFetching ? "Refreshing services…" : "Try again"}
+                  Sign in again
+                </TextLink>
+              ) : (
+                <Button variant="secondary" onClick={() => void services.refetch()}>
+                  Try again
                 </Button>
-              }
-            >
-              We could not refresh services. Showing the last loaded list.
-            </Banner>
-          )}
-          {blocked ? (
-            <EmptyState
-              kind="failed"
-              title="We could not load services"
-              description={
-                status === 401
-                  ? "Your session has ended. Sign in again to load services."
-                  : status === 403
-                    ? "You do not have access to these services."
-                    : "Check your connection, then try again."
-              }
-              actions={
-                status === 401 ? (
-                  <TextLink
-                    render={
-                      <Link
-                        to="/auth"
-                        search={{ state: "sign-in", returnTo: href, reason: "provider" }}
-                      />
-                    }
-                  >
-                    Sign in again
-                  </TextLink>
-                ) : (
-                  <Button variant="secondary" onClick={() => void services.refetch()}>
-                    Try again
-                  </Button>
-                )
-              }
-            />
-          ) : (
-            <table.DataTable
-              caption="Services"
-              loading={services.isPending}
-              empty={{
-                title: "No services yet",
-                description: "Create a service to start adding its pages.",
-                actions: (
-                  <Button variant="secondary" onClick={onCreate}>
-                    Create service
-                  </Button>
-                ),
-              }}
-            />
-          )}
-          {!blocked && <table.Pagination name={["service", "services"]} />}
-        </div>
+              )
+            }
+          />
+        ) : (
+          <table.DataTable
+            caption="Services"
+            loading={services.isPending}
+            empty={{
+              title: "No services yet",
+              description: "Create a service to start adding its pages.",
+              actions: (
+                <Button variant="secondary" onClick={onCreate}>
+                  Create service
+                </Button>
+              ),
+            }}
+          />
+        )}
+        {!blocked && <table.Pagination name={["service", "services"]} />}
       </div>
     </table.AppTable>
   );

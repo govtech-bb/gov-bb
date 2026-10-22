@@ -147,3 +147,45 @@ test("its trigger, and a pill's, is 44px tall under a coarse pointer, like a fie
   expect(trigger().className).toContain("pointer-coarse:min-h-11");
   expect(pill).toContain("pointer-coarse:min-h-11");
 });
+
+test("a filter's item valued \"\" is everything, which isn't a choice; any other item narrows the list", async () => {
+  await render(
+    <Select
+      variant="filter"
+      aria-label="Category"
+      items={[
+        { value: "", label: "All categories" },
+        { value: "housing", label: "Housing" },
+      ]}
+      defaultValue=""
+    />,
+  );
+
+  // The chosen blue hangs off Base UI's data-placeholder, which "" leaves in place
+  expect(trigger().textContent).toBe("All categories");
+  expect(trigger().hasAttribute("data-placeholder")).toBe(true);
+  await open();
+  await act(async () =>
+    options()
+      .find((option) => option.textContent === "Housing")!
+      .click(),
+  );
+  expect(trigger().textContent).toBe("Housing");
+  expect(trigger().hasAttribute("data-placeholder")).toBe(false);
+});
+
+test("a filter of several shows everything, its placeholder, in the words of a choice", async () => {
+  await render(
+    <Select
+      variant="filter"
+      multiple
+      aria-label="Status"
+      placeholder="All statuses"
+      items={statuses}
+    />,
+  );
+
+  expect(trigger().textContent).toBe("All statuses");
+  expect(trigger().hasAttribute("data-placeholder")).toBe(true);
+  expect(trigger().querySelector(".text-placeholder")).toBeNull();
+});

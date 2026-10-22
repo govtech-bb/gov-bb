@@ -95,9 +95,12 @@ try {
   await header.getByRole("button").click();
   assert.equal(await header.getAttribute("aria-sort"), "descending");
   assert.match(await rows.first().innerText(), /^What prescription colours mean/);
-  await page.getByLabel("Category", { exact: true }).selectOption(service.category.title);
+  const category = page.getByRole("combobox", { name: "Category", exact: true });
+  await category.click();
+  await page.getByRole("option", { name: service.category.title, exact: true }).click();
   assert.equal(await rows.count(), 1);
-  await page.getByLabel("Category", { exact: true }).selectOption("");
+  await category.click();
+  await page.getByRole("option", { name: "All categories", exact: true }).click();
   assert.equal(await page.getByText("Drafts in this browser", { exact: true }).count(), 0);
 
   // Keep the history chain in one document; a full-page goto would test unload instead of router blocking.

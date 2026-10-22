@@ -650,6 +650,45 @@ function ComponentsPreview() {
               <Select label="Move to" placeholder="Choose a status" items={statuses} />
             </div>
           </Specimen>
+          <Specimen
+            wide
+            title="Filter"
+            note="In the toolbar over a list, as wide as its value. While it narrows the list it turns the chosen blue."
+          >
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap gap-2">
+                <Select
+                  variant="filter"
+                  aria-label="Category"
+                  items={filterCategories}
+                  defaultValue=""
+                />
+                <Select
+                  variant="filter"
+                  multiple
+                  aria-label="Status"
+                  placeholder="All statuses"
+                  items={visibilityFilters}
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Select
+                  variant="filter"
+                  aria-label="Category, narrowed"
+                  items={filterCategories}
+                  defaultValue="business"
+                />
+                <Select
+                  variant="filter"
+                  multiple
+                  aria-label="Status, narrowed"
+                  placeholder="All statuses"
+                  items={visibilityFilters}
+                  defaultValue={["preview", "draft"]}
+                />
+              </div>
+            </div>
+          </Specimen>
         </Section>
 
         <Section id="field" title="Field" lead="A label for a control, with a hint and an error.">
@@ -1987,6 +2026,18 @@ const categories: SelectItem[] = [
   { value: "driving", label: "Driving and transport", group: "Getting around" },
   { value: "travel", label: "Travel and immigration", group: "Getting around" },
 ];
+
+// A filter's "everything" is its item valued ""
+const filterCategories: SelectItem[] = [
+  { value: "", label: "All categories" },
+  ...categories.map(({ value, label }) => ({ value, label })),
+];
+
+const visibilityFilters: SelectItem[] = ["public", "preview", "draft"].map((visibility) => ({
+  value: visibility,
+  label: visibilityLabels.get(visibility) ?? visibility,
+  icon: <StatusDot tone={visibilityTones.get(visibility) ?? "neutral"} />,
+}));
 
 const answers: SelectItem[] = [
   { value: "text", label: "Short answer", icon: <TextT /> },

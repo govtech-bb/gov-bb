@@ -78,7 +78,7 @@ test("lists API services newest change first, a page at a time, opening each in 
   expect(html).toContain('aria-sort="descending"');
   expect(html).toContain("Search title or URL");
   expect(html).toContain("All categories");
-  expect(html).toContain("Draft link only");
+  expect(html).toContain("All statuses");
 });
 
 let host: HTMLDivElement;
@@ -112,6 +112,23 @@ const button = (name: string) =>
     (item) => item.textContent === name || item.getAttribute("aria-label") === name,
   )!;
 
+/** One of the toolbar's filters, by its name. */
+const filter = (name: string) =>
+  host.querySelector<HTMLElement>(`[role="combobox"][aria-label="${name}"]`)!;
+
+/** Opens a filter's list, which renders in a portal outside the root, and picks one of its options. */
+async function choose(name: string, option: string) {
+  await act(async () => {
+    filter(name).focus();
+    filter(name).dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+  });
+  await act(async () =>
+    [...document.querySelectorAll<HTMLElement>('[role="option"]')]
+      .find((item) => item.textContent === option)!
+      .click(),
+  );
+}
+
 /** Types into the search box as a browser would: React reads the new value from the input event. */
 const type = (words: string) =>
   act(async () => {
@@ -124,9 +141,7 @@ test("it opens where its address puts it: searched, filtered, sorted and on its 
   await show(listed(thirty, { status: ["preview"], sort: "title", order: "asc" }));
 
   expect(titles().slice(0, 3)).toEqual(["Service 01", "Service 03", "Service 05"]);
-  expect(host.querySelector('input[type="checkbox"]:checked')?.closest("label")?.textContent).toBe(
-    "Preview link only",
-  );
+  expect(filter("Status").textContent).toBe("Preview link only");
 
   await act(async () => root.unmount());
   root = createRoot(host);
@@ -183,16 +198,71 @@ test("each change shows at once and gives the address the new place; a new searc
   });
 });
 
-test("Clear filters clears the search words with the filters", async () => {
+test("with no matches, one Clear filters button clears the list and returns focus to search", async () => {
   const onSearch = vi.fn();
 
   await show(listed(thirty, { q: "hotel", status: ["draft"] }, { onSearch }));
   expect(host.textContent).toContain("Nothing matches these filters");
 
-  await act(async () => button("Clear filters").click());
+  const clearButtons = [...host.querySelectorAll<HTMLButtonElement>("button")].filter(
+    (item) => item.textContent === "Clear filters",
+  );
+
+  expect(clearButtons).toHaveLength(1);
+  await act(async () => {
+    clearButtons[0]!.focus();
+    clearButtons[0]!.click();
+  });
 
   expect(searchBox().value).toBe("");
   expect(titles()).toHaveLength(25);
+  expect(document.activeElement).toBe(searchBox());
+  expect(onSearch).toHaveBeenLastCalledWith({
+    page: undefined,
+    q: undefined,
+    category: undefined,
+    status: undefined,
+  });
+});
+
+test("the toolbar's filters narrow the list at once, and Clear filters shows every service again", async () => {
+  const onSearch = vi.fn();
+
+  await show(listed(thirty, {}, { onSearch }));
+  expect(button("Clear filters")).toBeUndefined();
+
+  await choose("Category", "Business and trade");
+  expect(filter("Category").textContent).toBe("Business and trade");
+  expect(onSearch).toHaveBeenLastCalledWith({
+    page: undefined,
+    category: "Business and trade",
+    status: undefined,
+  });
+
+  // Several statuses can be shown at once, so their list stays open for another
+  await choose("Status", "Preview link only");
+  expect(titles()).toHaveLength(15);
+  expect(titles().every((title) => Number(title.slice(-2)) % 2 === 1)).toBe(true);
+  expect(onSearch).toHaveBeenLastCalledWith({
+    page: undefined,
+    category: "Business and trade",
+    status: ["preview"],
+  });
+
+  await act(async () =>
+    document.activeElement!.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    ),
+  );
+  expect(filter("Status").getAttribute("aria-expanded")).toBe("false");
+  await act(async () => button("Clear filters").click());
+
+  expect(titles()).toHaveLength(25);
+  expect(filter("Category").textContent).toBe("All categories");
+  expect(filter("Status").textContent).toBe("All statuses");
+  expect(button("Clear filters")).toBeUndefined();
+  // The button went with the filters, so focus waits in the search box
+  expect(document.activeElement).toBe(searchBox());
   expect(onSearch).toHaveBeenLastCalledWith({
     page: undefined,
     q: undefined,

@@ -1,5 +1,5 @@
 import { CaretDown, CaretLeft, CaretRight, Columns, MagnifyingGlass } from "@phosphor-icons/react";
-import { useId } from "react";
+import { useId, type Ref } from "react";
 import { cn } from "../../cn";
 import { Button } from "../button";
 import { EmptyState, type EmptyStateProps } from "../empty-state";
@@ -8,23 +8,36 @@ import { Input } from "../input";
 import { NativeSelect } from "../native-select";
 import { Menu } from "../menu";
 import { Tag } from "../tag";
-import { useTableContext } from "./table-hooks";
+import { useTableFilters, useTableContext } from "./table-hooks";
 
 /** Narrow tables fold secondary columns into the leading cell instead of scrolling them away. */
 const secondary = "@max-3xl:hidden";
 
-/** Search across every searchable column. */
-export function Search({ label, placeholder }: { label: string; placeholder: string }) {
+/** Search across every searchable column, in the toolbar over the table. */
+export function Search({
+  label,
+  placeholder,
+  ref,
+  className,
+}: {
+  label: string;
+  placeholder: string;
+  ref?: Ref<HTMLInputElement>;
+  /** For the box around the field and its icon, such as its width in the toolbar. */
+  className?: string;
+}) {
   const table = useTableContext();
 
   return (
-    <div className="relative min-w-0 flex-1 basis-60 @3xl:max-w-80">
+    <div className={cn("relative min-w-0", className)}>
       <MagnifyingGlass
         aria-hidden="true"
         className="pointer-events-none absolute start-2.5 top-1/2 size-4 -translate-y-1/2 text-muted"
       />
       <Input
+        ref={ref}
         type="search"
+        size="sm"
         aria-label={label}
         placeholder={placeholder}
         className="ps-8"
@@ -188,7 +201,7 @@ export function DataTable({
   const table = useTableContext();
   const rows = table.getRowModel().rows;
   const columns = table.getVisibleLeafColumns();
-  const filtered = !!table.state.globalFilter || table.state.columnFilters.length > 0;
+  const filters = useTableFilters();
 
   return (
     <div role="region" aria-label={caption} tabIndex={0} className="overflow-x-auto">
@@ -248,22 +261,8 @@ export function DataTable({
           ) : rows.length === 0 ? (
             <tr className="border-t border-line">
               <td colSpan={columns.length}>
-                {filtered ? (
-                  <EmptyState
-                    kind="not-found"
-                    title="Nothing matches these filters"
-                    actions={
-                      <Button
-                        variant="secondary"
-                        onClick={() => {
-                          table.resetGlobalFilter(true);
-                          table.resetColumnFilters(true);
-                        }}
-                      >
-                        Clear filters
-                      </Button>
-                    }
-                  />
+                {filters.filtered ? (
+                  <EmptyState kind="not-found" title="Nothing matches these filters" />
                 ) : (
                   <EmptyState {...empty} />
                 )}
