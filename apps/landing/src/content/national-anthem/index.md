@@ -10,7 +10,7 @@ visibility: preview
 
 2\. Normally one verse only and the chorus will be played. Where a shortened version of the National Anthem is played, it shall consist of the first twelve bars of the verse and the last four bars of the chorus.
 
-### The National Anthem shall be played -
+**The National Anthem shall be played -**
 
 - (a) for the purposes of a salute on ceremonial or official occasions, on the arrival and departure of -\
   (i) the Governor General.\
