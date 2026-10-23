@@ -5,9 +5,9 @@
  *
  * Runs only in the SSR Lambda. Auth is by **forwarded GitHub identity**: callers
  * pass the signed-in user's GitHub access token (from the session), which the
- * API validates + authorizes (GitHubAuthGuard). Public reads
- * (`/form-definitions`, `/service_status`) need no token; the audit read, `PUT`,
- * and the non-public `/services` view do. The token is never bundled client-side
+ * API validates + authorizes (GitHubAuthGuard). The public read
+ * (`/service_status`) needs no token; the audit read, `PUT`, and the non-public
+ * views of `/services` and `/form-definitions` do. The token is never bundled client-side
  * — it only lives in the encrypted session cookie and this server module.
  */
 
