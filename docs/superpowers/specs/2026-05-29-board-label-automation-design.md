@@ -1,6 +1,7 @@
 # Alpha² board label automation — design
 
-**Date:** 2026-05-29 (updated 2026-06-02: added the **Closed** column)
+**Date:** 2026-05-29 (updated 2026-06-02: added the **Closed** column;
+2026-10-19: the merge target is `main`, after the move to trunk-based development)
 **Status:** Approved (pending spec review)
 **Project board:** [govtech-bb / Alpha² (#7)](https://github.com/orgs/govtech-bb/projects/7)
 **Repo:** `govtech-bb/gov-bb`
@@ -17,7 +18,7 @@ Six behaviours are required:
 2. Adding the `progressing` label moves the issue to **In progress**.
 3. Opening a PR that closes an issue (via a closing keyword) moves that issue to
    **In review**.
-4. Merging such a PR into `sandbox` or `dev` moves the issue to **Done**, removes
+4. Merging such a PR into `main` moves the issue to **Done**, removes
    the `progressing` label, and closes the issue.
 5. An issue holds at most one of `ready` / `progressing` at a time; merging also
    strips `progressing`.
@@ -32,7 +33,7 @@ Six behaviours are required:
 | Repo hosting the automation   | `govtech-bb/gov-bb` only                                    |
 | Auth to write the org project | Org-owned **GitHub App** (durable, not tied to a person)    |
 | PR → issue linkage            | GitHub **closing keywords** (`Closes #N` / `Fixes #N`) only |
-| On merge to sandbox/dev       | Move to **Done** **and close** the issue                    |
+| On merge to `main`            | Move to **Done** **and close** the issue                    |
 | Architecture                  | Single custom GitHub Actions workflow (one source of truth) |
 
 The board's `Status` field options match the requirements exactly:
@@ -110,7 +111,7 @@ board (including pre-existing issues).
 | 1   | `issues.labeled`                                  | label == `ready`                                                  | remove `progressing` if present → ensure on board → Status=**Ready**                     |
 | 2   | `issues.labeled`                                  | label == `progressing`                                            | remove `ready` if present → ensure on board → Status=**In progress**                     |
 | 3   | `pull_request.{opened,reopened,ready_for_review}` | ≥1 closing-keyword issue                                          | per linked issue: ensure on board → Status=**In review**                                 |
-| 4   | `pull_request.closed`                             | `merged == true` AND base ∈ {`sandbox`,`dev`} AND ≥1 linked issue | per linked issue: ensure on board → Status=**Done** → remove `progressing` → close issue |
+| 4   | `pull_request.closed`                             | `merged == true` AND base == `main` AND ≥1 linked issue           | per linked issue: ensure on board → Status=**Done** → remove `progressing` → close issue |
 | 5   | `issues.closed`                                   | `state_reason == completed`                                       | ensure on board → Status=**Done**                                                        |
 | 6   | `issues.closed`                                   | `state_reason != completed` (not_planned / duplicate / none)      | ensure on board → Status=**Closed**                                                      |
 
@@ -123,10 +124,11 @@ workflow does **not** subscribe to — no trigger loop.
 ### Edge cases
 
 - **PR closed without merge** → no-op.
-- **Merge to a base other than `sandbox`/`dev`** (feature branch, `main`) → no-op.
-- **`dev` is the repo default branch**, so GitHub auto-closes the linked issue on
-  a `dev` merge; our explicit close is idempotent. `sandbox` merges rely entirely
-  on our explicit close.
+- **Merge to a base other than `main`** (a feature branch, or the `sandbox`/
+  `staging`/`prod` deploy pointers) → no-op.
+- **`main` is the repo default branch**, so GitHub auto-closes the linked issue
+  on a `main` merge; our explicit close is idempotent, and is still what strips
+  `progressing` and assigns the author.
 - **Multiple closing references** in one PR → loop over all linked issues.
 - **Label re-added when issue already In review/Done** → label rule fires and
   moves it back. Accepted: a human label action is authoritative.
@@ -184,7 +186,7 @@ All writes are idempotent — safe under event redelivery.
 5. Merge `project-automation.yml` + `scripts/project-board-sync.js` + tests.
 6. Smoke-test: open a throwaway issue (→ Backlog), add `ready` (→ Ready), add
    `progressing` (→ In progress, `ready` removed), open a PR with `Closes #N`
-   (→ In review), merge to `sandbox` (→ Done, closed, `progressing` removed).
+   (→ In review), merge to `main` (→ Done, closed, `progressing` removed).
 
 ## Out of scope
 

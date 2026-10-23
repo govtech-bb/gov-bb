@@ -187,12 +187,12 @@ describe("decideActions", () => {
     ).toEqual([]);
   });
 
-  it("PR merged into sandbox → Done, remove progressing, close", () => {
+  it("PR merged into main → Done, remove progressing, close", () => {
     expect(
       decideActions({
         eventName: "pull_request",
         action: "closed",
-        baseRef: "sandbox",
+        baseRef: "main",
         merged: true,
         linkedIssues: [5],
       }),
@@ -209,34 +209,12 @@ describe("decideActions", () => {
     ]);
   });
 
-  it("PR merged into dev → Done, remove progressing, close", () => {
-    expect(
-      decideActions({
-        eventName: "pull_request",
-        action: "closed",
-        baseRef: "dev",
-        merged: true,
-        linkedIssues: [9],
-      }),
-    ).toEqual([
-      {
-        issue: 9,
-        actions: [
-          { type: "ensureOnBoard" },
-          { type: "setStatus", status: "Done" },
-          { type: "removeLabel", label: "progressing" },
-          { type: "closeIssue" },
-        ],
-      },
-    ]);
-  });
-
   it("PR merged with an author → assign before close", () => {
     expect(
       decideActions({
         eventName: "pull_request",
         action: "closed",
-        baseRef: "sandbox",
+        baseRef: "main",
         merged: true,
         linkedIssues: [5],
         prAuthor: "octocat",
@@ -260,19 +238,19 @@ describe("decideActions", () => {
       decideActions({
         eventName: "pull_request",
         action: "closed",
-        baseRef: "dev",
+        baseRef: "main",
         merged: false,
         linkedIssues: [9],
       }),
     ).toEqual([]);
   });
 
-  it("PR merged into a non-target base (main) → no actions", () => {
+  it("PR merged into a non-target base (sandbox) → no actions", () => {
     expect(
       decideActions({
         eventName: "pull_request",
         action: "closed",
-        baseRef: "main",
+        baseRef: "sandbox",
         merged: true,
         linkedIssues: [9],
       }),
