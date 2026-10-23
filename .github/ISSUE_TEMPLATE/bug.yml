@@ -3,6 +3,16 @@ description: Something isn't working as expected
 type: Bug
 labels: ["bug"]
 body:
+  - type: checkboxes
+    attributes:
+      label: Checked on the latest code
+      description: >-
+        Pull and rebuild the branch it affects (usually `main`), or try it on a
+        deployed environment. Some bugs are already fixed, or only exist on an
+        old or local branch.
+      options:
+        - label: I reproduced this on the latest commit of the affected branch, or on a deployed environment
+          required: true
   - type: textarea
     attributes:
       label: What happened?
