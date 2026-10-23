@@ -37,9 +37,10 @@ export function firstStepId(draft: RecipeDraft): string | null {
 }
 
 // Required steps that accept no author-added fields. `check-your-answers` is a
-// pure review screen and `submission-confirmation` renders only its nextSteps
-// copy — neither should expose the FieldPicker. `declaration` is intentionally
-// absent: it bears the confirmation checkbox and stays field-editable.
+// pure review screen and `submission-confirmation` renders only its
+// confirmation copy — neither should expose the FieldPicker. `declaration` is
+// intentionally absent: it bears the confirmation checkbox and stays
+// field-editable.
 const NO_FIELDS_STEP_IDS = [
   "check-your-answers",
   "submission-confirmation",

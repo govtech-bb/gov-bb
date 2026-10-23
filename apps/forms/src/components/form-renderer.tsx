@@ -704,7 +704,6 @@ function ActiveStep({
           serviceTitle={formMeta.formTitle}
           stepTitle={resolvedStepTitle}
           processingMessage={currentStep.description}
-          nextSteps={currentStep.nextSteps}
           // The branch resolved at submit, when the answers were still live
           // (#2068). Falling back to a defaults-only resolution rather than the
           // raw `markdownContent` matters: a state persisted before this shipped

@@ -10,7 +10,6 @@ import {
   Button,
   Heading,
   LinkButton,
-  List,
   Payment,
   ServiceHeading,
   SummaryList,
@@ -41,7 +40,6 @@ export default function SubmissionConfirmation({
   serviceTitle,
   stepTitle,
   processingMessage,
-  nextSteps,
   markdownContent,
   contactDetails,
   onTryAgain,
@@ -109,28 +107,11 @@ export default function SubmissionConfirmation({
     ({ value }) => value !== undefined && value !== null && value !== "",
   );
 
-  // Trailing sections (what-happens-next, contact, feedback) are shared by every
-  // successful state — payment or not — and rendered below the lead panel.
+  // Trailing sections (markdown, printed answers, contact, feedback) are shared
+  // by every successful state — payment or not — and rendered below the lead
+  // panel.
   const trailingSections = (
     <>
-      {nextSteps && nextSteps.length > 0 && (
-        <div className="form-page__next-steps flex flex-col gap-8">
-          {nextSteps.map((section, index) => (
-            <div key={index} className="flex flex-col gap-4">
-              <Heading as="h2">{section.title}</Heading>
-              {section.content && <Text>{section.content}</Text>}
-              {section.items && section.items.length > 0 && (
-                <List variant="bullet">
-                  {section.items.map((item, i) => (
-                    <li key={i}>{item}</li>
-                  ))}
-                </List>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* The applicant's answers, for the printed copy only (#2587). Built at
           submit time from the same shared builder the MDA email uses, so the
           paper copy reads exactly like the email the MDA received — the same
@@ -249,7 +230,7 @@ export default function SubmissionConfirmation({
   // Submission is in flight — an idempotency-key replay returned `processing`
   // (#463). Show a neutral status panel with the reference number, but none of
   // the finished-submission furniture: no Try again (nothing failed), no
-  // payment block, and no trailing next-steps/contact/feedback (it isn't a
+  // payment block, and no trailing markdown/contact/feedback (it isn't a
   // completed submission yet).
   if (processing) {
     return (

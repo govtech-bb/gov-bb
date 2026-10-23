@@ -8,6 +8,7 @@ import {
   type Processor,
   type PublicFormSummary,
 } from "@govtech-bb/form-types";
+import { foldLegacyNextSteps } from "@govtech-bb/form-builder";
 import { api, ApiError } from "./api-client";
 import {
   getPublishedRecipe,
@@ -240,7 +241,15 @@ async function resolveStoredRecipeSource(
           // No published flat file yet — leave meta absent (treated as public).
         }
       }
-      return { recipe: draft, fromDraftRow: true, published };
+      // Fold any legacy `nextSteps` into `markdownContent` (#2442) before this
+      // row reaches a `draftRecipeSchema.parse` (service workbench) — the schema
+      // now rejects the retired key, and an old row never re-saved since the
+      // migration would otherwise throw on open/save.
+      return {
+        recipe: foldLegacyNextSteps(draft),
+        fromDraftRow: true,
+        published,
+      };
     }
   } catch (err) {
     if (canReadLocalRecipes(err)) return local();
