@@ -21,8 +21,8 @@ You can complete the form online. It takes about 15 minutes.
 
 ## What the form asks for
 
-- your child’s name, current address, date of birth, sex, National ID number, current primary school and country of birth
-- your details as the parent or guardian, including your title, name, National ID number, phone number and email address.
+- your child’s name, current address, date of birth, sex, Barbados National Identification (ID) number, current primary school and country of birth
+- your details as the parent or guardian, including your title, name, Barbados National Identification (ID) number, phone number and email address.
 - your child’s assigned zone
 - 9 school choices: 2 from any school and 7 from your assigned zone
 - whether you are willing to consider a private school placement.
