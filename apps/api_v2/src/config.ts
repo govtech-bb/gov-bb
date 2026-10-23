@@ -98,6 +98,13 @@ const environment = z
           "Auth can only be bypassed for a local editor outside production",
       });
     if (value.NODE_ENV !== "production") return;
+    // A deployed database gets the estate once, from import-estate (#3052).
+    if (value.SEED)
+      context.addIssue({
+        code: "custom",
+        path: ["SEED"],
+        message: "Production does not seed on boot",
+      });
     for (const field of ["BETTER_AUTH_URL", "EDITOR_ORIGIN"] as const) {
       if (!value[field].startsWith("https://"))
         context.addIssue({

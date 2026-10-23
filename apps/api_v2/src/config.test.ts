@@ -48,6 +48,19 @@ describe("auth configuration", () => {
     expect([undefined, "false", "0"].map(seed)).toEqual([false, false, false]);
     expect(["true", "1", "yes"].map(seed)).toEqual([true, true, true]);
   });
+  it("refuses to seed in production", () => {
+    const production = {
+      ...required,
+      NODE_ENV: "production",
+      EDITOR_ORIGIN: "https://editor.example",
+      BETTER_AUTH_URL: "https://api.example",
+    };
+    expect(parseConfig({ ...production, SEED: "false" }).ok).toBe(true);
+    const refused = parseConfig({ ...production, SEED: "true" });
+    expect(refused.ok).toBe(false);
+    if (!refused.ok)
+      expect(refused.error.message).toBe("Invalid configuration: SEED");
+  });
   it("keeps existing runtime defaults while redacting all credential representations", () => {
     const result = parseConfig(required);
     if (!result.ok) throw result.error;
