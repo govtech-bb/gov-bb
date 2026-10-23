@@ -23,6 +23,22 @@ body:
         - Production
     validations:
       required: true
+  - type: dropdown
+    attributes:
+      label: Area
+      description: Which part of the platform? Leave empty if unsure.
+      multiple: true
+      options:
+        - Forms
+        - Form builder
+        - Landing
+        - Chat
+        - API
+        - Editor
+        - Analytics
+        - Feature flagging
+        - Shared packages
+        - Infra / CI
   - type: input
     attributes:
       label: URL or commit
