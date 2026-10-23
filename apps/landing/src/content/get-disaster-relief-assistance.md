@@ -66,7 +66,7 @@ St. Michael
 
 If you have them, bring:
 
-1. Your ID. If not, you can share your national ID number.
+1. Your ID. If not, you can share your Barbados National Identification (ID) number.
 
 2. Photographs of the damage.
 

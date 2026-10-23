@@ -37,7 +37,7 @@ It takes about 15 minutes to apply online.
 
 ## What the form asks for
 
-1. Your name, sex, date of birth, National ID number, home address, parish, mobile number and email address.
+1. Your name, sex, date of birth, Barbados National Identification (ID) number, home address, parish, mobile number and email address.
 2. The school you attended for CSEC.
 3. Your CSEC subjects and grades.
 4. Your parent or guardian’s relationship to you, name, mobile number and email address.

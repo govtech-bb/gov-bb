@@ -15,7 +15,7 @@ It should take no longer than 10 minutes to complete the registration form.
 
 Before you start, you will need to know:
 
-1. The student’s name, ID number and class.
+1. The student’s name, Barbados National Identification (ID) number and class.
 2. The name of the child’s school and principal.
 3. Bank account information so the funds can be paid.
 4. The details of a bank account that is used regularly and has been used within the last 3 months. If your bank account is frozen, the funds will not reach you.
