@@ -1,0 +1,30 @@
+name: Feature / task
+description: A change to build — new behaviour, a refactor, or tooling
+labels: ["enhancement"]
+body:
+  - type: textarea
+    attributes:
+      label: Why
+      description: The problem or need. What's wrong or missing today?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What changes
+      description: The proposed change, at the level a reviewer needs.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Acceptance criteria
+      description: Checkable outcomes — each one a test or a visible result.
+      value: "- [ ] "
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Out of scope
+  - type: input
+    attributes:
+      label: Parent epic / depends on
+      placeholder: "#1234"

@@ -1,0 +1,32 @@
+name: Bug report
+description: Something isn't working as expected
+labels: ["bug"]
+body:
+  - type: textarea
+    attributes:
+      label: What happened?
+      description: Include steps to reproduce.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What did you expect to happen?
+  - type: dropdown
+    attributes:
+      label: Environment
+      options:
+        - Local
+        - PR preview
+        - Sandbox
+        - Staging
+        - Production
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: URL or commit
+      description: The page URL, or the commit SHA it was seen on.
+  - type: textarea
+    attributes:
+      label: Logs
+      render: shell
