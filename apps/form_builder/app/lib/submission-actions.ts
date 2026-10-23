@@ -42,11 +42,35 @@ export function submissionActionSummary(
     }
   }
   switch (action.type) {
-    case "webhook":
-      return {
-        title: "Send to connected system",
-        description: "Send submission data through a webhook",
-      };
+    case "webhook": {
+      const mapping = action.config.mapping as
+        | {
+            programmeCode?: string;
+            mdaCode?: string;
+            programmeShortCode?: string;
+          }
+        | undefined;
+      if (mapping) {
+        const { mdaCode, programmeShortCode } = mapping;
+        const programmeCode = mapping.programmeCode?.trim();
+        return {
+          title: "Send to Case Management System (CaMS)",
+          description: programmeCode
+            ? `Programme ${programmeCode}` +
+              (mdaCode && programmeShortCode
+                ? ` (${mdaCode}-${programmeShortCode})`
+                : "")
+            : "Enter a programme code",
+        };
+      }
+      let description = "Send submission data through a webhook";
+      try {
+        description = new URL(action.config.url as string).host;
+      } catch {
+        // missing, non-string or unparseable url — keep the generic text
+      }
+      return { title: "Send to webhook", description };
+    }
     case "payment":
       return {
         title: "Collect payment",
