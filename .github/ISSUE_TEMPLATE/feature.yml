@@ -28,3 +28,19 @@ body:
     attributes:
       label: Parent epic / depends on
       placeholder: "#1234"
+  - type: dropdown
+    attributes:
+      label: Area
+      description: Which part of the platform? Leave empty if unsure.
+      multiple: true
+      options:
+        - Forms
+        - Form builder
+        - Landing
+        - Chat
+        - API
+        - Editor
+        - Analytics
+        - Feature flagging
+        - Shared packages
+        - Infra / CI
