@@ -431,6 +431,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
+    slug: "national-pledge",
+    title: "National Pledge",
+    category: "about-barbados",
+    visibility: "preview",
+  },
+  {
     slug: "post-office-redirection-business",
     title: "Redirect my business mail",
     category: "travel-id-citizenship",
