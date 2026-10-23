@@ -388,9 +388,22 @@ export async function listServiceCheckpoints({
 }: {
   data: { serviceId: string };
 }): Promise<SavedVersion[]> {
-  return JSON.parse(
+  const versions: SavedVersion[] = JSON.parse(
     localStorage.getItem(await versionsKey(data.serviceId)) || "[]",
   );
+  // #2442: a version saved before the migration still holds `nextSteps` in its
+  // snapshot recipe. Fold each here — the one read path every checkpoint action
+  // (restore, retry, publish) goes through — so `serviceSnapshotSchema.parse`
+  // doesn't throw on the retired key, and an old version restores as
+  // `markdownContent` instead of silently bringing the dead field back.
+  return versions.map((version) => {
+    const recipe = version.snapshot?.recipe;
+    if (!recipe || !Array.isArray(recipe.steps)) return version;
+    return {
+      ...version,
+      snapshot: { ...version.snapshot, recipe: foldLegacyNextSteps(recipe) },
+    };
+  });
 }
 async function remember(version: SavedVersion) {
   const versions = await listServiceCheckpoints({ data: version });

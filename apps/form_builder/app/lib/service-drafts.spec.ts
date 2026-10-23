@@ -11,6 +11,7 @@ import {
   saveServiceForm,
   getServiceDraft,
   listServiceDrafts,
+  listServiceCheckpoints,
   attachServiceForm,
 } from "./service-drafts";
 vi.mock("../server/forms", () => ({
@@ -315,6 +316,64 @@ it("reads a browser draft saved before the nextSteps migration without throwing,
   const drafts = await listServiceDrafts();
   expect(drafts).toHaveLength(1);
   const step = drafts[0].recipe!.steps[0] as {
+    markdownContent?: string;
+    nextSteps?: unknown;
+  };
+  expect(step.markdownContent).toBe(
+    "## What happens next\n\nWe will be in touch.",
+  );
+  expect(step).not.toHaveProperty("nextSteps");
+});
+it("folds a browser version saved before the migration when listing checkpoints (#2442)", async () => {
+  // A pre-migration snapshot stored under the versions key: `nextSteps`, no
+  // `markdownContent`. Restore / retry / publish all read through
+  // listServiceCheckpoints, then parse `serviceSnapshotSchema` (which now rejects
+  // the retired key), so folding here is what stops them throwing on an old
+  // version.
+  localStorage.setItem(
+    "service-workspace:v1:editor:test-service:versions",
+    JSON.stringify([
+      {
+        id: "v1",
+        serviceId: "test-service",
+        revision: 2,
+        label: "Before the migration",
+        createdAt: "2026-09-12T00:00:00.000Z",
+        createdBy: "editor",
+        gitSha: null,
+        gitRef: null,
+        prNumber: null,
+        prUrl: null,
+        snapshot: {
+          ...snapshot,
+          recipe: {
+            title: "Application",
+            formId: "test-form",
+            steps: [
+              {
+                stepId: "submission-confirmation",
+                title: "Application submitted",
+                elements: [],
+                nextSteps: [
+                  {
+                    title: "What happens next",
+                    content: "We will be in touch.",
+                  },
+                ],
+              },
+            ],
+            createdAt: "2026-09-10T00:00:00.000Z",
+            updatedAt: "2026-09-10T00:00:00.000Z",
+          },
+        },
+      },
+    ]),
+  );
+
+  const [version] = await listServiceCheckpoints({
+    data: { serviceId: "test-service" },
+  });
+  const step = version.snapshot.recipe!.steps[0] as {
     markdownContent?: string;
     nextSteps?: unknown;
   };
