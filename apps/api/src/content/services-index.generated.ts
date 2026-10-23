@@ -304,6 +304,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
+    slug: "coat-of-arms",
+    title: "Coat of Arms",
+    category: "about-barbados",
+    visibility: "preview",
+  },
+  {
     slug: "crop-over-permits",
     title: "Find the permits you need for a Crop Over event",
     category: "business-trade",
