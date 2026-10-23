@@ -19,7 +19,6 @@ visibility: preview
   (iv) Governors-General of Independent Commonwealth countries.\
   (v) Governors of the Associated States, and\
   (vi) Governors, High Commissioners of Officers administering the Government of a dependent territory within the Commonwealth
-
 - (b) at the beginning of all public performances in a cinema house.
 
 3\. The National Anthem may be played
