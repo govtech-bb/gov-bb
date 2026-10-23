@@ -1,4 +1,4 @@
-// Board automation for the Alpha² project (#7). See
+// Board automation for the Platform Team project (#7). See
 // docs/superpowers/specs/2026-05-29-board-label-automation-design.md
 import { readFileSync } from "node:fs";
 
@@ -162,7 +162,7 @@ export async function gql<T>(
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
-      "User-Agent": "alpha2-board-bot",
+      "User-Agent": "platform-board-bot",
     },
     body: JSON.stringify({ query, variables }),
   });
@@ -299,7 +299,7 @@ async function rest(
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: "application/vnd.github+json",
-      "User-Agent": "alpha2-board-bot",
+      "User-Agent": "platform-board-bot",
       ...(body ? { "Content-Type": "application/json" } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
