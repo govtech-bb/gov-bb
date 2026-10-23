@@ -1,5 +1,6 @@
 name: Feature / task
 description: A change to build — new behaviour, a refactor, or tooling
+type: Feature
 labels: ["enhancement"]
 body:
   - type: textarea
