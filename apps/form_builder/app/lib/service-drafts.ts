@@ -9,6 +9,7 @@ import {
   type ServiceSnapshot,
   type ServiceCheckpoint,
 } from "@govtech-bb/form-types";
+import { foldLegacyNextSteps } from "@govtech-bb/form-builder";
 import { getRecipe, getFormConfig } from "../server/forms";
 import {
   getServiceUser,
@@ -30,7 +31,14 @@ async function scope() {
 function read(key: string): ServiceDraft | null {
   const raw = localStorage.getItem(key);
   if (!raw) return null;
-  const result = serviceDraftSchema.safeParse(JSON.parse(raw));
+  const parsed = JSON.parse(raw);
+  // #2442: a draft saved before the migration still holds `nextSteps`, which
+  // `draftRecipeSchema` now rejects (z.never). Fold it into `markdownContent`
+  // before parsing so one stale browser draft doesn't throw for the whole
+  // service library (localDrafts maps every key through read()).
+  if (Array.isArray(parsed?.recipe?.steps))
+    parsed.recipe = foldLegacyNextSteps(parsed.recipe);
+  const result = serviceDraftSchema.safeParse(parsed);
   if (!result.success)
     throw new Error(
       "This saved service draft could not be read. Your stored copy has been retained.",
