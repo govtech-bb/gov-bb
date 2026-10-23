@@ -1,4 +1,7 @@
+import { Logger } from "@nestjs/common";
 import { authorizeGitHubToken, extractBearerToken } from "./github-identity";
+
+const logger = new Logger("includeNonPublicFromAuth");
 
 /**
  * Whether a request may see non-public (preview/draft) entries. Soft auth: it
@@ -15,8 +18,15 @@ export async function includeNonPublicFromAuth(
   if (!token) return false;
   try {
     return (await authorizeGitHubToken(token)) !== null;
-  } catch {
-    // Misconfig or GitHub transport error → fail safe to public-only.
+  } catch (err) {
+    // Misconfig, GitHub transport error or timeout → fail safe to public-only.
+    // Logged because the symptom is otherwise silent: Feature flagging just
+    // stops listing non-public forms (#2902). Never log the token itself.
+    logger.warn(
+      `GitHub authorization failed; serving the public-only list: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
     return false;
   }
 }

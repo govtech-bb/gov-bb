@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import { Logger } from "@nestjs/common";
 
 const { authorizeGitHubToken } = vi.hoisted(() => ({
   authorizeGitHubToken: vi.fn(),
@@ -12,6 +13,7 @@ import { includeNonPublicFromAuth } from "./include-non-public";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 describe("includeNonPublicFromAuth", () => {
@@ -31,8 +33,26 @@ describe("includeNonPublicFromAuth", () => {
     expect(await includeNonPublicFromAuth("Bearer gh_token")).toBe(false);
   });
 
-  it("fails safe to public-only if verification throws", async () => {
+  it("fails safe to public-only if verification throws, and logs why without the token", async () => {
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => undefined);
     authorizeGitHubToken.mockRejectedValue(new Error("misconfig"));
+
     expect(await includeNonPublicFromAuth("Bearer gh_token")).toBe(false);
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("misconfig"));
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("gh_token");
+  });
+
+  it("does not log an ordinary unauthorized token", async () => {
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => undefined);
+    authorizeGitHubToken.mockResolvedValue(null);
+
+    await includeNonPublicFromAuth("Bearer gh_token");
+
+    expect(warn).not.toHaveBeenCalled();
   });
 });
