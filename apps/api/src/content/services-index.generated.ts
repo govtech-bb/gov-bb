@@ -419,6 +419,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
+    slug: "national-anthem",
+    title: "The National Anthem",
+    category: "about-barbados",
+    visibility: "preview",
+  },
+  {
     slug: "national-insurance-for-self-employed-workers",
     title: "Learn how to pay National Insurance when you work for yourself",
     category: "money-financial-support",
