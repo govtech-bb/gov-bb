@@ -419,6 +419,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
+    slug: "national-anthem",
+    title: "The National Anthem",
+    category: "about-barbados",
+    visibility: "preview",
+  },
+  {
     slug: "national-flower",
     title: "National Flower",
     category: "about-barbados",
