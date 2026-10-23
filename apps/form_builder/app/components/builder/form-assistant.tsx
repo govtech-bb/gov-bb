@@ -10,7 +10,6 @@ import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 import { validateRecipe } from "../../server/registry";
 import { recipeReducer } from "./recipe-reducer";
 import { WorkspaceAssistant as Assistant } from "../global-assistant";
-import type { AssistantProps } from "../ui/ai/assistant";
 
 export function recipeSnapshot(draft: RecipeDraft): Record<string, unknown> {
   const {
@@ -112,7 +111,7 @@ export function FormAssistant({
   catalog,
   readOnly,
   selection,
-  artifact,
+  serviceId,
   open,
   onOpenChange,
   onApply,
@@ -123,7 +122,7 @@ export function FormAssistant({
   catalog: RegistryCatalog;
   readOnly: boolean;
   selection?: string;
-  artifact?: AssistantProps["artifact"];
+  serviceId?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onApply: (draft: RecipeDraft, warnings: ValidationIssue[]) => void;
@@ -139,12 +138,7 @@ export function FormAssistant({
       document={recipeSnapshot(draft)}
       revisionSource={draft}
       selection={selection}
-      artifact={artifact}
-      target={
-        artifact
-          ? { serviceId: artifact.snapshot.manifest.serviceId }
-          : undefined
-      }
+      target={serviceId ? { serviceId } : undefined}
       readOnly={readOnly}
       prepare={async (proposal) => {
         const incoming = prepareFormDraft(

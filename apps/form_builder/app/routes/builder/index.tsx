@@ -50,10 +50,8 @@ import {
   REQUIRED_STEP_IDS,
   firstStepId,
 } from "../../components/builder/recipe-reducer";
-import { ServicePreview } from "../../components/services/service-preview";
 import { getServiceDraft, listServiceDrafts } from "../../lib/service-drafts";
-import type { ServiceDraft, ServiceSnapshot } from "@govtech-bb/form-types";
-import { extractDbProcessors } from "@govtech-bb/form-builder";
+import type { ServiceDraft } from "@govtech-bb/form-types";
 import { loadFormWorkspace } from "../../components/builder/load-form-draft";
 import { Toolbar } from "../../components/builder/toolbar";
 import { usePresence } from "../../components/builder/use-presence";
@@ -276,9 +274,6 @@ function BuilderPage() {
       window.removeEventListener("storage", refreshRevision);
     };
   }, [serviceDraft?.manifest.serviceId]);
-  const [servicePreview, setServicePreview] = useState<ServiceSnapshot | null>(
-    null,
-  );
   // UI state
   const [selectedStepId, setSelectedStepId] = useState<string | null>(
     () => search.step ?? (initialDraft ? firstStepId(initialDraft) : null),
@@ -604,23 +599,7 @@ function BuilderPage() {
     if (result.valid) handleOpenPublish();
   };
 
-  const previewSnapshot = serviceDraft
-    ? {
-        ...serviceDraft,
-        recipe: serializeRecipeDraft(draft),
-        manifest: { ...serviceDraft.manifest, formId: draft.formId },
-        pendingConfig: {
-          mdaContactId: draft.mdaContactId ?? null,
-          processors: extractDbProcessors(draft.processors),
-        },
-      }
-    : null;
-
   const handlePreview = async () => {
-    if (previewSnapshot) {
-      setServicePreview(previewSnapshot);
-      return;
-    }
     setIsPreviewOpen(true);
     setIsPreviewing(true);
     setPreviewError(null);
@@ -752,19 +731,10 @@ function BuilderPage() {
           onOpenChange={setIsAssistantOpen}
           user={user.login}
           documentId={loadedFromId ?? search.newFormId ?? "new"}
+          serviceId={serviceDraft?.manifest.serviceId}
           draft={draft}
           catalog={catalog}
           readOnly={isReadOnly}
-          artifact={
-            previewSnapshot
-              ? {
-                  snapshot: previewSnapshot,
-                  pageId: "form",
-                  stepId:
-                    mainView === "step" ? selectedStep?.stepId : undefined,
-                }
-              : undefined
-          }
           selection={
             mainView === "step"
               ? selectedStep
@@ -805,13 +775,6 @@ function BuilderPage() {
           hasUnsavedChanges={hasUnsavedChanges}
           isValidating={isValidating}
           isPreviewing={isPreviewing}
-          previewLabel={
-            serviceDraft
-              ? mainView === "step" && selectedStep
-                ? "Preview this page"
-                : "Preview from start"
-              : undefined
-          }
           isSubmitting={isSubmitting}
           isPublishing={isPublishing}
           isReadOnly={isReadOnly}
@@ -911,17 +874,6 @@ function BuilderPage() {
               onDuplicate={handleDuplicate}
             />
 
-            {servicePreview && (
-              <ServicePreview
-                snapshot={servicePreview}
-                initialStepId={
-                  mainView === "step" ? selectedStep?.stepId : undefined
-                }
-                initialPageId="form"
-                savedFormId={loadedFromId}
-                onClose={() => setServicePreview(null)}
-              />
-            )}
             <PreviewModal
               open={isPreviewOpen}
               contract={previewData}

@@ -54,11 +54,13 @@ it("finds forms by title or ID and clears a selected link", async () => {
 it("runs a header-menu action and restores the trigger focus", async () => {
   const action = vi.fn();
   const user = userEvent.setup();
-  render(<HeaderMenu items={[{ label: "Hide preview", onSelect: action }]} />);
+  render(
+    <HeaderMenu items={[{ label: "Discard changes", onSelect: action }]} />,
+  );
   const trigger = screen.getByRole("button", { name: "More actions" });
   await user.click(trigger);
   await user.click(
-    await screen.findByRole("menuitem", { name: "Hide preview" }),
+    await screen.findByRole("menuitem", { name: "Discard changes" }),
   );
   expect(action).toHaveBeenCalledTimes(1);
   await waitFor(() => expect(trigger).toHaveFocus());

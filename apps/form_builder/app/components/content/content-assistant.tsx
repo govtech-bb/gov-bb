@@ -11,7 +11,6 @@ import {
 } from "../../lib/content";
 import type { ServiceRow } from "../services/service-model";
 import type { ContentPageSummary } from "../../server/content";
-import type { AssistantProps } from "../ui/ai/assistant";
 import type { PreparedChange, Proposal } from "../ui/ai/review";
 import type { AssistantRequest } from "../ui/ai/prompt-bar";
 import { WorkspaceAssistant as Assistant } from "../global-assistant";
@@ -117,7 +116,6 @@ export function prepareContentPatch(
 
 export function ContentAssistant({
   user,
-  artifact,
   service,
   pages,
   onCreatePage,
@@ -134,7 +132,6 @@ export function ContentAssistant({
   request?: AssistantRequest;
   onRequestHandled?: () => void;
   user: string;
-  artifact?: AssistantProps["artifact"];
   service?: ServiceRow;
   pages: ContentPageSummary[] | null;
   onCreatePage: (path: string, state: FormState) => void | Promise<void>;
@@ -152,7 +149,6 @@ export function ContentAssistant({
       request={request}
       onRequestHandled={onRequestHandled}
       user={user}
-      artifact={artifact}
       target={
         service?.serviceId
           ? { serviceId: service.serviceId, pagePath: documentId }

@@ -16,9 +16,6 @@ import {
   CONTENT_ROOT,
   isValidContentSlug,
   isContentPath,
-  parseStartLink,
-  applyStartLink,
-  stripStartLinks,
   startPageUrl,
   subcategoriesFor,
   type FormState,
@@ -82,8 +79,6 @@ It shouldn't take longer than 20 minutes.
 - an EZPay+ account
 
 <a data-start-link>Start now</a>`;
-
-const BODY_PLACEHOLDER = START_TEMPLATE;
 
 interface StoredEditorDraft {
   version: 2;
@@ -575,20 +570,6 @@ export function useEditorState(
 
   const url = slug ? startPageUrl(state.category, slug, state.subcategory) : "";
 
-  // What the preview renders: the body exactly as deploy would publish it —
-  // marker stripped for "no button", href/label resolved otherwise. A not-yet-
-  // picked form gets a placeholder id so a placed button still shows.
-  const previewBody = useMemo(() => {
-    const body = state.body || BODY_PLACEHOLDER;
-    if (state.linkType === "none") return stripStartLinks(body);
-    const label = parseStartLink(body)?.label || "Start now";
-    const href = state.linkType === "form" ? "" : state.linkHref.trim();
-    const hasTarget = state.linkType === "form" || !!href;
-    return applyStartLink(body, { href, label, hasTarget });
-  }, [state.body, state.linkType, state.linkHref]);
-  const previewFormId =
-    state.linkType === "form" ? state.formId || "__preview__" : "";
-
   const pageKind = (fixedPath ?? "").endsWith("/start.md")
     ? "start page"
     : (fixedPath ?? "").endsWith("/index.md")
@@ -601,7 +582,7 @@ export function useEditorState(
       : "New page";
 
   const sharedPage = serviceDraft?.pages.find((p) => p.path === editPath);
-  const servicePreview =
+  const currentServiceSnapshot =
     serviceDraft && sharedPage
       ? {
           ...serviceDraft,
@@ -636,7 +617,7 @@ export function useEditorState(
     }
   };
   const createSharedPage = async (path: string, next: FormState) => {
-    if (!servicePreview || !serviceDraft || staleDraft || savingShared)
+    if (!currentServiceSnapshot || !serviceDraft || staleDraft || savingShared)
       throw new Error("Reload the service before adding a page.");
     setSavingShared(true);
     const capturedState = state;
@@ -644,7 +625,7 @@ export function useEditorState(
       const saved = await saveServiceDraft({
         data: {
           expectedRevision: serviceDraft.revision,
-          snapshot: appendServicePage(servicePreview, path, next),
+          snapshot: appendServicePage(currentServiceSnapshot, path, next),
         },
       });
       setServiceDraft(saved);
@@ -658,7 +639,6 @@ export function useEditorState(
   return {
     serviceDraft,
     setServiceDraft,
-    servicePreview,
     saveShared,
     savingShared,
     createSharedPage,
@@ -704,8 +684,6 @@ export function useEditorState(
     deployBlockReason,
     formMissing,
     url,
-    previewBody,
-    previewFormId,
     eyebrow,
   };
 }
