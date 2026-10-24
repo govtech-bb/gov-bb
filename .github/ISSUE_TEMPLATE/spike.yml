@@ -1,0 +1,58 @@
+name: Spike / investigation
+description: A timeboxed question to answer before building
+labels: ["spike"]
+body:
+  - type: textarea
+    attributes:
+      label: Question
+      description: What do we need to find out?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Decision it unblocks
+      description: What we'll do differently once we know the answer.
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Timebox
+      placeholder: "2 days"
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: Output
+      description: What the spike will produce.
+      multiple: true
+      options:
+        - ADR
+        - Written recommendation
+        - Prototype
+        - Follow-up issues
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Follow-up issues
+      description: Fill in when the spike ends.
+  - type: input
+    attributes:
+      label: Parent epic / depends on
+      placeholder: "#1234"
+  - type: dropdown
+    attributes:
+      label: Area
+      description: Which part of the platform? Leave empty if unsure.
+      multiple: true
+      options:
+        - Forms
+        - Form builder
+        - Landing
+        - Chat
+        - API
+        - Editor
+        - Analytics
+        - Feature flagging
+        - Shared packages
+        - Infra / CI
