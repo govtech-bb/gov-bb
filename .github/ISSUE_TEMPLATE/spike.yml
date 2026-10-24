@@ -1,5 +1,6 @@
 name: Spike / investigation
 description: A timeboxed question to answer before building
+type: Task
 labels: ["spike"]
 body:
   - type: textarea
