@@ -3,20 +3,22 @@ description: Something isn't working as expected
 type: Bug
 labels: ["bug"]
 body:
-  - type: checkboxes
+  - type: dropdown
     attributes:
-      label: Checked on the latest code
+      label: How was it found?
       description: >-
-        Pull and rebuild the branch it affects (usually `main`), or try it on a
-        deployed environment. Some bugs are already fixed, or only exist on an
-        old or local branch.
+        If you saw it happen, pull and rebuild the branch it affects (usually
+        `main`), or try it on a deployed environment, first. Some bugs are
+        already fixed, or only exist on an old or local branch.
       options:
-        - label: I reproduced this on the latest commit of the affected branch, or on a deployed environment
-          required: true
+        - Reproduced on the latest commit of the affected branch, or on a deployed environment
+        - Found by reading the code (not reproduced)
+    validations:
+      required: true
   - type: textarea
     attributes:
       label: What happened?
-      description: Include steps to reproduce.
+      description: Include steps to reproduce, or the code path if it was found by reading the code.
     validations:
       required: true
   - type: textarea
