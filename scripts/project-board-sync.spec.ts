@@ -5,6 +5,8 @@ import {
   removeLabel,
   assignIfUnassigned,
   closeIssue,
+  isExcluded,
+  removeFromBoard,
 } from "./project-board-sync";
 
 describe("decideActions", () => {
@@ -506,5 +508,165 @@ describe("closeIssue", () => {
     await expect(
       closeIssue("o", "r", 5, "tok", fetchMock as unknown as typeof fetch),
     ).rejects.toThrow("HTTP 500");
+  });
+});
+
+describe("isExcluded", () => {
+  it.each(["Merge v2-rewrite into main", "V2-Rewrite: editor", "v2 rewrite"])(
+    "matches the title %j",
+    (title) => {
+      expect(isExcluded(title, [])).toBe(true);
+    },
+  );
+
+  it("matches the v2-rewrite label", () => {
+    expect(isExcluded("Fix it", ["bug", "v2-rewrite"])).toBe(true);
+  });
+
+  it("keeps any other issue", () => {
+    expect(isExcluded("Fix it", ["bug"])).toBe(false);
+  });
+});
+
+describe("decideActions for excluded issues", () => {
+  it("opening an excluded issue removes it from the board instead", () => {
+    expect(
+      decideActions({
+        eventName: "issues",
+        action: "opened",
+        issueNumber: 5,
+        title: "Fix it",
+        labels: ["v2-rewrite"],
+      }),
+    ).toEqual([{ issue: 5, actions: [{ type: "removeFromBoard" }] }]);
+  });
+
+  it("adding the v2-rewrite label removes the card", () => {
+    expect(
+      decideActions({
+        eventName: "issues",
+        action: "labeled",
+        issueNumber: 5,
+        labelName: "v2-rewrite",
+        title: "Fix it",
+        labels: ["v2-rewrite"],
+      }),
+    ).toEqual([{ issue: 5, actions: [{ type: "removeFromBoard" }] }]);
+  });
+
+  it("still swaps the exclusive labels, without setting a status", () => {
+    expect(
+      decideActions({
+        eventName: "issues",
+        action: "labeled",
+        issueNumber: 5,
+        labelName: "ready",
+        title: "V2 rewrite: editor",
+        labels: ["ready"],
+      }),
+    ).toEqual([
+      {
+        issue: 5,
+        actions: [
+          { type: "removeLabel", label: "progressing" },
+          { type: "removeFromBoard" },
+        ],
+      },
+    ]);
+  });
+
+  it("a merged PR still closes and assigns an excluded issue", () => {
+    expect(
+      decideActions({
+        eventName: "pull_request",
+        action: "closed",
+        baseRef: "sandbox",
+        merged: true,
+        linkedIssues: [5, 7],
+        excludedIssues: [7],
+        prAuthor: "octocat",
+      }),
+    ).toEqual([
+      {
+        issue: 5,
+        actions: [
+          { type: "ensureOnBoard" },
+          { type: "setStatus", status: "Done" },
+          { type: "removeLabel", label: "progressing" },
+          { type: "assignIfUnassigned", login: "octocat" },
+          { type: "closeIssue" },
+        ],
+      },
+      {
+        issue: 7,
+        actions: [
+          { type: "removeFromBoard" },
+          { type: "removeLabel", label: "progressing" },
+          { type: "assignIfUnassigned", login: "octocat" },
+          { type: "closeIssue" },
+        ],
+      },
+    ]);
+  });
+});
+
+describe("removeFromBoard", () => {
+  const issueWith = (items: { id: string; project: { id: string } }[]) =>
+    new Response(
+      JSON.stringify({
+        data: {
+          repository: {
+            issue: { id: "I", projectItems: { nodes: items } },
+          },
+        },
+      }),
+      { status: 200 },
+    );
+
+  it("deletes the card on this board", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        issueWith([
+          { id: "OTHER", project: { id: "P28" } },
+          { id: "ITEM", project: { id: "P" } },
+        ]),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: { deleteProjectV2Item: { deletedItemId: "ITEM" } },
+          }),
+          { status: 200 },
+        ),
+      );
+    await removeFromBoard(
+      "o",
+      "r",
+      5,
+      { projectId: "P" },
+      "tok",
+      fetchMock as unknown as typeof fetch,
+    );
+    const body = JSON.parse(fetchMock.mock.calls[1][1].body as string);
+    expect(body.query).toContain("deleteProjectV2Item");
+    expect(body.variables).toEqual({ project: "P", item: "ITEM" });
+  });
+
+  it("does nothing when the issue is not on this board", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        issueWith([{ id: "OTHER", project: { id: "P28" } }]),
+      );
+    await removeFromBoard(
+      "o",
+      "r",
+      5,
+      { projectId: "P" },
+      "tok",
+      fetchMock as unknown as typeof fetch,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
