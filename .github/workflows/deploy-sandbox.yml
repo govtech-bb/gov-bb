@@ -707,6 +707,79 @@ jobs:
     secrets:
       smoke_submission_token: ${{ secrets.SMOKE_SUBMISSION_TOKEN }}
 
+  # Journey 3 (#3010): proves a feature-flag change reaches landing AND forms —
+  # the propagation a misconfigured deploy once broke silently (#2029). Flips a
+  # DEDICATED non-public test service (`e2e-maintenance-check`) to maintenance
+  # and back via `PUT /service_status`, asserting both apps, then always resets
+  # it to live. `needs` the three apps the journey touches, so it runs once they
+  # are all (re)deployed; a partial deploy that skips one simply skips this too.
+  # It is in `promote-to-staging`'s needs below, so a FAILURE blocks staging.
+  #
+  # Auth: `PUT /service_status` requires a GitHub *user* token (classic PAT) for
+  # an identity that is a team member / repo writer — the default GITHUB_TOKEN
+  # (a bot) does NOT qualify. Provision E2E_SERVICE_STATUS_TOKEN (a dedicated
+  # machine account's PAT with read:org) BEFORE merging, or this fails closed
+  # and blocks every staging promotion (by design — a gate must not pass blind).
+  journey-feature-flag:
+    name: Journey 3 — feature-flag reaches landing + forms
+    needs: [deploy-api, amplify-forms, amplify-landing]
+    runs-on: ubuntu-latest
+    # The journey itself is budgeted to 2m15s (see the spec); this is a backstop
+    # against a hang (install + browser), not a performance budget.
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Resolve Playwright version
+        id: playwright-version
+        run: |
+          version="$(pnpm --filter @govtech-bb/forms exec playwright --version | awk '{print $2}')"
+          test -n "$version" || { echo "could not resolve playwright version"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+      - name: Install Playwright chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 10
+        run: pnpm --filter @govtech-bb/forms exec playwright install chromium
+      - name: Run Journey 3
+        env:
+          # All via env (not inline ${{ }}) so nothing is interpolated into the
+          # shell. The token is a GitHub user PAT; the others are fixed sandbox
+          # URLs. A clear fail if the token is unset (see the note above).
+          E2E_API_BASE_URL: https://forms.api.sandbox.alpha.gov.bb
+          E2E_LANDING_URL: https://landing.sandbox.alpha.gov.bb
+          SMOKE_BASE_URL: https://forms.sandbox.alpha.gov.bb
+          E2E_SERVICE_STATUS_TOKEN: ${{ secrets.E2E_SERVICE_STATUS_TOKEN }}
+        run: |
+          if [ -z "$E2E_SERVICE_STATUS_TOKEN" ]; then
+            echo "::error::E2E_SERVICE_STATUS_TOKEN is not set — provision a machine-account PAT (read:org, team member / repo writer) per #3010 before this gate can pass."
+            exit 1
+          fi
+          pnpm --filter @govtech-bb/forms exec playwright test \
+            --config playwright.smoke.config.ts \
+            journey-3-feature-flag.smoke.spec.ts \
+            --retries=1
+      - name: Upload Playwright trace on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: journey-3-feature-flag-trace
+          path: apps/forms/test-results/
+          retention-days: 7
+
   amplify-analytics:
     name: Amplify build (analytics)
     needs: setup
@@ -1022,7 +1095,7 @@ jobs:
   # code sandbox couldn't ship.
   promote-to-staging:
     name: Promote to staging (on sandbox green)
-    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging]
+    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, journey-feature-flag]
     if: ${{ github.event_name == 'push' && !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     permissions:

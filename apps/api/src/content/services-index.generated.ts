@@ -323,6 +323,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "draft",
   },
   {
+    slug: "e2e-maintenance-check",
+    title: "E2E maintenance check (test service)",
+    category: "business-trade",
+    formId: "e2e-maintenance-check",
+    visibility: "preview",
+  },
+  {
     slug: "flag-etiquette",
     title: "Flag Etiquette",
     category: "about-barbados",
