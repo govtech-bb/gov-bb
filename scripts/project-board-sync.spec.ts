@@ -189,7 +189,7 @@ describe("decideActions", () => {
     ).toEqual([]);
   });
 
-  it("PR merged into sandbox → Done, remove progressing, close", () => {
+  it("PR merged into main → Done, remove progressing, close", () => {
     expect(
       decideActions({
         eventName: "pull_request",
@@ -201,28 +201,6 @@ describe("decideActions", () => {
     ).toEqual([
       {
         issue: 5,
-        actions: [
-          { type: "ensureOnBoard" },
-          { type: "setStatus", status: "Done" },
-          { type: "removeLabel", label: "progressing" },
-          { type: "closeIssue" },
-        ],
-      },
-    ]);
-  });
-
-  it("PR merged into dev → Done, remove progressing, close", () => {
-    expect(
-      decideActions({
-        eventName: "pull_request",
-        action: "closed",
-        baseRef: "main",
-        merged: true,
-        linkedIssues: [9],
-      }),
-    ).toEqual([
-      {
-        issue: 9,
         actions: [
           { type: "ensureOnBoard" },
           { type: "setStatus", status: "Done" },
