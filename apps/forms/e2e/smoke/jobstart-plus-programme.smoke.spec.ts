@@ -61,12 +61,17 @@ import {
 } from "../helpers/smoke";
 
 const FORM_ID = "jobstart-plus-programme";
+// Entered through here when SMOKE_LANDING_URL is set (#3008).
+const LANDING_START_PATH =
+  "/work-employment/apply-to-jobstart-plus-programme/start";
 
 test.describe("JobStart Plus Programme — Live Smoke", () => {
   test("submits the real form end-to-end and reaches the confirmation screen", async ({
     page,
   }) => {
-    await openSmokeForm(page, FORM_ID);
+    await openSmokeForm(page, FORM_ID, {
+      landingStartPath: LANDING_START_PATH,
+    });
     await page.waitForURL((url) => !!url.searchParams.get("step"), {
       timeout: STEP_TIMEOUT,
     });
@@ -263,7 +268,9 @@ test.describe("JobStart Plus Programme — Live Smoke", () => {
   test("stops a 25+ applicant without a disability inline", async ({
     page,
   }) => {
-    await openSmokeForm(page, FORM_ID);
+    await openSmokeForm(page, FORM_ID, {
+      landingStartPath: LANDING_START_PATH,
+    });
     await page.waitForURL((url) => !!url.searchParams.get("step"), {
       timeout: STEP_TIMEOUT,
     });
