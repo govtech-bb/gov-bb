@@ -21,10 +21,11 @@
  * form's availability (enabled → public → loads; form_disabled → maintenance →
  * 404 "Form not found").
  *
- * Timing: landing caches `service_status` for 60s in prod, so each flip is
- * polled by reloading until it reflects. The budget is 2m15s (see setTimeout);
- * the two 60s cache windows make that tight — see the PR for the feasibility
- * note and the suggested landing cache-bypass if it proves flaky.
+ * Timing: landing caches `service_status` for 60s, but a preview viewer gets an
+ * uncached read (see `getServiceStatuses`), and this journey browses landing with
+ * a `preview` cookie — so a flip reflects within a reload, not after the TTL. The
+ * forms API recomputes visibility per request. Each flip is still polled (edge /
+ * network), but the whole run comfortably fits the 2-minute budget below.
  *
  * Required env:
  *   E2E_API_BASE_URL         feature-flag API base (GET/PUT /service_status)
@@ -51,9 +52,10 @@ const LANDING_MAINTENANCE_TEXT =
   "This form is currently being upgraded to serve you better";
 const FORMS_NOT_FOUND_TEXT = "Form not found";
 
-// Reload until the page reflects the just-flipped status. Landing's 60s cache is
-// the slow part, so the window is generous; forms reflects per-request.
-const PROPAGATION_TIMEOUT = 70_000;
+// Reload until the page reflects the just-flipped status. The preview cookie
+// bypasses landing's 60s cache and forms is per-request, so this only absorbs
+// edge-cache / network lag — not a full TTL.
+const PROPAGATION_TIMEOUT = 25_000;
 
 async function reloadUntil(
   page: Page,
@@ -75,7 +77,7 @@ test.describe("Journey 3 — feature-flag maintenance reaches landing + forms", 
   test("flips a test service to maintenance and back, across both apps", async ({
     browser,
   }) => {
-    test.setTimeout(135_000); // 2m15s (#3010)
+    test.setTimeout(120_000); // under 2 minutes (#3010 AC)
 
     const api = required("E2E_API_BASE_URL");
     const landingUrl = required("E2E_LANDING_URL");
