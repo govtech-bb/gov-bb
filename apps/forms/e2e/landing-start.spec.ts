@@ -73,6 +73,32 @@ test.describe("smoke landing hop", () => {
     expect(page.url()).toBe(START_URL);
   });
 
+  test("fails on a relative Start link, which stays on landing's host", async ({
+    page,
+    baseURL,
+  }) => {
+    const formsOrigin = new URL(baseURL!).origin;
+    await serveStartPage(page, "/forms/master");
+
+    await expect(
+      startFromLanding(page, START_URL, formsOrigin, "master"),
+    ).rejects.toThrow(/landing\.test\/forms\/master/);
+    expect(page.url()).toBe(START_URL);
+  });
+
+  test("reports the status when the start page itself is missing", async ({
+    page,
+    baseURL,
+  }) => {
+    await page.route(`${LANDING}/**`, (route) =>
+      route.fulfill({ status: 404, body: "Not found" }),
+    );
+
+    await expect(
+      startFromLanding(page, START_URL, new URL(baseURL!).origin, "master"),
+    ).rejects.toThrow(/HTTP 404/);
+  });
+
   test("names the suppressed button when landing renders no Start now", async ({
     page,
     baseURL,
@@ -81,7 +107,7 @@ test.describe("smoke landing hop", () => {
 
     await expect(
       startFromLanding(page, START_URL, new URL(baseURL!).origin, "master"),
-    ).rejects.toThrow(/available/);
+    ).rejects.toThrow(/unavailable/);
   });
 
   test("refuses a landing run for a spec with no start path", async ({
