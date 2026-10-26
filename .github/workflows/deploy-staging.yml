@@ -78,6 +78,13 @@ jobs:
         run: |
           case "$GITHUB_REF_NAME" in
             staging)
+              # Amplify builds the staging tip while ECS deploys GITHUB_SHA;
+              # refuse to start if anything has moved staging since dispatch.
+              TIP=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/staging" --jq .object.sha)
+              if [ "$TIP" != "$GITHUB_SHA" ]; then
+                echo "❌ staging is at $TIP, not $GITHUB_SHA — Amplify and ECS would deploy different commits."
+                exit 1
+              fi
               echo "Promoted from sandbox: staging is already at ${GITHUB_SHA}"
               exit 0 ;;
             main) ;;

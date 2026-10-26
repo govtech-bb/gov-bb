@@ -1005,7 +1005,7 @@ jobs:
 
   notify-failure:
     name: Notify Slack on failure
-    needs: [deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, amplify-analytics, smoke-test-forms]
+    needs: [deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, amplify-analytics, smoke-test-forms, promote-to-staging]
     if: always() && contains(needs.*.result, 'failure')
     runs-on: ubuntu-latest
     steps:
@@ -1061,7 +1061,9 @@ jobs:
             echo "staging already contains $GITHUB_SHA — nothing to promote."
             exit 0
           fi
-          # force=false → fast-forward only, so a diverged staging fails loudly.
+          # force=false → fast-forward only, so a diverged staging fails this
+          # job, and notify-failure alerts Slack. An identical tip
+          # still dispatches: a re-run after a failed dispatch must deploy.
           if [ "$STATUS" != "identical" ]; then
             gh api -X PATCH "repos/$GH_REPO/git/refs/heads/staging" \
               -f sha="$GITHUB_SHA" -F force=false
