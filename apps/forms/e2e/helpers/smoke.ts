@@ -23,6 +23,7 @@
 import {
   errors,
   expect,
+  test,
   type Locator,
   type Page,
   type Request,
@@ -40,13 +41,82 @@ const UPLOAD_TIMEOUT = 30_000;
 const primaryButton = (page: Page) =>
   page.getByRole("button", { name: /^(Continue|Submit)$/ });
 
-/** Open a published recipe, including private forms when a preview token is set. */
-export async function openSmokeForm(page: Page, formId: string): Promise<void> {
+/**
+ * Open a published recipe, including private forms when a preview token is set.
+ *
+ * With SMOKE_LANDING_URL set, enter the form the way a citizen does instead:
+ * open its landing start page (`landingStartPath`) and follow "Start now"
+ * (#3008). A spec in a landing run must say where its start page is — falling
+ * back to a direct visit would quietly drop the coverage the run exists for.
+ */
+export async function openSmokeForm(
+  page: Page,
+  formId: string,
+  opts: { landingStartPath?: string } = {},
+): Promise<void> {
+  const landingUrl = process.env.SMOKE_LANDING_URL?.trim();
+  if (landingUrl) {
+    if (!opts.landingStartPath) {
+      throw new Error(
+        `SMOKE_LANDING_URL is set but the "${formId}" spec passes no ` +
+          "landingStartPath — add its landing start page to openSmokeForm.",
+      );
+    }
+    if (process.env.PREVIEW_TOKEN) {
+      // Landing hides Start for a non-public form, so there is no link to follow.
+      throw new Error(
+        "SMOKE_LANDING_URL and PREVIEW_TOKEN can't be combined: landing has " +
+          "no Start link for a private form (#1848).",
+      );
+    }
+    // The forms host under test is the config's baseURL (SMOKE_BASE_URL).
+    await startFromLanding(
+      page,
+      new URL(opts.landingStartPath, landingUrl).href,
+      new URL(test.info().project.use.baseURL!).origin,
+      formId,
+    );
+    return;
+  }
+
   const previewToken = process.env.PREVIEW_TOKEN;
   const search = previewToken
     ? `?preview=${encodeURIComponent(previewToken)}`
     : "";
   await page.goto(`/forms/${formId}${search}`);
+}
+
+/**
+ * Open a landing start page, check its "Start now" link targets `formId` on
+ * `formsOrigin`, then follow it. The link is checked BEFORE the click: a
+ * landing build pointing at another environment's forms host would otherwise
+ * carry the smoke into that environment and submit a real application there.
+ */
+export async function startFromLanding(
+  page: Page,
+  startPageUrl: string,
+  formsOrigin: string,
+  formId: string,
+): Promise<void> {
+  await page.goto(startPageUrl);
+  const start = page.getByRole("link", { name: /^Start now$/ });
+  await expect(
+    start,
+    `no "Start now" link on ${startPageUrl} — landing hides it when ` +
+      `"${formId}" is not in the forms API's available list`,
+  ).toBeVisible({ timeout: STEP_TIMEOUT });
+
+  const target = new URL((await start.getAttribute("href")) ?? "", page.url());
+  const expected = `${formsOrigin}/forms/${formId}`;
+  expect(
+    `${target.origin}${target.pathname}`,
+    `"Start now" on ${startPageUrl} points at ${target.href}`,
+  ).toBe(expected);
+
+  await start.click();
+  await page.waitForURL((url) => `${url.origin}${url.pathname}` === expected, {
+    timeout: STEP_TIMEOUT,
+  });
 }
 
 /** Read the current `?step=` param. */
