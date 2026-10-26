@@ -16,7 +16,8 @@ export type Action =
   | { type: "setStatus"; status: Status }
   | { type: "removeLabel"; label: ExclusiveLabel }
   | { type: "assignIfUnassigned"; login: string }
-  | { type: "closeIssue" };
+  | { type: "closeIssue" }
+  | { type: "removeFromBoard" };
 
 export interface IssuePlan {
   issue: number;
@@ -32,6 +33,8 @@ export type SyncInput =
       // Reason an issue was closed: "completed", "not_planned", "duplicate",
       // or absent. Only present on `closed` events.
       stateReason?: string;
+      title?: string;
+      labels?: string[];
     }
   | {
       eventName: "pull_request";
@@ -39,14 +42,60 @@ export type SyncInput =
       merged?: boolean;
       baseRef?: string;
       linkedIssues?: number[];
+      // Linked issues that isExcluded() keeps off the board.
+      excludedIssues?: number[];
       // PR author login; absent for bot authors, which we never assign.
       prAuthor?: string;
     };
 
-const MERGE_TARGETS = new Set(["sandbox", "dev"]);
+// Trunk-based: PRs merge into main; sandbox/staging/prod are deploy pointers.
+const MERGE_TARGETS = new Set(["main"]);
 
-/** Pure: maps a normalized event to an ordered per-issue action plan. */
+// v2-rewrite work is tracked on its own project, so it stays off this board.
+const EXCLUDED_LABEL = "v2-rewrite";
+const EXCLUDED_TITLE = /v2[- ]rewrite/i;
+
+export function isExcluded(title: string, labels: string[]): boolean {
+  return EXCLUDED_TITLE.test(title) || labels.includes(EXCLUDED_LABEL);
+}
+
+/**
+ * Pure: maps a normalized event to an ordered per-issue action plan. Excluded
+ * issues lose their board actions (and any existing card) but keep the rest.
+ */
 export function decideActions(input: SyncInput): IssuePlan[] {
+  if (
+    input.eventName === "issues" &&
+    input.action === "labeled" &&
+    input.labelName === EXCLUDED_LABEL
+  ) {
+    return [
+      { issue: input.issueNumber, actions: [{ type: "removeFromBoard" }] },
+    ];
+  }
+  const excluded =
+    input.eventName === "issues"
+      ? isExcluded(input.title ?? "", input.labels ?? [])
+        ? [input.issueNumber]
+        : []
+      : (input.excludedIssues ?? []);
+  return planActions(input).map((plan) =>
+    excluded.includes(plan.issue)
+      ? {
+          issue: plan.issue,
+          actions: plan.actions.flatMap((a): Action[] =>
+            a.type === "ensureOnBoard"
+              ? [{ type: "removeFromBoard" }]
+              : a.type === "setStatus"
+                ? []
+                : [a],
+          ),
+        }
+      : plan,
+  );
+}
+
+function planActions(input: SyncInput): IssuePlan[] {
   if (input.eventName === "issues") {
     const issue = input.issueNumber;
     if (input.action === "opened") {
@@ -226,15 +275,15 @@ export async function resolveProjectMeta(
   };
 }
 
-/** Returns the issue's project item id, adding it to the board if missing. */
-async function ensureItem(
+/** Looks up the issue's node id and its item on this board, if any. */
+async function findItem(
   owner: string,
   repo: string,
   issue: number,
-  meta: ProjectMeta,
+  meta: Pick<ProjectMeta, "projectId">,
   token: string,
   f: FetchFn = fetch,
-): Promise<string> {
+): Promise<{ issueId: string; itemId?: string }> {
   const data = await gql<{
     repository: {
       issue: {
@@ -252,17 +301,58 @@ async function ensureItem(
     token,
     f,
   );
-  const existing = data.repository.issue.projectItems.nodes.find(
-    (n) => n.project.id === meta.projectId,
+  return {
+    issueId: data.repository.issue.id,
+    itemId: data.repository.issue.projectItems.nodes.find(
+      (n) => n.project.id === meta.projectId,
+    )?.id,
+  };
+}
+
+/** Returns the issue's project item id, adding it to the board if missing. */
+async function ensureItem(
+  owner: string,
+  repo: string,
+  issue: number,
+  meta: ProjectMeta,
+  token: string,
+  f: FetchFn = fetch,
+): Promise<string> {
+  const { issueId, itemId } = await findItem(
+    owner,
+    repo,
+    issue,
+    meta,
+    token,
+    f,
   );
-  if (existing) return existing.id;
+  if (itemId) return itemId;
   const added = await gql<{ addProjectV2ItemById: { item: { id: string } } }>(
     `mutation($project:ID!,$content:ID!){ addProjectV2ItemById(input:{projectId:$project,contentId:$content}){ item { id } } }`,
-    { project: meta.projectId, content: data.repository.issue.id },
+    { project: meta.projectId, content: issueId },
     token,
     f,
   );
   return added.addProjectV2ItemById.item.id;
+}
+
+/** Deletes the issue's card from this board; a no-op when it has none. */
+export async function removeFromBoard(
+  owner: string,
+  repo: string,
+  issue: number,
+  meta: Pick<ProjectMeta, "projectId">,
+  token: string,
+  f: FetchFn = fetch,
+): Promise<void> {
+  const { itemId } = await findItem(owner, repo, issue, meta, token, f);
+  if (!itemId) return;
+  await gql(
+    `mutation($project:ID!,$item:ID!){ deleteProjectV2Item(input:{projectId:$project,itemId:$item}){ deletedItemId } }`,
+    { project: meta.projectId, item: itemId },
+    token,
+    f,
+  );
 }
 
 async function setStatus(
@@ -414,6 +504,9 @@ async function apply(
         case "closeIssue":
           await closeIssue(owner, repo, plan.issue, token, f);
           break;
+        case "removeFromBoard":
+          await removeFromBoard(owner, repo, plan.issue, meta, token, f);
+          break;
       }
     }
     console.log(
@@ -422,29 +515,46 @@ async function apply(
   }
 }
 
-/** Reads the closing-keyword issue references for a PR. */
+/** Reads a PR's closing-keyword issue references, flagging excluded ones. */
 async function closingIssues(
   owner: string,
   repo: string,
   pr: number,
   token: string,
   f: FetchFn = fetch,
-): Promise<number[]> {
+): Promise<{ linkedIssues: number[]; excludedIssues: number[] }> {
   const data = await gql<{
     repository: {
-      pullRequest: { closingIssuesReferences: { nodes: { number: number }[] } };
+      pullRequest: {
+        closingIssuesReferences: {
+          nodes: {
+            number: number;
+            title: string;
+            labels: { nodes: { name: string }[] };
+          }[];
+        };
+      };
     };
   }>(
     `query($owner:String!,$repo:String!,$num:Int!){
-      repository(owner:$owner,name:$repo){ pullRequest(number:$num){ closingIssuesReferences(first:50){ nodes { number } } } }
+      repository(owner:$owner,name:$repo){ pullRequest(number:$num){ closingIssuesReferences(first:50){ nodes { number title labels(first:50){ nodes { name } } } } } }
     }`,
     { owner, repo, num: pr },
     token,
     f,
   );
-  return data.repository.pullRequest.closingIssuesReferences.nodes.map(
-    (n) => n.number,
-  );
+  const nodes = data.repository.pullRequest.closingIssuesReferences.nodes;
+  return {
+    linkedIssues: nodes.map((n) => n.number),
+    excludedIssues: nodes
+      .filter((n) =>
+        isExcluded(
+          n.title,
+          n.labels.nodes.map((l) => l.name),
+        ),
+      )
+      .map((n) => n.number),
+  };
 }
 
 async function main(): Promise<void> {
@@ -473,16 +583,24 @@ async function main(): Promise<void> {
       issueNumber: payload.issue.number,
       labelName: payload.label?.name,
       stateReason: payload.issue.state_reason,
+      title: payload.issue.title,
+      labels: payload.issue.labels.map((l: { name: string }) => l.name),
     };
   } else {
     const pr = payload.pull_request;
-    const linkedIssues = await closingIssues(owner, repo, pr.number, token);
+    const { linkedIssues, excludedIssues } = await closingIssues(
+      owner,
+      repo,
+      pr.number,
+      token,
+    );
     input = {
       eventName,
       action: payload.action,
       merged: pr.merged,
       baseRef: pr.base.ref,
       linkedIssues,
+      excludedIssues,
       prAuthor: pr.user?.type === "Bot" ? undefined : pr.user?.login,
     };
   }
