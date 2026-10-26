@@ -155,7 +155,7 @@ describe("decideActions", () => {
       decideActions({
         eventName: "pull_request",
         action: "opened",
-        baseRef: "sandbox",
+        baseRef: "main",
         merged: false,
         linkedIssues: [5, 7],
       }),
@@ -182,7 +182,7 @@ describe("decideActions", () => {
       decideActions({
         eventName: "pull_request",
         action: "opened",
-        baseRef: "sandbox",
+        baseRef: "main",
         merged: false,
         linkedIssues: [],
       }),
@@ -194,7 +194,7 @@ describe("decideActions", () => {
       decideActions({
         eventName: "pull_request",
         action: "closed",
-        baseRef: "sandbox",
+        baseRef: "main",
         merged: true,
         linkedIssues: [5],
       }),
@@ -216,7 +216,7 @@ describe("decideActions", () => {
       decideActions({
         eventName: "pull_request",
         action: "closed",
-        baseRef: "dev",
+        baseRef: "main",
         merged: true,
         linkedIssues: [9],
       }),
@@ -238,7 +238,7 @@ describe("decideActions", () => {
       decideActions({
         eventName: "pull_request",
         action: "closed",
-        baseRef: "sandbox",
+        baseRef: "main",
         merged: true,
         linkedIssues: [5],
         prAuthor: "octocat",
@@ -262,19 +262,19 @@ describe("decideActions", () => {
       decideActions({
         eventName: "pull_request",
         action: "closed",
-        baseRef: "dev",
+        baseRef: "main",
         merged: false,
         linkedIssues: [9],
       }),
     ).toEqual([]);
   });
 
-  it("PR merged into a non-target base (main) → no actions", () => {
+  it("PR merged into a non-target base (sandbox) → no actions", () => {
     expect(
       decideActions({
         eventName: "pull_request",
         action: "closed",
-        baseRef: "main",
+        baseRef: "sandbox",
         merged: true,
         linkedIssues: [9],
       }),
@@ -286,7 +286,7 @@ describe("decideActions", () => {
       decideActions({
         eventName: "pull_request",
         action: "reopened",
-        baseRef: "sandbox",
+        baseRef: "main",
         merged: false,
         linkedIssues: [5],
       }),
@@ -306,7 +306,7 @@ describe("decideActions", () => {
       decideActions({
         eventName: "pull_request",
         action: "ready_for_review",
-        baseRef: "sandbox",
+        baseRef: "main",
         merged: false,
         linkedIssues: [7],
       }),
@@ -580,7 +580,7 @@ describe("decideActions for excluded issues", () => {
       decideActions({
         eventName: "pull_request",
         action: "closed",
-        baseRef: "sandbox",
+        baseRef: "main",
         merged: true,
         linkedIssues: [5, 7],
         excludedIssues: [7],

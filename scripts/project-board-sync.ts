@@ -48,7 +48,8 @@ export type SyncInput =
       prAuthor?: string;
     };
 
-const MERGE_TARGETS = new Set(["sandbox", "dev"]);
+// Trunk-based: PRs merge into main; sandbox/staging/prod are deploy pointers.
+const MERGE_TARGETS = new Set(["main"]);
 
 // v2-rewrite work is tracked on its own project, so it stays off this board.
 const EXCLUDED_LABEL = "v2-rewrite";
