@@ -98,12 +98,18 @@ export async function startFromLanding(
   formsOrigin: string,
   formId: string,
 ): Promise<void> {
-  await page.goto(startPageUrl);
+  // A moved, closed or non-public start page 404s — say so, rather than
+  // reporting a missing button.
+  const response = await page.goto(startPageUrl);
+  expect(
+    response?.ok(),
+    `${startPageUrl} returned HTTP ${response?.status()}`,
+  ).toBe(true);
   const start = page.getByRole("link", { name: /^Start now$/ });
   await expect(
     start,
     `no "Start now" link on ${startPageUrl} — landing hides it when ` +
-      `"${formId}" is not in the forms API's available list`,
+      `"${formId}" is unavailable (not public, closed or disabled)`,
   ).toBeVisible({ timeout: STEP_TIMEOUT });
 
   const target = new URL((await start.getAttribute("href")) ?? "", page.url());
