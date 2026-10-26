@@ -76,10 +76,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ "$GITHUB_REF_NAME" = "staging" ]; then
-            echo "Promoted from sandbox: staging is already at ${GITHUB_SHA}"
-            exit 0
-          fi
+          case "$GITHUB_REF_NAME" in
+            staging)
+              echo "Promoted from sandbox: staging is already at ${GITHUB_SHA}"
+              exit 0 ;;
+            main) ;;
+            *)
+              # Fast-forwarding staging onto an unmerged branch would ship code
+              # that never went through main or sandbox.
+              echo "❌ Deploy Staging runs from main (manual) or staging (promoted), not $GITHUB_REF_NAME."
+              exit 1 ;;
+          esac
           gh api -X PATCH "repos/${{ github.repository }}/git/refs/heads/staging" \
             -f sha="${{ github.sha }}" -F force=false
 

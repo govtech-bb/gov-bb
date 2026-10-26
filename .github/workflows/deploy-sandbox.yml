@@ -994,7 +994,7 @@ jobs:
             echo "| Amplify form-builder | $(outcome "$FB_APP_RESULT") |"
             echo "| Amplify feature-flagging | $(outcome "$FF_APP_RESULT") |"
             echo "| Amplify analytics | $(outcome "$ANALYTICS_RESULT") |"
-            echo "| Forms live smoke | $(outcome "$SMOKE_RESULT") |"
+            echo "| Forms live smoke | $(outcome "$SMOKE_RESULT" | sed 's/deployed/passed/') |"
             echo ""
             echo "**API URL:** https://forms.api.sandbox.alpha.gov.bb"
             echo "**Landing URL:** https://landing.sandbox.alpha.gov.bb"
@@ -1031,7 +1031,8 @@ jobs:
   # checkout, image tag and Amplify build in that run is this commit — not
   # whatever main's HEAD has moved on to. It joins deploy-staging's concurrency
   # group so it waits for an in-flight staging deploy before moving the branch
-  # that deploy's Amplify jobs build.
+  # that deploy's Amplify jobs build — which keeps this sandbox run open until
+  # that staging deploy finishes.
   promote-to-staging:
     name: Promote to staging (on sandbox green)
     needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, amplify-analytics, smoke-test-forms]
@@ -1052,10 +1053,19 @@ jobs:
           # --repo flag.
           GH_REPO: ${{ github.repository }}
         run: |
-          # force=false → fast-forward only: staging never moves backwards or
-          # onto a commit that isn't descended from what it already runs.
-          gh api -X PATCH "repos/$GH_REPO/git/refs/heads/staging" \
-            -f sha="$GITHUB_SHA" -F force=false
+          # A manual Deploy Staging from main can already have carried staging
+          # past this commit; it has nothing to promote then, and a backwards
+          # PATCH would fail a green sandbox run.
+          STATUS=$(gh api "repos/$GH_REPO/compare/$GITHUB_SHA...staging" --jq .status)
+          if [ "$STATUS" = "ahead" ]; then
+            echo "staging already contains $GITHUB_SHA — nothing to promote."
+            exit 0
+          fi
+          # force=false → fast-forward only, so a diverged staging fails loudly.
+          if [ "$STATUS" != "identical" ]; then
+            gh api -X PATCH "repos/$GH_REPO/git/refs/heads/staging" \
+              -f sha="$GITHUB_SHA" -F force=false
+          fi
           # Built-in GITHUB_TOKEN: workflow_dispatch is exempt from the token's
           # no-recursion guard, so this fires deploy-staging with NO PAT.
           gh workflow run deploy-staging.yml --ref staging
