@@ -33,6 +33,15 @@ on:
         description: "Name for the Playwright trace artifact uploaded on failure."
         required: true
         type: string
+      landing_url:
+        description: >
+          Deployed landing URL (SMOKE_LANDING_URL). When set, the spec enters
+          its form through the landing start page's "Start now" link, and a
+          link to the wrong host or form fails the run (#3008). Empty = open
+          the form directly.
+        required: false
+        type: string
+        default: ""
     secrets:
       smoke_submission_token:
         description: >
@@ -91,6 +100,7 @@ jobs:
           # the preview caller, so it must never reach the script directly.
           SMOKE_BASE_URL: ${{ inputs.base_url }}
           SMOKE_SPEC: ${{ inputs.spec }}
+          SMOKE_LANDING_URL: ${{ inputs.landing_url }}
           # Drops all processors server-side for these submissions (no real
           # emails/webhooks). Empty when the secret is unset → API ignores it.
           SMOKE_SUBMISSION_TOKEN: ${{ secrets.smoke_submission_token }}

@@ -642,11 +642,15 @@ jobs:
   # Live end-to-end smoke tests of the deployed forms app: each drives a real
   # form on sandbox (uploading files via the presign → S3 → confirm flow where
   # the form has uploads), SUBMITS FOR REAL, and asserts the confirmation
-  # screen. `needs: amplify-forms` so they run only after that build succeeds —
-  # and are skipped whenever forms wasn't deployed (a skipped/failed dependency
-  # skips these too). No AWS creds: the reusable workflow drives a headless
-  # browser against the public deployed URL, and uploads use presigned URLs
-  # issued server-side. Steps live in .github/workflows/forms-smoke.yml.
+  # screen. Each spec enters its form the way a citizen does: from the landing
+  # start page, through "Start now" — so a Start link to the wrong host or form
+  # fails the run (#3008). Runs once forms OR landing has deployed (either one
+  # can break that journey) and neither failed; `!cancelled()` stops a skipped
+  # dependency from skipping the smoke, and listing amplify-landing makes the
+  # smoke wait for an in-flight landing deploy. No AWS creds: the reusable
+  # workflow drives a headless browser against the public deployed URL, and
+  # uploads use presigned URLs issued server-side. Steps live in
+  # .github/workflows/forms-smoke.yml.
   #
   # Run as ONE matrix with a bounded `max-parallel` so the real
   # POST /submissions calls stay under the API's submission throttle
@@ -675,7 +679,8 @@ jobs:
   # submission email is broken. Re-add each once it returns to `public`.
   smoke-test-forms:
     name: Smoke test forms
-    needs: amplify-forms
+    needs: [amplify-forms, amplify-landing]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (needs.amplify-forms.result == 'success' || needs.amplify-landing.result == 'success') }}
     strategy:
       fail-fast: false
       max-parallel: 3
@@ -690,7 +695,8 @@ jobs:
           # barbados-secondary were dropped when that default flipped — they now
           # 404 to the public. Re-add each once it returns to `public` (or once a
           # preview-token bypass is wired into the smoke). The four below are in
-          # the public-10 allowlist.
+          # the public-10 allowlist. A spec added here must also pass its
+          # landing start path to openSmokeForm, or the landing run throws.
           - spec: project-protege-mentor.smoke.spec.ts
             artifact_name: project-protege-mentor-smoke-trace
           - spec: sports-training-programme-form-schema.smoke.spec.ts
@@ -702,6 +708,7 @@ jobs:
     uses: ./.github/workflows/forms-smoke.yml
     with:
       base_url: https://forms.sandbox.alpha.gov.bb
+      landing_url: https://landing.sandbox.alpha.gov.bb
       spec: ${{ matrix.spec }}
       artifact_name: ${{ matrix.artifact_name }}
     secrets:
