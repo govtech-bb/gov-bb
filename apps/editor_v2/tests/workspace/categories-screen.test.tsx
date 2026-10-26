@@ -105,6 +105,16 @@ const rows = () => [...host.querySelectorAll("tbody tr")];
 
 const names = () => rows().map((row) => row.querySelector("td span")?.textContent);
 
+// What the screen's live regions are saying
+const said = () =>
+  [...host.querySelectorAll('[role="status"]')].flatMap((node) => node.textContent || []);
+
+// The rows picked out as just moved
+const tinted = () =>
+  rows()
+    .filter((row) => row.className.includes("bg-blue-10"))
+    .map((row) => row.querySelector("td span")?.textContent);
+
 const until = (ready: () => void) => act(async () => vi.waitFor(ready));
 
 const loaded = () => until(() => expect(names()).toHaveLength(taxonomy.length));
@@ -168,21 +178,44 @@ test("moves a category among its siblings, keeping the focus and saying where it
   await press("Move Health up");
 
   expect(names()).toEqual(["Health", "Education", "Youth and community", "Sport", "Arts"]);
+  // Tinted in its new place, so a pointer can follow it there
+  expect(rows()[0]!.className).toContain("bg-blue-10");
   // At the top, up can't move it further, so down keeps the focus
   await vi.waitFor(() =>
     expect(document.activeElement?.getAttribute("aria-label")).toBe("Move Health down"),
   );
-  expect(host.querySelector('p[role="status"].sr-only')?.textContent).toBe(
-    "Health moved up: 1 of 3",
-  );
+  expect(said()).toContain("Health moved up: 1 of 3");
 
   // A subcategory moves only among its parent's subcategories
   await press("Move Arts up");
   expect(names()).toEqual(["Health", "Education", "Youth and community", "Arts", "Sport"]);
+  // Only the last row moved is tinted
+  expect(tinted()).toEqual(["Arts"]);
   // Read back, the order stays
   await vi.waitFor(() =>
     expect(names()).toEqual(["Health", "Education", "Youth and community", "Arts", "Sport"]),
   );
+});
+
+test("the tint stays on through a run of moves, and clears two seconds after the last", async () => {
+  await render();
+  await loaded();
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+  try {
+    const wait = (ms: number) => act(async () => void (await vi.advanceTimersByTimeAsync(ms)));
+
+    await press("Move Health up");
+    await wait(1500);
+    await press("Move Health down");
+    // Past the first move's two seconds, the second move's tint holds
+    await wait(600);
+    expect(tinted()).toEqual(["Health"]);
+    await wait(1400);
+    expect(tinted()).toEqual([]);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 test("rapid moves survive a delayed background count refresh", async () => {
@@ -217,7 +250,7 @@ test("rapid moves survive a delayed background count refresh", async () => {
   });
   await until(() => expect(client.isFetching()).toBe(0));
   expect(names()).toEqual(ordered);
-  expect(host.querySelector('p[role="status"].sr-only')?.textContent).toBe("Arts moved up: 1 of 2");
+  expect(said()).toContain("Arts moved up: 1 of 2");
 });
 
 test("adds a category whose slug follows its name, after its parent's other subcategories", async () => {
@@ -279,11 +312,15 @@ test("won't delete a category with services filed under it, and links to them", 
   await loaded();
   await press("Delete Education");
 
+  expect(dialog()?.getAttribute("role")).toBe("dialog");
   expect(dialog()?.textContent).toContain(
     "2 services are filed under Education. Move them to another category first.",
   );
   expect(dialog()?.querySelector("a")?.getAttribute("href")).toBe("/services?category=Education");
-  expect(button("Delete category").disabled).toBe(true);
+  // Nothing to confirm, so no Delete button, greyed or not
+  expect(button("Delete category")).toBeUndefined();
+  await press("Close");
+  await closed();
 });
 
 test("a renamed category links to the services under its real API name", async () => {
@@ -354,7 +391,21 @@ test("says when the categories couldn't load, and loads them on Try again", asyn
   unavailable = 1;
   await render();
   await vi.waitFor(() => expect(host.textContent).toContain("We could not load categories"));
+  // The loading status outlives the failure, so a retry is a change to a live region already there
+  const status = host.querySelector('p[role="status"].sr-only')!;
+  const answer = globalThis.fetch;
+  const held = Promise.withResolvers<void>();
 
+  expect(status.textContent).toBe("");
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+    await held.promise;
+
+    return answer(input);
+  });
   await press("Try again");
+  await vi.waitFor(() => expect(status.textContent).toBe("Loading categories…"));
+  expect(status.isConnected).toBe(true);
+  await act(async () => held.resolve());
   await loaded();
+  expect(status.textContent).toBe("");
 });

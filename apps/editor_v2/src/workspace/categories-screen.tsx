@@ -1,6 +1,14 @@
 import { CaretDown, CaretUp, DotsThree, PencilSimple, Trash } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createContext, useContext, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { categoryRows, reordered, type CategoryRow } from "../api/categories";
 import { ApiFailure, type EditorApi } from "../api/client";
 import { categoriesQuery } from "../api/queries";
@@ -160,6 +168,9 @@ export function CategoriesScreen({ api }: { api: EditorApi }) {
   const rows = useMemo(() => categoryRows(categories.data ?? []), [categories.data]);
   const [dialog, setDialog] = useState<{ kind: "add" | "edit" | "delete"; id?: string }>();
   const [moved, setMoved] = useState("");
+  // The row that last moved, tinted while moves go on, so a pointer can follow it to its new place
+  const [marked, setMarked] = useState<string>();
+  const unmark = useRef<ReturnType<typeof setTimeout>>(undefined);
   const add = useRef<HTMLButtonElement>(null);
   const card = useRef<HTMLDivElement>(null);
   // The control a move came from, to have the focus back once its row is in its new place
@@ -170,6 +181,9 @@ export function CategoriesScreen({ api }: { api: EditorApi }) {
       api.moveCategory(row.id, by),
     onSuccess: (ids, { row, by, from }) => {
       refocus.current = { id: row.id, by, from };
+      setMarked(row.id);
+      clearTimeout(unmark.current);
+      unmark.current = setTimeout(() => setMarked(undefined), 2000);
 
       const list = client.setQueryData(categoriesQuery(api).queryKey, (current) =>
         reordered(current ?? [], ids),
@@ -196,6 +210,8 @@ export function CategoriesScreen({ api }: { api: EditorApi }) {
     }),
     [api, client, move],
   );
+
+  useEffect(() => () => clearTimeout(unmark.current), []);
 
   // A moved row's control keeps the focus; at the end of the list, the other way's button takes it
   useLayoutEffect(() => {
@@ -243,7 +259,7 @@ export function CategoriesScreen({ api }: { api: EditorApi }) {
             Preview only: the content API can’t save categories yet, so changes here last until you
             reload.
           </Banner>
-          <p role="status" className="px-4 py-3 text-14 text-muted empty:hidden">
+          <p role="status" className="sr-only">
             {categories.isPending ? "Loading categories…" : null}
           </p>
           {refreshFailed && (
@@ -274,6 +290,7 @@ export function CategoriesScreen({ api }: { api: EditorApi }) {
             <table.DataTable
               caption="Categories"
               loading={categories.isPending}
+              marked={marked}
               empty={{
                 title: "No categories yet",
                 description: "Add one, so services can be filed under it.",

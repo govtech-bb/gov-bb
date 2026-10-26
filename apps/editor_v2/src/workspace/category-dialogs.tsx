@@ -15,12 +15,12 @@ import {
 import { ApiFailure, type EditorApi } from "../api/client";
 import { apiFailureMessages } from "../api/failure-messages";
 import { categoriesQuery } from "../api/queries";
-import { Button } from "../ui/button";
+import { button, Button } from "../ui/button";
 import { ConfirmDialog } from "../ui/confirm-dialog";
+import { Dialog } from "../ui/dialog";
 import { Field } from "../ui/field";
 import { Input } from "../ui/input";
 import { NativeSelect } from "../ui/native-select";
-import { TextLink } from "../ui/text-link";
 import { Textarea } from "../ui/textarea";
 import { toast } from "../ui/toast";
 import { ApiProblems, ApiProblemText } from "./api-problems";
@@ -257,35 +257,46 @@ export function DeleteCategoryDialog({
     },
   });
 
+  // Nothing to confirm: why not, and the way to what's in the way
+  if (blocked)
+    return (
+      <Dialog.Root
+        open
+        onOpenChange={(open) => {
+          if (!open) close();
+        }}
+      >
+        <Dialog.Content size="sm">
+          <Dialog.Header>
+            <Dialog.Title>{category.title} can't be deleted yet</Dialog.Title>
+            <Dialog.Description>{blocked}</Dialog.Description>
+          </Dialog.Header>
+          <Dialog.Actions>
+            <Button size="md" variant={category.services > 0 ? "ghost" : "accent"} onClick={close}>
+              Close
+            </Button>
+            {category.services > 0 && (
+              <Link
+                to="/services"
+                search={{ category: category.serviceCategoryTitle }}
+                className={button("md", "accent")}
+              >
+                See its services
+              </Link>
+            )}
+          </Dialog.Actions>
+        </Dialog.Content>
+      </Dialog.Root>
+    );
+
   return (
     <ConfirmDialog
       open
       onClose={close}
-      title={blocked ? `${category.title} can't be deleted yet` : `Delete ${category.title}?`}
-      description={
-        blocked ? (
-          <>
-            {blocked}
-            {category.services > 0 && (
-              <>
-                {" "}
-                <TextLink
-                  render={
-                    <Link to="/services" search={{ category: category.serviceCategoryTitle }} />
-                  }
-                >
-                  See its services
-                </TextLink>
-              </>
-            )}
-          </>
-        ) : (
-          "Services can no longer be filed under it. This can't be undone."
-        )
-      }
+      title={`Delete ${category.title}?`}
+      description="Services can no longer be filed under it. This can't be undone."
       confirm="Delete category"
       pendingLabel="Deleting category…"
-      confirmDisabled={!!blocked}
       pending={remove.isPending}
       error={
         remove.error && (

@@ -309,7 +309,10 @@ test("the first services load names its results region without replacing its con
     </RouterContextProvider>,
   );
   const heading = host.querySelector("h1");
-  expect(host.textContent).toContain("Loading services…");
+  const status = host.querySelector('[role="status"]');
+  expect(status?.textContent).toBe("Loading services…");
+  // Outside the busy table, which would hold back its announcement
+  expect(status?.closest('[aria-busy="true"]')).toBeNull();
   expect(searchBox()).not.toBeNull();
   expect(host.querySelector("table")?.getAttribute("aria-busy")).toBe("true");
   await act(async () => held.resolve(Response.json(thirty)));
@@ -318,6 +321,8 @@ test("the first services load names its results region without replacing its con
   });
   expect(host.querySelector("h1")).toBe(heading);
   expect(host.textContent).not.toContain("Loading services…");
+  // The same live region stays, emptied, ready for the next change
+  expect(status?.isConnected).toBe(true);
   client.clear();
 });
 

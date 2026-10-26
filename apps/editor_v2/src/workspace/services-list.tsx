@@ -290,7 +290,7 @@ export function ServicesList({
       />
       <div className="@container min-w-0 rounded-sm bg-white shadow-sheet">
         <ServiceFilters categories={categories} />
-        <p role="status" className="px-4 py-3 text-14 text-muted empty:hidden">
+        <p role="status" className="sr-only">
           {services.isPending ? "Loading services…" : null}
         </p>
         {refreshFailed && (

@@ -23,15 +23,25 @@ const { writes } = await installPageApi(context, service, [
   fixturePage(service.id, { title: service.title, url: service.url, category_id: "education" }),
 ]);
 
-await context.route("**/taxonomy", (route) =>
-  route.fulfill({
+// The first read waits, so the loading state can be measured against the loaded one
+const firstRead = Promise.withResolvers();
+
+let held = false;
+
+await context.route("**/taxonomy", async (route) => {
+  if (!held) {
+    held = true;
+    await firstRead.promise;
+  }
+
+  await route.fulfill({
     json: { categories: taxonomy },
     headers: {
       "access-control-allow-origin": route.request().headers().origin ?? "*",
       "access-control-allow-credentials": "true",
     },
-  }),
-);
+  });
+});
 
 const page = await context.newPage();
 
@@ -64,7 +74,16 @@ const categoryChoices = async (scope) => {
 
 try {
   await page.goto(new URL("/categories", baseURL).href);
+  await page.getByRole("status").filter({ hasText: "Loading categories…" }).waitFor();
+
+  const headerTop = () =>
+    page.locator("thead").evaluate((node) => node.getBoundingClientRect().top);
+
+  const loadingTop = await headerTop();
+
+  firstRead.resolve();
   await waitForOrder(["Education", "Health", "Youth", "Sport", "Arts"]);
+  assert.equal(await headerTop(), loadingTop, "the table header stays put as the rows arrive");
   assert.equal((await menu.boundingBox()).width, 240);
   await button("Move Health up").focus();
   await page.keyboard.press("Enter");
@@ -74,7 +93,7 @@ try {
     true,
   );
   assert.equal(
-    await page.locator('p[role="status"].sr-only').textContent(),
+    await page.getByRole("status").filter({ hasText: "moved" }).textContent(),
     "Health moved up: 1 of 3",
   );
 
@@ -82,9 +101,9 @@ try {
   await page.getByLabel("Name", { exact: true }).fill("Schools");
   await button("Save category").click();
   await button("Delete Schools").click();
-  const blocked = page.getByRole("alertdialog");
+  const blocked = page.getByRole("dialog", { name: "Schools can't be deleted yet" });
   assert.match(await blocked.textContent(), /1 service is filed under Schools/);
-  assert.equal(await button("Delete category").isDisabled(), true);
+  assert.equal(await button("Delete category").count(), 0);
   await page.getByRole("link", { name: "See its services" }).click();
   await page.getByRole("heading", { name: "Services", exact: true }).waitFor();
   assert.equal(new URL(page.url()).searchParams.get("category"), "Education");
