@@ -52,7 +52,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-textarea",
           "overrides": {
             "label": "Address",
             "fieldId": "address",
@@ -997,5 +997,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:34:16.771Z",
-  "updatedAt": "2026-10-21T16:52:59.000Z"
+  "updatedAt": "2026-10-22T12:22:33.000Z"
 }

@@ -319,8 +319,17 @@
         {
           "ref": "components/generic-file",
           "overrides": {
-            "label": "Curriculum (if not following National Curriculum)",
+            "label": "Curriculum you will follow",
             "fieldId": "curriculum-attachment",
+            "hint": "Upload a copy of the curriculum",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "following-national-curriculum",
+                "operator": "equal",
+                "value": "no"
+              }
+            ],
             "validations": {
               "required": {
                 "value": false
@@ -349,6 +358,7 @@
           "overrides": {
             "label": "Certified Copies of Tutor Qualifications",
             "fieldId": "tutor-qualifications-attachment",
+            "hint": "Please attach certified copies of qualifications of persons who will be teaching",
             "validations": {
               "required": {
                 "error": "Certified Copies of Tutor Qualifications is required",
@@ -440,5 +450,5 @@
     }
   ],
   "createdAt": "2026-06-03T00:00:00.000Z",
-  "updatedAt": "2026-10-21T16:52:59.000Z"
+  "updatedAt": "2026-10-22T12:22:33.000Z"
 }
