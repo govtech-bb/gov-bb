@@ -705,7 +705,7 @@ it("expands and narrows the harness without remounting the composer", async () =
     screen.getByRole("combobox", { name: "Conversation" }),
   ).toBeInTheDocument();
   expect(
-    screen.queryByRole("complementary", { name: "Preview and changes" }),
+    screen.queryByRole("complementary", { name: "Changes" }),
   ).not.toBeInTheDocument();
   expect(screen.getByRole("textbox", { name: "Message the assistant" })).toBe(
     input,
@@ -917,15 +917,13 @@ it("opens changes for a new proposal, respects closing through validation, and r
   await propose();
   view.rerender(<Assistant {...props} harness prepare={prepare} />);
   expect(
-    await screen.findByRole("complementary", { name: "Preview and changes" }),
+    await screen.findByRole("complementary", { name: "Changes" }),
   ).toBeInTheDocument();
-  expect(screen.getByRole("tab", { name: "Changes" })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
-  fireEvent.click(
-    screen.getByRole("button", { name: "Close preview and changes" }),
-  );
+  expect(screen.getByRole("heading", { name: "Changes" })).toBeVisible();
+  expect(
+    screen.queryByRole("button", { name: "Open preview" }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Close changes" }));
   expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
   await act(async () =>
     finish({
@@ -947,7 +945,7 @@ it("opens changes for a new proposal, respects closing through validation, and r
     });
   });
   expect(
-    screen.getByRole("complementary", { name: "Preview and changes" }),
+    screen.getByRole("complementary", { name: "Changes" }),
   ).toBeInTheDocument();
   expect(screen.getByRole("textbox", { name: "Message the assistant" })).toBe(
     input,

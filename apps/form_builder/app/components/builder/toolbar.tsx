@@ -30,7 +30,6 @@ interface ToolbarProps {
   hasUnsavedChanges: boolean;
   isValidating: boolean;
   isPreviewing: boolean;
-  previewLabel?: string;
   isSubmitting: boolean;
   isPublishing: boolean;
   isReadOnly: boolean;
@@ -130,7 +129,7 @@ export function Toolbar(props: ToolbarProps) {
             loading={props.isPreviewing}
             icon={<EyeIcon aria-hidden="true" />}
           >
-            {props.previewLabel ?? "Preview"}
+            Preview
           </Button>
           <Button
             size="sm"

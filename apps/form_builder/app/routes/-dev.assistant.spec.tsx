@@ -9,7 +9,7 @@ vi.mock("../components/services/service-state", () => ({
   useServiceIndex: () => ({ entries: [] }),
 }));
 
-it("lets a visitor review a sample edit, auto-apply a warning, and expand the preview", async () => {
+it("lets a visitor review a sample edit, auto-apply a warning, and expand the changes", async () => {
   localStorage.clear();
   vi.stubEnv("NODE_ENV", "development");
   const Demo = Route.options.component as ComponentType;
@@ -73,17 +73,13 @@ it("lets a visitor review a sample edit, auto-apply a warning, and expand the pr
       screen.getByRole("combobox", { name: "Conversation" }),
     ).toBeVisible();
     expect(
-      screen.getByRole("complementary", { name: "Preview and changes" }),
+      screen.getByRole("complementary", { name: "Changes" }),
     ).toBeVisible();
-    await user.click(screen.getByRole("button", { name: "Open preview" }));
-    expect(screen.getByRole("tab", { name: "Preview" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-    expect(screen.getByTitle("Service journey preview")).toHaveAttribute(
-      "src",
-      expect.stringContaining("preview-start-page"),
-    );
+    expect(screen.getByRole("heading", { name: "Changes" })).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Open preview" }),
+    ).not.toBeInTheDocument();
+    expect(document.querySelector("iframe")).toBeNull();
   } finally {
     view.unmount();
     vi.unstubAllEnvs();

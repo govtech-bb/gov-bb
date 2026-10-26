@@ -16,7 +16,6 @@ import {
   type ReactNode,
 } from "react";
 import { useChat } from "@tanstack/ai-react";
-import type { ServiceSnapshot } from "@govtech-bb/form-types";
 import { flushSync } from "react-dom";
 import { toolDefinition } from "@tanstack/ai/client";
 import {
@@ -28,7 +27,6 @@ import {
   Cancel01Icon,
   ArrowDown01Icon,
   MoreHorizontalIcon,
-  ViewIcon,
   Copy01Icon,
   CheckmarkCircle02Icon,
 } from "hugeicons-react";
@@ -136,7 +134,6 @@ export type AssistantProps = {
   harness?: boolean;
   onHarnessChange?: (harness: boolean) => void;
   target?: { serviceId: string; pagePath?: string };
-  artifact?: { snapshot: ServiceSnapshot; pageId?: string; stepId?: string };
   transport?: typeof streamChat;
   prepare: (proposal: Proposal) => Promise<PreparedChange>;
 };
@@ -450,7 +447,6 @@ export function Assistant(props: AssistantProps) {
                   permission={permission}
                   setPermission={setPermission}
                   full={full}
-                  artifact={props.artifact}
                   storageError={storageError}
                   onStorageError={() => setStorageError(true)}
                   onFirstMessage={rename}
@@ -487,7 +483,6 @@ function ChatSession({
   permission,
   setPermission,
   full,
-  artifact,
   storageError,
   onStorageError,
   onFirstMessage,
@@ -505,18 +500,12 @@ function ChatSession({
   permission: Permission;
   setPermission: (permission: Permission) => void;
   full: boolean;
-  artifact?: AssistantProps["artifact"];
   storageError: boolean;
   onStorageError: () => void;
   onFirstMessage: (text: string) => void;
   onDelete: () => void;
 }) {
   const [input, setInput] = useState("");
-  const artifactSource = JSON.stringify(artifact?.snapshot);
-  const artifactRevision = useMemo(
-    () => crypto.randomUUID(),
-    [artifactSource, context.revision],
-  );
   const [selectedText, setSelectedText] = useState<string | null>();
   const [requestId, setRequestId] = useState<string>();
   useEffect(() => {
@@ -571,25 +560,14 @@ function ChatSession({
     proposal?: string;
     open: boolean;
   }>();
-  const [paneTab, setPaneTab] = useState<{
-    id: number;
-    value: "preview" | "changes";
-    proposal?: string;
-  }>();
   const paneOpen =
     full &&
     (paneChoice && paneChoice.proposal === activity?.id
       ? paneChoice.open
       : !!activity);
-  const showPane = (value: "preview" | "changes") => {
-    setPaneChoice({ proposal: activity?.id, open: true });
-    setPaneTab((previous) => ({
-      id: (previous?.id ?? 0) + 1,
-      value,
-      proposal: activity?.id,
-    }));
-  };
-  const viewChanges = paneOpen ? () => showPane("changes") : undefined;
+  const viewChanges = paneOpen
+    ? () => setPaneChoice({ proposal: activity?.id, open: true })
+    : undefined;
   const runRevision = useRef("");
   const active = useRef(true);
   const latest = useRef({ attachment, onStorageError, selection, permission });
@@ -1103,17 +1081,6 @@ function ChatSession({
       <header className="flex min-h-12 shrink-0 items-center gap-0.5 border-b border-ui-hairline px-3">
         <div className="min-w-0 flex-1 max-w-sm">{conversation}</div>
         <div className="flex-1" />
-        {full && artifact && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            aria-label="Open preview"
-            onClick={() => showPane("preview")}
-          >
-            <ViewIcon size={16} aria-hidden="true" /> Preview
-          </Button>
-        )}
         <DropdownMenu>
           <DropdownMenu.Trigger aria-label="Conversation actions">
             <Button
@@ -1720,16 +1687,10 @@ function ChatSession({
         </div>
         {paneOpen ? (
           <ArtifactPane
-            artifact={artifact}
             change={activity?.change}
             validating={activity?.validating ?? false}
-            revision={artifactRevision}
-            proposalId={activity?.id}
             onClose={() =>
               setPaneChoice({ proposal: activity?.id, open: false })
-            }
-            requestedTab={
-              paneTab?.proposal === activity?.id ? paneTab : undefined
             }
           />
         ) : null}

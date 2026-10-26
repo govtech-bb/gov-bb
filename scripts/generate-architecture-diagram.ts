@@ -65,9 +65,8 @@ const ENV_VAR_TO_SERVICE: Record<string, ExternalService> = {
 
 // Env-var-name → target app (by short package name, minus the `@govtech-bb/`
 // prefix). When an app declares one of these vars in its `.env.example` we
-// record an edge from that app to the target. Reverse-direction vars (e.g.
-// origin allowlists like VITE_START_PAGE_EDITOR_ORIGIN, where the target
-// embeds the caller) are deliberately omitted — they misrepresent traffic.
+// record an edge from that app to the target. Reverse-direction vars such as
+// origin allowlists are deliberately omitted — they misrepresent traffic.
 const URL_VAR_TO_APP: Record<string, string> = {
   VITE_API_URL: "api",
   VITE_FORMS_API_URL: "api",

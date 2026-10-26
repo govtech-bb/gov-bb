@@ -9,17 +9,20 @@ import { Breadcrumbs } from './Breadcrumbs'
 
 type MockLinkProps = ComponentPropsWithoutRef<'a'> & { to: string }
 
+const location = vi.hoisted(() => ({ pathname: '/' }))
+
 vi.mock('@tanstack/react-router', async (orig) => ({
   ...(await orig<typeof ReactRouter>()),
   Link: ({ to, ...props }: MockLinkProps) => <a href={to} {...props} />,
-  useLocation: () => ({ pathname: '/unused' }),
+  useLocation: () => location,
 }))
 
 afterEach(cleanup)
 
 describe('Breadcrumbs', () => {
   it('renders the design-system component with responsive collapsing', () => {
-    render(<Breadcrumbs pathname="/first-level/second-level/current-page" />)
+    location.pathname = '/first-level/second-level/current-page'
+    render(<Breadcrumbs />)
 
     const nav = screen.getByRole('navigation', { name: 'Breadcrumb' })
     expect(nav.className).toContain('govbb-breadcrumbs')
@@ -42,10 +45,12 @@ describe('Breadcrumbs', () => {
   })
 
   it('does not render breadcrumbs on roots or form routes', () => {
-    const { rerender } = render(<Breadcrumbs pathname="/" />)
+    location.pathname = '/'
+    const { rerender } = render(<Breadcrumbs />)
     expect(screen.queryByRole('navigation', { name: 'Breadcrumb' })).toBeNull()
 
-    rerender(<Breadcrumbs pathname="/forms/example/form" />)
+    location.pathname = '/forms/example/form'
+    rerender(<Breadcrumbs />)
     expect(screen.queryByRole('navigation', { name: 'Breadcrumb' })).toBeNull()
   })
 
@@ -53,7 +58,8 @@ describe('Breadcrumbs', () => {
     '/health-and-emergency-services/free-or-subsidised-medication',
     '/health-and-emergency-services/prescription-colours',
   ])('includes the pharmacy service parent for %s', (pathname) => {
-    render(<Breadcrumbs pathname={pathname} />)
+    location.pathname = pathname
+    render(<Breadcrumbs />)
 
     const links = screen.getAllByRole('link')
     expect(links.map((link) => link.textContent)).toEqual([

@@ -42,9 +42,6 @@
           "env": "VITE_SITE_URL"
         },
         {
-          "env": "VITE_START_PAGE_EDITOR_ORIGIN"
-        },
-        {
           "env": "VITE_TRACKER_URL"
         },
         {

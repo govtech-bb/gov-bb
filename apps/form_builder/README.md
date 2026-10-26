@@ -47,7 +47,7 @@ pnpm exec nx run form-builder-app:typecheck   # same check CI runs; covers specs
 Services, forms, and content share a collapsible sidebar and top bar. The sidebar
 remembers its desktop state and lists the current service’s overview, application
 form, and content pages. Small screens use a navigation drawer. The form editor
-has a separate page outline; content editing has Write, Settings, and Preview tabs.
+has a separate page outline; content editing has Write and Settings tabs.
 Ask AI opens a global panel that stays mounted while navigating the workspace.
 
 ## Services
@@ -93,13 +93,10 @@ Source revisions and overlapping PRs are checked first. Git stores public files;
 private payment and department settings continue to use the current API.
 A merged PR is reported as merged, not as a verified live deployment.
 
-**Preview service** captures the current snapshot, including unsaved editor
-changes, and uses the real content and form renderers. Sample uploads, payments,
-and submissions stay in preview. Set `VITE_LANDING_PREVIEW_URL` and
-`VITE_FORMS_PREVIEW_URL` on the builder to absolute URLs ending in
-`/preview-start-page` and `/preview-service`. Set `VITE_START_PAGE_EDITOR_ORIGIN`
-on the receiving apps to the builder's exact origin. Development accepts local
-loopback origins. Both origin and source window are checked.
+The form editor's **Preview** shows the current draft's pages and questions,
+including unsaved changes, with an option to inspect its recipe JSON. **Preview
+saved form** opens the last saved version in the forms app in a new tab.
+The AI assistant's **Changes** pane shows proposed edits for review.
 
 No new `form_builder_api` endpoints, database migrations, release-preparation
 commands, or submission-processing behaviour are required for this UI.

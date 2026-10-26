@@ -43,15 +43,8 @@ function titleForSegment(seg: string, previousSegment?: string): string {
   )
 }
 
-export function Breadcrumbs({
-  pathname: pathnameOverride,
-}: {
-  /** Render the trail for this path instead of the current location — used by
-   *  the /preview-start-page route to show the previewed page's crumbs. */
-  pathname?: string
-} = {}) {
-  const { pathname: locationPathname } = useLocation()
-  const pathname = pathnameOverride ?? locationPathname
+export function Breadcrumbs() {
+  const { pathname } = useLocation()
   const segments = pathname.split('/').filter(Boolean)
   if (segments.length === 0) return null
 
