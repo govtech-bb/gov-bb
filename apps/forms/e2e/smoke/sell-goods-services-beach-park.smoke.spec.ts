@@ -57,12 +57,17 @@ import {
 } from "../helpers/smoke";
 
 const FORM_ID = "sell-goods-services-beach-park";
+// Entered through here when SMOKE_LANDING_URL is set (#3008).
+const LANDING_START_PATH =
+  "/business-trade/sell-goods-services-beach-park/start";
 
 test.describe("Sell Goods or Services at a Beach or Park — Live Smoke", () => {
   test("submits the real form end-to-end and reaches the confirmation screen", async ({
     page,
   }) => {
-    await openSmokeForm(page, FORM_ID);
+    await openSmokeForm(page, FORM_ID, {
+      landingStartPath: LANDING_START_PATH,
+    });
     await page.waitForURL((url) => !!url.searchParams.get("step"), {
       timeout: STEP_TIMEOUT,
     });
