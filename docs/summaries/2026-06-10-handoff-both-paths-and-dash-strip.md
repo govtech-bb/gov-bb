@@ -6,8 +6,7 @@ A follow-up to the online-first nudge (#1079). Reviewing a live birth-certificat
 handoff reply surfaced two issues: (1) it contained an em dash, which the
 SYSTEM_PROMPT bans but the model emitted anyway; (2) the handoff disclosure
 forbade mentioning the paper / in-person route at all, but we want users to see
-**both** paths (online first, in-person as a fallback). Done on
-`worktree-handoff-both-paths-emdash` (targets `sandbox`).
+**both** paths (online first, in-person as a fallback).
 
 ## What we did
 

@@ -188,20 +188,28 @@ export function ColumnsMenu() {
 
 const sortState = { asc: "ascending", desc: "descending" } as const;
 
-/** The current page of rows, with loading, empty and no-match states in place of rows. */
+/**
+ * The current page of rows, with loading, empty and no-match states in place of rows. Loading, its first row shows what
+ * it's loading, named by its caption, as tall as the placeholder rows under it, so nothing moves as the rows arrive.
+ * Screen readers hear that from the screen's own status line instead, which outlives the table.
+ */
 export function DataTable({
   caption,
   loading = false,
   empty,
+  marked,
 }: {
   caption: string;
   loading?: boolean;
   empty: Pick<EmptyStateProps, "title" | "description" | "actions">;
+  /** A row to pick out by its id, such as one that has just moved, so the eye can follow it. */
+  marked?: string;
 }) {
   const table = useTableContext();
   const rows = table.getRowModel().rows;
   const columns = table.getVisibleLeafColumns();
   const filters = useTableFilters();
+  const loadingWords = `Loading ${caption.toLowerCase()}…`;
 
   return (
     <div role="region" aria-label={caption} tabIndex={0} className="overflow-x-auto">
@@ -241,23 +249,30 @@ export function DataTable({
         </thead>
         <tbody>
           {loading ? (
-            Array.from({ length: 6 }, (_, row) => (
-              <tr key={row} className="border-t border-line">
-                {columns.map((column, index) => (
-                  <td
-                    key={column.id}
-                    className={cn("px-4 py-4", column.columnDef.meta?.secondary && secondary)}
-                  >
-                    <span
-                      className={cn(
-                        "block h-3 rounded-sm bg-grey-20 motion-safe:animate-pulse",
-                        index ? "w-16" : "w-2/3 min-w-40",
-                      )}
-                    />
-                  </td>
-                ))}
+            <>
+              <tr className="border-t border-line">
+                <td colSpan={columns.length} aria-hidden="true" className="px-4 py-3 text-muted">
+                  {loadingWords}
+                </td>
               </tr>
-            ))
+              {Array.from({ length: 5 }, (_, row) => (
+                <tr key={row} className="border-t border-line">
+                  {columns.map((column, index) => (
+                    <td
+                      key={column.id}
+                      className={cn("px-4 py-4", column.columnDef.meta?.secondary && secondary)}
+                    >
+                      <span
+                        className={cn(
+                          "block h-3 rounded-sm bg-grey-20 motion-safe:animate-pulse",
+                          index ? "w-16" : "w-2/3 min-w-40",
+                        )}
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </>
           ) : rows.length === 0 ? (
             <tr className="border-t border-line">
               <td colSpan={columns.length}>
@@ -272,7 +287,10 @@ export function DataTable({
             rows.map((row) => (
               <tr
                 key={row.id}
-                className="border-t border-line transition-colors duration-150 hover:bg-tint"
+                className={cn(
+                  "border-t border-line transition-colors duration-150",
+                  row.id === marked ? "bg-blue-10" : "hover:bg-tint",
+                )}
               >
                 {row.getVisibleCells().map((c) => (
                   <table.AppCell cell={c} key={c.id}>

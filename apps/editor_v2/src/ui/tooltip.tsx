@@ -13,16 +13,19 @@ export function Tip({
   hint,
   left,
   side = "bottom",
+  disabled = false,
   children,
 }: {
   content: ReactNode;
   hint?: boolean;
   left?: boolean;
   side?: "top" | "bottom" | "left" | "right";
+  /** Not shown, as when the trigger's own words are on screen; the trigger stays as it is. */
+  disabled?: boolean;
   children: ReactElement;
 }) {
   return (
-    <Tooltip.Root disableHoverablePopup>
+    <Tooltip.Root disableHoverablePopup disabled={disabled}>
       <Tooltip.Trigger render={children} />
       <Tooltip.Portal>
         <Tooltip.Positioner side={side} sideOffset={10} collisionPadding={8} className="z-60">

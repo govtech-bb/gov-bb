@@ -38,12 +38,15 @@ try {
   });
   await page.goto(new URL("/services", base).href);
   await page.getByRole("heading", { name: "Services", exact: true }).waitFor();
-  await page.getByText("Loading services…", { exact: true }).waitFor();
+  await page.getByRole("status").filter({ hasText: "Loading services…" }).waitFor();
   assert.equal(await button("Sign out").isVisible(), true);
   assert.equal(await page.getByRole("searchbox").isVisible(), true);
   const header = await page.locator("header").elementHandle();
   firstRead.resolve();
-  await page.getByText("Loading services…", { exact: true }).waitFor({ state: "hidden" });
+  await page
+    .getByRole("status")
+    .filter({ hasText: "Loading services…" })
+    .waitFor({ state: "hidden" });
   assert.equal(
     await header.evaluate((element) => element.isConnected),
     true,

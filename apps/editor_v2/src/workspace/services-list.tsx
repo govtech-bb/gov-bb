@@ -1,6 +1,6 @@
 import { X } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { ApiFailure, type EditorApi, type ServiceSummary } from "../api/client";
 import { servicesQuery } from "../api/queries";
@@ -8,7 +8,7 @@ import { visibilityLabels, visibilityTones } from "../pages";
 import { Badge } from "../ui/badge";
 import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
-import { EmptyState } from "../ui/empty-state";
+import { ScreenHeader } from "../ui/screen-header";
 import { Select, type SelectItem } from "../ui/select";
 import { StatusDot } from "../ui/status-dot";
 import { TextLink } from "../ui/text-link";
@@ -18,6 +18,7 @@ import {
   useTableFilters,
   useTableContext,
 } from "../ui/table/table-hooks";
+import { LoadFailure } from "./load-failure";
 import {
   filteredBy,
   pagedTo,
@@ -210,7 +211,6 @@ export function ServicesList({
   onCreate: () => void;
 }) {
   const services = useQuery(servicesQuery(api));
-  const href = useRouterState({ select: (state) => state.location.href });
   const status = services.error instanceof ApiFailure ? services.error.status : undefined;
 
   const refreshFailed =
@@ -280,15 +280,17 @@ export function ServicesList({
 
   return (
     <table.AppTable>
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-28 font-semibold">Services</h1>
-        <Button variant="accent" size="md" onClick={onCreate}>
-          Create service
-        </Button>
-      </div>
+      <ScreenHeader
+        title="Services"
+        action={
+          <Button variant="accent" size="md" onClick={onCreate}>
+            Create service
+          </Button>
+        }
+      />
       <div className="@container min-w-0 rounded-sm bg-white shadow-sheet">
         <ServiceFilters categories={categories} />
-        <p role="status" className="px-4 py-3 text-14 text-muted empty:hidden">
+        <p role="status" className="sr-only">
           {services.isPending ? "Loading services…" : null}
         </p>
         {refreshFailed && (
@@ -309,34 +311,11 @@ export function ServicesList({
           </Banner>
         )}
         {blocked ? (
-          <EmptyState
-            kind="failed"
-            title="We could not load services"
-            description={
-              status === 401
-                ? "Your session has ended. Sign in again to load services."
-                : status === 403
-                  ? "You do not have access to these services."
-                  : "Check your connection, then try again."
-            }
-            actions={
-              status === 401 ? (
-                <TextLink
-                  render={
-                    <Link
-                      to="/auth"
-                      search={{ state: "sign-in", returnTo: href, reason: "provider" }}
-                    />
-                  }
-                >
-                  Sign in again
-                </TextLink>
-              ) : (
-                <Button variant="secondary" onClick={() => void services.refetch()}>
-                  Try again
-                </Button>
-              )
-            }
+          <LoadFailure
+            noun="services"
+            error={services.error}
+            retrying={services.isFetching}
+            retry={() => void services.refetch()}
           />
         ) : (
           <table.DataTable

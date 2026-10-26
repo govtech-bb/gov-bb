@@ -374,3 +374,51 @@ test("clean navigation keeps at most three page views and retains API navigation
   await until(() => expect(activeTitle()?.value).toBe("fees"));
   expect(question()).toBeNull();
 });
+
+const menuLink = (name: string) =>
+  [...document.querySelectorAll<HTMLAnchorElement>('nav[aria-label="Menu"] a')].find(
+    (link) => link.textContent === name,
+  );
+
+test("the menu names the editor's screens, folded to icons beside a service's own pages", async () => {
+  const h = await mountWorkspace();
+
+  // Inside a service: a rail of icons, each still named, and the bar's way back to the list
+  expect(menuLink("Services")?.getAttribute("aria-current")).toBe("page");
+  expect(menuLink("Categories")?.querySelector(".sr-only")?.textContent).toBe("Categories");
+  expect(document.querySelector('nav[aria-label="Service documents"]')).not.toBeNull();
+  expect(document.querySelector("header a")?.textContent).toBe("Services");
+
+  await act(async () => h.router.navigate({ to: "/categories" }));
+  await until(() => expect(document.querySelector("h1")?.textContent).toBe("Categories"));
+
+  // On a screen of its own: the whole column, its screen marked, and the bar's trail starting there
+  expect(menuLink("Categories")?.getAttribute("aria-current")).toBe("page");
+  expect(menuLink("Categories")?.querySelector(".sr-only")).toBeNull();
+  expect(menuLink("Services")?.hasAttribute("aria-current")).toBe(false);
+  expect(document.querySelector('nav[aria-label="Service documents"]')).toBeNull();
+  expect(document.querySelector("header a")?.textContent).toBe("Categories");
+  await until(() => expect(document.body.textContent).toContain("No categories yet"));
+});
+
+test("menu and bar links keep the focus as the screen changes and the menu folds or opens out", async () => {
+  await mountWorkspace();
+
+  // From a service, the rail's Categories opens out into the menu's row, still focused
+  const categories = menuLink("Categories")!;
+
+  categories.focus();
+  await act(async () => categories.click());
+  await until(() => expect(document.querySelector("h1")?.textContent).toBe("Categories"));
+  expect(document.activeElement).toBe(categories);
+  expect(categories.querySelector(".sr-only")).toBeNull();
+
+  // The bar's trail starts with the same link, whichever screen it names
+  const crumb = document.querySelector<HTMLAnchorElement>("header a")!;
+
+  crumb.focus();
+  await act(async () => menuLink("Services")!.click());
+  await until(() => expect(document.querySelector("h1")?.textContent).toBe("Services"));
+  expect(crumb.isConnected).toBe(true);
+  expect(crumb.textContent).toBe("Services");
+});
