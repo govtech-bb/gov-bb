@@ -20,6 +20,10 @@ import { defineConfig, devices } from "@playwright/test";
  * Point it at a local stack (Vite is started for you if it isn't already up;
  * the API still has to be running separately):
  *   SMOKE_BASE_URL=http://localhost:3000 pnpm --filter @govtech-bb/forms test:smoke
+ *
+ * Enter each form through its landing start page's "Start now" link instead
+ * (specs that pass a `landingStartPath`; see openSmokeForm, #3008):
+ *   SMOKE_LANDING_URL=https://landing.sandbox.alpha.gov.bb SMOKE_BASE_URL=https://forms.sandbox.alpha.gov.bb pnpm --filter @govtech-bb/forms test:smoke
  */
 
 const rawBaseURL = process.env.SMOKE_BASE_URL?.trim();
