@@ -29,6 +29,7 @@ confirmed applied in sandbox, staging and prod on #3322). Sandbox has no
   back. We accept that rather than send unscanned files.
 - **A scan still in progress is waited for, not trusted.** At confirm-upload, and
   for a file still `pending` at submit, the API re-reads every 400ms for up to 4s.
+  At submit that is one shared deadline for the whole submission, not 4s per file.
   A file still untagged after that is refused. (#2939 said "no wait" at submit,
   but people and the deploy smokes can submit within the scan time.)
 - **The upload-time verdict is UX and is switched.** `UPLOAD_MALWARE_SCAN_ENABLED`
@@ -38,16 +39,25 @@ confirmed applied in sandbox, staging and prod on #3322). Sandbox has no
 - **Refused files are not deleted.** Sandbox can't delete, and the submit check
   already stops them. Expiry is an infra lifecycle concern (#3322).
 - **Local development plays GuardDuty.** When `S3_ENDPOINT` is set
-  (LocalStack/MinIO), confirm-upload writes the tag from the file name (`eicar` →
-  infected, `unsupported` → unscannable), whatever the switch says, so the real
-  check runs locally. Deployed environments never set `S3_ENDPOINT`, and their
-  role has no `s3:PutObjectTagging`.
-- **Logs are a contract with infra.** One JSON line per upload verdict,
-  `{"event":"upload.scan_verdict","verdict":…,"scan_tag":…}`, and
-  `{"event":"upload.scan_tag_read_denied"}` at error level, written through
-  `writeBusinessLog` (`log_type: "security_event"`). Never the object key, which
-  embeds the citizen's file name. `scan_tag` rather than `status`, which Datadog
-  reserves.
+  (LocalStack/MinIO) and `NODE_ENV` is not `production`, confirm-upload writes the
+  tag from the file name (`eicar` → infected, `unsupported` → unscannable),
+  whatever the switch says, so the real check runs locally. The tag comes from a
+  citizen-chosen name, so it is triple-guarded against running deployed: the
+  deployed image runs with `NODE_ENV=production`, deployed environments don't set
+  `S3_ENDPOINT`, and their role has no `s3:PutObjectTagging`.
+- **Logs are a contract with infra.** These lines are written through
+  `writeBusinessLog` (`log_type: "security_event"`):
+  - one JSON line per confirm-upload verdict,
+    `{"event":"upload.scan_verdict","verdict":…,"scan_tag":…}` (one per call,
+    so a client re-polling a pending file logs once per poll);
+  - one per file refused at submit, `{"event":"submit.scan_refused","verdict":…}`,
+    so a refusal is visible even with the upload switch off;
+  - `{"event":"upload.scan_tag_read_denied"}` at error level.
+
+  None of these lines carries the object key, which embeds the citizen's file
+  name. They use `scan_tag` rather than `status`, which Datadog reserves. (Older
+  lines in `verifyKeysExist` and `getObjectBytes` still include the key. They
+  predate this ADR and are left to a follow-up.)
 
 ## Consequences
 
@@ -59,3 +69,9 @@ confirmed applied in sandbox, staging and prod on #3322). Sandbox has no
   scan time grows with file size.
 - The two refusal messages live in the policy module and must match the upload
   page (#2940).
+- **Known gap: the check is point-in-time.** The presigned PUT URL stays valid
+  for `UPLOAD_PRESIGN_TTL_SECONDS` (15 min), and the email processor downloads
+  the object's *current* bytes later. So a caller could overwrite a file after
+  submit passes. GuardDuty re-tags the new bytes, but nothing re-reads the tag.
+  Closing this, for example by presigning with `If-None-Match: *` or by pinning
+  the version checked at submit, is tracked separately.

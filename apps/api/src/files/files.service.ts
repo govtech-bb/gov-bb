@@ -68,6 +68,9 @@ const SCAN_POLL_INTERVAL_MS = 400;
  */
 const SCAN_WAIT_MS = 4000;
 
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 /** S3 throttling, which callers re-raise so the request backs off. */
 function isThrottle(name: string | undefined): boolean {
   return !!name && /Throttl|SlowDown|Limit/i.test(name);
@@ -254,10 +257,12 @@ export class FilesService {
     fileName: string,
   ): Promise<ScanVerdict> {
     // LocalStack/MinIO have no GuardDuty, so play its part, whatever the
-    // switch says, or the submit check would refuse every local file.
-    // Deployed environments never set S3_ENDPOINT, and their task role has no
-    // s3:PutObjectTagging, so this fails safe if ever reached there.
-    if (this.endpoint) {
+    // switch says, or the submit check would refuse every local file. The tag
+    // comes from a citizen-chosen file name, so this must never run deployed:
+    // NODE_ENV=production (the API image's runtime stage) disables it even if
+    // a deployment sets S3_ENDPOINT (e.g. a VPC endpoint) and the role could
+    // write tags. Deployed roles hold no s3:PutObjectTagging besides.
+    if (this.endpoint && this.config.get<string>("NODE_ENV") !== "production") {
       await this.s3.send(
         new PutObjectTaggingCommand({
           Bucket: this.bucket,
@@ -345,9 +350,7 @@ export class FilesService {
       const result = await this.readScanTag(key);
       const remaining = deadline - Date.now();
       if (result.verdict !== "pending" || remaining <= 0) return result;
-      await new Promise((resolve) =>
-        setTimeout(resolve, Math.min(SCAN_POLL_INTERVAL_MS, remaining)),
-      );
+      await sleep(Math.min(SCAN_POLL_INTERVAL_MS, remaining));
     }
   }
 
@@ -507,6 +510,17 @@ export class FilesService {
     // GuardDuty, read from S3 now, never trusted from confirm-upload or form
     // state. Deliberately not behind UPLOAD_MALWARE_SCAN_ENABLED.
     const verdicts = await this.scanVerdictsFor(present.map((l) => l.key));
+    // One line per refused file (never the key), so a refusal shows up even
+    // where the upload-time verdict is switched off or was skipped by a
+    // caller posting keys directly.
+    for (const verdict of verdicts.values()) {
+      if (verdict === "clean") continue;
+      writeBusinessLog("security_event", {
+        level: "warn",
+        event: "submit.scan_refused",
+        verdict,
+      });
+    }
 
     const errors: Array<{ loc: Location; message: string }> = [
       ...locations
@@ -553,26 +567,31 @@ export class FilesService {
   /**
    * The scan verdict for each key, read with the same concurrency cap as
    * verifyKeysExist. A file uploaded seconds before submit may not be scanned
-   * yet, so a `pending` read waits like confirm-upload does; a clean or
-   * refused file returns on its first read.
+   * yet, so keys still `pending` are re-read until ONE shared deadline for
+   * the whole submission (not one per key or per batch), keeping a GuardDuty
+   * outage to a ~4s delay however many files there are.
    */
   private async scanVerdictsFor(
     keys: string[],
   ): Promise<Map<string, ScanVerdict>> {
-    const unique = [...new Set(keys)];
     const verdicts = new Map<string, ScanVerdict>();
-    const CONCURRENCY = 10;
-    for (let i = 0; i < unique.length; i += CONCURRENCY) {
-      await Promise.all(
-        unique.slice(i, i + CONCURRENCY).map(async (key) => {
-          const { verdict } = await this.getScanVerdict(key, {
-            waitMs: SCAN_WAIT_MS,
-          });
-          verdicts.set(key, verdict);
-        }),
-      );
+    const deadline = Date.now() + SCAN_WAIT_MS;
+    let toRead = [...new Set(keys)];
+    for (;;) {
+      const CONCURRENCY = 10;
+      for (let i = 0; i < toRead.length; i += CONCURRENCY) {
+        await Promise.all(
+          toRead.slice(i, i + CONCURRENCY).map(async (key) => {
+            const { verdict } = await this.getScanVerdict(key, { waitMs: 0 });
+            verdicts.set(key, verdict);
+          }),
+        );
+      }
+      toRead = toRead.filter((key) => verdicts.get(key) === "pending");
+      const remaining = deadline - Date.now();
+      if (toRead.length === 0 || remaining <= 0) return verdicts;
+      await sleep(Math.min(SCAN_POLL_INTERVAL_MS, remaining));
     }
-    return verdicts;
   }
 
   async getSignedReadUrl(key: string, ttlSeconds?: number): Promise<string> {

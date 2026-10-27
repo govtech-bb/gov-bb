@@ -351,6 +351,13 @@ describe("FilesService", () => {
         expect(s3Mock.commandCalls(GetObjectTaggingCommand)).toHaveLength(0);
       });
 
+      it("never writes the stand-in tag in production, even with S3_ENDPOINT set", async () => {
+        cfg.NODE_ENV = "production";
+        service = await makeService();
+        await service.confirmUpload(dtoFor("x.pdf"));
+        expect(s3Mock.commandCalls(PutObjectTaggingCommand)).toHaveLength(0);
+      });
+
       describe("switch on", () => {
         beforeEach(async () => {
           cfg["upload.malwareScanEnabled"] = true;
@@ -595,7 +602,7 @@ describe("FilesService", () => {
       expect(s3Mock.commandCalls(GetObjectTaggingCommand)).toHaveLength(11);
     });
 
-    it("reads exactly once with no wait (the submit-time check)", async () => {
+    it("reads exactly once when waitMs is 0", async () => {
       s3Mock.on(GetObjectTaggingCommand).resolves({ TagSet: [] });
       await expect(service.getScanVerdict(KEY, { waitMs: 0 })).resolves.toEqual(
         {
@@ -817,13 +824,21 @@ describe("FilesService", () => {
           jobs: perInstance.map((k) => ({ proof: [file(k)] })),
         });
 
+      let stdout: MockInstance<typeof process.stdout.write>;
+      const logLines = () =>
+        stdout.mock.calls.map((c) => JSON.parse(String(c[0])));
+
       beforeEach(() => {
+        stdout = vi.spyOn(process.stdout, "write").mockReturnValue(true);
         s3Mock.on(HeadObjectCommand).resolves({});
         s3Mock
           .on(GetObjectTaggingCommand)
           .resolves(scanTag("NO_THREATS_FOUND"));
       });
-      afterEach(() => vi.useRealTimers());
+      afterEach(() => {
+        stdout.mockRestore();
+        vi.useRealTimers();
+      });
 
       it("accepts files GuardDuty tagged clean", async () => {
         await expect(submit("a", "b")).resolves.toEqual({});
@@ -875,13 +890,60 @@ describe("FilesService", () => {
         });
       });
 
-      it("refuses when S3 denies reading the tag", async () => {
-        const stdout = vi.spyOn(process.stdout, "write").mockReturnValue(true);
+      it("refuses when S3 denies reading the tag, and raises the alarm line", async () => {
         s3Mock.on(GetObjectTaggingCommand).rejects({ name: "AccessDenied" });
         await expect(submit("a")).resolves.toEqual({
           documents: { policeCertificate: [UNSCANNABLE_FILE_MESSAGE] },
         });
-        stdout.mockRestore();
+        expect(logLines()).toContainEqual(
+          expect.objectContaining({
+            level: "error",
+            event: "upload.scan_tag_read_denied",
+          }),
+        );
+      });
+
+      it("logs each refused file without its key", async () => {
+        s3Mock
+          .on(GetObjectTaggingCommand, { Key: "evil" })
+          .resolves(scanTag("THREATS_FOUND"));
+        await submit("evil", "fine");
+        expect(logLines()).toEqual([
+          expect.objectContaining({
+            level: "warn",
+            event: "submit.scan_refused",
+            verdict: "infected",
+          }),
+        ]);
+        expect(stdout.mock.calls.join("")).not.toContain("evil");
+      });
+
+      it("reads a key used in two places once, and refuses it in both", async () => {
+        s3Mock
+          .on(GetObjectTaggingCommand, { Key: "evil" })
+          .resolves(scanTag("THREATS_FOUND"));
+        await expect(submit("evil", "evil")).resolves.toEqual({
+          documents: { policeCertificate: [INFECTED_FILE_MESSAGE] },
+          jobs: { instances: [{ proof: [INFECTED_FILE_MESSAGE] }] },
+        });
+        expect(s3Mock.commandCalls(GetObjectTaggingCommand)).toHaveLength(1);
+      });
+
+      it("waits one shared 4s window for many unscanned files, not one per batch", async () => {
+        vi.useFakeTimers();
+        s3Mock.on(GetObjectTaggingCommand).resolves({ TagSet: [] });
+        // 1 + 24 = 25 distinct keys: three batches of at most 10.
+        const keys = Array.from({ length: 24 }, (_, i) => `k${i}`);
+        const result = submit("k-single", ...keys);
+        await vi.advanceTimersByTimeAsync(4000);
+        const errors = await result;
+        expect(errors.documents).toEqual({
+          policeCertificate: [UNSCANNABLE_FILE_MESSAGE],
+        });
+        // 11 reads per key (0s, 0.4s … 4s), all finished inside 4s.
+        expect(s3Mock.commandCalls(GetObjectTaggingCommand)).toHaveLength(
+          25 * 11,
+        );
       });
 
       it("reports a missing file as not found without reading its tag", async () => {
