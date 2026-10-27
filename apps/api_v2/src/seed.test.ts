@@ -276,6 +276,33 @@ describe("seed", () => {
     await close();
   }, 60_000);
 
+  it("force records the replaced pages and categories as deleted", async () => {
+    const { db, close } = await createTestDb();
+    await seed(db);
+    const { rows: replaced } = await db.execute<{ id: string }>(
+      sql`select id from content_pages union all select id from categories`,
+    );
+
+    await importEstate(db, { dryRun: false, force: "test history" });
+
+    const { rows: latest } = await db.execute<{
+      entity_id: string;
+      action: string;
+      actor: string;
+    }>(
+      sql`select distinct on (entity_id) entity_id, action, actor
+            from change_events order by entity_id, version_no desc`,
+    );
+    const ids = new Set(replaced.map((row) => row.id));
+    const last = latest.filter((row) => ids.has(row.entity_id));
+    expect(last).toHaveLength(replaced.length);
+    expect(new Set(last.map((row) => `${row.action}:${row.actor}`))).toEqual(
+      new Set(["deleted:system"]),
+    );
+
+    await close();
+  }, 60_000);
+
   it("force also clears categories left behind without pages", async () => {
     const { db, close } = await createTestDb();
     await seed(db);
