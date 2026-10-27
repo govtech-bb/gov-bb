@@ -74,4 +74,4 @@ confirmed applied in sandbox, staging and prod on #3322). Sandbox has no
   the object's *current* bytes later. So a caller could overwrite a file after
   submit passes. GuardDuty re-tags the new bytes, but nothing re-reads the tag.
   Closing this, for example by presigning with `If-None-Match: *` or by pinning
-  the version checked at submit, is tracked separately.
+  the version checked at submit, is tracked in #3332.
