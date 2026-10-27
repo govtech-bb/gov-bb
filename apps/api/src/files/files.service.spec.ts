@@ -18,9 +18,18 @@ import {
 } from "@nestjs/common";
 import type { ServiceContract } from "@govtech-bb/form-types";
 import { FilesService } from "./files.service";
+import {
+  INFECTED_FILE_MESSAGE,
+  UNSCANNABLE_FILE_MESSAGE,
+} from "./malware-scan-status";
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 
 const s3Mock = mockClient(S3Client);
+
+/** The tag GuardDuty writes on a scanned object. */
+const scanTag = (value: string) => ({
+  TagSet: [{ Key: "GuardDutyMalwareScanStatus", Value: value }],
+});
 
 function makeContract(): ServiceContract {
   return {
@@ -304,9 +313,6 @@ describe("FilesService", () => {
         ...confirmDto,
         key: keyFor(fileName),
       });
-      const tagged = (value: string) => ({
-        TagSet: [{ Key: "GuardDutyMalwareScanStatus", Value: value }],
-      });
       const writtenTag = () =>
         s3Mock.commandCalls(PutObjectTaggingCommand)[0]?.args[0].input.Tagging
           ?.TagSet;
@@ -356,7 +362,7 @@ describe("FilesService", () => {
           service = await makeService();
           s3Mock
             .on(GetObjectTaggingCommand)
-            .resolves(tagged("NO_THREATS_FOUND"));
+            .resolves(scanTag("NO_THREATS_FOUND"));
           const r = await service.confirmUpload(dtoFor("x.pdf"));
           expect(r.scanStatus).toBe("clean");
           expect(r.url).toMatch(/^https?:\/\//);
@@ -364,7 +370,7 @@ describe("FilesService", () => {
         });
 
         it("infected: no url, no delete, and logs the verdict without the key", async () => {
-          s3Mock.on(GetObjectTaggingCommand).resolves(tagged("THREATS_FOUND"));
+          s3Mock.on(GetObjectTaggingCommand).resolves(scanTag("THREATS_FOUND"));
           const r = await service.confirmUpload(dtoFor("eicar-test.pdf"));
           expect(writtenTag()).toEqual([
             { Key: "GuardDutyMalwareScanStatus", Value: "THREATS_FOUND" },
@@ -385,7 +391,7 @@ describe("FilesService", () => {
         });
 
         it("unsupported: unscannable, no url, no delete", async () => {
-          s3Mock.on(GetObjectTaggingCommand).resolves(tagged("UNSUPPORTED"));
+          s3Mock.on(GetObjectTaggingCommand).resolves(scanTag("UNSUPPORTED"));
           const r = await service.confirmUpload(
             dtoFor("unsupported-sample.pdf"),
           );
@@ -539,9 +545,6 @@ describe("FilesService", () => {
 
   describe("getScanVerdict", () => {
     const KEY = "uploads/passport-renewal/documents/policeCertificate/x.pdf";
-    const tagged = (value: string) => ({
-      TagSet: [{ Key: "GuardDutyMalwareScanStatus", Value: value }],
-    });
     let stdout: MockInstance<typeof process.stdout.write>;
     // The JSON lines the infra alarm (alpha-infra#698) matches on.
     const logLines = () =>
@@ -556,7 +559,7 @@ describe("FilesService", () => {
     });
 
     it("returns the verdict and raw tag once GuardDuty has tagged the object", async () => {
-      s3Mock.on(GetObjectTaggingCommand).resolves(tagged("THREATS_FOUND"));
+      s3Mock.on(GetObjectTaggingCommand).resolves(scanTag("THREATS_FOUND"));
       await expect(
         service.getScanVerdict(KEY, { waitMs: 4000 }),
       ).resolves.toEqual({ verdict: "infected", tag: "THREATS_FOUND" });
@@ -569,7 +572,7 @@ describe("FilesService", () => {
         .on(GetObjectTaggingCommand)
         .resolvesOnce({ TagSet: [] })
         .resolvesOnce({ TagSet: [] })
-        .resolves(tagged("NO_THREATS_FOUND"));
+        .resolves(scanTag("NO_THREATS_FOUND"));
       const result = service.getScanVerdict(KEY, { waitMs: 4000 });
       await vi.advanceTimersByTimeAsync(800);
       await expect(result).resolves.toEqual({
@@ -710,6 +713,7 @@ describe("FilesService", () => {
       s3Mock
         .on(HeadObjectCommand, { Key: "bad-key" })
         .rejects({ name: "NotFound" });
+      s3Mock.on(GetObjectTaggingCommand).resolves(scanTag("NO_THREATS_FOUND"));
 
       const errors = await service.verifySubmissionFiles(
         FilesService.collectFileFieldsByStep(contract),
@@ -786,6 +790,113 @@ describe("FilesService", () => {
         documents: {
           policeCertificate: ["Uploaded file not found"],
         },
+      });
+    });
+
+    describe("GuardDuty scan check (#2939)", () => {
+      const file = (key: string) => ({
+        key,
+        name: `${key}.pdf`,
+        size: 1,
+        type: "application/pdf",
+      });
+      // `documents.policeCertificate` (single step) plus a repeatable `jobs`
+      // step with one file per instance.
+      const fileFields = () => {
+        const contract = makeContract();
+        (contract.steps as Array<unknown>).push({
+          stepId: "jobs",
+          title: "Jobs",
+          elements: [{ fieldId: "proof", htmlType: "file", label: "Proof" }],
+        });
+        return FilesService.collectFileFieldsByStep(contract);
+      };
+      const submit = (single: string, ...perInstance: string[]) =>
+        service.verifySubmissionFiles(fileFields(), {
+          documents: { policeCertificate: [file(single)] },
+          jobs: perInstance.map((k) => ({ proof: [file(k)] })),
+        });
+
+      beforeEach(() => {
+        s3Mock.on(HeadObjectCommand).resolves({});
+        s3Mock
+          .on(GetObjectTaggingCommand)
+          .resolves(scanTag("NO_THREATS_FOUND"));
+      });
+      afterEach(() => vi.useRealTimers());
+
+      it("accepts files GuardDuty tagged clean", async () => {
+        await expect(submit("a", "b")).resolves.toEqual({});
+      });
+
+      it("refuses an infected or unscannable file at its own location, with the upload switch off", async () => {
+        expect(cfg["upload.malwareScanEnabled"]).toBeFalsy();
+        s3Mock
+          .on(GetObjectTaggingCommand, { Key: "evil" })
+          .resolves(scanTag("THREATS_FOUND"));
+        s3Mock
+          .on(GetObjectTaggingCommand, { Key: "locked" })
+          .resolves(scanTag("UNSUPPORTED"));
+        s3Mock
+          .on(GetObjectTaggingCommand, { Key: "odd" })
+          .resolves(scanTag("no_threats_found"));
+        await expect(submit("odd", "evil", "fine", "locked")).resolves.toEqual({
+          documents: { policeCertificate: [UNSCANNABLE_FILE_MESSAGE] },
+          jobs: {
+            instances: [
+              { proof: [INFECTED_FILE_MESSAGE] },
+              {},
+              { proof: [UNSCANNABLE_FILE_MESSAGE] },
+            ],
+          },
+        });
+      });
+
+      it("waits for a scan still in progress, then accepts it", async () => {
+        vi.useFakeTimers();
+        s3Mock
+          .on(GetObjectTaggingCommand, { Key: "fresh" })
+          .resolvesOnce({ TagSet: [] })
+          .resolves(scanTag("NO_THREATS_FOUND"));
+        const result = submit("fresh");
+        await vi.advanceTimersByTimeAsync(400);
+        await expect(result).resolves.toEqual({});
+      });
+
+      it("refuses a file still unscanned after the wait (fails closed)", async () => {
+        vi.useFakeTimers();
+        s3Mock
+          .on(GetObjectTaggingCommand, { Key: "never" })
+          .resolves({ TagSet: [] });
+        const result = submit("never");
+        await vi.advanceTimersByTimeAsync(5000);
+        await expect(result).resolves.toEqual({
+          documents: { policeCertificate: [UNSCANNABLE_FILE_MESSAGE] },
+        });
+      });
+
+      it("refuses when S3 denies reading the tag", async () => {
+        const stdout = vi.spyOn(process.stdout, "write").mockReturnValue(true);
+        s3Mock.on(GetObjectTaggingCommand).rejects({ name: "AccessDenied" });
+        await expect(submit("a")).resolves.toEqual({
+          documents: { policeCertificate: [UNSCANNABLE_FILE_MESSAGE] },
+        });
+        stdout.mockRestore();
+      });
+
+      it("reports a missing file as not found without reading its tag", async () => {
+        s3Mock
+          .on(HeadObjectCommand, { Key: "gone" })
+          .rejects({ name: "NotFound" });
+        await expect(submit("gone")).resolves.toEqual({
+          documents: { policeCertificate: ["Uploaded file not found"] },
+        });
+        expect(s3Mock.commandCalls(GetObjectTaggingCommand)).toHaveLength(0);
+      });
+
+      it("re-raises S3 throttling on the tag read", async () => {
+        s3Mock.on(GetObjectTaggingCommand).rejects({ name: "SlowDown" });
+        await expect(submit("a")).rejects.toMatchObject({ name: "SlowDown" });
       });
     });
   });

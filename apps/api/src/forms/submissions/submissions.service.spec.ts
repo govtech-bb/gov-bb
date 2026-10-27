@@ -1,5 +1,9 @@
 import type { Mock } from "vitest";
-import { BadRequestException, HttpStatus } from "@nestjs/common";
+import {
+  BadRequestException,
+  HttpStatus,
+  UnprocessableEntityException,
+} from "@nestjs/common";
 import {
   FormSubmissionEntity,
   FormSubmissionStatus,
@@ -144,6 +148,18 @@ describe("SubmissionsService", () => {
       await expect(
         service.submit({ ...BASE_DTO, idempotencyKey: "   " }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it("persists nothing when the pipeline refuses the submission (e.g. a file that failed the malware scan, #2939)", async () => {
+      const { pipeline, txRepo, eventEmitter, service } = makeMocks();
+      vi.mocked(pipeline.run).mockRejectedValue(
+        new UnprocessableEntityException({ errors: {} }),
+      );
+      await expect(service.submit(BASE_DTO)).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+      expect(txRepo.save).not.toHaveBeenCalled();
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
     });
 
     it("creates a new submission when key is unique", async () => {

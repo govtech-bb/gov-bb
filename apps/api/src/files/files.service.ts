@@ -26,6 +26,7 @@ import { writeBusinessLog } from "../common/business-log";
 import {
   localScanStatusForFileName,
   MALWARE_SCAN_TAG,
+  scanRefusalMessage,
   scanVerdictFromTag,
   type ScanVerdict,
 } from "./malware-scan-status";
@@ -60,11 +61,12 @@ export interface ScanResult {
 const SCAN_POLL_INTERVAL_MS = 400;
 
 /**
- * How long confirm-upload waits for GuardDuty. The slowest scan measured for
- * files up to the 10MB default was 2.88s (#2839, 22 Oct 2026), and scan time
- * grows with size: revisit this if UPLOAD_MAX_SIZE_BYTES goes above ~15MB.
+ * How long to wait for GuardDuty, at confirm-upload and for a file still
+ * unscanned at submit. The slowest scan measured for files up to the 10MB
+ * default was 2.88s (#2839, 22 Oct 2026), and scan time grows with size:
+ * revisit this if UPLOAD_MAX_SIZE_BYTES goes above ~15MB.
  */
-const UPLOAD_SCAN_WAIT_MS = 4000;
+const SCAN_WAIT_MS = 4000;
 
 /** S3 throttling, which callers re-raise so the request backs off. */
 function isThrottle(name: string | undefined): boolean {
@@ -274,7 +276,7 @@ export class FilesService {
     if (!this.malwareScanEnabled) return "clean";
 
     const { verdict, tag } = await this.getScanVerdict(key, {
-      waitMs: UPLOAD_SCAN_WAIT_MS,
+      waitMs: SCAN_WAIT_MS,
     });
     writeBusinessLog("security_event", {
       level: "info",
@@ -500,12 +502,23 @@ export class FilesService {
       locations.length > 0
         ? await this.verifyKeysExist(locations.map((l) => l.key))
         : new Set<string>();
-    if (missingKeys.size === 0 && keyless.length === 0) return {};
+    const present = locations.filter((l) => !missingKeys.has(l.key));
+    // The security control for #2939: every file must be tagged clean by
+    // GuardDuty, read from S3 now, never trusted from confirm-upload or form
+    // state. Deliberately not behind UPLOAD_MALWARE_SCAN_ENABLED.
+    const verdicts = await this.scanVerdictsFor(present.map((l) => l.key));
 
-    const errorLocs: Location[] = [
-      ...locations.filter((l) => missingKeys.has(l.key)).map((l) => l.loc),
-      ...keyless,
+    const errors: Array<{ loc: Location; message: string }> = [
+      ...locations
+        .filter((l) => missingKeys.has(l.key))
+        .map((l) => ({ loc: l.loc, message: "Uploaded file not found" })),
+      ...keyless.map((loc) => ({ loc, message: "Uploaded file not found" })),
+      ...present.flatMap((l) => {
+        const message = scanRefusalMessage(verdicts.get(l.key)!);
+        return message ? [{ loc: l.loc, message }] : [];
+      }),
     ];
+    if (errors.length === 0) return {};
 
     // Pad `{}` for clean instances based on the max index seen across all
     // locations, matching foldErrors' bundle shape for repeatable steps.
@@ -519,7 +532,7 @@ export class FilesService {
     }
 
     const bundle: ValidationErrorBundle = {};
-    const pushErr = (loc: Location) => {
+    const pushErr = (loc: Location, message: string) => {
       if (loc.isRepeatable) {
         const slot = (bundle[loc.stepId] ??= { instances: [] }) as {
           instances: Array<Record<string, string[]>>;
@@ -527,14 +540,39 @@ export class FilesService {
         const targetLen = (maxIndexByStep.get(loc.stepId) ?? 0) + 1;
         while (slot.instances.length < targetLen) slot.instances.push({});
         const inst = slot.instances[loc.instanceIndex]!;
-        (inst[loc.fieldId] ??= []).push("Uploaded file not found");
+        (inst[loc.fieldId] ??= []).push(message);
       } else {
         const slot = (bundle[loc.stepId] ??= {}) as Record<string, string[]>;
-        (slot[loc.fieldId] ??= []).push("Uploaded file not found");
+        (slot[loc.fieldId] ??= []).push(message);
       }
     };
-    for (const loc of errorLocs) pushErr(loc);
+    for (const { loc, message } of errors) pushErr(loc, message);
     return bundle;
+  }
+
+  /**
+   * The scan verdict for each key, read with the same concurrency cap as
+   * verifyKeysExist. A file uploaded seconds before submit may not be scanned
+   * yet, so a `pending` read waits like confirm-upload does; a clean or
+   * refused file returns on its first read.
+   */
+  private async scanVerdictsFor(
+    keys: string[],
+  ): Promise<Map<string, ScanVerdict>> {
+    const unique = [...new Set(keys)];
+    const verdicts = new Map<string, ScanVerdict>();
+    const CONCURRENCY = 10;
+    for (let i = 0; i < unique.length; i += CONCURRENCY) {
+      await Promise.all(
+        unique.slice(i, i + CONCURRENCY).map(async (key) => {
+          const { verdict } = await this.getScanVerdict(key, {
+            waitMs: SCAN_WAIT_MS,
+          });
+          verdicts.set(key, verdict);
+        }),
+      );
+    }
+    return verdicts;
   }
 
   async getSignedReadUrl(key: string, ttlSeconds?: number): Promise<string> {
