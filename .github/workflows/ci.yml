@@ -38,7 +38,8 @@ jobs:
         with:
           node-version-file: ".nvmrc"
           cache: "pnpm"
-      - run: pnpm install --frozen-lockfile
+      - id: install
+        run: pnpm install --frozen-lockfile
 
       # Fails on dependency-version drift across workspace packages.
       # Deliberate splits (express 4/5, forms' eslint 9, react-markdown 9/10)
@@ -56,17 +57,23 @@ jobs:
           exit ${PIPESTATUS[0]}
         continue-on-error: true
 
+      # Once install succeeds, each app check runs even if an earlier check
+      # fails, so one run reports every error and the tsc -b summary below
+      # is never skipped.
       - name: Type check landing
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm exec nx run landing:typecheck
 
       - name: Type check form builder
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm exec nx run form-builder-app:typecheck
 
       - name: Type check editor v2
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm exec nx run editor_v2:typecheck
 
       - name: Report type check results
-        if: steps.typecheck.outcome == 'failure'
+        if: ${{ !cancelled() && steps.typecheck.outcome == 'failure' }}
         run: |
           ERROR_COUNT=$(grep -c "error TS" typecheck-output.txt 2>/dev/null || echo "?")
 
