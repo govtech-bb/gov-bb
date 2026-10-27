@@ -1,8 +1,8 @@
 /**
  * The Drizzle schema, matching migrations `001_init` to
  * `007_change_history_trigger` applied in order, table for table and column
- * for column. Of BetterAuth's tables only `auth_user` is here, as what
- * `change_events.actor` references.
+ * for column. BetterAuth reads and writes its four `auth_*` tables through
+ * these definitions; their property keys are BetterAuth's field names.
  *
  * The DDL in `migrations/` stays the source of truth and this file is the
  * typed view of it that queries are written against. `schema.test.ts` asserts
@@ -118,7 +118,11 @@ export const contentPages = pgTable(
   ],
 );
 
-/** BetterAuth's user, as `003_auth` creates it; `system` is the one with no account. */
+/**
+ * BetterAuth's tables, as `003_auth` creates them: quoted camelCase columns
+ * and BetterAuth's own timestamp precision. `system` is the user with no
+ * account.
+ */
 export const authUser = pgTable("auth_user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -132,6 +136,70 @@ export const authUser = pgTable("auth_user", {
     .notNull()
     .defaultNow(),
 });
+
+export const authSession = pgTable(
+  "auth_session",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    token: text("token").notNull().unique(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull(),
+    ipAddress: text("ipAddress"),
+    userAgent: text("userAgent"),
+    userId: text("userId")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+  },
+  (table) => [index("auth_session_userId_idx").on(table.userId)],
+);
+
+export const authAccount = pgTable(
+  "auth_account",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("accountId").notNull(),
+    providerId: text("providerId").notNull(),
+    userId: text("userId")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    accessToken: text("accessToken"),
+    refreshToken: text("refreshToken"),
+    idToken: text("idToken"),
+    accessTokenExpiresAt: timestamp("accessTokenExpiresAt", {
+      withTimezone: true,
+    }),
+    refreshTokenExpiresAt: timestamp("refreshTokenExpiresAt", {
+      withTimezone: true,
+    }),
+    scope: text("scope"),
+    password: text("password"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull(),
+  },
+  (table) => [index("auth_account_userId_idx").on(table.userId)],
+);
+
+export const authVerification = pgTable(
+  "auth_verification",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("auth_verification_identifier_idx").on(table.identifier)],
+);
 
 const tsvector = customType<{ data: string }>({
   dataType: () => "tsvector",

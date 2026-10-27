@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import pino from "pino";
 import {
@@ -15,7 +16,9 @@ import { betterAuthOptions } from "./better-auth";
 
 const pool = new Pool();
 const authWith = (config: AuthConfig) =>
-  betterAuth(betterAuthOptions(pool, config, pino({ enabled: false })));
+  betterAuth(
+    betterAuthOptions(drizzle(pool), config, pino({ enabled: false })),
+  );
 let auth: ReturnType<typeof authWith>;
 
 beforeAll(() => {

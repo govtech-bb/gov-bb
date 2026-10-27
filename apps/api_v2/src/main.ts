@@ -92,7 +92,7 @@ async function main(): Promise<void> {
       );
       ({ access, auth } = authBypass);
     } else {
-      const github = await createBetterAuth(pool, config.auth, logger);
+      const github = await createBetterAuth(db, config.auth, logger);
       access = new EditorAccess(github);
       auth = github;
     }

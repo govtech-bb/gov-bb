@@ -14,7 +14,10 @@ import { getTableColumns } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import {
+  authAccount,
+  authSession,
   authUser,
+  authVerification,
   categories,
   changeEvents,
   contentPages,
@@ -42,7 +45,10 @@ const rowsOf = async (db: Database) => {
 };
 
 const TABLES = {
+  auth_account: authAccount,
+  auth_session: authSession,
   auth_user: authUser,
+  auth_verification: authVerification,
   categories,
   content_pages: contentPages,
   change_events: changeEvents,
