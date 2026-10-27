@@ -1,15 +1,17 @@
-import type { Mock } from "vitest";
+import type { Mock, MockInstance } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { ConfigService } from "@nestjs/config";
 import { mockClient } from "aws-sdk-client-mock";
 import {
   S3Client,
   GetObjectCommand,
+  GetObjectTaggingCommand,
   HeadObjectCommand,
 } from "@aws-sdk/client-s3";
 import {
   BadRequestException,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import type { ServiceContract } from "@govtech-bb/form-types";
@@ -54,6 +56,8 @@ function makeContract(): ServiceContract {
 describe("FilesService", () => {
   let service: FilesService;
   let formDefs: { findByFormId: Mock };
+  // Per-test overrides go here before the module compiles (beforeEach).
+  let cfg: Record<string, unknown>;
 
   beforeAll(() => {
     process.env.AWS_ACCESS_KEY_ID = "test-access-key";
@@ -66,7 +70,7 @@ describe("FilesService", () => {
       findByFormId: vi.fn().mockResolvedValue(makeContract()),
     };
 
-    const cfg: Record<string, unknown> = {
+    cfg = {
       "upload.bucket": "test-bucket",
       "upload.region": "us-east-1",
       "upload.endpoint": "http://localhost:4566",
@@ -402,6 +406,107 @@ describe("FilesService", () => {
         );
         expect(r.size).toBe(1234);
       });
+    });
+  });
+
+  describe("getScanVerdict", () => {
+    const KEY = "uploads/passport-renewal/documents/policeCertificate/x.pdf";
+    const tagged = (value: string) => ({
+      TagSet: [{ Key: "GuardDutyMalwareScanStatus", Value: value }],
+    });
+    let stdout: MockInstance<typeof process.stdout.write>;
+    // The JSON lines the infra alarm (alpha-infra#698) matches on.
+    const logLines = () =>
+      stdout.mock.calls.map((c) => JSON.parse(String(c[0])));
+
+    beforeEach(() => {
+      stdout = vi.spyOn(process.stdout, "write").mockReturnValue(true);
+    });
+    afterEach(() => {
+      stdout.mockRestore();
+      vi.useRealTimers();
+    });
+
+    it("returns the verdict and raw tag once GuardDuty has tagged the object", async () => {
+      s3Mock.on(GetObjectTaggingCommand).resolves(tagged("THREATS_FOUND"));
+      await expect(
+        service.getScanVerdict(KEY, { waitMs: 4000 }),
+      ).resolves.toEqual({ verdict: "infected", tag: "THREATS_FOUND" });
+      expect(s3Mock.commandCalls(GetObjectTaggingCommand)).toHaveLength(1);
+    });
+
+    it("keeps polling until the tag arrives", async () => {
+      vi.useFakeTimers();
+      s3Mock
+        .on(GetObjectTaggingCommand)
+        .resolvesOnce({ TagSet: [] })
+        .resolvesOnce({ TagSet: [] })
+        .resolves(tagged("NO_THREATS_FOUND"));
+      const result = service.getScanVerdict(KEY, { waitMs: 4000 });
+      await vi.advanceTimersByTimeAsync(800);
+      await expect(result).resolves.toEqual({
+        verdict: "clean",
+        tag: "NO_THREATS_FOUND",
+      });
+      expect(s3Mock.commandCalls(GetObjectTaggingCommand)).toHaveLength(3);
+    });
+
+    it("returns pending when the window runs out with no tag", async () => {
+      vi.useFakeTimers();
+      s3Mock.on(GetObjectTaggingCommand).resolves({ TagSet: [] });
+      const result = service.getScanVerdict(KEY, { waitMs: 4000 });
+      await vi.advanceTimersByTimeAsync(5000);
+      await expect(result).resolves.toEqual({
+        verdict: "pending",
+        tag: undefined,
+      });
+      // Every 400ms from 0s, the last read landing on the 4s deadline.
+      expect(s3Mock.commandCalls(GetObjectTaggingCommand)).toHaveLength(11);
+    });
+
+    it("reads exactly once with no wait (the submit-time check)", async () => {
+      s3Mock.on(GetObjectTaggingCommand).resolves({ TagSet: [] });
+      await expect(service.getScanVerdict(KEY, { waitMs: 0 })).resolves.toEqual(
+        {
+          verdict: "pending",
+          tag: undefined,
+        },
+      );
+      expect(s3Mock.commandCalls(GetObjectTaggingCommand)).toHaveLength(1);
+    });
+
+    it("fails closed on a thrown AccessDenied and logs the alarm line without the key", async () => {
+      s3Mock.on(GetObjectTaggingCommand).rejects({ name: "AccessDenied" });
+      await expect(
+        service.getScanVerdict(KEY, { waitMs: 4000 }),
+      ).resolves.toEqual({ verdict: "unscannable", tag: undefined });
+      expect(logLines()).toEqual([
+        expect.objectContaining({
+          level: "error",
+          event: "upload.scan_tag_read_denied",
+        }),
+      ]);
+      expect(stdout.mock.calls.join("")).not.toContain(KEY);
+    });
+
+    it("re-raises throttling so the caller backs off", async () => {
+      s3Mock.on(GetObjectTaggingCommand).rejects({ name: "SlowDown" });
+      await expect(
+        service.getScanVerdict(KEY, { waitMs: 4000 }),
+      ).rejects.toMatchObject({ name: "SlowDown" });
+    });
+
+    it("fails the request on any other S3 error, without leaking the key", async () => {
+      const logged = vi
+        .spyOn(Logger.prototype, "error")
+        .mockImplementation(() => {});
+      s3Mock.on(GetObjectTaggingCommand).rejects({ name: "InternalError" });
+      await expect(
+        service.getScanVerdict(KEY, { waitMs: 4000 }),
+      ).rejects.toThrow(InternalServerErrorException);
+      expect(logged.mock.calls.join("")).toContain("InternalError");
+      expect(logged.mock.calls.join("")).not.toContain(KEY);
+      logged.mockRestore();
     });
   });
 

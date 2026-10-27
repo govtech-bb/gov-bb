@@ -7,6 +7,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import {
   GetObjectCommand,
+  GetObjectTaggingCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -20,6 +21,12 @@ import {
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import { isValidSecretToken } from "../common/secret-token";
 import { AppError } from "../common/errors";
+import { writeBusinessLog } from "../common/business-log";
+import {
+  MALWARE_SCAN_TAG,
+  scanVerdictFromTag,
+  type ScanVerdict,
+} from "./malware-scan-status";
 import { buildSubmissionKey, parseSubmissionKey } from "./submission-key";
 import type {
   SubmissionValues,
@@ -38,6 +45,21 @@ export interface SubmissionFileEntry {
   name: string;
   size: number;
   type: string;
+}
+
+/** What `getScanVerdict` found: our verdict, and the raw tag it came from. */
+export interface ScanResult {
+  verdict: ScanVerdict;
+  /** GuardDuty's tag value; undefined when absent or unreadable. */
+  tag: string | undefined;
+}
+
+/** How often confirm-upload re-reads the scan tag while it waits. */
+const SCAN_POLL_INTERVAL_MS = 400;
+
+/** S3 throttling, which callers re-raise so the request backs off. */
+function isThrottle(name: string | undefined): boolean {
+  return !!name && /Throttl|SlowDown|Limit/i.test(name);
 }
 
 /**
@@ -218,7 +240,7 @@ export class FilesService {
           } catch (err: unknown) {
             const name = (err as { name?: string } | null)?.name;
             // Throttle → re-raise so the batch backs off (unchanged).
-            if (name && /Throttl|SlowDown|Limit/i.test(name)) throw err;
+            if (isThrottle(name)) throw err;
             // A genuine miss (object absent) stays a "missing" result so the
             // citizen still sees the field-level "Uploaded file not found".
             if (isGenuineMiss(err)) {
@@ -237,6 +259,55 @@ export class FilesService {
       );
     }
     return missing;
+  }
+
+  /**
+   * Reads GuardDuty's verdict for an uploaded object, re-reading every 400ms
+   * until it is terminal or `waitMs` runs out (then `pending`). `waitMs: 0`
+   * reads once.
+   *
+   * Fails closed: an S3 `AccessDenied` (the task role lacks
+   * s3:GetObjectTagging) reads as `unscannable`, never as clean, and logs
+   * the error line infra alarms on. That is distinct from GuardDuty writing
+   * the tag VALUE `ACCESS_DENIED`, which `scanVerdictFromTag` handles.
+   * Throttling is re-raised; any other S3 error fails the request.
+   */
+  async getScanVerdict(
+    key: string,
+    { waitMs }: { waitMs: number },
+  ): Promise<ScanResult> {
+    const deadline = Date.now() + waitMs;
+    for (;;) {
+      const result = await this.readScanTag(key);
+      const remaining = deadline - Date.now();
+      if (result.verdict !== "pending" || remaining <= 0) return result;
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.min(SCAN_POLL_INTERVAL_MS, remaining)),
+      );
+    }
+  }
+
+  private async readScanTag(key: string): Promise<ScanResult> {
+    try {
+      const res = await this.s3.send(
+        new GetObjectTaggingCommand({ Bucket: this.bucket, Key: key }),
+      );
+      const tag = res.TagSet?.find((t) => t.Key === MALWARE_SCAN_TAG)?.Value;
+      return { verdict: scanVerdictFromTag(tag), tag };
+    } catch (err: unknown) {
+      const name = (err as { name?: string } | null)?.name;
+      if (isThrottle(name)) throw err;
+      // Never log the key: it embeds the citizen's file name.
+      if (name === "AccessDenied") {
+        writeBusinessLog("security_event", {
+          level: "error",
+          event: "upload.scan_tag_read_denied",
+        });
+        return { verdict: "unscannable", tag: undefined };
+      }
+      this.logger.error(`GetObjectTagging failed: ${name ?? "unknown error"}`);
+      throw AppError.internal("Could not check uploaded file");
+    }
   }
 
   /**
