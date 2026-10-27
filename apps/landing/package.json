@@ -7,7 +7,7 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "dev": "pnpm build:cms-preview && vite dev --port 3000",
+    "dev": "pnpm build:cms-preview --mode development && vite dev --port 3000",
     "build": "pnpm build:cms-preview && vite build && node scripts/check-no-secret-leak.mjs",
     "build:cms-preview": "vite build --config vite.cms-preview.config.ts",
     "preview": "nitro preview",
