@@ -5,8 +5,10 @@ import { mockClient } from "aws-sdk-client-mock";
 import {
   S3Client,
   GetObjectCommand,
+  DeleteObjectCommand,
   GetObjectTaggingCommand,
   HeadObjectCommand,
+  PutObjectTaggingCommand,
 } from "@aws-sdk/client-s3";
 import {
   BadRequestException,
@@ -81,6 +83,12 @@ describe("FilesService", () => {
       RECIPE_PREVIEW_TOKEN: "secret-preview-token",
     };
 
+    service = await makeService();
+  });
+
+  // FilesService reads config in its constructor, so a test that changes
+  // `cfg` rebuilds the service with this.
+  async function makeService(): Promise<FilesService> {
     const mod: TestingModule = await Test.createTestingModule({
       providers: [
         FilesService,
@@ -91,9 +99,8 @@ describe("FilesService", () => {
         { provide: FormDefinitionsService, useValue: formDefs },
       ],
     }).compile();
-
-    service = mod.get(FilesService);
-  });
+    return mod.get(FilesService);
+  }
 
   describe("presignUpload", () => {
     const dto = {
@@ -288,6 +295,127 @@ describe("FilesService", () => {
       await expect(service.confirmUpload(confirmDto)).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    describe("scan verdict (#2938)", () => {
+      const keyFor = (fileName: string) =>
+        `uploads/passport-renewal/documents/policeCertificate/2026/10/abcdef01-2345-6789-abcd-ef0123456789-${fileName}`;
+      const dtoFor = (fileName: string) => ({
+        ...confirmDto,
+        key: keyFor(fileName),
+      });
+      const tagged = (value: string) => ({
+        TagSet: [{ Key: "GuardDutyMalwareScanStatus", Value: value }],
+      });
+      const writtenTag = () =>
+        s3Mock.commandCalls(PutObjectTaggingCommand)[0]?.args[0].input.Tagging
+          ?.TagSet;
+      let stdout: MockInstance<typeof process.stdout.write>;
+      const logLines = () =>
+        stdout.mock.calls.map((c) => JSON.parse(String(c[0])));
+
+      beforeEach(() => {
+        stdout = vi.spyOn(process.stdout, "write").mockReturnValue(true);
+        s3Mock.on(HeadObjectCommand).resolves({
+          ContentLength: 1234,
+          ContentType: "application/pdf",
+        });
+      });
+      afterEach(() => {
+        stdout.mockRestore();
+        vi.useRealTimers();
+      });
+
+      it("switch off, deployed: returns clean with a url and never touches tags", async () => {
+        cfg["upload.endpoint"] = undefined;
+        service = await makeService();
+        const r = await service.confirmUpload(dtoFor("x.pdf"));
+        expect(r.scanStatus).toBe("clean");
+        expect(r.url).toMatch(/^https?:\/\//);
+        expect(s3Mock.commandCalls(GetObjectTaggingCommand)).toHaveLength(0);
+        expect(s3Mock.commandCalls(PutObjectTaggingCommand)).toHaveLength(0);
+      });
+
+      it("switch off, local: still writes the stand-in tag so the submit check can pass", async () => {
+        const r = await service.confirmUpload(dtoFor("x.pdf"));
+        expect(r.scanStatus).toBe("clean");
+        expect(writtenTag()).toEqual([
+          { Key: "GuardDutyMalwareScanStatus", Value: "NO_THREATS_FOUND" },
+        ]);
+        expect(s3Mock.commandCalls(GetObjectTaggingCommand)).toHaveLength(0);
+      });
+
+      describe("switch on", () => {
+        beforeEach(async () => {
+          cfg["upload.malwareScanEnabled"] = true;
+          service = await makeService();
+        });
+
+        it("deployed: reads GuardDuty's tag, writes none, and returns clean with a url", async () => {
+          cfg["upload.endpoint"] = undefined;
+          service = await makeService();
+          s3Mock
+            .on(GetObjectTaggingCommand)
+            .resolves(tagged("NO_THREATS_FOUND"));
+          const r = await service.confirmUpload(dtoFor("x.pdf"));
+          expect(r.scanStatus).toBe("clean");
+          expect(r.url).toMatch(/^https?:\/\//);
+          expect(s3Mock.commandCalls(PutObjectTaggingCommand)).toHaveLength(0);
+        });
+
+        it("infected: no url, no delete, and logs the verdict without the key", async () => {
+          s3Mock.on(GetObjectTaggingCommand).resolves(tagged("THREATS_FOUND"));
+          const r = await service.confirmUpload(dtoFor("eicar-test.pdf"));
+          expect(writtenTag()).toEqual([
+            { Key: "GuardDutyMalwareScanStatus", Value: "THREATS_FOUND" },
+          ]);
+          expect(r.scanStatus).toBe("infected");
+          expect(r.url).toBeUndefined();
+          expect(s3Mock.commandCalls(DeleteObjectCommand)).toHaveLength(0);
+          // The exact shape infra's metric filter matches (alpha-infra#698).
+          expect(logLines()).toEqual([
+            expect.objectContaining({
+              level: "info",
+              event: "upload.scan_verdict",
+              verdict: "infected",
+              scan_tag: "THREATS_FOUND",
+            }),
+          ]);
+          expect(stdout.mock.calls.join("")).not.toContain("eicar-test");
+        });
+
+        it("unsupported: unscannable, no url, no delete", async () => {
+          s3Mock.on(GetObjectTaggingCommand).resolves(tagged("UNSUPPORTED"));
+          const r = await service.confirmUpload(
+            dtoFor("unsupported-sample.pdf"),
+          );
+          expect(writtenTag()).toEqual([
+            { Key: "GuardDutyMalwareScanStatus", Value: "UNSUPPORTED" },
+          ]);
+          expect(r.scanStatus).toBe("unscannable");
+          expect(r.url).toBeUndefined();
+          expect(s3Mock.commandCalls(DeleteObjectCommand)).toHaveLength(0);
+        });
+
+        it("pending after ~4s: no url, logged with scan_tag ABSENT", async () => {
+          vi.useFakeTimers();
+          cfg["upload.endpoint"] = undefined;
+          service = await makeService();
+          s3Mock.on(GetObjectTaggingCommand).resolves({ TagSet: [] });
+          const result = service.confirmUpload(dtoFor("x.pdf"));
+          await vi.advanceTimersByTimeAsync(5000);
+          const r = await result;
+          expect(r.scanStatus).toBe("pending");
+          expect(r.url).toBeUndefined();
+          expect(logLines()).toEqual([
+            expect.objectContaining({
+              event: "upload.scan_verdict",
+              verdict: "pending",
+              scan_tag: "ABSENT",
+            }),
+          ]);
+        });
+      });
     });
 
     it("rejects when uploaded blob exceeds field maxSize", async () => {

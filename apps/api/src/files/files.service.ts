@@ -10,6 +10,7 @@ import {
   GetObjectTaggingCommand,
   HeadObjectCommand,
   PutObjectCommand,
+  PutObjectTaggingCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -23,6 +24,7 @@ import { isValidSecretToken } from "../common/secret-token";
 import { AppError } from "../common/errors";
 import { writeBusinessLog } from "../common/business-log";
 import {
+  localScanStatusForFileName,
   MALWARE_SCAN_TAG,
   scanVerdictFromTag,
   type ScanVerdict,
@@ -57,6 +59,13 @@ export interface ScanResult {
 /** How often confirm-upload re-reads the scan tag while it waits. */
 const SCAN_POLL_INTERVAL_MS = 400;
 
+/**
+ * How long confirm-upload waits for GuardDuty. The slowest scan measured for
+ * files up to the 10MB default was 2.88s (#2839, 22 Oct 2026), and scan time
+ * grows with size: revisit this if UPLOAD_MAX_SIZE_BYTES goes above ~15MB.
+ */
+const UPLOAD_SCAN_WAIT_MS = 4000;
+
 /** S3 throttling, which callers re-raise so the request backs off. */
 function isThrottle(name: string | undefined): boolean {
   return !!name && /Throttl|SlowDown|Limit/i.test(name);
@@ -87,6 +96,8 @@ export class FilesService {
   private readonly globalMaxSize: number;
   private readonly presignTtl: number;
   private readonly readTtl: number;
+  private readonly endpoint: string | undefined;
+  private readonly malwareScanEnabled: boolean;
   private readonly logger = new Logger(FilesService.name);
 
   constructor(
@@ -117,6 +128,10 @@ export class FilesService {
     this.globalMaxSize = this.config.get<number>("upload.maxSizeBytes")!;
     this.presignTtl = this.config.get<number>("upload.presignTtlSeconds")!;
     this.readTtl = this.config.get<number>("upload.readUrlTtlSeconds")!;
+    this.endpoint = endpoint;
+    this.malwareScanEnabled = !!this.config.get<boolean>(
+      "upload.malwareScanEnabled",
+    );
   }
 
   async presignUpload(
@@ -219,8 +234,55 @@ export class FilesService {
     }
     this.assertContentTypeAllowed(field, type, name);
 
-    const url = await this.getSignedReadUrl(dto.key);
-    return { key: dto.key, url, name, size, type };
+    const scanStatus = await this.uploadScanVerdict(dto.key, name);
+    // No preview link to a file we haven't cleared.
+    const url =
+      scanStatus === "clean" ? await this.getSignedReadUrl(dto.key) : undefined;
+    return { key: dto.key, url, name, size, type, scanStatus };
+  }
+
+  /**
+   * The verdict confirm-upload reports (#2938). With the switch off it
+   * reports `clean` without reading the tag, as before; the submit-time check
+   * still reads it. A refused file is left in the bucket, not deleted:
+   * sandbox has no s3:DeleteObject by design, and the submit check stops it.
+   */
+  private async uploadScanVerdict(
+    key: string,
+    fileName: string,
+  ): Promise<ScanVerdict> {
+    // LocalStack/MinIO have no GuardDuty, so play its part, whatever the
+    // switch says, or the submit check would refuse every local file.
+    // Deployed environments never set S3_ENDPOINT, and their task role has no
+    // s3:PutObjectTagging, so this fails safe if ever reached there.
+    if (this.endpoint) {
+      await this.s3.send(
+        new PutObjectTaggingCommand({
+          Bucket: this.bucket,
+          Key: key,
+          Tagging: {
+            TagSet: [
+              {
+                Key: MALWARE_SCAN_TAG,
+                Value: localScanStatusForFileName(fileName),
+              },
+            ],
+          },
+        }),
+      );
+    }
+    if (!this.malwareScanEnabled) return "clean";
+
+    const { verdict, tag } = await this.getScanVerdict(key, {
+      waitMs: UPLOAD_SCAN_WAIT_MS,
+    });
+    writeBusinessLog("security_event", {
+      level: "info",
+      event: "upload.scan_verdict",
+      verdict,
+      scan_tag: tag ?? "ABSENT",
+    });
+    return verdict;
   }
 
   async verifyKeysExist(keys: string[]): Promise<Set<string>> {
