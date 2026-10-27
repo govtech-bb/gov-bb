@@ -8,7 +8,7 @@ import { PostgresPages } from "./adapters/postgres-pages";
 import { parseConfig } from "./config";
 import { connect, createPool, type DatabaseFailure } from "./db";
 import { migrate } from "./migrate";
-import { authBypass } from "./adapters/auth-bypass";
+import { authBypass, registerBypassEmployee } from "./adapters/auth-bypass";
 import type { AuthHandler } from "./routes/auth";
 import { EditorAccess, type EmployeeGate } from "./services/editor-access";
 import { EditorIndex } from "./services/editor-index";
@@ -90,6 +90,7 @@ async function main(): Promise<void> {
       logger.warn(
         "AUTH_BYPASS is on: every editor request runs as a local developer without signing in",
       );
+      await registerBypassEmployee(db);
       ({ access, auth } = authBypass);
     } else {
       const github = await createBetterAuth(db, config.auth, logger);
@@ -113,7 +114,11 @@ async function main(): Promise<void> {
       logger,
     });
     if (shutdown.signal.aborted) return;
-    await app.listen({ port: config.port, host: "0.0.0.0" });
+    // A bypassed API admits any caller, so only this machine may reach it.
+    await app.listen({
+      port: config.port,
+      host: config.authBypass ? "127.0.0.1" : "0.0.0.0",
+    });
     if (!shutdown.signal.aborted) await once(shutdown.signal, "abort");
   } catch (error) {
     const code =
