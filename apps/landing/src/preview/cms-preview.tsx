@@ -161,7 +161,9 @@ function CmsPreviewPage() {
     >
       <SkipLink href="#cms-site-content" />
       <div className="print:hidden">
-        <Header assetBase={assetBase} />
+        {/* The content registry needs the site's markdown build, which this
+            bundle lacks, so category visibility is unknown here. */}
+        <Header assetBase={assetBase} showAboutBarbados={false} />
       </div>
       <div className="govbb-width-container pt-4 print:hidden lg:pt-6">
         <Breadcrumbs items={page.document.breadcrumbs} collapseOnMobile />

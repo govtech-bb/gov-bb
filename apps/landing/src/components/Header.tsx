@@ -22,12 +22,15 @@ RouterLink.displayName = 'RouterLink'
 
 /**
  * The site chrome. Callers decide whether About Barbados is listed: the public
- * root from its route context, while the CMS preview has none and omits it.
+ * root from its route context; the CMS preview cannot know, and omits it.
  */
 export default function Header({
   assetBase,
-  showAboutBarbados = false,
-}: { assetBase?: string; showAboutBarbados?: boolean } = {}) {
+  showAboutBarbados,
+}: {
+  assetBase?: string
+  showAboutBarbados: boolean
+}) {
   return (
     <>
       <OfficialBanner

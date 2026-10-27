@@ -23,8 +23,8 @@ describe('Header', () => {
     ).toHaveProperty('pathname', '/about-barbados')
   })
 
-  it('omits About Barbados by default, as the CMS preview renders it', () => {
-    render(<Header />)
+  it('omits About Barbados when the caller says it is hidden', () => {
+    render(<Header showAboutBarbados={false} />)
 
     expect(screen.queryByRole('link', { name: 'About Barbados' })).toBeNull()
     expect(screen.getAllByRole('link', { name: 'Services' })).not.toHaveLength(
@@ -33,7 +33,9 @@ describe('Header', () => {
   })
 
   it('resolves brand images against the asset origin when one is given', () => {
-    const { container } = render(<Header assetBase="https://alpha.gov.bb" />)
+    const { container } = render(
+      <Header assetBase="https://alpha.gov.bb" showAboutBarbados={false} />,
+    )
 
     expect(
       container.querySelector(

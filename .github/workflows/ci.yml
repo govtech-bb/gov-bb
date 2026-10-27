@@ -52,6 +52,7 @@ jobs:
 
       - name: Run type check (tsc --build)
         id: typecheck
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |
           pnpm exec tsc -b 2>&1 | tee typecheck-output.txt
           exit ${PIPESTATUS[0]}
