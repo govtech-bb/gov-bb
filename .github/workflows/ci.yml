@@ -58,20 +58,11 @@ jobs:
           exit ${PIPESTATUS[0]}
         continue-on-error: true
 
-      # Once install succeeds, each app check runs even if an earlier check
-      # fails, so one run reports every error and the tsc -b summary below
-      # is never skipped.
-      - name: Type check landing
+      # One step so the install guard lives in one place. run-many runs every
+      # project even when one fails, so a single run reports all their errors.
+      - name: Type check apps
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm exec nx run landing:typecheck
-
-      - name: Type check form builder
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm exec nx run form-builder-app:typecheck
-
-      - name: Type check editor v2
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm exec nx run editor_v2:typecheck
+        run: pnpm exec nx run-many -t typecheck --projects=landing,form-builder-app,editor_v2
 
       - name: Report type check results
         if: ${{ !cancelled() && steps.typecheck.outcome == 'failure' }}
