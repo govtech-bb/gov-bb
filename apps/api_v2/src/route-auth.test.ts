@@ -57,6 +57,13 @@ let app: FastifyInstance;
 let db: Database;
 let close: () => Promise<void>;
 
+const eventsSoFar = async () =>
+  (
+    await db.execute<{ id: string; actor: string }>(
+      sql`select id, actor from change_events`,
+    )
+  ).rows;
+
 beforeEach(async () => {
   registered.length = 0;
   ({ db, close } = await createTestDb());
@@ -108,6 +115,7 @@ it("records every signed-in write against the employee", async () => {
       sql`insert into content_pages (id, url, slug, title, body_markdown)
           values (${id}, ${`/existing-${n}`}, 'existing', 'Existing', '')`,
     );
+    const before = new Set((await eventsSoFar()).map((event) => event.id));
     const response = await app.inject({
       method: method as InjectOptions["method"],
       url: url.replace(/:\w+/g, id),
@@ -116,12 +124,13 @@ it("records every signed-in write against the employee", async () => {
     });
     expect(response.statusCode, `${method} ${url}`).toBeLessThan(300);
 
-    const { rows } = await db.execute<{ actor: string }>(
-      sql`select actor from change_events
-            where snapshot->>'url' in (${`/existing-${n}`}, ${`/written-${n}`})`,
+    // Every change the route made, not just one of them, is the employee's.
+    const actors = (await eventsSoFar())
+      .filter((event) => !before.has(event.id))
+      .map((event) => event.actor);
+    expect(actors, `${method} ${url}`).not.toEqual([]);
+    expect(new Set(actors), `${method} ${url}`).toEqual(
+      new Set([TEST_EMPLOYEE.id]),
     );
-    expect(rows, `${method} ${url}`).toContainEqual({
-      actor: TEST_EMPLOYEE.id,
-    });
   }
 });

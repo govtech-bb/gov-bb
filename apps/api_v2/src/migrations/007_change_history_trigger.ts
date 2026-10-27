@@ -16,9 +16,12 @@
  * - A page's update is `published` when it goes public and `unpublished`
  *   when it stops being public; a category has no visibility, so its updates
  *   are `updated`.
- * - `touch_updated_at()` moves `updated_at` on a page changed without it — a
- *   sub-page carried to another category by `on update cascade` — so the
- *   editor's conflict check sees the change.
+ * - `touch_updated_at()` keeps a page's `updated_at` in step with its
+ *   content. A page changed without it (a sub-page carried to another
+ *   category by `on update cascade`) gets a new one, so the editor's conflict
+ *   check sees the change. A save that changes nothing else keeps the old
+ *   one: no event is logged and `/version` doesn't move, so other editors
+ *   would never learn of a new value and their next save would conflict.
  *
  * A content table added later gets `record_change` in the migration that
  * creates it; `migrate.test.ts` fails until it does.
@@ -78,8 +81,9 @@ $$ language plpgsql;
 
 create or replace function touch_updated_at() returns trigger as $$
 begin
-  if new.updated_at = old.updated_at
-     and to_jsonb(new) - 'updated_at' <> to_jsonb(old) - 'updated_at' then
+  if to_jsonb(new) - 'updated_at' = to_jsonb(old) - 'updated_at' then
+    new.updated_at := old.updated_at;
+  elsif new.updated_at = old.updated_at then
     new.updated_at := greatest(
       date_trunc('milliseconds', clock_timestamp()),
       old.updated_at + interval '1 millisecond'

@@ -29,11 +29,13 @@ export const authBypass: {
 
 /**
  * Make the bypass developer a user, as the history's `actor` key requires
- * of whoever writes. Replaced by a real local session in #3342.
+ * of whoever writes. Only an existing developer is skipped: another user with
+ * the same email fails startup rather than every write after it. Replaced by
+ * a real local session in #3342.
  */
 export async function registerBypassEmployee(db: Database): Promise<void> {
   await db
     .insert(authUser)
     .values({ ...BYPASS_EMPLOYEE, emailVerified: true })
-    .onConflictDoNothing();
+    .onConflictDoNothing({ target: authUser.id });
 }

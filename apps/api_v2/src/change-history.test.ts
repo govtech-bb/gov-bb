@@ -174,6 +174,34 @@ describe("the change history trigger", () => {
     await close();
   });
 
+  it("keeps updated_at when a save changes nothing, so another editor's copy stays current", async () => {
+    const { db, close } = await createTestDb();
+    const { editing } = createTestServices(db);
+    const page = expectOk(await editing.create(aPage(), TEST_EMPLOYEE));
+    const fields = withDefaults(aPage());
+
+    const again = expectOk(
+      await editing.save(
+        page.id,
+        fields,
+        new Date(page.updated_at),
+        TEST_EMPLOYEE,
+      ),
+    );
+    expect(again.updated_at).toBe(page.updated_at);
+
+    // A second editor who loaded the page before that save can still save.
+    expectOk(
+      await editing.save(
+        page.id,
+        { ...fields, title: "Renamed" },
+        new Date(page.updated_at),
+        TEST_EMPLOYEE,
+      ),
+    );
+    await close();
+  });
+
   it("records each sub-page a parent's move carries, and moves its updated_at", async () => {
     const { db, close } = await createTestDb();
     const { editing } = createTestServices(db);
