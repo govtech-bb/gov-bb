@@ -55,6 +55,9 @@ export default defineConfig(({ mode, command }) => {
       "process.env.GITHUB_ORG": JSON.stringify(pick("GITHUB_ORG")),
       // GitHub team slug whose members may sign in.
       "process.env.GITHUB_TEAM_SLUG": JSON.stringify(pick("GITHUB_TEAM_SLUG")),
+      // Amplify branch being built (set by the Amplify build container; unset
+      // locally). Slack notifications only send from the `prod` branch.
+      "process.env.AWS_BRANCH": JSON.stringify(pick("AWS_BRANCH")),
     },
     plugins: [
       tailwindcss(),

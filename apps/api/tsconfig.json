@@ -22,12 +22,18 @@
         "../../packages/form-validation/src/index.ts"
       ],
       "@govtech-bb/registry": ["../../packages/registry/src/index.ts"],
+      "@govtech-bb/submission-summary": [
+        "../../packages/submission-summary/src/index.ts"
+      ],
       "@govtech-bb/database": ["../../packages/database/src/index.ts"]
     }
   },
   "references": [
     {
       "path": "../../packages/database"
+    },
+    {
+      "path": "../../packages/form-builder"
     },
     {
       "path": "../../packages/form-types"
@@ -40,6 +46,9 @@
     },
     {
       "path": "../../packages/registry"
+    },
+    {
+      "path": "../../packages/submission-summary"
     }
   ],
   "include": ["src/**/*.ts"],

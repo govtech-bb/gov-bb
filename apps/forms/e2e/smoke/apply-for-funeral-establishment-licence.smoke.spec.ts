@@ -74,12 +74,29 @@ import {
   expectStep,
   fillField,
   fillGeocodedAddress,
+  selectDropdown,
   submitAndConfirm,
   uploadOne,
+  mockGeocoder,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
 
 export const FORM_ID = "apply-for-funeral-establishment-licence";
+
+/** Parish <select> option values (slugs) from components/parish. */
+const PARISH_VALUES = [
+  "christ-church",
+  "st-andrew",
+  "st-george",
+  "st-james",
+  "st-john",
+  "st-joseph",
+  "st-lucy",
+  "st-michael",
+  "st-peter",
+  "st-philip",
+  "st-thomas",
+] as const;
 
 /**
  * Real, geocodable Barbados locations. A free-text faker address won't resolve,
@@ -125,6 +142,8 @@ export function buildData() {
     middleName: faker.person.middleName(),
     lastName: faker.person.lastName(),
     addressLine1: faker.location.streetAddress(),
+    applicantParish: faker.helpers.arrayElement(PARISH_VALUES),
+    postcode: `BB${faker.string.numeric(5)}`,
     // Goes to the monitored test inbox so a real run is verifiable end-to-end.
     email: "testing@govtech.bb",
     telephone: bbMobileNumber(),
@@ -148,7 +167,7 @@ export async function openForm(page: Page): Promise<void> {
   });
 }
 
-/** Step 1 — the applicant. */
+/** Step 1 — the applicant's name and home address. */
 export async function fillAboutTheApplicant(
   page: Page,
   data: ReturnType<typeof buildData>,
@@ -161,12 +180,27 @@ export async function fillAboutTheApplicant(
   await fillField(page, step, "address-line-1", data.addressLine1);
   // address-line-2 is left empty on purpose — the recipe sets
   // required: false, and this step advancing is the proof. See the header note.
+  await selectDropdown(page, step, "parish", data.applicantParish);
+  await fillField(page, step, "postcode", data.postcode);
+  await advance(page, step);
+}
+
+/**
+ * Step 2 — contact details. Email and telephone sit on their own step, NOT on
+ * `about-the-applicant` where an earlier revision of this recipe had them.
+ */
+export async function fillContactDetails(
+  page: Page,
+  data: ReturnType<typeof buildData>,
+): Promise<void> {
+  const step = expectStep(page, "contact-details");
+  await expect(page.locator("h1")).toContainText("Contact details");
   await fillField(page, step, "email", data.email);
   await fillField(page, step, "telephone", data.telephone);
   await advance(page, step);
 }
 
-/** Step 2 — the establishment, including the geocoded address that routes it. */
+/** Step 3 — the establishment, including the geocoded address that routes it. */
 export async function fillEstablishmentInformation(
   page: Page,
   data: ReturnType<typeof buildData>,
@@ -219,7 +253,7 @@ export async function fillStaffInformation(
 /** Tick the single declaration checkbox and submit for real. */
 async function confirmAndSubmit(page: Page): Promise<void> {
   const step = expectStep(page, "declaration");
-  await expect(page.locator("h1")).toContainText("Declaration");
+  await expect(page.locator("h1")).toContainText("Confirm and submit");
   await page
     .locator(`fieldset[id="${step}_declaration-confirmed"]`)
     .getByRole("checkbox")
@@ -236,6 +270,8 @@ async function confirmAndSubmit(page: Page): Promise<void> {
   await expect(page.getByText(/Environmental Health/).first()).toBeVisible();
 }
 
+test.beforeEach(({ page }) => mockGeocoder(page));
+
 test.describe("Funeral Establishment Licence — Live Smoke", () => {
   test("submits a complete application with an embalmer list", async ({
     page,
@@ -246,6 +282,7 @@ test.describe("Funeral Establishment Licence — Live Smoke", () => {
 
     await openForm(page);
     await fillAboutTheApplicant(page, data);
+    await fillContactDetails(page, data);
     await fillEstablishmentInformation(page, data);
     await fillStaffInformation(page, data);
 

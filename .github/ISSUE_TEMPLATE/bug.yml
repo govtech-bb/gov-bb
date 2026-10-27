@@ -1,0 +1,65 @@
+name: Bug report
+description: Something isn't working as expected
+type: Bug
+labels: ["bug"]
+body:
+  - type: checkboxes
+    attributes:
+      label: Checked on the latest code
+      description: >-
+        Pull and rebuild the branch it affects (usually `main`), or try it on a
+        deployed environment. Some bugs are already fixed, or only exist on an
+        old or local branch.
+      options:
+        - label: I reproduced this on the latest commit of the affected branch, or on a deployed environment
+          required: true
+  - type: textarea
+    attributes:
+      label: What happened?
+      description: Include steps to reproduce.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What did you expect to happen?
+  - type: dropdown
+    attributes:
+      label: Environment
+      options:
+        - Local
+        - PR preview
+        - Sandbox
+        - Staging
+        - Production
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: Area
+      description: Which part of the platform? Leave empty if unsure.
+      multiple: true
+      options:
+        - Forms
+        - Form builder
+        - Landing
+        - Chat
+        - API
+        - Editor
+        - Analytics
+        - Feature flagging
+        - Shared packages
+        - Infra / CI
+  - type: input
+    attributes:
+      label: URL or commit
+      description: The page URL, or the commit SHA it was seen on.
+  - type: textarea
+    attributes:
+      label: Logs
+      render: shell
+  - type: checkboxes
+    attributes:
+      label: Contributing a fix
+      description: Tick this if you plan to open a pull request. The issue will be assigned to you, so nobody else starts on the same fix.
+      options:
+        - label: I am working on a fix

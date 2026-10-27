@@ -27,8 +27,8 @@ export function SiteFooter({
       className="print:hidden"
       coatSrc={
         assetBase
-          ? new URL('/images/coat-of-arms.png', assetBase).href
-          : '/images/coat-of-arms.png'
+          ? new URL('/images/govbb-crest.svg', assetBase).href
+          : '/images/govbb-crest.svg'
       }
       copy={`© ${new Date().getFullYear()} Government of Barbados`}
     >

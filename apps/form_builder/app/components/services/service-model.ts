@@ -1,4 +1,5 @@
 import { LANDING_CATEGORIES, contentSlug } from "../../lib/content";
+import { FORM_STATUS_LABEL, formStatus } from "../../lib/form-status";
 import type { ContentPageSummary } from "../../server/content";
 import type { BuilderFormSummary } from "../../types";
 
@@ -116,18 +117,14 @@ export function serviceStatus(service: ServiceRow): string {
     return "Draft";
   if (service.form?.isDisabled) return "Disabled";
   if (service.form) {
-    if (!service.form.isPublished) return "Draft";
-    return service.form.visibility === "draft"
-      ? "Draft"
-      : service.form.visibility === "preview"
-        ? "Preview"
-        : service.form.visibility === "maintenance"
-          ? "Maintenance"
-          : "Published";
+    // The form's status as apps/api reports it, in the words the picker and
+    // toolbar use (#2875, ADR 0074); an unpublished form has no status yet.
+    const status = formStatus(service.form);
+    return status ? FORM_STATUS_LABEL[status] : "Draft";
   }
   const visibilities = service.pages.map((page) => page.visibility);
-  if (visibilities.includes("public")) return "Published";
-  if (visibilities.includes("preview")) return "Preview";
+  if (visibilities.includes("public")) return FORM_STATUS_LABEL.public;
+  if (visibilities.includes("preview")) return FORM_STATUS_LABEL.preview;
   return "Draft";
 }
 

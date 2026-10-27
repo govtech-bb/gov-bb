@@ -6,7 +6,6 @@ import type { RecipeDraft } from "./types";
 import type { RegistryCatalog } from "./catalog";
 import { getRegistryItem } from "./catalog";
 import { deserializeRecipe } from "./serialization";
-import type { ComponentDefinition, BlockDefinition } from "./definition-types";
 
 export interface ResolvedFieldId {
   fieldId: string;
@@ -149,18 +148,27 @@ export function formatCollisionIssues(collisions: {
   ];
 }
 
+// `childFieldId` names the block child being edited: every child of one block
+// resolves with the block's editorFieldId, so excluding by that alone would
+// hide a clash between two siblings of the same instance (#2896). Omit it for
+// a component field, whose single entry carries no childFieldId.
 export function fieldIdDuplicatesAnother(
   draft: RecipeDraft,
   catalog: RegistryCatalog,
   editorFieldId: string,
   candidateId: string,
+  childFieldId?: string,
 ): boolean {
   const candidate = candidateId.trim();
   if (!candidate) return false; // blank never duplicates
 
   return resolveFieldIds(draft, catalog).some(
     (entry) =>
-      entry.editorFieldId !== editorFieldId && entry.fieldId === candidate,
+      entry.fieldId === candidate &&
+      !(
+        entry.editorFieldId === editorFieldId &&
+        entry.childFieldId === childFieldId
+      ),
   );
 }
 
@@ -175,8 +183,9 @@ export function resolveFieldIds(
       const item = getRegistryItem(field.ref, catalog);
       if (!item) continue;
 
-      if (field.ref.startsWith("components/")) {
-        const componentDef = item as ComponentDefinition;
+      // By shape, not ref prefix: a custom `components/…` ref can be a block.
+      if ("primitive" in item) {
+        const componentDef = item;
         const fieldId =
           field.overrides.fieldId ?? componentDef.primitive.fieldId;
         if (!fieldId) continue;
@@ -192,8 +201,8 @@ export function resolveFieldIds(
           isBoolean: BOOLEAN_HTML_TYPES.has(componentDef.primitive.htmlType),
           isNumeric: NUMERIC_HTML_TYPES.has(componentDef.primitive.htmlType),
         });
-      } else if (field.ref.startsWith("blocks/")) {
-        const blockDef = item as BlockDefinition;
+      } else {
+        const blockDef = item;
         for (const element of blockDef.block.elements) {
           const childOverride = field.childOverrides?.[element.fieldId];
           const fieldId = childOverride?.fieldId ?? element.fieldId;

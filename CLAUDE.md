@@ -6,8 +6,10 @@ Guidance for working in this repo. Use **pnpm** for everything — never `npm`.
 
 `main` is the trunk and the default base for pull requests. Branch off `main`,
 keep the branch short-lived, and open the PR **against `main`** — never against
-`sandbox`/`staging`/`prod`. Merges to `main` are CI-gated (the "Main CI
-Required" ruleset: PR + status checks, no review required for now).
+`sandbox`/`staging`/`prod`. Merges to `main` are gated by the "Main CI
+Required" ruleset: PR + status checks + **one approving review**. Green CI alone
+does not make a PR mergeable, so never merge your own PR on green — hand it
+over for review.
 
 Merging to `main` drives a **sequential deploy fan-out**:
 
@@ -162,6 +164,11 @@ error in one package fails the whole "Build all packages" step.
 a fully offline `build` fails on that package. When verifying locally,
 run `pnpm exec nx run-many -t build --exclude=landing` and let CI build
 everything.
+
+### Accessibility target
+
+The platform meets the WCAG version and level named on the Design System's
+[accessibility standard](https://github.com/govtech-bb/govbb-design-system/blob/main/apps/site/src/content/docs/accessibility.md).
 
 ### Pin GitHub Actions with the exact version comment, never a major alias
 

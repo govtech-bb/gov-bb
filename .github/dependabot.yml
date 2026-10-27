@@ -3,6 +3,20 @@
 # patch. Dependabot bumps the SHA + version comment together in a PR.
 version: 2
 updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    # Cooldown does not delay security updates.
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 0
+    groups:
+      npm-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

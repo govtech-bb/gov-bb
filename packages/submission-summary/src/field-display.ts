@@ -1,4 +1,4 @@
-import type { Primitive } from "@govtech-bb/form-types";
+import type { SummaryElement } from "./types";
 
 // Option-based field types whose stored value is a slug that maps to a
 // human-readable label (via `options` / `groups`). Every other field type
@@ -11,7 +11,7 @@ const OPTION_HTML_TYPES = new Set([
 ]);
 
 /** True when `field` stores option value-slugs that resolve to display labels. */
-export function isOptionField(field: Primitive): boolean {
+export function isOptionField(field: SummaryElement): boolean {
   return OPTION_HTML_TYPES.has(field.htmlType);
 }
 
@@ -34,7 +34,10 @@ function labelOf(
  * Single source of truth for value→label so the CMS webhook payload (#842) and
  * the MDA notification email render the same labels.
  */
-export function resolveOptionDisplay(field: Primitive, raw: unknown): unknown {
+export function resolveOptionDisplay(
+  field: SummaryElement,
+  raw: unknown,
+): unknown {
   switch (field.htmlType) {
     case "radio":
     case "select":

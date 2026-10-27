@@ -19,17 +19,22 @@ import {
   SlackNotifierService,
   mrkdwnEscape,
 } from "@/notifications/slack-notifier.service";
-import type { Processor } from "@govtech-bb/form-types";
+import { classifyRecipientField } from "@govtech-bb/form-types";
+import type { Processor, RecipientKind } from "@govtech-bb/form-types";
 import { ProcessorFactory } from "../processors/processor-factory.service";
 import { NonRetryableError } from "../processors/non-retryable-error";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 import type { SubmissionSqsMessage } from "./submission-sqs-message.interface";
 
-/** Operator Slack alerts are scoped to this processor type (#2168) — the CaMS
- *  webhook dispatch, whose failure is the operator-critical path. Typed as
- *  Processor["type"] so a rename of the processor union breaks the build here
- *  rather than silently disabling every alert. */
-const ALERTED_PROCESSOR_TYPE: Processor["type"] = "webhook";
+/** Operator Slack alerts cover the dispatches whose failure means staff never
+ *  hear about an application: the CaMS webhook (#2168) and email (#2302).
+ *  Emails are further narrowed in alertTerminalFailure to skip the citizen's
+ *  own confirmation. Typed as Processor["type"] so a rename of the processor
+ *  union breaks the build here rather than silently disabling an alert. */
+const ALERTED_PROCESSOR_TYPES: readonly Processor["type"][] = [
+  "webhook",
+  "email",
+];
 
 @Injectable()
 export class SqsConsumerService
@@ -277,10 +282,12 @@ export class SqsConsumerService
    * formId, reference, processor, attempt — never the submission `values`. The
    * notifier never throws, so this cannot affect the delete/redrive decision.
    *
-   * Scoped to the CaMS webhook dispatch: a failed case hand-off is the
-   * operator-critical path. Other processors (email/spreadsheet/opencrvs/
-   * payment) still retry / dead-letter / drop exactly as before — just without
-   * a Slack alert.
+   * Scoped to the dispatches staff depend on: the CaMS webhook (a failed case
+   * hand-off) and every email except the citizen's own confirmation (an MDA,
+   * catchment, contact or fixed staff address, #2302 — a failed MDA email went
+   * unnoticed for a month). Other processors (spreadsheet/opencrvs/payment)
+   * and the citizen confirmation still retry / dead-letter / drop exactly as
+   * before — just without a Slack alert.
    */
   private async alertTerminalFailure(
     payload: SubmissionSqsMessage,
@@ -288,7 +295,17 @@ export class SqsConsumerService
     kind: "config" | "delivery",
     err: unknown,
   ): Promise<void> {
-    if (payload.processorType !== ALERTED_PROCESSOR_TYPE) return;
+    if (
+      !(ALERTED_PROCESSOR_TYPES as readonly string[]).includes(
+        payload.processorType,
+      )
+    )
+      return;
+    const recipientKind =
+      payload.processorType === "email"
+        ? this.emailRecipientKind(payload)
+        : null;
+    if (recipientKind === "submitted") return;
 
     const reason =
       kind === "config"
@@ -316,6 +333,7 @@ export class SqsConsumerService
       `:rotating_light: Submission dispatch failed to deliver — ${reason}. ` +
       `env=${this.environmentLabel()} form=${form} reference=${reference} ` +
       `processor=${processor} index=${payload.processorIndex} ` +
+      (recipientKind ? `recipient=${recipientKind} ` : "") +
       `error=${errName}. ${action}`;
     // Guarded so a misbehaving notifier can never surface into the catch block
     // and change the delete/redrive decision (SlackNotifierService already
@@ -332,6 +350,21 @@ export class SqsConsumerService
   }
 
   /* Helpers */
+
+  /** Who the addressed email entry sends to, classified the same way
+   *  EmailProcessor resolves it (`submitted` is the citizen). Only the kind
+   *  name reaches the alert — never the address. `unknown` when the entry has
+   *  no recipientField, which EmailProcessor itself treats as a config error. */
+  private emailRecipientKind(
+    payload: SubmissionSqsMessage,
+  ): RecipientKind | "unknown" {
+    const cfg = (payload.processors[payload.processorIndex]?.config ??
+      {}) as Record<string, unknown>;
+    const field = cfg["recipientField"];
+    return typeof field === "string"
+      ? classifyRecipientField(field)
+      : "unknown";
+  }
 
   /** Best-effort environment label for alerts, derived from the configured queue
    *  URL (…/modular-forms-submissions-<env>) so sandbox/staging/prod alerts that

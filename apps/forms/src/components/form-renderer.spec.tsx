@@ -87,7 +87,13 @@ vi.mock("./error-summary", () => ({
 
 vi.mock("./review", () => ({
   __esModule: true,
-  default: () => <div data-testid="review" />,
+  default: (props: { previewToken?: string; draftToken?: string }) => (
+    <div
+      data-testid="review"
+      data-preview={props.previewToken}
+      data-draft={props.draftToken}
+    />
+  ),
 }));
 
 vi.mock("./submission-confirmation", () => ({
@@ -123,6 +129,7 @@ vi.mock("@forms/lib", () => ({
     onBlur: vi.fn(),
   })),
   collectStepErrorCodes: vi.fn(() => []),
+  stepPassesValidation: vi.fn(() => true),
 }));
 
 import FormRenderer from "./form-renderer";
@@ -557,6 +564,24 @@ describe("FormRenderer", () => {
       />,
     );
     expect(screen.getByTestId("review")).toBeInTheDocument();
+  });
+
+  it("hands the preview and draft tokens to Review for its Change links", () => {
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="check-your-answers"
+        visibleSteps={[makeStep("check-your-answers")]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+        previewToken="prev-1"
+        draftToken="draft-1"
+      />,
+    );
+    const review = screen.getByTestId("review");
+    expect(review).toHaveAttribute("data-preview", "prev-1");
+    expect(review).toHaveAttribute("data-draft", "draft-1");
   });
 
   it("renders ApplicantNameDisplay on declaration step", () => {
@@ -1297,6 +1322,38 @@ describe("FormRenderer", () => {
     expect(mockForm.deleteField).toHaveBeenCalledWith("step-1~1_name");
   });
 
+  it("forgets removed instances' completion on 'No', so a re-added one is not treated as done (#2812)", async () => {
+    // Instance ids are reused by count: a later "Yes" re-creates step-1~1.
+    // A stale completion record would let a return-from-Change skip it.
+    const user = userEvent.setup();
+    const { removeRepeatableStep } = vi.mocked(formsLibMock);
+    const repeatableBehaviour = { type: "repeatable", min: 1, max: 3 };
+    const baseStep = makeStep("step-1", [], [repeatableBehaviour]);
+    const removedStep = makeStep("step-1~1", [], [repeatableBehaviour]);
+    (removeRepeatableStep as Mock).mockReturnValue([baseStep]);
+    mockForm.getFieldValue.mockReturnValue("no");
+    sessionStorage.setItem(
+      "completedSteps_test-form",
+      JSON.stringify(["step-1", "step-1~1"]),
+    );
+
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1"
+        visibleSteps={[baseStep, removedStep]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+
+    expect(
+      JSON.parse(sessionStorage.getItem("completedSteps_test-form") ?? "[]"),
+    ).toEqual(["step-1"]);
+  });
+
   it("renders step description when present", () => {
     const step = { ...makeStep("step-1"), description: "Fill in your details" };
     render(
@@ -1583,5 +1640,107 @@ describe("FormRenderer — conditional confirmation markdown (#2068)", () => {
     const node = renderConfirmation(mockSubmissionState);
     expect(node).toHaveTextContent("An officer may arrange an inspection.");
     expect(node).not.toHaveTextContent("{inspection}");
+  });
+});
+
+// Funnel-emission guard (#2682). Two live forms recorded a Start but zero
+// step-views, so their funnels were empty and nobody knew until a dashboard was
+// read. The per-step funnel is driven entirely by a `form-step-view` event that
+// carries the step's id in its `step` property (see form-renderer.tsx). If that
+// event stops firing, or stops carrying the real stepId, every numbered step
+// silently drops to zero. These tests fail loudly if that regresses, for any
+// form — so it's caught by the suite rather than by someone reading analytics.
+describe("form-step-view funnel emission (#2682)", () => {
+  it("emits form-step-view carrying the mounted step's stepId (not a positional label)", () => {
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={
+          makeMeta({ formId: "request-an-environmental-health-officer" }) as any
+        }
+        stepId="operating-restaurant"
+        visibleSteps={[
+          makeStep("operating-restaurant"),
+          makeStep("applicant-details"),
+        ]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+
+    // The `step` property MUST be the recipe stepId — the dashboard funnel
+    // matches these values against the live recipe's step ids.
+    expect(mockTrackEvent).toHaveBeenCalledWith(
+      "form-step-view",
+      expect.objectContaining({
+        form: "request-an-environmental-health-officer",
+        step: "operating-restaurant",
+      }),
+    );
+  });
+
+  it("keys the event to the current step so each step in the funnel is recorded", () => {
+    // currentIndex drives which visible step is active; a later step must emit
+    // its own stepId, not the first step's.
+    mockUseStepGuard.mockReturnValue({
+      navigateToStep: mockNavigateToStep,
+      completeAndContinue: mockCompleteAndContinue,
+      currentIndex: 1,
+    });
+
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={
+          makeMeta({ formId: "apply-for-temporary-restaurant-permit" }) as any
+        }
+        stepId="food-safety"
+        visibleSteps={[makeStep("documents"), makeStep("food-safety")]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+
+    const stepViews = mockTrackEvent.mock.calls.filter(
+      ([event]) => event === "form-step-view",
+    );
+    expect(stepViews).toHaveLength(1);
+    expect(stepViews[0][1]).toMatchObject({
+      form: "apply-for-temporary-restaurant-permit",
+      step: "food-safety",
+    });
+  });
+});
+
+describe("FormRenderer — returning from a Change (#2812)", () => {
+  function renderAt(returnToReview?: boolean) {
+    const step = makeStep("step-1");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        returnToReview={returnToReview}
+      />,
+    );
+    return mockUseStepGuard.mock.calls.at(-1)?.[0];
+  }
+
+  it("forwards returnToReview to the step guard", () => {
+    expect(renderAt(true).returnToReview).toBe(true);
+    expect(renderAt(undefined).returnToReview).toBeFalsy();
+  });
+
+  it("judges a step with stepPassesValidation against the live form", () => {
+    // The visibility and repeatable rules are tested against the real
+    // library in validation-builder.spec.ts; here, only the wiring.
+    const { stepPassesValidation } = vi.mocked(formsLibMock);
+    stepPassesValidation.mockReturnValue(false);
+    const target = makeStep("s2");
+
+    expect(renderAt(true).isStepValid(target)).toBe(false);
+    expect(stepPassesValidation).toHaveBeenCalledWith(target, mockForm);
   });
 });

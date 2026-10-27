@@ -10,12 +10,15 @@ import {
   EyeIcon,
   GearSixIcon,
 } from "@phosphor-icons/react";
-import type { RecipeVisibility } from "@govtech-bb/form-types";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Select } from "../ui/select";
 import { DropdownMenu } from "../ui/dropdown";
 import { KEBAB_ID_PATTERN, KEBAB_ID_ERROR } from "./id-validation";
+import {
+  FORM_STATUS_HINT,
+  FORM_STATUS_LABEL,
+  type FormStatus,
+} from "../../lib/form-status";
 
 interface ToolbarProps {
   leading?: ReactNode;
@@ -32,8 +35,12 @@ interface ToolbarProps {
   isPublishing: boolean;
   isReadOnly: boolean;
   lastSaveStatus: "idle" | "success" | "error" | "submitted";
-  visibility: RecipeVisibility;
-  onVisibilityChange: (visibility: RecipeVisibility) => void;
+  /**
+   * The open form's live status as apps/api reports it (#2875) — read-only
+   * here; it is changed in Feature flagging. `loading` while the forms list
+   * is in flight, `null` when the form is not published.
+   */
+  status: FormStatus | "loading" | null;
   onFormIdChange: (id: string) => void;
   onTitleChange: (title: string) => void;
   onNew: () => void;
@@ -45,12 +52,11 @@ interface ToolbarProps {
   onDiscard: () => void;
 }
 
-const VISIBILITY_OPTIONS = [
-  { value: "public", label: "Public" },
-  { value: "preview", label: "Preview" },
-  { value: "draft", label: "Draft" },
-  { value: "maintenance", label: "Maintenance" },
-] satisfies { value: RecipeVisibility; label: string }[];
+function statusLabel(status: ToolbarProps["status"]): string {
+  if (status === "loading") return "Checking status…";
+  if (status === null) return "Not published";
+  return FORM_STATUS_LABEL[status];
+}
 
 export function Toolbar(props: ToolbarProps) {
   const confirm = useConfirmation();
@@ -61,9 +67,7 @@ export function Toolbar(props: ToolbarProps) {
     ? "Another user is editing this form"
     : props.hasUnsavedChanges
       ? "Save draft before publishing"
-      : props.visibility === "draft"
-        ? "Set visibility to Preview or Public in Form settings to publish"
-        : undefined;
+      : undefined;
   async function handleNew() {
     if (
       props.isDirty &&
@@ -145,10 +149,7 @@ export function Toolbar(props: ToolbarProps) {
             onClick={props.onPublish}
             loading={props.isPublishing}
             disabled={
-              props.isValidating ||
-              props.hasUnsavedChanges ||
-              props.isReadOnly ||
-              props.visibility === "draft"
+              props.isValidating || props.hasUnsavedChanges || props.isReadOnly
             }
             title={deployHint}
           >
@@ -206,17 +207,11 @@ export function Toolbar(props: ToolbarProps) {
           <span className="inline-flex items-center gap-2">
             <GearSixIcon size={16} aria-hidden="true" />
             Form settings
-            <span className="ms-1 text-xs">
-              {
-                VISIBILITY_OPTIONS.find(
-                  (item) => item.value === props.visibility,
-                )?.label
-              }
-            </span>
+            <span className="ms-1 text-xs">{statusLabel(props.status)}</span>
           </span>
         </Collapsible.DefaultTrigger>
         <Collapsible.Panel keepMounted>
-          <div className="grid min-w-0 gap-4 pb-5 @min-[40rem]:grid-cols-[minmax(0,1fr)_minmax(10rem,18rem)_10rem]">
+          <div className="grid min-w-0 gap-4 pb-5 @min-[40rem]:grid-cols-[minmax(0,1fr)_minmax(10rem,18rem)_12rem]">
             <Input
               label="Title"
               name="title"
@@ -248,16 +243,24 @@ export function Toolbar(props: ToolbarProps) {
                 );
               }}
             />
-            <Select<RecipeVisibility>
-              label="Visibility"
-              name="visibility"
-              value={props.visibility}
-              items={VISIBILITY_OPTIONS}
-              onValueChange={(value) => {
-                if (value !== null) props.onVisibilityChange(value);
-              }}
-              disabled={props.isReadOnly}
-            />
+            {/* Read-only: the live status is the service_status row apps/api
+                applies (#2875); the builder never edits it. */}
+            <div
+              className="min-w-0 text-sm"
+              role="group"
+              aria-labelledby="form-status-label"
+            >
+              <p
+                id="form-status-label"
+                className="font-medium text-ui-default"
+              >
+                Status
+              </p>
+              <p className="mt-2 text-ui-strong" data-testid="form-status">
+                {statusLabel(props.status)}
+              </p>
+              <p className="mt-1 text-xs text-ui-subtle">{FORM_STATUS_HINT}</p>
+            </div>
           </div>
         </Collapsible.Panel>
       </Collapsible.Root>

@@ -76,7 +76,7 @@ describe('fresh CMS site preview', () => {
     expect(container.querySelector('iframe')).toBeNull()
     expect(
       container.querySelector(
-        'img[src="https://alpha.gov.bb/images/coat-of-arms.png"]',
+        'img[src="https://alpha.gov.bb/images/govbb-crest.svg"]',
       ),
     ).not.toBeNull()
   })

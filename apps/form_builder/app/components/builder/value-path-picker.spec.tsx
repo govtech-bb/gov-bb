@@ -2,7 +2,6 @@ import { openSelect, chooseOption } from "../../test/select";
 /**
  * @vitest-environment jsdom
  */
-import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
 import type { ResolvedFieldId } from "@govtech-bb/form-builder";
 import { ValuePathPicker } from "./value-path-picker";

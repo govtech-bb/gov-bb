@@ -1,11 +1,11 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { SendEmailCommand } from "@aws-sdk/client-sesv2";
-import Handlebars from "handlebars";
 import { DataSource } from "typeorm";
 import { SesMailer } from "../email/ses-mailer";
 import { type AlertNotice, buildAlertEmail, type EmailContent } from "./emails";
-import { FeedService } from "./feed.service";
+import { FeedService, reason, type SkippedNotice } from "./feed.service";
+import { OpsAlertService } from "./ops-alerts.service";
 import { isPast, type Outage } from "./outages.domain";
 import { apiOrigin, landingOrigin } from "./origins";
 import { areaLabelFor } from "./parishes";
@@ -14,6 +14,7 @@ import {
   WaterSentAlertRepository,
 } from "./water-sent-alert.repository";
 import { WaterSubscriberRepository } from "./water-subscriber.repository";
+import { redactEmailsIn } from "@/common/log-sanitize";
 
 // Public path the unsubscribe body-link resolves to (a landing page).
 const WATER_OUTAGES_PATH = "/health-and-emergency-services/water-outages";
@@ -32,6 +33,8 @@ export interface CheckSummary {
   failed: number;
   dryRun?: boolean;
   plan?: Array<{ notice: string; recipients: string[] }>;
+  /** Notices the feed skipped as invalid, for the ops email (#2970). */
+  skipped?: SkippedNotice[];
 }
 
 /**
@@ -52,6 +55,7 @@ export class CheckerService {
     private readonly subscribers: WaterSubscriberRepository,
     private readonly sentAlerts: WaterSentAlertRepository,
     private readonly mailer: SesMailer,
+    private readonly opsAlerts: OpsAlertService,
   ) {}
 
   /** The scheduled run: single-flight across API tasks via an advisory lock. */
@@ -66,22 +70,37 @@ export class CheckerService {
       );
       if (!locked) return; // another task is already running the check.
       try {
-        const summary = await this.runAlertCheck({});
+        const { skipped = [], ...summary } = await this.runAlertCheck({});
+        // Skips are already logged by the feed on each fetch.
         this.logger.log(`alert check: ${JSON.stringify(summary)}`);
+        // Each signal is emailed once when it starts, reminded, and once when
+        // it recovers — not every run (#2970).
+        await this.opsAlerts.recovered("checker-crash");
         if (summary.failed > 0) {
-          await this.sendOpsAlert(
-            `Wuh Water Doing: ${summary.failed} alert send(s) failed`,
+          await this.opsAlerts.failure(
+            "send-failures",
+            `${summary.failed} alert send(s) failed`,
             JSON.stringify(summary, null, 2),
           );
+        } else if (summary.attempted > 0) {
+          // Only a run that actually sent shows SES works again.
+          await this.opsAlerts.recovered("send-failures");
+        } else {
+          // Nothing outstanding: any failed sends belonged to notices that
+          // have ended. Clear without a "recovered" email, so a later failure
+          // starts fresh instead of "failing since weeks ago".
+          await this.opsAlerts.cleared("send-failures");
         }
+        await this.opsAlerts.newSkippedNotices(skipped);
       } finally {
         await runner.query(`SELECT pg_advisory_unlock($1)`, [CHECK_LOCK_KEY]);
       }
     } catch (err) {
       this.logger.error("alert checker crashed", err as Error);
-      await this.sendOpsAlert(
-        "Wuh Water Doing: alert checker crashed",
-        String(err),
+      await this.opsAlerts.failure(
+        "checker-crash",
+        reason(err),
+        (err as Error)?.stack ?? String(err),
       );
     } finally {
       await runner.release();
@@ -102,7 +121,13 @@ export class CheckerService {
     opts: { notices?: Outage[]; dryRun?: boolean } = {},
   ): Promise<CheckSummary> {
     const now = Date.now();
-    const notices = opts.notices ?? (await this.feed.fetchOutages()).outages;
+    let notices = opts.notices;
+    let skipped: SkippedNotice[] = [];
+    if (!notices) {
+      const fetched = await this.feed.fetchOutagesWithSkips();
+      notices = fetched.feed.outages;
+      skipped = fetched.skipped;
+    }
     const active = notices.filter((o) => !isPast(o, now));
     const noticeById = new Map(active.map((n) => [n.id, n]));
 
@@ -173,6 +198,7 @@ export class CheckerService {
       attempted: pending.length,
       sent,
       failed,
+      skipped,
     };
   }
 
@@ -196,12 +222,18 @@ export class CheckerService {
       api && `${api}/water-alerts/unsubscribe/${row.unsubscribeToken}`;
 
     const content = buildAlertEmail(areaLabel, notice, bodyUnsubUrl);
-    return this.sendAlert(row.email, content, oneClickUnsubUrl);
+    return this.sendAlert(
+      row.email,
+      row.subscriberId,
+      content,
+      oneClickUnsubUrl,
+    );
   }
 
   /** Sends an alert with RFC 8058 one-click unsubscribe headers. Never throws. */
   private async sendAlert(
     to: string,
+    subscriberId: string,
     content: EmailContent,
     oneClickUnsubUrl: string | undefined,
   ): Promise<boolean> {
@@ -238,26 +270,14 @@ export class CheckerService {
       );
       return true;
     } catch (err) {
+      // Never log a resident's address (#1640, #2971), not even masked: the
+      // subscriber ID is enough to look them up. That includes the SES error,
+      // which can name the address it rejected, so any address in it is
+      // replaced outright rather than masked.
       this.logger.warn(
-        `Alert email to ${to} failed: ${(err as Error).message}`,
+        `Alert email to subscriber ${subscriberId} failed: ${redactEmailsIn((err as Error).message, "[email]")}`,
       );
       return false;
-    }
-  }
-
-  /** Ops alert to the team. No-op if WATER_OPS_RECIPIENT is unset. */
-  private async sendOpsAlert(subject: string, text: string): Promise<void> {
-    const to = process.env.WATER_OPS_RECIPIENT;
-    if (!to) return;
-    try {
-      await this.mailer.sendSimple({
-        to,
-        subject,
-        html: `<pre>${Handlebars.escapeExpression(text)}</pre>`,
-        text,
-      });
-    } catch (err) {
-      this.logger.warn(`Ops alert not sent: ${(err as Error).message}`);
     }
   }
 }

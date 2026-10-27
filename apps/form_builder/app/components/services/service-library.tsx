@@ -16,6 +16,7 @@ import { Badge } from "../ui/badge";
 import { Empty } from "../ui/empty";
 import { Tabs } from "../ui/tabs";
 import { cn } from "../ui/utils/cn";
+import { FORM_STATUS_LABEL } from "../../lib/form-status";
 import {
   serviceCategory,
   serviceStatus,
@@ -88,7 +89,10 @@ export function ServiceLibrary({
           { value: "all", label: `All (${services.length})` },
           { value: "draft", label: "Drafts" },
           { value: "review", label: "In review" },
-          { value: "published", label: "Published" },
+          {
+            value: FORM_STATUS_LABEL.public.toLowerCase(),
+            label: FORM_STATUS_LABEL.public,
+          },
         ]}
       />
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -255,7 +259,7 @@ export function ServiceLibrary({
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge
                         variant={
-                          status === "Published"
+                          status === FORM_STATUS_LABEL.public
                             ? "success"
                             : status === "Disabled"
                               ? "error"

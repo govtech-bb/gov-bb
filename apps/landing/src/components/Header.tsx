@@ -1,6 +1,6 @@
 import { forwardRef } from 'react'
 import type { ComponentPropsWithoutRef } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useRouteContext } from '@tanstack/react-router'
 import {
   Header as GovHeader,
   Link as GovLink,
@@ -8,8 +8,9 @@ import {
   OfficialBanner,
   StatusBanner,
 } from '@govtech-bb/react'
-import govBbLogoUrl from '@govtech-bb/frontend/assets/images/govbb-logo.svg?url'
+import { CATEGORY_BY_SLUG, isCategoryVisible } from '../content/registry'
 import { CHAT_URL } from '../lib/chat-url'
+import { deriveVisibilityOverlay } from '../lib/service-status'
 import { TRACKER_URL } from '../lib/tracker-url'
 
 // The DS Header renders links via `href`; map it to TanStack Router's `to` for
@@ -21,20 +22,37 @@ const RouterLink = forwardRef<HTMLAnchorElement, RouterLinkProps>(
 RouterLink.displayName = 'RouterLink'
 
 export default function Header({ assetBase }: { assetBase?: string } = {}) {
+  const asset = (path: string) =>
+    assetBase ? new URL(path, assetBase).href : path
+  // The CMS preview mounts its own router without the site's root context.
+  const { level, serviceStatuses } = useRouteContext({ from: '__root__' })
+  const showAboutBarbados =
+    serviceStatuses !== undefined &&
+    isCategoryVisible(
+      CATEGORY_BY_SLUG['about-barbados'],
+      level,
+      deriveVisibilityOverlay(serviceStatuses),
+    )
+
   return (
     <>
       <OfficialBanner
-        imageSrc={assetBase ? new URL('/images/coat-of-arms.png', assetBase).href : '/images/coat-of-arms.png'}
+        imageSrc={asset('/images/govbb-crest.svg')}
         imageAlt=""
         showLearnMore={false}
       />
       <GovHeader
         homeHref="/"
         logoAlt="Go to the alpha.gov.bb homepage"
-        logoSrc={govBbLogoUrl}
+        logoSrc={asset('/images/govbb-logo.svg')}
         linkComponent={RouterLink}
         nav={
           <>
+            {showAboutBarbados && (
+              <GovLink href="/about-barbados" linkComponent={RouterLink}>
+                About Barbados
+              </GovLink>
+            )}
             <GovLink href="/services" linkComponent={RouterLink}>
               Services
             </GovLink>

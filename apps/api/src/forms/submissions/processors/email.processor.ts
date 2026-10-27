@@ -53,6 +53,29 @@ const ATTACHMENT_BUDGET_BYTES = 7 * 1024 * 1024;
 // long enough to span a weekend before a reviewer opens the notification.
 const EMAIL_LINK_TTL_SECONDS = 72 * 60 * 60;
 
+/**
+ * Splits a resolved recipient into one SES destination per inbox.
+ *
+ * mda_contact.mda_email (and so `config.mdaEmail`) may hold several inboxes as
+ * one comma-separated string. SES needs one ToAddresses entry per address: a
+ * comma inside a single entry is rejected outright ("Illegal address"), losing
+ * the notification for every inbox at once (gov-bb #2301/#2302). Entries are
+ * trimmed, empties dropped, and duplicates collapsed case-insensitively, keeping
+ * the first spelling.
+ */
+export function splitRecipients(recipient: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of recipient.split(",")) {
+    const address = raw.trim();
+    const key = address.toLowerCase();
+    if (!address || seen.has(key)) continue;
+    seen.add(key);
+    out.push(address);
+  }
+  return out;
+}
+
 @Injectable()
 export class EmailProcessor implements ISubmissionProcessor {
   readonly type = "email" as const;
@@ -143,12 +166,13 @@ export class EmailProcessor implements ISubmissionProcessor {
         recipient = this.resolveSubmittedRecipient(payload, recipientField);
       }
 
-      if (!recipient) {
+      const toAddresses = recipient ? splitRecipients(recipient) : [];
+      if (!recipient || toAddresses.length === 0) {
         // Config error: the recipient resolved to nothing (e.g. a misconfigured
-        // path or an empty contactDetails value). This won't fix itself on
-        // retry, so fail non-retryably. NOTE: a resolver that *throws* (DB/infra
-        // down) is a transient failure — it propagates to the catch below and is
-        // re-wrapped as a normal, retryable error.
+        // path, an empty contactDetails value, or a list of only commas). This
+        // won't fix itself on retry, so fail non-retryably. NOTE: a resolver that
+        // *throws* (DB/infra down) is a transient failure — it propagates to the
+        // catch below and is re-wrapped as a normal, retryable error.
         await this.recordOutcome(
           payload,
           kind,
@@ -225,7 +249,10 @@ export class EmailProcessor implements ISubmissionProcessor {
       const result = await this.mailer.client.send(
         new SendEmailCommand({
           FromEmailAddress: this.mailer.from,
-          Destination: { ToAddresses: [recipient] },
+          // One entry per inbox. The raw MIME `To:` header above keeps the
+          // comma-joined string, which is valid there; notification_log keeps
+          // it too, so the Delivery view still shows the full list.
+          Destination: { ToAddresses: toAddresses },
           Content: content,
           // EmailTags are forwarded to the SES event destination (SNS/EventBridge).
           EmailTags: [{ Name: "submissionId", Value: payload.submissionId }],
@@ -490,11 +517,14 @@ export class EmailProcessor implements ISubmissionProcessor {
     try {
       const ctx = await this.emailBodyBuilder.build(payload);
       if (fileLinks.length > 0) ctx.fileLinks = fileLinks;
-      // Both templates carry the coat-of-arms branding. The department name is
-      // only used by the citizen acknowledgement, so resolve that directory
-      // lookup only for that template.
+      // Both templates carry the coat-of-arms branding. The department name and
+      // tracker link are only used by the citizen acknowledgement, so resolve
+      // them only for that template.
       ctx.coatOfArmsUrl = this.mailer.coatOfArmsUrl;
       if (templateId === RECEIVED_TEMPLATE) {
+        ctx.trackable = payload.processors.some(
+          (p) => p.type === "webhook" && Boolean(p.config.mapping),
+        );
         ctx.departmentName =
           (await this.formConfigService.resolveDepartmentName(
             payload.formId,

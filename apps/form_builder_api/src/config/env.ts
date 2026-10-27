@@ -50,11 +50,14 @@ const envSchema = z
     // GitHub org for publish. publish.ts throws at request time when unset
     // (#1400) — promoted to a boot-time failure in prod here.
     GITHUB_ORG: z.string().optional(),
-    PUBLISH_BASE_BRANCH: z.string().default("dev"),
+    // `main` is the trunk every Deploy PR targets (#2899); `dev` no longer exists.
+    PUBLISH_BASE_BRANCH: z.string().default("main"),
     // Recipe-preview token forwarded to apps/api so the published-forms proxy
-    // gets the authoring list (non-public forms + visibility, #1835). Optional
-    // everywhere — never required at boot; when unset the proxy omits the
-    // header and falls back to the public-only list (degraded, never a crash).
+    // gets the authoring list (non-public forms + effective visibility,
+    // #1835). The builder shows a form's status from that list and nothing
+    // else (#2875), so a missing token silently blanking every status is not
+    // acceptable: required in prod (see guard); in dev the proxy warns and
+    // falls back to the public-only list.
     RECIPE_PREVIEW_TOKEN: z.string().optional(),
   })
   .superRefine((env, ctx) => {
@@ -72,6 +75,13 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ["GITHUB_ORG"],
         message: "GITHUB_ORG is required in production",
+      });
+    }
+    if (!env.RECIPE_PREVIEW_TOKEN) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["RECIPE_PREVIEW_TOKEN"],
+        message: "RECIPE_PREVIEW_TOKEN is required in production",
       });
     }
     if (

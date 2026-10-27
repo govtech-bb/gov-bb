@@ -21,6 +21,22 @@
   gap: var(--govbb-space-s);
 }
 
+/* The package's radio fieldset is a flex column with `align-items:
+   flex-start`, which shrink-wraps a revealed option to its content. A field
+   with no intrinsic width — the file upload — collapsed to a thin strip
+   (#2915). Stretch the reveal to the fieldset's width instead. */
+.govbb-radio-item__conditional {
+  align-self: stretch;
+}
+
+/* The form group is a flex column with `align-items: flex-start` too, so it
+   shrink-wrapped the fieldset itself to its options — and a revealed field
+   stretched to that narrow fieldset, leaving revealed text inputs and selects
+   a fraction of the column. Give the fieldset the full column width. */
+.govbb-form-group > .govbb-fieldset {
+  align-self: stretch;
+}
+
 /* Space multiple fields within a revealed checkbox option. */
 .govbb-checkbox-item:has(> .govbb-checkbox:checked)
   + .govbb-checkbox-item__conditional {
@@ -166,11 +182,7 @@
   margin-top: var(--govbb-space-m);
 }
 
-/* ---- Next steps + contact details ---------------------------------------- */
-.form-page__next-steps {
-  margin-block-start: var(--govbb-space-m);
-}
-
+/* ---- Contact details ----------------------------------------------------- */
 .form-page__contact {
   margin-block-start: var(--govbb-space-m);
   display: flex;
@@ -255,15 +267,25 @@
  * field's own type, not its container, so a short field inside a show-hide
  * inset renders the same as a standalone one — percentage widths compounded
  * against every wrapper (two-thirds column × inset padding × 33%) and
- * left inset fields tiny. The package's form group supplies `width: 100%`,
- * so fields still shrink inside containers narrower than the cap.
- * `long` (or no hint) stays unstyled: full width of the form column. */
+ * left inset fields tiny. The package's controls supply `width: 100%`, so
+ * fields still shrink inside containers narrower than the cap.
+ * `long` (or no hint) stays unstyled: full width of the form column.
+ * The cap sits on the control, not the form group, so the label, hint and
+ * error message keep the full column width (#2923). Caveat: a select's group
+ * can carry a width hint and contains its `.govbb-select__conditional` inset,
+ * so the descendant selector reaches revealed fields. No width-hinted select
+ * reveals a field today. If one does, a revealed field with no hint inherits
+ * the select's cap, and a `short` field under a `medium` select gets 38ch
+ * (equal specificity, `medium` wins by source order) — add rules scoped to
+ * `.govbb-select__conditional .govbb-form-group[...]` then. */
 @media (min-width: 768px) {
-  .govbb-form-group[data-field-width="short"] {
+  .govbb-form-group[data-field-width="short"]
+    :is(.govbb-input, .govbb-select, .govbb-textarea, .govbb-combobox) {
     max-width: 24ch;
   }
 
-  .govbb-form-group[data-field-width="medium"] {
+  .govbb-form-group[data-field-width="medium"]
+    :is(.govbb-input, .govbb-select, .govbb-textarea, .govbb-combobox) {
     max-width: 38ch;
   }
 }
@@ -309,7 +331,6 @@
   .govbb-grid-row,
   .govbb-service-heading,
   .govbb-payment,
-  .form-page__next-steps,
   .form-page__contact {
     display: block !important;
   }
@@ -332,7 +353,7 @@
   /* One consistent gap between every confirmation block, both variants. */
   .form-page__reference,
   .govbb-payment,
-  .form-page__next-steps,
+  .form-page__printed-answers,
   .form-page__markdown-content,
   .form-page__contact {
     margin-top: var(--govbb-space-m) !important;
@@ -349,8 +370,90 @@
   .form-page__reference,
   .form-page__contact,
   .govbb-payment__row,
-  .form-page__next-steps > div,
-  .form-page__next-steps li {
+  .form-page__printed-answers-section {
     break-inside: avoid;
   }
+}
+
+/* Fallback map an applicant places their address pin on when address
+   suggestions are unavailable (#2679). */
+/* Stretched like the radio reveal above: the form group would otherwise
+   shrink-wrap the map to zero width. */
+.address-pin-map {
+  align-self: stretch;
+  height: 20rem;
+  margin-top: var(--govbb-space-xs);
+  /* Leaflet stacks its panes and controls at z-index 400-1000; keep them inside
+     the map so the address suggestions (z-index 10) float over it. */
+  isolation: isolate;
+}
+
+.address-lookup__map-actions {
+  margin: var(--govbb-space-xs) 0 0;
+}
+
+/* The shape sits on an inner span: Leaflet positions the marker element itself
+   with an inline transform. */
+.address-pin span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 3px solid var(--govbb-color-surface);
+  border-radius: 50% 50% 50% 0;
+  background: var(--govbb-color-interactive);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.5);
+  transform: rotate(-45deg);
+}
+
+.address-pin:focus-visible {
+  outline: 3px solid var(--govbb-color-focus);
+  outline-offset: 2px;
+}
+
+/* Address suggestions (#2679): each row is a place's name, the typed part in
+   bold, then where it is in the muted colour. The popup keeps the design
+   system's .govbb-combobox__list frame; the listbox inside it scrolls and the
+   "Google Maps" attribution Google's terms require stays below the rows. */
+.address-combobox__popup {
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+}
+
+.address-combobox__popup[hidden] {
+  display: none;
+}
+
+.address-combobox__options {
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.address-combobox__where {
+  color: var(--govbb-color-muted);
+}
+
+/* Google's text-attribution spec: Roboto (or sans-serif) at weight 400,
+   12-16px, grey #5E5E5E, exactly "Google Maps" and never wrapped. */
+.address-combobox__attribution {
+  margin: 0;
+  padding: var(--govbb-space-xs) var(--govbb-space-s);
+  font-family: Roboto, sans-serif;
+  font-size: 1rem;
+  font-weight: 400;
+  color: #5e5e5e;
+  text-align: end;
+  white-space: nowrap;
+}
+
+/* The no-match hint's "show where it is on a map" is a button (it opens the
+   map, it goes nowhere) styled as the link it reads as. */
+.address-lookup__map-link {
+  padding: 0;
+  font: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
 }

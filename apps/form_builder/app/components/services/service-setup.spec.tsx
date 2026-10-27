@@ -1,9 +1,16 @@
 /** @vitest-environment jsdom */
-import "@testing-library/jest-dom";
 import { useState, type ReactNode } from "react";
-import { render, screen, waitFor, within } from "../../test/ui";
+import {
+  act,
+  render,
+  respondToConfirmation,
+  screen,
+  waitFor,
+  within,
+} from "../../test/ui";
 import { chooseOption, openSelect } from "../../test/select";
 import userEvent from "@testing-library/user-event";
+import type { UseBlockerOpts } from "@tanstack/react-router";
 import {
   serviceSnapshotSchema,
   type ServiceDraft,
@@ -11,10 +18,15 @@ import {
 } from "@govtech-bb/form-types";
 import { listMdaContacts } from "../../server/mda-contacts";
 import { previewRecipe } from "../../server/registry";
-import { ServiceSetup } from "./service-setup";
+import { ServiceSetup, type SetupSection } from "./service-setup";
 import type { ServiceState } from "./service-state";
 
-vi.mock("@tanstack/react-router", () => ({ useBlocker: vi.fn() }));
+let mockBlocker: UseBlockerOpts;
+vi.mock("@tanstack/react-router", () => ({
+  useBlocker: (options: UseBlockerOpts) => {
+    mockBlocker = options;
+  },
+}));
 vi.mock("../../server/mda-contacts", () => ({ listMdaContacts: vi.fn() }));
 vi.mock("../../server/registry", () => ({ previewRecipe: vi.fn() }));
 vi.mock("../app-link", () => ({
@@ -87,7 +99,13 @@ function draft(): ServiceDraft {
   };
 }
 
-function Harness({ initial = draft() }: { initial?: ServiceDraft }) {
+function Harness({
+  initial = draft(),
+  section = "delivery",
+}: {
+  initial?: ServiceDraft;
+  section?: SetupSection;
+}) {
   const [value, setValue] = useState(initial);
   const workspace = {
     draft: value,
@@ -99,9 +117,7 @@ function Harness({ initial = draft() }: { initial?: ServiceDraft }) {
       return next;
     },
   } as ServiceState;
-  return (
-    <ServiceSetup workspace={workspace} section="delivery" />
-  );
+  return <ServiceSetup workspace={workspace} section={section} />;
 }
 
 beforeEach(() => {
@@ -355,6 +371,23 @@ it("edits email subjects and connections in one screen while preserving payment 
   ).toHaveLength(1);
 });
 
+it("warns in the advanced actions when a catchment-routed form has no mapped webhook (#2877)", async () => {
+  const initial = draft();
+  // The fixture's two email actions are the shape an Environmental Health
+  // form is left in once its only webhook has been removed.
+  initial.recipe!.catchmentRouting = {
+    coordinatesField: "contact.coordinates",
+    parishField: "contact.parish",
+  };
+  render(<Harness initial={initial} />);
+  await userEvent.click(
+    screen.getByRole("button", { name: "Advanced action settings" }),
+  );
+  expect(screen.getByText(/routes by catchment/i)).toHaveTextContent(
+    /cannot be deployed/i,
+  );
+});
+
 it("keeps incomplete payments in the editor and explains what prevents saving", async () => {
   render(<Harness />);
   await userEvent.click(
@@ -373,4 +406,84 @@ it("keeps incomplete payments in the editor and explains what prevents saving", 
   expect(
     screen.getByRole("textbox", { name: "Payment code" }),
   ).toBeInTheDocument();
+});
+
+it("explains that the public contact details are optional (#2874)", () => {
+  render(<Harness section="details" />);
+  expect(
+    screen.getByText(
+      "Optional. These details help applicants contact the department. Department notifications use the department email chosen in After submission.",
+    ),
+  ).toBeInTheDocument();
+});
+
+describe("discarding unsaved changes (#2687)", () => {
+  const navigation = {
+    current: {
+      routeId: "/services" as const,
+      fullPath: "/services" as const,
+      pathname: "/services",
+      params: {},
+      search: {},
+    },
+    next: {
+      routeId: "/services" as const,
+      fullPath: "/services" as const,
+      pathname: "/services",
+      params: {},
+      search: {},
+    },
+    action: "PUSH" as const,
+  };
+
+  it("reverts the Details page to the saved draft from the footer, after confirming", async () => {
+    render(<Harness section="details" />);
+    const discard = screen.getByRole("button", { name: "Discard changes" });
+    const name = screen.getByRole("textbox", { name: "Service name" });
+    expect(discard).toBeDisabled();
+    await userEvent.type(name, " trust");
+    expect(screen.getByRole("status")).toHaveTextContent("Unsaved changes");
+    expect(discard).toBeEnabled();
+
+    await userEvent.click(discard);
+    await respondToConfirmation("Cancel");
+    expect(name).toHaveValue("Housing trust");
+
+    await userEvent.click(discard);
+    await respondToConfirmation("Discard changes");
+    expect(name).toHaveValue("Housing");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Save to update the service draft.",
+    );
+    expect(discard).toBeDisabled();
+    expect(saved).not.toHaveBeenCalled();
+  });
+
+  it("lets the author leave without saving from the navigation prompt", async () => {
+    render(<Harness section="details" />);
+    expect(mockBlocker.enableBeforeUnload).toBe(false);
+    await expect(mockBlocker.shouldBlockFn(navigation)).resolves.toBe(false);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Service name" }),
+      " trust",
+    );
+    // shouldBlockFn closes over `dirty`, so read the options from the latest
+    // render, after the edit.
+    const blocker = mockBlocker;
+    expect(blocker.enableBeforeUnload).toBe(true);
+    let decision: boolean | Promise<boolean>;
+    act(() => {
+      decision = blocker.shouldBlockFn(navigation);
+    });
+    await respondToConfirmation("Cancel");
+    await expect(decision!).resolves.toBe(true);
+    act(() => {
+      decision = blocker.shouldBlockFn(navigation);
+    });
+    await respondToConfirmation("Discard changes");
+    await expect(decision!).resolves.toBe(false);
+    expect(saved).not.toHaveBeenCalled();
+  });
 });

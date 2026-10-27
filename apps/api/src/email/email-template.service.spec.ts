@@ -115,6 +115,17 @@ describe("EmailTemplateService", () => {
       expect(html).toContain("sub-test-001");
     });
 
+    it("shows the tracker link on submission-received only when trackable", () => {
+      const ctx = STUB_CTX as unknown as Record<string, unknown>;
+
+      expect(
+        service.render("submission-received", { ...ctx, trackable: true }),
+      ).toContain("Track my application");
+      expect(service.render("submission-received", ctx)).not.toContain(
+        "Track my application",
+      );
+    });
+
     it("renders all sections and field rows in the output", () => {
       const html = service.render(
         "submission-confirmation",

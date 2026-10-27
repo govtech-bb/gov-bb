@@ -39,7 +39,7 @@ const intro: Record<Step, string> = {
     "Name the service and place it in a category. Together they make its public link.",
   form: "Choose how people apply. You can change the form later from the service.",
   contact:
-    "Applicants see these details on the service. Edit them later in Settings › Contact details.",
+    "Optional. Applicants see these details on the service. Edit them later in Details.",
 };
 
 const corners = [

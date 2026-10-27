@@ -27,15 +27,12 @@ export interface RecipeStepDraft {
   fields: RecipeFieldDraft[];
   behaviours: Behaviour[];
   // Confirmation-step content. The submission-confirmation step renders
-  // `markdownContent` (editable in StepEditor) and `nextSteps` (structured
-  // title/content/items blocks). Both are dropped from the served contract on
-  // republish unless round-tripped here (#1292): markdownContent is authored in
-  // the builder, while nextSteps is carried through untouched (no editor yet).
+  // `markdownContent` (editable in StepEditor); it is dropped from the served
+  // contract on republish unless round-tripped here (#1292).
   markdownContent?: string;
-  nextSteps?: FormStep["nextSteps"];
   // Per-answer passages inside `markdownContent` (#2068). No editor yet, so it
-  // is carried through untouched like `nextSteps` — without that a republish
-  // would strip the segments and leave every `{token}` in the body unfilled.
+  // is carried through untouched — without that a republish would strip the
+  // segments and leave every `{token}` in the body unfilled.
   conditionalMarkdown?: FormStep["conditionalMarkdown"];
 }
 

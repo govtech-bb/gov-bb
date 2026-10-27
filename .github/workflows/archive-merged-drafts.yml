@@ -5,6 +5,16 @@ on:
     branches: [main]
     paths:
       - "apps/api/src/forms/form-definitions/recipes/**/*.json"
+  # Replay a past push whose run failed (e.g. on 429s): re-running the old run
+  # would use the old script.
+  workflow_dispatch:
+    inputs:
+      before:
+        description: "SHA before the push"
+        required: true
+      after:
+        description: "SHA after the push"
+        required: true
 
 permissions:
   contents: read

@@ -69,7 +69,9 @@ export function decodeEntities(text: string): string {
 
 /** Strip HTML tags, decode entities, and collapse whitespace to plain text. */
 export function stripHtml(html: string): string {
-  return decodeEntities(html.replace(/<[^>]*>/g, " "))
+  // A tag can't contain '<': this keeps a stray '<' as text and stops a run of
+  // unclosed '<' (feed text is untrusted) from backtracking quadratically.
+  return decodeEntities(html.replace(/<[^<>]*>/g, " "))
     .replace(/\s+/g, " ")
     .trim();
 }
