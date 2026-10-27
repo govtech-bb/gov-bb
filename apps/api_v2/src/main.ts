@@ -12,6 +12,7 @@ import { authBypass } from "./adapters/auth-bypass";
 import type { AuthHandler } from "./routes/auth";
 import { EditorAccess, type EmployeeGate } from "./services/editor-access";
 import { EditorIndex } from "./services/editor-index";
+import { CategoryEditing } from "./services/category-editing";
 import { PageEditing } from "./services/page-editing";
 import { PageResolution } from "./services/page-resolution";
 import { SiteNavigation } from "./services/site-navigation";
@@ -103,6 +104,7 @@ async function main(): Promise<void> {
       navigation: new SiteNavigation(pages),
       editing: new PageEditing(pages, () => new Date()),
       index: new EditorIndex(pages),
+      categories: new CategoryEditing(pages, () => new Date()),
       access,
       auth,
       config: {

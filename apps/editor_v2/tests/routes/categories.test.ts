@@ -24,10 +24,21 @@ test("the Categories screen opens in the workspace, its list already loading", a
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) =>
-      new URL(input instanceof Request ? input.url : input).pathname === "/taxonomy"
+      new URL(input instanceof Request ? input.url : input).pathname === "/editor/categories"
         ? Response.json({
             categories: [
-              { id: "health", parent_id: null, slug: "health", url: "/health", title: "Health" },
+              {
+                id: "health",
+                parent_id: null,
+                slug: "health",
+                url: "/health",
+                title: "Health",
+                description: null,
+                position: 0,
+                services: 0,
+                reserved_route: false,
+                updated_at: "2026-10-26T12:00:00.000Z",
+              },
             ],
           })
         : Response.json([]),

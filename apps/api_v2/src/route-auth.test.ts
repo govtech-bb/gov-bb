@@ -70,6 +70,10 @@ it("finds the editor's writes, so an empty route list cannot pass", () => {
       "POST /pages",
       "PUT /pages/:id",
       "DELETE /pages/:id",
+      "POST /editor/categories",
+      "PUT /editor/categories/:id",
+      "PUT /editor/categories/order",
+      "DELETE /editor/categories/:id",
     ]),
   );
 });
