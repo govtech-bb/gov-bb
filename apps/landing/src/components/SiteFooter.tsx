@@ -1,4 +1,5 @@
 import { Footer, FooterLink } from '@govtech-bb/react'
+import { assetUrl } from '../lib/asset-url'
 
 const links = [
   { label: 'Home', href: '/', event: 'footer-home' },
@@ -25,11 +26,7 @@ export function SiteFooter({
   return (
     <Footer
       className="print:hidden"
-      coatSrc={
-        assetBase
-          ? new URL('/images/govbb-crest.svg', assetBase).href
-          : '/images/govbb-crest.svg'
-      }
+      coatSrc={assetUrl('/images/govbb-crest.svg', assetBase)}
       copy={`© ${new Date().getFullYear()} Government of Barbados`}
     >
       {links.map(({ label, href, event }) => (

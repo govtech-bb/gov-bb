@@ -8,6 +8,7 @@ import {
   OfficialBanner,
   StatusBanner,
 } from '@govtech-bb/react'
+import { assetUrl } from '../lib/asset-url'
 import { CHAT_URL } from '../lib/chat-url'
 import { TRACKER_URL } from '../lib/tracker-url'
 
@@ -27,20 +28,17 @@ export default function Header({
   assetBase,
   showAboutBarbados = false,
 }: { assetBase?: string; showAboutBarbados?: boolean } = {}) {
-  const asset = (path: string) =>
-    assetBase ? new URL(path, assetBase).href : path
-
   return (
     <>
       <OfficialBanner
-        imageSrc={asset('/images/govbb-crest.svg')}
+        imageSrc={assetUrl('/images/govbb-crest.svg', assetBase)}
         imageAlt=""
         showLearnMore={false}
       />
       <GovHeader
         homeHref="/"
         logoAlt="Go to the alpha.gov.bb homepage"
-        logoSrc={asset('/images/govbb-logo.svg')}
+        logoSrc={assetUrl('/images/govbb-logo.svg', assetBase)}
         linkComponent={RouterLink}
         nav={
           <>
