@@ -27,7 +27,7 @@ You can complete the online form.
 
 ## What the form asks for
 
-1. Your details as the parent or guardian, including your title, name, National ID number, relationship to the child, home address, parish, mobile number and email address.
+1. Your details as the parent or guardian, including your title, name, Barbados National Identification (ID) number, relationship to the child, home address, parish, mobile number and email address.
 2. Your child’s name, date of birth, sex and primary school attended.
 3. Your child’s BSSEE composite score and candidate number.
 4. Your child’s current school allocation.

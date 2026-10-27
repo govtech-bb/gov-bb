@@ -31,7 +31,7 @@ You can apply online. It takes about 10 minutes once you have your information r
 
 ## What the form asks for
 
-- your details — your school, name, National ID number and your post or job title
+- your details — your school, name, Barbados National Identification (ID) number and your post or job title
 - your contact number and email address
 - your leave dates — your start and end dates, and whether you have previously been granted term’s leave
 - a brief explanation of why you are requesting leave. Your reason is confidential and we share it only with your principal and our HR team

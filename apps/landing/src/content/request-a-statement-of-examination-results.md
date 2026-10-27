@@ -32,7 +32,7 @@ The form takes about 10 minutes to complete.
 ## What the form asks for
 
 1. Your title, surname as it appeared on your exam entry, first names and any maiden or former name.
-2. Your National ID number, date of birth, home address, mobile number and email address.
+2. Your Barbados National Identification (ID) number, date of birth, home address, mobile number and email address.
 3. The examination body, the series or sitting, your candidate number if you have it, and the school or centre where you sat the exam.
 4. The subjects you want on the statement and your reason for needing it.
 5. How you’d like to receive the statement: collect in person at the Examinations Unit, by post, or by courier. If you choose post or courier, you’ll give a delivery address.
