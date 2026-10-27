@@ -45,4 +45,13 @@ describe("README ERD", () => {
 
     await close();
   });
+
+  it("writes a two-part precision without the comma Mermaid refuses", async () => {
+    const { db, close } = await createTestDb();
+    await db.execute(sql`alter table categories add column fee numeric(10,2)`);
+
+    expect(await renderErd(db)).toContain('    numeric(10-2) fee "nullable"\n');
+
+    await close();
+  });
 });

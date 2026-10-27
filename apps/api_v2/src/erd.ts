@@ -33,11 +33,16 @@ const KEYS = z.array(
   }),
 );
 
-/** `_text` is how the catalog names `text[]`; the modifier is a length or precision. */
+/**
+ * `_text` is how the catalog names `text[]`; the modifier is a length or
+ * precision. Mermaid refuses a comma in a type, so `numeric(10,2)` is
+ * written `numeric(10-2)`.
+ */
 const typeName = (udt: string, modifier: string | null) => {
   const array = udt.startsWith("_");
   const base = array ? udt.slice(1) : udt;
-  return `${base}${modifier ? `(${modifier})` : ""}${array ? "[]" : ""}`;
+  const size = modifier ? `(${modifier.replaceAll(",", "-")})` : "";
+  return `${base}${size}${array ? "[]" : ""}`;
 };
 
 /** A Mermaid `erDiagram` of every table in the current schema but the migration ledger. */
