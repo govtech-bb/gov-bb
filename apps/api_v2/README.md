@@ -107,44 +107,44 @@ erDiagram
   }
   categories {
     uuid id PK
-    varchar slug UK
-    varchar title
+    varchar(100) slug UK
+    varchar(200) title
     text description "nullable"
-    timestamptz created_at
-    timestamptz updated_at
+    timestamptz(3) created_at
+    timestamptz(3) updated_at
     uuid parent_id FK "nullable"
     int4 position
   }
   change_events {
     uuid id PK
-    varchar entity_kind UK
-    text entity_id UK
-    int4 version_no UK
+    varchar(40) entity_kind "unique (entity_kind, entity_id, version_no)"
+    text entity_id
+    int4 version_no
     change_action action
     jsonb snapshot
     text actor
-    timestamptz occurred_at
+    timestamptz(3) occurred_at
   }
   content_pages {
-    uuid id PK, UK
-    varchar url UK
-    varchar slug
-    varchar title
+    uuid id PK "unique (id, category_id)"
+    varchar(512) url UK
+    varchar(200) slug
+    varchar(300) title
     text description "nullable"
-    timestamptz created_at
-    timestamptz updated_at
-    uuid category_id FK, UK "nullable"
+    timestamptz(3) created_at
+    timestamptz(3) updated_at
+    uuid category_id FK "nullable"
     page_visibility visibility
-    varchar form_id "nullable"
+    varchar(100) form_id "nullable"
     text body_markdown
     jsonb frontmatter
-    timestamptz published_at "nullable"
+    timestamptz(3) published_at "nullable"
     uuid parent_id FK "nullable"
   }
   search_chunks {
     uuid id PK
-    uuid page_id FK, UK
-    int4 ordinal UK
+    uuid page_id FK "unique (page_id, ordinal)"
+    int4 ordinal
     text heading "nullable"
     text body
     tsvector tsv "generated"

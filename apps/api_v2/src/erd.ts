@@ -17,6 +17,7 @@ const COLUMNS = z.array(
     table: z.string(),
     column: z.string(),
     type: z.string(),
+    modifier: z.string().nullable(),
     not_null: z.boolean(),
     generated: z.boolean(),
   }),
@@ -32,23 +33,29 @@ const KEYS = z.array(
   }),
 );
 
-/** `_text` is how the catalog names `text[]`. */
-const typeName = (udt: string) =>
-  udt.startsWith("_") ? `${udt.slice(1)}[]` : udt;
+/** `_text` is how the catalog names `text[]`; the modifier is a length or precision. */
+const typeName = (udt: string, modifier: string | null) => {
+  const array = udt.startsWith("_");
+  const base = array ? udt.slice(1) : udt;
+  return `${base}${modifier ? `(${modifier})` : ""}${array ? "[]" : ""}`;
+};
 
-/** A Mermaid `erDiagram` of every public table but the migration ledger. */
+/** A Mermaid `erDiagram` of every table in the current schema but the migration ledger. */
 export async function renderErd(db: Database): Promise<string> {
   const columns = COLUMNS.parse(
     (
       await db.execute(sql`
         select c.relname::text as table, a.attname::text as column,
-               t.typname::text as type, a.attnotnull as not_null,
+               t.typname::text as type,
+               substring(format_type(a.atttypid, a.atttypmod) from '\\(([^)]*)\\)')
+                 as modifier,
+               a.attnotnull as not_null,
                a.attgenerated <> '' as generated
         from pg_attribute a
         join pg_class c on c.oid = a.attrelid
         join pg_namespace n on n.oid = c.relnamespace
         join pg_type t on t.oid = a.atttypid
-        where n.nspname = 'public' and c.relkind in ('r', 'p')
+        where n.nspname = current_schema() and c.relkind in ('r', 'p')
           and c.relname <> 'schema_migrations'
           and a.attnum > 0 and not a.attisdropped
         order by c.relname, a.attnum`)
@@ -77,13 +84,13 @@ export async function renderErd(db: Database): Promise<string> {
         join pg_class c on c.oid = con.conrelid
         join pg_namespace n on n.oid = c.relnamespace
         left join pg_class f on f.oid = con.confrelid
-        where n.nspname = 'public' and con.contype in ('p', 'f', 'u')
+        where n.nspname = current_schema() and con.contype in ('p', 'f', 'u')
           and c.relname <> 'schema_migrations'
         order by c.relname, con.conname`)
     ).rows,
   );
 
-  const keyed = (table: string, column: string, kind: "p" | "f" | "u") =>
+  const keyed = (table: string, column: string, kind: "p" | "f") =>
     keys.some(
       (key) =>
         key.table === table &&
@@ -95,17 +102,28 @@ export async function renderErd(db: Database): Promise<string> {
   const tables = [...new Set(columns.map((column) => column.table))];
   for (const table of tables) {
     lines.push(`  ${table} {`);
+    const uniques = keys.filter((k) => k.table === table && k.kind === "u");
+    const unique = uniques.filter((key) => key.columns.length === 1);
+    const composite = uniques.filter((key) => key.columns.length > 1);
     for (const column of columns.filter((c) => c.table === table)) {
       const marks = [
         keyed(table, column.column, "p") && "PK",
         keyed(table, column.column, "f") && "FK",
-        keyed(table, column.column, "u") && "UK",
+        unique.some((key) => key.columns[0] === column.column) && "UK",
+      ].filter(Boolean);
+      // Mermaid marks single columns, so a multi-column unique key is noted
+      // on its first column rather than marking each column UK.
+      const notes = [
+        column.generated ? "generated" : !column.not_null && "nullable",
+        ...composite
+          .filter((key) => key.columns[0] === column.column)
+          .map((key) => `unique (${key.columns.join(", ")})`),
       ].filter(Boolean);
       lines.push(
         [
-          `    ${typeName(column.type)} ${column.column}`,
+          `    ${typeName(column.type, column.modifier)} ${column.column}`,
           marks.length > 0 && marks.join(", "),
-          column.generated ? '"generated"' : !column.not_null && '"nullable"',
+          notes.length > 0 && `"${notes.join("; ")}"`,
         ]
           .filter(Boolean)
           .join(" "),
