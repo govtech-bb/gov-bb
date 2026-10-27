@@ -1,11 +1,13 @@
 /**
- * Every route that can change something turns away a caller with no session.
- * The routes come from the app itself, not a list kept here, so a write route
- * added anywhere, outside the editor plugin included, fails this test until
- * it sits behind sign-in or is added to PUBLIC_WRITES.
+ * Every route that can change something turns away a caller with no session,
+ * and records a signed-in caller's change against them. The routes come from
+ * the app itself, not a list kept here, so a write route added anywhere,
+ * outside the editor plugin included, fails this test until it sits behind
+ * sign-in and runs as the employee, or is added to PUBLIC_WRITES.
  */
 
 import { randomUUID } from "node:crypto";
+import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import type { Database } from "./db";
@@ -15,8 +17,11 @@ import {
   createTestDb,
   createTestServices,
   expectOk,
+  TEST_EMPLOYEE,
+  TEST_HEADERS,
   TEST_HTTP_CONFIG,
 } from "./test-db";
+import { withDefaults } from "./modules/page";
 
 const registered = vi.hoisted(() => [] as { method: string; url: string }[]);
 
@@ -92,4 +97,31 @@ it("refuses every write without a session and leaves the database unchanged", as
     count: 0,
     latest: null,
   });
+});
+
+it("records every signed-in write against the employee", async () => {
+  for (const [n, { method, url }] of writes().entries()) {
+    // A page of the database's own for the route to act on, so only the
+    // route's change can carry the employee's id.
+    const id = randomUUID();
+    await db.execute(
+      sql`insert into content_pages (id, url, slug, title, body_markdown)
+          values (${id}, ${`/existing-${n}`}, 'existing', 'Existing', '')`,
+    );
+    const response = await app.inject({
+      method: method as InjectOptions["method"],
+      url: url.replace(/:\w+/g, id),
+      payload: withDefaults(aPage({ url: `/written-${n}` })),
+      headers: TEST_HEADERS,
+    });
+    expect(response.statusCode, `${method} ${url}`).toBeLessThan(300);
+
+    const { rows } = await db.execute<{ actor: string }>(
+      sql`select actor from change_events
+            where snapshot->>'url' in (${`/existing-${n}`}, ${`/written-${n}`})`,
+    );
+    expect(rows, `${method} ${url}`).toContainEqual({
+      actor: TEST_EMPLOYEE.id,
+    });
+  }
 });

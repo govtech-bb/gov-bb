@@ -45,9 +45,10 @@ describe("seed", () => {
       documents: ESTATE.pages.length,
     });
     expect(await seed(db)).toEqual({ categories: 0, documents: 0 });
-    // Each page's history starts where the seed left it, and only once.
+    // Each page's and category's history starts where the seed left it,
+    // and only once.
     expect(expectOk(await createTestServices(db).index.version()).count).toBe(
-      ESTATE.pages.length,
+      ESTATE.pages.length + ESTATE.categories.length,
     );
 
     await close();
@@ -181,12 +182,14 @@ describe("seed", () => {
     await close();
   }, 60_000);
 
-  it("imports the estate once, naming the markdown commit as the actor", async () => {
+  it("imports the estate once as system, naming the markdown commit in its report", async () => {
     const { db, close } = await createTestDb();
 
     const report = await importEstate(db, { dryRun: false });
 
     expect(report).toEqual({
+      source: ESTATE.source,
+      reason: null,
       existing: 0,
       actors: {},
       categories: ESTATE.categories.length,
@@ -195,7 +198,7 @@ describe("seed", () => {
     const { rows } = await db.execute<{ actor: string }>(
       sql`select distinct actor from change_events`,
     );
-    expect(rows.map((row) => row.actor)).toEqual([`import:${ESTATE.source}`]);
+    expect(rows.map((row) => row.actor)).toEqual(["system"]);
 
     await close();
   }, 60_000);
@@ -207,7 +210,9 @@ describe("seed", () => {
 
     const refusal = importEstate(db, { dryRun: false });
     await expect(refusal).rejects.toThrow(/refusing/);
-    await expect(refusal).rejects.toThrow(`seed=${ESTATE.pages.length}`);
+    await expect(refusal).rejects.toThrow(
+      `system=${ESTATE.pages.length + ESTATE.categories.length}`,
+    );
     expect(await countOf(db, "content_pages")).toBe(ESTATE.pages.length);
     expect(await countOf(db, "change_events")).toBe(history);
 
@@ -218,6 +223,8 @@ describe("seed", () => {
     const { db, close } = await createTestDb();
 
     expect(await importEstate(db, { dryRun: true })).toEqual({
+      source: ESTATE.source,
+      reason: null,
       existing: 0,
       actors: {},
       categories: ESTATE.categories.length,
@@ -243,15 +250,11 @@ describe("seed", () => {
     expect(await countOf(db, "content_pages")).toBe(ESTATE.pages.length);
     expect(await countOf(db, "categories")).toBe(ESTATE.categories.length);
     expect(await countOf(db, "change_events")).toBe(history);
-    const { rows } = await db.execute<{ actor: string }>(
-      sql`select distinct actor from change_events order by actor`,
-    );
-    expect(rows.map((row) => row.actor)).toEqual(["seed"]);
 
     await close();
   }, 60_000);
 
-  it("force replaces existing content in one transaction and records the reason", async () => {
+  it("force replaces existing content in one transaction and reports the reason", async () => {
     const { db, close } = await createTestDb();
     await seed(db);
 
@@ -261,19 +264,14 @@ describe("seed", () => {
     });
 
     expect(report).toEqual({
+      source: ESTATE.source,
+      reason: "test replace",
       existing: ESTATE.pages.length,
-      actors: { seed: ESTATE.pages.length },
+      actors: { system: ESTATE.pages.length + ESTATE.categories.length },
       categories: ESTATE.categories.length,
       documents: ESTATE.pages.length,
     });
     expect(await countOf(db, "content_pages")).toBe(ESTATE.pages.length);
-    const { rows } = await db.execute<{ actor: string }>(
-      sql`select distinct actor from change_events order by actor`,
-    );
-    expect(rows.map((row) => row.actor)).toEqual([
-      `import:${ESTATE.source} force: test replace`,
-      "seed",
-    ]);
 
     await close();
   }, 60_000);

@@ -1,7 +1,8 @@
 /**
  * The Drizzle schema, matching migrations `001_init` to
- * `005_hierarchy_and_search` applied in order, table for table and column for
- * column.
+ * `007_change_history_trigger` applied in order, table for table and column
+ * for column. Of BetterAuth's tables only `auth_user` is here, as what
+ * `change_events.actor` references.
  *
  * The DDL in `migrations/` stays the source of truth and this file is the
  * typed view of it that queries are written against. `schema.test.ts` asserts
@@ -14,6 +15,7 @@
 
 import {
   type AnyPgColumn,
+  boolean,
   customType,
   index,
   integer,
@@ -38,6 +40,7 @@ export const changeAction = pgEnum("change_action", [
   "published",
   "reverted",
   "deleted",
+  "unpublished",
 ]);
 
 const timestamps = {
@@ -115,6 +118,21 @@ export const contentPages = pgTable(
   ],
 );
 
+/** BetterAuth's user, as `003_auth` creates it; `system` is the one with no account. */
+export const authUser = pgTable("auth_user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("emailVerified").notNull(),
+  image: text("image"),
+  createdAt: timestamp("createdAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 const tsvector = customType<{ data: string }>({
   dataType: () => "tsvector",
 });
@@ -146,10 +164,10 @@ export const searchChunks = pgTable(
 );
 
 /**
- * Append-only, enforced by a trigger rather than by convention. A row is
- * written on every save, which is what makes the trigger something the tests
- * exercise rather than only declare — and what a live-update feed would read
- * from.
+ * Append-only, enforced by a trigger rather than by convention. The database
+ * writes a row on every change to a content table (`record_change`, see
+ * `007_change_history_trigger`), which is what a live-update feed would read
+ * from. `actor` is the user whose transaction made the change, or `system`.
  */
 export const changeEvents = pgTable(
   "change_events",
@@ -162,7 +180,10 @@ export const changeEvents = pgTable(
     versionNo: integer("version_no").notNull(),
     action: changeAction("action").notNull(),
     snapshot: jsonb("snapshot").notNull(),
-    actor: text("actor").notNull().default("spike"),
+    actor: text("actor")
+      .notNull()
+      .default("system")
+      .references(() => authUser.id, { onDelete: "restrict" }),
     occurredAt: timestamp("occurred_at", { withTimezone: true, precision: 3 })
       .notNull()
       .defaultNow(),
