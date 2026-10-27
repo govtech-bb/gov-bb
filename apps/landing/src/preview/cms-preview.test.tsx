@@ -79,6 +79,10 @@ describe('fresh CMS site preview', () => {
         'img[src="https://alpha.gov.bb/images/govbb-crest.svg"]',
       ),
     ).not.toBeNull()
+    // The preview has no root route context, so the visibility-gated nav link is omitted.
+    expect(
+      container.querySelector('header a[href="/about-barbados"]'),
+    ).toBeNull()
   })
 
   it('namespaces navigation IDs separately from the independently bundled CMS', async () => {

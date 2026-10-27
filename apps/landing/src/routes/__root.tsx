@@ -9,10 +9,14 @@ import { SkipLink } from '@govtech-bb/react'
 import { SiteFooter } from '../components/SiteFooter'
 import { BreadcrumbRegion } from '../components/BreadcrumbRegion'
 import Header from '../components/Header'
+import { CATEGORY_BY_SLUG, isCategoryVisible } from '../content/registry'
 import { ErrorPage } from '../components/ErrorPage'
 import { trackEvent } from '../lib/analytics'
 import { COOKIE_MAX_AGE_SECONDS, resolveViewLevel } from '../lib/preview'
-import { getServiceStatuses } from '../lib/service-status'
+import {
+  deriveVisibilityOverlay,
+  getServiceStatuses,
+} from '../lib/service-status'
 import { SITE_URL } from '../lib/site-url'
 import { buildOrganizationLd, buildWebSiteLd } from '../lib/structured-data'
 
@@ -232,11 +236,18 @@ function ServerErrorPage() {
 }
 
 function RootLayout() {
+  const { level, serviceStatuses } = Route.useRouteContext()
+  const showAboutBarbados = isCategoryVisible(
+    CATEGORY_BY_SLUG['about-barbados'],
+    level,
+    deriveVisibilityOverlay(serviceStatuses),
+  )
+
   return (
     <>
       <SkipLink href="#main-content" />
       <div className="print:hidden">
-        <Header />
+        <Header showAboutBarbados={showAboutBarbados} />
       </div>
       <BreadcrumbRegion>
         <main id="main-content" tabIndex={-1}>
