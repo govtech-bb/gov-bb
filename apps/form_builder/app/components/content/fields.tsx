@@ -5,6 +5,7 @@ import { Select } from "../ui/select";
 import type { AssistantRequest } from "../ui/ai/prompt-bar";
 import {
   LANDING_CATEGORIES,
+  PAGE_VISIBILITY_HINT,
   VISIBILITY_LEVELS,
   type ViewLevel,
   type StartLinkType,
@@ -384,7 +385,14 @@ export function PageFields({
         items={[
           ...VISIBILITY_LEVELS.map((v) => ({ value: v.value, label: v.label })),
         ]}
+        aria-describedby="sp-visibility-hint"
       />
+      <small
+        id="sp-visibility-hint"
+        className="mt-1.25 block text-[12px] text-ui-subtle"
+      >
+        {PAGE_VISIBILITY_HINT}
+      </small>
     </div>
   );
 

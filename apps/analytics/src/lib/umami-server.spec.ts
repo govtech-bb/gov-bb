@@ -240,6 +240,18 @@ describe('humanizeStep', () => {
       humanizeStep('/money-financial-support/get-a-textbook-grant/form'),
     ).toBe('Get a textbook grant · Form')
   })
+
+  it("recognises a long-id form's compact start code (#2682)", () => {
+    // A 40–44 char id emits `:fstrt` instead of `:form-start`; it must still
+    // resolve to the Start goal, not render as "Fstrt".
+    expect(humanizeStep('some-long-licence-form:fstrt')).toBe(
+      'Some long licence form · Start',
+    )
+    // a compact per-event code resolves to its canonical label, not "Sview"
+    expect(humanizeStep('some-long-licence-form:fverr')).toBe(
+      'Form validation error',
+    )
+  })
 })
 
 describe('shapeFlow (Sankey)', () => {

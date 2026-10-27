@@ -1,3 +1,4 @@
+import "@testing-library/jest-dom/vitest";
 import { vi } from "vitest";
 
 // @testing-library/dom's waitFor decides between real and fake timer handling

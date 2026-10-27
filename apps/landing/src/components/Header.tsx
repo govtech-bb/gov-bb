@@ -8,7 +8,7 @@ import {
   OfficialBanner,
   StatusBanner,
 } from '@govtech-bb/react'
-import govBbLogoUrl from '@govtech-bb/frontend/assets/images/govbb-logo.svg?url'
+import { assetUrl } from '../lib/asset-url'
 import { CHAT_URL } from '../lib/chat-url'
 import { TRACKER_URL } from '../lib/tracker-url'
 
@@ -20,21 +20,36 @@ const RouterLink = forwardRef<HTMLAnchorElement, RouterLinkProps>(
 )
 RouterLink.displayName = 'RouterLink'
 
-export default function Header({ assetBase }: { assetBase?: string } = {}) {
+/**
+ * The site chrome. Callers decide whether About Barbados is listed: the public
+ * root from its route context; the CMS preview cannot know, and omits it.
+ */
+export default function Header({
+  assetBase,
+  showAboutBarbados,
+}: {
+  assetBase?: string
+  showAboutBarbados: boolean
+}) {
   return (
     <>
       <OfficialBanner
-        imageSrc={assetBase ? new URL('/images/coat-of-arms.png', assetBase).href : '/images/coat-of-arms.png'}
+        imageSrc={assetUrl('/images/govbb-crest.svg', assetBase)}
         imageAlt=""
         showLearnMore={false}
       />
       <GovHeader
         homeHref="/"
         logoAlt="Go to the alpha.gov.bb homepage"
-        logoSrc={govBbLogoUrl}
+        logoSrc={assetUrl('/images/govbb-logo.svg', assetBase)}
         linkComponent={RouterLink}
         nav={
           <>
+            {showAboutBarbados && (
+              <GovLink href="/about-barbados" linkComponent={RouterLink}>
+                About Barbados
+              </GovLink>
+            )}
             <GovLink href="/services" linkComponent={RouterLink}>
               Services
             </GovLink>

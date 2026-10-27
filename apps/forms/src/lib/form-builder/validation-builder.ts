@@ -1,12 +1,15 @@
 import {
+  ClientFormStep,
   ClientServiceContract,
   ClientPrimitive,
   FieldValidationProperties,
   FormValidation,
 } from "@forms/types";
-import type { AnyFieldApi } from "@tanstack/react-form";
+import type { AnyFieldApi, AnyFormApi } from "@tanstack/react-form";
 import { valueIsEmpty } from "./validation-methods";
+import { getVisibleFields } from "./helpers/behavior-helper";
 import { buildStepScopedValues } from "./helpers/value-tree";
+import { placeBeingLocated, ROUTING_COORDINATE } from "../api/geocode";
 import {
   validate,
   validateDateField,
@@ -174,6 +177,60 @@ const formatErrors = (errors: string[], fieldName: string): string[] => {
 export const buildFieldValidationProperties = (
   field: ClientPrimitive,
 ): FieldValidationProperties => {
+  const properties = buildRuleValidationProperties(field);
+  const coordinatesFieldId = field.geocodeTargets?.coordinatesFieldId;
+  if (field.htmlType !== "address-lookup" || !coordinatesFieldId) {
+    return properties;
+  }
+
+  // An address that routes the application must be located — picked from the
+  // suggestions or placed on the map, which writes its coordinate — not just
+  // typed: a typed address the lookup cannot find may not exist.
+  const coordinatesId = `${field.id.slice(0, field.id.length - field.fieldId.length)}${coordinatesFieldId}`;
+  const notLocated = (
+    input: Parameters<NonNullable<FieldValidationProperties["onDynamic"]>>[0],
+  ) => {
+    if (typeof input.value !== "string" || !input.value.trim()) {
+      return undefined;
+    }
+    const coordinate = (
+      input.fieldApi?.form?.state?.values as Record<string, unknown>
+    )?.[coordinatesId];
+    return typeof coordinate === "string" && ROUTING_COORDINATE.test(coordinate)
+      ? undefined
+      : ["Choose the address from the list, or find it on the map"];
+  };
+  return {
+    ...properties,
+    onDynamic(input) {
+      const errors = properties.onDynamic?.(input);
+      if (errors) return errors;
+      // A pick whose coordinate is on its way is judged once it arrives.
+      if (placeBeingLocated(field.id)) return undefined;
+      return notLocated(input);
+    },
+    async onDynamicAsync(input) {
+      const pending = placeBeingLocated(field.id);
+      if (!pending) return undefined;
+      await pending;
+      return notLocated(input);
+    },
+  };
+};
+
+const buildRuleValidationProperties = (
+  field: ClientPrimitive,
+): FieldValidationProperties => {
+  // A parish filled from a located address is read-only: the address field
+  // already refuses an address that is not located, so it has nothing to check.
+  if (field.filledByAddressLookup) {
+    return {
+      onDynamic(_input) {
+        return undefined;
+      },
+    };
+  }
+
   // The show-hide toggle stores a boolean (open/closed state) and never has its
   // own validation rules; a content element carries no submission value at
   // all; fields without validations have nothing to check. Either way, return
@@ -309,4 +366,24 @@ export const collectStepErrorCodes = (
     }
   }
   return out;
+};
+
+// Whether a step the applicant is NOT on still passes validation, for the
+// return from a Change on check-your-answers (#2812, ADR 0076).
+// form.validateField only runs validators on mounted fields, so this judges
+// the step's visible fields directly — the visibility filter matters: a hidden
+// required field must not count. Repeatable steps are trusted on completion
+// alone: getVisibleFields can't evaluate their per-instance conditions
+// off-screen, so a hidden required field would look empty (#2932).
+export const stepPassesValidation = (
+  step: ClientFormStep,
+  formApi: AnyFormApi,
+): boolean => {
+  if (step.behaviours?.some((b) => b.type === "repeatable")) return true;
+  return (
+    collectStepErrorCodes(
+      getVisibleFields(step, formApi),
+      formApi.state.values as Record<string, unknown>,
+    ).length === 0
+  );
 };

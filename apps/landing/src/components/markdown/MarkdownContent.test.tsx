@@ -49,10 +49,24 @@ describe('MarkdownBody', () => {
     expect(table).toContain('govbb-table__header')
     expect(table).toContain('govbb-table__cell')
 
-    expect(table).toContain('<th class="govbb-table__header" scope="col">')
+    expect(table).toMatch(/<th class="govbb-table__header[^"]*" scope="col"/)
     // Each body row's first cell is its header — the pale-blue first column
     // in the Figma pattern, and the label a screen reader reads with each cell.
-    expect(table).toContain('<th class="govbb-table__header" scope="row">')
+    expect(table).toMatch(/<th class="govbb-table__header[^"]*" scope="row"/)
+  })
+
+  it('labels each body cell with its column so rows can stack on phones', async () => {
+    const table = await renderBody(
+      '| Office | Phone | Email |\n| - | - | - |\n| Registry | (246) 535-1000 | a@gov.bb |',
+    )
+    expect(table).toContain('data-label="Phone"')
+    expect(table).toContain('data-label="Email"')
+    // The row header is the stacked block's title, so it carries no label.
+    expect(table).not.toContain('data-label="Office"')
+    // Explicit roles keep the table semantics once the rows are display:block.
+    expect(table).toContain('role="table"')
+    expect(table).toContain('role="cell"')
+    expect(table).toContain('role="rowheader"')
   })
 
   it('renders authored notice, action and details components', async () => {

@@ -177,6 +177,48 @@ describe("resolveFieldIds", () => {
     expect(resolved[0].display).toBe("Start Year");
   });
 
+  // A custom component can hold a whole block (its definition has a
+  // `blockId`). Its ref still starts with "components/", so it must be read
+  // by shape, not prefix, or the builder throws on `.primitive`.
+  it("lists each field of a custom block instead of throwing", () => {
+    const customCatalog: RegistryCatalog = {
+      ...getCatalog(),
+      custom: [
+        {
+          ref: "components/acme/widget",
+          displayName: "acme/widget",
+          namespace: "acme",
+          type: "widget",
+          definition: {
+            blockId: "widget-details",
+            blockDescription: "Widget details",
+            blockVersion: "1.0.0",
+            elements: [
+              { fieldId: "widget-name", label: "Name", htmlType: "text" },
+              { fieldId: "widget-size", label: "Size", htmlType: "text" },
+            ],
+          },
+        },
+      ],
+    };
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          fields: [
+            f({ kind: "custom", ref: "components/acme/widget", overrides: {} }),
+          ],
+          behaviours: [],
+        },
+      ],
+    });
+
+    expect(resolveFieldIds(draft, customCatalog).map((r) => r.fieldId)).toEqual(
+      ["widget-name", "widget-size"],
+    );
+  });
+
   it("falls back to the primitive's default label (not the component displayName) when no override label", () => {
     const customCatalog: RegistryCatalog = {
       ...getCatalog(),
@@ -796,6 +838,103 @@ describe("fieldIdDuplicatesAnother", () => {
     expect(fieldIdDuplicatesAnother(draft, catalog, "editor-B", "nope")).toBe(
       false,
     );
+  });
+
+  // Block children (#2896): every child of one block shares the block's
+  // editorFieldId, so excluding by editorFieldId alone would hide a clash
+  // between two siblings. The caller names the child it is editing instead.
+  describe("for a block child", () => {
+    function blockDraft(
+      childOverrides: RecipeFieldDraft["childOverrides"] = {},
+      extra: RecipeFieldDraft[] = [],
+    ): RecipeDraft {
+      return makeBaseDraft({
+        steps: [
+          {
+            stepId: "step-1",
+            title: "Step 1",
+            fields: [
+              {
+                id: "editor-block",
+                kind: "block",
+                ref: "blocks/contact-information",
+                overrides: {},
+                childOverrides,
+              },
+              ...extra,
+            ],
+            behaviours: [],
+          },
+        ],
+      });
+    }
+
+    it("excludes only the child being edited, so an untouched block warns on none of its children", () => {
+      const draft = blockDraft();
+      for (const child of [
+        "email",
+        "telephone",
+        "mobile-telephone",
+        "home-telephone",
+      ]) {
+        expect(
+          fieldIdDuplicatesAnother(
+            draft,
+            catalog,
+            "editor-block",
+            child,
+            child,
+          ),
+        ).toBe(false);
+      }
+    });
+
+    it("flags two siblings of one block instance that resolve to the same id, from either side", () => {
+      const draft = blockDraft({
+        "mobile-telephone": { fieldId: "telephone" },
+      });
+      expect(
+        fieldIdDuplicatesAnother(
+          draft,
+          catalog,
+          "editor-block",
+          "telephone",
+          "mobile-telephone",
+        ),
+      ).toBe(true);
+      expect(
+        fieldIdDuplicatesAnother(
+          draft,
+          catalog,
+          "editor-block",
+          "telephone",
+          "telephone",
+        ),
+      ).toBe(true);
+    });
+
+    it("flags a block child colliding with a standalone field, from either side", () => {
+      const draft = blockDraft({}, [
+        {
+          id: "editor-text",
+          kind: "component",
+          ref: "components/generic-text",
+          overrides: { fieldId: "telephone" },
+        },
+      ]);
+      expect(
+        fieldIdDuplicatesAnother(
+          draft,
+          catalog,
+          "editor-block",
+          "telephone",
+          "telephone",
+        ),
+      ).toBe(true);
+      expect(
+        fieldIdDuplicatesAnother(draft, catalog, "editor-text", "telephone"),
+      ).toBe(true);
+    });
   });
 });
 

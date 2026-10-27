@@ -261,7 +261,79 @@ describe("SqsConsumerService", () => {
       expect(slackNotify).not.toHaveBeenCalled();
     });
 
-    it("does NOT alert for a non-webhook processor at the terminal attempt (scoped to CaMS webhook)", async () => {
+    /** An email message whose single processor sends to `recipientField`. */
+    function emailMessage(recipientField: string, receiveCount = "3") {
+      return sqsMessage(
+        {
+          processorType: "email",
+          processors: [{ type: "email", config: { recipientField } }],
+        },
+        receiveCount,
+      );
+    }
+
+    it("Slack-alerts when an MDA (config.*) email hits the terminal attempt (#2302)", async () => {
+      factory.resolveByType.mockReturnValue(
+        makeProcessor(
+          "email",
+          vi.fn().mockRejectedValue(new Error("Illegal address")),
+        ),
+      );
+
+      await service.processMessage(QUEUE_URL, emailMessage("config.mdaEmail"));
+
+      expect(slackNotify).toHaveBeenCalledTimes(1);
+      const msg = slackNotify.mock.calls[0][0] as string;
+      expect(msg).toContain("processor=email");
+      expect(msg).toContain("recipient=config");
+      expect(msg).toContain("routed to the DLQ");
+      // unchanged: not deleted, so SQS redrive still moves it to the DLQ
+      expect(
+        sendMock.mock.calls.filter(
+          ([cmd]) => cmd instanceof DeleteMessageCommand,
+        ),
+      ).toHaveLength(0);
+    });
+
+    it("Slack-alerts when a catchment email fails permanently (config error)", async () => {
+      factory.resolveByType.mockReturnValue(
+        makeProcessor(
+          "email",
+          vi
+            .fn()
+            .mockRejectedValue(
+              new NonRetryableError("Could not resolve recipient"),
+            ),
+        ),
+      );
+      sendMock.mockResolvedValue({});
+
+      await service.processMessage(
+        QUEUE_URL,
+        emailMessage("catchment.environmentalHealth", "1"),
+      );
+
+      expect(slackNotify).toHaveBeenCalledTimes(1);
+      const msg = slackNotify.mock.calls[0][0] as string;
+      expect(msg).toContain("recipient=catchment");
+      expect(msg).toContain("not retried");
+    });
+
+    it("Slack-alerts when an email to a fixed staff address fails at the terminal attempt", async () => {
+      factory.resolveByType.mockReturnValue(
+        makeProcessor(
+          "email",
+          vi.fn().mockRejectedValue(new Error("SES down")),
+        ),
+      );
+
+      await service.processMessage(QUEUE_URL, emailMessage("staff@gov.bb"));
+
+      expect(slackNotify).toHaveBeenCalledTimes(1);
+      expect(slackNotify.mock.calls[0][0]).toContain("recipient=literal");
+    });
+
+    it("does NOT alert when the citizen's own confirmation email fails", async () => {
       factory.resolveByType.mockReturnValue(
         makeProcessor(
           "email",
@@ -271,16 +343,42 @@ describe("SqsConsumerService", () => {
 
       await service.processMessage(
         QUEUE_URL,
-        sqsMessage({ processorType: "email" }, "3"), // terminal attempt, but email
+        emailMessage("applicant.applicant-email"),
       );
 
       expect(slackNotify).not.toHaveBeenCalled();
-      // unchanged: not deleted, so SQS redrive still moves it to the DLQ
-      expect(
-        sendMock.mock.calls.filter(
-          ([cmd]) => cmd instanceof DeleteMessageCommand,
+    });
+
+    it("does NOT alert on a non-final attempt of an MDA email", async () => {
+      factory.resolveByType.mockReturnValue(
+        makeProcessor(
+          "email",
+          vi.fn().mockRejectedValue(new Error("SES down")),
         ),
-      ).toHaveLength(0);
+      );
+
+      await service.processMessage(
+        QUEUE_URL,
+        emailMessage("config.mdaEmail", "1"),
+      );
+
+      expect(slackNotify).not.toHaveBeenCalled();
+    });
+
+    it("does NOT alert for a processor that is neither webhook nor email", async () => {
+      factory.resolveByType.mockReturnValue(
+        makeProcessor(
+          "spreadsheet",
+          vi.fn().mockRejectedValue(new Error("Sheets down")),
+        ),
+      );
+
+      await service.processMessage(
+        QUEUE_URL,
+        sqsMessage({ processorType: "spreadsheet" }, "3"),
+      );
+
+      expect(slackNotify).not.toHaveBeenCalled();
     });
 
     it("still deletes a NonRetryable message even if the alert notifier throws", async () => {

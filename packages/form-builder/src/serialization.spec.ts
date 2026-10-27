@@ -1,4 +1,8 @@
-import { serializeRecipeDraft, deserializeRecipe } from "./serialization";
+import {
+  serializeRecipeDraft,
+  deserializeRecipe,
+  foldLegacyNextSteps,
+} from "./serialization";
 import { getCatalog } from "./catalog";
 import { serviceContractRecipeSchema } from "@govtech-bb/form-types";
 import type {
@@ -216,6 +220,110 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
     });
   });
 
+  it("content block overrides (variant, content, summary) survive round-trip (#2873)", () => {
+    // The edit panel writes these three keys; both directions copy overrides
+    // wholesale, so what the panel saved is what reopening the builder shows.
+    const overrides = {
+      fieldId: "before-you-start",
+      variant: "details" as const,
+      summary: "What you will need",
+      content: "Bring your **National ID** and proof of address.",
+    };
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          fields: [
+            f({ kind: "component", ref: "components/content", overrides }),
+          ],
+          behaviours: [],
+        },
+      ],
+    });
+
+    const recipe = serializeRecipeDraft(draft);
+    expect(recipe.steps[0].elements[0].overrides).toEqual(overrides);
+    expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(true);
+
+    const result = deserializeRecipe(recipe);
+    expect(result.steps[0].fields[0].overrides).toEqual(overrides);
+  });
+
+  it("address-lookup geocodeTargets survive round-trip (#2886)", () => {
+    const overrides = {
+      fieldId: "business-address-line-1",
+      geocodeTargets: {
+        line2FieldId: "business-address-line-2",
+        parishFieldId: "business-address-parish",
+        coordinatesFieldId: "business-address-coordinates",
+      },
+    };
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          fields: [
+            f({
+              kind: "component",
+              ref: "components/address-lookup",
+              overrides,
+            }),
+          ],
+          behaviours: [],
+        },
+      ],
+    });
+
+    const recipe = serializeRecipeDraft(draft);
+    expect(recipe.steps[0].elements[0].overrides).toEqual(overrides);
+    expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(true);
+
+    const result = deserializeRecipe(recipe);
+    expect(result.steps[0].fields[0].overrides).toEqual(overrides);
+  });
+
+  it("checkbox-accordion groups survive round-trip (#2887)", () => {
+    const overrides = {
+      fieldId: "food-served",
+      groups: [
+        {
+          label: "Meat and poultry",
+          higherRisk: true,
+          options: [{ label: "Chicken", value: "chicken" }],
+        },
+        {
+          label: "Drinks",
+          options: [{ label: "Juice", value: "juice", disabled: true }],
+        },
+      ],
+    };
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          fields: [
+            f({
+              kind: "component",
+              ref: "components/generic-checkbox-accordion",
+              overrides,
+            }),
+          ],
+          behaviours: [],
+        },
+      ],
+    });
+
+    const recipe = serializeRecipeDraft(draft);
+    expect(recipe.steps[0].elements[0].overrides).toEqual(overrides);
+    expect(serviceContractRecipeSchema.safeParse(recipe).success).toBe(true);
+
+    const result = deserializeRecipe(recipe);
+    expect(result.steps[0].fields[0].overrides).toEqual(overrides);
+  });
+
   it("block field (kind: 'block') survives round-trip without child overrides", () => {
     const draft = makeBaseDraft({
       steps: [
@@ -396,6 +504,95 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
     expect(result.steps[0].markdownContent).toBe(md);
   });
 
+  it("folds a legacy nextSteps step into markdownContent on load, and republishes it as markdownContent (#2442)", () => {
+    // Pre-migration builder state: `nextSteps`, no `markdownContent`.
+    const recipe = {
+      formId: "form-001",
+      title: "Test Form",
+      steps: [
+        {
+          stepId: "submission-confirmation",
+          title: "Application submitted",
+          elements: [],
+          behaviours: [],
+          nextSteps: [
+            {
+              title: "What happens next",
+              content: "We will be in touch.",
+              items: ["Check your email", "Keep your reference number"],
+            },
+          ],
+        },
+      ],
+    } as unknown as ServiceContractRecipe;
+
+    const draft = deserializeRecipe(recipe);
+    expect(draft.steps[0].markdownContent).toBe(
+      "## What happens next\n\nWe will be in touch.\n\n- Check your email\n- Keep your reference number",
+    );
+
+    // Republish writes markdownContent, never the retired nextSteps.
+    const republished = serializeRecipeDraft(draft);
+    expect(republished.steps[0].markdownContent).toContain("What happens next");
+    expect(Object.keys(republished.steps[0])).not.toContain("nextSteps");
+  });
+
+  it("prefers an existing markdownContent over a legacy nextSteps (#2442)", () => {
+    const recipe = {
+      formId: "form-001",
+      title: "Test Form",
+      steps: [
+        {
+          stepId: "submission-confirmation",
+          title: "Application submitted",
+          elements: [],
+          behaviours: [],
+          markdownContent: "## Already migrated",
+          nextSteps: [{ title: "Stale", content: "ignore me" }],
+        },
+      ],
+    } as unknown as ServiceContractRecipe;
+
+    expect(deserializeRecipe(recipe).steps[0].markdownContent).toBe(
+      "## Already migrated",
+    );
+  });
+
+  it("foldLegacyNextSteps rewrites a raw stored row before it is parsed (#2442)", () => {
+    // Guards the server read path (resolveStoredRecipeSource): an old draft row
+    // parsed by draftRecipeSchema would otherwise throw on the retired key.
+    const row = {
+      formId: "form-001",
+      title: "Test Form",
+      steps: [
+        {
+          stepId: "submission-confirmation",
+          title: "Done",
+          elements: [],
+          nextSteps: [
+            { title: "What happens next", content: "We will be in touch." },
+          ],
+        },
+        {
+          stepId: "keep",
+          title: "Keep",
+          elements: [],
+          markdownContent: "## Keep me",
+        },
+      ],
+    };
+
+    const folded = foldLegacyNextSteps(row);
+    expect(folded.steps[0]).not.toHaveProperty("nextSteps");
+    expect(
+      (folded.steps[0] as { markdownContent?: string }).markdownContent,
+    ).toBe("## What happens next\n\nWe will be in touch.");
+    // An existing markdownContent is left untouched.
+    expect(
+      (folded.steps[1] as { markdownContent?: string }).markdownContent,
+    ).toBe("## Keep me");
+  });
+
   it("absent markdownContent on a step is not forwarded (#1292)", () => {
     const draft = makeBaseDraft({
       steps: [
@@ -472,33 +669,6 @@ describe("serializeRecipeDraft + deserializeRecipe round-trip", () => {
 
     const result = deserializeRecipe(recipe);
     expect(result.steps[0].conditionalMarkdown).toBeUndefined();
-  });
-
-  it("nextSteps on a confirmation step are carried through untouched (#1292)", () => {
-    const nextSteps = [
-      {
-        title: "What happens next",
-        content: "We will be in touch.",
-        items: ["Check your email", "Keep your reference number"],
-      },
-    ];
-    const draft = makeBaseDraft({
-      steps: [
-        {
-          stepId: "submission-confirmation",
-          title: "Application submitted",
-          fields: [],
-          behaviours: [],
-          nextSteps,
-        },
-      ],
-    });
-
-    const recipe = serializeRecipeDraft(draft);
-    expect(recipe.steps[0].nextSteps).toEqual(nextSteps);
-
-    const result = deserializeRecipe(recipe);
-    expect(result.steps[0].nextSteps).toEqual(nextSteps);
   });
 
   it("behaviours on steps survive round-trip", () => {

@@ -10,7 +10,6 @@ import type {
   Behaviour,
   ContactDetails,
   FieldOverrides,
-  RecipeVisibility,
 } from "@govtech-bb/form-types";
 
 // Listed in display order. `check-your-answers` is first so the pinned tail
@@ -38,9 +37,10 @@ export function firstStepId(draft: RecipeDraft): string | null {
 }
 
 // Required steps that accept no author-added fields. `check-your-answers` is a
-// pure review screen and `submission-confirmation` renders only its nextSteps
-// copy — neither should expose the FieldPicker. `declaration` is intentionally
-// absent: it bears the confirmation checkbox and stays field-editable.
+// pure review screen and `submission-confirmation` renders only its
+// confirmation copy — neither should expose the FieldPicker. `declaration` is
+// intentionally absent: it bears the confirmation checkbox and stays
+// field-editable.
 const NO_FIELDS_STEP_IDS = [
   "check-your-answers",
   "submission-confirmation",
@@ -71,16 +71,16 @@ const REQUIRED_STEP_DEFAULTS: Record<
     description:
       "Review all the information you have provided before submitting your application.",
   },
-  declaration: { title: "Declaration" },
+  declaration: { title: "Confirm and submit your application" },
   "submission-confirmation": { title: "Submission Confirmation" },
 };
 
-// The single field the declaration step seeds with: the "I confirm" checkbox.
-// The declaration step must carry exactly this one field — the AI system
-// prompt (apps/form_builder_api/src/ai/system-prompt.ts) pins the same
-// fieldId/label/required contract for generated recipes. `options` is
-// intentionally not overridden: the statement text shown next to the checkbox
-// stays the registry default ("I confirm") until the author edits it per form.
+// The field the declaration step seeds with: the standard declaration checkbox
+// (#2957). The AI system prompt (apps/form_builder_api/src/ai/system-prompt.ts)
+// pins the same fieldId/label/statement/required contract for generated
+// recipes, and apps/api's declaration-wording.spec.ts holds every committed
+// recipe to it. A service-specific acknowledgement goes in a separate
+// confirmation on the step, never in this statement.
 // Fresh editor id per call, mirroring makeDefaultProcessors().
 function makeDeclarationField(): RecipeFieldDraft {
   return {
@@ -90,10 +90,17 @@ function makeDeclarationField(): RecipeFieldDraft {
     overrides: {
       fieldId: "declaration-confirmed",
       label: "Declaration",
+      options: [
+        {
+          label:
+            "I confirm that the information I have provided is true and correct to the best of my knowledge.",
+          value: "confirmed",
+        },
+      ],
       validations: {
         required: {
           value: true,
-          error: "You must confirm the declaration to continue",
+          error: "You must confirm the declaration to continue.",
         },
       },
     },
@@ -237,10 +244,7 @@ export type RecipeAction =
       formId: string;
       title: string;
       description?: string;
-    }
-  // Set the launch-gate visibility (#1682). Writes `meta.visibility`, seeding
-  // `meta` if the draft has none (legacy form loaded without it).
-  | { type: "SET_VISIBILITY"; visibility: RecipeVisibility };
+    };
 
 // Shared module-level constant; treat as immutable. RESET / new-form flows
 // call makeRequiredSteps() and makeDefaultProcessors() afresh, so don't mutate
@@ -504,15 +508,6 @@ export function recipeReducer(
         ...(action.description !== undefined
           ? { description: action.description }
           : {}),
-      };
-    }
-
-    case "SET_VISIBILITY": {
-      // Merge into meta so future meta keys survive; seed meta when the loaded
-      // draft had none (legacy form predating the control).
-      return {
-        ...state,
-        meta: { ...state.meta, visibility: action.visibility },
       };
     }
 

@@ -4,10 +4,12 @@ import {
   serviceDraftSchema,
   serviceSnapshotSchema,
   serviceReadiness,
+  seedServiceManifest,
   type ServiceDraft,
   type ServiceSnapshot,
   type ServiceCheckpoint,
 } from "@govtech-bb/form-types";
+import { foldLegacyNextSteps } from "@govtech-bb/form-builder";
 import { getRecipe, getFormConfig } from "../server/forms";
 import {
   getServiceUser,
@@ -29,7 +31,14 @@ async function scope() {
 function read(key: string): ServiceDraft | null {
   const raw = localStorage.getItem(key);
   if (!raw) return null;
-  const result = serviceDraftSchema.safeParse(JSON.parse(raw));
+  const parsed = JSON.parse(raw);
+  // #2442: a draft saved before the migration still holds `nextSteps`, which
+  // `draftRecipeSchema` now rejects (z.never). Fold it into `markdownContent`
+  // before parsing so one stale browser draft doesn't throw for the whole
+  // service library (localDrafts maps every key through read()).
+  if (Array.isArray(parsed?.recipe?.steps))
+    parsed.recipe = foldLegacyNextSteps(parsed.recipe);
+  const result = serviceDraftSchema.safeParse(parsed);
   if (!result.success)
     throw new Error(
       "This saved service draft could not be read. Your stored copy has been retained.",
@@ -114,12 +123,21 @@ export async function getServiceDraft({
       if (latest && latest.revision !== draft.revision) return latest;
       const recipe = draftRecipeSchema.parse(loaded[0]);
       const pendingConfig = servicePendingConfigSchema.parse(loaded[1]);
+      // A never-published manifest keeps tracking what the recipe decides
+      // until the author decides otherwise (ADR 0073, #2683); a published one
+      // is authored fact.
+      const manifest =
+        draft.baseManifestSha === null
+          ? seedServiceManifest(draft.manifest, recipe, pendingConfig)
+          : draft.manifest;
       if (
         JSON.stringify(recipe) !== JSON.stringify(draft.recipe) ||
-        JSON.stringify(pendingConfig) !== JSON.stringify(draft.pendingConfig)
+        JSON.stringify(pendingConfig) !== JSON.stringify(draft.pendingConfig) ||
+        JSON.stringify(manifest) !== JSON.stringify(draft.manifest)
       ) {
         draft = {
           ...draft,
+          manifest,
           recipe,
           pendingConfig,
           revision: draft.revision + 1,
@@ -153,6 +171,15 @@ async function save(
   saveRecipe: boolean,
 ): Promise<ServiceDraft> {
   const snapshot = serviceSnapshotSchema.parse(snapshotInput);
+  // A never-published manifest is seeded on every write (ADR 0073, #2683) so
+  // the stored draft is always what a refresh would derive — a restored or
+  // patched manifest cannot bump the revision under an open screen.
+  if (snapshot.baseManifestSha === null)
+    snapshot.manifest = seedServiceManifest(
+      snapshot.manifest,
+      snapshot.recipe,
+      snapshot.pendingConfig,
+    );
   const owner = await getServiceUser();
   const key = `${prefix}${encodeURIComponent(owner)}:${snapshot.manifest.serviceId}`;
   const write = async () => {
@@ -316,6 +343,12 @@ export async function attachServiceForm({
     getFormConfig({ data }),
     getFormSourceSha({ data }),
   ]);
+  // A published manifest is not re-seeded by save() (#2683), so a service
+  // that went live with pages only inherits the recipe's contact details here
+  // (#2894), written the way seedServiceManifest writes them: no key when
+  // neither has one.
+  const contactDetails =
+    current.manifest.contactDetails ?? recipe.contactDetails;
   return save(
     {
       ...current,
@@ -325,13 +358,25 @@ export async function attachServiceForm({
       manifest: {
         ...current.manifest,
         formId: data.formId,
-        contactDetails:
-          current.manifest.contactDetails ?? recipe.contactDetails,
+        ...(contactDetails ? { contactDetails } : {}),
       },
     },
     data.expectedRevision,
     false,
   );
+}
+
+// Forget a service in this browser: its draft and saved versions. Committed
+// pages and forms are the caller's concern.
+export async function deleteServiceDraft({
+  data,
+}: {
+  data: { serviceId: string };
+}) {
+  const key = `${await scope()}${data.serviceId}`;
+  localStorage.removeItem(key);
+  localStorage.removeItem(`${key}:versions`);
+  window.dispatchEvent(new Event("service-draft-saved"));
 }
 
 export type SavedVersion = ServiceCheckpoint & { snapshot: ServiceSnapshot };
@@ -343,9 +388,22 @@ export async function listServiceCheckpoints({
 }: {
   data: { serviceId: string };
 }): Promise<SavedVersion[]> {
-  return JSON.parse(
+  const versions: SavedVersion[] = JSON.parse(
     localStorage.getItem(await versionsKey(data.serviceId)) || "[]",
   );
+  // #2442: a version saved before the migration still holds `nextSteps` in its
+  // snapshot recipe. Fold each here — the one read path every checkpoint action
+  // (restore, retry, publish) goes through — so `serviceSnapshotSchema.parse`
+  // doesn't throw on the retired key, and an old version restores as
+  // `markdownContent` instead of silently bringing the dead field back.
+  return versions.map((version) => {
+    const recipe = version.snapshot?.recipe;
+    if (!recipe || !Array.isArray(recipe.steps)) return version;
+    return {
+      ...version,
+      snapshot: { ...version.snapshot, recipe: foldLegacyNextSteps(recipe) },
+    };
+  });
 }
 async function remember(version: SavedVersion) {
   const versions = await listServiceCheckpoints({ data: version });

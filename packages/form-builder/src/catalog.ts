@@ -1,5 +1,5 @@
 import type { ComponentDefinition, BlockDefinition } from "./definition-types";
-import type { Primitive } from "@govtech-bb/form-types";
+import type { Block, Primitive } from "@govtech-bb/form-types";
 import { REGISTRY_COMPONENTS, REGISTRY_BLOCKS } from "@govtech-bb/registry";
 
 export type { ComponentDefinition, BlockDefinition };
@@ -39,6 +39,16 @@ export function getRegistryItem(
 
     const custom = catalog.custom.find((c) => c.ref === ref);
     if (custom) {
+      // A custom component's ref is always `components/…`, but its definition
+      // can be a whole block (it has a `blockId`), as the retired API resolver
+      // allowed. Say which, so hydration expands a block into its fields.
+      if ("blockId" in custom.definition) {
+        return {
+          ref: custom.ref,
+          displayName: custom.displayName,
+          block: custom.definition as unknown as Block,
+        };
+      }
       return {
         ref: custom.ref,
         displayName: custom.displayName,

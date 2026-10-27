@@ -200,20 +200,27 @@ Loaders simplify your data fetching logic dramatically. Check out more informati
 
 Editor v2 loads these trusted assets into its own document without changing its URL. The CMS owns authentication, the working copy, inline editing and explicit publication; this renderer has no API writes or analytics. Deploy its CORS-enabled assets before enabling the CMS configuration. See [the runtime contract and verification guide](../editor_v2/docs/SITE-PREVIEW.md).
 
-## Analytics (Umami)
+## Analytics (Umami and journey events)
 
-The landing app sends pageview and click events to [Umami Cloud](https://umami.is/) when configured.
+The landing app sends pageview and click events to two places, each only when configured:
+
+- [Umami Cloud](https://umami.is/), and
+- the forms API's first-party `POST /journey` endpoint. This runs alongside Umami while it is being replaced.
 
 ### Enabling
 
-Set `VITE_UMAMI_WEBSITE_ID` (and optionally `VITE_UMAMI_SRC`) in the deploy environment. See `apps/landing/.env.example` for the contract. When the variable is unset (including in local `dev`), no script is loaded and no events are sent — keeping dev traffic out of the dataset.
+- **Umami:** set `VITE_UMAMI_WEBSITE_ID` (and optionally `VITE_UMAMI_SRC`) in the deploy environment.
+- **Journey events:** set `VITE_JOURNEY_URL` to the API's `/journey` URL. Only set it for an environment whose WAF has the per-IP rule for `/journey`. Vite builds it into the app, so a change needs a rebuild.
+
+See `apps/landing/.env.example` for the contract. When a variable is unset (including in local `dev`), nothing is sent to that destination, keeping dev traffic out of the dataset.
 
 ### How it works
 
 - **Script injection** happens at SSR time in `src/routes/__root.tsx`, gated on the env var. The script is loaded with `data-auto-track="false"` so Umami doesn't double-count alongside our manual tracking.
-- **Pageviews** fire from `router.subscribe('onResolved', ...)` in `src/router.tsx` — one event per resolved route, including SPA navigations.
-- **Click and form-lifecycle events** are tagged via `data-umami-event="..."` attributes (and `data-umami-event-*` for properties) on the relevant elements, plus `trackEvent()` calls from React effects where the event is about state transition (form submit / success / error).
-- A typed helper at `src/lib/analytics.ts` (`trackEvent`, `trackPageview`, `deriveStartEventName`) provides a no-op wrapper around `window.umami` so component code doesn't need defensive checks.
+- **Pageviews** fire from `router.subscribe('onRendered', ...)` in `src/router.tsx`: one event on the first render and one each time the resolved address changes. It is `onRendered`, not `onResolved`, because `onResolved` only fires when the router goes from pending to idle. That never happens on the first, server-rendered page, or on a click whose data the `intent` preload already fetched, so most page views were missed. `src/router.test.ts` guards this.
+- **Click and form-lifecycle events** are tagged via `data-umami-event="..."` attributes (and `data-umami-event-*` for properties) on the relevant elements, plus `trackEvent()` calls from React effects where the event is about state transition (form submit / success / error). For journey events, a document click listener (`installJourneyClickListener`) sends the same `data-umami-event` clicks.
+- A typed helper at `src/lib/analytics.ts` (`trackEvent`, `trackPageview`, `deriveStartEventName`, re-exported from `@govtech-bb/analytics`) sends to each configured destination. It no-ops for Umami when the script isn't loaded, and for journey events when `VITE_JOURNEY_URL` is unset, so component code doesn't need defensive checks.
+- **The journey sender** (`packages/analytics/src/journey.ts`) queues events and sends them in batches with `navigator.sendBeacon`, falling back to a keepalive `fetch`. It sends after 5 seconds, at 25 events, or when the page is hidden. Batches stay under 7 KB because the WAF blocks bodies over 8 KB.
 
 ### Event-naming conventions
 

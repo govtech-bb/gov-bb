@@ -4,6 +4,7 @@ export {
   optionSchema,
   optionGroupSchema,
   contentVariantSchema,
+  geocodeTargetsSchema,
   basePrimitiveSchema,
   textPrimitiveSchema,
   textAreaPrimitiveSchema,
@@ -203,6 +204,9 @@ export type {
   RecipeVisibility,
   RecipeMeta,
 } from "./service-contract.type";
+
+export { checkCatchmentRoutingHasMapping } from "./catchment-routing-guard";
+export { checkOverrideKeys } from "./override-keys-guard";
 
 export {
   deployBranchPrefix,

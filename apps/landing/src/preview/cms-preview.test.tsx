@@ -76,9 +76,13 @@ describe('fresh CMS site preview', () => {
     expect(container.querySelector('iframe')).toBeNull()
     expect(
       container.querySelector(
-        'img[src="https://alpha.gov.bb/images/coat-of-arms.png"]',
+        'img[src="https://alpha.gov.bb/images/govbb-crest.svg"]',
       ),
     ).not.toBeNull()
+    // The preview cannot load the content registry, so the visibility-gated nav link is omitted.
+    expect(
+      container.querySelector('header a[href="/about-barbados"]'),
+    ).toBeNull()
   })
 
   it('namespaces navigation IDs separately from the independently bundled CMS', async () => {

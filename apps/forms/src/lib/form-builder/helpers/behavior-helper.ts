@@ -130,8 +130,8 @@ export const getVisibleSteps = (
 
 export const getStepConditonalTargets = (
   formSteps: ClientFormStep[],
-): Record<string, string> => {
-  const obj: Record<string, string> = {};
+): Record<string, string[]> => {
+  const obj: Record<string, string[]> = {};
 
   for (const formStep of formSteps) {
     if (!formStep.behaviours) continue;
@@ -139,9 +139,13 @@ export const getStepConditonalTargets = (
       formStep.behaviours?.filter((b) => b.type === "stepConditionalOn");
     if (!stepBehaviours || stepBehaviours.length === 0) continue;
 
+    // A step can be targeted on several fields (by one step or many); keep
+    // every one so a change to any of them re-evaluates step visibility.
     for (const stepBehaviour of stepBehaviours) {
-      obj[stepBehaviour.targetStepId ?? "temporary"] =
-        stepBehaviour.targetFieldId;
+      const fieldIds = (obj[stepBehaviour.targetStepId ?? "temporary"] ??= []);
+      if (!fieldIds.includes(stepBehaviour.targetFieldId)) {
+        fieldIds.push(stepBehaviour.targetFieldId);
+      }
     }
   }
   return obj;

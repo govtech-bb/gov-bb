@@ -29,6 +29,8 @@ vi.mock("@tanstack/react-router", () => ({
   // RouteComponent calls useNavigate to strip the ?preview= token after load,
   // and to move to a step the server reported a validation error on.
   useNavigate: () => mockNavigate,
+  // The loader throws a redirect when a feedback form arrives unattributed.
+  redirect: (options: unknown) => ({ redirect: options }),
 }));
 
 vi.mock("@tanstack/react-form", () => ({
@@ -108,8 +110,10 @@ import {
   getFormData,
   getSubmissionState,
   clearSubmissionState,
+  storeSubmissionState,
 } from "../../../lib/session-storage";
 import { trackEvent } from "../../../lib/analytics";
+import { LANDING_URL } from "../../../config/landing";
 
 const mockUseForm = useForm as Mock;
 const mockUseStore = useStore as Mock;
@@ -118,6 +122,7 @@ const mockGetVisibleFields = getVisibleFields as Mock;
 const mockGetFormData = getFormData as Mock;
 const mockGetSubmissionState = getSubmissionState as Mock;
 const mockClearSubmissionState = clearSubmissionState as Mock;
+const mockStoreSubmissionState = storeSubmissionState as Mock;
 const mockRestoreRepeatableStepsFromStorage =
   restoreRepeatableStepsFromStorage as Mock;
 
@@ -125,6 +130,11 @@ const mockFormMeta = {
   formId: "test-form",
   formTitle: "Test Form",
   steps: [{ stepId: "step1", title: "Step 1", fields: [], behaviours: [] }],
+  // The contract's steps before the repeatable split — what the printed
+  // confirmation is built from.
+  contractSteps: [
+    { stepId: "step1", title: "Step 1", fields: [], behaviours: [] },
+  ],
   validationProperties: {},
   contactDetails: undefined,
   defaultValues: {},
@@ -231,13 +241,44 @@ describe("RouteComponent", () => {
     const metaWithTargets = {
       ...mockFormMeta,
       stepConditionalTargets: {
-        step1: "field1",
-        step2: "field2",
+        step1: ["field1"],
+        step2: ["field2"],
       },
     };
     vi.spyOn(Route, "useLoaderData").mockReturnValue(metaWithTargets);
     render(<Route.component />);
     expect(screen.getByTestId("form-renderer")).toBeInTheDocument();
+  });
+
+  it("recomputes visible steps when any targeted field on a step changes", () => {
+    vi.spyOn(Route, "useLoaderData").mockReturnValue({
+      ...mockFormMeta,
+      stepConditionalTargets: { step1: ["applyingFor", "hasPermission"] },
+    });
+    let values: Record<string, unknown> = {
+      step1_applyingFor: "individual",
+      step1_hasPermission: "yes",
+    };
+    mockUseStore.mockImplementation((_store: any, selector: any) =>
+      selector ? selector({ values }) : {},
+    );
+
+    const { rerender } = render(<Route.component />);
+
+    // Change each watched field in turn, so keeping only the first or only the
+    // last field per step fails one of the two.
+    for (const [key, value] of [
+      ["step1_applyingFor", "organisation"],
+      ["step1_hasPermission", "no"],
+    ] as const) {
+      const callsBefore = mockGetVisibleSteps.mock.calls.length;
+      values = { ...values, [key]: value };
+      rerender(<Route.component />);
+      expect(
+        mockGetVisibleSteps.mock.calls.length,
+        `changing ${key} did not recompute visible steps`,
+      ).toBeGreaterThan(callsBefore);
+    }
   });
 
   it("passes step from useSearch to FormRenderer as stepId", () => {
@@ -326,6 +367,21 @@ describe("RouteComponent", () => {
     expect(mockFormRendererProps.current.isDraft).toBe(false);
   });
 
+  it("passes returnToReview=true when the search carries returnTo (#2812)", () => {
+    vi.spyOn(Route, "useSearch").mockReturnValue({
+      step: "step1",
+      returnTo: "check-your-answers",
+    });
+    render(<Route.component />);
+    expect(mockFormRendererProps.current.returnToReview).toBe(true);
+  });
+
+  it("passes returnToReview=false on a normal journey", () => {
+    vi.spyOn(Route, "useSearch").mockReturnValue({ step: "step1" });
+    render(<Route.component />);
+    expect(mockFormRendererProps.current.returnToReview).toBe(false);
+  });
+
   it("ignores and clears any persisted submissionState on a fresh non-confirmation load", () => {
     vi.spyOn(Route, "useSearch").mockReturnValue({ step: "step1" });
     // A stale outcome from an earlier submission this session must not leak into
@@ -342,6 +398,117 @@ describe("RouteComponent", () => {
 
     expect(mockFormRendererProps.current.submissionState).toBeUndefined();
     expect(mockClearSubmissionState).toHaveBeenCalledWith("test-form");
+  });
+
+  // #2587: the printed answers put the applicant's whole submission in session
+  // storage, where it stays until the tab closes. On a shared or kiosk device
+  // the next person can press Back onto the confirmation and print it. Once
+  // the applicant follows a link off the page they are done with it, so drop
+  // the answers then. Only `sections` — a pending payment's reference and
+  // paymentUrl must survive so the EzPay return can still find them.
+  describe("dropping the stored answers on leaving the confirmation", () => {
+    const confirmationState = {
+      hasPayment: false,
+      serviceName: "test-form",
+      submissionSuccess: true,
+      referenceNumber: "REF-9",
+      date: "01/01/2026",
+      sections: [{ stepId: "step1", title: "Step 1", fields: [] }],
+    };
+
+    const clickLink = (
+      href: string,
+      eventInit: Partial<MouseEventInit> = {},
+    ) => {
+      const link = document.createElement("a");
+      link.href = href;
+      link.textContent = "leave";
+      document.body.appendChild(link);
+      act(() => {
+        link.dispatchEvent(
+          new MouseEvent("click", { bubbles: true, button: 0, ...eventInit }),
+        );
+      });
+      link.remove();
+    };
+
+    beforeEach(() => {
+      vi.spyOn(Route, "useSearch").mockReturnValue({
+        step: "submission-confirmation",
+      });
+      mockGetSubmissionState.mockReturnValue(confirmationState);
+    });
+
+    it("drops the answers, keeping the rest of the receipt, when the applicant follows a link off the page", () => {
+      render(<Route.component />);
+      mockStoreSubmissionState.mockClear();
+
+      clickLink("https://landing.example.bb/");
+
+      expect(mockStoreSubmissionState).toHaveBeenCalledWith("test-form", {
+        ...confirmationState,
+        sections: undefined,
+      });
+    });
+
+    it("keeps it for the payment link — EzPay comes back to this state", () => {
+      mockGetSubmissionState.mockReturnValue({
+        ...confirmationState,
+        hasPayment: true,
+        paymentUrl: "https://pay.example.com/checkout",
+      });
+      render(<Route.component />);
+      mockStoreSubmissionState.mockClear();
+
+      clickLink("https://pay.example.com/checkout");
+
+      expect(mockStoreSubmissionState).not.toHaveBeenCalled();
+    });
+
+    // `LinkButton` renders the payment href verbatim; the anchor's own `.href`
+    // getter normalises it (a bare origin gains a trailing slash). Comparing
+    // against the raw attribute means a mismatch there can't clear the
+    // answers out from under a payment click.
+    it("keeps it for the payment link even when the browser would normalise its href", () => {
+      mockGetSubmissionState.mockReturnValue({
+        ...confirmationState,
+        hasPayment: true,
+        paymentUrl: "https://pay.example.com",
+      });
+      render(<Route.component />);
+      mockStoreSubmissionState.mockClear();
+
+      clickLink("https://pay.example.com");
+
+      expect(mockStoreSubmissionState).not.toHaveBeenCalled();
+    });
+
+    it("keeps it for a same-page anchor such as the skip link", () => {
+      render(<Route.component />);
+      mockStoreSubmissionState.mockClear();
+
+      clickLink("#main-content");
+
+      expect(mockStoreSubmissionState).not.toHaveBeenCalled();
+    });
+
+    it("keeps it for a Ctrl-click, which opens the link in a new tab and leaves this one in place", () => {
+      render(<Route.component />);
+      mockStoreSubmissionState.mockClear();
+
+      clickLink("https://landing.example.bb/", { ctrlKey: true });
+
+      expect(mockStoreSubmissionState).not.toHaveBeenCalled();
+    });
+
+    it("keeps it for a right-click", () => {
+      render(<Route.component />);
+      mockStoreSubmissionState.mockClear();
+
+      clickLink("https://landing.example.bb/", { button: 2 });
+
+      expect(mockStoreSubmissionState).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -443,17 +610,74 @@ describe("Route.loader", () => {
   });
 });
 
-describe("Route.loaderDeps", () => {
-  it("extracts the preview and draft tokens from search when present", () => {
-    const result = Route.loaderDeps({
-      search: { preview: "s3cret", draft: "d-s3cret" },
+describe("Route.loader on a feedback form", () => {
+  const feedbackFormMeta = {
+    ...mockFormMeta,
+    formId: "exit-survey",
+    steps: [
+      {
+        stepId: "difficulty-rating",
+        title: "Rating",
+        fields: [
+          {
+            id: "difficulty-rating_referring-service",
+            fieldId: "referring-service",
+          },
+        ],
+        behaviours: [],
+      },
+    ],
+  };
+  const loadFeedbackForm = (source?: string) =>
+    Route.loader({
+      params: { formId: "exit-survey" },
+      context: {
+        queryClient: {
+          ensureQueryData: vi.fn().mockResolvedValue(feedbackFormMeta),
+        },
+      },
+      deps: { preview: undefined, draft: undefined, source },
     } as any);
-    expect(result).toEqual({ preview: "s3cret", draft: "d-s3cret" });
+
+  it("sends a citizen who arrived without a referring form to the homepage", async () => {
+    await expect(loadFeedbackForm()).rejects.toEqual({
+      redirect: { href: LANDING_URL },
+    });
   });
 
-  it("returns preview and draft as undefined when not present in search", () => {
+  it("serves the form when ?source= names the referring form", async () => {
+    await expect(loadFeedbackForm("get-birth-certificate")).resolves.toBe(
+      feedbackFormMeta,
+    );
+  });
+
+  it("serves the form when the referring form was saved earlier in the session", async () => {
+    mockGetFormData.mockReturnValue({
+      "difficulty-rating_referring-service": "get-birth-certificate",
+    });
+    await expect(loadFeedbackForm()).resolves.toBe(feedbackFormMeta);
+  });
+});
+
+describe("Route.loaderDeps", () => {
+  it("extracts the preview and draft tokens and source from search when present", () => {
+    const result = Route.loaderDeps({
+      search: { preview: "s3cret", draft: "d-s3cret", source: "some-form" },
+    } as any);
+    expect(result).toEqual({
+      preview: "s3cret",
+      draft: "d-s3cret",
+      source: "some-form",
+    });
+  });
+
+  it("returns preview, draft and source as undefined when not present in search", () => {
     const result = Route.loaderDeps({ search: {} } as any);
-    expect(result).toEqual({ preview: undefined, draft: undefined });
+    expect(result).toEqual({
+      preview: undefined,
+      draft: undefined,
+      source: undefined,
+    });
   });
 });
 
@@ -474,6 +698,22 @@ describe("Route.validateSearch", () => {
   it("returns an object where step is undefined when not provided", () => {
     const result = Route.validateSearch({});
     expect(result.step).toBeUndefined();
+  });
+
+  it("keeps returnTo=check-your-answers (#2812)", () => {
+    const result = Route.validateSearch({ returnTo: "check-your-answers" });
+    expect(result.returnTo).toBe("check-your-answers");
+  });
+
+  it("drops any other returnTo value without throwing", () => {
+    // A hand-edited or stale link must degrade to a normal journey, not an
+    // error page.
+    const result = Route.validateSearch({
+      step: "step1",
+      returnTo: "elsewhere",
+    });
+    expect(result).toEqual(expect.objectContaining({ step: "step1" }));
+    expect(result.returnTo).toBeUndefined();
   });
 });
 

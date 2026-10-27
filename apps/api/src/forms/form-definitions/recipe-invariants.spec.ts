@@ -223,6 +223,168 @@ it("catchment-routed recipes use {polyclinicContact}, never hardcoded contact de
   expect(problems).toEqual([]);
 });
 
+// `catchmentRouting` names the fields the submission routes on, as
+// "stepId.fieldId". Nothing else checks those paths resolve: a path left
+// pointing at a renamed or deleted step (e.g. a stale form-builder republish
+// restoring an old step, #2409) makes every submission fall back to "your local
+// polyclinic", so the MDA is never emailed, and CI stays green. The step must
+// also be unconditional, or a branch that skips it is never routed (#2857 F18).
+it("catchmentRouting paths point at a field on an unconditional step", async () => {
+  const problems: string[] = [];
+  const recipes = await readRecipeFiles();
+
+  for (const { file, raw } of recipes) {
+    const recipe = raw as {
+      catchmentRouting?: Record<string, string>;
+      steps: (Step & { behaviours?: { type: string }[] })[];
+    };
+    if (!recipe.catchmentRouting) continue;
+
+    for (const fieldPath of Object.values(recipe.catchmentRouting)) {
+      const [stepId, fieldId] = fieldPath.split(".");
+      const step = recipe.steps.find((s) => s.stepId === stepId);
+      if (!step?.elements?.some((el) => el.overrides?.fieldId === fieldId)) {
+        problems.push(`${file}: ${fieldPath} resolves to no field`);
+      } else if (step.behaviours?.some((b) => b.type === "stepConditionalOn")) {
+        problems.push(`${file}: ${fieldPath} is on a conditional step`);
+      }
+    }
+  }
+
+  expect(problems).toEqual([]);
+});
+
+// The declaration step holds only the confirmation checkbox (ADR 0041). A name
+// or date field there repeats what the form already has: the applicant's name
+// is asked on an earlier step and every submission is timestamped. #2166
+// removed such dates from 34 recipes, but a form-builder publish or a
+// hand-edited content review can bring them back, hidden or not, so pin it.
+it("declaration steps ask for no name or date", async () => {
+  const problems: string[] = [];
+  const recipes = await readRecipeFiles();
+
+  for (const { file, raw } of recipes) {
+    for (const step of (raw as { steps: Step[] }).steps) {
+      if (step.stepId !== "declaration") continue;
+      for (const el of step.elements ?? []) {
+        const component = el.ref.replace(/^components\//, "");
+        const fieldId = el.overrides?.fieldId ?? component;
+        if (/name|date/.test(component) || /name|date/.test(fieldId)) {
+          problems.push(`${file}: declaration has "${fieldId}" (${el.ref})`);
+        }
+      }
+    }
+  }
+
+  expect(problems).toEqual([]);
+});
+
+// `nextSteps` was retired (#2442): the serving path (hydrateStep) never carried
+// it to citizens, so confirmation copy authored there was silently dropped. All
+// of it moved to `markdownContent`, which renders. Reject any recipe that
+// reintroduces the dead field so the copy can never go dark again.
+it("no recipe uses the retired nextSteps field (#2442)", async () => {
+  const problems: string[] = [];
+  const recipes = await readRecipeFiles();
+
+  for (const { file, raw } of recipes) {
+    // Read steps defensively: a malformed recipe (no steps array) is the
+    // "every recipe file parses" test's job to report, not ours to throw on.
+    const steps = (raw as { steps?: unknown }).steps;
+    if (!Array.isArray(steps)) continue;
+    for (const step of steps as (Step & { nextSteps?: unknown })[]) {
+      if (step.nextSteps !== undefined) {
+        problems.push(
+          `${file}: step "${step.stepId}" has the retired nextSteps field — author confirmation copy in markdownContent instead`,
+        );
+      }
+    }
+  }
+
+  expect(problems).toEqual([]);
+});
+
+// Telephone questions follow one pattern (#2917): the registry sets the hint
+// and the "not valid" error, and every "required" error reads
+// "{label} is required". The tests below stop recipes drifting from it.
+const TELEPHONE_COMPONENTS =
+  /^(telephone|generic-tel|mobile-telephone|home-telephone|work-telephone|contact-telephone)$/;
+
+type Rule = { value?: unknown; error?: string };
+type TelephoneOverride = {
+  label?: string;
+  hint?: unknown;
+  validations?: Record<string, Rule | undefined>;
+};
+
+// Every telephone field a step authors, as [component, override]. A component
+// carries its override in `overrides`; a block carries one override object per
+// child, keyed by the child's fieldId — which for these children is the
+// component name. A block child without an override is the registry default.
+function telephoneFields(step: Step): [string, TelephoneOverride][] {
+  return (step.elements ?? [])
+    .flatMap((el): [string, unknown][] =>
+      el.ref.startsWith("blocks/")
+        ? Object.entries(el.overrides ?? {})
+        : [[el.ref.replace(/^components\//, ""), el.overrides ?? {}]],
+    )
+    .filter(([component]) => TELEPHONE_COMPONENTS.test(component))
+    .map(([component, override]) => [component, override as TelephoneOverride]);
+}
+
+// A recipe may override the hint only to add context the service needs — never
+// to restate a different example number, which is how the hints drifted apart.
+it("telephone hint overrides add context, never a different example number", async () => {
+  const problems: string[] = [];
+  const recipes = await readRecipeFiles();
+
+  for (const { file, raw } of recipes) {
+    for (const step of (raw as { steps: Step[] }).steps) {
+      for (const [, { hint }] of telephoneFields(step)) {
+        if (/\d/.test(String(hint ?? ""))) {
+          problems.push(`${file}: step "${step.stepId}" hint "${hint}"`);
+        }
+      }
+    }
+  }
+
+  expect(problems).toEqual([]);
+});
+
+// The error summary uses each message as its link text, so a "required" error
+// must name the field as labelled. An override replaces the whole rule, so a
+// `required` override without the matching error is caught here too.
+it("telephone errors name the field's label and keep the registry's phone message", async () => {
+  const problems: string[] = [];
+  const recipes = await readRecipeFiles();
+
+  for (const { file, raw } of recipes) {
+    for (const step of (raw as { steps: Step[] }).steps) {
+      for (const [component, override] of telephoneFields(step)) {
+        const base = BUILTIN_REGISTRY[`components/${component}`] as {
+          label: string;
+          validations?: Record<string, Rule | undefined>;
+        };
+        const label = override.label ?? base.label;
+        const where = `${file}: step "${step.stepId}" "${label}"`;
+        if (override.validations?.phone) {
+          problems.push(`${where} overrides the phone rule`);
+        }
+        const required =
+          override.validations?.required ?? base.validations?.required;
+        if (
+          required?.value === true &&
+          required.error !== `${label} is required`
+        ) {
+          problems.push(`${where} has required error "${required.error}"`);
+        }
+      }
+    }
+  }
+
+  expect(problems).toEqual([]);
+});
+
 // Proves the net actually catches malformed recipes (#2075 acceptance criteria)
 // without polluting the real recipes/ set: each synthetic recipe is a mutation
 // of a real, valid one, and asserts the *specific* problem is reported so a

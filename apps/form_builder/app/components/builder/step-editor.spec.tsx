@@ -1,7 +1,6 @@
 /**
  * @vitest-environment jsdom
  */
-import "@testing-library/jest-dom";
 import { render, screen, fireEvent, within, waitFor } from "../../test/ui";
 import userEvent from "@testing-library/user-event";
 import type {
@@ -380,7 +379,7 @@ it("opens and focuses a condition link without a second disclosure click", async
     screen.getByRole("button", { name: "Page settings and logic" }),
   ).toHaveAttribute("aria-expanded", "true");
   const heading = screen.getByRole("heading", {
-    name: "When this page is shown",
+    name: "Step / page behaviours",
   });
   await waitFor(() => expect(heading).toHaveFocus());
   await userEvent.tab();

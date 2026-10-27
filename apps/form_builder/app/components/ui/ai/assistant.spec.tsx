@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import "@testing-library/jest-dom/vitest";
 import { expect } from "vitest";
 import {
   act,
@@ -229,7 +228,6 @@ it("keeps DB settings, credentials and opaque metadata while normalizing the rev
         title: "One",
         fields: [],
         behaviours: [],
-        nextSteps: [{ title: "Keep" }],
       },
     ],
   } as unknown as RecipeDraft;
@@ -250,9 +248,6 @@ it("keeps DB settings, credentials and opaque metadata while normalizing the rev
   expect(result.mdaContactId).toBe("mda");
   expect(result.meta).toEqual(draft.meta);
   expect(result.catchmentRouting).toEqual(draft.catchmentRouting);
-  expect(result.steps.find((step) => step.stepId === "one")?.nextSteps).toEqual(
-    draft.steps[0].nextSteps,
-  );
   expect(
     result.steps.some((step) => step.stepId === "submission-confirmation"),
   ).toBe(true);

@@ -49,7 +49,6 @@ test("passes every chunk through in order", async () => {
 test("clears the timer once the stream drains normally", async () => {
   const ac = new AbortController();
   const m = manualScheduler();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   for await (const _ of withStreamTimeout(
     fromArray([chunk("RUN_FINISHED")]),
     ac,

@@ -1,5 +1,7 @@
+import { NationalIdNumber } from "./components/national-id";
 import {
   NATIONAL_ID_FORMAT,
+  NATIONAL_ID_LABEL,
   NATIONAL_INSURANCE_FORMAT,
   POSTCODE_FORMAT,
   TAMIS_FORMAT,
@@ -19,8 +21,18 @@ describe("barbados-id-patterns", () => {
     it("carries the matching mask and a normalised error", () => {
       expect(NATIONAL_ID_FORMAT.mask).toBe("999999-9999");
       expect(NATIONAL_ID_FORMAT.error).toBe(
-        "Enter a valid National ID number (for example, 850101-0001)",
+        "Enter a valid Barbados National Identification (ID) number (for example, 850101-0001)",
       );
+    });
+    // #2732: the field's label and its own error used to name the document
+    // differently. "Barbados" because some services are open to non-citizens
+    // and offer a passport instead.
+    it("names the document the same way in the label and the error", () => {
+      expect(NATIONAL_ID_LABEL).toBe(
+        "Barbados National Identification (ID) number",
+      );
+      expect(NationalIdNumber.label).toBe(NATIONAL_ID_LABEL);
+      expect(NATIONAL_ID_FORMAT.error).toContain(NATIONAL_ID_LABEL);
     });
   });
 

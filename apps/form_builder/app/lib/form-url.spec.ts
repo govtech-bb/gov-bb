@@ -39,14 +39,24 @@ describe("joinFormPreviewUrl", () => {
 });
 
 describe("formPreviewUrl", () => {
-  // VITE_FORMS_URL and VITE_RECIPE_PREVIEW_TOKEN are stubbed by
-  // ts-jest-mock-import-meta in vi.config.ts. The empty/unset → default
-  // branches (dev-default origin, "demo" token) are covered by
-  // joinFormPreviewUrl above — import.meta replacement is static, so the vars
-  // can't be unset per-test.
+  // VITE_FORMS_URL and VITE_RECIPE_PREVIEW_TOKEN come from the vitest `test.env`
+  // config (forms.example.test / stub-token); `vi.stubEnv` overrides them
+  // per-test.
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("builds the link from VITE_FORMS_URL and VITE_RECIPE_PREVIEW_TOKEN", () => {
     expect(formPreviewUrl("passport")).toBe(
       "https://forms.example.test/forms/passport?draft=stub-token",
+    );
+  });
+
+  it("fails closed with an empty token when VITE_RECIPE_PREVIEW_TOKEN is unset (#1366)", () => {
+    vi.stubEnv("VITE_RECIPE_PREVIEW_TOKEN", "");
+    // No guessable "demo" fallback — the token is empty, so no preview matches.
+    expect(formPreviewUrl("passport")).toBe(
+      "https://forms.example.test/forms/passport?draft=",
     );
   });
 });

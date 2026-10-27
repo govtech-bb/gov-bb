@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { canDropPreviewToken } from "../../../lib/preview-url";
 import {
   getVisibleSteps,
@@ -35,12 +35,14 @@ import {
   clearFormStartTime,
 } from "../../../lib/session-storage";
 import { elapsedSeconds } from "../../../lib/submit-duration";
+import { buildPrintedAnswers } from "../../../lib/printed-answers";
 import {
   formatDataForSubmission,
   postFormSubmission,
   FormValidationError,
 } from "@forms/form-api";
 import { trackEvent } from "../../../lib/analytics";
+import { LANDING_URL } from "../../../config/landing";
 import { resolveServerFieldErrors } from "../../../lib/server-field-errors";
 import { resolveConditionalMarkdown } from "@govtech-bb/form-conditions";
 import { buildStepScopedValues } from "../../../lib/form-builder/helpers/value-tree";
@@ -84,7 +86,7 @@ export const Route = createFileRoute("/forms/$formId/")({
 
     // Tier 2: get or build the FormMeta for this specific
     // (version, preview, draft) combination.
-    return queryClient.ensureQueryData(
+    const formMeta = await queryClient.ensureQueryData(
       formMetaQueryOptions(
         params.formId,
         clientContract,
@@ -92,10 +94,23 @@ export const Route = createFileRoute("/forms/$formId/")({
         deps.draft,
       ),
     );
+
+    // A feedback form (one declaring `referring-service`, e.g. the exit survey)
+    // is only reachable from another form's "Give feedback" link, which sets
+    // `?source=`. Later steps may drop it from the URL, so the value saved
+    // earlier in the session also counts. Anyone landing on it directly has no
+    // service to give feedback about, so send them home.
+    const fieldId = findReferringServiceFieldId(formMeta);
+    if (fieldId && !deps.source && !getFormData(formMeta.formId)?.[fieldId]) {
+      throw redirect({ href: LANDING_URL });
+    }
+
+    return formMeta;
   },
   loaderDeps: ({ search }: { search: FormSearchParams }) => ({
     preview: search.preview,
     draft: search.draft,
+    source: search.source,
   }),
   validateSearch: (search): FormSearchParams =>
     formSearchParamSchema.parse(search),
@@ -136,7 +151,7 @@ function RouteComponent() {
 
 function FormView() {
   const formMeta = Route.useLoaderData();
-  const { step, preview, draft, source, payment } = Route.useSearch();
+  const { step, preview, draft, source, payment, returnTo } = Route.useSearch();
   // Only `?draft=` (the DB scratch) blocks submission. `?preview=` serves the
   // published recipe and submits exactly as a citizen would (#1682).
   const isDraft = Boolean(draft);
@@ -204,6 +219,46 @@ function FormView() {
     }
   }, [formMeta.formId, submissionState]);
 
+  // The stored outcome now carries the applicant's answers, so the printed
+  // copy survives a refresh (#2587) — but it would otherwise sit in the tab
+  // until it is closed. On a shared or kiosk device the next person can press
+  // Back onto this step and print someone else's submission. Following a link
+  // off the confirmation says the applicant is finished with it, so drop the
+  // answers from storage then — the receipt itself (reference, paymentUrl,
+  // amount) is kept, so a pending payment's return from EzPay is unaffected,
+  // and the page in front of them keeps rendering from React state. A
+  // same-page anchor (the skip link) is not an exit. Best-effort only: a
+  // browser serving Back from its bfcache never reloads the page, so this
+  // never fires, and an applicant who walks away without clicking anything
+  // doesn't trigger it either.
+  React.useEffect(() => {
+    if (step !== "submission-confirmation" || !submissionState) return;
+
+    const handleExit = (event: MouseEvent) => {
+      // Only a plain, unmodified left click actually leaves the page — a
+      // Ctrl/Cmd-click opens a new tab and leaves this one in place, and a
+      // handler upstream may already have taken this click (e.g. the Continue
+      // to payment button's own onClick).
+      if (event.defaultPrevented || event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+        return;
+      const anchor = (event.target as Element | null)?.closest?.("a");
+      const href = anchor?.getAttribute("href");
+      if (!href || href.startsWith("#")) return;
+      // Compare the raw attribute, not the browser-normalised `anchor.href`
+      // (lower-cased host, default port dropped, trailing slash added to a
+      // bare origin) — `paymentUrl` is stored and rendered verbatim.
+      if (href === submissionState.paymentUrl) return;
+      storeSubmissionState(formMeta.formId, {
+        ...submissionState,
+        sections: undefined,
+      });
+    };
+
+    document.addEventListener("click", handleExit);
+    return () => document.removeEventListener("click", handleExit);
+  }, [step, submissionState, formMeta.formId]);
+
   const repeatableStepSettingsRef = React.useRef<RepeatableStepSettings>(
     formMeta.repeatSettings,
   );
@@ -219,9 +274,7 @@ function FormView() {
   // convention rather than hard-coding a step id: any recipe that declares a
   // `referring-service` field captures it; forms that don't are unaffected.
   const referringServiceFieldId = source
-    ? formMeta.steps
-        .flatMap((formStep) => formStep.fields)
-        .find((field) => field.fieldId === "referring-service")?.id
+    ? findReferringServiceFieldId(formMeta)
     : undefined;
   const sourceDefaults =
     source && referringServiceFieldId
@@ -264,9 +317,15 @@ function FormView() {
       // render-mutated conditionallyHidden flag goes stale for fields that
       // never re-mounted after their controlling answer flipped, which
       // would leak de-selected answers into the payload.
+      // Keyed by stepId, the visible field ids per step — the submission
+      // payload's hidden set is its complement, and the printed confirmation's
+      // answers are built from it below, so the two cannot disagree.
+      const visibleFieldIdsByStep: Record<string, string[]> = {};
       const hiddenFields = visibleSteps.flatMap((step) => {
-        const visibleFieldIds = new Set(
-          getVisibleFields(step, form).map((field) => field.id),
+        const visible = getVisibleFields(step, form);
+        const visibleFieldIds = new Set(visible.map((field) => field.id));
+        visibleFieldIdsByStep[step.stepId] = visible.map(
+          (field) => field.fieldId,
         );
         return step.fields.filter((field) => !visibleFieldIds.has(field.id));
       });
@@ -348,9 +407,20 @@ function FormView() {
           )
         : undefined;
 
+      // Same moment, same reason (#2587): build the answers for the printed
+      // confirmation while they are still here. Built from the shared summary
+      // builder, so the paper copy reads like the email the MDA received.
+      const printedAnswers = buildPrintedAnswers({
+        formMeta,
+        visibleFieldIdsByStep,
+        values: formattedData,
+        repeatSettings: repeatableStepSettingsRef.current,
+      });
+
       const { subState, event } = resolveSubmissionOutcome(
         response,
         resolvedMarkdown,
+        printedAnswers,
       );
       if (subState) {
         setSubmissionState(subState);
@@ -393,8 +463,10 @@ function FormView() {
   // changes. This replaces a `useStore`-in-a-loop (a rules-of-hooks violation)
   // whose fresh-array dependency also defeated the memo on every render.
   const conditionalTargetKey = Object.entries(formMeta.stepConditionalTargets)
-    .map(([stepId, fieldId]) =>
-      String(formValues[getFullFieldId(stepId, fieldId)] ?? ""),
+    .flatMap(([stepId, fieldIds]) =>
+      fieldIds.map((fieldId) =>
+        String(formValues[getFullFieldId(stepId, fieldId)] ?? ""),
+      ),
     )
     .join("|");
 
@@ -417,6 +489,13 @@ function FormView() {
       isDraft={isDraft}
       previewToken={preview}
       draftToken={draft}
+      returnToReview={returnTo === "check-your-answers"}
     />
   );
+}
+
+function findReferringServiceFieldId(formMeta: FormMeta): string | undefined {
+  return formMeta.steps
+    .flatMap((formStep) => formStep.fields)
+    .find((field) => field.fieldId === "referring-service")?.id;
 }

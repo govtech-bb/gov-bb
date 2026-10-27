@@ -10,7 +10,6 @@ function snapshot() {
   return serviceSnapshotSchema.parse({
     manifest: {
       schemaVersion: 1,
-      visibility: "public",
       serviceId: "test-service",
       title: "Test service",
       formId: "test-service",

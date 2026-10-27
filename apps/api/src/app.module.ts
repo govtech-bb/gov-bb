@@ -11,9 +11,11 @@ import { FormsModule } from "./forms/forms.module";
 import { FilesModule } from "./files/files.module";
 import { PaymentsModule } from "./payments/payments.module";
 import { FeedbackModule } from "./feedback/feedback.module";
+import { JourneyModule } from "./journey/journey.module";
 import { ServiceStatusModule } from "./services/service-status.module";
 import { ContentModule } from "./content/content.module";
 import { GeocodeModule } from "./geocode/geocode.module";
+import { CatchmentGeometryModule } from "./catchment/catchment-geometry.module";
 import { WaterAlertsModule } from "./water-alerts/water-alerts.module";
 import { MonitoringModule } from "./monitoring/monitoring.module";
 import { TelemetryModule } from "./telemetry/telemetry.module";
@@ -51,9 +53,11 @@ import { envValidationSchema } from "./config/env.validation";
     FilesModule,
     PaymentsModule,
     FeedbackModule,
+    JourneyModule,
     ServiceStatusModule,
     ContentModule,
     GeocodeModule,
+    CatchmentGeometryModule,
     WaterAlertsModule,
     MonitoringModule,
   ],

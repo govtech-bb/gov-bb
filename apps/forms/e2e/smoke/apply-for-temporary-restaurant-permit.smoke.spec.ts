@@ -35,7 +35,8 @@
  *    scenario the catchment-routing fix was verified against, and it keeps the
  *    required set minimal: only the medical certificate is a required upload
  *    (site-plan is optional for everyone, vendor-list is organiser-only), and
- *    the declaration has no organiser overtime-costs acknowledgement. The
+ *    the declaration has no organiser overtime-costs acknowledgement (only the
+ *    standard checkbox and the regulations acknowledgement). The
  *    is-organiser = "yes" branch (num-patrons/num-stalls, extra required
  *    uploads, overtime notice) is intentionally not exercised here. Every
  *    organiser-branch field carries the is-for-event gate as a second stacked
@@ -78,6 +79,7 @@ import {
   submitAndConfirm,
   tickCheckbox,
   uploadOne,
+  mockGeocoder,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
 
@@ -288,6 +290,8 @@ async function dateField(
   await afterField(page);
 }
 
+test.beforeEach(({ page }) => mockGeocoder(page));
+
 test.describe("Temporary Restaurant Permit — Live Smoke", () => {
   test("submits the real form end-to-end and reaches the confirmation screen", async ({
     page,
@@ -457,7 +461,12 @@ test.describe("Temporary Restaurant Permit — Live Smoke", () => {
     expectStep(page, "declaration");
     await page
       .getByRole("checkbox", {
-        name: /I confirm that my information is correct/,
+        name: /I confirm that the information I have provided is true and correct/,
+      })
+      .check();
+    await page
+      .getByRole("checkbox", {
+        name: /in accordance with the Health Services \(Restaurants\) Regulations/,
       })
       .check();
     await afterField(page);

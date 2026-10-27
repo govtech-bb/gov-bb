@@ -10,9 +10,28 @@ import { mrkdwnEscape, sendSlackNotification } from "./slack-notif";
 beforeEach(() => {
   vi.clearAllMocks();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+  vi.stubEnv("AWS_BRANCH", "prod");
 });
 
 describe("sendSlackNotification", () => {
+  it.each([["sandbox"], ["staging"], [""]])(
+    "does not post outside prod (AWS_BRANCH %j)",
+    async (value) => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+      vi.stubEnv("AWS_BRANCH", value);
+      getSlackWebhookUrl.mockResolvedValue(
+        "https://hooks.slack.com/services/x",
+      );
+
+      await sendSlackNotification("hello");
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(getSlackWebhookUrl).not.toHaveBeenCalled();
+    },
+  );
+
   it("posts the message to the resolved webhook URL", async () => {
     const fetchMock = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal("fetch", fetchMock);
