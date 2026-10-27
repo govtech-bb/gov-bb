@@ -18,15 +18,17 @@ const COLUMNS = z.array(
     column: z.string(),
     type: z.string(),
     not_null: z.boolean(),
+    generated: z.boolean(),
   }),
 );
 
 const KEYS = z.array(
   z.object({
     table: z.string(),
-    kind: z.enum(["p", "f"]),
+    kind: z.enum(["p", "f", "u"]),
     columns: z.array(z.string()),
     references: z.string().nullable(),
+    referenced: z.array(z.string()),
   }),
 );
 
@@ -40,7 +42,8 @@ export async function renderErd(db: Database): Promise<string> {
     (
       await db.execute(sql`
         select c.relname::text as table, a.attname::text as column,
-               t.typname::text as type, a.attnotnull as not_null
+               t.typname::text as type, a.attnotnull as not_null,
+               a.attgenerated <> '' as generated
         from pg_attribute a
         join pg_class c on c.oid = a.attrelid
         join pg_namespace n on n.oid = c.relnamespace
@@ -62,18 +65,25 @@ export async function renderErd(db: Database): Promise<string> {
                    on a.attrelid = con.conrelid and a.attnum = k.attnum
                  order by k.i
                ) as columns,
-               f.relname::text as references
+               f.relname::text as references,
+               array(
+                 select a.attname::text
+                 from unnest(con.confkey) with ordinality k(attnum, i)
+                 join pg_attribute a
+                   on a.attrelid = con.confrelid and a.attnum = k.attnum
+                 order by k.i
+               ) as referenced
         from pg_constraint con
         join pg_class c on c.oid = con.conrelid
         join pg_namespace n on n.oid = c.relnamespace
         left join pg_class f on f.oid = con.confrelid
-        where n.nspname = 'public' and con.contype in ('p', 'f')
+        where n.nspname = 'public' and con.contype in ('p', 'f', 'u')
           and c.relname <> 'schema_migrations'
         order by c.relname, con.conname`)
     ).rows,
   );
 
-  const keyed = (table: string, column: string, kind: "p" | "f") =>
+  const keyed = (table: string, column: string, kind: "p" | "f" | "u") =>
     keys.some(
       (key) =>
         key.table === table &&
@@ -89,12 +99,13 @@ export async function renderErd(db: Database): Promise<string> {
       const marks = [
         keyed(table, column.column, "p") && "PK",
         keyed(table, column.column, "f") && "FK",
+        keyed(table, column.column, "u") && "UK",
       ].filter(Boolean);
       lines.push(
         [
           `    ${typeName(column.type)} ${column.column}`,
           marks.length > 0 && marks.join(", "),
-          !column.not_null && '"nullable"',
+          column.generated ? '"generated"' : !column.not_null && '"nullable"',
         ]
           .filter(Boolean)
           .join(" "),
@@ -110,8 +121,9 @@ export async function renderErd(db: Database): Promise<string> {
         !columns.find((c) => c.table === key.table && c.column === name)
           ?.not_null,
     );
+    // Name both ends: a composite key may target a unique key, not the PK.
     lines.push(
-      `  ${key.references} ${optional ? "|o" : "||"}--o{ ${key.table} : "${key.columns.join(", ")}"`,
+      `  ${key.references} ${optional ? "|o" : "||"}--o{ ${key.table} : "${key.columns.join(", ")} -> ${key.referenced.join(", ")}"`,
     );
   }
 

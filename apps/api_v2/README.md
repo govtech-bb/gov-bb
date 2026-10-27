@@ -81,7 +81,7 @@ erDiagram
   auth_session {
     text id PK
     timestamptz expiresAt
-    text token
+    text token UK
     timestamptz createdAt
     timestamptz updatedAt
     text ipAddress "nullable"
@@ -91,7 +91,7 @@ erDiagram
   auth_user {
     text id PK
     text name
-    text email
+    text email UK
     bool emailVerified
     text image "nullable"
     timestamptz createdAt
@@ -107,7 +107,7 @@ erDiagram
   }
   categories {
     uuid id PK
-    varchar slug
+    varchar slug UK
     varchar title
     text description "nullable"
     timestamptz created_at
@@ -117,23 +117,23 @@ erDiagram
   }
   change_events {
     uuid id PK
-    varchar entity_kind
-    text entity_id
-    int4 version_no
+    varchar entity_kind UK
+    text entity_id UK
+    int4 version_no UK
     change_action action
     jsonb snapshot
     text actor
     timestamptz occurred_at
   }
   content_pages {
-    uuid id PK
-    varchar url
+    uuid id PK, UK
+    varchar url UK
     varchar slug
     varchar title
     text description "nullable"
     timestamptz created_at
     timestamptz updated_at
-    uuid category_id FK "nullable"
+    uuid category_id FK, UK "nullable"
     page_visibility visibility
     varchar form_id "nullable"
     text body_markdown
@@ -143,19 +143,19 @@ erDiagram
   }
   search_chunks {
     uuid id PK
-    uuid page_id FK
-    int4 ordinal
+    uuid page_id FK, UK
+    int4 ordinal UK
     text heading "nullable"
     text body
-    tsvector tsv "nullable"
+    tsvector tsv "generated"
   }
-  auth_user ||--o{ auth_account : "userId"
-  auth_user ||--o{ auth_session : "userId"
-  categories |o--o{ categories : "parent_id"
-  categories |o--o{ content_pages : "category_id"
-  content_pages |o--o{ content_pages : "parent_id, category_id"
-  content_pages |o--o{ content_pages : "parent_id"
-  content_pages ||--o{ search_chunks : "page_id"
+  auth_user ||--o{ auth_account : "userId -> id"
+  auth_user ||--o{ auth_session : "userId -> id"
+  categories |o--o{ categories : "parent_id -> id"
+  categories |o--o{ content_pages : "category_id -> id"
+  content_pages |o--o{ content_pages : "parent_id, category_id -> id, category_id"
+  content_pages |o--o{ content_pages : "parent_id -> id"
+  content_pages ||--o{ search_chunks : "page_id -> id"
 ```
 
 <!-- ERD:END -->

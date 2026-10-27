@@ -39,8 +39,9 @@ describe("README ERD", () => {
     const { db, close } = await createTestDb();
     await db.execute(sql`alter table categories add column colour text`);
 
-    expect(await renderErd(db)).toContain('    text colour "nullable"\n');
-    expect(await renderErd(db)).not.toContain("schema_migrations");
+    const diagram = await renderErd(db);
+    expect(diagram).toContain('    text colour "nullable"\n');
+    expect(diagram).not.toContain("schema_migrations");
 
     await close();
   });
