@@ -1,13 +1,14 @@
-import type { Employee } from "../modules/auth";
+import { ROLES, type Employee } from "../modules/auth";
 import { ok } from "../modules/result";
 import type { AuthHandler } from "../routes/auth";
 import type { EmployeeGate } from "../services/editor-access";
 
-/** Who every editor request runs as while AUTH_BYPASS is on. */
+/** Who every editor request runs as while AUTH_BYPASS is on: every role, so one developer can try every flow. */
 export const BYPASS_EMPLOYEE: Employee = {
   id: "local-developer",
   email: "developer@localhost",
   name: "Local developer",
+  roles: ROLES,
 };
 
 /**

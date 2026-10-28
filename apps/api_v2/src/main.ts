@@ -5,6 +5,7 @@ import pino from "pino";
 import { buildApp } from "./app";
 import { createBetterAuth } from "./adapters/better-auth";
 import { PostgresPages } from "./adapters/postgres-pages";
+import { PostgresRoles } from "./adapters/postgres-roles";
 import { parseConfig } from "./config";
 import { connect, createPool, type DatabaseFailure } from "./db";
 import { migrate } from "./migrate";
@@ -51,7 +52,11 @@ async function main(): Promise<void> {
   if (!parsed.ok) {
     // Field names only: the supplied values may be secrets.
     logger.error(
-      { error: parsed.error._tag, fields: parsed.error.fields },
+      {
+        error: parsed.error._tag,
+        fields: parsed.error.fields,
+        reasons: parsed.error.reasons,
+      },
       parsed.error.message,
     );
     process.exitCode = 1;
@@ -85,6 +90,7 @@ async function main(): Promise<void> {
     }
     if (shutdown.signal.aborted) return;
     operation = "auth";
+    const roles = new PostgresRoles(db);
     let access: EmployeeGate;
     let auth: AuthHandler;
     if (config.authBypass) {
@@ -94,7 +100,7 @@ async function main(): Promise<void> {
       ({ access, auth } = authBypass);
     } else {
       const github = await createBetterAuth(pool, config.auth, logger);
-      access = new EditorAccess(github);
+      access = new EditorAccess(github, roles, config.adminEmails);
       auth = github;
     }
     operation = "http";
@@ -106,6 +112,7 @@ async function main(): Promise<void> {
       index: new EditorIndex(pages),
       categories: new CategoryEditing(pages, () => new Date()),
       access,
+      roles,
       auth,
       config: {
         apiOrigin: config.auth.apiOrigin,

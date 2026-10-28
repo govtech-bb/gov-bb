@@ -56,7 +56,13 @@ afterEach(() => {
   clients.splice(0).forEach((client) => client.clear());
 });
 
-async function mountWorkspace(path = "/services/service/fees") {
+async function mountWorkspace(
+  path = "/services/service/fees",
+  {
+    roles = ["editor", "approver"],
+    publicIds = [],
+  }: { roles?: readonly string[]; publicIds?: readonly string[] } = {},
+) {
   vi.stubGlobal("matchMedia", (query: string) => ({
     matches: true,
     media: query,
@@ -85,7 +91,16 @@ async function mountWorkspace(path = "/services/service/fees") {
 
       if (path === "/services") return Response.json([detail.service]);
 
-      if (path === "/services/service") return Response.json(detail);
+      if (path === "/services/service")
+        return Response.json({
+          ...detail,
+          pages: detail.pages.map((page) =>
+            publicIds.includes(page.id) ? { ...page, visibility: "public" } : page,
+          ),
+        });
+
+      if (path === "/editor/me")
+        return Response.json({ id: "me", email: "author@govtech.bb", name: "Author", roles });
 
       if (path === "/editor/categories") return Response.json({ categories: [] });
 
@@ -187,6 +202,27 @@ test.each([0, 503, 401, 403, 404])(
       await h.client.refetchQueries({ queryKey: ["content", "service", "service"] });
     });
     await until(() => expect(activeTitle().value).toBe("Keep during refresh"));
+  },
+);
+
+test.each([
+  [["editor"], true],
+  [["editor", "approver"], false],
+])(
+  "Delete page on a public page, for someone with roles %j, is held back with the reason: %s",
+  async (roles, blocked) => {
+    await mountWorkspace("/services/service/fees", { roles, publicIds: ["fees"] });
+
+    const deleteButton = () =>
+      [...document.querySelectorAll("button")].find(
+        (button) => button.textContent === "Delete page",
+      )!;
+
+    await until(() => expect(deleteButton().disabled).toBe(blocked));
+    const reason = deleteButton().getAttribute("aria-describedby");
+    expect(reason && document.getElementById(reason)?.textContent).toBe(
+      blocked ? "Only approvers can delete a public page." : null,
+    );
   },
 );
 

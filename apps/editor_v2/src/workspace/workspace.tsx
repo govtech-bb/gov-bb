@@ -11,7 +11,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiFailure, type EditorApi } from "../api/client";
-import { serviceQuery, servicesQuery, estateVersionQuery } from "../api/queries";
+import { rolesQuery, serviceQuery, servicesQuery, estateVersionQuery } from "../api/queries";
 import {
   CreateRemotePageDialog,
   CreateRemoteServiceDialog,
@@ -146,6 +146,9 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
   const listed = useQuery({ ...servicesQuery(api), enabled: false }).data?.find(
     (item) => item.id === location?.serviceId,
   );
+
+  // Until the roles load, deleting a public page waits rather than offering what the API may refuse
+  const approver = useQuery(rolesQuery(api)).data?.includes("approver") ?? false;
 
   const rows = useMemo(() => (remote.data ? remoteServiceRows(remote.data) : []), [remote.data]);
   const selected = rows.find((row) => row.document.id === documentId)?.document;
@@ -294,7 +297,11 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
             deleteBlocked={
               selected && remote.data?.pages.some((page) => page.parent_id === selected.id)
                 ? "Delete or move the pages under this page first."
-                : undefined
+                : !approver &&
+                    remote.data?.pages.find((page) => page.id === selected?.id)?.visibility ===
+                      "public"
+                  ? "Only approvers can delete a public page."
+                  : undefined
             }
           />
         )}

@@ -1,4 +1,4 @@
-import type { Employee } from "../modules/auth";
+import { NotApprover, type Employee } from "../modules/auth";
 import {
   creationOf,
   cycleOf,
@@ -100,7 +100,12 @@ export interface PageRecords {
   ): Promise<Result<void, ContentStoreUnavailable>>;
 }
 
-/** The editor's page operations: reads of any visibility, and writes that commit with their search text and audit entry or not at all. */
+/**
+ * The editor's page operations: reads of any visibility, and writes that
+ * commit with their search text and audit entry or not at all. Only an
+ * approver changes what citizens see: sets a page's visibility, creates one
+ * public, or deletes a public one.
+ */
 export class PageEditing {
   /** The root supplies content storage and the clock. */
   constructor(
@@ -119,8 +124,12 @@ export class PageEditing {
   create(
     page: NewPage,
     actor: Employee,
-  ): Promise<Result<PageDocument, PageRejected | ContentStoreUnavailable>> {
+  ): Promise<
+    Result<PageDocument, PageRejected | NotApprover | ContentStoreUnavailable>
+  > {
     return this.records.atomically(async (records) => {
+      if (page.visibility === "public" && !actor.roles.includes("approver"))
+        return err(new NotApprover());
       const available = await records.checkPageUrl(page.url);
       if (!available.ok) return available;
       const placed = await place(records, page.id, withDefaults(page));
@@ -156,7 +165,11 @@ export class PageEditing {
   ): Promise<
     Result<
       PageDocument,
-      PageRejected | PageNotFound | PageConflict | ContentStoreUnavailable
+      | PageRejected
+      | PageNotFound
+      | PageConflict
+      | NotApprover
+      | ContentStoreUnavailable
     >
   > {
     return this.records.atomically(async (records) => {
@@ -169,6 +182,11 @@ export class PageEditing {
         current.updated_at !== expectedUpdatedAt.toISOString()
       )
         return err(new PageConflict(id));
+      if (
+        fields.visibility !== current.visibility &&
+        !actor.roles.includes("approver")
+      )
+        return err(new NotApprover());
 
       if (fields.url !== current.url) {
         const available = await records.checkPageUrl(fields.url);
@@ -210,8 +228,17 @@ export class PageEditing {
   delete(
     id: PageId,
     actor: Employee,
-  ): Promise<Result<void, PageRejected | ContentStoreUnavailable>> {
+  ): Promise<
+    Result<void, PageRejected | NotApprover | ContentStoreUnavailable>
+  > {
     return this.records.atomically(async (records) => {
+      const locked = await records.lock(id);
+      if (!locked.ok) return locked;
+      if (
+        locked.value?.visibility === "public" &&
+        !actor.roles.includes("approver")
+      )
+        return err(new NotApprover());
       const removed = await records.remove(id);
       if (!removed.ok) return removed;
       if (removed.value === null) return ok(undefined);
