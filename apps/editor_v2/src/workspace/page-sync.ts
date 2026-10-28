@@ -30,7 +30,7 @@ export type PageSaveOutcome =
   /** `discarded`: taking the page out of public view discarded its unreviewed change, so `base` is the live page. */
   | { kind: "saved"; base: ServerPageBaseline; discarded?: true }
   | { kind: "invalid"; errors: readonly FieldError[] }
-  | { kind: "forbidden" | "under-review"; message: string }
+  | { kind: "forbidden"; message: string }
   | { kind: "conflict" | "missing" | "signed-out" | "failed" };
 
 /** Page source with its frontmatter's visibility line and trailing whitespace taken out; the body is otherwise as written. */
@@ -88,13 +88,7 @@ export async function savePageDraft(
       case 422:
         return { kind: "invalid", errors: error.errors };
       case 409:
-        // Until #3203, a change waiting for review can't be saved over
-        return error.code === "under_review"
-          ? {
-              kind: "under-review",
-              message: apiMessage(error) ?? "This change is waiting for review.",
-            }
-          : { kind: "conflict" };
+        return { kind: "conflict" };
       case 404:
         return { kind: "missing" };
       case 401:

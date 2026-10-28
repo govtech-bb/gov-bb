@@ -56,13 +56,21 @@ so a revocation takes effect on the user's next request.
 
 **An approver can't approve their own change.** The person who approves or
 publishes a revision must be someone other than anyone who submitted it or
-changed its content.
+changed its content. That includes saves made while it waits for review:
+they update the waiting revision and add the saver to its contributors
+(#3203). Each save moves the revision's version, and an approver must name
+the version they reviewed, so they can only publish the version they last
+loaded.
 
 **Changing visibility is a direct approver action for now.** Until #3201
 runs new pages, unpublishing and deleting through review, an approver who
 changes a page's visibility does so straight away, and the self-approval rule
 doesn't apply. So, in the meantime, an approver can still publish a page
 they wrote. #3201 closes this gap.
+
+Taking a public page out of public view while a change waits for review
+discards that change, and the page's history records the discard (#3203).
+The change's content never reaches the live page.
 
 **Roles are enforced in api_v2**, not only in editor_v2. editor_v2 hides or
 disables what a user's roles don't allow, but the API answers 403 and leaves

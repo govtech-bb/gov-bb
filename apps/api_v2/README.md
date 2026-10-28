@@ -76,11 +76,11 @@ A save that keeps a `public` page public, whoever sends it, approvers included, 
 
 The editor reads and saves the working copy: `GET /pages/:id` and the save's response lay the revision over the live page, set `pending_revision`, and give the revision's `updated_at`, which is what the next save sends in `if-updated-at`. `GET /pages/:id/revision` returns the revision itself, or 404 when there is none.
 
-A save to a page that is not public writes the page as before. Changing `visibility` stays a direct approver action (ADR 0079): an approver's save that takes a public page out of public view changes only the live row's `visibility`. The other fields it sends are ignored and the live content stays, so revision content never reaches `content_pages` that way, to be made public again without review. It discards the page's draft revision, keeping the rule that only a public page has an open one; a rejected revision retires as the live page moves on. The remaining gap, accepted in ADR 0079 until #3201, is that an approver can edit a page while it is not public and then make it public. A revision save writes no `change_events` entry, because the live page did not change; its review steps are recorded (see below).
+A save to a page that is not public writes the page as before. Changing `visibility` stays a direct approver action (ADR 0079): an approver's save that takes a public page out of public view changes only the live row's `visibility`. The other fields it sends are ignored and the live content stays, so revision content never reaches `content_pages` that way, to be made public again without review. It closes the page's open revision, keeping the rule that only a public page has one: a draft is dropped, and a revision waiting for review is marked `discarded` with the approver and the time (migration `015_revision_discarded`, #3203), so an urgent takedown needs no rejection first. The page's history then reads `discarded` followed by `unpublished`, both by the approver. A rejected revision retires as the live page moves on. The remaining gap, accepted in ADR 0079 until #3201, is that an approver can edit a page while it is not public and then make it public. A revision save writes no `change_events` entry, because the live page did not change; its review steps are recorded (see below).
 
 ### Reviewing a revision
 
-Migration `011_revision_review` (#3199) adds the review statuses and who moved a revision through them. A revision goes `draft` → `submitted` → `rejected` or `published`:
+Migration `011_revision_review` (#3199) adds the review statuses and who moved a revision through them. A revision goes `draft` → `submitted` → `rejected` or `published`, or `discarded` when an approver unpublishes the page while it waits (`015`, #3203):
 
 - `POST /pages/:id/revision/submit` (editor role) sends the page's draft for review and records the submitter. With no draft it is a 404; already submitted, a 409 `under_review`. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same `updated_at` (its content hasn't changed), and the rejected one keeps its comment as history. The copy's `contributors` are the rejected round's plus its submitter, and a new draft saved over a rejected revision inherits them the same way, so whoever submitted an earlier round still can't approve it.
 - `POST /pages/:id/revision/reject` (approver role) takes `{ comment }`, 1 to 2000 characters after trimming. The live page is unchanged. The rejected revision is kept with its comment and the rejecter, and the editor keeps working from it: `GET /pages/:id` lays it over the live page with `pending_revision: { status: "rejected", comment }`. The next save starts a new draft beside it, carrying its contributors over, since it starts from their content. A live write retires a rejection: it no longer shows once the live page has moved past the version it was saved over.
@@ -90,7 +90,7 @@ Publish and reject are a 404 when nothing waits for review, and a 409 `not_submi
 
 **Self-approval** (ADR 0079): the approver who publishes or rejects a revision must not be its submitter or one of its `contributors`; otherwise it is a 403. It is allowed only under `AUTH_BYPASS`, where `main.ts` passes `allowSelfApproval` to `PageEditing` so one developer can try the whole flow.
 
-**One open revision.** A page has at most one revision that is `draft` or `submitted` (`page_revisions_open_page_id_key`). Until #3203 lets editors keep working while a change waits, a save to a page whose revision is `submitted` is refused with a 409 `under_review`: "This change is waiting for review. You can save more changes once an approver publishes or rejects it."
+**One open revision.** A page has at most one revision that is `draft` or `submitted` (`page_revisions_open_page_id_key`). Editors keep working while a change waits (#3203): a save to a page whose revision is `submitted` updates that revision in place, and it stays `submitted` in the review queue. Such a save must send `if-updated-at`, the revision's `updated_at` (a 428 `precondition_required` without it, a 409 `conflict` when stale), and the saver joins its `contributors`, so whoever changes a waiting revision can't approve it. The save moves the revision's `updated_at`, so an approver holding the version from before it gets a 409 `conflict` on publish or reject, reloads, and decides on the latest version.
 
 `GET /pages/:id/revision`, and the submit and reject responses, carry `changes`: `{ field, live, proposed }` for each page field whose proposed value differs from the live page's, in field order. Publish returns the page as it now stands.
 
@@ -245,45 +245,52 @@ erDiagram
 
 ## HTTP surface
 
-| Method   | Path                                | Access                                                                 |
-| -------- | ----------------------------------- | ---------------------------------------------------------------------- |
-| GET      | `/pages?url=…`                      | Site page resolution (public, or preview with the token)               |
-| GET      | `/categories`                       | Site category tree                                                     |
-| GET      | `/categories/:slug`                 | A category's subcategories and root pages                              |
-| GET      | `/categories/:c/:s`                 | A subcategory's root pages                                             |
-| GET      | `/catalog`                          | Every visible page (sitemap, service lists)                            |
-| GET      | `/search/documents`                 | Every visible page with its search text in chunks                      |
-| GET      | `/docs`                             | Public API reference (Scalar)                                          |
-| GET      | `/docs/openapi.json`                | Public OpenAPI document                                                |
-| GET      | `/pages/:id`                        | Employee; includes drafts and previews, with any pending revision      |
-| GET      | `/pages/:id/revision`               | Employee; a public page's pending revision, with its `changes`         |
-| GET      | `/services`                         | Employee service index, grouped by `parent_id`                         |
-| GET      | `/services/:id`                     | Employee; one service's pages with their roles, entry first            |
-| GET      | `/editor/categories`                | Employee; every shared category, counts, address protection and stamps |
-| POST     | `/editor/categories`                | Employee; append a category or subcategory                             |
-| PUT      | `/editor/categories/:id`            | Employee; edit with mandatory `if-updated-at`                          |
-| PUT      | `/editor/categories/order`          | Employee; reorder a complete expected sibling snapshot                 |
-| DELETE   | `/editor/categories/:id`            | Employee; delete an empty category with `if-updated-at`                |
-| GET      | `/version`                          | Employee change token                                                  |
-| POST     | `/pages`                            | Employee create; as `public`, approver only                            |
-| PUT      | `/pages/:id`                        | Editor save, optional `if-updated-at`; public pages save to a revision |
-| DELETE   | `/pages/:id`                        | Employee delete; a `public` page, approver only                        |
-| POST     | `/pages/:id/revision/submit`        | Editor; submit the draft revision for review                           |
-| POST     | `/pages/:id/revision/reject`        | Approver, not its author or submitter; reject with a `comment`         |
-| POST     | `/pages/:id/revision/publish`       | Approver, not its author or submitter; publish it to the live page     |
-| GET      | `/editor/me`                        | Employee; who is signed in, with their roles                           |
-| GET      | `/editor/employees`                 | Admin; everyone who has signed in, with their roles                    |
-| PUT      | `/editor/employees/:id/roles/:role` | Admin; grant a role                                                    |
-| DELETE   | `/editor/employees/:id/roles/:role` | Admin; revoke a role                                                   |
-| GET/POST | `/api/auth/*`                       | BetterAuth's GitHub/session protocol                                   |
+| Method   | Path                                   | Access                                                                 |
+| -------- | -------------------------------------- | ---------------------------------------------------------------------- |
+| GET      | `/pages?url=…`                         | Site page resolution (public, or preview with the token)               |
+| GET      | `/categories`                          | Site category tree                                                     |
+| GET      | `/categories/:slug`                    | A category's subcategories and root pages                              |
+| GET      | `/categories/:c/:s`                    | A subcategory's root pages                                             |
+| GET      | `/catalog`                             | Every visible page (sitemap, service lists)                            |
+| GET      | `/search/documents`                    | Every visible page with its search text in chunks                      |
+| GET      | `/collections/:key/records`            | A data collection and its records (public; the editor reads it too)    |
+| GET      | `/docs`                                | Public API reference (Scalar)                                          |
+| GET      | `/docs/openapi.json`                   | Public OpenAPI document                                                |
+| GET      | `/pages/:id`                           | Employee; includes drafts and previews, with any pending revision      |
+| GET      | `/pages/:id/revision`                  | Employee; a public page's pending revision, with its `changes`         |
+| GET      | `/services`                            | Employee service index, grouped by `parent_id`                         |
+| GET      | `/services/:id`                        | Employee; one service's pages with their roles, entry first            |
+| GET      | `/editor/categories`                   | Employee; every shared category, counts, address protection and stamps |
+| POST     | `/editor/categories`                   | Employee; append a category or subcategory                             |
+| PUT      | `/editor/categories/:id`               | Employee; edit with mandatory `if-updated-at`                          |
+| PUT      | `/editor/categories/order`             | Employee; reorder a complete expected sibling snapshot                 |
+| DELETE   | `/editor/categories/:id`               | Employee; delete an empty category with `if-updated-at`                |
+| GET      | `/collections`                         | Employee; every data collection with its field list and record count   |
+| POST     | `/collections/:key/records/:recordKey` | Editor; add a record, checked against the collection's field list      |
+| PUT      | `/collections/:key/records/:recordKey` | Editor; replace a record's data, optional `if-updated-at`              |
+| DELETE   | `/collections/:key/records/:recordKey` | Editor; delete a record, optional `if-updated-at`                      |
+| GET      | `/version`                             | Employee change token                                                  |
+| POST     | `/pages`                               | Employee create; as `public`, approver only                            |
+| PUT      | `/pages/:id`                           | Editor save, optional `if-updated-at`; public pages save to a revision |
+| DELETE   | `/pages/:id`                           | Employee delete; a `public` page, approver only                        |
+| POST     | `/pages/:id/revision/submit`           | Editor; submit the draft revision for review                           |
+| POST     | `/pages/:id/revision/reject`           | Approver, not its author or submitter; reject with a `comment`         |
+| POST     | `/pages/:id/revision/publish`          | Approver, not its author or submitter; publish it to the live page     |
+| GET      | `/editor/me`                           | Employee; who is signed in, with their roles                           |
+| GET      | `/editor/employees`                    | Admin; everyone who has signed in, with their roles                    |
+| PUT      | `/editor/employees/:id/roles/:role`    | Admin; grant a role                                                    |
+| DELETE   | `/editor/employees/:id/roles/:role`    | Admin; revoke a role                                                   |
+| GET/POST | `/api/auth/*`                          | BetterAuth's GitHub/session protocol                                   |
 
-Missing, expired, or revoked sessions produce JSON 401 responses; disallowed employees or write origins produce 403; unavailable session verification produces 503. The API does not redirect protected content requests to GitHub. The editor handles navigation. Authenticated writes require `Origin: <EDITOR_ORIGIN>`. Auth/session/editor responses use `Cache-Control: no-store` and do not receive ETags. Page and category write audit rows record the authenticated user ID, never a caller-supplied actor, and commit with the write they record.
+Missing, expired, or revoked sessions produce JSON 401 responses; disallowed employees or write origins produce 403; unavailable session verification produces 503. The API does not redirect protected content requests to GitHub. The editor handles navigation. Authenticated writes require `Origin: <EDITOR_ORIGIN>`. Auth/session/editor responses use `Cache-Control: no-store` and do not receive ETags. Page, category and collection record write audit rows record the authenticated user ID, never a caller-supplied actor, and commit with the write they record.
 
-The database writes the history itself: a trigger (`record_change`, migration `007`) adds a `change_events` row for every insert, update and delete of a content table (`content_pages`, `categories`), including the sub-pages a parent's move carries with it. Its `actor` is the transaction's `app.user_id`, which the editor's writes set (transaction-local, so a pooled connection never carries it into the next request), or `system`, a user with no account, when nothing set it: the seed, the import, raw SQL. `actor` references `auth_user`, so a user with history cannot be deleted. An update that changes nothing but `updated_at` is not recorded; a page going public is `published` and one leaving public is `unpublished`. The snapshot is the row as stored. A new content table attaches `record_change` in the migration that creates it, or `migrate.test.ts` fails.
+The database writes the history itself: a trigger (`record_change`, migration `007`) adds a `change_events` row for every insert, update and delete of a content table (`content_pages`, `categories`, `data_collections`, `collection_records`), including the sub-pages a parent's move carries with it. Its `actor` is the transaction's `app.user_id`, which the editor's writes set (transaction-local, so a pooled connection never carries it into the next request), or `system`, a user with no account, when nothing set it: the seed, the import, raw SQL. `actor` references `auth_user`, so a user with history cannot be deleted. An update that changes nothing but `updated_at` is not recorded; a page going public is `published` and one leaving public is `unpublished`. The snapshot is the row as stored. A new content table attaches `record_change` in the migration that creates it, or `migrate.test.ts` fails.
 
-Review is recorded the same way (`record_review`, migration `013`): when a page's revision changes status, the page's own history gets `submitted` (a first submission or a resubmission), `rejected` or `approved` (on publish), by the transaction's user, numbered after the page's last event. The snapshot is the revision row, so it names the submitter (`submitted_by`), the approver or rejecter (`decided_by`) and a rejection's `comment`. A page's history therefore holds two snapshot shapes under `entity_kind = 'content_page'`: review events (`submitted`, `rejected`, `approved`) store a `page_revisions` row, whose `snapshot->>'id'` is the revision's id (the page's is `snapshot->>'page_id'`), and every other event stores a `content_pages` row. Anything that rebuilds a page's state from its history must filter on `action`. A publish then logs the live write as `updated` (or `published`) by the same approver, so a page's history reads who submitted a change, who approved it, and when it went live. Draft saves to a revision are not recorded.
+Review is recorded the same way (`record_review`, migration `013`): when a page's revision changes status, the page's own history gets `submitted` (a first submission or a resubmission), `rejected`, `approved` (on publish) or `discarded` (unpublished while waiting, migration `015`), by the transaction's user, numbered after the page's last event. The snapshot is the revision row, so it names the submitter (`submitted_by`), the approver or rejecter (`decided_by`) and a rejection's `comment`. A page's history therefore holds two snapshot shapes under `entity_kind = 'content_page'`: review events (`submitted`, `rejected`, `approved`, `discarded`) store a `page_revisions` row, whose `snapshot->>'id'` is the revision's id (the page's is `snapshot->>'page_id'`), and every other event stores a `content_pages` row. Anything that rebuilds a page's state from its history must filter on `action`. A publish then logs the live write as `updated` (or `published`) by the same approver, so a page's history reads who submitted a change, who approved it, and when it went live. Saves to a revision, draft or submitted, are not recorded.
 
-Public site reads (`/pages?url=`, `/categories…`, `/catalog`, `/search/documents`) send `public, max-age=60, stale-while-revalidate=300, stale-if-error=86400`; unknown public URLs send `public, max-age=10`. ETags and 304s remain available for public reads. These routes do not look up or refresh employee sessions.
+Public site reads (`/pages?url=`, `/categories…`, `/catalog`, `/search/documents`, `/collections/:key/records`) send `public, max-age=60, stale-while-revalidate=300, stale-if-error=86400`; unknown public URLs send `public, max-age=10`. ETags and 304s remain available for public reads. These routes do not look up or refresh employee sessions.
+
+The editor reads a collection's records through that same public route, fetching with `cache: "no-store"`, and sends a record's `updated_at` back in `if-updated-at` when it saves or deletes it. That depends on no shared cache (a CDN, or a server-side fetch cache) sitting between the editor and api_v2: a cached read up to six minutes old would turn the editor's next save into a 409 against its own earlier write. Put a cache in front of api_v2 and the editor needs an uncached, editor-scope read of records first.
 
 Preview: the site's server sends its `PREVIEW_SECRET` as `x-preview-token`, and the same reads then include `preview` content. Those responses are `no-store` with no ETag, so preview content never enters a shared cache. A wrong token, or any token when `PREVIEW_SECRET` is unset here, is a 401 rather than a quiet fall-back to the public view. `draft` content is only ever served to the editor.
 

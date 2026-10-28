@@ -859,24 +859,230 @@ describe("a revision changed after the approver read it", () => {
   );
 });
 
-describe("saving a page whose revision is waiting for review", () => {
-  it("409s with a plain message, and the revision is unchanged", async () => {
+describe("saving a page whose revision is waiting for review (#3203)", () => {
+  it("updates that revision in place: it stays submitted, and the saver joins its contributors", async () => {
     const { page, version } = await submitted();
+    const [before] = await revisions();
+
+    const response = await save(
+      TEST_EMPLOYEE,
+      { ...page, updated_at: version },
+      { title: "One more thing" },
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      title: "One more thing",
+      pending_revision: { status: "submitted", comment: null },
+    });
+    expect(response.json().updated_at > version).toBe(true);
+    const after = await revisions();
+    expect(after).toHaveLength(1);
+    expect(after[0]).toMatchObject({
+      id: before?.id,
+      status: "submitted",
+      submittedBy: TEST_EDITOR.id,
+      createdBy: TEST_EDITOR.id,
+      contributors: [TEST_EDITOR.id, TEST_EMPLOYEE.id],
+      fields: { title: "One more thing" },
+    });
+    // Saving to it is not a review step, and the live page is unchanged.
+    expect(await events()).toEqual([
+      { action: "created", actor: TEST_EMPLOYEE.id },
+      { action: "submitted", actor: TEST_EDITOR.id },
+    ]);
+    expect(await stored(page.id)).toEqual(page);
+  });
+
+  it("is refused when the revision has moved on since the editor read it", async () => {
+    const { page, version } = await submitted();
+    await save(TEST_EDITOR, { ...page, updated_at: version }, { title: "1" });
     const before = await revisions();
 
     const response = await save(
       TEST_EDITOR,
       { ...page, updated_at: version },
-      { title: "One more thing" },
+      { title: "Lost?" },
     );
 
     expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe("conflict");
+    expect(await revisions()).toEqual(before);
+  });
+
+  it("is refused with a 428 without the version the editor read, and nothing changes", async () => {
+    const { page } = await submitted();
+    const before = await revisions();
+
+    const response = await as(TEST_EDITOR, {
+      method: "PUT",
+      url: `/pages/${page.id}`,
+      payload: withDefaults(
+        aPage({ category_id: page.category_id, title: "Blind save" }),
+      ),
+    });
+
+    expect(response.statusCode).toBe(428);
     expect(response.json()).toEqual({
-      error: "under_review",
+      error: "precondition_required",
       message:
-        "This change is waiting for review. You can save more changes once an approver publishes or rejects it.",
+        "This change is waiting for review. Send the updated_at you last read in the if-updated-at header.",
     });
     expect(await revisions()).toEqual(before);
+  });
+
+  it.each(["publish", "reject"] as const)(
+    "409s an approver who would %s the version they read before it, and nothing changes",
+    async (step) => {
+      const { page, version: read } = await submitted();
+      await save(
+        TEST_EDITOR,
+        { ...page, updated_at: read },
+        { title: "Changed while waiting" },
+      );
+      const before = await revisions();
+
+      const response = await review(APPROVER, page.id, step, {
+        version: read,
+      });
+
+      expect(response.statusCode).toBe(409);
+      expect(response.json().error).toBe("conflict");
+      expect(await revisions()).toEqual(before);
+      expect(await stored(page.id)).toEqual(page);
+    },
+  );
+
+  it("lets an approver publish the latest version once they have loaded it", async () => {
+    const { page, version } = await submitted();
+    await save(
+      TEST_EDITOR,
+      { ...page, updated_at: version },
+      { title: "Changed while waiting" },
+    );
+
+    const response = await review(APPROVER, page.id, "publish");
+
+    expect(response.statusCode).toBe(200);
+    expect((await stored(page.id))?.title).toBe("Changed while waiting");
+  });
+
+  it.each(["publish", "reject"] as const)(
+    "refuses to let an approver who saved to it %s it",
+    async (step) => {
+      const { page, version } = await submitted();
+      // An approver who also edits, saving after the editor submitted.
+      await save(
+        TEST_EMPLOYEE,
+        { ...page, updated_at: version },
+        { title: "Approver's fix" },
+      );
+
+      const response = await review(TEST_EMPLOYEE, page.id, step);
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json().message).toMatch(/you made or submitted/);
+      expect((await revisions())[0]?.status).toBe("submitted");
+    },
+  );
+});
+
+describe("unpublishing a page whose revision is waiting for review (#3203)", () => {
+  it("changes only its visibility, and discards the revision, recording that in its history", async () => {
+    const { page, version } = await submitted();
+
+    const response = await save(
+      TEST_EMPLOYEE,
+      { ...page, updated_at: version },
+      {
+        visibility: "preview",
+        title: "Severance pay",
+        body_markdown: "Rewritten\n\n## Costs\n\nTwenty dollars",
+      },
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      title: page.title,
+      body_markdown: page.body_markdown,
+      visibility: "preview",
+      pending_revision: null,
+    });
+    expect(await stored(page.id)).toEqual({
+      ...page,
+      visibility: "preview",
+      updated_at: response.json().updated_at,
+    });
+    expect(await revisions()).toMatchObject([
+      {
+        status: "discarded",
+        submittedBy: TEST_EDITOR.id,
+        decidedBy: TEST_EMPLOYEE.id,
+      },
+    ]);
+    expect(
+      (await as(TEST_EDITOR, { url: `/pages/${page.id}/revision` })).statusCode,
+    ).toBe(404);
+    expect((await app.inject({ url: `/pages?url=${ENTRY}` })).statusCode).toBe(
+      404,
+    );
+    expect(await events()).toEqual([
+      { action: "created", actor: TEST_EMPLOYEE.id },
+      { action: "submitted", actor: TEST_EDITOR.id },
+      { action: "discarded", actor: TEST_EMPLOYEE.id },
+      { action: "unpublished", actor: TEST_EMPLOYEE.id },
+    ]);
+  });
+
+  it("can't put the discarded content live by making the page public again", async () => {
+    const { page, version } = await submitted();
+    const hidden = (
+      await save(
+        TEST_EMPLOYEE,
+        { ...page, updated_at: version },
+        { visibility: "preview" },
+      )
+    ).json();
+
+    // Sent with only the visibility changed, as the editor sends it.
+    const shown = await save(TEST_EMPLOYEE, hidden, {
+      title: hidden.title,
+      body_markdown: hidden.body_markdown,
+    });
+
+    expect(shown.statusCode).toBe(200);
+    expect(shown.json()).toMatchObject({
+      title: page.title,
+      body_markdown: page.body_markdown,
+      visibility: "public",
+      pending_revision: null,
+    });
+    const site = await app.inject({ url: `/pages?url=${ENTRY}` });
+    expect(site.statusCode).toBe(200);
+    expect(JSON.stringify(site.json())).not.toContain("Twenty dollars");
+    expect((await stored(page.id))?.body_markdown).not.toContain(
+      "Twenty dollars",
+    );
+    expect(
+      (await as(TEST_EDITOR, { url: `/pages/${page.id}/revision` })).statusCode,
+    ).toBe(404);
+    expect((await revisions()).map(({ status }) => status)).toEqual([
+      "discarded",
+    ]);
+  });
+
+  it("is refused to an editor, and the revision still waits", async () => {
+    const { page, version } = await submitted();
+
+    const response = await save(
+      TEST_EDITOR,
+      { ...page, updated_at: version },
+      { visibility: "preview" },
+    );
+
+    expect(response.statusCode).toBe(403);
+    expect(await stored(page.id)).toEqual(page);
+    expect((await revisions())[0]?.status).toBe("submitted");
   });
 });
 
