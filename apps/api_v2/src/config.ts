@@ -43,8 +43,14 @@ export interface AppConfig {
 export class ConfigurationError extends Error {
   /** Stable failure tag for startup diagnostics. */
   readonly _tag = "ConfigurationError";
-  /** Names of settings that need correction. */
-  constructor(readonly fields: readonly string[]) {
+  /**
+   * Names of settings that need correction, and the reasons this module wrote
+   * for its own rules. Neither carries a supplied value.
+   */
+  constructor(
+    readonly fields: readonly string[],
+    readonly reasons: readonly string[] = [],
+  ) {
     super(`Invalid configuration: ${fields.join(", ")}`);
   }
 }
@@ -96,6 +102,14 @@ const environment = z
       .pipe(z.array(z.email())),
   })
   .superRefine((value, context) => {
+    // Without an admin nobody can grant approver, so nobody can change what citizens see.
+    if (value.AUTH_BYPASS !== "true" && value.API_V2_ADMIN_EMAILS.length === 0)
+      context.addIssue({
+        code: "custom",
+        path: ["API_V2_ADMIN_EMAILS"],
+        message:
+          "Set API_V2_ADMIN_EMAILS to at least one admin's email: without an admin nobody can grant the approver role (ADR 0079)",
+      });
     // A bypassed API admits any caller, so it is only for an editor on this machine.
     if (
       value.AUTH_BYPASS === "true" &&
@@ -135,9 +149,13 @@ export function parseConfig(
   const parsed = environment.safeParse(input);
   if (!parsed.success)
     return err(
-      new ConfigurationError([
-        ...new Set(parsed.error.issues.map((issue) => String(issue.path[0]))),
-      ]),
+      new ConfigurationError(
+        [...new Set(parsed.error.issues.map((issue) => String(issue.path[0])))],
+        // Only this module's own messages: Zod's can quote what was supplied.
+        parsed.error.issues
+          .filter((issue) => issue.code === "custom")
+          .map((issue) => issue.message),
+      ),
     );
   const env = parsed.data;
   return ok({
