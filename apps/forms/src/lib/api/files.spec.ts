@@ -5,6 +5,7 @@ import {
   sendFile,
   checkFile,
   FileUploadError,
+  REQUEST_TIMEOUT_MS,
   UPLOAD_PROBLEM_MESSAGE,
 } from "./files";
 
@@ -66,7 +67,20 @@ class FakeXhr {
   fail() {
     this.onerror?.();
   }
+  aborted = false;
+  abort() {
+    this.aborted = true;
+    this.onabort?.();
+  }
 }
+
+/** A fetch that never answers, but rejects like fetch does when aborted. */
+const hangingFetch = (_url: string, init: RequestInit) =>
+  new Promise<Response>((_resolve, reject) => {
+    init.signal?.addEventListener("abort", () =>
+      reject(new DOMException("aborted", "AbortError")),
+    );
+  });
 
 function jsonResponse(data: unknown, ok = true, status = 200): Response {
   return {
@@ -575,6 +589,78 @@ describe("files API client", () => {
       await vi.advanceTimersByTimeAsync(3000);
 
       await expect(result).resolves.toMatchObject({ stage: "confirm" });
+    });
+  });
+
+  // A stalled request must end, so the row can offer Retry instead of
+  // "Checking your file" forever behind a blocked Continue (#2940).
+  describe("stopping a request", () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    const ref = { key: "uploads/k", formId: "f", stepId: "s", fieldId: "fld" };
+
+    it("gives up on a confirm that doesn't answer within the request timeout", async () => {
+      fetchMock.mockImplementation(hangingFetch);
+
+      const result = checkFile(ref).catch((e: unknown) => e);
+      await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
+
+      await expect(result).resolves.toMatchObject({
+        name: "FileUploadError",
+        message: UPLOAD_PROBLEM_MESSAGE,
+      });
+    });
+
+    it("cancels the confirm when the caller aborts", async () => {
+      fetchMock.mockImplementation(hangingFetch);
+      const run = new AbortController();
+
+      const result = checkFile({ ...ref, signal: run.signal }).catch(
+        (e: unknown) => e,
+      );
+      run.abort();
+
+      await expect(result).resolves.toBeInstanceOf(FileUploadError);
+    });
+
+    it("stops re-checking when the caller aborts between checks", async () => {
+      fetchMock.mockResolvedValue(
+        jsonResponse({ key: "uploads/k", scanStatus: "pending" }),
+      );
+      const run = new AbortController();
+
+      const result = checkFile({ ...ref, signal: run.signal }).catch(
+        (e: unknown) => e,
+      );
+      await vi.advanceTimersByTimeAsync(1000);
+      run.abort();
+      await vi.advanceTimersByTimeAsync(20_000);
+
+      await expect(result).resolves.toBeInstanceOf(FileUploadError);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("aborts the S3 PUT when the caller aborts", async () => {
+      FakeXhr.respond = () => {}; // never finishes on its own
+      const run = new AbortController();
+
+      const result = putFileToS3(
+        "https://s3/put",
+        new File(["x"], "a.pdf"),
+        undefined,
+        run.signal,
+      ).catch((e: unknown) => e);
+      await vi.advanceTimersByTimeAsync(0);
+      run.abort();
+
+      await expect(result).resolves.toBeInstanceOf(FileUploadError);
+      expect(FakeXhr.last.aborted).toBe(true);
     });
   });
 });

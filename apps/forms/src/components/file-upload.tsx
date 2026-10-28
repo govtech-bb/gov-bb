@@ -142,8 +142,20 @@ export default function FileUpload({
     if (removed) setStatusMessage(`${removed.name} removed.`);
   };
 
+  // Each row's run can be cancelled: Remove on a row still uploading or
+  // checking, and every run when the field leaves the page. A cancelled run
+  // never touches state or the value again, so a run that outlives its field
+  // can't overwrite what the person has uploaded since.
+  const runsRef = React.useRef(new Map<number, AbortController>());
+  React.useEffect(() => {
+    const runs = runsRef.current;
+    return () => runs.forEach((run) => run.abort());
+  }, []);
+
   const dismissPending = (id: number) => {
     inputRef.current?.focus();
+    runsRef.current.get(id)?.abort();
+    runsRef.current.delete(id);
     setPending((prev) => prev.filter((p) => p.id !== id));
   };
 
@@ -167,9 +179,13 @@ export default function FileUpload({
    * Sends the file (unless it is already in S3), waits for the scan verdict,
    * and adds it to the form only when it is clean. A missing verdict counts as
    * clean: the upload page is for the person's benefit, and the API still
-   * refuses a file that isn't clean at submit (ADR 0078).
+   * refuses a file that isn't clean at submit (ADR 0078). A verdict we don't
+   * know is treated as "couldn't check".
    */
   const runUpload = async (id: number, file: File, sentKey?: string) => {
+    const run = new AbortController();
+    runsRef.current.set(id, run);
+    const { signal } = run;
     let key = sentKey;
     try {
       if (!key) {
@@ -186,8 +202,12 @@ export default function FileUpload({
           fieldId: field.fieldId,
           previewToken,
           draftToken,
-          onProgress: (progress) => updatePending(id, { progress }),
+          onProgress: (progress) => {
+            if (!signal.aborted) updatePending(id, { progress });
+          },
+          signal,
         });
+        if (signal.aborted) return;
       }
       updatePending(id, { status: "checking", key, error: undefined });
       setStatusMessage(`Checking ${file.name}`);
@@ -198,21 +218,26 @@ export default function FileUpload({
         fieldId: field.fieldId,
         previewToken,
         draftToken,
+        signal,
       });
+      if (signal.aborted) return;
       if (checked === "timeout") {
         settle(id, file.name, "timeout", SCAN_TIMEOUT_MESSAGE);
-      } else if (checked.scanStatus === "infected") {
-        settle(id, file.name, "infected", INFECTED_FILE_MESSAGE);
-      } else if (checked.scanStatus === "unscannable") {
-        settle(id, file.name, "unscannable", UNSCANNABLE_FILE_MESSAGE);
-      } else {
+      } else if (!checked.scanStatus || checked.scanStatus === "clean") {
         appendConfirmed(checked);
         setPending((prev) => prev.filter((p) => p.id !== id));
+      } else if (checked.scanStatus === "infected") {
+        settle(id, file.name, "infected", INFECTED_FILE_MESSAGE);
+      } else {
+        settle(id, file.name, "unscannable", UNSCANNABLE_FILE_MESSAGE);
       }
     } catch {
+      if (signal.aborted) return;
       // Keep the key: if the file reached S3, Retry only re-checks it.
       updatePending(id, { key });
       settle(id, file.name, "error", UPLOAD_PROBLEM_MESSAGE);
+    } finally {
+      if (runsRef.current.get(id) === run) runsRef.current.delete(id);
     }
   };
 
@@ -432,6 +457,20 @@ function PendingStatusView({
   onRetry: () => void;
   onRemove: () => void;
 }) {
+  // Every row has a way out, including one still in progress: a stalled
+  // upload must never trap the person behind a blocked Continue.
+  const removeLabel = p.status === "rejected" ? "Dismiss" : "Remove";
+  const removeButton = (
+    <Button
+      variant="text"
+      negative
+      className="no-print"
+      aria-label={`${removeLabel} ${p.name}`}
+      onClick={onRemove}
+    >
+      {removeLabel}
+    </Button>
+  );
   if (p.status === "uploading") {
     return (
       <span className="govbb-file-upload__status">
@@ -441,7 +480,8 @@ function PendingStatusView({
           max={1}
           value={p.progress ?? 0}
           aria-label={`Uploading ${p.name}`}
-        />
+        />{" "}
+        {removeButton}
       </span>
     );
   }
@@ -453,7 +493,8 @@ function PendingStatusView({
         <progress
           className="govbb-file-upload__progress"
           aria-label={`Checking ${p.name}`}
-        />
+        />{" "}
+        {removeButton}
       </span>
     );
   }
@@ -471,15 +512,7 @@ function PendingStatusView({
           Retry
         </Button>
       )}
-      <Button
-        variant="text"
-        negative
-        className="no-print"
-        aria-label={`${p.status === "rejected" ? "Dismiss" : "Remove"} ${p.name}`}
-        onClick={onRemove}
-      >
-        {p.status === "rejected" ? "Dismiss" : "Remove"}
-      </Button>
+      {removeButton}
     </span>
   );
 }

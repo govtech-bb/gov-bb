@@ -43,8 +43,8 @@ export const UPLOAD_PROBLEM_MESSAGE =
   "We had a problem uploading your file. Try again.";
 
 /**
- * Raised when any step of the upload flow fails. `stage` says which one, for
- * code (Retry resumes from it); the message is always UPLOAD_PROBLEM_MESSAGE.
+ * Raised when any step of the upload flow fails, or is cancelled. The message
+ * is always UPLOAD_PROBLEM_MESSAGE; `stage` names the step, for debugging.
  */
 export class FileUploadError extends Error {
   constructor(
@@ -56,12 +56,20 @@ export class FileUploadError extends Error {
   }
 }
 
+/**
+ * How long presign or confirm may take before we give up. Confirm waits up to
+ * 4s server-side for the scan tag, so this leaves a wide margin; without it a
+ * stalled request would leave a row "Checking your file" forever (#2940).
+ */
+export const REQUEST_TIMEOUT_MS = 30_000;
+
 async function postJson<T>(
   endpoint: string,
   body: unknown,
   stage: UploadStage,
   previewToken?: string,
   draftToken?: string,
+  signal?: AbortSignal,
 ): Promise<T> {
   // Forward the recipe token(s) as headers (never in the body — the API runs
   // forbidNonWhitelisted) so presign/confirm resolve the file field's config
@@ -73,10 +81,19 @@ async function postJson<T>(
     ...(previewToken ? { "X-Recipe-Preview": previewToken } : {}),
     ...(draftToken ? { "X-Recipe-Draft": draftToken } : {}),
   };
+  // Ends the request on the timeout or when the caller cancels (Remove, or the
+  // field leaving the page). Built by hand: AbortSignal.any is too new for
+  // some of the browsers citizens use.
+  const stop = new AbortController();
+  const timer = setTimeout(() => stop.abort(), REQUEST_TIMEOUT_MS);
+  const cancel = () => stop.abort();
+  signal?.addEventListener("abort", cancel);
+  if (signal?.aborted) stop.abort();
   let response: Response;
   try {
     response = await fetch(`${API_URL}${endpoint}`, {
       method: "POST",
+      signal: stop.signal,
       headers,
       body: JSON.stringify(body),
       // Attach the cross-app shared `preview` cookie so presign/confirm resolve
@@ -87,6 +104,9 @@ async function postJson<T>(
     });
   } catch {
     throw new FileUploadError(UPLOAD_PROBLEM_MESSAGE, stage);
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", cancel);
   }
   if (!response.ok) {
     throw new FileUploadError(UPLOAD_PROBLEM_MESSAGE, stage);
@@ -100,6 +120,7 @@ export const presignUpload = (
   req: PresignUploadRequest,
   previewToken?: string,
   draftToken?: string,
+  signal?: AbortSignal,
 ): Promise<PresignUploadResponse> =>
   postJson<PresignUploadResponse>(
     "/files/presign-upload",
@@ -107,12 +128,14 @@ export const presignUpload = (
     "presign",
     previewToken,
     draftToken,
+    signal,
   );
 
 export const confirmUpload = (
   req: ConfirmUploadRequest,
   previewToken?: string,
   draftToken?: string,
+  signal?: AbortSignal,
 ): Promise<UploadedFile> =>
   postJson<UploadedFile>(
     "/files/confirm-upload",
@@ -120,6 +143,7 @@ export const confirmUpload = (
     "confirm",
     previewToken,
     draftToken,
+    signal,
   );
 
 /**
@@ -140,11 +164,14 @@ const resolveContentType = (file: File): string =>
  * PUTs the file to its presigned S3 URL. Uses XMLHttpRequest rather than fetch
  * because only XHR reports upload progress (`upload.onprogress`), which drives
  * the progress bar (#2940). `onProgress` gets the fraction sent, 0 to 1.
+ * No timeout: a large file on a slow connection can rightly take minutes, so a
+ * stalled upload is ended by the person (Remove) through `signal`.
  */
 export const putFileToS3 = (
   uploadUrl: string,
   file: File,
   onProgress?: (fraction: number) => void,
+  signal?: AbortSignal,
 ): Promise<void> =>
   new Promise((resolve, reject) => {
     const failed = () =>
@@ -164,6 +191,7 @@ export const putFileToS3 = (
     xhr.onerror = failed;
     xhr.onabort = failed;
     xhr.ontimeout = failed;
+    signal?.addEventListener("abort", () => xhr.abort());
     xhr.send(file);
   });
 
@@ -184,6 +212,8 @@ export interface UploadFileParams {
   draftToken?: string;
   /** Called with the fraction of the file sent to S3, 0 to 1. */
   onProgress?: (fraction: number) => void;
+  /** Cancels the run: Remove on an in-progress row, or the field unmounting. */
+  signal?: AbortSignal;
 }
 
 /**
@@ -199,6 +229,7 @@ export const sendFile = async ({
   previewToken,
   draftToken,
   onProgress,
+  signal,
 }: UploadFileParams): Promise<string> => {
   const presign = await presignUpload(
     {
@@ -211,9 +242,10 @@ export const sendFile = async ({
     },
     previewToken,
     draftToken,
+    signal,
   );
 
-  await putFileToS3(presign.uploadUrl, file, onProgress);
+  await putFileToS3(presign.uploadUrl, file, onProgress, signal);
   return presign.key;
 };
 
@@ -245,6 +277,7 @@ export const checkFile = async ({
   fieldId,
   previewToken,
   draftToken,
+  signal,
 }: CheckFileParams): Promise<UploadedFile | "timeout"> => {
   const deadline = Date.now() + SCAN_RECHECK_BUDGET_MS;
   for (;;) {
@@ -252,10 +285,14 @@ export const checkFile = async ({
       { key, formId, stepId, fieldId },
       previewToken,
       draftToken,
+      signal,
     );
     if (file.scanStatus !== "pending") return file;
     if (Date.now() + SCAN_RECHECK_INTERVAL_MS > deadline) return "timeout";
     await wait(SCAN_RECHECK_INTERVAL_MS);
+    if (signal?.aborted) {
+      throw new FileUploadError(UPLOAD_PROBLEM_MESSAGE, "confirm");
+    }
   }
 };
 

@@ -922,9 +922,13 @@ describe("FileUpload", () => {
         expect(uploadBlock(baseField.id)).toBe(UPLOAD_IN_PROGRESS_MESSAGE),
       );
 
+      // Once on mount, once when the upload started blocking...
+      expect(onUploadsChange).toHaveBeenCalledTimes(2);
+
       await act(async () => finishCheck(makeUploaded("doc.pdf")));
       expect(uploadBlock(baseField.id)).toBeUndefined();
-      expect(onUploadsChange).toHaveBeenCalled();
+      // ...and once more when it stopped, so a shown error is re-judged.
+      expect(onUploadsChange).toHaveBeenCalledTimes(3);
     });
 
     it("blocks while a refused file is on the field, until it is removed", async () => {
@@ -967,5 +971,91 @@ describe("FileUpload", () => {
       unmount();
       expect(uploadBlock(baseField.id)).toBeUndefined();
     });
+  });
+
+  // A stalled upload must not trap the person behind Continue, and a run must
+  // not outlive its field and overwrite the value later (#2940 review).
+  describe("cancelling a run", () => {
+    const pdf = () => makeFile("doc.pdf", "application/pdf", 100);
+
+    it("Remove on an uploading row cancels it, unblocks Continue, and never adds the file", async () => {
+      const user = userEvent.setup();
+      let signal: AbortSignal | undefined;
+      let finishSend: (key: string) => void = () => {};
+      mockSendFile.mockImplementation((params: { signal: AbortSignal }) => {
+        signal = params.signal;
+        return new Promise<string>((resolve) => (finishSend = resolve));
+      });
+      const fileInput = renderHarness();
+
+      await user.upload(fileInput, pdf());
+      await user.click(
+        await screen.findByRole("button", { name: "Remove doc.pdf" }),
+      );
+
+      expect(signal?.aborted).toBe(true);
+      expect(uploadBlock(baseField.id)).toBeUndefined();
+      expect(fileInput).toHaveFocus();
+      await act(async () => finishSend("uploads/k"));
+      expect(mockCheckFile).not.toHaveBeenCalled();
+      expect(harnessOnFileChange).not.toHaveBeenCalled();
+    });
+
+    it("Remove on a checking row cancels the check", async () => {
+      const user = userEvent.setup();
+      let signal: AbortSignal | undefined;
+      mockCheckFile.mockImplementation((params: { signal: AbortSignal }) => {
+        signal = params.signal;
+        return new Promise(() => {});
+      });
+      const fileInput = renderHarness();
+
+      await user.upload(fileInput, pdf());
+      await screen.findByText(/checking your file/i);
+      await user.click(screen.getByRole("button", { name: "Remove doc.pdf" }));
+
+      expect(signal?.aborted).toBe(true);
+      expect(screen.queryByText(/checking your file/i)).toBeNull();
+    });
+
+    it("cancels its runs when the field leaves the page, and never writes the value after", async () => {
+      const user = userEvent.setup();
+      let signal: AbortSignal | undefined;
+      let finishCheck: (f: UploadedFile) => void = () => {};
+      mockCheckFile.mockImplementation((params: { signal: AbortSignal }) => {
+        signal = params.signal;
+        return new Promise<UploadedFile>((resolve) => (finishCheck = resolve));
+      });
+      const { fileInput, unmount, onFileChange } = renderComponent();
+
+      await user.upload(fileInput, pdf());
+      await waitFor(() => expect(signal).toBeDefined());
+      unmount();
+
+      expect(signal?.aborted).toBe(true);
+      await act(async () => finishCheck(makeUploaded("doc.pdf")));
+      expect(onFileChange).not.toHaveBeenCalled();
+    });
+  });
+
+  // Only a missing verdict counts as clean; a value we don't know (a typo, or
+  // one AWS adds later) is treated as "couldn't check", like the API does.
+  it("treats an unknown verdict as couldn't check", async () => {
+    const user = userEvent.setup();
+    mockCheckFile.mockResolvedValue({
+      ...makeUploaded("doc.pdf"),
+      scanStatus: "failed",
+    });
+    const fileInput = renderHarness();
+
+    await user.upload(fileInput, makeFile("doc.pdf", "application/pdf", 100));
+
+    expect(
+      await screen.findByText(UNSCANNABLE_FILE_MESSAGE, {
+        exact: false,
+        selector: ".govbb-file-upload__status--error",
+      }),
+    ).toBeVisible();
+    expect(harnessOnFileChange).not.toHaveBeenCalled();
   });
 });
