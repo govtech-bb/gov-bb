@@ -64,7 +64,7 @@ function blockerText(title: string, blockers: CategoryBlockers) {
   ].filter((use) => use !== false);
 
   if (blockers.reserved_route)
-    return `A page of the site's own is at this address, so ${title} stays.`;
+    return `A page of the site’s own is at this address, so ${title} stays.`;
 
   const one = blockers.pages + blockers.subcategories === 1;
 
@@ -167,11 +167,14 @@ const editWords = {
  */
 export function CategoryDialog({
   api,
+  open,
   category,
   categories,
   close,
 }: {
   api: EditorApi;
+  /** Shown; closed, it fades away as it was. Each opening is a new dialog. */
+  open: boolean;
   /** The category to edit, as it was when the dialog opened; without one, a new category. */
   category?: Category;
   /** The list as it is now, to check the fields against. */
@@ -312,27 +315,28 @@ export function CategoryDialog({
         Load their version
       </Button>
     ) : (
-      <Button type="submit" variant="accent" size="md" pending={working}>
-        {attempt?._tag === "Saving"
-          ? words.pending
-          : working
-            ? "Checking category…"
-            : unsettled
-              ? "Check again"
-              : words.action}
+      <Button
+        type="submit"
+        variant="accent"
+        size="md"
+        pending={working}
+        // Checking for a lost answer, which Check again does too; saving otherwise
+        pendingLabel={
+          attempt?._tag === "Checking" || unsettled ? "Checking category…" : words.pending
+        }
+      >
+        {unsettled ? "Check again" : words.action}
       </Button>
     );
 
-  // While a save or a check is out, the dialog stays: its answer, and what was typed, still need it
-  const dismiss = () => {
-    if (!working) close();
-  };
-
   return (
     <WorkspaceDialog
+      open={open}
       title={words.title}
       description={words.description}
-      close={dismiss}
+      // While a save or a check is out, the dialog stays: its answer, and what was typed, still need it
+      pending={working}
+      close={close}
       onSubmit={() => {
         if (working || attempt?._tag === "Superseded") return;
 
@@ -365,7 +369,6 @@ export function CategoryDialog({
             }
             error={errorOf("slug")}
             disabled={!!locked}
-            className="mt-4"
           >
             <Input
               ref={slugControl}
@@ -377,12 +380,7 @@ export function CategoryDialog({
               onChange={(event) => setSlug(event.target.value)}
             />
           </Field>
-          <Field
-            label="Parent category"
-            error={errorOf("parent_id")}
-            disabled={!!locked}
-            className="mt-4"
-          >
+          <Field label="Parent category" error={errorOf("parent_id")} disabled={!!locked}>
             <NativeSelect
               ref={parentControl}
               value={parentId}
@@ -396,7 +394,7 @@ export function CategoryDialog({
               ))}
             </NativeSelect>
           </Field>
-          <Field label="Description (optional)" error={errorOf("description")} className="mt-4">
+          <Field label="Description (optional)" error={errorOf("description")}>
             <Textarea
               rows={3}
               value={description}
@@ -408,7 +406,7 @@ export function CategoryDialog({
       }
       footer={
         <>
-          <Button size="md" disabled={working} onClick={dismiss}>
+          <Button size="md" disabled={working} onClick={close}>
             Cancel
           </Button>
           {action}
@@ -425,12 +423,15 @@ export function CategoryDialog({
  */
 export function DeleteCategoryDialog({
   api,
+  open,
   category,
   categories,
   close,
   focusAfter,
 }: {
   api: EditorApi;
+  /** Shown; closed, it fades away as it was. Each opening is a new dialog. */
+  open: boolean;
   /** The category, as it was when the dialog opened. */
   category: Category;
   /** The list as it is now. */
@@ -504,14 +505,14 @@ export function DeleteCategoryDialog({
   if (blocked)
     return (
       <Dialog.Root
-        open
-        onOpenChange={(open) => {
-          if (!open) close();
+        open={open}
+        onOpenChange={(next) => {
+          if (!next) close();
         }}
       >
         <Dialog.Content size="sm">
           <Dialog.Header>
-            <Dialog.Title>{base.title} can't be deleted yet</Dialog.Title>
+            <Dialog.Title>{base.title} can’t be deleted yet</Dialog.Title>
             <Dialog.Description>{blocked}</Dialog.Description>
           </Dialog.Header>
           <Dialog.Actions>
@@ -541,13 +542,18 @@ export function DeleteCategoryDialog({
 
   return (
     <ConfirmDialog
-      open
+      open={open}
       onClose={close}
       title={`Delete ${base.title}?`}
-      description="Services can no longer be filed under it. This can't be undone."
+      description="Services can no longer be filed under it. This can’t be undone."
       confirm={superseded ? "Load their version" : unsettled ? "Check again" : "Delete category"}
       tone={superseded || unsettled ? "accent" : "danger"}
-      pendingLabel={attempt?._tag === "Saving" ? "Deleting category…" : "Checking category…"}
+      // Loading their version and Check again check the list; deleting otherwise
+      pendingLabel={
+        superseded || unsettled || attempt?._tag === "Checking"
+          ? "Checking category…"
+          : "Deleting category…"
+      }
       pending={working}
       error={refusal.length > 0 && <ApiProblemText messages={refusal} />}
       finalFocus={() => (deleted.current ? focusAfter.current : true)}

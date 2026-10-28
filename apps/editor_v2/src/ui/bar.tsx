@@ -110,7 +110,13 @@ function BarTool({ icon, label, children, className, ...props }: ToolProps) {
     </Button>
   );
 
-  return wide ? tool : <Tip content={label}>{tool}</Tip>;
+  // Its tooltip waits, unshown, while its name is on screen: the same button either way, so it keeps its focus as the
+  // window crosses 1200px
+  return (
+    <Tip content={label} disabled={wide}>
+      {tool}
+    </Tip>
+  );
 }
 
 /**

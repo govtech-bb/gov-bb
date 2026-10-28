@@ -34,11 +34,12 @@ const triggers = {
     "flex h-9 w-full gap-2 bg-white px-2.5 font-normal aria-invalid:shadow-input-error aria-invalid:focus-visible:shadow-input-focus data-disabled:bg-tint data-disabled:text-muted data-disabled:shadow-none max-sm:text-16",
   // A word in a sentence, such as a logic rule: as wide as its value
   pill: "inline-flex h-8 max-w-80 gap-1.5 bg-white px-2.5 font-semibold data-disabled:opacity-50",
-  // A list's filter, in the toolbar over it: Input sm's height, as wide as its value. While it narrows the list it's a
-  // Tag's chosen blue, so the filters at work stand out from those showing everything; hover and focus still edge it.
+  // A list's filter, in the toolbar over it: Input sm's height, as wide as its value but at least 192px beside the
+  // others, so choosing one, such as a category, doesn't push the filters after it along. While it narrows the list it's
+  // a Tag's chosen blue, so the filters at work stand out from those showing everything; hover and focus still edge it.
   // Its "everything" is an item valued "" or, with `multiple`, its placeholder
   filter:
-    "inline-flex h-8 max-w-64 gap-2 bg-white px-2.5 font-normal not-data-placeholder:bg-highlight not-data-placeholder:text-blue-80 not-data-placeholder:shadow-none max-sm:text-16",
+    "inline-flex h-8 max-w-64 gap-2 bg-white px-2.5 font-normal not-data-placeholder:bg-highlight not-data-placeholder:text-blue-80 not-data-placeholder:shadow-none max-sm:text-16 sm:min-w-48",
 };
 
 // A visible label wraps the select in a Field, with its hint and error. Without one, name it
@@ -126,7 +127,7 @@ export function Select<V extends string>(props: SelectProps<V>) {
     <BaseSelect.Trigger
       {...naming}
       className={cn(
-        "min-w-0 cursor-pointer items-center rounded-sm text-start text-14 leading-none text-ink shadow-input outline-none transition-shadow duration-150 hover:shadow-input-hover focus-visible:shadow-input-focus data-popup-open:shadow-input-focus data-disabled:cursor-not-allowed",
+        "min-w-0 cursor-pointer items-center rounded-sm text-start text-14 leading-none text-ink shadow-input outline-none transition-shadow hover:shadow-input-hover focus-visible:shadow-input-focus data-popup-open:shadow-input-focus data-disabled:cursor-not-allowed",
         touchTarget,
         triggers[variant],
         className,
@@ -242,7 +243,7 @@ export function SelectPopup({ footer, children }: { footer?: ReactNode; children
         align="start"
         sideOffset={6}
         collisionPadding={8}
-        className="z-50 outline-none"
+        className="z-popup outline-none"
       >
         <BaseSelect.Popup className={fieldPopup}>
           <BaseSelect.List className={fieldList}>{children}</BaseSelect.List>

@@ -28,10 +28,11 @@ export function Tip({
     <Tooltip.Root disableHoverablePopup disabled={disabled}>
       <Tooltip.Trigger render={children} />
       <Tooltip.Portal>
-        <Tooltip.Positioner side={side} sideOffset={10} collisionPadding={8} className="z-60">
+        <Tooltip.Positioner side={side} sideOffset={10} collisionPadding={8} className="z-tooltip">
+          {/* It fades in and out on the popups' timing */}
           <Tooltip.Popup
             className={cn(
-              "max-w-[calc(100vw-32px)] rounded-sm bg-ink px-2 py-1 text-12 leading-4 font-semibold transition-opacity duration-200 ease-out data-ending-style:opacity-0 data-instant:transition-none data-starting-style:opacity-0",
+              "max-w-[calc(100vw-32px)] rounded-sm bg-ink px-2 py-1 text-12 leading-4 font-semibold transition-opacity duration-(--duration-popup-in) ease-out-quint data-ending-style:opacity-0 data-ending-style:duration-(--duration-popup-out) data-instant:transition-none data-starting-style:opacity-0",
               hint
                 ? "text-grey-40 [&_em]:text-white [&_em]:not-italic [&_kbd]:text-white"
                 : "text-white",

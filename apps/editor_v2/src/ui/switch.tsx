@@ -13,12 +13,12 @@ export function Switch({ label, className, ...props }: SwitchProps) {
   const control = (
     <BaseSwitch.Root
       className={cn(
-        "relative inline-flex h-4.5 w-7.5 shrink-0 cursor-pointer rounded-full bg-grey-60 transition-colors duration-150 hover:bg-grey-70 data-checked:bg-interactive data-checked:hover:bg-interactive-active data-disabled:cursor-not-allowed data-disabled:opacity-50",
+        "relative inline-flex h-4.5 w-7.5 shrink-0 cursor-pointer rounded-full bg-grey-60 transition-colors hover:bg-grey-70 data-checked:bg-interactive data-checked:hover:bg-interactive-active data-disabled:cursor-not-allowed data-disabled:opacity-50",
         !label && className,
       )}
       {...props}
     >
-      <BaseSwitch.Thumb className="absolute top-0.5 left-0.5 size-3.5 rounded-full bg-white transition-transform duration-150 ease-out-quint data-checked:translate-x-3 motion-reduce:transition-none" />
+      <BaseSwitch.Thumb className="absolute top-0.5 left-0.5 size-3.5 rounded-full bg-white transition-transform ease-out-quint data-checked:translate-x-3 motion-reduce:transition-none" />
     </BaseSwitch.Root>
   );
 

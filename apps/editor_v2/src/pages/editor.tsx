@@ -12,14 +12,15 @@ export function PageEditor({ label = "Page content" }: { label?: string }) {
   return (
     // The page reaches left into a gutter, where the block rail sits
     <div
-      className="page-editor group/page relative -ms-(--page-gutter) ps-(--page-gutter) [--page-gutter:4.5rem]"
+      className="page-editor relative -ms-(--page-gutter) ps-(--page-gutter) [--page-gutter:4.5rem]"
       ref={setAnchor}
     >
       <ContentEditable
         aria-label={label}
         aria-describedby={hintId}
-        // The block being dragged fades, to show it's the one moving. An empty page shrinks to its prompt
-        className="page-body page-editable min-h-40 outline-none group-has-[[data-empty-prompt]]/page:min-h-13 *:data-dragged:opacity-40"
+        // The block being dragged fades, to show it's the one moving. One line tall at the least, whether or not the
+        // page is empty, so Add content under it doesn't drop as the first letter is typed
+        className="page-body page-editable min-h-13 outline-none *:data-dragged:opacity-40"
       />
       {anchor && <PageBlockControls anchor={anchor} hintId={hintId} />}
       <PageSlashMenu />

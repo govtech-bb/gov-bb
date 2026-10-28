@@ -119,10 +119,9 @@ export function Caption({ icon, children }: { icon: ReactNode; children: string 
   );
 }
 
-export const row = "relative flex w-max items-center gap-1 *:shrink-0 [&_button:focus]:outline-3";
+export const row = "relative flex w-max items-center gap-1 *:shrink-0";
 
-export const header =
-  "flex items-center gap-1 text-14 leading-5 font-semibold text-muted [&_button:focus]:outline-3";
+export const header = "flex items-center gap-1 text-14 leading-5 font-semibold text-muted";
 
 /** Use the nearest vertically scrolling ancestor, falling back to the page. */
 export function scroller(el: HTMLElement) {
@@ -295,14 +294,14 @@ export function ContextMenu({
 
   return createPortal(
     <>
-      <div className="form-context-menu-overlay fixed inset-0 z-1000000005" />
+      <div className="form-context-menu-overlay fixed inset-0 z-popup" />
       <div
         ref={box}
         aria-hidden={!place}
         onClick={(e) => e.stopPropagation()}
         style={style}
         className={cn(
-          "form-context-menu z-1000000005 max-w-175 overflow-hidden rounded-sm bg-white font-sans shadow-popup max-md:max-w-[min(700px,calc(100vw-50px))] max-sm:max-w-[min(700px,calc(50vw-10px))]",
+          "form-context-menu z-popup max-w-175 overflow-hidden rounded-sm bg-white font-sans shadow-popup max-md:max-w-[min(700px,calc(100vw-50px))] max-sm:max-w-[min(700px,calc(50vw-10px))]",
           into ? "absolute" : "fixed",
           !place && "opacity-0",
         )}
@@ -352,12 +351,13 @@ export const divider = <span className="ml-1 h-4 w-px shrink-0 bg-grey-30" />;
 
 export const pillValue = "pointer-events-none min-w-0 truncate leading-normal select-none";
 
+// Focused from the keyboard it takes the global ring, teal over an ink edge: outline-none would cancel any outline-*
 export const pillButton = cn(
   pillChevron,
-  "relative ml-0.5 cursor-pointer outline-none after:absolute after:-inset-y-2 after:-right-2 after:-left-1.75 focus-visible:rounded-xs focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-focus",
+  "relative ml-0.5 cursor-pointer after:absolute after:-inset-y-2 after:-right-2 after:-left-1.75 focus-visible:rounded-xs",
 );
 
-export const popupLayer = "z-50 outline-none";
+export const popupLayer = "z-popup outline-none";
 
 export const searchBar =
   "flex min-h-9 w-full shrink-0 items-center gap-2 border-b border-line bg-white pr-2.5 pl-3.5 [&>svg:first-child]:size-4 [&>svg:first-child]:shrink-0 [&>svg:first-child]:text-subtle";
@@ -1331,7 +1331,7 @@ export function TreeRowView({
               onToggle();
             }}
             className={cn(
-              "flex size-5 shrink-0 items-center justify-center rounded-sm text-muted transition-colors before:absolute before:inset-y-0 before:left-0 before:w-[calc(var(--indent)+28px)] hover:bg-hover hover:text-ink focus-visible:outline-none [&>svg]:size-3.5 [&>svg]:transition-transform [&>svg]:duration-150",
+              "flex size-5 shrink-0 items-center justify-center rounded-sm text-muted transition-colors before:absolute before:inset-y-0 before:left-0 before:w-[calc(var(--indent)+28px)] hover:bg-hover hover:text-ink focus-visible:outline-none [&>svg]:size-3.5 [&>svg]:transition-transform",
               r.open && "[&>svg]:rotate-90",
             )}
           >

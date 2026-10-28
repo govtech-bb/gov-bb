@@ -5,6 +5,7 @@ import { cn } from "../cn";
 import { Bar } from "./bar";
 import { Button } from "./button";
 import { backdrop } from "./dialog";
+import { Tip } from "./tooltip";
 import { useMediaQuery } from "./use-media-query";
 
 /** Where a panel shows: beside the page on a wide screen, or as a drawer over it on a narrow one. */
@@ -45,6 +46,38 @@ const slides = {
   end: "[transform:translateX(var(--drawer-swipe-movement-x,0px))] data-starting-style:translate-x-full data-ending-style:translate-x-full",
 };
 
+/**
+ * Shows and hides a panel, or opens its drawer: only an icon, at the edge of the panel it moves, where it reads as
+ * part of the frame rather than one of the page's tools. Its tooltip says what a press does, such as “Hide pages”.
+ */
+export function PanelToggle({
+  panel,
+  label,
+  icon,
+  disabled,
+}: {
+  panel: DrawerPanel;
+  /** What the panel holds, such as “Pages”: the button's name. */
+  label: string;
+  icon: ReactNode;
+  disabled?: boolean;
+}) {
+  return (
+    <Tip content={`${panel.open ? "Hide" : "Show"} ${label.toLowerCase()}`}>
+      <Button
+        icon={icon}
+        aria-label={label}
+        aria-expanded={panel.open}
+        aria-controls={panel.open ? panel.id : undefined}
+        disabled={disabled}
+        onClick={() => panel.setOpen(!panel.open)}
+        // The panel beside it says it's open: the button isn't tinted for it, as a menu's trigger is, until pointed at
+        className="aria-expanded:not-hover:bg-transparent aria-expanded:not-hover:text-muted"
+      />
+    </Tip>
+  );
+}
+
 type DrawerProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -71,7 +104,7 @@ export function Drawer({ open, onOpenChange, side, id, label, inert, children }:
         <BaseDrawer.Backdrop className={backdrop} />
         <BaseDrawer.Viewport
           className={cn(
-            "fixed inset-0 z-50 flex",
+            "fixed inset-0 z-popup flex",
             side === "start" ? "justify-start" : "justify-end",
           )}
         >
@@ -79,7 +112,7 @@ export function Drawer({ open, onOpenChange, side, id, label, inert, children }:
             id={id}
             className={cn(
               "flex h-full w-[min(22rem,calc(100vw-2.5rem))] flex-col bg-white text-14 text-ink shadow-popup outline-none",
-              "transition-[translate,transform] duration-300 ease-out-quint data-swiping:duration-0 data-ending-style:duration-200 motion-reduce:transition-none",
+              "transition-[translate,transform] duration-(--duration-drawer-in) ease-out-quint data-swiping:duration-0 data-ending-style:duration-(--duration-drawer-out) motion-reduce:transition-none",
               slides[side],
             )}
           >

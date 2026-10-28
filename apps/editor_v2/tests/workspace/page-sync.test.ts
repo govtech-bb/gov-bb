@@ -117,7 +117,7 @@ describe("saving a page", () => {
     ],
     [
       new ApiFailure(403),
-      { kind: "forbidden", message: "You don't have permission to save this change." },
+      { kind: "forbidden", message: "You don’t have permission to save this change." },
     ],
     [new ApiFailure(503), { kind: "failed" }],
     [new ApiFailure(0), { kind: "failed" }],

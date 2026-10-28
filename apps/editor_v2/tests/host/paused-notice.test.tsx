@@ -51,7 +51,7 @@ test("a form's canvas no longer pauses silently: its bar says why", async () => 
   await act(async () => store.edit(`${store.getSnapshot().source}\nA line not yet applied.\n`));
 
   expect(notices("Form tools")?.textContent).toBe(
-    "Editing is pausedYour Markdown changes haven't been applied.Review Markdown changes",
+    "Editing is pausedYour Markdown changes haven’t been applied.Review Markdown changes",
   );
   expect(document.querySelector(".contents[inert]")).not.toBeNull();
 });

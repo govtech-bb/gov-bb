@@ -5,7 +5,7 @@ import { cn } from "../cn";
 
 // Ticked and partly ticked boxes fill with the action colour. Focus keeps its ring over every state
 const box =
-  "grid size-4 shrink-0 cursor-pointer place-items-center rounded-xs bg-white text-white shadow-input outline-none transition-[background-color,box-shadow] duration-150 hover:shadow-input-hover focus-visible:shadow-input-focus data-checked:bg-interactive data-checked:shadow-none data-indeterminate:bg-interactive data-indeterminate:shadow-none data-checked:focus-visible:shadow-input-focus data-indeterminate:focus-visible:shadow-input-focus data-disabled:cursor-not-allowed data-disabled:opacity-50";
+  "grid size-4 shrink-0 cursor-pointer place-items-center rounded-xs bg-white text-white shadow-input outline-none transition-[background-color,box-shadow] hover:shadow-input-hover focus-visible:shadow-input-focus data-checked:bg-interactive data-checked:shadow-none data-indeterminate:bg-interactive data-indeterminate:shadow-none data-checked:focus-visible:shadow-input-focus data-indeterminate:focus-visible:shadow-input-focus data-disabled:cursor-not-allowed data-disabled:opacity-50";
 
 type CheckboxProps = Omit<BaseCheckbox.Root.Props, "className" | "children" | "render"> & {
   /** Beside the box, and clicking it ticks the box. Without one, name the box with `aria-label`. */

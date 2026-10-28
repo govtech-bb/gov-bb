@@ -6,12 +6,6 @@ const dates = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: 
 
 // table-hooks registers these cells and they read its cell context: stated return types keep that cycle inferable
 
-export function TextCell(): ReactNode {
-  const value = useCellContext<string | null>().getValue();
-
-  return value ? value : <span className="text-muted">None</span>;
-}
-
 /** An ISO timestamp as its UTC calendar day, e.g. 6 Oct 2026. */
 export function DateCell(): ReactNode {
   const value = useCellContext<string>().getValue();

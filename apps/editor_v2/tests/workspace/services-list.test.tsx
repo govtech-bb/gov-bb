@@ -142,6 +142,27 @@ test("the list sits in a card with a defined grey edge over the sheet's shadow",
   expect(card.classList).toContain("rounded-sm");
 });
 
+test("its heading has a line under the title, as Categories' has, so the table sits where Categories' does", () => {
+  const html = renderToStaticMarkup(listed([service(1)], {}));
+  const page = new DOMParser().parseFromString(html, "text/html");
+
+  expect(page.querySelector("h1 + p")?.textContent).toBe(
+    "Each service has an entry page, an optional start page and supporting pages.",
+  );
+});
+
+test("its columns keep their widths whatever the rows hold, the service taking the rest", () => {
+  const html = renderToStaticMarkup(listed(thirty, {}));
+  const page = new DOMParser().parseFromString(html, "text/html");
+
+  const widths = [...page.querySelectorAll("thead th")].map(
+    (th) => [...th.classList].find((name) => name.startsWith("w-")) ?? "",
+  );
+
+  expect(page.querySelector("table")!.classList).toContain("table-fixed");
+  expect(widths).toEqual(["", "w-48", "w-36", "w-44"]);
+});
+
 let host: HTMLDivElement;
 
 let root: Root;
@@ -608,4 +629,21 @@ test("a failed load's Try again waits on its retry, so another press sends nothi
   });
   expect(host.querySelector('[role="alert"]')).toBeNull();
   refused.clear();
+});
+
+test("a click anywhere on a service's row opens it, as its title does", async () => {
+  await show(listed(thirty, {}));
+
+  const row = host.querySelector("tbody tr")!;
+
+  // The row lights up like a link, and its date is no control of its own
+  expect(row.classList).toContain("cursor-pointer");
+  await act(async () =>
+    row.querySelector("time")!.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+  );
+  await vi.waitFor(() =>
+    expect(router.history.location.pathname).toBe(`/services/${service(30).id}/${service(30).id}`),
+  );
+  // Back where the other tests expect the list to be
+  router.history.push("/services");
 });

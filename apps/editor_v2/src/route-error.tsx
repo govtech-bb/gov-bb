@@ -29,8 +29,13 @@ export function RouteError({ reset }: ErrorComponentProps) {
         title="Unable to open this screen"
         description="Try again. If you have unsaved changes, keep this tab open rather than refreshing."
         actions={
-          <Button variant="secondary" pending={retrying} onClick={() => void retry()}>
-            {retrying ? "Trying again…" : "Try again"}
+          <Button
+            variant="secondary"
+            pending={retrying}
+            pendingLabel="Trying again…"
+            onClick={() => void retry()}
+          >
+            Try again
           </Button>
         }
       />

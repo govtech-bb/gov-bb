@@ -56,10 +56,12 @@ export function usePageLeaveGuard({
   const pending = saving();
   const ids = signOutRequested ? unsavedIds() : affected.current;
 
+  // A page discarded as the author leaves without saving still counts, so the question doesn't turn into "Your changes
+  // have been saved" just before it closes
   const dirty = ids.some((id) => {
     const page = getPages().get(id);
 
-    return page && pageHasUnsavedChanges(page);
+    return !page || pageHasUnsavedChanges(page);
   });
 
   return {

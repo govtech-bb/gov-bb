@@ -33,11 +33,12 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import { Popover } from "../../../ui/popover";
+import { belowBar, Popover } from "../../../ui/popover";
 import { Button } from "../../../ui/button";
 import { LinkForm } from "../../../ui/link-picker";
 import { Tip } from "../../../ui/tooltip";
 import { TurnIntoMenu } from "../../../ui/turn-into";
+import { useLatched } from "../../../ui/use-latched";
 import { useEditorDefinition, useLinkPages } from "../../react/composer";
 import { turnIntoOptions } from "../../react/turn-into";
 import { composing } from "./editing";
@@ -208,24 +209,27 @@ export function Toolbar({
     );
   }, [editor, isPlainText, linksEnabled]);
 
-  const state =
-    open &&
-    editor.isEditable() &&
-    editor.getEditorState().read(
-      () => {
-        const selection = $textSelection(isPlainText);
+  const current =
+    open && editor.isEditable()
+      ? editor.getEditorState().read(
+          () => {
+            const selection = $textSelection(isPlainText);
 
-        return (
-          selection && {
-            bold: selection.hasFormat("bold"),
-            italic: selection.hasFormat("italic"),
-            link: $link(selection)?.getURL() ?? null,
-            turnInto: turnInto?.$choices() ?? null,
-          }
-        );
-      },
-      { editor },
-    );
+            return (
+              selection && {
+                bold: selection.hasFormat("bold"),
+                italic: selection.hasFormat("italic"),
+                link: $link(selection)?.getURL() ?? null,
+                turnInto: turnInto?.$choices() ?? null,
+              }
+            );
+          },
+          { editor },
+        )
+      : null;
+
+  // What it showed last, while it fades out
+  const state = useLatched(current);
 
   if (!state) return null;
 
@@ -261,18 +265,19 @@ export function Toolbar({
   };
 
   return (
-    <Popover.Root open onOpenChange={(next) => !next && setOpen(false)}>
-      {/* Above the selection, so it never covers the line being read next. It only fades, as it comes and goes with
-          every selection */}
+    <Popover.Root open={!!current} onOpenChange={(next) => !next && setOpen(false)}>
+      {/* Above the selection, so it never covers the line being read next, unless the document's bar is in the way.
+          It only fades, as it comes and goes with every selection */}
       <Popover.Content
         aria-label="Text formatting"
         anchor={anchor}
         side="top"
         align="start"
         sideOffset={8}
+        collisionPadding={belowBar()}
         initialFocus={false}
         finalFocus={false}
-        className="flex items-center gap-0.5 overflow-visible p-0 px-1 motion-safe:data-starting-style:scale-100 motion-safe:data-ending-style:scale-100"
+        className="flex items-center gap-0.5 overflow-visible p-0 px-1 motion-safe:starting:scale-100 motion-safe:data-starting-style:scale-100 motion-safe:data-ending-style:scale-100"
       >
         {state.turnInto && (
           <>
@@ -319,11 +324,14 @@ export function Toolbar({
                 icon={<LinkSimple />}
                 render={(button) => <Popover.Trigger render={button} />}
               />
+              {/* Under the selected words, not over them, which the address being typed is for */}
               <Popover.Content
                 aria-label={state.link ? "Edit link" : "Add link"}
+                anchor={anchor}
                 side="bottom"
                 align="start"
                 sideOffset={5}
+                collisionPadding={belowBar()}
                 finalFocus={false}
                 className="p-0"
               >

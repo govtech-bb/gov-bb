@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Banner } from "./banner";
 import { Button } from "./button";
 import { Dialog } from "./dialog";
+import { useLatched } from "./use-latched";
 
 type ConfirmDialogProps = {
   open: boolean;
@@ -32,29 +33,31 @@ type ConfirmDialogProps = {
  * click outside doesn't close. Its button names the action, and stays pressed while it works; an error shows in the
  * dialog. Cancel comes first, so it has the focus when the dialog opens.
  */
-export function ConfirmDialog({
-  open,
-  onClose,
-  title,
-  description,
-  confirm,
-  confirmDisabled = false,
-  pendingLabel,
-  pending = false,
-  error,
-  tone = "danger",
-  finalFocus,
-  onConfirm,
-}: ConfirmDialogProps) {
+export function ConfirmDialog(props: ConfirmDialogProps) {
+  const { open, onClose, finalFocus, onConfirm } = props;
+
+  // Closing, it keeps saying what it said open, so an answer that changes what's behind it, such as leaving without
+  // saving, doesn't change its words as it fades away
+  const {
+    title,
+    description,
+    confirm,
+    confirmDisabled = false,
+    pendingLabel,
+    pending = false,
+    error,
+    tone = "danger",
+  } = useLatched(open ? props : null) ?? props;
+
   return (
     <Dialog.Root
       role="alertdialog"
       open={open}
       onOpenChange={(next) => {
-        if (!next && !pending) onClose();
+        if (!next) onClose();
       }}
     >
-      <Dialog.Content size="sm" finalFocus={finalFocus}>
+      <Dialog.Content size="sm" pending={pending} finalFocus={finalFocus}>
         <Dialog.Header>
           <Dialog.Title>{title}</Dialog.Title>
           <Dialog.Description>{description}</Dialog.Description>
@@ -72,10 +75,11 @@ export function ConfirmDialog({
             size="md"
             variant={tone}
             pending={pending}
+            pendingLabel={pendingLabel}
             disabled={confirmDisabled}
             onClick={onConfirm}
           >
-            {pending && pendingLabel ? pendingLabel : confirm}
+            {confirm}
           </Button>
         </Dialog.Actions>
       </Dialog.Content>

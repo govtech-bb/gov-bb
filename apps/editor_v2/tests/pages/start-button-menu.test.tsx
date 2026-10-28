@@ -33,10 +33,9 @@ test.each([
     );
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
+  // A destination applies as its field is left, or on Enter
   await act(async () => {
-    pageControl(".page-component-settings").dispatchEvent(
-      new Event("submit", { bubbles: true, cancelable: true }),
-    );
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
   });
   expect(start.dataset.destination).toBe("/edited");
   expect(
@@ -53,9 +52,9 @@ test("nested hover settings do not change the root block used by delete and undo
   const before = govbbPageCodec.encode(editor.getEditorState().toJSON());
   await hoverPageMenu(pageControl<HTMLElement>('[data-page-component="start"]'));
 
-  const remove = [...pageControl(".page-block-menu").querySelectorAll("button")].find(
-    (button) => button.textContent === "Delete block",
-  );
+  const remove = [
+    ...pageControl(".page-block-menu").querySelectorAll<HTMLElement>('[role="menuitem"]'),
+  ].find((item) => item.textContent === "Delete block");
 
   expect(remove).toBeDefined();
   await act(async () => remove!.click());

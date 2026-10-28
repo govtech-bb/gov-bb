@@ -148,8 +148,8 @@
   --shadow-input-active: inset 0 0 0 2px var(--govbb-color-interactive);
   /* A field whose value can't be used: a red edge, which focus replaces with its own */
   --shadow-input-error: inset 0 0 0 2px var(--govbb-color-error);
-  /* GovBB controls' hover: the pressed-paper inset */
-  --shadow-press: var(--govbb-shadow-form-hover);
+  /* A control held down: GovBB's pressed-in edge (its button.css :active), so a press shows on touch too */
+  --shadow-press: inset 0 0 0 3px var(--govbb-overlay-dark-20);
   /* The tool floats over the form, the form never does: popups lift off it in navy-tinted shade (blue-90), so a
      menu can't pass for one of the form's 2px ink controls */
   --shadow-popup: 0 0 0 1px var(--govbb-grey-40), 0 4px 8px -2px rgb(0 14 48 / 0.12), 0 16px 32px -8px rgb(0 14 48 / 0.24);
@@ -167,12 +167,39 @@
   --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
   /* Popups arriving: off the mark at once, then a long settle */
   --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+
+  /* What sits over what (z-canvas …): marks drawn over the canvas, the document's bar pinned over it, popups and
+     dialogs over both, a tooltip over a popup, and a toast over everything */
+  --z-index-canvas: 1;
+  --z-index-bar: 10;
+  --z-index-popup: 50;
+  --z-index-tooltip: 60;
+  --z-index-toast: 70;
 }
 
 /* The height of every bar: the header, a document's bar and a drawer's (src/ui/bar.tsx) */
 :root {
   --bar-height: 3.5rem;
 }
+
+/*
+ * How long things take to come and go, through duration-(--…). Popups and tooltips are quick; a dialog, a drawer and a
+ * toast travel further, so take longer. Each leaves quicker than it came. Hovers keep the 120ms default.
+ */
+:root {
+  --duration-popup-in: 160ms;
+  --duration-popup-out: 100ms;
+  --duration-dialog-in: 200ms;
+  --duration-dialog-out: 150ms;
+  --duration-drawer-in: 300ms;
+  --duration-drawer-out: 200ms;
+  --duration-toast-in: 400ms;
+  --duration-toast-out: 200ms;
+}
+
+/* A control a press would act on: not disabled, nor aria-disabled, as a pending button is or one that keeps its focus
+   while it can't be used. Only these change under the pointer and press in */
+@custom-variant pressable (&:not(:disabled, [aria-disabled="true"]));
 
 /*
  * The form on the canvas: GovBB's form controls a step denser than citizens get them (18px, not 20; 52px controls,
@@ -227,7 +254,10 @@
 }
 
 @layer base {
+  /* The scrollbar's room is kept whether the screen scrolls or not, so a list growing or shrinking past the window's
+     height, or a move to a shorter screen, doesn't shift everything sideways */
   html {
+    scrollbar-gutter: stable;
     line-height: 1.15;
     color: var(--color-ink);
     background: var(--color-white);

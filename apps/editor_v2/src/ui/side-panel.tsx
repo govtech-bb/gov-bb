@@ -1,8 +1,6 @@
 import { SidebarSimple } from "@phosphor-icons/react";
 import { createContext, useContext, useId, useState, type ReactNode } from "react";
-import { Button } from "./button";
-import { Drawer, useDrawerPanel, type DrawerPanel } from "./drawer";
-import { Tip } from "./tooltip";
+import { Drawer, PanelToggle, useDrawerPanel, type DrawerPanel } from "./drawer";
 import { wideScreen } from "./use-media-query";
 
 // A section is titled a level under what holds it: the document's h1 beside the page, the drawer's own h2 title
@@ -15,7 +13,7 @@ export function useSidePanel(): SidePanelState {
   return useDrawerPanel(wideScreen, useState(true));
 }
 
-/** Shows and hides the panel, from the document's toolbar. The panel beside the page, or over it, shows it's open. */
+/** Shows and hides the panel, from the far end of the document's bar, right above the panel it opens. */
 function SidePanelToggle({
   panel,
   label,
@@ -26,16 +24,12 @@ function SidePanelToggle({
   disabled?: boolean;
 }) {
   return (
-    <Tip content={label}>
-      <Button
-        icon={<SidebarSimple mirrored />}
-        aria-label={label}
-        aria-expanded={panel.open}
-        aria-controls={panel.open ? panel.id : undefined}
-        disabled={disabled}
-        onClick={() => panel.setOpen(!panel.open)}
-      />
-    </Tip>
+    <PanelToggle
+      panel={panel}
+      label={label}
+      icon={<SidebarSimple mirrored />}
+      disabled={disabled}
+    />
   );
 }
 

@@ -30,6 +30,7 @@ import { EmptyState } from "../ui/empty-state";
 import { LoadingState } from "../ui/loading-state";
 import { TextLink } from "../ui/text-link";
 import { Sidebar, useSidebar } from "../ui/sidebar";
+import { useLatched } from "../ui/use-latched";
 import { useScreenPlace } from "./screen-place";
 import { ScreenTitle } from "./screen-title";
 import { DocumentSessions, keptViews } from "./document-views";
@@ -53,7 +54,7 @@ const crumb =
 
 /** What someone without the editor role is told, on every screen. */
 const READ_ONLY =
-  "You can read pages and categories but not change them, because you don't have the editor role. Ask an admin to give it to you.";
+  "You can read pages and categories but not change them, because you don’t have the editor role. Ask an admin to give it to you.";
 
 /** Authenticated API services and page editors; no browser-local workspace is loaded. */
 export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { api: EditorApi }) {
@@ -130,10 +131,20 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
     setPanes(kept);
   }, [documentId, panes, pageSessions, sessions]);
   useEffect(() => {
-    setDialog(undefined);
+    setDialog(null);
   }, [documentId]);
 
-  const [dialog, setDialog] = useState<"service" | "page" | "delete">();
+  const [dialog, setDialog] = useState<"service" | "page" | "delete" | null>(null);
+  // The dialog last opened, still on the page while it fades away
+  const shown = useLatched(dialog);
+  // Counts the openings, so each opens afresh: nothing typed, and no answer left from the last time
+  const [opened, setOpened] = useState(0);
+
+  const openDialog = (kind: "service" | "page" | "delete") => {
+    setOpened((count) => count + 1);
+    setDialog(kind);
+  };
+
   const [error, setError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
   const sidebar = useSidebar(SIDEBAR_KEY);
@@ -160,6 +171,8 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
 
   const rows = useMemo(() => (remote.data ? remoteServiceRows(remote.data) : []), [remote.data]);
   const selected = rows.find((row) => row.document.id === documentId)?.document;
+  // The page being deleted, kept while its dialog fades away after the page itself has gone
+  const deleting = useLatched(dialog === "delete" ? (selected ?? null) : null);
 
   const missing =
     !!location &&
@@ -173,6 +186,15 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
   );
 
   const serviceName = place.service ?? listed?.title;
+  const servicePages = !!location && !missing && (!!remote.data || remote.isPending);
+
+  // While the service's pages are hidden, or always in a drawer, the page's bar starts with what shows them; open
+  // beside the page, the list's own header hides them
+  const showPages =
+    servicePages && !(sidebar.wide && sidebar.open) ? (
+      <Sidebar.Toggle sidebar={sidebar} label="Pages" />
+    ) : null;
+
   const serviceStatus = remote.error instanceof ApiFailure ? remote.error.status : undefined;
 
   const serviceRecovery =
@@ -189,8 +211,13 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
         Sign in again
       </Button>
     ) : (
-      <Button variant="secondary" pending={remote.isFetching} onClick={() => void remote.refetch()}>
-        {remote.isFetching ? "Refreshing service…" : "Try again"}
+      <Button
+        variant="secondary"
+        pending={remote.isFetching}
+        pendingLabel="Refreshing service…"
+        onClick={() => void remote.refetch()}
+      >
+        Try again
       </Button>
     );
 
@@ -233,7 +260,7 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
           event.preventDefault();
           document.getElementById("workspace-content")?.focus();
         }}
-        className="sr-only z-50 bg-white px-4 py-3 focus:not-sr-only focus:fixed focus:start-2 focus:top-2"
+        className="sr-only z-popup bg-white px-4 py-3 focus:not-sr-only focus:fixed focus:start-2 focus:top-2"
       >
         Skip to content
       </a>
@@ -265,17 +292,20 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
                 /
               </span>
               <span className="min-w-0 max-w-100 truncate">{serviceName}</span>
-              <Sidebar.Toggle sidebar={sidebar} variant="inverse">
-                Pages
-              </Sidebar.Toggle>
             </>
           )}
           <Bar.Actions>
             <Bar.Status className="max-w-64 truncate font-normal" title={email}>
               {email}
             </Bar.Status>
-            <Button variant="inverse" disabled={signingOut} onClick={leave.requestSignOut}>
-              {signingOut ? "Signing out…" : "Sign out"}
+            {/* Pending while it signs out, so it keeps the focus and its colour if signing out fails */}
+            <Button
+              variant="inverse"
+              pending={signingOut}
+              pendingLabel="Signing out…"
+              onClick={leave.requestSignOut}
+            >
+              Sign out
             </Button>
           </Bar.Actions>
         </Bar.Root>
@@ -297,7 +327,7 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
       )}
       <div className="flex flex-1">
         <AppNav sidebar={appNav} rail={!!location} servicesSearch={servicesSearch} />
-        {location && !missing && (remote.data || remote.isPending) && (
+        {servicePages && (
           <ServiceNav
             sidebar={sidebar}
             serviceId={location.serviceId}
@@ -305,8 +335,8 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
             loading={!remote.data}
             selectedId={documentId}
             stores={stores}
-            onAdd={() => setDialog("page")}
-            onDelete={() => setDialog("delete")}
+            onAdd={() => openDialog("page")}
+            onDelete={() => openDialog("delete")}
             readOnly={readOnly ? "You need the editor role to add or delete pages." : undefined}
             deleteBlocked={
               selected && remote.data?.pages.some((page) => page.parent_id === selected.id)
@@ -320,6 +350,8 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
           />
         )}
         <main id="workspace-content" tabIndex={-1} className="min-w-0 flex-1 outline-none">
+          {/* No page's bar to hold it yet, such as before a page is chosen: a bar of its own */}
+          {showPages && !selected && <Bar.Root>{showPages}</Bar.Root>}
           {missing && (
             <EmptyState
               kind="not-found"
@@ -378,7 +410,7 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
                   setServicesSearch(search);
                   void routerNavigate({ to: "/services", search, replace: true });
                 }}
-                onCreate={() => setDialog("service")}
+                onCreate={() => openDialog("service")}
                 readOnly={readOnly}
               />
             </section>
@@ -390,7 +422,7 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
               title={remote.data.service.title}
               description="Choose a document or add one to this service."
               actions={
-                <Button variant="accent" disabled={readOnly} onClick={() => setDialog("page")}>
+                <Button variant="accent" disabled={readOnly} onClick={() => openDialog("page")}>
                   Add document
                 </Button>
               }
@@ -412,44 +444,50 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
                 active={!missing && id === selected?.id}
                 onSession={trackPageSession}
                 sessions={sessions}
+                nav={showPages}
               />
             </section>
           ))}
         </main>
       </div>
       {leave.dialog}
-      {dialog === "service" && (
+      {shown === "service" && (
         <CreateRemoteServiceDialog
+          key={opened}
           api={api}
-          close={() => setDialog(undefined)}
+          open={dialog === "service"}
+          close={() => setDialog(null)}
           done={(id) => {
-            setDialog(undefined);
+            setDialog(null);
             void navigate({ serviceId: id, documentId: id });
           }}
         />
       )}
-      {dialog === "page" && remote.data && location && (
+      {shown === "page" && remote.data && location && (
         <CreateRemotePageDialog
+          key={opened}
           api={api}
+          open={dialog === "page"}
           detail={remote.data}
-          close={() => setDialog(undefined)}
+          close={() => setDialog(null)}
           done={(id) => {
-            setDialog(undefined);
+            setDialog(null);
             void navigate({ serviceId: location.serviceId, documentId: id });
           }}
         />
       )}
-      {dialog === "delete" && selected && location && (
+      {shown === "delete" && deleting && (
         <DeleteRemotePageDialog
+          key={opened}
           api={api}
-          page={selected}
-          close={() => setDialog(undefined)}
+          open={dialog === "delete"}
+          page={deleting}
+          close={() => setDialog(null)}
           done={() => {
-            const deleted = selected.id;
-            setDialog(undefined);
-            discardPages([deleted]);
+            setDialog(null);
+            discardPages([deleting.id]);
             void navigate(
-              deleted === location.serviceId
+              !location || deleting.id === location.serviceId
                 ? undefined
                 : { serviceId: location.serviceId, documentId: location.serviceId },
             );

@@ -173,13 +173,16 @@ test("while a service's pages load, its sidebar shows what's known and offers no
   const entry = pageDocumentFromApi({ id: "entry", title: "Severance", role: "entry" });
   await render({ rows: [top(entry)], loading: true, onDelete: () => {} });
 
+  // Actions on the pages, that is: the header's Pages toggle only hides the list
+  const actions = () => host.querySelectorAll('button:not([aria-label="Pages"])');
+
   expect(rows()).toEqual(["Entry page"]);
   expect(host.textContent).toContain("Loading pages…");
-  expect(host.querySelectorAll("button")).toHaveLength(0);
+  expect(actions()).toHaveLength(0);
 
   await render({ rows: [top(entry)], onDelete: () => {} });
   expect(host.textContent).not.toContain("Loading pages…");
-  expect([...host.querySelectorAll("button")].map((button) => button.textContent)).toEqual([
+  expect([...actions()].map((button) => button.textContent)).toEqual([
     "Add document",
     "Delete page",
   ]);

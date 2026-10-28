@@ -47,7 +47,7 @@ test("the title is the screen's h1, and the tools keep their places whatever ord
   expect(host.querySelector('[role="toolbar"]')?.getAttribute("aria-label")).toBe("Page tools");
   expect(host.querySelector("h1")?.textContent).toBe("Renew a passport");
   expect(names()).toEqual(["Undo", "Preview page", "Markdown", "Publish changes", "Page settings"]);
-  // Undo and redo | the ways to look at it | publishing | settings
+  // Undo and redo | the ways to look at it | publishing | settings, at the end above its panel
   expect(separators()).toBe(3);
   // The notices sit under the bar, not in it
   expect(host.querySelector('[role="toolbar"] p')).toBeNull();
@@ -147,9 +147,9 @@ test("from a tablet up it's pinned to the top as the document scrolls under it, 
 
   const bar = host.querySelector('[role="toolbar"]')!;
 
-  // Above the canvas's own layers, such as the block rail, and named for the page's scroll padding (index.css)
+  // On the bar layer, above the canvas's own, such as the block rail, and named for the page's scroll padding (index.css)
   expect(bar.className.split(" ")).toEqual(
-    expect.arrayContaining(["md:sticky", "md:top-0", "md:z-10", "md:flex-nowrap"]),
+    expect.arrayContaining(["md:sticky", "md:top-0", "md:z-bar", "md:flex-nowrap"]),
   );
   expect(bar.hasAttribute("data-document-bar")).toBe(true);
 });

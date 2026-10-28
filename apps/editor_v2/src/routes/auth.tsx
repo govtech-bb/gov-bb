@@ -42,7 +42,7 @@ function AuthPage() {
   const { auth, failure: initialFailure } = Route.useRouteContext();
   const navigate = useNavigate();
   const [failure, setFailure] = useState<AuthFailure["reason"] | undefined>(initialFailure);
-  const [pending, setPending] = useState<"sign-in" | "session">();
+  const [pending, setPending] = useState(false);
   const busy = useRef(false);
   const title = useRef<HTMLHeadingElement>(null);
   useEffect(() => title.current?.focus(), []);
@@ -59,7 +59,8 @@ function AuthPage() {
       ? "You are signed out"
       : "Sign in to GovBB editor";
 
-  const progress = pending === "session" ? "Checking your session…" : "Opening GitHub…";
+  // What the button will say while it works, known before it starts, so it keeps one width throughout
+  const progress = retrySession ? "Checking your session…" : "Opening GitHub…";
 
   const message =
     failure === "session"
@@ -71,7 +72,7 @@ function AuthPage() {
   const continueSignIn = async () => {
     if (busy.current) return;
     busy.current = true;
-    setPending(retrySession ? "session" : "sign-in");
+    setPending(true);
 
     if (retrySession) {
       const session = await auth.session();
@@ -97,7 +98,7 @@ function AuthPage() {
     }
 
     busy.current = false;
-    setPending(undefined);
+    setPending(false);
   };
 
   return (
@@ -121,10 +122,11 @@ function AuthPage() {
         className="mt-6 h-auto min-h-10 max-w-full py-2 leading-normal"
         size="lg"
         variant="accent"
-        pending={!!pending}
+        pending={pending}
+        pendingLabel={progress}
         onClick={() => void continueSignIn()}
       >
-        {pending ? progress : retrySession ? "Try again" : "Continue with GitHub"}
+        {retrySession ? "Try again" : "Continue with GitHub"}
       </Button>
     </AuthScreen>
   );

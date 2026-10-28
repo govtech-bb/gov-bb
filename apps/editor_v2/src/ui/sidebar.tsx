@@ -3,7 +3,7 @@ import { IconContext, SidebarSimple } from "@phosphor-icons/react";
 import { createContext, useContext, useId, useMemo, useState, type ReactNode } from "react";
 import { cn } from "../cn";
 import { Button, type ButtonVariant } from "./button";
-import { Drawer, useDrawerPanel, type DrawerPanel } from "./drawer";
+import { Drawer, PanelToggle, useDrawerPanel, type DrawerPanel } from "./drawer";
 import { EmptyState } from "./empty-state";
 import { touchTarget } from "./surface";
 import { Tip } from "./tooltip";
@@ -20,11 +20,11 @@ const Place = createContext<{ label: string; rail?: boolean; closeDrawer?: () =>
   label: "",
 });
 
-/** The rows' look, kept in one place: the current row is tinted and semibold. */
-const item = `flex items-start gap-2 rounded-sm px-3 py-1.5 text-14 text-ink hover:bg-hover pointer-coarse:items-center aria-[current=page]:bg-blue-10 aria-[current=page]:font-semibold ${touchTarget}`;
+/** The rows' look, kept in one place: the current row is tinted and semibold. Held down, a row is pressed in. */
+const item = `flex items-start gap-2 rounded-sm px-3 py-1.5 text-14 text-ink hover:bg-hover active:bg-hover active:shadow-press pointer-coarse:items-center aria-[current=page]:bg-blue-10 aria-[current=page]:font-semibold ${touchTarget}`;
 
 /** A rail's rows: a square around the icon alone, tinted like a row while it's current. */
-const railItem = `mx-auto flex size-10 items-center justify-center rounded-sm text-muted hover:bg-hover hover:text-ink aria-[current=page]:bg-blue-10 aria-[current=page]:text-ink [&_svg]:size-5 ${touchTarget}`;
+const railItem = `mx-auto flex size-10 items-center justify-center rounded-sm text-muted hover:bg-hover hover:text-ink active:bg-hover active:text-ink active:shadow-press aria-[current=page]:bg-blue-10 aria-[current=page]:text-ink [&_svg]:size-5 ${touchTarget}`;
 
 /** Whether the column is open beside the page, remembered in this browser under `memory` when there is one. */
 function useRememberedOpen(memory: string | undefined) {
@@ -104,11 +104,16 @@ function SidebarRoot({ sidebar, label, rail = false, children }: RootProps) {
   );
 }
 
-/** Shows and hides the sidebar: collapses the column beside the page, or opens the drawer. Tinted while it shows. */
+/**
+ * Shows and hides the sidebar: collapses the column beside the page, or opens the drawer. With words, such as Menu on
+ * the app's bar, it's a button that's tinted while the sidebar shows. Without them it's the column's own panel
+ * toggle, an icon at its edge: in its header while it shows, and at the start of the page's bar while it's hidden.
+ */
 function SidebarToggle({
   sidebar,
   variant = "ghost",
   icon = <SidebarSimple />,
+  label,
   children,
 }: {
   sidebar: DrawerPanel;
@@ -116,9 +121,9 @@ function SidebarToggle({
   variant?: ButtonVariant;
   /** A column beside the page by default; another, such as a menu's, where that would be ambiguous. */
   icon?: ReactNode;
-  /** Its words, such as what the sidebar lists. */
-  children: ReactNode;
-}) {
+} & ({ children: ReactNode; label?: never } | { label: string; children?: never })) {
+  if (label !== undefined) return <PanelToggle panel={sidebar} label={label} icon={icon} />;
+
   return (
     <Button
       variant={variant}
@@ -126,11 +131,6 @@ function SidebarToggle({
       aria-expanded={sidebar.open}
       aria-controls={sidebar.open ? sidebar.id : undefined}
       onClick={() => sidebar.setOpen(!sidebar.open)}
-      className={
-        variant === "inverse"
-          ? "aria-expanded:bg-white/15"
-          : "aria-expanded:bg-tint aria-expanded:text-ink"
-      }
     >
       {children}
     </Button>

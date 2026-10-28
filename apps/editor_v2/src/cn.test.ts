@@ -14,3 +14,8 @@ test("theme shadows and overrides merge", () => {
     "h-7 w-7 rounded-full px-0",
   );
 });
+
+test("named layers are z-indexes, so a later one replaces an earlier", () => {
+  expect(cn("fixed z-popup", "z-toast")).toBe("fixed z-toast");
+  expect(cn("z-10", "z-bar")).toBe("z-bar");
+});

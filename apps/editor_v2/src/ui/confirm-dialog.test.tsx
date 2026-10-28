@@ -2,6 +2,7 @@
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { shownText } from "../../tests/helpers/shown-text";
 import { ConfirmDialog } from "./confirm-dialog";
 
 let host: HTMLDivElement;
@@ -19,6 +20,7 @@ afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
   vi.unstubAllGlobals();
+  Reflect.deleteProperty(Element.prototype, "getAnimations");
 });
 
 const render = (node: ReactNode) => act(async () => root.render(node));
@@ -27,7 +29,7 @@ const render = (node: ReactNode) => act(async () => root.render(node));
 const dialog = () => document.querySelector<HTMLElement>('[role="alertdialog"]')!;
 
 const button = (name: string) =>
-  [...dialog().querySelectorAll("button")].find((item) => item.textContent === name)!;
+  [...dialog().querySelectorAll("button")].find((item) => shownText(item) === name)!;
 
 const text = (id: string | null) => (id ? document.getElementById(id)?.textContent : undefined);
 
@@ -103,4 +105,43 @@ test("shows why the action failed in the dialog, which stays open", async () => 
   expect(dialog().querySelector('[role="alert"]')?.textContent).toBe(
     "The page could not be deleted. Try again.",
   );
+});
+
+test("closing, it keeps the words it had open while it fades, whatever changes behind it", async () => {
+  // A browser holds a closing dialog for its fade; this one fades until it's told it's done
+  const fading = Promise.withResolvers<void>();
+
+  Object.defineProperty(Element.prototype, "getAnimations", {
+    configurable: true,
+    value: () => [{ finished: fading.promise }],
+  });
+
+  const leave = (open: boolean, dirty: boolean) => (
+    <ConfirmDialog
+      open={open}
+      onClose={() => {}}
+      title={dirty ? "Leave without saving?" : "Continue?"}
+      description={dirty ? "Your unsaved changes will be lost." : "Your changes have been saved."}
+      confirm={dirty ? "Leave without saving" : "Continue"}
+      onConfirm={() => {}}
+    />
+  );
+
+  await render(leave(true, true));
+  // Leaving discards the changes, and the dialog closes
+  await render(leave(false, false));
+
+  expect(dialog().hasAttribute("data-ending-style")).toBe(true);
+  expect(text(dialog().getAttribute("aria-labelledby"))).toBe("Leave without saving?");
+  expect(text(dialog().getAttribute("aria-describedby"))).toBe(
+    "Your unsaved changes will be lost.",
+  );
+  expect(button("Leave without saving")).toBeDefined();
+
+  await act(async () => fading.resolve());
+  await vi.waitFor(() => expect(document.querySelector('[role="alertdialog"]')).toBeNull());
+
+  // Open again, it says what's true now
+  await render(leave(true, false));
+  expect(text(dialog().getAttribute("aria-labelledby"))).toBe("Continue?");
 });

@@ -420,9 +420,10 @@ export function NativeConditionRow({
             value={group.op}
             onValueChange={(op) => (op === "all" || op === "any") && onChange({ ...group, op })}
           >
+            {/* Focused from the keyboard, the global ring: outline-none would cancel any outline-* given with it */}
             <Select.Trigger
               aria-label="Match conditions"
-              className="inline-flex min-h-6 cursor-pointer items-center gap-0.5 rounded-xs px-1 outline-none hover:bg-grey-20 focus-visible:outline-3 focus-visible:outline-offset-1 focus-visible:outline-focus [&>svg]:size-3.5"
+              className="inline-flex min-h-6 cursor-pointer items-center gap-0.5 rounded-xs px-1 hover:bg-grey-20 [&>svg]:size-3.5"
             >
               {group.op === "any" ? "any" : "all"}
               <CaretDown />

@@ -45,7 +45,10 @@ export type EmptyStateProps = {
   icon?: ReactNode;
   title: ReactNode;
   description?: ReactNode;
-  /** What the author can do about it: add the first one, clear the filters, try again. */
+  /**
+   * What the author can do about it: add the first one, clear the filters, try again. Grey (secondary) when the
+   * screen's header already holds that action in teal, so a screen has one main action.
+   */
   actions?: ReactNode;
   className?: string;
 };

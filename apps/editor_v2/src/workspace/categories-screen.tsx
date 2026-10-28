@@ -37,6 +37,7 @@ import { NameCell } from "../ui/table/cell-components";
 import { createAppColumnHelper, useAppTable } from "../ui/table/table-hooks";
 import { toast } from "../ui/toast";
 import { Tip } from "../ui/tooltip";
+import { useLatched } from "../ui/use-latched";
 import { CategoryDialog, DeleteCategoryDialog } from "./category-dialogs";
 import { LoadFailure } from "./load-failure";
 
@@ -45,11 +46,13 @@ type Direction = -1 | 1;
 
 /**
  * What a row's controls do: a move says which control asked, so that control gets the focus back. `moving` says
- * whether its sibling group has a move still being saved, when its moves wait.
+ * whether its sibling group has a move still being saved, when its moves wait; `pressed`, whether a move button is the
+ * one that move came from, which turns until it's settled.
  */
 type RowActions = {
   move: (row: CategoryRow, by: Direction, from: "button" | "menu") => void;
   moving: (row: CategoryRow) => boolean;
+  pressed: (row: CategoryRow, by: Direction) => boolean;
   /** Nothing can be moved, for someone who can't make changes. */
   readOnly: boolean;
   edit: (row: CategoryRow) => void;
@@ -59,10 +62,14 @@ type RowActions = {
 const Actions = createContext<RowActions>({
   move: () => {},
   moving: () => false,
+  pressed: () => false,
   readOnly: false,
   edit: () => {},
   remove: () => {},
 });
+
+/** The dialog open over the list, if any: a new category, or one to edit or delete as it was when it opened. */
+type ListDialog = { kind: "add" } | { kind: "edit" | "delete"; category: Category };
 
 // A sibling group's key: its parent's id, or the top level's
 const groupOf = (category: Pick<Category, "parent_id">) => category.parent_id ?? "";
@@ -110,7 +117,8 @@ const CategoryActions = memo(function CategoryActions({ row }: { row: CategoryRo
   const actions = useContext(Actions);
   const first = row.place === 1;
   const last = row.place === row.siblings;
-  // While its group's last move is saved, its moves stay focusable and named, but wait
+  // While its group's last move is saved, its moves stay focusable and named, but wait, looking unavailable; the one
+  // that was pressed turns
   const waiting = actions.moving(row);
 
   return (
@@ -123,6 +131,7 @@ const CategoryActions = memo(function CategoryActions({ row }: { row: CategoryRo
             data-move={row.id}
             data-by={-1}
             disabled={first || actions.readOnly}
+            pending={actions.pressed(row, -1)}
             aria-disabled={waiting || undefined}
             onClick={() => actions.move(row, -1, "button")}
           />
@@ -134,6 +143,7 @@ const CategoryActions = memo(function CategoryActions({ row }: { row: CategoryRo
             data-move={row.id}
             data-by={1}
             disabled={last || actions.readOnly}
+            pending={actions.pressed(row, 1)}
             aria-disabled={waiting || undefined}
             onClick={() => actions.move(row, 1, "button")}
           />
@@ -196,7 +206,6 @@ const column = createAppColumnHelper<CategoryRow>();
 const columns = column.columns([
   column.accessor("title", {
     header: "Name",
-    enableHiding: false,
     // Its parent from the list itself, so the words follow a renamed parent
     cell: ({ row, table }) => (
       <CategoryCell
@@ -208,14 +217,17 @@ const columns = column.columns([
   // Narrow, the count rides under the name instead
   column.accessor("services", {
     header: () => <span className="block text-end">Services</span>,
-    meta: { secondary: true },
+    meta: { secondary: true, width: "w-28" },
     cell: ({ row }) => (
       <span className="block text-end text-14 tabular-nums">{row.original.services}</span>
     ),
   }),
+  // Room for its four buttons, 44px each under a coarse pointer, or for the one that opens their menu once they fold
+  // into it
   column.display({
     id: "actions",
     header: () => <span className="block text-end">Actions</span>,
+    meta: { width: "w-44 @max-xl:w-20 pointer-coarse:@xl:w-56" },
     cell: ({ row }) => <CategoryActions row={row.original} />,
   }),
 ]);
@@ -242,10 +254,16 @@ export function CategoriesScreen({
   const blocked = categories.isError && !refreshFailed;
   const rows = useMemo(() => categoryRows(categories.data ?? []), [categories.data]);
 
-  // A dialog keeps the category it opened with, whatever the list does meanwhile
-  const [dialog, setDialog] = useState<
-    { kind: "add" } | { kind: "edit" | "delete"; category: Category }
-  >();
+  // A dialog keeps the category it opened with, whatever the list does meanwhile, and shows it until it has faded away
+  const [dialog, setDialog] = useState<ListDialog | null>(null);
+  const shown = useLatched(dialog);
+  // Counts the openings, so each opens afresh: nothing typed, and no answer left from the last time
+  const [opened, setOpened] = useState(0);
+
+  const openDialog = useCallback((next: ListDialog) => {
+    setOpened((count) => count + 1);
+    setDialog(next);
+  }, []);
 
   const [moved, setMoved] = useState("");
   // The row that last moved, tinted while moves go on, so a pointer can follow it to its new place
@@ -262,6 +280,8 @@ export function CategoriesScreen({
    */
   const [moving, setMoving] = useState<ReadonlyMap<string, "saving" | CategoryOrder>>(new Map());
   const settling = useRef(new Map<string, "saving" | CategoryOrder>());
+  // The move button a save or a check came from, which turns while its group waits
+  const [pressed, setPressed] = useState<{ group: string; id: string; by: Direction }>();
 
   const settle = useCallback((group: string, state?: "saving" | CategoryOrder) => {
     const next = new Map(settling.current);
@@ -270,6 +290,8 @@ export function CategoriesScreen({
     else next.delete(group);
     settling.current = next;
     setMoving(next);
+
+    if (state !== "saving") setPressed((button) => (button?.group === group ? undefined : button));
   }, []);
 
   // Says where a moved row is now, keeps its control focused and tints it for a while
@@ -326,6 +348,7 @@ export function CategoriesScreen({
 
       // Settle the lost one first; the author presses again once the list says where things are
       if (unsettled) {
+        setPressed({ group, id: row.id, by });
         const list = await checkMove(group, unsettled);
 
         if (list)
@@ -342,6 +365,7 @@ export function CategoriesScreen({
 
       if (!order) return;
       settle(group, "saving");
+      setPressed({ group, id: row.id, by });
       const result = await api.orderCategories(order);
 
       if (result.ok) {
@@ -406,11 +430,12 @@ export function CategoriesScreen({
     () => ({
       move: (row, by, from) => void move(row, by, from),
       moving: (row) => moving.get(groupOf(row)) === "saving",
+      pressed: (row, by) => pressed?.id === row.id && pressed.by === by,
       readOnly,
-      edit: (row) => setDialog({ kind: "edit", category: row }),
-      remove: (row) => setDialog({ kind: "delete", category: row }),
+      edit: (row) => openDialog({ kind: "edit", category: row }),
+      remove: (row) => openDialog({ kind: "delete", category: row }),
     }),
-    [move, moving, readOnly],
+    [move, moving, pressed, readOnly, openDialog],
   );
 
   useEffect(() => () => clearTimeout(unmark.current), []);
@@ -441,7 +466,7 @@ export function CategoriesScreen({
     enableSorting: false,
   });
 
-  const close = () => setDialog(undefined);
+  const close = () => setDialog(null);
 
   return (
     <Actions value={actions}>
@@ -450,7 +475,12 @@ export function CategoriesScreen({
           title="Categories"
           lead="People browse these to find services on the site."
           action={
-            <Button ref={add} variant="accent" size="md" onClick={() => setDialog({ kind: "add" })}>
+            <Button
+              ref={add}
+              variant="accent"
+              size="md"
+              onClick={() => openDialog({ kind: "add" })}
+            >
               Add category
             </Button>
           }
@@ -470,9 +500,10 @@ export function CategoriesScreen({
                 <Button
                   variant="secondary"
                   pending={categories.isFetching}
+                  pendingLabel="Refreshing categories…"
                   onClick={() => void categories.refetch()}
                 >
-                  {categories.isFetching ? "Refreshing categories…" : "Try again"}
+                  Try again
                 </Button>
               }
             >
@@ -494,8 +525,9 @@ export function CategoriesScreen({
               empty={{
                 title: "No categories yet",
                 description: "Add one, so services can be filed under it.",
+                // The header holds the teal Add category, so this one is grey
                 actions: (
-                  <Button variant="accent" onClick={() => setDialog({ kind: "add" })}>
+                  <Button variant="secondary" onClick={() => openDialog({ kind: "add" })}>
                     Add category
                   </Button>
                 ),
@@ -506,21 +538,22 @@ export function CategoriesScreen({
         <p role="status" className="sr-only">
           {moved}
         </p>
-        {dialog?.kind === "add" && (
-          <CategoryDialog api={api} categories={categories.data ?? []} close={close} />
-        )}
-        {dialog?.kind === "edit" && (
+        {(shown?.kind === "add" || shown?.kind === "edit") && (
           <CategoryDialog
+            key={opened}
             api={api}
-            category={dialog.category}
+            open={dialog !== null}
+            category={shown.kind === "edit" ? shown.category : undefined}
             categories={categories.data ?? []}
             close={close}
           />
         )}
-        {dialog?.kind === "delete" && (
+        {shown?.kind === "delete" && (
           <DeleteCategoryDialog
+            key={opened}
             api={api}
-            category={dialog.category}
+            open={dialog !== null}
+            category={shown.category}
             categories={categories.data ?? []}
             close={close}
             focusAfter={add}

@@ -39,7 +39,7 @@ function PathField({
   readOnly?: boolean;
 }) {
   return (
-    <Field label="Path" className="mt-4">
+    <Field label="Path">
       <Input
         value={value}
         readOnly={readOnly}
@@ -51,13 +51,19 @@ function PathField({
   );
 }
 
-/** A new service in the content API: a draft entry page filed under a category. */
+/**
+ * A new service in the content API: a draft entry page filed under a category. Once it's sent, only its answer closes
+ * the dialog, so a service can't be made after the author has let it go.
+ */
 export function CreateRemoteServiceDialog({
   api,
+  open,
   close,
   done,
 }: {
   api: EditorApi;
+  /** Shown; closed, it fades away as it was. Each opening is a new dialog. */
+  open: boolean;
   close: () => void;
   done: (id: string) => void;
 }) {
@@ -72,8 +78,10 @@ export function CreateRemoteServiceDialog({
 
   return (
     <WorkspaceDialog
+      open={open}
       title="Create a service"
       description="The service starts as a draft entry page. Add its start page and supporting pages once it exists."
+      pending={create.isPending}
       close={close}
       onSubmit={() => {
         const badPath = urlProblem(path);
@@ -100,7 +108,7 @@ export function CreateRemoteServiceDialog({
           <Field label="Service name">
             <Input value={title} onChange={(event) => setTitle(event.target.value)} />
           </Field>
-          <Field label="Category" className="mt-4">
+          <Field label="Category">
             <NativeSelect
               value={categoryId}
               onChange={(event) => setCategoryId(event.target.value)}
@@ -130,11 +138,17 @@ export function CreateRemoteServiceDialog({
       }
       footer={
         <>
-          <Button size="md" onClick={close}>
+          <Button size="md" disabled={create.isPending} onClick={close}>
             Cancel
           </Button>
-          <Button type="submit" variant="accent" size="md" pending={create.isPending}>
-            {create.isPending ? "Creating service…" : "Create service"}
+          <Button
+            type="submit"
+            variant="accent"
+            size="md"
+            pending={create.isPending}
+            pendingLabel="Creating service…"
+          >
+            Create service
           </Button>
         </>
       }
@@ -142,14 +156,20 @@ export function CreateRemoteServiceDialog({
   );
 }
 
-/** A new draft page beneath a service's entry page: its start page or a supporting page. */
+/**
+ * A new draft page beneath a service's entry page: its start page or a supporting page. Once it's sent, only its
+ * answer closes the dialog.
+ */
 export function CreateRemotePageDialog({
   api,
+  open,
   detail,
   close,
   done,
 }: {
   api: EditorApi;
+  /** Shown; closed, it fades away as it was. Each opening is a new dialog. */
+  open: boolean;
   detail: ServiceDetail;
   close: () => void;
   done: (id: string) => void;
@@ -167,8 +187,10 @@ export function CreateRemotePageDialog({
 
   return (
     <WorkspaceDialog
+      open={open}
       title="Add a page"
-      description="The page starts as a draft beneath this service's entry page."
+      description="The page starts as a draft beneath this service’s entry page."
+      pending={create.isPending}
       close={close}
       onSubmit={() => {
         const badPath = urlProblem(path);
@@ -193,7 +215,7 @@ export function CreateRemotePageDialog({
               <option value="supporting">Supporting page</option>
             </NativeSelect>
           </Field>
-          <Field label={start ? "Page title (optional)" : "Page title"} className="mt-4">
+          <Field label={start ? "Page title (optional)" : "Page title"}>
             <Input value={title} onChange={(event) => setTitle(event.target.value)} />
           </Field>
           <PathField value={path} onChange={setEdited} readOnly={start} />
@@ -211,11 +233,17 @@ export function CreateRemotePageDialog({
       }
       footer={
         <>
-          <Button size="md" onClick={close}>
+          <Button size="md" disabled={create.isPending} onClick={close}>
             Cancel
           </Button>
-          <Button type="submit" variant="accent" size="md" pending={create.isPending}>
-            {create.isPending ? "Adding page…" : "Add page"}
+          <Button
+            type="submit"
+            variant="accent"
+            size="md"
+            pending={create.isPending}
+            pendingLabel="Adding page…"
+          >
+            Add page
           </Button>
         </>
       }
@@ -226,11 +254,14 @@ export function CreateRemotePageDialog({
 /** Remove a page from the content API, once its author confirms. */
 export function DeleteRemotePageDialog({
   api,
+  open,
   page,
   close,
   done,
 }: {
   api: EditorApi;
+  /** Shown; closed, it fades away as it was. Each opening is a new dialog. */
+  open: boolean;
   page: PageDocument;
   close: () => void;
   done: () => void;
@@ -253,12 +284,12 @@ export function DeleteRemotePageDialog({
   // An alert dialog: a stray click outside doesn't dismiss it, and it can't be closed while the page is going
   return (
     <ConfirmDialog
-      open
+      open={open}
       onClose={close}
       title={service ? "Delete this service?" : "Delete this page?"}
       description={
         service
-          ? `${documentLabel(page)} is this service's entry page, so deleting it deletes the service. It's removed from the content API and, if it's public, from the site. Any unsaved changes will be lost.`
+          ? `${documentLabel(page)} is this service’s entry page, so deleting it deletes the service. It’s removed from the content API and, if it’s public, from the site. Any unsaved changes will be lost.`
           : `${documentLabel(page)} is removed from the content API and, if it is public, from the site. Any unsaved changes will be lost.`
       }
       confirm={service ? "Delete service" : "Delete page"}

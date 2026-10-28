@@ -143,7 +143,7 @@ function ComponentsPreview() {
               <a
                 key={id}
                 href={`#${id}`}
-                className="rounded-sm px-3 py-1.5 text-14 font-semibold text-ink shadow-input transition-shadow duration-150 hover:shadow-input-hover"
+                className="rounded-sm px-3 py-1.5 text-14 font-semibold text-ink shadow-input transition-shadow hover:shadow-input-hover"
               >
                 {name}
               </a>
@@ -230,7 +230,7 @@ function ComponentsPreview() {
         <Section id="button" title="Button" lead="An action, named for what it does.">
           <Specimen
             title="Variants"
-            note="One main action, in teal. Grey for the rest, red for what loses work, and a link for an action in a list or a sentence."
+            note="One main action, in teal. Grey for the rest, red for what loses work, and a link for an action in a list or a sentence. Each presses in while it’s held."
           >
             <div className="flex flex-wrap items-center justify-center gap-2">
               <Button variant="accent">Publish changes</Button>
@@ -250,14 +250,20 @@ function ComponentsPreview() {
           </Specimen>
           <Specimen
             title="Working"
-            note="Keeps its colour while it works, rather than greying out as if the press hadn’t worked, and ignores another press."
+            note="Keeps its colour while it works, rather than greying out as if the press hadn’t worked, and ignores another press. Its words change but not its width, so nothing beside it moves: press Publish changes."
+          >
+            <Working />
+          </Specimen>
+          <Specimen
+            title="Unavailable"
+            note="Faded, and a press does nothing. Disabled, the keyboard passes it by; aria-disabled, it keeps its place and the focus, as Save does with nothing to save."
           >
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <Button variant="accent" pending>
-                Publishing changes…
+              <Button variant="secondary" disabled>
+                Load saved version
               </Button>
-              <Button variant="danger" pending>
-                Deleting page…
+              <Button variant="accent" aria-disabled>
+                Save
               </Button>
             </div>
           </Specimen>
@@ -367,7 +373,10 @@ function ComponentsPreview() {
           title="Dialog"
           lead="For a decision, or work that needs the page’s full attention."
         >
-          <Specimen title="Short form" note="Header, fields and the buttons that finish the task.">
+          <Specimen
+            title="Short form"
+            note="Header, fields 16px apart, and the buttons that finish the task."
+          >
             <CreateServiceDialog />
           </Specimen>
           <Specimen
@@ -413,7 +422,7 @@ function ComponentsPreview() {
                     Edit the Markdown, then apply it to the page.
                   </Dialog.Description>
                 </Dialog.Header>
-                <Dialog.Body className="flex">
+                <Dialog.Body>
                   <Textarea
                     aria-label="Markdown"
                     spellCheck={false}
@@ -438,7 +447,7 @@ function ComponentsPreview() {
           <Specimen
             wide
             title="Over a document"
-            note="Its title, where it stands and its tools, in groups. Named, it's a toolbar. Narrower than 1200 pixels, a tool is its icon, named in a tooltip."
+            note="Its title, where it stands and its tools, in groups. Named, it’s a toolbar. Narrower than 1200 pixels, a tool is its icon, named in a tooltip."
           >
             <div className="w-full overflow-hidden rounded-sm border border-line">
               <Bar.Root label="Page tools">
@@ -459,8 +468,8 @@ function ComponentsPreview() {
           </Specimen>
           <Specimen
             wide
-            title="The app's header"
-            note="GovBB's navy, as tall and inset as every other bar, so their edges line up."
+            title="The app’s header"
+            note="GovBB’s navy, as tall and inset as every other bar, so their edges line up."
           >
             <div className="w-full overflow-hidden rounded-sm">
               <Bar.Root tone="dark" className="font-semibold">
@@ -482,7 +491,7 @@ function ComponentsPreview() {
           <Specimen
             wide
             title="A page"
-            note="Its title is the screen's heading. Then where it stands, undo and redo, the ways to look at it, publishing and its settings, in that order."
+            note="Its title is the screen’s heading. Then where it stands, undo and redo, the ways to look at it, publishing and its settings, in that order."
           >
             <DocumentBarDemo />
           </Specimen>
@@ -511,7 +520,7 @@ function ComponentsPreview() {
         <Section
           id="save-state"
           title="Save state"
-          lead="Where a document's work stands, in words that say who can see it."
+          lead="Where a document’s work stands, in words that say who can see it."
         >
           <Specimen
             title="Where it stands"
@@ -953,7 +962,7 @@ function ComponentsPreview() {
           <Specimen
             wide
             title="Where it goes"
-            note="The rule in Banner's own notes too. A message goes in its one place, and nowhere else."
+            note="The rule in Banner’s own notes too. A message goes in its one place, and nowhere else."
           >
             <dl className="grid w-full max-w-3xl gap-x-6 gap-y-4 text-14 sm:grid-cols-[8rem_minmax(0,1fr)]">
               {messagePlaces.map(([kind, place, example]) => (
@@ -997,7 +1006,7 @@ function ComponentsPreview() {
                 title="Editing is paused"
                 actions={<Button variant="secondary">Review Markdown changes</Button>}
               >
-                Your Markdown changes haven't been applied.
+                Your Markdown changes haven’t been applied.
               </Banner>
             </div>
           </Specimen>
@@ -1031,7 +1040,7 @@ function ComponentsPreview() {
         >
           <Specimen
             title="Page"
-            note="A screen's whole content, its title the screen's heading. Not found has a magnifier."
+            note="A screen’s whole content, its title the screen’s heading. Not found has a magnifier."
             wide
           >
             <EmptyState
@@ -1056,7 +1065,7 @@ function ComponentsPreview() {
           </Specimen>
           <Specimen
             title="Failed"
-            note="A red warning, read out at once, so it can't pass for an empty list."
+            note="A red warning, read out at once, so it can’t pass for an empty list."
           >
             <EmptyState
               kind="failed"
@@ -1080,7 +1089,7 @@ function ComponentsPreview() {
           </Specimen>
           <Specimen
             title="No results in a list"
-            note="One line where a popup's search finds nothing."
+            note="One line where a popup’s search finds nothing."
           >
             <div className={cn(surface, "w-60 py-1")}>
               <p className={listEmpty}>No blocks match</p>
@@ -1291,15 +1300,15 @@ function Specimen({
 
 // Each kind of message, where it goes and an example (Banner)
 const messagePlaces = [
-  ["The app", "A strip under the app's header", "We could not check your session."],
+  ["The app", "A strip under the app’s header", "We could not check your session."],
   [
     "The document",
-    "A strip among the document bar's notices",
-    "Editing is paused. Your Markdown changes haven't been applied.",
+    "A strip among the document bar’s notices",
+    "Editing is paused. Your Markdown changes haven’t been applied.",
   ],
   [
     "A dialog",
-    "A box in the dialog's body, in the tone of the outcome",
+    "A box in the dialog’s body, in the tone of the outcome",
     "Form imported. Undo returns to your previous form.",
   ],
   ["A field", "On the field, as its error", "Enter a title"],
@@ -1309,8 +1318,8 @@ const messagePlaces = [
 // Each save state, and when it's seen
 const saveStates: [SaveStatus, string][] = [
   ["saving", "Between keystrokes, or sending"],
-  ["unsaved", "A page that isn't public, changed"],
-  ["saved", "A page that isn't public, saved"],
+  ["unsaved", "A page that isn’t public, changed"],
+  ["saved", "A page that isn’t public, saved"],
   ["unpublished", "A public page, changed"],
   ["published", "A public page, published"],
   ["failed", "A save that went wrong"],
@@ -1784,6 +1793,31 @@ function RowSelection() {
   );
 }
 
+/** Publish changes beside Cancel, working for a moment once pressed; and a Delete page that's working throughout. */
+function Working() {
+  const [pending, setPending] = useState(false);
+
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      <Button variant="secondary">Cancel</Button>
+      <Button
+        variant="accent"
+        pending={pending}
+        pendingLabel="Publishing changes…"
+        onClick={() => {
+          setPending(true);
+          setTimeout(() => setPending(false), 1500);
+        }}
+      >
+        Publish changes
+      </Button>
+      <Button variant="danger" pending pendingLabel="Deleting page…">
+        Delete page
+      </Button>
+    </div>
+  );
+}
+
 /** Bold and italic toggles, and a pager's numbers with the current page on. */
 function Toggles() {
   const [bold, setBold] = useState(true);
@@ -2062,7 +2096,7 @@ function CreateServiceDialog() {
             It starts as a draft entry page. You can add a start page and a form later.
           </Dialog.Description>
         </Dialog.Header>
-        <Dialog.Body className="flex flex-col gap-5">
+        <Dialog.Body>
           <Field label="Name">
             <Input defaultValue="Renew a passport" />
           </Field>

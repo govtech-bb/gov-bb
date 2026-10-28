@@ -2,7 +2,7 @@ import { useState } from "react";
 import { touchTarget } from "./surface";
 
 /** Shared compact control for calculated values and conditional logic. 44px under a coarse pointer, like a field. */
-export const pill = `inline-flex h-8 max-w-80 min-w-0 items-center gap-1.5 rounded-sm bg-white px-2.5 text-14 leading-none font-semibold text-ink shadow-input outline-none transition-shadow duration-150 hover:shadow-input-hover focus-visible:shadow-input-focus has-focus-visible:shadow-input-focus aria-expanded:shadow-input-focus has-aria-expanded:shadow-input-focus data-placeholder:text-muted has-placeholder-shown:text-muted ${touchTarget}`;
+export const pill = `inline-flex h-8 max-w-80 min-w-0 items-center gap-1.5 rounded-sm bg-white px-2.5 text-14 leading-none font-semibold text-ink shadow-input outline-none transition-shadow hover:shadow-input-hover focus-visible:shadow-input-focus has-focus-visible:shadow-input-focus aria-expanded:shadow-input-focus has-aria-expanded:shadow-input-focus data-placeholder:text-muted has-placeholder-shown:text-muted ${touchTarget}`;
 
 export const pillIcon = "inline-flex shrink-0 items-center text-muted [&>svg]:size-3.5";
 

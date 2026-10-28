@@ -21,10 +21,11 @@ export const surface = "rounded-sm bg-white font-sans text-ink shadow-popup outl
 
 /**
  * Grows out of its trigger (Base UI's --transform-origin) as it fades in, and leaves quicker than it came. Base UI marks
- * the opens and closes that shouldn't animate, such as one made from the keyboard. Reduced motion keeps only the fade.
+ * the opens and closes that shouldn't animate, such as one made from the keyboard. One put on the page already open,
+ * which Base UI doesn't animate, arrives from the same start (`starting:`). Reduced motion keeps only the fade.
  */
 export const surfaceMotion =
-  "origin-(--transform-origin) transition-[opacity,scale] duration-160 ease-out-quint data-starting-style:opacity-0 data-ending-style:opacity-0 data-ending-style:duration-100 data-instant:duration-0 motion-safe:data-starting-style:scale-96 motion-safe:data-ending-style:scale-96";
+  "origin-(--transform-origin) transition-[opacity,scale] duration-(--duration-popup-in) ease-out-quint starting:opacity-0 data-starting-style:opacity-0 data-ending-style:opacity-0 data-ending-style:duration-(--duration-popup-out) data-instant:duration-0 motion-safe:starting:scale-96 motion-safe:data-starting-style:scale-96 motion-safe:data-ending-style:scale-96";
 
 /** The popup of a list of rows: as tall as the screen allows, then it scrolls. */
 export const listPopup = `group/popup flex max-h-(--available-height) max-w-[min(28rem,calc(100vw-2rem))] flex-col overflow-y-auto overscroll-contain py-1 ${surface} ${surfaceMotion}`;
@@ -36,12 +37,12 @@ export const fieldList = "min-h-0 overflow-y-auto overscroll-contain py-1 outlin
 
 /**
  * A row in a menu or a select, or in a list that marks its highlighted row with `data-highlighted`. Highlighted it turns
- * navy with white text, the row you can find at a glance while arrowing through. A disabled row fades but stays
- * reachable from the keyboard. Where some rows in the popup have an icon, the others indent so every label starts on
- * the same line.
+ * navy with white text, the row you can find at a glance while arrowing through; held down, it's pressed in. A disabled
+ * row fades but stays reachable from the keyboard. Where some rows in the popup have an icon, the others indent so
+ * every label starts on the same line.
  */
 export const row =
-  "group/row relative mx-1 flex min-h-8 w-[calc(100%-0.5rem)] cursor-pointer items-center gap-2 rounded-sm px-2.5 py-1.5 text-start text-14 text-ink outline-none select-none data-highlighted:bg-blue-80 data-highlighted:text-white data-disabled:pointer-events-none data-disabled:opacity-50 group-has-[[data-icon]]/popup:not-has-[[data-icon]]:ps-8.5 pointer-coarse:min-h-11 max-sm:text-16";
+  "group/row relative mx-1 flex min-h-8 w-[calc(100%-0.5rem)] cursor-pointer items-center gap-2 rounded-sm px-2.5 py-1.5 text-start text-14 text-ink outline-none select-none data-highlighted:bg-blue-80 data-highlighted:text-white active:shadow-press data-disabled:pointer-events-none data-disabled:opacity-50 group-has-[[data-icon]]/popup:not-has-[[data-icon]]:ps-8.5 pointer-coarse:min-h-11 max-sm:text-16";
 
 /**
  * "No results" in a list popup, the one line for a search that finds nothing: a row's height, its text where the

@@ -88,3 +88,31 @@ test("a tool is named beside its icon on a wide screen, and by a tooltip on a na
     expect(tool.hasAttribute("data-base-ui-tooltip-trigger")).toBe(!wide);
   }
 });
+
+test("a focused tool keeps its focus as the window narrows past 1200px", async () => {
+  let wide = true;
+  const changes = new Set<() => void>();
+
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    get matches() {
+      return wide;
+    },
+    media: query,
+    addEventListener: (_type: string, change: () => void) => changes.add(change),
+    removeEventListener: (_type: string, change: () => void) => changes.delete(change),
+  }));
+  await render(<Bar.Tool icon={<svg />} label="Markdown" />);
+
+  const tool = host.querySelector("button")!;
+
+  await act(async () => tool.focus());
+  await act(async () => {
+    wide = false;
+    changes.forEach((change) => change());
+  });
+
+  // The same button, now named by its tooltip, still has the focus
+  expect(host.querySelector("button")).toBe(tool);
+  expect(tool.hasAttribute("data-base-ui-tooltip-trigger")).toBe(true);
+  expect(document.activeElement).toBe(tool);
+});

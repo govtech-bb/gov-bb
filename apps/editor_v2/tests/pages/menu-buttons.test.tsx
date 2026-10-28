@@ -8,7 +8,7 @@ const state = (button: HTMLElement) => [
   button.getAttribute("aria-expanded"),
 ];
 
-test("Insert, Block options and Add content say they open a popup, and which one is open", async () => {
+test("Insert, Block options and Add content say what they open, and which one is open", async () => {
   await renderPageEditor("Renew your passport at the counter.\n");
   await selectPageText("Renew your passport at the counter.");
 
@@ -21,19 +21,17 @@ test("Insert, Block options and Add content say they open a popup, and which one
 
   expect([insert, options, add].map(state)).toEqual([
     ["dialog", "false"],
-    ["dialog", "false"],
+    ["menu", "false"],
     ["dialog", "false"],
   ]);
 
   await act(async () => options.click());
   expect([insert, options, add].map(state)).toEqual([
     ["dialog", "false"],
-    ["dialog", "true"],
+    ["menu", "true"],
     ["dialog", "false"],
   ]);
-  expect(document.querySelector('[role="dialog"]')?.getAttribute("aria-label")).toBe(
-    "Block options",
-  );
+  expect(document.querySelector('[role="menu"]')?.getAttribute("aria-label")).toBe("Block options");
 
   await act(async () => {
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
@@ -41,7 +39,7 @@ test("Insert, Block options and Add content say they open a popup, and which one
   await act(async () => add.click());
   expect([insert, options, add].map(state)).toEqual([
     ["dialog", "false"],
-    ["dialog", "false"],
+    ["menu", "false"],
     ["dialog", "true"],
   ]);
 });

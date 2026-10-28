@@ -50,10 +50,10 @@ function VisibilityTag({ visibility }: { visibility: ServiceSummary["visibility"
   );
 }
 
+// Its title is the row's link, which a click anywhere else on the row follows too
 function ServiceCell({ service, href }: { service: ServiceSummary; href: string | undefined }) {
   return (
     <NameCell
-      className="@3xl:min-w-72"
       name={
         <TextLink
           render={
@@ -87,41 +87,43 @@ function ServiceCell({ service, href }: { service: ServiceSummary; href: string 
 
 const serviceColumns = (api: EditorApi) =>
   column.columns([
-    // The url rides along so search finds it; sorting still follows the title.
+    // The url rides along so search finds it; sorting still follows the title. It takes the room the others leave
     column.accessor((service) => `${service.title} ${service.url}`, {
       id: "title",
       header: "Service",
       sortFn: "text",
-      enableHiding: false,
       cell: ({ row: { original: service } }) => (
         <ServiceCell service={service} href={api.landingUrl(service.url)} />
       ),
     }),
-    // Filtered by its slug, which the list's address keeps: a renamed category, or two with one name, stay apart
+    // Filtered by its slug, which the list's address keeps: a renamed category, or two with one name, stay apart. A
+    // long name wraps
     column.accessor((service) => service.category.slug, {
       id: "category",
       header: "Category",
       sortFn: (a, b) => a.original.category.title.localeCompare(b.original.category.title),
       filterFn: "oneOf",
       enableGlobalFilter: false,
-      meta: { secondary: true },
+      meta: { secondary: true, width: "w-48" },
       cell: ({ row }) => <span className="text-14">{row.original.category.title}</span>,
     }),
+    // Room for the longest date, such as 28 Sept 2026
     column.accessor("updated_at", {
       header: "Updated",
       sortFn: "basic",
       sortDescFirst: true,
       enableGlobalFilter: false,
-      meta: { secondary: true },
+      meta: { secondary: true, width: "w-36" },
       cell: ({ cell }) => <cell.DateCell />,
     }),
-    // Filtered by the status itself, the word the list's address keeps; its label sorts the same way
+    // Filtered by the status itself, the word the list's address keeps; its label sorts the same way. Room for the
+    // longest, Preview link only
     column.accessor("visibility", {
       header: "Status",
       sortFn: "text",
       filterFn: "oneOf",
       enableGlobalFilter: false,
-      meta: { secondary: true },
+      meta: { secondary: true, width: "w-44" },
       cell: ({ row }) => <VisibilityTag visibility={row.original.visibility} />,
     }),
   ]);
@@ -309,8 +311,10 @@ export function ServicesList({
 
   return (
     <table.AppTable>
+      {/* A line under the title, as Categories has, so moving between the two leaves the table where it was */}
       <ScreenHeader
         title="Services"
+        lead="Each service has an entry page, an optional start page and supporting pages."
         action={
           <Button variant="accent" size="md" disabled={readOnly} onClick={onCreate}>
             Create service
@@ -330,9 +334,10 @@ export function ServicesList({
               <Button
                 variant="secondary"
                 pending={services.isFetching}
+                pendingLabel="Refreshing services…"
                 onClick={() => void services.refetch()}
               >
-                {services.isFetching ? "Refreshing services…" : "Try again"}
+                Try again
               </Button>
             }
           >
@@ -350,6 +355,7 @@ export function ServicesList({
           <table.DataTable
             caption="Services"
             loading={services.isPending}
+            rowLink
             empty={{
               title: "No services yet",
               description: "Create a service to start adding its pages.",

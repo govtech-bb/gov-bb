@@ -67,7 +67,8 @@ export function FormJsonDialog() {
             it.
           </Dialog.Description>
         </Dialog.Header>
-        <Dialog.Body className="flex flex-col">
+        {/* Its parts bring their own margins, so no gap of the dialog's */}
+        <Dialog.Body className="gap-0">
           {unavailable && (
             <p role="status" className="mb-3 text-14 text-muted">
               {unavailable}

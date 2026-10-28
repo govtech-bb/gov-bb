@@ -3,6 +3,29 @@ import type { ReactNode } from "react";
 import { cn } from "../cn";
 import { surface, surfaceMotion, type PopupName } from "./surface";
 
+let barHeight: number | null = null;
+
+/** The sticky bar's height in pixels, measured once from `--bar-height`, whatever unit it's written in. */
+function stickyBar() {
+  if (barHeight === null) {
+    const probe = document.createElement("div");
+    probe.style.cssText = "position:absolute;visibility:hidden;height:var(--bar-height)";
+    document.body.append(probe);
+    barHeight = probe.offsetHeight;
+    probe.remove();
+  }
+
+  return barHeight;
+}
+
+/**
+ * Collision padding for a popup over a document: it keeps clear of the sticky bar above the page, where it would
+ * otherwise cover the document's own tools.
+ */
+export function belowBar() {
+  return { top: stickyBar() + 8, right: 8, bottom: 8, left: 8 };
+}
+
 type ContentProps = Pick<
   BasePopover.Positioner.Props,
   | "side"
@@ -43,7 +66,7 @@ function PopoverContent({
         sideOffset={6}
         collisionPadding={8}
         {...placement}
-        className="z-50 outline-none"
+        className="z-popup outline-none"
       >
         <BasePopover.Popup
           initialFocus={initialFocus}

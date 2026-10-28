@@ -233,9 +233,9 @@ try {
   assert.equal(await page.getByLabel("Slug", { exact: true }).isDisabled(), true);
   await button("Cancel").click();
   await button("Delete Health").click();
-  const reserved = page.getByRole("dialog", { name: "Health can't be deleted yet" });
+  const reserved = page.getByRole("dialog", { name: "Health can’t be deleted yet" });
 
-  assert.match(await reserved.textContent(), /site's own is at \/health/);
+  assert.match(await reserved.textContent(), /site’s own is at \/health/);
   await reserved.getByText("Close", { exact: true }).click();
   await reserved.waitFor({ state: "hidden" });
 
@@ -244,7 +244,7 @@ try {
   await page.getByLabel("Name", { exact: true }).fill("Schools");
   await button("Save category").click();
   await button("Delete Schools").click();
-  const blocked = page.getByRole("dialog", { name: "Schools can't be deleted yet" });
+  const blocked = page.getByRole("dialog", { name: "Schools can’t be deleted yet" });
   assert.match(await blocked.textContent(), /1 service is filed under Schools/);
   assert.equal(await button("Delete category").count(), 0);
   await page.getByRole("link", { name: "See its services" }).click();

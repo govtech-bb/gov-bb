@@ -52,10 +52,10 @@ const stack = [
   "after:absolute after:top-full after:left-0 after:h-[calc(var(--gap)+1px)] after:w-full after:content-['']",
 ];
 
-// In from below; out the way it was swiped, or down
+// In from below; out the way it was swiped, or down, and quicker than it came
 const motion = [
-  "[transition:transform_400ms_var(--ease-out-quint),opacity_400ms,height_150ms] motion-reduce:[transition:opacity_200ms]",
-  "data-starting-style:[transform:translateY(150%)] data-ending-style:opacity-0 data-limited:opacity-0",
+  "[transition:transform_var(--duration-toast-in)_var(--ease-out-quint),opacity_var(--duration-toast-in),height_150ms] motion-reduce:[transition:opacity_200ms]",
+  "data-starting-style:[transform:translateY(150%)] data-ending-style:opacity-0 data-ending-style:duration-(--duration-toast-out) data-limited:opacity-0",
   "[&[data-ending-style]:not([data-limited]):not([data-swipe-direction])]:[transform:translateY(150%)]",
   "data-ending-style:data-[swipe-direction=down]:[transform:translateY(calc(var(--toast-swipe-movement-y)+150%))]",
   "data-expanded:data-ending-style:data-[swipe-direction=down]:[transform:translateY(calc(var(--toast-swipe-movement-y)+150%))]",
@@ -103,7 +103,7 @@ export function Toaster() {
   return (
     <BaseToast.Provider toastManager={manager}>
       <BaseToast.Portal>
-        <BaseToast.Viewport className="fixed right-4 bottom-4 z-70 w-[calc(100vw-2rem)] sm:right-6 sm:bottom-6 sm:w-88">
+        <BaseToast.Viewport className="fixed right-4 bottom-4 z-toast w-[calc(100vw-2rem)] sm:right-6 sm:bottom-6 sm:w-88">
           <Toasts />
         </BaseToast.Viewport>
       </BaseToast.Portal>

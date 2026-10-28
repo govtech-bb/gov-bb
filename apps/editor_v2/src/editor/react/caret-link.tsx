@@ -5,6 +5,7 @@ import {
   COMMAND_PRIORITY_NORMAL,
   HISTORY_PUSH_TAG,
   KEY_DOWN_COMMAND,
+  KEY_ESCAPE_COMMAND,
   mergeRegister,
   type CommandListenerPriority,
   type LexicalNode,
@@ -140,6 +141,24 @@ export function CaretLinkPopover({
       ),
     );
   }, [editor, $find, $canInsert, $insert, priority]);
+
+  const shown = !form && found && focused && dismissed !== found.key ? found.key : null;
+
+  // Esc while the card shows puts the card away and nothing more. Without this, Lexical's own Esc, which leaves the
+  // editor, took the card with it, and the next keystrokes went nowhere
+  useEffect(() => {
+    if (!shown) return;
+
+    return editor.registerCommand(
+      KEY_ESCAPE_COMMAND,
+      () => {
+        setDismissed(shown);
+
+        return true;
+      },
+      COMMAND_PRIORITY_NORMAL,
+    );
+  }, [editor, shown]);
 
   const done = () => {
     setForm(null);
