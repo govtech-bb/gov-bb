@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ContentPage } from '../content/registry'
-import type { CategoryTreeResult } from '../lib/api-v2-categories'
+import type * as CategoryApiModule from '../lib/api-v2-categories'
 // Type-only, so it erases at runtime and the route still loads lazily, after
 // the mocks below are in place.
 import type * as ContentRouteModule from './$'
@@ -47,6 +47,15 @@ const v2Mocks = vi.hoisted(() => ({
 }))
 vi.mock('../lib/api-v2-page', () => v2Mocks)
 
+const categoryMocks = vi.hoisted(() => ({
+  getApiV2CategoryListing:
+    vi.fn<typeof CategoryApiModule.getApiV2CategoryListing>(),
+}))
+vi.mock('../lib/api-v2-categories', async (importOriginal) => ({
+  ...(await importOriginal<typeof CategoryApiModule>()),
+  ...categoryMocks,
+}))
+
 // Legacy mode: api_v2 categories are off, so the static taxonomy applies.
 const STATIC = { kind: 'disabled' } as const
 
@@ -78,6 +87,9 @@ beforeEach(() => {
   mocks.urlLevel.mockReturnValue('public')
   mocks.resolveBareSlugRedirect.mockReturnValue(undefined)
   v2Mocks.getApiV2Page.mockResolvedValue({ kind: 'miss' })
+  categoryMocks.getApiV2CategoryListing.mockResolvedValue({
+    kind: 'unavailable',
+  })
 })
 
 // Load the route once. Pulling the route + content graph through Vite's
@@ -562,10 +574,8 @@ describe('form route beforeLoad gating', () => {
   })
 })
 
-// These paths never read a category listing: the tree already says the
-// address isn't a category. Listing reads go through a Start server function,
-// which needs the built server, so scripts/check-api-v2-categories.mjs covers
-// them over HTTP against the built landing.
+// The real loader and category resolver run against a stubbed listing response.
+// scripts/check-api-v2-categories.mjs covers the built RPC wiring.
 describe('$ route loader in api_v2 category mode (ADR 0078)', () => {
   const ref = (url: string, title: string) => ({
     slug: url.split('/').at(-1) ?? '',
@@ -577,7 +587,7 @@ describe('$ route loader in api_v2 category mode (ADR 0078)', () => {
   const FAMILY = ref('/family-renamed', 'Family (api_v2)')
   const BIRTHS = ref('/family-renamed/births', 'Births')
 
-  const tree: CategoryTreeResult = {
+  const tree: CategoryApiModule.CategoryTreeResult = {
     kind: 'found',
     categories: [{ ...FAMILY, subcategories: [BIRTHS] }],
   }
@@ -599,7 +609,10 @@ describe('$ route loader in api_v2 category mode (ADR 0078)', () => {
     >
   }
 
-  const load = (splat: string): Promise<LoaderData> =>
+  const load = (
+    splat: string,
+    categoryTree: CategoryApiModule.CategoryTreeResult = tree,
+  ): Promise<LoaderData> =>
     // SAFETY: `$` declares its loader in the plain-function form, and it
     // reads only `params._splat` and `context.{level, serviceStatuses,
     // categoryTree}` (ReadLoaderArgs, picked from the router's own type);
@@ -607,7 +620,7 @@ describe('$ route loader in api_v2 category mode (ADR 0078)', () => {
     // preload flag) go unread.
     (Route.options.loader as (args: ReadLoaderArgs) => Promise<LoaderData>)({
       params: { _splat: splat },
-      context: { level: 'public', serviceStatuses: [], categoryTree: tree },
+      context: { level: 'public', serviceStatuses: [], categoryTree },
     })
 
   /** The JSON-LD `$`'s head writes for this loader result, as script text. */
@@ -619,6 +632,58 @@ describe('$ route loader in api_v2 category mode (ADR 0078)', () => {
         scripts?: Array<{ children: string }>
       }
     )({ loaderData }).scripts?.map((script) => script.children) ?? []
+
+  it('serves a static page when the tree and listing are unavailable', async () => {
+    mocks.findPage.mockReturnValue({
+      ...fakePage,
+      url: 'family-renamed/secret-service',
+    })
+    mocks.isVisible.mockReturnValue(true)
+
+    await expect(
+      load('family-renamed/secret-service', { kind: 'unavailable' }),
+    ).resolves.toMatchObject({
+      kind: 'page',
+      url: 'family-renamed/secret-service',
+    })
+    expect(categoryMocks.getApiV2CategoryListing).toHaveBeenCalledWith({
+      data: ['family-renamed', 'secret-service'],
+    })
+    expect(v2Mocks.getApiV2Page).toHaveBeenCalledWith({
+      data: '/family-renamed/secret-service',
+    })
+    expect(mocks.findPage).toHaveBeenCalledWith('family-renamed/secret-service')
+    expect(mocks.categoryServices).not.toHaveBeenCalled()
+  })
+
+  it('keeps the category error when the tree and listing are unavailable and no page resolves', async () => {
+    mocks.findPage.mockReturnValue(undefined)
+
+    await expect(
+      load('family-renamed/missing-page', { kind: 'unavailable' }),
+    ).rejects.toThrow(
+      'Category listing unavailable for /family-renamed/missing-page',
+    )
+    expect(v2Mocks.getApiV2Page).toHaveBeenCalledWith({
+      data: '/family-renamed/missing-page',
+    })
+    expect(mocks.findPage).toHaveBeenCalledWith('family-renamed/missing-page')
+    expect(mocks.categoryServices).not.toHaveBeenCalled()
+  })
+
+  it('does not read a page when a listed category has an unavailable listing', async () => {
+    mocks.findPage.mockReturnValue(fakePage)
+    mocks.isVisible.mockReturnValue(true)
+
+    await expect(load('family-renamed')).rejects.toThrow(
+      'Category listing unavailable for /family-renamed',
+    )
+    expect(categoryMocks.getApiV2CategoryListing).toHaveBeenCalledWith({
+      data: ['family-renamed'],
+    })
+    expect(v2Mocks.getApiV2Page).not.toHaveBeenCalled()
+    expect(mocks.findPage).not.toHaveBeenCalled()
+  })
 
   it('never shows a static category api_v2 does not list', async () => {
     mocks.findPage.mockReturnValue(undefined)
