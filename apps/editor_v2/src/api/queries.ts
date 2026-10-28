@@ -43,6 +43,10 @@ export const categoriesQuery = (api: EditorApi) =>
     },
   });
 
+/** The signed-in employee and their roles, which decide what the editor offers them. */
+export const meQuery = (api: Pick<EditorApi, "me">) =>
+  queryOptions({ queryKey: ["me"], queryFn: () => api.me() });
+
 const VERSION_KEY = ["version"];
 
 /** The estate's change token, polled; when it moves, every content read refreshes. */

@@ -49,10 +49,18 @@ beforeEach(() => {
   }));
 });
 
-async function mountPage(request: (url: string, init?: RequestInit) => Promise<Response>) {
+async function mountPage(
+  request: (url: string, init?: RequestInit) => Promise<Response>,
+  roles = ["editor", "approver"],
+) {
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string, init?: RequestInit) => {
+      if (url.endsWith("/editor/me"))
+        return Promise.resolve(
+          Response.json({ id: "me", email: "me@govtech.bb", name: "Me", roles }),
+        );
+
       if (url.endsWith("/editor/categories"))
         return Promise.resolve(Response.json({ categories: [] }));
 
@@ -101,6 +109,28 @@ async function savePage() {
   expect(button.disabled).toBe(false);
   await act(async () => button.click());
 }
+
+// The visibility control is the select offering the visibilities
+const visibilitySelect = () =>
+  [...document.querySelectorAll("select")].find((select) =>
+    select.textContent?.includes("Preview link only"),
+  );
+
+const LOCKED = "Only approvers can change who can see this page.";
+
+test("an approver is offered the page's visibility", async () => {
+  await mountPage(async () => Response.json(page));
+
+  await vi.waitFor(() => expect(visibilitySelect()).toBeDefined());
+  expect(document.body.textContent).not.toContain(LOCKED);
+});
+
+test("someone who isn't an approver sees the page's visibility, and why they can't change it", async () => {
+  await mountPage(async () => Response.json(page), ["editor"]);
+
+  await vi.waitFor(() => expect(document.body.textContent).toContain(LOCKED));
+  expect(visibilitySelect()).toBeUndefined();
+});
 
 test("a visual page stays editable without history controls or requests", async () => {
   const h = await mountPage(async () => Response.json(page));

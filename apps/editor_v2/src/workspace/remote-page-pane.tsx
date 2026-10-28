@@ -7,6 +7,7 @@ import { pageToMarkdown, pickerCategories, pageFieldLabel } from "../api/page-ma
 import {
   PRELOAD_FRESH,
   categoriesQuery,
+  meQuery,
   pageQuery,
   serviceQuery,
   servicesQuery,
@@ -134,6 +135,8 @@ function RemotePageEditor({
   const draft = useSyncExternalStore(store.subscribe, store.getSnapshot);
   // Links find the site's services by name; the content API lists their entry pages
   const services = useQuery(servicesQuery(api)).data;
+  // Until the roles load, the visibility control waits rather than offering what the API may refuse
+  const approver = useQuery(meQuery(api)).data?.roles.includes("approver") ?? false;
 
   const service = services?.find(
     (item) => server.id === item.id || server.url.startsWith(`${item.url}/`),
@@ -397,6 +400,7 @@ function RemotePageEditor({
           single: true,
         }),
         publishedAt: server.published_at,
+        visibilityLocked: !approver,
         errors: Object.fromEntries(errors.map((error) => [error.field, error.message])),
       }}
     />

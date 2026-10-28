@@ -34,6 +34,9 @@ export type ServiceDetail = Json<paths["/services/{id}"]["get"]["responses"][200
 /** A page of an opened service. */
 export type ServicePage = ServiceDetail["pages"][number];
 
+/** The signed-in employee and their roles. */
+export type Me = Json<paths["/editor/me"]["get"]["responses"][200]>;
+
 /** The estate's change token. */
 export type EstateVersion = Json<paths["/version"]["get"]["responses"][200]>;
 
@@ -469,6 +472,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
       return written.ok ? ok(undefined) : written;
     },
     version: () => read<EstateVersion>("/version"),
+    me: () => read<Me>("/editor/me"),
     page: (id: string) => read<ApiPage>(`/pages/${id}`),
     createPage: async (page: CreatePageInput): Promise<ApiPage> =>
       (await send("POST", "/pages", page)).json(),
