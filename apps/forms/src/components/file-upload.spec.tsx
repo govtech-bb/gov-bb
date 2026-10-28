@@ -267,6 +267,13 @@ describe("FileUpload", () => {
     });
     act(() => reportProgress(0.4));
     expect(bar).toHaveAttribute("value", "0.4");
+    // Mid-run the way out is Cancel, not the red Remove of a settled row.
+    expect(
+      screen.getByRole("button", { name: "Cancel slow.pdf" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Remove slow.pdf" }),
+    ).toBeNull();
     expect(liveRegion()).toHaveTextContent("Uploading slow.pdf");
 
     await act(async () => finishSend("uploads/k"));
@@ -978,7 +985,7 @@ describe("FileUpload", () => {
   describe("cancelling a run", () => {
     const pdf = () => makeFile("doc.pdf", "application/pdf", 100);
 
-    it("Remove on an uploading row cancels it, unblocks Continue, and never adds the file", async () => {
+    it("Cancel on an uploading row cancels it, unblocks Continue, and never adds the file", async () => {
       const user = userEvent.setup();
       let signal: AbortSignal | undefined;
       let finishSend: (key: string) => void = () => {};
@@ -990,7 +997,7 @@ describe("FileUpload", () => {
 
       await user.upload(fileInput, pdf());
       await user.click(
-        await screen.findByRole("button", { name: "Remove doc.pdf" }),
+        await screen.findByRole("button", { name: "Cancel doc.pdf" }),
       );
 
       expect(signal?.aborted).toBe(true);
@@ -1001,7 +1008,7 @@ describe("FileUpload", () => {
       expect(harnessOnFileChange).not.toHaveBeenCalled();
     });
 
-    it("Remove on a checking row cancels the check", async () => {
+    it("Cancel on a checking row cancels the check", async () => {
       const user = userEvent.setup();
       let signal: AbortSignal | undefined;
       mockCheckFile.mockImplementation((params: { signal: AbortSignal }) => {
@@ -1012,7 +1019,7 @@ describe("FileUpload", () => {
 
       await user.upload(fileInput, pdf());
       await screen.findByText(/checking your file/i);
-      await user.click(screen.getByRole("button", { name: "Remove doc.pdf" }));
+      await user.click(screen.getByRole("button", { name: "Cancel doc.pdf" }));
 
       expect(signal?.aborted).toBe(true);
       expect(screen.queryByText(/checking your file/i)).toBeNull();

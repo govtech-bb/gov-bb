@@ -447,7 +447,11 @@ export default function FileUpload({
   );
 }
 
-/** The status line for one file that is not (yet) a form value. */
+/**
+ * The actions and status line for one file that is not (yet) a form value.
+ * The row wraps the status onto its own line under the name and actions, so
+ * the bar has the full width and nothing shifts as the text changes.
+ */
 function PendingStatusView({
   upload: p,
   onRetry,
@@ -458,61 +462,69 @@ function PendingStatusView({
   onRemove: () => void;
 }) {
   // Every row has a way out, including one still in progress: a stalled
-  // upload must never trap the person behind a blocked Continue.
-  const removeLabel = p.status === "rejected" ? "Dismiss" : "Remove";
-  const removeButton = (
-    <Button
-      variant="text"
-      negative
-      className="no-print"
-      aria-label={`${removeLabel} ${p.name}`}
-      onClick={onRemove}
-    >
-      {removeLabel}
-    </Button>
+  // upload must never trap the person behind a blocked Continue. Mid-run that
+  // is a neutral Cancel, not the red Remove of a settled row.
+  const inProgress = p.status === "uploading" || p.status === "checking";
+  const removeLabel = inProgress
+    ? "Cancel"
+    : p.status === "rejected"
+      ? "Dismiss"
+      : "Remove";
+  const retryable = p.status === "timeout" || p.status === "error";
+  const actions = (
+    <span className="govbb-file-upload__actions no-print">
+      {retryable && (
+        <Button variant="text" aria-label={`Retry ${p.name}`} onClick={onRetry}>
+          Retry
+        </Button>
+      )}
+      <Button
+        variant="text"
+        negative={!inProgress}
+        aria-label={`${removeLabel} ${p.name}`}
+        onClick={onRemove}
+      >
+        {removeLabel}
+      </Button>
+    </span>
   );
   if (p.status === "uploading") {
     return (
-      <span className="govbb-file-upload__status">
-        Uploading…{" "}
-        <progress
-          className="govbb-file-upload__progress"
-          max={1}
-          value={p.progress ?? 0}
-          aria-label={`Uploading ${p.name}`}
-        />{" "}
-        {removeButton}
-      </span>
+      <>
+        {actions}
+        <div className="govbb-file-upload__status">
+          Uploading…
+          <progress
+            className="govbb-file-upload__progress"
+            max={1}
+            value={p.progress ?? 0}
+            aria-label={`Uploading ${p.name}`}
+          />
+        </div>
+      </>
     );
   }
   if (p.status === "checking") {
     // GuardDuty reports no percentage, so this bar has no value (indeterminate).
     return (
-      <span className="govbb-file-upload__status">
-        {CHECKING_MESSAGE}{" "}
-        <progress
-          className="govbb-file-upload__progress"
-          aria-label={`Checking ${p.name}`}
-        />{" "}
-        {removeButton}
-      </span>
+      <>
+        {actions}
+        <div className="govbb-file-upload__status">
+          {CHECKING_MESSAGE}
+          <progress
+            className="govbb-file-upload__progress"
+            aria-label={`Checking ${p.name}`}
+          />
+        </div>
+      </>
     );
   }
-  const retryable = p.status === "timeout" || p.status === "error";
   return (
-    <span className="govbb-file-upload__status govbb-file-upload__status--error">
-      {p.error}{" "}
-      {retryable && (
-        <Button
-          variant="text"
-          className="no-print"
-          aria-label={`Retry ${p.name}`}
-          onClick={onRetry}
-        >
-          Retry
-        </Button>
-      )}
-      {removeButton}
-    </span>
+    <>
+      {actions}
+      <div className="govbb-file-upload__status govbb-file-upload__status--error">
+        {p.error}
+      </div>
+    </>
   );
 }
