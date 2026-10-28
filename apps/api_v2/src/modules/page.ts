@@ -137,7 +137,8 @@ export const PendingRevision = z.object({
   contributors: z
     .array(z.string())
     .describe(
-      "The user id of everyone who saved to it, none of whom may approve it.",
+      "The user id of everyone who saved to it, and of whoever submitted " +
+        "an earlier, rejected round of it; none of them may approve it.",
     ),
   submitted_by: z
     .string()
@@ -355,11 +356,23 @@ export function workingCopy(
   };
 }
 
+/** A page's own fields, without what storage records. */
+export function fieldsOf(page: PageDocument): PageFields {
+  return {
+    url: page.url,
+    category_id: page.category_id,
+    parent_id: page.parent_id,
+    title: page.title,
+    description: page.description,
+    visibility: page.visibility,
+    form_id: page.form_id,
+    body_markdown: page.body_markdown,
+    frontmatter: page.frontmatter,
+  };
+}
+
 /** The fields a revision changes against the live page, in field order. */
-export function changesOf(
-  live: PageDocument,
-  fields: PageFields,
-): FieldChange[] {
+export function changesOf(live: PageFields, fields: PageFields): FieldChange[] {
   return PageFields.keyof()
     .options.filter((field) => !isDeepStrictEqual(live[field], fields[field]))
     .map((field) => ({ field, live: live[field], proposed: fields[field] }));
@@ -370,7 +383,8 @@ export function changesOf(
  * version moves strictly past both the live page's and the revision's, so a
  * client holding either one conflicts rather than overwriting the other. A
  * save over a rejected revision starts a new draft by the saver, which keeps
- * the rejected one's contributors: it starts from their content.
+ * the rejected one's contributors, and its submitter, as `inheritedFrom`
+ * says: it starts from their content.
  */
 export function pendingRevisionOf(
   live: PageDocument,
@@ -383,7 +397,10 @@ export function pendingRevisionOf(
   const updatedAt = new Date(
     Math.max(now.getTime(), ...versions.map((at) => Date.parse(at) + 1)),
   );
-  const contributors = revision?.contributors ?? [];
+  const contributors =
+    revision?.status === "rejected"
+      ? inheritedFrom(revision)
+      : (revision?.contributors ?? []);
   return {
     fields,
     liveUpdatedAt: new Date(live.updated_at),
@@ -396,6 +413,19 @@ export function pendingRevisionOf(
       ? contributors
       : [...contributors, actorId],
   };
+}
+
+/**
+ * Who a revision started from a rejected one counts as having changed it:
+ * the rejected one's contributors and its submitter. None of them may
+ * approve the new round (ADR 0079), so resubmitting it under someone else's
+ * name can't let its earlier submitter approve it.
+ */
+export function inheritedFrom(rejected: PendingRevision): string[] {
+  const { contributors, submitted_by: submitter } = rejected;
+  return submitter === null || contributors.includes(submitter)
+    ? [...contributors]
+    : [...contributors, submitter];
 }
 
 /** One field a write cannot have as sent. */

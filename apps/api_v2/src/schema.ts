@@ -51,6 +51,9 @@ export const changeAction = pgEnum("change_action", [
   "reverted",
   "deleted",
   "unpublished",
+  "submitted",
+  "rejected",
+  "approved",
 ]);
 
 const timestamps = {
@@ -244,8 +247,16 @@ export const searchChunks = pgTable(
 /**
  * Append-only, enforced by a trigger rather than by convention. The database
  * writes a row on every change to a content table (`record_change`, see
- * `007_change_history_trigger`), which is what a live-update feed would read
- * from. `actor` is the user whose transaction made the change, or `system`.
+ * `007_change_history_trigger`), and on each review step of a page's revision
+ * (`record_review`, see `013_review_history_trigger`), which is what a
+ * live-update feed would read from. `actor` is the user whose transaction
+ * made the change, or `system`.
+ *
+ * The snapshot is the row that changed, so its shape follows the action, not
+ * just `entity_kind`: a page's `submitted`, `rejected` and `approved` events
+ * hold a `page_revisions` row (its `id` is the revision's; `page_id` is the
+ * page), while its other events hold a `content_pages` row. Rebuilding a
+ * page's state means filtering on action.
  */
 export const changeEvents = pgTable(
   "change_events",

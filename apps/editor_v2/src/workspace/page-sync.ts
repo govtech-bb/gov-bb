@@ -1,7 +1,7 @@
 import type { Category } from "../api/categories";
 import { ApiFailure, type ApiPage, type EditorApi, type FieldError } from "../api/client";
 import { apiMessage } from "../api/failure-messages";
-import { markdownToPageSaveInput } from "../api/page-markdown";
+import { markdownToPageSaveInput, pageToMarkdown } from "../api/page-markdown";
 import type { DraftStore } from "../persistence/draft-store";
 
 /** The exact page version and submitted Markdown last loaded or saved in this session. */
@@ -27,10 +27,20 @@ export function pageHasUnsavedChanges(session: PageSession) {
 }
 
 export type PageSaveOutcome =
-  | { kind: "saved"; base: ServerPageBaseline }
+  /** `discarded`: taking the page out of public view discarded its unreviewed change, so `base` is the live page. */
+  | { kind: "saved"; base: ServerPageBaseline; discarded?: true }
   | { kind: "invalid"; errors: readonly FieldError[] }
   | { kind: "forbidden" | "under-review"; message: string }
   | { kind: "conflict" | "missing" | "signed-out" | "failed" };
+
+/** Page source with its frontmatter's visibility line and trailing whitespace taken out; the body is otherwise as written. */
+function withoutVisibility(markdown: string) {
+  return markdown
+    .trimEnd()
+    .replace(/^---\r?\n[\s\S]*?\r?\n---/, (frontmatter) =>
+      frontmatter.replace(/^visibility:.*(?:\r?\n|$)/m, ""),
+    );
+}
 
 /** Save a draft over the version it was edited from; the API refuses it if that version has moved on. */
 export async function savePageDraft(
@@ -43,8 +53,32 @@ export async function savePageDraft(
 
   if (!fields.ok) return { kind: "invalid", errors: fields.errors };
 
+  // Taking a public page out of view changes only who can see it (api_v2 ignores the rest), so other edits wait.
+  // The source is compared as written, so a baseline that wouldn't parse can't wave other edits through.
+  const hiding = base.page.visibility === "public" && fields.value.visibility !== "public";
+
+  if (hiding && withoutVisibility(markdown) !== withoutVisibility(base.markdown))
+    return {
+      kind: "invalid",
+      errors: [
+        {
+          field: "visibility",
+          message: "Save your other changes before you change who can see the page",
+        },
+      ],
+    };
+
   try {
     const page = await api.savePage(base.page.id, fields.value, base.page.updated_at);
+
+    // api_v2 kept only the visibility, so the saved version is what it stored, not what was sent
+    if (hiding) {
+      const stored = { page, markdown: pageToMarkdown(page, categories) };
+
+      return base.page.pending_revision
+        ? { kind: "saved", base: stored, discarded: true }
+        : { kind: "saved", base: stored };
+    }
 
     return { kind: "saved", base: { page, markdown } };
   } catch (error) {

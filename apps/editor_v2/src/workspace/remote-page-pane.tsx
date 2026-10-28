@@ -184,8 +184,24 @@ function RemotePageEditor({
   const save = useMutation({
     mutationFn: (current: { base: ServerPageBaseline; markdown: string }) =>
       savePageDraft(api, current.base, current.markdown, categories),
-    onSuccess: (outcome) => {
+    onSuccess: (outcome, sent) => {
       if (outcome.kind === "saved") {
+        // Show what api_v2 stored when it differs from what was sent, unless more was typed during the save
+        const typed = store.getSnapshot().committed !== sent.markdown;
+
+        if (outcome.base.markdown !== sent.markdown && !typed) {
+          store.edit(outcome.base.markdown);
+
+          if (!store.apply()) store.discard();
+        }
+
+        if (outcome.discarded)
+          toast("The page is no longer public", {
+            description: typed
+              ? "Its changes that were waiting for review were discarded, but your open copy still contains them. Check it before you save."
+              : "Its changes that were waiting for review were discarded. It shows its last published content.",
+          });
+
         rebase(outcome.base);
         client.setQueryData(pageQuery(api, server.id).queryKey, outcome.base.page);
         void client.invalidateQueries({ queryKey: ["content"] });
@@ -197,7 +213,7 @@ function RemotePageEditor({
     },
   });
 
-  // Sends the saved draft for review; the page's version doesn't move, only its review state
+  // Sends the saved draft, or a rejected change as it is, for review; its version doesn't move
   const submit = useMutation({
     mutationFn: () => api.submitRevision(server.id, server.updated_at),
     onSuccess: () => {
@@ -207,14 +223,30 @@ function RemotePageEditor({
       });
       void client.invalidateQueries({ queryKey: ["content"] });
     },
-    onError: (error) =>
+    onError: (error) => {
+      // The change moved on or went elsewhere: read the page again, as a refused save does
+      if (error instanceof ApiFailure && (error.status === 409 || error.status === 404))
+        void client.invalidateQueries({ queryKey: pageQuery(api, server.id).queryKey });
       toast("This change couldn't be submitted for review", {
         tone: "error",
         description:
           (error instanceof ApiFailure && apiMessage(error)) ||
           "Check you are still signed in, then try again.",
-      }),
+      });
+    },
   });
+
+  const submitAction = (label: string) =>
+    !readOnly && (
+      <Button
+        variant="secondary"
+        pending={submit.isPending}
+        disabled={unsaved || stale || submit.isPending}
+        onClick={() => submit.mutate()}
+      >
+        {label}
+      </Button>
+    );
 
   const session = useMemo<PageSession>(
     () => ({
@@ -403,26 +435,17 @@ function RemotePageEditor({
       Waiting for review. Citizens will see these changes once an approver publishes them.
     </Banner>
   ) : server.pending_revision?.status === "rejected" ? (
-    <Banner tone="warning" layout="strip" title="An approver rejected these changes">
-      {server.pending_revision.comment} Save your edits to start a new change.
+    <Banner
+      tone="warning"
+      layout="strip"
+      title="An approver rejected these changes"
+      actions={submitAction("Submit again")}
+    >
+      {server.pending_revision.comment}
+      {!readOnly && " Save your edits to start a new change, or submit it again as it is."}
     </Banner>
   ) : server.pending_revision ? (
-    <Banner
-      tone="info"
-      layout="strip"
-      actions={
-        !readOnly && (
-          <Button
-            variant="secondary"
-            pending={submit.isPending}
-            disabled={unsaved || stale || submit.isPending}
-            onClick={() => submit.mutate()}
-          >
-            Submit for review
-          </Button>
-        )
-      }
-    >
+    <Banner tone="info" layout="strip" actions={submitAction("Submit for review")}>
       Your changes are saved but not live. Submit them for review when they're ready.
     </Banner>
   ) : undefined;

@@ -956,7 +956,7 @@ export interface paths {
         };
         /**
          * Save a page
-         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row, or the page's pending revision, has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view writes the whole page and closes its pending revision. Returns the page as the editor now works on it. A save to a page whose revision is waiting for review is refused (409 `under_review`) until an approver publishes or rejects it.
+         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row, or the page's pending revision, has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view changes only its `visibility`: the other fields sent are ignored, the live content stays, and a draft revision is discarded. Returns the page as the editor now works on it. A save to a page whose revision is waiting for review is refused (409 `under_review`) until an approver publishes or rejects it.
          */
         put: {
             parameters: {
@@ -1372,7 +1372,7 @@ export interface paths {
                             live_updated_at: string;
                             /** @description The user id of whoever started it. */
                             created_by: string;
-                            /** @description The user id of everyone who saved to it, none of whom may approve it. */
+                            /** @description The user id of everyone who saved to it, and of whoever submitted an earlier, rejected round of it; none of them may approve it. */
                             contributors: string[];
                             /** @description The user id of whoever submitted it for review. */
                             submitted_by: string | null;
@@ -2923,7 +2923,7 @@ export interface paths {
         };
         /**
          * A version token for recorded content changes
-         * @description `change_events` records every page and category change. Its count and newest timestamp identify those changes without reading the content.
+         * @description `change_events` records every page and category change, and each review step of a page's revision. Its count and newest timestamp identify those changes without reading the content.
          */
         get: {
             parameters: {
@@ -3024,7 +3024,7 @@ export interface paths {
         put?: never;
         /**
          * Submit a page's draft revision for review
-         * @description Needs the editor role (403 otherwise). Records the submitter, who may not then approve it. 404 when the page has no draft revision; 409 `under_review` when it is already submitted, or `conflict` when the draft has been saved since `if-updated-at`. Saving the page is refused while it waits.
+         * @description Needs the editor role (403 otherwise). Records the submitter, who may not then approve it. 404 when the page has no draft revision; 409 `under_review` when it is already submitted, or `conflict` when the draft has been saved since `if-updated-at`. Saving the page is refused while it waits. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same `updated_at`, and the rejected one keeps its comment. The copy's `contributors` gain the rejected round's submitter, who may not approve it either.
          */
         post: {
             parameters: {
@@ -3087,7 +3087,7 @@ export interface paths {
                             live_updated_at: string;
                             /** @description The user id of whoever started it. */
                             created_by: string;
-                            /** @description The user id of everyone who saved to it, none of whom may approve it. */
+                            /** @description The user id of everyone who saved to it, and of whoever submitted an earlier, rejected round of it; none of them may approve it. */
                             contributors: string[];
                             /** @description The user id of whoever submitted it for review. */
                             submitted_by: string | null;
@@ -3240,13 +3240,13 @@ export interface paths {
         put?: never;
         /**
          * Reject a submitted revision with a comment
-         * @description Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). The live page is unchanged; the revision is kept with the comment, and the next save starts a new draft from it. 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `conflict` when the revision has been saved since `if-updated-at`.
+         * @description Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). The live page is unchanged; the revision is kept with the comment, and the next save starts a new draft from it. Rejecting moves the revision's `updated_at`, so an editor holding the earlier one reloads and sees why. `if-updated-at` is required (428 without it). 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `conflict` when the revision is no longer the version in `if-updated-at`.
          */
         post: {
             parameters: {
                 query?: never;
                 header?: {
-                    /** @description The `updated_at` this client last read for the revision. Omit to accept whatever is stored. */
+                    /** @description Required: the revision's `updated_at` the approver reviewed. Without it the decision is refused with a 428. */
                     "if-updated-at"?: string;
                 };
                 path: {
@@ -3310,7 +3310,7 @@ export interface paths {
                             live_updated_at: string;
                             /** @description The user id of whoever started it. */
                             created_by: string;
-                            /** @description The user id of everyone who saved to it, none of whom may approve it. */
+                            /** @description The user id of everyone who saved to it, and of whoever submitted an earlier, rejected round of it; none of them may approve it. */
                             contributors: string[];
                             /** @description The user id of whoever submitted it for review. */
                             submitted_by: string | null;
@@ -3417,6 +3417,20 @@ export interface paths {
                     };
                 };
                 /** @description Default Response */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -3463,13 +3477,13 @@ export interface paths {
         put?: never;
         /**
          * Approve a submitted revision and publish it
-         * @description Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). Writes the revision to the live page as a save would, re-indexes it and records the approver in `change_events`, all in one transaction. A revision that has gone stale while it waited (its parent or category gone, or its url taken) is refused with a 422 naming the field, and nothing changes. 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `conflict` when the revision has been saved since `if-updated-at`. Returns the page as it now stands.
+         * @description Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). Writes the revision to the live page as a save would, re-indexes it and records the approver in `change_events`, all in one transaction. A revision that has gone stale while it waited (its parent or category gone, or its url taken) is refused with a 422 naming the field, and nothing changes. `if-updated-at` is required (428 without it). 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `conflict` when the revision is no longer the version in `if-updated-at`. Returns the page as it now stands.
          */
         post: {
             parameters: {
                 query?: never;
                 header?: {
-                    /** @description The `updated_at` this client last read for the revision. Omit to accept whatever is stored. */
+                    /** @description Required: the revision's `updated_at` the approver reviewed. Without it the decision is refused with a 428. */
                     "if-updated-at"?: string;
                 };
                 path: {
@@ -3627,6 +3641,20 @@ export interface paths {
                                 field: string;
                                 message: string;
                             }[];
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
                         } & {
                             [key: string]: unknown;
                         };

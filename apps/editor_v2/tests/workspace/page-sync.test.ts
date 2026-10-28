@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ApiFailure, type ApiPage, type SavePageInput } from "../../src/api/client";
+import type { Category } from "../../src/api/categories";
 import { pageToMarkdown } from "../../src/api/page-markdown";
 import { savePageDraft, pageHasUnsavedChanges } from "../../src/workspace/page-sync";
 import { DraftStore } from "../../src/persistence/draft-store";
@@ -73,6 +74,115 @@ describe("saving a page", () => {
     expect(outcome).toEqual({
       kind: "saved",
       base: { page: { ...newer, body_markdown: "Hello again" }, markdown: edited },
+    });
+  });
+
+  it("refuses to take a public page out of view along with other edits, which api_v2 would ignore", async () => {
+    let called = false;
+
+    const outcome = await savePageDraft(
+      {
+        savePage: async () => {
+          called = true;
+
+          return page;
+        },
+      },
+      { page, markdown },
+      pageToMarkdown({ ...page, visibility: "preview", title: "Renamed" }, []),
+      [],
+    );
+
+    expect(called).toBe(false);
+    expect(outcome).toEqual({
+      kind: "invalid",
+      errors: [
+        {
+          field: "visibility",
+          message: "Save your other changes before you change who can see the page",
+        },
+      ],
+    });
+  });
+
+  it("refuses other edits with a visibility change even when the saved version wouldn't parse", async () => {
+    const business: Category = {
+      id: "00000000-0000-4000-8000-000000000099",
+      parent_id: null,
+      slug: "business-trade",
+      title: "Business and trade",
+      description: null,
+      url: "/business-trade",
+      position: 0,
+      services: 30,
+      reserved_route: false,
+      updated_at: "2026-10-28T12:00:00.000Z",
+    };
+
+    // A public root page with no category: its saved version fails "Choose a category"
+    const unfiled: ApiPage = { ...page, parent_id: null, category_id: null };
+    let called = false;
+
+    const outcome = await savePageDraft(
+      {
+        savePage: async () => {
+          called = true;
+
+          return unfiled;
+        },
+      },
+      { page: unfiled, markdown: pageToMarkdown(unfiled, [business]) },
+      pageToMarkdown(
+        { ...unfiled, category_id: business.id, visibility: "preview", title: "Renamed" },
+        [business],
+      ),
+      [business],
+    );
+
+    expect(called).toBe(false);
+    expect(outcome).toMatchObject({ kind: "invalid", errors: [{ field: "visibility" }] });
+  });
+
+  it("takes what api_v2 stored as saved when a page goes out of view, not what was sent", async () => {
+    const hidden: ApiPage = { ...page, visibility: "preview", updated_at: newer.updated_at };
+    const sent = pageToMarkdown({ ...page, visibility: "preview" }, []);
+
+    const outcome = await savePageDraft(
+      { savePage: async () => ({ ...hidden, title: "As stored" }) },
+      { page, markdown },
+      sent,
+      [],
+    );
+
+    expect(outcome).toEqual({
+      kind: "saved",
+      base: {
+        page: { ...hidden, title: "As stored" },
+        markdown: pageToMarkdown({ ...hidden, title: "As stored" }, []),
+      },
+    });
+  });
+
+  it("takes the live content as saved when taking a page out of view discards its waiting change", async () => {
+    const waiting: ApiPage = {
+      ...page,
+      title: "Waiting for review",
+      pending_revision: { status: "draft", comment: null },
+    };
+
+    const hidden: ApiPage = { ...page, visibility: "preview", updated_at: newer.updated_at };
+
+    const outcome = await savePageDraft(
+      { savePage: async () => hidden },
+      { page: waiting, markdown: pageToMarkdown(waiting, []) },
+      pageToMarkdown({ ...waiting, visibility: "preview" }, []),
+      [],
+    );
+
+    expect(outcome).toEqual({
+      kind: "saved",
+      base: { page: hidden, markdown: pageToMarkdown(hidden, []) },
+      discarded: true,
     });
   });
 

@@ -182,6 +182,8 @@ describe("a save to a public page", () => {
       { version_no: 1, action: "created" },
       { version_no: 2, action: "unpublished" },
     ]);
+    // Taking it out of view changed only its visibility.
+    expect((await stored(page.id))?.title).toBe(page.title);
   });
 
   it("returns the page as the editor now works on it, marked as waiting", async () => {
@@ -411,26 +413,30 @@ describe("changing a public page's visibility", () => {
     expect(await revisions()).toEqual([before]);
   });
 
-  it("by an approver taking it out of public view writes the working copy and closes the revision", async () => {
+  it("by an approver taking it out of public view changes only its visibility, and discards the draft", async () => {
     const page = await seedPage();
     const pending = (
       await save(TEST_EDITOR, page, { title: "Waiting" })
     ).json();
 
+    // The working copy, plus an edit of the approver's own: neither goes live.
     const response = await save(TEST_EMPLOYEE, pending, {
       visibility: "preview",
       title: "Waiting",
+      body_markdown: "Slipped in with the unpublish",
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
-      title: "Waiting",
+      title: page.title,
+      body_markdown: page.body_markdown,
       visibility: "preview",
       pending_revision: null,
     });
-    expect(await stored(page.id)).toMatchObject({
-      title: "Waiting",
+    expect(await stored(page.id)).toEqual({
+      ...page,
       visibility: "preview",
+      updated_at: response.json().updated_at,
     });
     expect(await revisions()).toEqual([]);
     expect((await app.inject({ url: `/pages?url=${ENTRY}` })).statusCode).toBe(
@@ -497,6 +503,7 @@ describe("an approver taking a page out of public view", () => {
     );
 
     expect(stale.ok ? null : stale.error._tag).toBe("PageConflict");
-    expect((await stored(page.id))?.title).toBe("Waiting");
+    // Taking it out of view kept the live content.
+    expect((await stored(page.id))?.title).toBe(page.title);
   });
 });
