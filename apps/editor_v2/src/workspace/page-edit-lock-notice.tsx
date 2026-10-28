@@ -93,7 +93,7 @@ export function PageEditLockNotice({
             open={takeoverGeneration !== undefined}
             onClose={() => setTakeoverGeneration(undefined)}
             title="Take over editing?"
-            description="The other session will lose editing access. Its unsaved changes will not be saved or merged into your copy."
+            description="The other editor will lose editing access. You will start from the saved page. Their unsaved changes stay in their open tab."
             confirm="Take over editing"
             tone="accent"
             onConfirm={() => {

@@ -3,7 +3,7 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { Category } from "../api/categories";
 import { ApiFailure, type ApiPage, type EditorApi } from "../api/client";
-import { PageEditLockToken, type PageEditLockGeneration } from "../api/page-schemas";
+import { PageEditLockToken } from "../api/page-schemas";
 import { pageToMarkdown, pickerCategories, pageFieldLabel } from "../api/page-markdown";
 import {
   PRELOAD_FRESH,
@@ -19,10 +19,10 @@ import { DraftStore } from "../persistence/draft-store";
 import { govbbPageCodec } from "../presets/govbb-page";
 import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
+import { ConfirmDialog } from "../ui/confirm-dialog";
 import { EmptyState } from "../ui/empty-state";
 import { LoadingState } from "../ui/loading-state";
 import type { SaveStateProps } from "../ui/save-state";
-import { toast } from "../ui/toast";
 import { EditorSessionProvider } from "../editor/react/composer";
 import type { DocumentSessions } from "./document-views";
 import {
@@ -80,7 +80,7 @@ export function RemotePagePane({
 
   opened.current = true;
 
-  const editor = (
+  return (
     <RemotePageEditor
       key={id}
       api={api}
@@ -88,6 +88,7 @@ export function RemotePagePane({
       categories={categories.data}
       active={active}
       onSession={onSession}
+      sessions={sessions}
       readError={page.error ?? categories.error}
       reading={page.isFetching || categories.isFetching}
       retryRead={() => {
@@ -96,11 +97,6 @@ export function RemotePagePane({
       }}
     />
   );
-
-  if (!sessions) return editor;
-  sessions.open(id, String(page.data.version));
-
-  return <EditorSessionProvider session={sessions.get(id)}>{editor}</EditorSessionProvider>;
 }
 
 function RemotePageEditor({
@@ -109,6 +105,7 @@ function RemotePageEditor({
   categories,
   active,
   onSession,
+  sessions,
   readError,
   reading,
   retryRead,
@@ -118,6 +115,7 @@ function RemotePageEditor({
   categories: readonly Category[];
   active: boolean;
   onSession: SessionListener;
+  sessions?: DocumentSessions;
   readError: Error | null;
   reading: boolean;
   retryRead: () => void;
@@ -127,7 +125,16 @@ function RemotePageEditor({
     markdown: pageToMarkdown(server, categories),
   }));
 
-  const [store] = useState(() => new DraftStore(base.markdown, govbbPageCodec));
+  const [workingCopy, setWorkingCopy] = useState(() => ({
+    store: new DraftStore(base.markdown, govbbPageCodec),
+    revision: 0,
+  }));
+
+  const { store } = workingCopy;
+  const [loadedLockToken, setLoadedLockToken] = useState<PageEditLockToken>();
+  const [reloadRequested, setReloadRequested] = useState(false);
+  const reloadTrigger = useRef<HTMLButtonElement>(null);
+  const editorElement = useRef<HTMLDivElement>(null);
   const baseline = useRef(base);
   const saving = useRef(false);
 
@@ -171,9 +178,21 @@ function RemotePageEditor({
     window.addEventListener("pagehide", editLock.deactivate);
     window.addEventListener("pageshow", onPageShow);
     window.addEventListener("focus", editLock.reconcile);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", editLock.deactivate);
+      window.removeEventListener("pageshow", onPageShow);
+      window.removeEventListener("focus", editLock.reconcile);
+      editLock.deactivate();
+    };
+  }, [active, editLock]);
+
+  useEffect(() => {
+    if (!active) return;
     let previous = store.getSnapshot();
 
-    const unsubscribe = store.subscribe(() => {
+    return store.subscribe(() => {
       const next = store.getSnapshot();
 
       if (
@@ -184,15 +203,6 @@ function RemotePageEditor({
         editLock.recordActivity();
       previous = next;
     });
-
-    return () => {
-      unsubscribe();
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pagehide", editLock.deactivate);
-      window.removeEventListener("pageshow", onPageShow);
-      window.removeEventListener("focus", editLock.reconcile);
-      editLock.deactivate();
-    };
   }, [active, editLock, store]);
 
   useEffect(() => {
@@ -211,17 +221,6 @@ function RemotePageEditor({
   };
 
   const client = useQueryClient();
-  const refreshedLockGeneration = useRef<PageEditLockGeneration | undefined>(undefined);
-  useEffect(() => {
-    if (
-      lockState.kind !== "editable" ||
-      refreshedLockGeneration.current === lockState.status.lockGeneration
-    )
-      return;
-    refreshedLockGeneration.current = lockState.status.lockGeneration;
-    // A new acquisition can follow someone else's save; refresh the page, never the local baseline.
-    void client.invalidateQueries({ queryKey: pageQuery(api, server.id).queryKey });
-  }, [lockState, client, api, server.id]);
   const navigate = useNavigate();
   const href = useRouterState({ select: (state) => state.location.href });
   const draft = useSyncExternalStore(store.subscribe, store.getSnapshot);
@@ -296,15 +295,68 @@ function RemotePageEditor({
 
   const outcome = save.isPending ? undefined : save.data;
   const uncertainWrite = outcome?.kind === "outcome-unknown";
-  const reviewWrite = useMutation({ mutationFn: () => api.page(server.id) });
-  const reviewedPage = reviewWrite.data?.ok ? reviewWrite.data.value : undefined;
+  const stale = server.version !== base.page.version || outcome?.kind === "conflict";
+  const lockToken = editLock.getEditLockToken();
+  const needsReload = loadedLockToken !== lockToken || stale || uncertainWrite;
+
+  const reloadPage = useMutation({
+    mutationFn: async (token: PageEditLockToken) => {
+      const snapshot = store.getSnapshot();
+      const result = await api.page(server.id);
+
+      if (editLock.getEditLockToken() !== token || store.getSnapshot() !== snapshot)
+        return "Editing access or page content changed during reload. Your open changes are unchanged.";
+
+      if (!result.ok) {
+        editLock.markUnconfirmed(result.error);
+
+        return "We could not reload this page. Your open changes are unchanged.";
+      }
+
+      const markdown = pageToMarkdown(result.value, categories);
+      const replacement = new DraftStore(markdown, govbbPageCodec);
+
+      if (!replacement.getSnapshot().valid)
+        return "The saved page could not be opened. Your open changes are unchanged.";
+
+      if (
+        markdown !== baseline.current.markdown ||
+        pageHasUnsavedChanges({ store, getBaseline: () => baseline.current })
+      ) {
+        sessions?.forget(server.id);
+        setWorkingCopy((current) => ({ store: replacement, revision: current.revision + 1 }));
+      }
+
+      rebase({ page: result.value, markdown });
+      client.setQueryData<ApiPage>(pageQuery(api, server.id).queryKey, (current) =>
+        current && current.version > result.value.version ? current : result.value,
+      );
+      save.reset();
+      setLoadedLockToken(token);
+      setReloadRequested(false);
+
+      return undefined;
+    },
+  });
+
+  const attemptedReloadToken = useRef<PageEditLockToken>(undefined);
+  const reload = reloadPage.mutate;
+  useEffect(() => {
+    if (!active || !lockToken || attemptedReloadToken.current === lockToken || save.isPending)
+      return;
+    attemptedReloadToken.current = lockToken;
+
+    // Every acquisition starts with a fresh read, never with another owner's unsaved work.
+    if (!uncertainWrite && !pageHasUnsavedChanges({ store, getBaseline: () => baseline.current }))
+      reload(lockToken);
+  }, [active, lockToken, save.isPending, uncertainWrite, store, reload]);
 
   const session = useMemo<PageSession>(
     () => ({
       store,
       getBaseline: () => baseline.current,
       getEditLockToken: () =>
-        active && !readError && !uncertainWrite && outcome?.kind !== "missing"
+        active && !readError && !needsReload && !reloadPage.isPending && outcome?.kind !== "missing"
           ? editLock.getEditLockToken()
           : undefined,
       isSaving: () => saving.current,
@@ -315,7 +367,8 @@ function RemotePageEditor({
       save.isPending,
       active,
       readError,
-      uncertainWrite,
+      needsReload,
+      reloadPage.isPending,
       outcome?.kind,
       editLock,
       lockState,
@@ -334,7 +387,6 @@ function RemotePageEditor({
   );
 
   const unsaved = pageHasUnsavedChanges(session);
-  const stale = server.version !== base.page.version;
 
   const blocked = !draft.valid || draft.dirty || draft.status === "error";
 
@@ -354,48 +406,20 @@ function RemotePageEditor({
     )
       return;
     saving.current = true;
-    reviewWrite.reset();
     save.mutate({ base: baseline.current, markdown: snapshot.committed, token: editLockToken });
   };
 
-  const loadSaved = (page: ApiPage) => {
-    const markdown = pageToMarkdown(page, categories);
-
-    try {
-      const token = store.captureReplacementToken();
-      const result = store.replacePrepared(govbbPageCodec.prepare(markdown), token);
-
-      if (result.status === "committed") {
-        rebase({ page, markdown });
-        save.reset();
-
-        return;
-      }
-    } catch {
-      // Preparation can reject unsupported saved content; do not first replace or discard local source.
-    }
-
-    toast("The saved version couldn't be opened", {
-      tone: "error",
-      description: "Your open copy is unchanged.",
-    });
-  };
-
-  const newerVersion = "A newer version of this page has been saved since you opened it.";
   const downloadMine = () => download(store.getSnapshot().source, "page.md");
 
   // Source errors take precedence over the server's save state (useDraftSave).
   const standing = (): SaveStateProps => {
-    const conflict = stale ? newerVersion : undefined;
-
-    if (save.isPending) return { status: "saving", conflict };
+    if (save.isPending) return { status: "saving" };
 
     if (outcome?.kind === "missing")
       return {
         status: "failed",
         error:
           "This page has been deleted, so your changes can't be saved. Download a copy to keep them.",
-        conflict,
         onDownload: downloadMine,
       };
 
@@ -403,8 +427,7 @@ function RemotePageEditor({
       return {
         status: "failed",
         error:
-          "The server may have saved your changes. Check the saved version before deciding what to keep.",
-        conflict,
+          "We could not confirm whether your changes were saved. Reload the page before editing again.",
         onDownload: downloadMine,
       };
 
@@ -413,7 +436,6 @@ function RemotePageEditor({
         status: "failed",
         error:
           "We could not save this page. Keep this editor open to retry, or download your changes.",
-        conflict,
         onRetry: saveChanges,
         onDownload: downloadMine,
       };
@@ -422,7 +444,6 @@ function RemotePageEditor({
 
     return {
       status: unsaved ? (live ? "unpublished" : "unsaved") : live ? "published" : "saved",
-      conflict,
     };
   };
 
@@ -456,7 +477,7 @@ function RemotePageEditor({
               {reading ? "Refreshing page…" : "Try again"}
             </Button>
           )}
-          {readRefused && <Button onClick={downloadMine}>Download my version</Button>}
+          {readRefused && <Button onClick={downloadMine}>Download changes</Button>}
         </>
       }
     >
@@ -470,120 +491,27 @@ function RemotePageEditor({
     </Banner>
   );
 
-  // The save state reads out the newer version, so its notice doesn't too
-  const notice = uncertainWrite ? (
-    <Banner
-      tone="warning"
-      layout="strip"
-      title="Save outcome unknown"
-      actions={
-        <>
-          <Button
-            variant="secondary"
-            pending={reviewWrite.isPending}
-            onClick={() => {
-              reviewWrite.mutate();
-              editLock.reconcile();
-            }}
-          >
-            Check saved version
-          </Button>
-          {reviewedPage && (
-            <>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  rebase({
-                    page: reviewedPage,
-                    markdown: pageToMarkdown(reviewedPage, categories),
-                  });
-                  save.reset();
-                }}
-              >
-                Keep my working copy
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={blocked}
-                onClick={() => loadSaved(reviewedPage)}
-              >
-                Use saved version
-              </Button>
-            </>
-          )}
-          <Button onClick={downloadMine}>Download my version</Button>
-        </>
-      }
-    >
-      Your submitted snapshot and any newer edits are still here. Nothing will be resent
-      automatically.
-      {reviewWrite.data?.ok === false && (
-        <p>
-          We could not read the saved page. Keep this tab open and check again, or download your
-          work.
-        </p>
-      )}
-      {reviewedPage && (
-        <details className="mt-2">
-          <summary>Review saved version {reviewedPage.version}</summary>
-          <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words">
-            {pageToMarkdown(reviewedPage, categories)}
-          </pre>
-        </details>
-      )}
-    </Banner>
-  ) : stale ? (
-    <Banner
-      tone="warning"
-      layout="strip"
-      role="none"
-      actions={
-        <>
-          {unsaved && (
-            <Button
-              variant="secondary"
-              disabled={save.isPending}
-              onClick={() => {
-                rebase({ page: server, markdown: pageToMarkdown(server, categories) });
-                save.reset();
-              }}
-            >
-              Keep my version
-            </Button>
-          )}
-          <Button
-            variant="secondary"
-            disabled={blocked || save.isPending}
-            onClick={() => loadSaved(server)}
-          >
-            Load saved version
-          </Button>
-          {unsaved && <Button onClick={downloadMine}>Download my version</Button>}
-        </>
-      }
-    >
-      {newerVersion}
-    </Banner>
-  ) : outcome?.kind === "invalid" ? (
-    <Banner tone="error" layout="strip" title="There is a problem">
-      <ul className="mt-1 list-disc ps-5">
-        {errors.map((error) => (
-          <li key={`${error.field}:${error.message}`}>
-            {pageFieldLabel(error.field)}: {error.message}
-          </li>
-        ))}
-      </ul>
-    </Banner>
-  ) : outcome?.kind === "signed-out" ? (
-    <Banner tone="warning" layout="strip" role="alert" actions={signInAction}>
-      Your session has ended. Download your changes before signing in again; unsaved work will be
-      lost when you leave.
-    </Banner>
-  ) : outcome?.kind === "forbidden" ? (
-    <Banner tone="warning" layout="strip">
-      You no longer have permission to save this page. Your open working copy is unchanged.
-    </Banner>
-  ) : undefined;
+  const notice =
+    outcome?.kind === "invalid" ? (
+      <Banner tone="error" layout="strip" title="There is a problem">
+        <ul className="mt-1 list-disc ps-5">
+          {errors.map((error) => (
+            <li key={`${error.field}:${error.message}`}>
+              {pageFieldLabel(error.field)}: {error.message}
+            </li>
+          ))}
+        </ul>
+      </Banner>
+    ) : outcome?.kind === "signed-out" ? (
+      <Banner tone="warning" layout="strip" role="alert" actions={signInAction}>
+        Your session has ended. Download your changes before signing in again; unsaved work will be
+        lost when you leave.
+      </Banner>
+    ) : outcome?.kind === "forbidden" ? (
+      <Banner tone="warning" layout="strip">
+        You no longer have permission to save this page. Your open working copy is unchanged.
+      </Banner>
+    ) : undefined;
 
   const recovery = draft.recovery;
 
@@ -610,8 +538,13 @@ function RemotePageEditor({
     </>
   );
 
-  return (
+  const reloadError = reloadPage.isError
+    ? "We could not reload this page. Your open changes are unchanged."
+    : reloadPage.data;
+
+  const editor = (
     <PageDraftEditor
+      key={workingCopy.revision}
       store={store}
       active={active}
       readOnly={!session.getEditLockToken()}
@@ -635,6 +568,35 @@ function RemotePageEditor({
               recovery={recoveryActions}
             />
           )}
+          {active && lockToken && needsReload && (
+            <Banner
+              tone="warning"
+              layout="strip"
+              title={uncertainWrite ? "Save outcome unknown" : undefined}
+              actions={
+                <>
+                  <Button
+                    ref={reloadTrigger}
+                    variant="secondary"
+                    pending={reloadPage.isPending}
+                    disabled={save.isPending}
+                    onClick={() => {
+                      if (unsaved) setReloadRequested(true);
+                      else reloadPage.mutate(lockToken);
+                    }}
+                  >
+                    {reloadPage.isPending ? "Reloading page…" : "Reload page"}
+                  </Button>
+                  {unsaved && recoveryActions}
+                </>
+              }
+            >
+              {reloadError ??
+                (reloadPage.isPending
+                  ? "Loading the saved page before editing."
+                  : "Reload the saved page to continue editing. Your open changes are read-only.")}
+            </Banner>
+          )}
           {readNotice}
           {notice}
           {draft.recovery && (
@@ -656,4 +618,39 @@ function RemotePageEditor({
       }}
     />
   );
+
+  const content = (
+    <>
+      <div ref={editorElement} tabIndex={-1}>
+        {editor}
+      </div>
+      <ConfirmDialog
+        open={active && reloadRequested}
+        onClose={() => setReloadRequested(false)}
+        title="Reload page?"
+        description="This discards your unsaved changes and opens the saved page. Cancel to download your changes first."
+        confirm="Discard changes and reload"
+        confirmDisabled={!lockToken || save.isPending}
+        pending={reloadPage.isPending}
+        pendingLabel="Reloading page…"
+        error={reloadError}
+        finalFocus={() =>
+          reloadTrigger.current ??
+          editorElement.current?.querySelector<HTMLElement>('[aria-label="Page title"]') ??
+          editorElement.current ??
+          false
+        }
+        onConfirm={() => {
+          const token = editLock.getEditLockToken();
+
+          if (token && !saving.current) reloadPage.mutate(token);
+        }}
+      />
+    </>
+  );
+
+  if (!sessions) return content;
+  sessions.open(server.id, String(server.version));
+
+  return <EditorSessionProvider session={sessions.get(server.id)}>{content}</EditorSessionProvider>;
 }

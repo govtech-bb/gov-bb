@@ -104,17 +104,9 @@ const fieldsOf = (page) => {
 };
 
 const takeover = async (page) => {
-  const fresh = page.waitForResponse(
-    (response) =>
-      new URL(response.url()).pathname === `/pages/${pageId}` &&
-      response.request().method() === "GET",
-  );
-
   await button(page, "Take over editing").click();
   const dialog = page.getByRole("alertdialog", { name: "Take over editing?", exact: true });
   await dialog.getByRole("button", { name: "Take over editing", exact: true }).click();
-  await editable(page);
-  assert.equal((await fresh).status(), 200);
 };
 
 const save = async (page) => {
@@ -149,6 +141,7 @@ try {
   assert.equal(await button(b, "Edit content").isDisabled(), true);
   await button(b, "Close preview").click();
   await takeover(b);
+  await editable(b);
   assert.notEqual(credentials.get(b), tokenA);
   assert.equal((await read()).version, 1, "takeover changes no content version");
   await title(b).fill("Saved by the second tab");
@@ -167,6 +160,8 @@ try {
   await c.goto(path(pageId));
   await button(c, "Take over editing").waitFor();
   await takeover(c);
+  await editable(c);
+  assert.equal(await title(c).inputValue(), "Saved by the second tab");
   const headers = { origin: base.origin, "x-page-edit-lock-token": credentials.get(b) };
 
   const staleOwner = await first.request.put(`${apiOrigin}/pages/${pageId}`, {
@@ -195,7 +190,9 @@ try {
   await a.evaluate(() => window.dispatchEvent(new Event("focus")));
   await button(a, "Take over editing").waitFor();
   await takeover(a);
+  await button(a, "Reload page").waitFor();
   assert.equal(await title(a).inputValue(), "Unsaved first tab");
+  assert.equal(await title(a).getAttribute("readonly"), "");
 
   const staleVersion = await first.request.put(`${apiOrigin}/pages/${pageId}`, {
     headers: { ...headers, "x-page-edit-lock-token": credentials.get(a) },
@@ -204,9 +201,23 @@ try {
 
   assert.equal(staleVersion.status(), 409);
   assert.equal((await staleVersion.json()).error, "page_version_conflict");
-  await button(a, "Keep my version").click();
+  assert.equal(await button(a, "Keep my version").count(), 0);
+  await button(a, "Reload page").click();
+  const reloadDialog = a.getByRole("alertdialog", { name: "Reload page?", exact: true });
+  await reloadDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  assert.equal(await title(a).inputValue(), "Unsaved first tab");
+  assert.equal(await button(a, "Save").isDisabled(), true);
+  await button(a, "Reload page").click();
+  await reloadDialog
+    .getByRole("button", { name: "Discard changes and reload", exact: true })
+    .click();
+  await editable(a);
+  assert.equal(await title(a).inputValue(), "Saved by second employee");
+  assert.equal(await button(a, "Undo").isDisabled(), true);
+  assert.equal((await read()).version, 3, "reloading never saves discarded changes");
+  await title(a).fill("Edited after resuming");
   await save(a);
-  assert.equal((await read()).title, "Unsaved first tab");
+  assert.equal((await read()).title, "Edited after resuming");
   assert.equal((await read()).version, 4);
 
   await control("idle-prompt");
@@ -221,7 +232,13 @@ try {
   assert.equal(await title(a).inputValue(), "Keep when idle or signed out");
   assert.equal(await button(a, "Save").isDisabled(), true);
   await button(a, "Start editing").click();
+  await button(a, "Reload page").click();
+  await reloadDialog
+    .getByRole("button", { name: "Discard changes and reload", exact: true })
+    .click();
   await editable(a);
+  assert.equal(await title(a).inputValue(), "Edited after resuming");
+  await title(a).fill("Keep when idle or signed out");
 
   await control("expire-auth");
   await a.evaluate(() => window.dispatchEvent(new Event("focus")));
@@ -266,7 +283,7 @@ try {
     true,
   );
   await a.getByRole("alertdialog").getByRole("button", { name: "Cancel", exact: true }).click();
-  await button(a, "Load saved version").click();
+  await button(a, "Reload page").click();
   await button(a, "Delete page").click();
 
   const deleted = a.waitForResponse(
@@ -283,7 +300,7 @@ try {
   assert.equal((await second.request.get(`${apiOrigin}/pages/${unsupportedId}`)).status(), 404);
   assert.deepEqual(errors, []);
   console.log(
-    "PASS real API concurrent editing: same-user tabs, two employees, heartbeat loss, version fencing, read-only preview, idle/expiry, auth recovery/export and reviewed unsupported-page deletion",
+    "PASS real API concurrent editing: same-user tabs, two employees, heartbeat loss, confirmed reload without version choices, stale-write fencing, read-only preview, idle/expiry, auth recovery/export and reviewed unsupported-page deletion",
   );
 } finally {
   await browser.close();

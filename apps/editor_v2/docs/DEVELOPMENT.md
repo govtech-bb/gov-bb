@@ -94,7 +94,7 @@ The existing TypeScript configuration does not enable `exactOptionalPropertyType
 
 ## Real-API concurrent editing check
 
-`concurrent-page-editing.mjs` runs two employees and same-user tabs against real Fastify and isolated PostgreSQL, rather than HTTP fixtures. It covers takeover, stale writes, ordinary heartbeat loss detection, idle response/expiry, auth-expiry exports and guarded deletion of unsupported content. `apps/api_v2/browser/page-edit-locks.test.ts` owns the temporary API and database and tears both down; its test-only clock controls are not production routes.
+`concurrent-page-editing.mjs` runs two employees and same-user tabs against real Fastify and isolated PostgreSQL, rather than HTTP fixtures. It covers takeover, stale writes, ordinary heartbeat loss detection, confirmed reloads without version choices, idle response/expiry, auth-expiry exports and guarded deletion of unsupported content. `apps/api_v2/browser/page-edit-locks.test.ts` owns the temporary API and database and tears both down; its test-only clock controls are not production routes.
 
 Start the editor with `VITE_API_ORIGIN=http://127.0.0.1:3038`, auth bypass off, and a working site preview. Start landing at `127.0.0.1:3048` and set `VITE_SITE_PREVIEW_URL=http://127.0.0.1:3048/cms-preview/`. Then run from the repo root, with an isolated PostgreSQL server and installed Playwright Chromium:
 
@@ -109,9 +109,9 @@ The runner forwards the editor URL and starts the API at port 3038. Do not point
 
 ## Persistence and recovery
 
-Unsaved edits exist only in memory. Save/Publish validates and sends the applied snapshot with the baseline's numeric `version` and the acquisition's `X-Page-Edit-Lock-Token`. A successful response acknowledges only the submitted snapshot, not edits made while waiting. Background reads never silently advance the baseline. Version conflicts require an explicit choice of local or saved content; lock refusals require ownership reconciliation.
+Unsaved edits exist only in memory. Save/Publish validates and sends the applied snapshot with the baseline's numeric `version` and the acquisition's `X-Page-Edit-Lock-Token`. A successful response acknowledges only the submitted snapshot, not edits made while waiting. The numeric counter is an internal stale-write guard, not an author-facing version workflow. Background reads never attach fresh write evidence to old content. A new lock requires a fresh page read before editing is enabled.
 
-Network/auth failures and lock loss retain the same store, including unapplied or invalid source and failed canvas serialization. An uncertain write also retains its submitted snapshot and blocks resubmission until the author checks the saved page and chooses which copy to keep. Loading saved content validates it before replacing local work. No autosave, durable drafts, crash/reload recovery or automatic merge is provided.
+Network/auth failures and lock loss retain the same store, including unapplied or invalid source and failed canvas serialization. After reacquiring a lock, a stale-write refusal or an uncertain save, the author reloads the saved page before editing again. Unsaved work stays read-only until the author confirms discarding it, with source and recovery downloads available. A failed or superseded reload leaves it untouched. A successful reload replaces discarded content and clears its undo history; it never resubmits old edits. There are no version choices, comparisons, autosave, durable drafts, crash/reload recovery or merging.
 
 Apply is not Save. Invalid/unapplied source and serialization errors also count as unsaved work. Cancelled navigation/sign-out retains edits and undo. Pending saves block departure. A crash, refresh, closed tab or confirmed departure loses unsaved work; unload warnings are best-effort, not recovery.
 

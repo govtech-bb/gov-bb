@@ -510,18 +510,22 @@ try {
 
   current = {
     ...current,
-    title: "Another employee's version",
+    title: "Another employee's saved title",
     version: current.version + 1,
     updated_at: new Date(Date.parse(current.updated_at) + 1000).toISOString(),
   };
   await button("Publish changes").click();
-  await page
-    .getByText("A newer version of this page has been saved since you opened it.")
-    .first()
-    .waitFor();
+  await button("Reload page").waitFor();
   assert.equal(await title.inputValue(), "Typed during publication");
-  await button("Keep my version").click();
-  assert.equal(writes.length, 3, "keeping my version does not publish");
+  assert.equal(await button("Publish changes").isDisabled(), true);
+  assert.equal(await button("Keep my version").count(), 0);
+  await button("Reload page").click();
+  await question.getByRole("button", { name: "Discard changes and reload", exact: true }).click();
+  await button("Preview page").click();
+  await button("Edit content").click();
+  assert.equal(await title.inputValue(), "Another employee's saved title");
+  assert.equal(await button("Undo").isDisabled(), true);
+  assert.equal(writes.length, 3, "reloading does not publish");
 
   // Mobile and zoom-equivalent narrow reflow, including a reduced-height phone keyboard viewport.
   for (const width of [720, 390, 320]) {

@@ -175,24 +175,33 @@ try {
   const otherVersion = current.version;
   await title.fill("My conflicting title");
   await button("Save").click();
-  // Shown under the bar, and read out by the page's save state
-  await page
-    .getByText("A newer version of this page has been saved since you opened it.")
-    .first()
-    .waitFor();
+  await button("Reload page").waitFor();
   assert.equal(writes.length, 2);
   assert.equal(writes[1].fields.version, savedVersion);
   assert.equal(await title.inputValue(), "My conflicting title");
-  await button("Keep my version").click();
+  assert.equal(await title.getAttribute("readonly"), "");
+  assert.equal(await button("Keep my version").count(), 0);
+  await button("Reload page").click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Discard changes and reload", exact: true })
+    .click();
+  await page.waitForFunction(
+    () => !document.querySelector('textarea[aria-label="Page title"]')?.readOnly,
+  );
+  assert.equal(await title.inputValue(), "Changed by another employee");
+  assert.equal(await button("Undo").isDisabled(), true);
+  assert.equal(writes.length, 2);
+  await title.fill("Edited after reload");
   await button("Save").click();
-  await waitForSavedTitle("My conflicting title");
+  await waitForSavedTitle("Edited after reload");
   assert.equal(writes.length, 3);
   assert.equal(writes[2].fields.version, otherVersion);
 
   assert.deepEqual(await page.evaluate(() => window.draftStorageCalls), []);
   await page.reload();
   await title.waitFor();
-  assert.equal(await title.inputValue(), "My conflicting title");
+  assert.equal(await title.inputValue(), "Edited after reload");
   assert.equal(await body.innerText(), "Edited remote body");
   assert.deepEqual(await page.evaluate(() => window.draftStorageCalls), []);
   assert.equal(

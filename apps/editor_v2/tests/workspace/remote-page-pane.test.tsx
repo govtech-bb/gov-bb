@@ -14,6 +14,7 @@ import { pageContentVersionSchema } from "../../src/api/page-schemas";
 import { govbbPageCodec } from "../../src/presets/govbb-page";
 import { Toaster } from "../../src/ui/toast";
 import { RemotePagePane } from "../../src/workspace/remote-page-pane";
+import { DocumentSessions } from "../../src/workspace/document-views";
 import { pageHasUnsavedChanges, type PageSession } from "../../src/workspace/page-sync";
 import { renderInPage } from "../helpers/page-editor";
 import { withInMemoryPageEditLocks } from "../helpers/page-edit-locks";
@@ -70,6 +71,7 @@ async function mountPage(request: (url: string, init?: RequestInit) => Promise<R
   });
 
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const sessions = new DocumentSessions();
   let session: PageSession | undefined;
   await renderInPage(
     <RouterContextProvider router={router}>
@@ -78,6 +80,7 @@ async function mountPage(request: (url: string, init?: RequestInit) => Promise<R
           api={api}
           id={page.id}
           active
+          sessions={sessions}
           onSession={(_id, current) => {
             session = current;
           }}
@@ -98,6 +101,14 @@ async function applySource(session: PageSession, source: string) {
     session.store.edit(source);
     expect(session.store.apply()).toBe(true);
   });
+}
+
+async function clickButton(label: string, within: ParentNode = document) {
+  const button = [...within.querySelectorAll("button")].find((item) => item.textContent === label);
+
+  if (!button) throw new Error(`Missing page control: ${label}`);
+  expect(button.disabled).toBe(false);
+  await act(async () => button.click());
 }
 
 async function savePage() {
@@ -140,32 +151,32 @@ test("a page the editor can't show opens read-only, its content left as it was s
   expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/history"))).toBe(false);
 });
 
-test("a rejected saved version leaves the working copy editable and its baseline unchanged", async () => {
-  const h = await mountPage(async () => Response.json(page));
+test("a failed reload keeps unsaved work and its baseline read-only", async () => {
+  let current = page;
+  const h = await mountPage(async () => Response.json(current));
   const store = h.session().store;
   const source = store.getSnapshot().committed + "\n\nKeep my changes.";
   await applySource(h.session(), source);
   const baseline = h.session().getBaseline();
 
+  current = {
+    ...page,
+    title: "Saved elsewhere",
+    version: pageContentVersionSchema.parse(2),
+  };
   await act(async () => {
-    h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
-      ...page,
-      title: "Saved elsewhere",
-      version: pageContentVersionSchema.parse(2),
-      updated_at: "2026-10-07T14:00:00.000Z",
-    });
-    await vi.waitFor(() => expect(document.body.textContent).toContain("A newer version"));
+    h.client.setQueryData(pageQuery(h.api, page.id).queryKey, current);
+    await vi.waitFor(() => expect(document.body.textContent).toContain("Reload page"));
   });
 
-  const loadSaved = [...document.querySelectorAll("button")].find(
-    (button) => button.textContent === "Load saved version",
-  )!;
-
+  await clickButton("Reload page");
   vi.spyOn(govbbPageCodec, "prepare").mockImplementationOnce(() => {
-    throw new Error("Cannot prepare saved version");
+    throw new Error("Cannot prepare saved page");
   });
-
-  await act(async () => loadSaved.click());
+  await clickButton("Discard changes and reload");
+  await vi.waitFor(() =>
+    expect(document.body.textContent).toContain("The saved page could not be opened"),
+  );
 
   expect(store.getSnapshot()).toMatchObject({
     source,
@@ -179,14 +190,9 @@ test("a rejected saved version leaves the working copy editable and its baseline
   expect(pageHasUnsavedChanges(h.session())).toBe(true);
   expect(
     document.querySelector('[aria-label="Page content"]')?.getAttribute("contenteditable"),
-  ).toBe("true");
-  expect(loadSaved.disabled).toBe(false);
-  expect(document.body.textContent).toContain("The saved version couldn't be opened");
-  expect(document.body.textContent).toContain("Your open copy is unchanged.");
+  ).toBe("false");
+  expect(h.session().getEditLockToken()).toBeUndefined();
   expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
-  await act(async () =>
-    document.querySelector<HTMLButtonElement>('[aria-label="Dismiss"]')!.click(),
-  );
 });
 
 test("a background version change with the same timestamp cannot rebase invalid source", async () => {
@@ -201,8 +207,9 @@ test("a background version change with the same timestamp cannot rebase invalid 
       version: pageContentVersionSchema.parse(2),
       title: "Inherited change",
     });
-    await vi.waitFor(() => expect(document.body.textContent).toContain("A newer version"));
+    await vi.waitFor(() => expect(document.body.textContent).toContain("Reload page"));
   });
+  expect(h.session().getEditLockToken()).toBeUndefined();
   expect(h.session().store).toBe(store);
   expect(store.getSnapshot()).toBe(workingCopy);
   expect(h.session().getBaseline()).toBe(baseline);
@@ -326,11 +333,11 @@ test("a slow save acknowledges only its submitted snapshot; refetch cannot overw
   expect(h.session().getBaseline().page.version).toBe(current.version);
   expect(h.session().store.getSnapshot().committed).toBe(second);
   await act(async () => {
-    await vi.waitFor(() => expect(document.body.textContent).toContain("A newer version"));
+    await vi.waitFor(() => expect(document.body.textContent).toContain("Reload page"));
   });
 });
 
-test("an uncertain save retains its submitted snapshot and newer raw edits until an explicit review decision", async () => {
+test("an uncertain save keeps raw edits until confirmed reload, without offering competing copies", async () => {
   let current = page;
   let writes = 0;
   const response = Promise.withResolvers<Response>();
@@ -364,24 +371,123 @@ test("an uncertain save retains its submitted snapshot and newer raw edits until
   expect(store.getSnapshot()).toBe(raw);
   expect(h.session().getEditLockToken()).toBeUndefined();
 
-  const click = async (label: string) => {
-    const control = [...document.querySelectorAll("button")].find(
-      (button) => button.textContent === label,
-    );
-
-    if (!control) throw new Error(`Missing recovery control: ${label}`);
-    await act(async () => control.click());
-  };
-
-  await click("Check saved version");
-  await vi.waitFor(() => expect(document.body.textContent).toContain("Review saved version 2"));
+  expect(document.body.textContent).not.toMatch(
+    /Keep my (version|working copy)|Review saved version/,
+  );
+  await clickButton("Reload page");
   expect(h.session().getBaseline().page.version).toBe(1);
   expect(store.getSnapshot()).toBe(raw);
-  await click("Keep my working copy");
+  await clickButton("Cancel", document.querySelector('[role="alertdialog"]')!);
+  expect(h.session().store).toBe(store);
+  expect(h.session().getEditLockToken()).toBeUndefined();
+
+  await clickButton("Reload page");
+  await clickButton("Discard changes and reload");
+  await vi.waitFor(() => expect(h.session().getEditLockToken()).toBeDefined());
   expect(h.session().getBaseline().page.version).toBe(2);
-  expect(store.getSnapshot()).toBe(raw);
+  expect(h.session().store.getSnapshot().committed).toContain("Submitted content");
+  expect(h.session().store.getSnapshot().source).not.toContain("New raw source");
+  expect(pageHasUnsavedChanges(h.session())).toBe(false);
   expect(writes).toBe(1);
 });
+
+test("a new lock does not enable editing until a post-acquisition page read finishes", async () => {
+  const response = Promise.withResolvers<Response>();
+  let reads = 0;
+  const mounting = mountPage(async () => (++reads === 1 ? Response.json(page) : response.promise));
+  await vi.waitFor(() => expect(reads).toBe(2));
+
+  const editable = document
+    .querySelector('[aria-label="Page content"]')
+    ?.getAttribute("contenteditable");
+
+  response.resolve(Response.json({ ...page, title: "Latest saved title", version: 2 }));
+  const h = await mounting;
+  expect(editable).toBe("false");
+  expect(h.session().getBaseline().page.title).toBe("Latest saved title");
+  expect(h.session().store.getSnapshot().committed).toContain("Latest saved title");
+});
+
+test("reacquiring a lock requires reloading even when the saved page has not changed", async () => {
+  const h = await mountPage(async () => Response.json(page));
+  const store = h.session().store;
+  await applySource(h.session(), store.getSnapshot().source + "\n\nOld unsaved changes");
+  const oldToken = h.session().getEditLockToken();
+  await act(async () => {
+    window.dispatchEvent(new Event("pagehide"));
+    window.dispatchEvent(new Event("pageshow"));
+  });
+  await vi.waitFor(() => expect(h.locks.get(page.id)?.generation).toBe(2));
+  expect(h.session().getEditLockToken()).toBeUndefined();
+  expect(h.session().store).toBe(store);
+  await clickButton("Reload page");
+  await clickButton("Discard changes and reload");
+  await vi.waitFor(() => expect(h.session().getEditLockToken()).toBeDefined());
+  expect(h.session().getEditLockToken()).not.toBe(oldToken);
+  expect(h.session().store.getSnapshot().committed).not.toContain("Old unsaved changes");
+  expect(pageHasUnsavedChanges(h.session())).toBe(false);
+  expect(document.querySelector<HTMLButtonElement>('[aria-label="Undo"]')?.disabled).toBe(true);
+});
+
+test("a late reload cannot discard local work after editing ownership is lost", async () => {
+  const response = Promise.withResolvers<Response>();
+  let delayed = false;
+  const h = await mountPage(async () => (delayed ? response.promise : Response.json(page)));
+  const store = h.session().store;
+  await applySource(h.session(), store.getSnapshot().source + "\n\nKeep these changes");
+  await act(async () => {
+    window.dispatchEvent(new Event("pagehide"));
+    window.dispatchEvent(new Event("pageshow"));
+  });
+  await vi.waitFor(() => expect(h.locks.get(page.id)?.generation).toBe(2));
+  await clickButton("Reload page");
+  delayed = true;
+  await clickButton("Discard changes and reload");
+  await act(async () => {
+    window.dispatchEvent(new Event("pagehide"));
+    response.resolve(Response.json({ ...page, title: "Saved elsewhere", version: 2 }));
+  });
+  expect(h.session().store).toBe(store);
+  expect(h.session().store.getSnapshot().source).toContain("Keep these changes");
+  expect(h.session().getBaseline().page).toEqual(page);
+  expect(h.session().getEditLockToken()).toBeUndefined();
+});
+
+test.each(["request fails", "source changes"])(
+  "confirmed reload preserves recovery input when %s",
+  async (failure) => {
+    const response = Promise.withResolvers<Response>();
+    let delayed = false;
+    const h = await mountPage(async () => (delayed ? response.promise : Response.json(page)));
+    const store = h.session().store;
+    await act(async () => store.edit("---\ntitle: [unfinished\n---\nOriginal raw source"));
+    await act(async () => {
+      window.dispatchEvent(new Event("pagehide"));
+      window.dispatchEvent(new Event("pageshow"));
+    });
+    await vi.waitFor(() => expect(h.locks.get(page.id)?.generation).toBe(2));
+    await clickButton("Reload page");
+    delayed = true;
+    await clickButton("Discard changes and reload");
+    await act(async () => {
+      if (failure === "source changes") store.edit("Keep this later recovery input");
+      response.resolve(
+        failure === "request fails" ? Response.json({}, { status: 503 }) : Response.json(page),
+      );
+    });
+    expect(h.session().store).toBe(store);
+    expect(store.getSnapshot().source).toBe(
+      failure === "request fails"
+        ? "---\ntitle: [unfinished\n---\nOriginal raw source"
+        : "Keep this later recovery input",
+    );
+    expect(h.session().getBaseline().page).toEqual(page);
+    expect(h.session().getEditLockToken()).toBeUndefined();
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain("Your open changes are unchanged."),
+    );
+  },
+);
 
 test.each([0, 503, 401, 403, 404])(
   "a failed background read (%s) explains the failure without unmounting the working copy",

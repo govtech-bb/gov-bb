@@ -50,7 +50,7 @@ function refusals(error: PageApiFailure | undefined, otherwise: string) {
       return ["This page is no longer available."];
     case "version-conflict":
       return [
-        "This page changed after you reviewed it. Cancel, review the saved version, then confirm again.",
+        "This page changed after you reviewed it. Cancel, reload the page, then confirm again.",
       ];
     case "lock-required":
     case "lock-lost":
