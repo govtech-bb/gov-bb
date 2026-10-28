@@ -6,6 +6,8 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
+import { Redacted } from "./modules/redacted";
+import { LANDING_TOKEN } from "./routes/site";
 import {
   createTestApp,
   createTestDb,
@@ -72,7 +74,8 @@ describe("site rate limit", () => {
 
   it("ignores what a client adds to X-Forwarded-For itself", async () => {
     // Left of the ALB's entry: the spoofed prefix does not open a new bucket.
-    expect(await remaining(ALB, "198.51.100.1, 203.0.113.9")).toBe("997");
+    expect(await remaining(ALB, "203.0.113.30")).toBe("999");
+    expect(await remaining(ALB, "198.51.100.1, 203.0.113.30")).toBe("998");
     // From a public peer the header is not trusted at all.
     expect(await remaining("198.51.100.77", "203.0.113.20")).toBe("999");
     expect(await remaining("198.51.100.77", "203.0.113.21")).toBe("998");
@@ -92,5 +95,43 @@ describe("site rate limit", () => {
     });
     const other = await get("/categories", ALB, "203.0.113.51");
     expect(other.statusCode).toBe(200);
+  });
+
+  it("exempts no one when no landing secret is configured", async () => {
+    const response = await app.inject({
+      url: "/catalog",
+      remoteAddress: "192.0.2.2",
+      headers: { [LANDING_TOKEN]: "anything" },
+    });
+    expect(response.headers["x-ratelimit-limit"]).toBe("1000");
+  });
+});
+
+describe("landing's exemption", () => {
+  let landing: FastifyInstance;
+
+  beforeAll(async () => {
+    landing = await createTestApp(test.db, {
+      landingSecret: new Redacted("landing-secret"),
+    });
+    await landing.ready();
+  });
+
+  afterAll(() => landing.close());
+
+  const read = (token?: string) =>
+    landing.inject({
+      url: "/categories",
+      remoteAddress: "192.0.2.3",
+      headers: token === undefined ? {} : { [LANDING_TOKEN]: token },
+    });
+
+  it("never limits landing's token, but limits a wrong or missing one", async () => {
+    for (let i = 0; i < 1000; i++) expect((await read()).statusCode).toBe(200);
+    expect((await read()).statusCode).toBe(429);
+    expect((await read("wrong")).statusCode).toBe(429);
+    const exempt = await read("landing-secret");
+    expect(exempt.statusCode).toBe(200);
+    expect(exempt.headers).not.toHaveProperty("x-ratelimit-limit");
   });
 });

@@ -141,7 +141,10 @@ export const TEST_HEADERS = {
 export function createTestApp(
   db: Database,
   options: Partial<
-    Pick<AppOptions, "auth" | "config" | "logger" | "previewSecret">
+    Pick<
+      AppOptions,
+      "auth" | "config" | "logger" | "previewSecret" | "landingSecret"
+    >
   > & {
     sessions?: SessionReader;
   } = {},
@@ -158,6 +161,7 @@ export function createTestApp(
     config: options.config ?? TEST_HTTP_CONFIG,
     ...(options.logger ? { logger: options.logger } : {}),
     ...(options.previewSecret ? { previewSecret: options.previewSecret } : {}),
+    ...(options.landingSecret ? { landingSecret: options.landingSecret } : {}),
   });
 }
 

@@ -61,6 +61,8 @@ export interface AppOptions {
   };
   /** The site's preview token; without it, preview reads are refused. */
   readonly previewSecret?: Redacted<string>;
+  /** Landing's token; with it, site reads skip the rate limit. */
+  readonly landingSecret?: Redacted<string>;
   /** The root logger shared with database and authentication adapters. */
   readonly logger?: FastifyBaseLogger;
 }
@@ -149,6 +151,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     resolution: options.resolution,
     navigation: options.navigation,
     previewSecret: options.previewSecret,
+    landingSecret: options.landingSecret,
   });
   await app.register(editorRoutes, {
     editing: options.editing,

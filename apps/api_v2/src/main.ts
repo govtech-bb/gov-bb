@@ -110,6 +110,7 @@ async function main(): Promise<void> {
         editorOrigin: config.auth.editorOrigin,
       },
       ...(config.previewSecret ? { previewSecret: config.previewSecret } : {}),
+      ...(config.landingSecret ? { landingSecret: config.landingSecret } : {}),
       logger,
     });
     if (shutdown.signal.aborted) return;

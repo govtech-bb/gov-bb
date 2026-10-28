@@ -98,6 +98,19 @@ describe('fetchApiV2Page', () => {
     expect(init.signal).toBeInstanceOf(AbortSignal)
   })
 
+  it("sends landing's token only when one is configured", async () => {
+    const without = stubFetch(jsonResponse(200, pageBody()))
+    await fetchApiV2Page(BASE, '/x', without)
+    expect(
+      new Headers(without.mock.calls[0][1].headers).has('x-landing-token'),
+    ).toBe(false)
+    const withToken = stubFetch(jsonResponse(200, pageBody()))
+    await fetchApiV2Page(BASE, '/x', withToken, 'secret')
+    expect(
+      new Headers(withToken.mock.calls[0][1].headers).get('x-landing-token'),
+    ).toBe('secret')
+  })
+
   it('treats a 404 as a silent miss', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const result = await fetchApiV2Page(

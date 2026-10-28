@@ -64,6 +64,12 @@ function apiV2Base(): string | null {
   return resolveApiV2Base(config.apiV2Url, process.env.VITE_API_V2_URL)
 }
 
+/** api_v2's LANDING_SECRET, which exempts landing from its rate limit (#3129). Server-only. */
+function landingToken(): string | undefined {
+  const config = useRuntimeConfig() as { landingSecret?: string }
+  return config.landingSecret || process.env.LANDING_SECRET || undefined
+}
+
 function isPageResponse(body: unknown): body is PageResponse {
   const page = body as PageResponse | null
   return (
@@ -83,6 +89,7 @@ export async function fetchApiV2Page(
   base: string,
   url: string,
   fetchImpl: typeof fetch = fetch,
+  landingToken?: string,
 ): Promise<
   | { kind: 'page'; body: PageResponse }
   | { kind: 'redirect'; to: string }
@@ -93,7 +100,11 @@ export async function fetchApiV2Page(
   try {
     const response = await fetchImpl(
       `${base}/pages?url=${encodeURIComponent(url)}`,
-      { redirect: 'manual', signal: controller.signal },
+      {
+        redirect: 'manual',
+        signal: controller.signal,
+        ...(landingToken && { headers: { 'x-landing-token': landingToken } }),
+      },
     )
     if (response.status === 404) {
       // Release the socket: an unread body pins a keep-alive connection.
@@ -182,9 +193,10 @@ export async function resolveApiV2Page(
   base: string | null,
   url: string,
   fetchImpl: typeof fetch = fetch,
+  landingToken?: string,
 ): Promise<ApiV2Result> {
   if (!base) return { kind: 'miss' }
-  const result = await fetchApiV2Page(base, url, fetchImpl)
+  const result = await fetchApiV2Page(base, url, fetchImpl, landingToken)
   if (result.kind !== 'page') return result
   try {
     return { kind: 'page', page: await fromApiV2(result.body) }
@@ -197,4 +209,6 @@ export async function resolveApiV2Page(
 /** Server function: `resolveApiV2Page` against the configured api_v2. */
 export const getApiV2Page = createServerFn()
   .validator((url: string) => url)
-  .handler(({ data: url }) => resolveApiV2Page(apiV2Base(), url))
+  .handler(({ data: url }) =>
+    resolveApiV2Page(apiV2Base(), url, fetch, landingToken()),
+  )
