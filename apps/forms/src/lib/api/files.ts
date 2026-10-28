@@ -34,7 +34,18 @@ export interface ConfirmUploadRequest {
 
 export type UploadStage = "presign" | "put" | "confirm";
 
-/** Raised when any step of the upload flow fails; `stage` says which one. */
+/**
+ * What the person sees when any part of the upload fails: a network drop, a
+ * 5xx, a 429. It never names the stage — "File upload failed (presign)" meant
+ * nothing to a citizen (#2422) — and the widget offers Retry next to it.
+ */
+export const UPLOAD_PROBLEM_MESSAGE =
+  "We had a problem uploading your file. Try again.";
+
+/**
+ * Raised when any step of the upload flow fails. `stage` says which one, for
+ * code (Retry resumes from it); the message is always UPLOAD_PROBLEM_MESSAGE.
+ */
 export class FileUploadError extends Error {
   constructor(
     message: string,
@@ -75,16 +86,10 @@ async function postJson<T>(
       credentials: "include",
     });
   } catch {
-    throw new FileUploadError(
-      "Unable to reach the server. Please check your connection and try again.",
-      stage,
-    );
+    throw new FileUploadError(UPLOAD_PROBLEM_MESSAGE, stage);
   }
   if (!response.ok) {
-    throw new FileUploadError(
-      `File upload failed (${stage}). Please try again.`,
-      stage,
-    );
+    throw new FileUploadError(UPLOAD_PROBLEM_MESSAGE, stage);
   }
   // The API wraps payloads as { status, message, data, ... }.
   const json = (await response.json()) as { data: T };
@@ -131,32 +136,36 @@ export const confirmUpload = (
 const resolveContentType = (file: File): string =>
   file.type || "application/octet-stream";
 
-export const putFileToS3 = async (
+/**
+ * PUTs the file to its presigned S3 URL. Uses XMLHttpRequest rather than fetch
+ * because only XHR reports upload progress (`upload.onprogress`), which drives
+ * the progress bar (#2940). `onProgress` gets the fraction sent, 0 to 1.
+ */
+export const putFileToS3 = (
   uploadUrl: string,
   file: File,
-): Promise<void> => {
-  let response: Response;
-  try {
-    response = await fetch(uploadUrl, {
-      method: "PUT",
-      // Must match the contentType sent at presign time — S3 signs it, so a
-      // mismatch fails the PUT with SignatureDoesNotMatch.
-      headers: { "Content-Type": resolveContentType(file) },
-      body: file,
-    });
-  } catch {
-    throw new FileUploadError(
-      "Unable to upload the file. Please check your connection and try again.",
-      "put",
-    );
-  }
-  if (!response.ok) {
-    throw new FileUploadError(
-      `File upload failed (${response.status}). Please try again.`,
-      "put",
-    );
-  }
-};
+  onProgress?: (fraction: number) => void,
+): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const failed = () =>
+      reject(new FileUploadError(UPLOAD_PROBLEM_MESSAGE, "put"));
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", uploadUrl);
+    // Must match the contentType sent at presign time — S3 signs it, so a
+    // mismatch fails the PUT with SignatureDoesNotMatch.
+    xhr.setRequestHeader("Content-Type", resolveContentType(file));
+    if (onProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress(e.loaded / e.total);
+      };
+    }
+    xhr.onload = () =>
+      xhr.status >= 200 && xhr.status < 300 ? resolve() : failed();
+    xhr.onerror = failed;
+    xhr.onabort = failed;
+    xhr.ontimeout = failed;
+    xhr.send(file);
+  });
 
 export interface UploadFileParams {
   file: File;
@@ -173,6 +182,8 @@ export interface UploadFileParams {
    * field's config resolves against the in-progress draft during review (#1682).
    */
   draftToken?: string;
+  /** Called with the fraction of the file sent to S3, 0 to 1. */
+  onProgress?: (fraction: number) => void;
 }
 
 /**
@@ -187,6 +198,7 @@ export const uploadFile = async ({
   fieldId,
   previewToken,
   draftToken,
+  onProgress,
 }: UploadFileParams): Promise<UploadedFile> => {
   const presign = await presignUpload(
     {
@@ -201,7 +213,7 @@ export const uploadFile = async ({
     draftToken,
   );
 
-  await putFileToS3(presign.uploadUrl, file);
+  await putFileToS3(presign.uploadUrl, file, onProgress);
 
   return confirmUpload(
     {

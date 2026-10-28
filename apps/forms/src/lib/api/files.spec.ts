@@ -4,9 +4,63 @@ import {
   putFileToS3,
   uploadFile,
   FileUploadError,
+  UPLOAD_PROBLEM_MESSAGE,
 } from "./files";
 
 const API_URL = "http://localhost:3001";
+
+const presignOk = {
+  uploadUrl: "https://s3/put?sig=1",
+  key: "uploads/k",
+  expiresIn: 900,
+  maxSize: 10485760,
+};
+
+/**
+ * Stands in for XMLHttpRequest, which the S3 PUT uses for progress events.
+ * `respond` decides how each request ends; by default it succeeds.
+ */
+class FakeXhr {
+  static last: FakeXhr;
+  static respond: (xhr: FakeXhr) => void;
+  method = "";
+  url = "";
+  headers: Record<string, string> = {};
+  body: unknown;
+  status = 0;
+  upload: { onprogress?: (e: ProgressEvent) => void } = {};
+  onload?: () => void;
+  onerror?: () => void;
+  onabort?: () => void;
+  ontimeout?: () => void;
+
+  open(method: string, url: string) {
+    this.method = method;
+    this.url = url;
+  }
+  setRequestHeader(name: string, value: string) {
+    this.headers[name] = value;
+  }
+  send(body: unknown) {
+    this.body = body;
+    FakeXhr.last = this;
+    queueMicrotask(() => FakeXhr.respond(this));
+  }
+  progress(loaded: number, total: number) {
+    this.upload.onprogress?.({
+      lengthComputable: true,
+      loaded,
+      total,
+    } as ProgressEvent);
+  }
+  finish(status: number) {
+    this.status = status;
+    this.onload?.();
+  }
+  fail() {
+    this.onerror?.();
+  }
+}
 
 function jsonResponse(data: unknown, ok = true, status = 200): Response {
   return {
@@ -22,6 +76,12 @@ describe("files API client", () => {
   beforeEach(() => {
     fetchMock.mockReset();
     global.fetch = fetchMock as unknown as typeof fetch;
+    FakeXhr.respond = (xhr) => xhr.finish(200);
+    vi.stubGlobal("XMLHttpRequest", FakeXhr);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   const presignReq = {
@@ -138,7 +198,6 @@ describe("files API client", () => {
     };
     fetchMock
       .mockResolvedValueOnce(jsonResponse(presign)) // presign
-      .mockResolvedValueOnce({ ok: true, status: 200 } as Response) // PUT
       .mockResolvedValueOnce(jsonResponse({})); // confirm
 
     const file = new File(["x"], "a.pdf", { type: "application/pdf" });
@@ -159,7 +218,7 @@ describe("files API client", () => {
       }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      3,
+      2,
       `${API_URL}/files/confirm-upload`,
       expect.objectContaining({
         headers: expect.objectContaining({ "X-Recipe-Draft": "draft-tok" }),
@@ -176,7 +235,6 @@ describe("files API client", () => {
     };
     fetchMock
       .mockResolvedValueOnce(jsonResponse(presign)) // presign
-      .mockResolvedValueOnce({ ok: true, status: 200 } as Response) // PUT
       .mockResolvedValueOnce(jsonResponse({})); // confirm
 
     const file = new File(["x"], "a.pdf", { type: "application/pdf" });
@@ -197,7 +255,7 @@ describe("files API client", () => {
       }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      3,
+      2,
       `${API_URL}/files/confirm-upload`,
       expect.objectContaining({
         headers: expect.objectContaining({ "X-Recipe-Preview": "preview-tok" }),
@@ -231,26 +289,84 @@ describe("files API client", () => {
   });
 
   it("putFileToS3 PUTs the file with the matching Content-Type", async () => {
-    fetchMock.mockResolvedValue({ ok: true, status: 200 } as Response);
     const file = new File(["x"], "a.pdf", { type: "application/pdf" });
 
     await putFileToS3("https://s3/put?sig=1", file);
 
-    expect(fetchMock).toHaveBeenCalledWith("https://s3/put?sig=1", {
+    expect(FakeXhr.last).toMatchObject({
       method: "PUT",
+      url: "https://s3/put?sig=1",
       headers: { "Content-Type": "application/pdf" },
       body: file,
     });
   });
 
+  // fetch can't report upload progress; XHR's upload.onprogress can (#2940).
+  it("putFileToS3 reports upload progress as a fraction", async () => {
+    FakeXhr.respond = (xhr) => {
+      xhr.progress(25, 100);
+      xhr.progress(100, 100);
+      xhr.finish(200);
+    };
+    const onProgress = vi.fn();
+
+    await putFileToS3("https://s3/put", new File(["x"], "a.pdf"), onProgress);
+
+    expect(onProgress.mock.calls).toEqual([[0.25], [1]]);
+  });
+
   it("putFileToS3 throws a FileUploadError(put) on a non-ok response", async () => {
-    fetchMock.mockResolvedValue({ ok: false, status: 403 } as Response);
+    FakeXhr.respond = (xhr) => xhr.finish(403);
     const file = new File(["x"], "a.pdf", { type: "application/pdf" });
 
     await expect(putFileToS3("https://s3/put", file)).rejects.toMatchObject({
       name: "FileUploadError",
       stage: "put",
     });
+  });
+
+  it("putFileToS3 throws a FileUploadError(put) when the connection drops", async () => {
+    FakeXhr.respond = (xhr) => xhr.fail();
+
+    await expect(
+      putFileToS3("https://s3/put", new File(["x"], "a.pdf")),
+    ).rejects.toMatchObject({ name: "FileUploadError", stage: "put" });
+  });
+
+  // #2422: the citizen saw "File upload failed (presign)". Whatever stage
+  // fails, they get the one agreed message, with no internal stage name.
+  it.each([
+    ["presign network error", () => fetchMock.mockRejectedValue(new Error())],
+    [
+      "presign 500",
+      () => fetchMock.mockResolvedValue(jsonResponse({}, false, 500)),
+    ],
+    [
+      "confirm 429",
+      () =>
+        fetchMock
+          .mockResolvedValueOnce(jsonResponse(presignOk))
+          .mockResolvedValueOnce(jsonResponse({}, false, 429)),
+    ],
+    [
+      "PUT 403",
+      () => {
+        fetchMock.mockResolvedValueOnce(jsonResponse(presignOk));
+        FakeXhr.respond = (xhr) => xhr.finish(403);
+      },
+    ],
+  ])("shows the agreed message on a %s", async (_case, arrange) => {
+    arrange();
+    const error = await uploadFile({
+      file: new File(["x"], "a.pdf", { type: "application/pdf" }),
+      formId: "f",
+      stepId: "s",
+      fieldId: "fld",
+    }).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(FileUploadError);
+    expect((error as Error).message).toBe(UPLOAD_PROBLEM_MESSAGE);
+    expect((error as Error).message).not.toMatch(/presign|put|confirm/i);
   });
 
   it("presignUpload throws FileUploadError(presign) on a network failure", async () => {
@@ -276,7 +392,6 @@ describe("files API client", () => {
     };
     fetchMock
       .mockResolvedValueOnce(jsonResponse(presign)) // presign
-      .mockResolvedValueOnce({ ok: true, status: 200 } as Response) // PUT
       .mockResolvedValueOnce(jsonResponse(attachment)); // confirm
 
     const file = new File(["x"], "a.pdf", { type: "application/pdf" });
@@ -293,13 +408,13 @@ describe("files API client", () => {
       `${API_URL}/files/presign-upload`,
       expect.anything(),
     );
+    expect(FakeXhr.last).toMatchObject({
+      method: "PUT",
+      url: presign.uploadUrl,
+      body: file,
+    });
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      presign.uploadUrl,
-      expect.objectContaining({ method: "PUT" }),
-    );
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      3,
       `${API_URL}/files/confirm-upload`,
       expect.anything(),
     );
@@ -321,7 +436,6 @@ describe("files API client", () => {
     };
     fetchMock
       .mockResolvedValueOnce(jsonResponse(presign)) // presign
-      .mockResolvedValueOnce({ ok: true, status: 200 } as Response) // PUT
       .mockResolvedValueOnce(jsonResponse({})); // confirm
 
     const file = new File(["x"], "qualification-scan", { type: "" });
@@ -334,8 +448,8 @@ describe("files API client", () => {
 
     // S3 signs the content type, so the PUT header has to match what presign
     // signed — sending the empty original here fails with SignatureDoesNotMatch.
-    expect(fetchMock.mock.calls[1][1]).toMatchObject({
-      headers: { "Content-Type": "application/octet-stream" },
+    expect(FakeXhr.last.headers).toEqual({
+      "Content-Type": "application/octet-stream",
     });
   });
 
