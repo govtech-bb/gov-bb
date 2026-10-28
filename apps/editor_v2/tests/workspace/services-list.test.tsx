@@ -11,7 +11,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { createEditorApi, type ServiceSummary } from "../../src/api/client";
+import { ApiFailure, createEditorApi, type ServiceSummary } from "../../src/api/client";
 import { servicesQuery } from "../../src/api/queries";
 import { ServicesList } from "../../src/workspace/services-list";
 import type { ServicesSearch } from "../../src/workspace/services-search";
@@ -46,7 +46,8 @@ const listed = (
   search: ServicesSearch,
   actions: { onSearch?: (search: ServicesSearch) => void; onCreate?: () => void } = {},
 ) => {
-  const client = new QueryClient();
+  // These list-interaction fixtures are already loaded; a real local API must not replace them mid-test.
+  const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
   client.setQueryData(servicesQuery(api).queryKey, services);
 
   return (
@@ -77,7 +78,7 @@ test("lists API services newest change first, a page at a time, opening each in 
   expect(html).toContain('aria-sort="descending"');
   expect(html).toContain("Search title or URL");
   expect(html).toContain("All categories");
-  expect(html).toContain("Draft (hidden)");
+  expect(html).toContain("All statuses");
 });
 
 let host: HTMLDivElement;
@@ -111,6 +112,23 @@ const button = (name: string) =>
     (item) => item.textContent === name || item.getAttribute("aria-label") === name,
   )!;
 
+/** One of the toolbar's filters, by its name. */
+const filter = (name: string) =>
+  host.querySelector<HTMLElement>(`[role="combobox"][aria-label="${name}"]`)!;
+
+/** Opens a filter's list, which renders in a portal outside the root, and picks one of its options. */
+async function choose(name: string, option: string) {
+  await act(async () => {
+    filter(name).focus();
+    filter(name).dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+  });
+  await act(async () =>
+    [...document.querySelectorAll<HTMLElement>('[role="option"]')]
+      .find((item) => item.textContent === option)!
+      .click(),
+  );
+}
+
 /** Types into the search box as a browser would: React reads the new value from the input event. */
 const type = (words: string) =>
   act(async () => {
@@ -123,9 +141,7 @@ test("it opens where its address puts it: searched, filtered, sorted and on its 
   await show(listed(thirty, { status: ["preview"], sort: "title", order: "asc" }));
 
   expect(titles().slice(0, 3)).toEqual(["Service 01", "Service 03", "Service 05"]);
-  expect(host.querySelector('input[type="checkbox"]:checked')?.closest("label")?.textContent).toBe(
-    "Preview link only",
-  );
+  expect(filter("Status").textContent).toBe("Preview link only");
 
   await act(async () => root.unmount());
   root = createRoot(host);
@@ -182,21 +198,101 @@ test("each change shows at once and gives the address the new place; a new searc
   });
 });
 
-test("Clear filters clears the search words with the filters", async () => {
+test("with no matches, one Clear filters button clears the list and returns focus to search", async () => {
   const onSearch = vi.fn();
 
   await show(listed(thirty, { q: "hotel", status: ["draft"] }, { onSearch }));
   expect(host.textContent).toContain("Nothing matches these filters");
 
-  await act(async () => button("Clear filters").click());
+  const clearButtons = [...host.querySelectorAll<HTMLButtonElement>("button")].filter(
+    (item) => item.textContent === "Clear filters",
+  );
+
+  expect(clearButtons).toHaveLength(1);
+  await act(async () => {
+    clearButtons[0]!.focus();
+    clearButtons[0]!.click();
+  });
 
   expect(searchBox().value).toBe("");
   expect(titles()).toHaveLength(25);
+  expect(document.activeElement).toBe(searchBox());
   expect(onSearch).toHaveBeenLastCalledWith({
     page: undefined,
     q: undefined,
     category: undefined,
     status: undefined,
+  });
+});
+
+test("the toolbar's filters narrow the list at once, and Clear filters shows every service again", async () => {
+  const onSearch = vi.fn();
+
+  await show(listed(thirty, {}, { onSearch }));
+  expect(button("Clear filters")).toBeUndefined();
+
+  await choose("Category", "Business and trade");
+  expect(filter("Category").textContent).toBe("Business and trade");
+  expect(onSearch).toHaveBeenLastCalledWith({
+    page: undefined,
+    category: "Business and trade",
+    status: undefined,
+  });
+
+  // Several statuses can be shown at once, so their list stays open for another
+  await choose("Status", "Preview link only");
+  expect(titles()).toHaveLength(15);
+  expect(titles().every((title) => Number(title.slice(-2)) % 2 === 1)).toBe(true);
+  expect(onSearch).toHaveBeenLastCalledWith({
+    page: undefined,
+    category: "Business and trade",
+    status: ["preview"],
+  });
+
+  await act(async () =>
+    document.activeElement!.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    ),
+  );
+  expect(filter("Status").getAttribute("aria-expanded")).toBe("false");
+  await act(async () => button("Clear filters").click());
+
+  expect(titles()).toHaveLength(25);
+  expect(filter("Category").textContent).toBe("All categories");
+  expect(filter("Status").textContent).toBe("All statuses");
+  expect(button("Clear filters")).toBeUndefined();
+  // The button went with the filters, so focus waits in the search box
+  expect(document.activeElement).toBe(searchBox());
+  expect(onSearch).toHaveBeenLastCalledWith({
+    page: undefined,
+    q: undefined,
+    category: undefined,
+    status: undefined,
+  });
+});
+
+test("legacy drafts keep their hidden label, filter value and status sort order", async () => {
+  const onSearch = vi.fn();
+  await show(
+    listed(
+      [service(2), service(3), { ...service(1), visibility: "draft" }],
+      { sort: "visibility", order: "asc" },
+      { onSearch },
+    ),
+  );
+  expect(titles()).toEqual(["Service 01", "Service 03", "Service 02"]);
+  expect(host.textContent).toContain("Draft (hidden)");
+  expect(host.textContent).not.toContain("Draft link only");
+
+  await choose("Status", "Draft (hidden)");
+  expect(titles()).toEqual(["Service 01"]);
+  expect(filter("Status").textContent).toBe("Draft (hidden)");
+  expect(onSearch).toHaveBeenLastCalledWith({
+    sort: "visibility",
+    order: "asc",
+    page: undefined,
+    category: undefined,
+    status: ["draft"],
   });
 });
 
@@ -223,6 +319,118 @@ test("with no services yet, it offers to create the first", async () => {
   expect(onCreate).toHaveBeenCalled();
 });
 
+test("the first services load names its results region without replacing its controls", async () => {
+  const held = Promise.withResolvers<Response>();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => held.promise),
+  );
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  await show(
+    <RouterContextProvider router={router}>
+      <QueryClientProvider client={client}>
+        <ServicesList api={api} search={{}} onSearch={() => {}} onCreate={() => {}} />
+      </QueryClientProvider>
+    </RouterContextProvider>,
+  );
+  const heading = host.querySelector("h1");
+  const status = host.querySelector('[role="status"]');
+  expect(status?.textContent).toBe("Loading services…");
+  // Outside the busy table, which would hold back its announcement
+  expect(status?.closest('[aria-busy="true"]')).toBeNull();
+  expect(searchBox()).not.toBeNull();
+  expect(host.querySelector("table")?.getAttribute("aria-busy")).toBe("true");
+  await act(async () => held.resolve(Response.json(thirty)));
+  await act(async () => {
+    await vi.waitFor(() => expect(titles()).toHaveLength(25));
+  });
+  expect(host.querySelector("h1")).toBe(heading);
+  expect(host.textContent).not.toContain("Loading services…");
+  // The same live region stays, emptied, ready for the next change
+  expect(status?.isConnected).toBe(true);
+  client.clear();
+});
+
+test.each([0, 503, 401, 403, 404])(
+  "a services refresh failure (%s) is local, without presenting refused data as current",
+  async (status) => {
+    const held = Promise.withResolvers<Response>();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => held.promise),
+    );
+
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+    });
+
+    const query = servicesQuery(api);
+    client.setQueryData(query.queryKey, thirty);
+    await show(
+      <RouterContextProvider router={router}>
+        <QueryClientProvider client={client}>
+          <ServicesList api={api} search={{}} onSearch={() => {}} onCreate={() => {}} />
+        </QueryClientProvider>
+      </RouterContextProvider>,
+    );
+    let refresh: Promise<void>;
+    await act(async () => {
+      refresh = client.refetchQueries({ queryKey: query.queryKey });
+    });
+    expect(titles()).toHaveLength(25);
+    expect(host.textContent).not.toContain("Loading services…");
+    await act(async () => {
+      if (status === 0) held.reject(new TypeError("Offline"));
+      else held.resolve(Response.json({}, { status }));
+      await refresh;
+    });
+    await act(async () => {
+      await vi.waitFor(() => expect(client.getQueryState(query.queryKey)?.status).toBe("error"));
+    });
+
+    if (status === 0 || status === 503) {
+      await act(async () => {
+        await vi.waitFor(() => expect(host.textContent).toContain("We could not refresh services"));
+      });
+      expect(titles()).toHaveLength(25);
+      expect(host.textContent).toContain("We could not refresh services");
+      expect(host.textContent).not.toContain("We could not load services");
+    } else {
+      await act(async () => {
+        await vi.waitFor(() => expect(host.querySelector('[role="alert"]')).not.toBeNull());
+      });
+      expect(titles()).toHaveLength(0);
+      expect(host.querySelector('[role="alert"]')).not.toBeNull();
+
+      const alert = host.querySelector('[role="alert"]')!;
+
+      if (status === 401) {
+        const signIn = alert.querySelector("a");
+
+        expect(alert.textContent).toContain(
+          "Your session has ended. Sign in again to load services.",
+        );
+        expect(signIn?.textContent).toBe("Sign in again");
+
+        const target = new URL(signIn!.getAttribute("href")!, "http://localhost");
+
+        expect(target.pathname).toBe("/auth");
+        expect(Object.fromEntries(target.searchParams)).toEqual({
+          state: "sign-in",
+          returnTo: "/services",
+          reason: "provider",
+        });
+        expect(button("Try again")).toBeUndefined();
+      } else if (status === 403) {
+        expect(alert.textContent).toContain("You do not have access to these services.");
+        expect(alert.querySelector("button")?.textContent).toBe("Try again");
+      }
+    }
+
+    client.clear();
+  },
+);
+
 test("a failed load is an alert with Try again", async () => {
   const failing = new QueryClient();
   failing.setQueryDefaults(servicesQuery(api).queryKey, { retryOnMount: false });
@@ -240,4 +448,43 @@ test("a failed load is an alert with Try again", async () => {
   );
   expect(host.querySelector('[role="alert"]')?.textContent).toContain("We could not load services");
   expect(host.querySelector('[role="alert"]')?.textContent).toContain("Try again");
+});
+
+test("a failed load's Try again waits on its retry, so another press sends nothing", async () => {
+  const retried = Promise.withResolvers<Response>();
+  const send = vi.fn(() => retried.promise);
+  vi.stubGlobal("fetch", send);
+
+  // The list had loaded before the refusal, so the failure stays up while it's tried again. A failed first load goes
+  // back to loading instead.
+  const refused = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
+  refused
+    .getQueryCache()
+    .build(refused, { queryKey: servicesQuery(api).queryKey })
+    .setState({ status: "error", data: thirty, error: new ApiFailure(403), fetchStatus: "idle" });
+
+  await show(
+    <RouterContextProvider router={router}>
+      <QueryClientProvider client={refused}>
+        <ServicesList api={api} search={{}} onSearch={() => {}} onCreate={() => {}} />
+      </QueryClientProvider>
+    </RouterContextProvider>,
+  );
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+    "You do not have access to these services.",
+  );
+
+  await act(async () => button("Try again").click());
+  await act(async () => {
+    await vi.waitFor(() => expect(button("Try again").getAttribute("aria-disabled")).toBe("true"));
+  });
+  await act(async () => button("Try again").click());
+  expect(send).toHaveBeenCalledTimes(1);
+
+  await act(async () => retried.resolve(Response.json(thirty)));
+  await act(async () => {
+    await vi.waitFor(() => expect(titles()).toHaveLength(25));
+  });
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+  refused.clear();
 });

@@ -1,6 +1,13 @@
 import logo from "@govtech-bb/frontend/assets/images/govbb-logo.svg?raw";
-import { Files } from "@phosphor-icons/react";
-import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Files, List } from "@phosphor-icons/react";
+import {
+  Link,
+  useMatch,
+  useNavigate,
+  useParams,
+  useRouterState,
+  useSearch,
+} from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiFailure, type EditorApi } from "../api/client";
@@ -11,6 +18,8 @@ import {
   DeleteRemotePageDialog,
 } from "./remote-page-dialogs";
 import { RemotePagePane } from "./remote-page-pane";
+import { AppNav } from "./app-nav";
+import { CategoriesScreen } from "./categories-screen";
 import { listedServiceRows, remoteServiceRows } from "./service-pages";
 import { ServiceNav } from "./service-nav";
 import { workspaceLink } from "./navigation";
@@ -38,11 +47,17 @@ type Account = {
 
 const SIDEBAR_KEY = "govbb-editor:sidebar-collapsed";
 
+// The bar's trail of links, light on dark
+const crumb =
+  "rounded-sm px-2 py-2 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-focus";
+
 /** Authenticated API services and page editors; no browser-local workspace is loaded. */
 export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { api: EditorApi }) {
   const params = useParams({ strict: false });
+  const href = useRouterState({ select: (state) => state.location.href });
   const routerNavigate = useNavigate();
   const listSearch = useSearch({ from: "/_workspace/services", shouldThrow: false });
+  const onCategories = !!useMatch({ from: "/_workspace/categories", shouldThrow: false });
   const [servicesSearch, setServicesSearch] = useState<ServicesSearch>({});
 
   const location = params.serviceId
@@ -118,6 +133,8 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
   const [error, setError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
   const sidebar = useSidebar(SIDEBAR_KEY);
+  // Always beside the page on a wide screen, so nothing about it is remembered
+  const appNav = useSidebar();
   const client = useQueryClient();
   useQuery({ ...estateVersionQuery(api, client), notifyOnChangeProps: [] });
 
@@ -145,6 +162,26 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
   );
 
   const serviceName = place.service ?? listed?.title;
+  const serviceStatus = remote.error instanceof ApiFailure ? remote.error.status : undefined;
+
+  const serviceRecovery =
+    serviceStatus === 401 ? (
+      <Button
+        variant="secondary"
+        onClick={() =>
+          void routerNavigate({
+            to: "/auth",
+            search: { state: "sign-in", returnTo: href, reason: "provider" },
+          })
+        }
+      >
+        Sign in again
+      </Button>
+    ) : (
+      <Button variant="secondary" pending={remote.isFetching} onClick={() => void remote.refetch()}>
+        {remote.isFetching ? "Refreshing service…" : "Try again"}
+      </Button>
+    );
 
   const navigate = (next: WorkspaceLocation) =>
     routerNavigate(next ? workspaceLink(next) : { to: "/services", search: servicesSearch });
@@ -172,7 +209,11 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
     <div className="isolate flex min-h-dvh flex-col bg-grey-10 text-ink">
       <ScreenTitle
         names={
-          missing ? ["Document not found"] : location ? [place.document, serviceName] : ["Services"]
+          missing
+            ? ["Document not found"]
+            : location
+              ? [place.document, serviceName]
+              : [onCategories ? "Categories" : "Services"]
         }
       />
       <a
@@ -187,18 +228,26 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
       </a>
       <header>
         <Bar.Root tone="dark" className="font-semibold">
+          {!appNav.wide && (
+            <Sidebar.Toggle sidebar={appNav} variant="inverse" icon={<List />}>
+              Menu
+            </Sidebar.Toggle>
+          )}
           <span
             className="h-6 shrink-0 [&>svg]:h-full [&>svg]:w-auto"
             aria-label="GovBB"
             dangerouslySetInnerHTML={{ __html: logo }}
           />
-          <Link
-            to="/services"
-            search={servicesSearch}
-            className="rounded-sm px-2 py-2 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-focus"
-          >
-            Services
-          </Link>
+          {/* Where the trail starts: always the same link, so it keeps the focus as it changes screens */}
+          {onCategories ? (
+            <Link to="/categories" className={crumb}>
+              Categories
+            </Link>
+          ) : (
+            <Link to="/services" search={servicesSearch} className={crumb}>
+              Services
+            </Link>
+          )}
           {serviceName && (
             <>
               <span aria-hidden="true" className="text-blue-20">
@@ -231,6 +280,7 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
         </Banner>
       )}
       <div className="flex flex-1">
+        <AppNav sidebar={appNav} rail={!!location} servicesSearch={servicesSearch} />
         {location && !missing && (remote.data || remote.isPending) && (
           <ServiceNav
             sidebar={sidebar}
@@ -263,22 +313,42 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
             />
           )}
           {!missing && location && remote.isPending && (
-            <LoadingState size="page" label="Loading service…" />
+            <LoadingState size="page" label={documentId ? "Loading page…" : "Loading service…"} />
           )}
-          {!missing && remote.isError && (
+          {!missing && location && remote.isError && remote.data && (
+            <Banner
+              tone={serviceStatus === 401 || serviceStatus === 403 ? "error" : "warning"}
+              layout="strip"
+              actions={serviceRecovery}
+            >
+              {serviceStatus === 401
+                ? "Your session has ended. Download unsaved changes before signing in again."
+                : serviceStatus === 403
+                  ? "You no longer have access to this service. Download a copy to keep any unsaved changes."
+                  : "We could not refresh this service. Showing the last loaded version; your edits are unchanged."}
+            </Banner>
+          )}
+          {!missing && location && remote.isError && !remote.data && (
             <EmptyState
               kind="failed"
               size="page"
               title="We could not load this service"
-              description="Check you are still signed in, then try again."
-              actions={
-                <Button variant="secondary" onClick={() => void remote.refetch()}>
-                  Try again
-                </Button>
+              description={
+                serviceStatus === 401
+                  ? "Your session has ended. Sign in again to load this service."
+                  : serviceStatus === 403
+                    ? "You do not have access to this service."
+                    : "Check your connection, then try again."
               }
+              actions={serviceRecovery}
             />
           )}
-          {!location && (
+          {!location && onCategories && (
+            <section className="mx-auto w-full max-w-300 px-6 py-10">
+              <CategoriesScreen api={api} />
+            </section>
+          )}
+          {!location && !onCategories && (
             <section className="mx-auto w-full max-w-300 px-6 py-10">
               <ServicesList
                 api={api}
@@ -291,7 +361,7 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
               />
             </section>
           )}
-          {remote.data && location && !documentId && (
+          {!missing && remote.data && location && !documentId && (
             <EmptyState
               size="page"
               icon={<Files />}
@@ -307,8 +377,8 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
           {panes.map((id) => (
             <section
               key={id}
-              hidden={id !== selected?.id}
-              inert={id !== selected?.id}
+              hidden={missing || id !== selected?.id}
+              inert={missing || id !== selected?.id}
               aria-label={
                 rows.find((row) => row.document.id === id)?.document.title ??
                 "Page from the content API"
@@ -317,7 +387,7 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
               <RemotePagePane
                 api={api}
                 id={id}
-                active={id === selected?.id}
+                active={!missing && id === selected?.id}
                 onSession={trackPageSession}
                 sessions={sessions}
               />

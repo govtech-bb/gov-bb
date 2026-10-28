@@ -9,12 +9,12 @@ import * as fs from "node:fs/promises";
 import { watch, type FSWatcher } from "node:fs";
 import * as path from "node:path";
 import {
+  checkCatchmentRoutingHasMapping,
   serviceContractRecipeSchema,
   getRecipeVisibility,
   type PublicFormSummary,
   type ServiceContractRecipe,
 } from "@govtech-bb/form-types";
-import { programmeCodeFromProcessors } from "@/forms/submissions/processors/webhook-mapping";
 
 // Resolved relative to this file so the loader works in both the source tree
 // (dev: apps/api/src/forms/form-definitions/recipes/) and the compiled tree
@@ -46,17 +46,17 @@ const WATCH_DEBOUNCE_MS = 250;
  * `mapping.programmeCode`, so without one every submission resolves no code,
  * the MDA email finds no recipient, and the case is dropped rather than
  * misrouted. That failure is per-submission and silent from the outside — this
- * turns it into a boot-time rejection of the recipe instead.
+ * turns it into a boot-time rejection of the recipe instead. The rule itself is
+ * shared with `pnpm validate-recipes` and the builder's Deploy gate (#2877) so
+ * a recipe this would reject is caught before it reaches the API.
  */
 function assertCatchmentRoutingHasProgrammeCode(
   recipe: ServiceContractRecipe,
   filePath: string,
 ): void {
-  if (!recipe.catchmentRouting) return;
-  if (programmeCodeFromProcessors(recipe.processors ?? [])) return;
-  throw new Error(
-    `Recipe ${filePath}: declares catchmentRouting but no webhook processor with mapping.programmeCode — catchment routing has nothing to compose a programme code from`,
-  );
+  const errors = checkCatchmentRoutingHasMapping(recipe);
+  if (errors.length === 0) return;
+  throw new Error(`Recipe ${filePath}: ${errors.join("; ")}`);
 }
 
 @Injectable()

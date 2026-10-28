@@ -83,7 +83,8 @@
         "inputs": [
           "production",
           "^production",
-          { "env": "VITE_API_ORIGIN" }
+          { "env": "VITE_API_ORIGIN" },
+          { "env": "VITE_SITE_PREVIEW_URL" }
         ],
         "outputs": [
           "{projectRoot}/dist"

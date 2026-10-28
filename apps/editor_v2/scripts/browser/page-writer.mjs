@@ -33,8 +33,6 @@ const button = (name) => page.getByRole("button", { name, exact: true });
 
 const body = page.getByRole("textbox", { name: "Page content", exact: true });
 
-const source = page.getByRole("textbox", { name: "Markdown source", exact: true });
-
 const dropLine = page.locator('[data-dragging] > [aria-hidden="true"][style]');
 
 const search = page.getByRole("combobox", { name: "Search page content" });
@@ -74,11 +72,13 @@ const devtools = await context.newCDPSession(page);
 
 const touch = (enabled) => devtools.send("Emulation.setTouchEmulationEnabled", { enabled });
 
+// Set up each scenario through the fixture; pages have no source editor.
+async function replaceSource(next) {
+  assert.equal(await page.evaluate((value) => window.editorFixture.replace(value), next), true);
+}
+
 async function reset(content) {
-  await page.getByRole("button", { name: /^Markdown(?:$| —)/ }).click();
-  await source.fill(`---\ntitle: Writer interactions\n---\n\n${content}\n`);
-  await button("Apply changes").click();
-  await button("Close source").click();
+  await replaceSource(`---\ntitle: Writer interactions\n---\n\n${content}\n`);
   await body.waitFor();
   await setPageSettingsOpen(false);
 }
@@ -100,13 +100,7 @@ async function hoverNestedMenu(locator) {
   await page.mouse.click(rail.x + rail.width / 2, rail.y + rail.height / 2);
 }
 
-async function markdown() {
-  await page.getByRole("button", { name: /^Markdown(?:$| —)/ }).click();
-  const value = await source.inputValue();
-  await button("Close source").click();
-
-  return value;
-}
+const markdown = () => page.evaluate(() => window.editorFixture.source());
 
 async function dragTo(block, target, side = "after") {
   await block.hover();
@@ -473,9 +467,9 @@ try {
   await dragTo(body.locator("p").first(), body.locator("p").last());
   await dropLine.waitFor({ state: "visible" });
   await button("Preview page").evaluate((element) => element.click());
-  await page.getByRole("article", { name: "Page preview" }).waitFor();
+  await page.locator("[data-cms-preview-article]").waitFor();
   await finishDrag();
-  await button("Back to editing").click();
+  await button("Close preview").click();
   assert.equal(await markdown(), beforeDrag);
 
   const foreignDrag = await page.evaluateHandle(() => {
@@ -569,10 +563,11 @@ try {
       "none",
     );
     await button("Preview page").click();
-    const previewList = page.locator(".page-document-preview article > :is(ul, ol)");
+    const previewList = page.locator("[data-cms-site-preview] .govbb-prose > :is(ul, ol)");
+    await previewList.waitFor();
     assert.equal(await previewList.locator(":scope > li").count(), 2);
     assert.equal(await previewList.locator(":scope > li").first().locator("li").innerText(), "Two");
-    await button("Back to editing").click();
+    await button("Close preview").click();
     await button("Undo").click();
     assert.equal(await markdown(), beforeIndent);
     await button("Redo").click();
@@ -604,13 +599,14 @@ try {
     alignments,
   );
   await button("Preview page").click();
+  await page.locator("[data-cms-site-preview] table").waitFor();
   assert.deepEqual(
     await page
-      .locator(".page-document-preview th,.page-document-preview td")
+      .locator("[data-cms-site-preview] th,[data-cms-site-preview] td")
       .evaluateAll((cells) => cells.map((cell) => getComputedStyle(cell).textAlign)),
     alignments,
   );
-  await button("Back to editing").click();
+  await button("Close preview").click();
 
   await reset(':::actions\n::action[Continue]{href="/next" variant="primary"}\n:::');
   const actionButton = body.locator('[data-page-component="action"]');
@@ -630,11 +626,11 @@ try {
   await button("Preview page").click();
   assert.equal(
     await page
-      .locator(".page-document-preview .page-action-secondary")
+      .locator("[data-cms-site-preview] .govbb-button--secondary")
       .evaluate((element) => getComputedStyle(element).backgroundColor),
     secondaryBackground,
   );
-  await button("Back to editing").click();
+  await button("Close preview").click();
   await button("Undo").click();
   assert.equal(
     await actionButton.evaluate((element) => element.classList.contains("page-action-secondary")),
@@ -724,8 +720,8 @@ try {
   await setPageSettingsOpen(false);
   assert.equal(await markdown(), formattedStart);
   await button("Preview page").click();
-  await page.locator(".page-document-preview a[data-start-link] strong").waitFor();
-  await button("Back to editing").click();
+  await page.locator("[data-cms-site-preview] a.govbb-button strong").waitFor();
+  await button("Close preview").click();
 
   await reset(':::details{summary="Before"}\nSupporting information.\n:::');
   await menuAt(body.locator('[data-page-component="details"] p'));
@@ -743,26 +739,13 @@ try {
   );
 
   assert.equal(await pageSettings.getAttribute("aria-expanded"), "false");
-  await page.getByRole("button", { name: /^Markdown(?:$| —)/ }).click();
-  const currentSource = await source.inputValue();
-  await source.fill(currentSource.replace("title: Writer interactions", "title: [unfinished"));
-  await button("Apply changes").click();
-  assert.equal(await source.getAttribute("aria-invalid"), "true");
-  await button("Discard changes").click();
-  // Discarding asks first
-  await page
-    .getByRole("alertdialog")
-    .getByRole("button", { name: "Discard changes", exact: true })
-    .click();
-
-  await source.fill(
+  const currentSource = await markdown();
+  await replaceSource(
     currentSource.replace(
       "title: Writer interactions",
       "title: Writer interactions\nvisibility: draft\npublish_date: 2026-99-99\ncategories: [housing, 7]",
     ),
   );
-  await button("Apply changes").click();
-  await button("Close source").click();
   await setPageSettingsOpen(true);
   assert.equal(await publicationDate.inputValue(), "2026-99-99");
   assert.equal(await publicationDate.getAttribute("readonly"), "");
@@ -774,7 +757,9 @@ try {
     "Preview link only",
   ]);
   await settings
-    .getByText("This page stays hidden until you choose Public or Preview and save.")
+    .getByText(
+      "Draft pages are hidden, even from preview links. Visibility changes take effect only when you save.",
+    )
     .waitFor();
   await description.fill("An unrelated metadata edit.");
   const unusualSource = await markdown();
@@ -797,10 +782,7 @@ try {
     "title: Writer interactions\nlede: A short introduction.\ndescription: A page description.\ncategories:\n  - family-birth-relationships\n  - youth-and-community\nsubcategory: youth-development-leadership\n# Keep this comment\ncustom_note: Keep this metadata",
   );
 
-  await page.getByRole("button", { name: /^Markdown(?:$| —)/ }).click();
-  await source.fill(withMetadata);
-  await button("Apply changes").click();
-  await button("Close source").click();
+  await replaceSource(withMetadata);
   await setPageSettingsOpen(true);
   assert.equal(await introduction.inputValue(), "A short introduction.");
   assert.equal(await description.inputValue(), "A page description.");
@@ -909,7 +891,7 @@ try {
   await description.waitFor();
   await focused(pageSettings);
   await button("Preview page").click();
-  const metadataPreview = page.getByRole("article", { name: "Page preview" });
+  const metadataPreview = page.locator("[data-cms-preview-article]");
   await metadataPreview.getByText("Updated introduction.", { exact: true }).waitFor();
   assert.equal(await description.isVisible(), false);
   const disclosure = metadataPreview.locator("details");
@@ -925,12 +907,15 @@ try {
   );
   assert.equal(
     await disclosureSummary.evaluate((element) => getComputedStyle(element).display),
-    "list-item",
-    "reader disclosures retain the native summary marker",
+    "flex",
+    "reader disclosures use the public ShowHide component",
   );
-  assert.notEqual(
-    await disclosureSummary.evaluate((element) => getComputedStyle(element).listStyleType),
-    "none",
+  assert.equal(
+    await disclosureSummary.evaluate(
+      (element) => getComputedStyle(element, "::before").borderLeftWidth,
+    ),
+    "8px",
+    "the public disclosure supplies its own triangle",
   );
   await disclosureContent.waitFor({ state: "hidden" });
   await disclosureSummary.click();
@@ -940,7 +925,7 @@ try {
   await focused(disclosureSummary);
   await disclosureSummary.press("Space");
   await disclosureContent.waitFor();
-  await button("Back to editing").click();
+  await button("Close preview").click();
   assert.equal(await introduction.inputValue(), "Updated introduction.");
 
   await navigation.getByRole("button", { name: "Other page", exact: true }).click();
@@ -955,9 +940,9 @@ try {
   await button("Add content").click();
   await button("Preview page").click();
   await search.waitFor({ state: "hidden" });
-  await page.getByRole("article", { name: "Page preview" }).waitFor();
+  await page.locator("[data-cms-preview-article]").waitFor();
   assert.equal(await body.isVisible(), false);
-  await button("Back to editing").click();
+  await button("Close preview").click();
   await setPageSettingsOpen(true);
 
   await title.fill(
@@ -1003,7 +988,7 @@ try {
 
   assert.deepEqual(errors, []);
   console.log(
-    "PASS page writer: hover-only gutter targeting/alignment, insertion keyboard/focus, nested slash, selected table row, native drag preview/destination, grouped drag undo/redo, cancellation/read-only isolation, move/delete undo, component settings and styles, Start label formatting/undo/reload/preview, list hierarchy after reload/outdent, table preview alignment, metadata source validation/preservation, page settings editing/undo/reload/preview/keyboard/toggle/drawer, toolbar undo typing branches, native reader disclosure styles/keyboard, hidden/preview portals and narrow layouts",
+    "PASS page writer: hover-only gutter targeting/alignment, insertion keyboard/focus, nested slash, selected table row, native drag preview/destination, grouped drag undo/redo, cancellation/read-only isolation, move/delete undo, component settings and styles, Start label formatting/undo/reload/preview, list hierarchy after reload/outdent, table preview alignment, metadata preservation, page settings editing/undo/reload/preview/keyboard/toggle/drawer, toolbar undo typing branches, native reader disclosure styles/keyboard, hidden/preview portals and narrow layouts",
   );
 } catch (error) {
   await page.screenshot({ path: "/tmp/page-writer-failure.png", fullPage: true });

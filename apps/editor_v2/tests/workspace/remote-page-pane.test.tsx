@@ -8,11 +8,13 @@ import {
 } from "@tanstack/react-router";
 import { act } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { createEditorApi, type ApiPage } from "../../src/api/client";
+import { createEditorApi, type ApiPage, type SavePageInput } from "../../src/api/client";
 import { pageQuery, taxonomyQuery } from "../../src/api/queries";
+import { govbbPageCodec } from "../../src/presets/govbb-page";
+import { Toaster } from "../../src/ui/toast";
 import { RemotePagePane } from "../../src/workspace/remote-page-pane";
 import { pageHasUnsavedChanges, type PageSession } from "../../src/workspace/page-sync";
-import { renderInPage } from "../helpers/page-editor";
+import { pageControl, renderInPage } from "../helpers/page-editor";
 
 const page: ApiPage = {
   id: "44444444-4444-4444-8444-444444444444",
@@ -72,6 +74,7 @@ async function mountPage(request: (url: string, init?: RequestInit) => Promise<R
             session = current;
           }}
         />
+        <Toaster />
       </QueryClientProvider>
     </RouterContextProvider>,
   );
@@ -89,14 +92,186 @@ async function applySource(session: PageSession, source: string) {
   });
 }
 
-async function savePage() {
+const visibility = () => pageControl<HTMLSelectElement>("select");
+
+const draftOption = () => visibility().querySelector<HTMLOptionElement>('option[value="draft"]');
+
+async function chooseVisibility(value: string) {
+  await act(async () => {
+    const select = visibility();
+    select.value = value;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    select.blur();
+  });
+}
+
+async function savePage(name = "Save") {
   const button = [...document.querySelectorAll("button")].find(
-    (item) => item.textContent === "Save",
+    (item) => item.textContent === name,
   )!;
 
   expect(button.disabled).toBe(false);
   await act(async () => button.click());
 }
+
+test.each(["", "preview"])(
+  "a legacy draft can return from %j without losing edits or writing until Save",
+  async (value) => {
+    let current = page;
+    const writes: SavePageInput[] = [];
+
+    const h = await mountPage(async (_url, init) => {
+      if (init?.method === "PUT") {
+        const fields = JSON.parse(String(init.body));
+        writes.push(fields);
+        current = {
+          ...current,
+          ...fields,
+          updated_at: new Date(Date.parse(current.updated_at) + 1000).toISOString(),
+        };
+      }
+
+      return Response.json(current);
+    });
+
+    expect(draftOption()?.disabled).toBe(true);
+    await chooseVisibility(value);
+    expect(draftOption()?.disabled).toBe(false);
+    const title = pageControl<HTMLTextAreaElement>('textarea[aria-label="Page title"]');
+    await act(async () => {
+      title.focus();
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(
+        title,
+        "Later title edit",
+      );
+      title.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await chooseVisibility("draft");
+    expect(title.value).toBe("Later title edit");
+    expect(writes).toEqual([]);
+    await savePage();
+    await act(async () => {
+      await vi.waitFor(() => expect(pageHasUnsavedChanges(h.session())).toBe(false));
+    });
+    expect(writes[0]).toMatchObject({ title: "Later title edit", visibility: "draft" });
+
+    await chooseVisibility(value);
+    expect(writes).toHaveLength(1);
+    await savePage(value ? "Save" : "Publish changes");
+    await act(async () => {
+      await vi.waitFor(() =>
+        expect(h.session().getBaseline().page.visibility).toBe(value || "public"),
+      );
+    });
+    expect(writes[1]?.visibility).toBe(value || "public");
+    expect(draftOption()).toBeNull();
+
+    await act(async () => pageControl<HTMLButtonElement>('button[aria-label="Undo"]').click());
+    expect(visibility().value).toBe("draft");
+    expect(draftOption()?.disabled).toBe(true);
+    expect(title.value).toBe("Later title edit");
+    await act(async () => pageControl<HTMLButtonElement>('button[aria-label="Redo"]').click());
+    expect(visibility().value).toBe(value);
+    expect(draftOption()).toBeNull();
+    expect(writes).toHaveLength(2);
+  },
+);
+
+test("a background visibility change does not remove the accepted draft baseline's return option", async () => {
+  const h = await mountPage(async () => Response.json(page));
+  await chooseVisibility("preview");
+  await act(async () => {
+    h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
+      ...page,
+      visibility: "public",
+      updated_at: "2026-10-07T14:00:00.000Z",
+    });
+  });
+  expect(h.session().getBaseline().page.visibility).toBe("draft");
+  expect(draftOption()?.disabled).toBe(false);
+  await chooseVisibility("draft");
+  expect(visibility().value).toBe("draft");
+  expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
+});
+
+test("a visual page stays editable without history controls or requests", async () => {
+  const h = await mountPage(async () => Response.json(page));
+
+  expect(h.session().store.getSnapshot().mode).toBe("visual");
+  const buttons = [...document.querySelectorAll("button")];
+  expect(buttons.map((button) => button.textContent)).not.toContain("History");
+  expect(buttons.map((button) => button.textContent)).not.toContain("Restore this version");
+
+  await applySource(h.session(), h.session().store.getSnapshot().source + "\n\nNew content");
+  expect(pageHasUnsavedChanges(h.session())).toBe(true);
+  expect(buttons.find((button) => button.textContent === "Save")?.disabled).toBe(false);
+  expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/history"))).toBe(false);
+});
+
+test("a page the editor can't show opens read-only, its content left as it was saved", async () => {
+  const h = await mountPage(async () =>
+    Response.json({ ...page, body_markdown: "<!-- Keep this note -->" }),
+  );
+
+  expect(h.session().store.getSnapshot().mode).toBe("source");
+  expect(document.body.textContent).toContain("This page can't be edited here");
+  const names = [...document.querySelectorAll("button")].map((button) => button.textContent);
+  expect(names).not.toContain("Save");
+  expect(names).not.toContain("History");
+  expect(names).not.toContain("Restore this version");
+  expect(names).not.toContain("Markdown");
+  expect(document.querySelector("textarea")).toBeNull();
+  expect(pageHasUnsavedChanges(h.session())).toBe(false);
+  expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/history"))).toBe(false);
+});
+
+test("a rejected saved version leaves the working copy editable and its baseline unchanged", async () => {
+  const h = await mountPage(async () => Response.json(page));
+  const store = h.session().store;
+  const source = store.getSnapshot().committed + "\n\nKeep my changes.";
+  await applySource(h.session(), source);
+  const baseline = h.session().getBaseline();
+
+  await act(async () => {
+    h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
+      ...page,
+      title: "Saved elsewhere",
+      updated_at: "2026-10-07T14:00:00.000Z",
+    });
+    await vi.waitFor(() => expect(document.body.textContent).toContain("A newer version"));
+  });
+
+  const loadSaved = [...document.querySelectorAll("button")].find(
+    (button) => button.textContent === "Load saved version",
+  )!;
+
+  vi.spyOn(govbbPageCodec, "prepare").mockImplementationOnce(() => {
+    throw new Error("Cannot prepare saved version");
+  });
+
+  await act(async () => loadSaved.click());
+
+  expect(store.getSnapshot()).toMatchObject({
+    source,
+    committed: source,
+    dirty: false,
+    valid: true,
+    status: "ready",
+    error: undefined,
+  });
+  expect(h.session().getBaseline()).toEqual(baseline);
+  expect(pageHasUnsavedChanges(h.session())).toBe(true);
+  expect(
+    document.querySelector('[aria-label="Page content"]')?.getAttribute("contenteditable"),
+  ).toBe("true");
+  expect(loadSaved.disabled).toBe(false);
+  expect(document.body.textContent).toContain("The saved version couldn't be opened");
+  expect(document.body.textContent).toContain("Your open copy is unchanged.");
+  expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
+  await act(async () =>
+    document.querySelector<HTMLButtonElement>('[aria-label="Dismiss"]')!.click(),
+  );
+});
 
 test("a page preloaded just now, as its link was pointed at, opens without waiting on the content API", async () => {
   vi.stubGlobal("matchMedia", (query: string) => ({
@@ -181,10 +356,12 @@ test("a slow save acknowledges only its submitted snapshot; refetch cannot overw
     return Response.json(current);
   });
 
+  await chooseVisibility("preview");
   const first = h.session().store.getSnapshot().committed + "\n\nFirst edit";
   await applySource(h.session(), first);
   await savePage();
   expect(h.session().isSaving()).toBe(true);
+  expect(draftOption()?.disabled).toBe(false);
   const second = first + "\n\nTyped during save";
   await applySource(h.session(), second);
   const fields = JSON.parse(String(sent!.body));
@@ -194,6 +371,7 @@ test("a slow save acknowledges only its submitted snapshot; refetch cannot overw
     await vi.waitFor(() => expect(h.session().isSaving()).toBe(false));
   });
   expect(h.session().getBaseline()).toEqual({ page: current, markdown: first });
+  expect(draftOption()).toBeNull();
   expect(h.session().store.getSnapshot().committed).toBe(second);
   expect(pageHasUnsavedChanges(h.session())).toBe(true);
   expect(new Headers(sent!.headers).get("if-updated-at")).toBe(page.updated_at);
@@ -203,33 +381,55 @@ test("a slow save acknowledges only its submitted snapshot; refetch cannot overw
       ...current,
       updated_at: "2026-10-07T14:00:00.000Z",
       title: "Someone else's edit",
+      visibility: "draft",
     });
   });
   expect(h.session().getBaseline().page.updated_at).toBe(current.updated_at);
+  expect(draftOption()).toBeNull();
   expect(h.session().store.getSnapshot().committed).toBe(second);
   await act(async () => {
     await vi.waitFor(() => expect(document.body.textContent).toContain("A newer version"));
   });
 });
 
-test("a failed background read does not unmount the working copy", async () => {
-  let offline = false;
+test.each([0, 503, 401, 403, 404])(
+  "a failed background read (%s) explains the failure without unmounting the working copy",
+  async (status) => {
+    let offline = false;
 
-  const h = await mountPage(async () => {
-    if (offline) throw Error("Offline");
+    const h = await mountPage(async () => {
+      if (offline) {
+        if (status === 0) throw Error("Offline");
 
-    return Response.json(page);
-  });
+        return Response.json({}, { status });
+      }
 
-  const original = h.session().store;
-  await applySource(h.session(), original.getSnapshot().source + "\n\nKeep offline edits");
-  offline = true;
-  await act(async () => {
-    await h.client.refetchQueries({ queryKey: pageQuery(h.api, page.id).queryKey });
-  });
-  expect(h.session().store).toBe(original);
-  expect(original.getSnapshot().source).toContain("Keep offline edits");
-});
+      return Response.json(page);
+    });
+
+    const original = h.session().store;
+    await applySource(h.session(), original.getSnapshot().source + "\n\nKeep offline edits");
+    offline = true;
+    await act(async () => {
+      await h.client.refetchQueries({ queryKey: pageQuery(h.api, page.id).queryKey });
+    });
+    expect(h.session().store).toBe(original);
+    expect(original.getSnapshot().source).toContain("Keep offline edits");
+    await act(async () => {
+      await vi.waitFor(() =>
+        expect(document.body.textContent).toContain(
+          status === 401
+            ? "Your session has ended"
+            : status === 403
+              ? "You no longer have access to this page"
+              : status === 404
+                ? "This page is no longer available"
+                : "We could not refresh this page",
+        ),
+      );
+    });
+  },
+);
 
 test.each([401, 404, 409, 422, 503, 0])(
   "failed save %s retains the in-memory working copy and original baseline",
@@ -242,6 +442,7 @@ test.each([401, 404, 409, 422, 503, 0])(
       return Response.json({ errors: [{ field: "url", message: "Taken" }] }, { status });
     });
 
+    await chooseVisibility("preview");
     const source = h.session().store.getSnapshot().source + "\n\nKeep this";
     await applySource(h.session(), source);
     await savePage();
@@ -251,5 +452,8 @@ test.each([401, 404, 409, 422, 503, 0])(
     expect(h.session().store.getSnapshot().committed).toBe(source);
     expect(h.session().getBaseline().page).toEqual(page);
     expect(pageHasUnsavedChanges(h.session())).toBe(true);
+    expect(draftOption()?.disabled).toBe(false);
+    await chooseVisibility("draft");
+    expect(h.session().store.getSnapshot().committed).toContain("Keep this");
   },
 );

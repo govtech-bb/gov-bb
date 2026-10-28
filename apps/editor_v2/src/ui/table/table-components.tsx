@@ -1,5 +1,5 @@
 import { CaretDown, CaretLeft, CaretRight, Columns, MagnifyingGlass } from "@phosphor-icons/react";
-import { useId } from "react";
+import { useId, type Ref } from "react";
 import { cn } from "../../cn";
 import { Button } from "../button";
 import { EmptyState, type EmptyStateProps } from "../empty-state";
@@ -8,23 +8,36 @@ import { Input } from "../input";
 import { NativeSelect } from "../native-select";
 import { Menu } from "../menu";
 import { Tag } from "../tag";
-import { useTableContext } from "./table-hooks";
+import { useTableFilters, useTableContext } from "./table-hooks";
 
 /** Narrow tables fold secondary columns into the leading cell instead of scrolling them away. */
 const secondary = "@max-3xl:hidden";
 
-/** Search across every searchable column. */
-export function Search({ label, placeholder }: { label: string; placeholder: string }) {
+/** Search across every searchable column, in the toolbar over the table. */
+export function Search({
+  label,
+  placeholder,
+  ref,
+  className,
+}: {
+  label: string;
+  placeholder: string;
+  ref?: Ref<HTMLInputElement>;
+  /** For the box around the field and its icon, such as its width in the toolbar. */
+  className?: string;
+}) {
   const table = useTableContext();
 
   return (
-    <div className="relative min-w-0 flex-1 basis-60 @3xl:max-w-80">
+    <div className={cn("relative min-w-0", className)}>
       <MagnifyingGlass
         aria-hidden="true"
         className="pointer-events-none absolute start-2.5 top-1/2 size-4 -translate-y-1/2 text-muted"
       />
       <Input
+        ref={ref}
         type="search"
+        size="sm"
         aria-label={label}
         placeholder={placeholder}
         className="ps-8"
@@ -175,20 +188,28 @@ export function ColumnsMenu() {
 
 const sortState = { asc: "ascending", desc: "descending" } as const;
 
-/** The current page of rows, with loading, empty and no-match states in place of rows. */
+/**
+ * The current page of rows, with loading, empty and no-match states in place of rows. Loading, its first row shows what
+ * it's loading, named by its caption, as tall as the placeholder rows under it, so nothing moves as the rows arrive.
+ * Screen readers hear that from the screen's own status line instead, which outlives the table.
+ */
 export function DataTable({
   caption,
   loading = false,
   empty,
+  marked,
 }: {
   caption: string;
   loading?: boolean;
   empty: Pick<EmptyStateProps, "title" | "description" | "actions">;
+  /** A row to pick out by its id, such as one that has just moved, so the eye can follow it. */
+  marked?: string;
 }) {
   const table = useTableContext();
   const rows = table.getRowModel().rows;
   const columns = table.getVisibleLeafColumns();
-  const filtered = !!table.state.globalFilter || table.state.columnFilters.length > 0;
+  const filters = useTableFilters();
+  const loadingWords = `Loading ${caption.toLowerCase()}…`;
 
   return (
     <div role="region" aria-label={caption} tabIndex={0} className="overflow-x-auto">
@@ -228,42 +249,35 @@ export function DataTable({
         </thead>
         <tbody>
           {loading ? (
-            Array.from({ length: 6 }, (_, row) => (
-              <tr key={row} className="border-t border-line">
-                {columns.map((column, index) => (
-                  <td
-                    key={column.id}
-                    className={cn("px-4 py-4", column.columnDef.meta?.secondary && secondary)}
-                  >
-                    <span
-                      className={cn(
-                        "block h-3 rounded-sm bg-grey-20 motion-safe:animate-pulse",
-                        index ? "w-16" : "w-2/3 min-w-40",
-                      )}
-                    />
-                  </td>
-                ))}
+            <>
+              <tr className="border-t border-line">
+                <td colSpan={columns.length} aria-hidden="true" className="px-4 py-3 text-muted">
+                  {loadingWords}
+                </td>
               </tr>
-            ))
+              {Array.from({ length: 5 }, (_, row) => (
+                <tr key={row} className="border-t border-line">
+                  {columns.map((column, index) => (
+                    <td
+                      key={column.id}
+                      className={cn("px-4 py-4", column.columnDef.meta?.secondary && secondary)}
+                    >
+                      <span
+                        className={cn(
+                          "block h-3 rounded-sm bg-grey-20 motion-safe:animate-pulse",
+                          index ? "w-16" : "w-2/3 min-w-40",
+                        )}
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </>
           ) : rows.length === 0 ? (
             <tr className="border-t border-line">
               <td colSpan={columns.length}>
-                {filtered ? (
-                  <EmptyState
-                    kind="not-found"
-                    title="Nothing matches these filters"
-                    actions={
-                      <Button
-                        variant="secondary"
-                        onClick={() => {
-                          table.resetGlobalFilter(true);
-                          table.resetColumnFilters(true);
-                        }}
-                      >
-                        Clear filters
-                      </Button>
-                    }
-                  />
+                {filters.filtered ? (
+                  <EmptyState kind="not-found" title="Nothing matches these filters" />
                 ) : (
                   <EmptyState {...empty} />
                 )}
@@ -273,7 +287,10 @@ export function DataTable({
             rows.map((row) => (
               <tr
                 key={row.id}
-                className="border-t border-line transition-colors duration-150 hover:bg-tint"
+                className={cn(
+                  "border-t border-line transition-colors duration-150",
+                  row.id === marked ? "bg-blue-10" : "hover:bg-tint",
+                )}
               >
                 {row.getVisibleCells().map((c) => (
                   <table.AppCell cell={c} key={c.id}>

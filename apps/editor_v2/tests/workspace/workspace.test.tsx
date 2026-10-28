@@ -135,6 +135,61 @@ const until = (ready: () => void) =>
     await vi.waitFor(ready);
   });
 
+test.each([0, 503, 401, 403, 404])(
+  "a service refresh failure (%s) preserves the shell and draft without showing a second full-page state",
+  async (status) => {
+    const h = await mountWorkspace();
+    await editTitle("Keep during refresh");
+    const header = document.querySelector("header");
+    const currentFetch = vi.mocked(fetch).getMockImplementation()!;
+    vi.mocked(fetch).mockImplementation(async (url, init) => {
+      if (String(url).endsWith("/services/service")) {
+        if (status === 0) throw new TypeError("Offline");
+
+        return Response.json({}, { status });
+      }
+
+      return currentFetch(url, init);
+    });
+    await act(async () => {
+      await h.client.refetchQueries({ queryKey: ["content", "service", "service"] });
+    });
+    await until(() =>
+      expect(h.client.getQueryState(["content", "service", "service"])?.status).toBe("error"),
+    );
+    expect(document.querySelector("header")).toBe(header);
+    expect(document.body.textContent).not.toContain("We could not load this service");
+
+    if (status === 404) {
+      await until(() =>
+        expect(document.querySelector("#workspace-content h1")?.textContent).toBe(
+          "Document not found",
+        ),
+      );
+      expect(
+        document.querySelector('textarea[aria-label="Page title"]')?.closest("[hidden]"),
+      ).not.toBeNull();
+    } else {
+      expect(activeTitle().value).toBe("Keep during refresh");
+      await until(() =>
+        expect(document.body.textContent).toContain(
+          status === 401
+            ? "Your session has ended"
+            : status === 403
+              ? "You no longer have access to this service"
+              : "We could not refresh this service",
+        ),
+      );
+    }
+
+    vi.mocked(fetch).mockImplementation(currentFetch);
+    await act(async () => {
+      await h.client.refetchQueries({ queryKey: ["content", "service", "service"] });
+    });
+    await until(() => expect(activeTitle().value).toBe("Keep during refresh"));
+  },
+);
+
 test("malformed old workspaces and drafts cannot shadow API pages or create browser-only flows", async () => {
   localStorage.setItem("govbb-editor:workspace:v1", "{broken");
   localStorage.setItem("govbb-editor:documents:fees:markdown", "Old local page");
@@ -261,42 +316,6 @@ test("failed sign-out and a cancelled session-expiry redirect keep the working c
   expect(h.auth.signIn).not.toHaveBeenCalled();
 });
 
-test("unapplied invalid Markdown also blocks leaving and Escape keeps it", async () => {
-  const h = await mountWorkspace();
-  await until(() => expect(activeTitle()).toBeDefined());
-  const trigger = control("Markdown");
-
-  const sourceInput = () => {
-    const label = [...document.querySelectorAll("label")].find(
-      (item) => item.textContent === "Markdown source",
-    )!;
-
-    return document.querySelector<HTMLTextAreaElement>(`textarea[id="${label.htmlFor}"]`)!;
-  };
-
-  await act(async () => trigger.click());
-  const source = sourceInput();
-  await act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(
-      source,
-      "---\ntitle: [unfinished",
-    );
-    source.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  await click("Close source");
-  await act(async () => {
-    void h.router.navigate({ to: "/services" });
-  });
-  await until(() => expect(question()).not.toBeNull());
-  await act(async () =>
-    question().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
-  );
-  await until(() => expect(question()).toBeNull());
-  expect(h.router.state.location.pathname).toBe("/services/service/fees");
-  await act(async () => trigger.click());
-  expect(sourceInput().value).toBe("---\ntitle: [unfinished");
-});
-
 test("pending saves block departure but the navigation question can still be cancelled", async () => {
   const h = await mountWorkspace();
   await editTitle("Saving title");
@@ -354,4 +373,52 @@ test("clean navigation keeps at most three page views and retains API navigation
   );
   await until(() => expect(activeTitle()?.value).toBe("fees"));
   expect(question()).toBeNull();
+});
+
+const menuLink = (name: string) =>
+  [...document.querySelectorAll<HTMLAnchorElement>('nav[aria-label="Menu"] a')].find(
+    (link) => link.textContent === name,
+  );
+
+test("the menu names the editor's screens, folded to icons beside a service's own pages", async () => {
+  const h = await mountWorkspace();
+
+  // Inside a service: a rail of icons, each still named, and the bar's way back to the list
+  expect(menuLink("Services")?.getAttribute("aria-current")).toBe("page");
+  expect(menuLink("Categories")?.querySelector(".sr-only")?.textContent).toBe("Categories");
+  expect(document.querySelector('nav[aria-label="Service documents"]')).not.toBeNull();
+  expect(document.querySelector("header a")?.textContent).toBe("Services");
+
+  await act(async () => h.router.navigate({ to: "/categories" }));
+  await until(() => expect(document.querySelector("h1")?.textContent).toBe("Categories"));
+
+  // On a screen of its own: the whole column, its screen marked, and the bar's trail starting there
+  expect(menuLink("Categories")?.getAttribute("aria-current")).toBe("page");
+  expect(menuLink("Categories")?.querySelector(".sr-only")).toBeNull();
+  expect(menuLink("Services")?.hasAttribute("aria-current")).toBe(false);
+  expect(document.querySelector('nav[aria-label="Service documents"]')).toBeNull();
+  expect(document.querySelector("header a")?.textContent).toBe("Categories");
+  await until(() => expect(document.body.textContent).toContain("No categories yet"));
+});
+
+test("menu and bar links keep the focus as the screen changes and the menu folds or opens out", async () => {
+  await mountWorkspace();
+
+  // From a service, the rail's Categories opens out into the menu's row, still focused
+  const categories = menuLink("Categories")!;
+
+  categories.focus();
+  await act(async () => categories.click());
+  await until(() => expect(document.querySelector("h1")?.textContent).toBe("Categories"));
+  expect(document.activeElement).toBe(categories);
+  expect(categories.querySelector(".sr-only")).toBeNull();
+
+  // The bar's trail starts with the same link, whichever screen it names
+  const crumb = document.querySelector<HTMLAnchorElement>("header a")!;
+
+  crumb.focus();
+  await act(async () => menuLink("Services")!.click());
+  await until(() => expect(document.querySelector("h1")?.textContent).toBe("Services"));
+  expect(crumb.isConnected).toBe(true);
+  expect(crumb.textContent).toBe("Services");
 });

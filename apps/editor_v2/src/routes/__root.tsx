@@ -12,7 +12,8 @@ import type { EditorApi } from "../api/client";
 import type { EditorAuth } from "../auth/session";
 import stylesheet from "../../index.css?url";
 import { EmptyState } from "../ui/empty-state";
-import { LoadingState } from "../ui/loading-state";
+import { AuthPending } from "../auth/auth-screen";
+import { RouteError } from "../route-error";
 import { TextLink } from "../ui/text-link";
 import { Toaster } from "../ui/toast";
 import { ScreenTitle } from "../workspace/screen-title";
@@ -28,15 +29,20 @@ export const Route = createRootRouteWithContext<{
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
     ],
-    links: [{ rel: "stylesheet", href: stylesheet }],
+    links: [{ id: "cms-stylesheet", rel: "stylesheet", href: stylesheet }],
   }),
   component: () => (
-    <ClientOnly fallback={<LoadingState size="page" label="Loading editor…" />}>
+    <ClientOnly fallback={<AuthPending label="Loading editor…" />}>
       <Outlet />
       <Toaster />
     </ClientOnly>
   ),
   shellComponent: RootDocument,
+  errorComponent: (props) => (
+    <main>
+      <RouteError {...props} />
+    </main>
+  ),
   notFoundComponent: NotFound,
 });
 
@@ -49,7 +55,9 @@ function RootDocument({ children }: { children: ReactNode }) {
         <ScreenTitle names={[]} />
       </head>
       <body>
-        {children}
+        <div data-cms-workspace="" className="contents">
+          {children}
+        </div>
         <Scripts />
       </body>
     </html>

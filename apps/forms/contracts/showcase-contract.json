@@ -966,16 +966,6 @@
       "stepId": "submission-confirmation",
       "title": "Demo application received",
       "elements": [],
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "Nothing is sent from this local demo.",
-          "items": [
-            "Print the confirmation to check the print layout.",
-            "Reload the page to check that the confirmation is kept."
-          ]
-        }
-      ],
       "markdownContent": "## About this demo\n\n{organiserMessage}\n\nYour pretend venue would be handled by **{polyclinic}**.\n\n[Return to the demo](/forms/showcase) or [start again with sample answers](/__demo/start).\n\n[Call the fake team](tel:+14165550123) or [email the fake team](mailto:demo@example.test).",
       "conditionalMarkdown": [
         {

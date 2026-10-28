@@ -150,7 +150,7 @@ test.each(["", "preview"])(
       [...visibility.options].flatMap((option) => (option.disabled ? [] : [option.value])),
     ).toEqual(["", "preview"]);
     expect(document.getElementById(visibility.getAttribute("aria-describedby")!)?.textContent).toBe(
-      "This page stays hidden until you choose Public or Preview and save.",
+      "Draft pages are hidden, even from preview links. Visibility changes take effect only when you save.",
     );
     expect(markdown()).toBe(source);
     await type(field("Page title"), "Changed hidden page");
@@ -177,6 +177,47 @@ test.each(["", "preview"])(
     await press(visibility, "z", { metaKey: true, shiftKey: true });
     expect(markdown()).toBe(changed);
     expect(visibility.value).toBe(value);
+  },
+);
+
+test.each(["", "preview"])(
+  "a saved draft can return from %j without undoing later edits",
+  async (value) => {
+    const editor = await renderPageEditor(
+      "---\ntitle: Hidden page\nvisibility: draft\n---\n\nBody\n",
+      <>
+        <PageTitleField />
+        <PageSettings savedVisibility="draft" />
+      </>,
+    );
+
+    const visibility = pageControl<HTMLSelectElement>("select");
+    const markdown = () => govbbPageCodec.encode(editor.getEditorState().toJSON());
+
+    const choose = (next: string) =>
+      act(async () => {
+        visibility.value = next;
+        visibility.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+
+    await choose(value);
+    expect(visibility.querySelector<HTMLOptionElement>('option[value="draft"]')?.disabled).toBe(
+      false,
+    );
+    await type(field("Page title"), "Later title edit");
+    const beforeReturn = markdown();
+
+    await choose("draft");
+    const returned = markdown();
+    expect(returned).toContain("visibility: draft");
+    expect(field("Page title").value).toBe("Later title edit");
+    expect(visibility.selectedOptions[0]?.disabled).toBe(true);
+
+    await press(visibility, "z", { ctrlKey: true });
+    expect(markdown()).toBe(beforeReturn);
+    expect(field("Page title").value).toBe("Later title edit");
+    await press(visibility, "y", { ctrlKey: true });
+    expect(markdown()).toBe(returned);
   },
 );
 

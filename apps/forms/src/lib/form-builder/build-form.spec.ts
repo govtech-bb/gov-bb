@@ -253,6 +253,48 @@ describe("buildForm", () => {
   });
 
   // ---------------------------------------------------------------------------
+  // contractSteps
+  // ---------------------------------------------------------------------------
+
+  describe("contractSteps", () => {
+    // The printed confirmation renders from these, so they have to survive the
+    // repeatable split intact: a sharedFields step leaves `steps` holding a
+    // shared-only page plus a per-instance clone, and building the paper copy
+    // from either alone loses half the applicant's answers (#2587).
+    it("keeps a sharedFields step whole, while steps is split", () => {
+      const contract = makeContract({
+        steps: [
+          makeStep(
+            "child-details",
+            [
+              makeField("child-name", "child-details"),
+              makeField("child-school", "child-details"),
+            ],
+            [
+              { type: "repeatable", min: 1, max: 3 } as RepeatableBehaviour,
+              { type: "sharedFields", fieldIds: ["child-school"] },
+            ],
+          ),
+          makeStep("submission-confirmation", []),
+        ],
+      });
+
+      const result = buildForm(contract);
+
+      expect(
+        result.contractSteps
+          .find((s) => s.stepId === "child-details")
+          ?.fields.map((f) => f.fieldId),
+      ).toEqual(["child-name", "child-school"]);
+      expect(
+        result.steps
+          .find((s) => s.stepId === "child-details")
+          ?.fields.map((f) => f.fieldId),
+      ).toEqual(["child-school"]);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
   // stepConditionalTargets
   // ---------------------------------------------------------------------------
 
@@ -279,7 +321,7 @@ describe("buildForm", () => {
 
       const result = buildForm(contract);
 
-      expect(result.stepConditionalTargets["step1"]).toBe("hasVisit");
+      expect(result.stepConditionalTargets["step1"]).toEqual(["hasVisit"]);
     });
 
     it("is an empty object when no steps have stepConditionalOn behaviours", () => {
@@ -306,5 +348,57 @@ describe("buildForm", () => {
       const result = buildForm(contract);
       expect(result.defaultValues["step1_country"]).toBe("Barbados");
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildForm — a located address's parish
+// ---------------------------------------------------------------------------
+
+describe("buildForm — parish filled by a located address", () => {
+  const addressStep = (geocodeTargets: ClientPrimitive["geocodeTargets"]) =>
+    makeStep("event", [
+      makeField("event-address-line-1", "event", {
+        htmlType: "address-lookup",
+        geocodeTargets,
+      }),
+      makeField("event-address-line-2", "event"),
+      makeField("event-parish", "event", { htmlType: "select" }),
+    ]);
+
+  const fieldsOf = (contract: ClientServiceContract) =>
+    buildForm(contract).steps.find((s) => s.stepId === "event")!.fields;
+
+  it("marks the parish an address field locates, and nothing else", () => {
+    const fields = fieldsOf(
+      makeContract({
+        steps: [
+          addressStep({
+            line2FieldId: "event-address-line-2",
+            parishFieldId: "event-parish",
+            coordinatesFieldId: "event-coordinates",
+          }),
+        ],
+      }),
+    );
+
+    expect(
+      fields.find((f) => f.fieldId === "event-parish")?.filledByAddressLookup,
+    ).toBe(true);
+    expect(
+      fields.find((f) => f.fieldId === "event-address-line-2")
+        ?.filledByAddressLookup,
+    ).toBeUndefined();
+  });
+
+  it("leaves the parish editable when the address writes no coordinate", () => {
+    const fields = fieldsOf(
+      makeContract({
+        steps: [addressStep({ parishFieldId: "event-parish" })],
+      }),
+    );
+    expect(
+      fields.find((f) => f.fieldId === "event-parish")?.filledByAddressLookup,
+    ).toBeUndefined();
   });
 });

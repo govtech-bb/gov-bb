@@ -1,0 +1,90 @@
+/* Only the preview's editing surfaces. Public prose and layout stay landing-owned. */
+@reference "../../index.css";
+
+.cms-inline-field {
+  display: block;
+  inline-size: 100%;
+  min-block-size: 1lh;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: var(--govbb-radius);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  resize: none;
+  overflow: hidden;
+}
+.cms-inline-field::placeholder {
+  color: var(--govbb-grey-70);
+}
+.cms-inline-field:focus-visible {
+  outline: 1px solid var(--govbb-grey-60);
+  outline-offset: 6px;
+}
+@media (hover: hover) {
+  .cms-inline-field:hover:not(:focus-visible, :read-only) {
+    outline: 1px solid var(--govbb-grey-30);
+    outline-offset: 6px;
+  }
+}
+/* The caret and block rail identify body focus, as in the writer. */
+.cms-inline-body:focus-visible {
+  outline: none;
+}
+.cms-inline-body-anchor {
+  position: relative;
+  --page-gutter: 4rem;
+}
+.cms-inline-body {
+  min-block-size: 4lh;
+}
+.cms-inline-body .page-table-cell-selected {
+  background: color-mix(in oklab, var(--govbb-color-interactive) 15%, white);
+}
+/* Metadata is a hidden Lexical first child, not the first visible prose block. */
+.cms-inline-body > :nth-child(1 of :not([hidden])) {
+  margin-block-start: 0;
+}
+/* Markdown soft breaks are reader whitespace, not extra lines beside an authored <br>. */
+.cms-inline-body [data-lexical-text] {
+  white-space: normal;
+}
+.cms-inline-body li:has(> :is(ul, ol):only-child) {
+  list-style-type: none;
+}
+.cms-inline-body .font-bold {
+  font-weight: bold;
+}
+.cms-inline-body .italic {
+  font-style: italic;
+}
+.cms-inline-body .line-through {
+  text-decoration: line-through;
+}
+/* Match the writer's button styling without applying its prose styles. */
+.cms-inline-body :is([data-page-component="start"], [data-page-component="action"]) {
+  @apply govbb-button;
+}
+.cms-inline-body .page-action-secondary {
+  @apply govbb-button-secondary;
+}
+@media (min-width: 64rem) {
+  .cms-inline-body-anchor {
+    margin-inline-start: calc(-1 * var(--page-gutter));
+    padding-inline-start: var(--page-gutter);
+  }
+}
+/* No room for a gutter on narrow pages: reserve a control row, never cover the first words. */
+@media (max-width: 63.999rem) {
+  .cms-inline-body-anchor {
+    padding-block-start: 3rem;
+  }
+  .cms-inline-body-anchor [data-block-rail] {
+    top: 0 !important; /* The shared rail normally follows a block via inline top. */
+    translate: none;
+    opacity: 1;
+  }
+}

@@ -34,7 +34,9 @@ const suites = requested.length
       "service-workspace.mjs",
       "remote-page-editing.mjs",
       "routing.mjs",
+      "categories.mjs",
       "page-writer.mjs",
+      "site-preview.mjs",
     ];
 
 for (const suite of suites) {

@@ -35,7 +35,6 @@ test("the title is the screen's h1, and the tools keep their places whatever ord
       label="Page tools"
       settings={button("Page settings")}
       publish={button("Publish changes")}
-      versions={button("History")}
       source={button("Markdown")}
       preview={button("Preview page")}
       undo={button("Undo")}
@@ -47,19 +46,19 @@ test("the title is the screen's h1, and the tools keep their places whatever ord
 
   expect(host.querySelector('[role="toolbar"]')?.getAttribute("aria-label")).toBe("Page tools");
   expect(host.querySelector("h1")?.textContent).toBe("Renew a passport");
-  expect(names()).toEqual([
-    "Undo",
-    "Preview page",
-    "Markdown",
-    "History",
-    "Publish changes",
-    "Page settings",
-  ]);
+  expect(names()).toEqual(["Undo", "Preview page", "Markdown", "Publish changes", "Page settings"]);
   // Undo and redo | the ways to look at it | publishing | settings
   expect(separators()).toBe(3);
   // The notices sit under the bar, not in it
   expect(host.querySelector('[role="toolbar"] p')).toBeNull();
   expect(host.lastElementChild?.textContent).toBe("Page editing is paused.");
+});
+
+test("a preview can keep its document title without adding a second page heading", async () => {
+  await render(<DocumentBar label="Page tools" title="Renew a passport" heading={false} />);
+
+  expect(host.querySelector("h1")).toBeNull();
+  expect(host.querySelector('[role="toolbar"]')?.textContent).toBe("Renew a passport");
 });
 
 test("where the work stands sits beside the title, and a failed save's message comes first under the bar", async () => {

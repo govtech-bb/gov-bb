@@ -1,18 +1,24 @@
+import { X } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useEffectEvent, useMemo, useState } from "react";
-import type { EditorApi, ServiceSummary } from "../api/client";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { ApiFailure, type EditorApi, type ServiceSummary } from "../api/client";
 import { servicesQuery } from "../api/queries";
 import { visibilityLabels, visibilityTones } from "../pages";
 import { Badge } from "../ui/badge";
+import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
-import { Checkbox } from "../ui/checkbox";
-import { EmptyState } from "../ui/empty-state";
-import { Field } from "../ui/field";
-import { Input } from "../ui/input";
-import { NativeSelect } from "../ui/native-select";
+import { ScreenHeader } from "../ui/screen-header";
+import { Select, type SelectItem } from "../ui/select";
+import { StatusDot } from "../ui/status-dot";
 import { TextLink } from "../ui/text-link";
-import { createAppColumnHelper, useAppTable, useTableContext } from "../ui/table/table-hooks";
+import {
+  createAppColumnHelper,
+  useAppTable,
+  useTableFilters,
+  useTableContext,
+} from "../ui/table/table-hooks";
+import { LoadFailure } from "./load-failure";
 import {
   filteredBy,
   pagedTo,
@@ -117,9 +123,22 @@ const serviceColumns = (api: EditorApi) =>
     }),
   ]);
 
-/** Filters beside the list: search, one category, any of the statuses. */
+// Each with the dot it has beside a page in the service's navigation
+const statusItems: SelectItem[] = visibilities.map((visibility) => ({
+  value: visibility,
+  label: visibilityLabel(visibility),
+  icon: <StatusDot tone={visibilityTones.get(visibility) ?? "neutral"} />,
+}));
+
+/**
+ * The toolbar over the list: search, one category, any of the statuses, and Clear filters while any of them leave
+ * services out. One row while there's room; on a phone the search takes a row of its own.
+ */
 function ServiceFilters({ categories }: { categories: readonly string[] }) {
   const table = useTableContext();
+  const filters = useTableFilters();
+  // Clear filters goes once pressed, so focus moves on to the search box
+  const searchBox = useRef<HTMLInputElement>(null);
 
   // SAFETY: Only these filters set the column filters, always as the string arrays oneOf reads.
   const chosen = (column: string) =>
@@ -128,49 +147,50 @@ function ServiceFilters({ categories }: { categories: readonly string[] }) {
   const choose = (column: string, values: string[]) =>
     table.getColumn(column)?.setFilterValue(values.length ? values : undefined);
 
-  const statuses = chosen("visibility");
-
   return (
-    <div role="search" aria-label="Filter services" className="flex flex-col gap-6 text-14">
-      <Field label="Search title or URL">
-        <Input
-          type="search"
-          value={table.state.globalFilter ?? ""}
-          onChange={(event) => table.setGlobalFilter(event.target.value)}
-        />
-      </Field>
-      <Field label="Category">
-        <NativeSelect
-          value={chosen("category")[0] ?? ""}
-          onChange={(event) => choose("category", event.target.value ? [event.target.value] : [])}
+    <div
+      role="search"
+      aria-label="Filter services"
+      className="flex flex-wrap items-center gap-2 border-b border-line p-3 @xl:px-4"
+    >
+      <table.Search
+        ref={searchBox}
+        label="Search title or URL"
+        placeholder="Search title or URL"
+        className="grow basis-full @xl:max-w-80 @xl:basis-60"
+      />
+      <Select
+        variant="filter"
+        aria-label="Category"
+        className="grow basis-36 @xl:grow-0 @xl:basis-auto"
+        items={[
+          { value: "", label: "All categories" },
+          ...categories.map((category) => ({ value: category, label: category })),
+        ]}
+        value={chosen("category")[0] ?? ""}
+        onValueChange={(category) => choose("category", category ? [category] : [])}
+      />
+      <Select
+        variant="filter"
+        multiple
+        aria-label="Status"
+        placeholder="All statuses"
+        className="grow basis-36 @xl:grow-0 @xl:basis-auto"
+        items={statusItems}
+        value={chosen("visibility")}
+        onValueChange={(statuses) => choose("visibility", statuses)}
+      />
+      {filters.filtered && (
+        <Button
+          icon={<X />}
+          onClick={() => {
+            filters.clear();
+            searchBox.current?.focus();
+          }}
         >
-          <option value="">All categories</option>
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </NativeSelect>
-      </Field>
-      <fieldset>
-        <legend className="mb-1.5 font-semibold">Status</legend>
-        {visibilities.map((visibility) => (
-          <Checkbox
-            key={visibility}
-            label={visibilityLabel(visibility)}
-            className="py-1"
-            checked={statuses.includes(visibility)}
-            onCheckedChange={(checked) =>
-              choose(
-                "visibility",
-                checked
-                  ? [...statuses, visibility]
-                  : statuses.filter((value) => value !== visibility),
-              )
-            }
-          />
-        ))}
-      </fieldset>
+          Clear filters
+        </Button>
+      )}
     </div>
   );
 }
@@ -191,6 +211,14 @@ export function ServicesList({
   onCreate: () => void;
 }) {
   const services = useQuery(servicesQuery(api));
+  const status = services.error instanceof ApiFailure ? services.error.status : undefined;
+
+  const refreshFailed =
+    services.isError &&
+    !!services.data &&
+    (status === 0 || (status !== undefined && status >= 500));
+
+  const blocked = services.isError && !refreshFailed;
   const columns = useMemo(() => serviceColumns(api), [api]);
 
   // The list answers each change at once, and the address follows
@@ -252,43 +280,59 @@ export function ServicesList({
 
   return (
     <table.AppTable>
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-28 font-semibold">Services</h1>
-        <Button variant="accent" size="md" onClick={onCreate}>
-          Create service
-        </Button>
-      </div>
-      <div className="grid items-start gap-8 lg:grid-cols-[15rem_minmax(0,1fr)]">
+      <ScreenHeader
+        title="Services"
+        action={
+          <Button variant="accent" size="md" onClick={onCreate}>
+            Create service
+          </Button>
+        }
+      />
+      <div className="@container min-w-0 rounded-sm bg-white shadow-sheet">
         <ServiceFilters categories={categories} />
-        <div className="@container min-w-0 rounded-sm bg-white shadow-sheet">
-          {services.isError ? (
-            <EmptyState
-              kind="failed"
-              title="We could not load services"
-              description="Check you are still signed in, then try again."
-              actions={
-                <Button variant="secondary" onClick={() => void services.refetch()}>
-                  Try again
+        <p role="status" className="sr-only">
+          {services.isPending ? "Loading services…" : null}
+        </p>
+        {refreshFailed && (
+          <Banner
+            tone="warning"
+            layout="strip"
+            actions={
+              <Button
+                variant="secondary"
+                pending={services.isFetching}
+                onClick={() => void services.refetch()}
+              >
+                {services.isFetching ? "Refreshing services…" : "Try again"}
+              </Button>
+            }
+          >
+            We could not refresh services. Showing the last loaded list.
+          </Banner>
+        )}
+        {blocked ? (
+          <LoadFailure
+            noun="services"
+            error={services.error}
+            retrying={services.isFetching}
+            retry={() => void services.refetch()}
+          />
+        ) : (
+          <table.DataTable
+            caption="Services"
+            loading={services.isPending}
+            empty={{
+              title: "No services yet",
+              description: "Create a service to start adding its pages.",
+              actions: (
+                <Button variant="secondary" onClick={onCreate}>
+                  Create service
                 </Button>
-              }
-            />
-          ) : (
-            <table.DataTable
-              caption="Services"
-              loading={services.isPending}
-              empty={{
-                title: "No services yet",
-                description: "Create a service to start adding its pages.",
-                actions: (
-                  <Button variant="secondary" onClick={onCreate}>
-                    Create service
-                  </Button>
-                ),
-              }}
-            />
-          )}
-          <table.Pagination name={["service", "services"]} />
-        </div>
+              ),
+            }}
+          />
+        )}
+        {!blocked && <table.Pagination name={["service", "services"]} />}
       </div>
     </table.AppTable>
   );

@@ -98,6 +98,59 @@ describe("SubmissionPipelineService", () => {
     if (module) await module.close();
   });
 
+  // A located address's parish is read-only on the form; when the lookup that
+  // writes it failed, the coordinate supplies it rather than a 422 on a field
+  // the applicant cannot change.
+  describe("catchment-routed parish", () => {
+    const routedContract = () =>
+      mockContract({
+        steps: [
+          {
+            stepId: "event-details",
+            elements: [
+              primitiveText("event-parish", true),
+              primitiveText("event-address-coordinates"),
+            ],
+            behaviours: [],
+          },
+        ],
+        catchmentRouting: {
+          coordinatesField: "event-details.event-address-coordinates",
+          parishField: "event-details.event-parish",
+        },
+      } as unknown as Partial<ServiceContract>);
+    const routedDto = (parish: string, coordinate: string): SubmitDto => ({
+      ...baseDto(),
+      draftId: undefined,
+      values: {
+        "event-details": {
+          "event-parish": parish,
+          "event-address-coordinates": coordinate,
+        },
+      },
+    });
+
+    it("fills an empty parish from the coordinate before validating", async () => {
+      definitionsService.findByFormId.mockResolvedValue(routedContract());
+
+      const { normalizedValues } = await service.run(
+        routedDto("", "13.100000,-59.600000"),
+      );
+
+      expect(normalizedValues["event-details"]).toMatchObject({
+        "event-parish": "st-michael",
+      });
+    });
+
+    it("still requires the parish when there is no coordinate", async () => {
+      definitionsService.findByFormId.mockResolvedValue(routedContract());
+
+      await expect(service.run(routedDto("", ""))).rejects.toBeInstanceOf(
+        UnprocessableEntityException,
+      );
+    });
+  });
+
   describe("resolveDraftAndContract", () => {
     it("draft path resolves the canonical recipe by formId (#1196: no version)", async () => {
       draftsService.findById.mockResolvedValue(mockDraft());
@@ -298,6 +351,131 @@ describe("SubmissionPipelineService", () => {
       // first-name is hidden (show-name !== "yes"), so required check should be skipped
       dto.values = {
         "personal-info": { "first-name": "", surname: "Aurelius" },
+      };
+
+      await expect(service.run(dto)).resolves.toBeDefined();
+    });
+
+    // case-management#213: an omitted step used to be skipped, so `values: {}`
+    // passed validation on every form and created a case with no data.
+    it("rejects an empty payload, naming the required fields", async () => {
+      const dto = { ...baseDto(), values: {} };
+
+      await expect(service.run(dto)).rejects.toMatchObject({
+        response: {
+          errors: {
+            "personal-info": {
+              "first-name": expect.any(Array),
+              surname: expect.any(Array),
+            },
+          },
+        },
+      });
+    });
+
+    it("rejects a visible step left out of an otherwise complete payload", async () => {
+      definitionsService.findByFormId.mockResolvedValue(
+        mockContract({
+          steps: [
+            {
+              stepId: "personal-info",
+              elements: [primitiveText("first-name", true)],
+              behaviours: [],
+            },
+            {
+              stepId: "contact",
+              elements: [primitiveText("email", true)],
+              behaviours: [],
+            },
+          ],
+        } as unknown as Partial<ServiceContract>),
+      );
+      const dto = {
+        ...baseDto(),
+        values: { "personal-info": { "first-name": "Marcus" } },
+      };
+
+      await expect(service.run(dto)).rejects.toMatchObject({
+        response: { errors: { contact: { email: expect.any(Array) } } },
+      });
+    });
+
+    it("accepts an omitted step that is hidden or has no required fields, without storing it", async () => {
+      definitionsService.findByFormId.mockResolvedValue(
+        mockContract({
+          steps: [
+            {
+              stepId: "personal-info",
+              elements: [primitiveText("first-name", true)],
+              behaviours: [],
+            },
+            {
+              stepId: "extras",
+              elements: [primitiveText("nickname")],
+              behaviours: [],
+            },
+            {
+              stepId: "spouse",
+              elements: [primitiveText("spouse-name", true)],
+              behaviours: [
+                {
+                  type: "stepConditionalOn",
+                  targetStepId: "personal-info",
+                  targetFieldId: "first-name",
+                  operator: "equal",
+                  value: "married",
+                },
+              ],
+            },
+          ],
+        } as unknown as Partial<ServiceContract>),
+      );
+      const dto = {
+        ...baseDto(),
+        values: { "personal-info": { "first-name": "Marcus" } },
+      };
+
+      const { normalizedValues } = await service.run(dto);
+      expect(normalizedValues).toEqual({
+        "personal-info": { "first-name": "Marcus" },
+      });
+    });
+
+    // jobstart-plus-programme: `disability-support` shows when
+    // `disability-eligibility` is not "yes". When that field is hidden (applicant
+    // under 25) the forms app strips its stale "yes" from the payload but still
+    // hid the step from it, so the API must not demand the step's answers.
+    it("accepts an omitted step whose condition rests on an answer the payload leaves out", async () => {
+      definitionsService.findByFormId.mockResolvedValue(
+        mockContract({
+          steps: [
+            {
+              stepId: "applicant-details",
+              elements: [
+                primitiveText("applicant-dob", true),
+                primitiveText("disability-eligibility"),
+              ],
+              behaviours: [],
+            },
+            {
+              stepId: "disability-support",
+              elements: [primitiveText("has-disability", true)],
+              behaviours: [
+                {
+                  type: "stepConditionalOn",
+                  targetStepId: "applicant-details",
+                  targetFieldId: "disability-eligibility",
+                  operator: "notEqual",
+                  value: "yes",
+                },
+              ],
+            },
+          ],
+        } as unknown as Partial<ServiceContract>),
+      );
+      const dto = {
+        ...baseDto(),
+        values: { "applicant-details": { "applicant-dob": "2006-06-15" } },
       };
 
       await expect(service.run(dto)).resolves.toBeDefined();

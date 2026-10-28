@@ -40,18 +40,13 @@
       "title": "Application submitted",
       "stepId": "submission-confirmation",
       "elements": [],
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "We have received your submission. You will receive a confirmation email at the address you provided."
-        }
-      ]
+      "markdownContent": "## What happens next\n\nWe have received your submission. You will receive a confirmation email at the address you provided."
     }
   ],
   "title": "National ID Application",
   "formId": "national-id-application",
   "createdAt": "2026-01-20T00:00:00.000Z",
-  "updatedAt": "2026-01-20T00:00:00.000Z",
+  "updatedAt": "2026-10-20T19:15:00.000Z",
   "processors": [
     {
       "type": "email",

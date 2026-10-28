@@ -294,6 +294,9 @@ function permitted(from: string, to: string, typeOnly: boolean) {
 
   if (hostLayer(from))
     return (
+      // The same-document site preview loads a trusted browser entry, never landing source.
+      (from === "src/host/site-preview.tsx" && to === "<non-literal import>") ||
+      (from === "src/host/site-preview-renderer.ts" && to === "yaml") ||
       within(to, "src/host") ||
       within(to, "src/persistence") ||
       within(to, "src/editor") ||
@@ -307,6 +310,7 @@ function permitted(from: string, to: string, typeOnly: boolean) {
         "src/converters/lexical-to-form-schema.ts",
         "lexical",
         "react",
+        "react-dom",
         "@phosphor-icons/react",
       ].includes(to) ||
       to.startsWith("@lexical/") ||

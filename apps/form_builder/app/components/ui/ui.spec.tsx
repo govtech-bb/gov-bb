@@ -1,5 +1,4 @@
 /** @vitest-environment jsdom */
-import "@testing-library/jest-dom";
 import {
   cleanup,
   render,

@@ -4,6 +4,7 @@ import { FormDraftsController } from "./forms/form-drafts/form-drafts.controller
 import { SubmissionsController } from "./forms/submissions/submissions.controller";
 import { PaymentWebhookController } from "./payments/payment-webhook.controller";
 import { FilesController } from "./files/files.controller";
+import { JourneyController } from "./journey/journey.controller";
 
 // Pins the per-route throttler policy in place. If someone removes a
 // decorator, this catches it before the change ships.
@@ -54,6 +55,26 @@ describe("throttler configuration", () => {
   it("PaymentWebhookController skips throttling (signature-verified)", () => {
     expect(hasSkipMetadata(PaymentWebhookController)).toBe(true);
   });
+
+  // #3022: skipped while the API did not set `trust proxy`, when the guard
+  // keyed on the load balancer and a limit here was shared by every citizen.
+  // A bare @SkipThrottle() writes only "THROTTLER:SKIPdefault"; the guard
+  // checks "THROTTLER:SKIP<name>" for each registered bucket, so every bucket
+  // must be named or the route is still throttled.
+  it.each(["short", "medium", "long"])(
+    "JourneyController.record skips the registered '%s' bucket",
+    (bucket) => {
+      expect(
+        Reflect.getMetadata(
+          `THROTTLER:SKIP${bucket}`,
+          JourneyController.prototype.record,
+        ),
+      ).toBe(true);
+      expect(hasThrottleMetadata(JourneyController.prototype.record)).toBe(
+        false,
+      );
+    },
+  );
 
   it("FormDefinitionsController carries throttle metadata for read buckets", () => {
     expect(hasThrottleMetadata(FormDefinitionsController)).toBe(true);

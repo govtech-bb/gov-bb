@@ -1,14 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import {
-  ApiFailure,
-  type EditorApi,
-  type CreatePageInput,
-  type ServiceDetail,
-} from "../api/client";
+import type { EditorApi, CreatePageInput, ServiceDetail } from "../api/client";
+import { apiFailureMessages } from "../api/failure-messages";
 import { suggestedUrl, urlProblem, pageFieldLabel } from "../api/page-markdown";
 import { pageQuery, taxonomyQuery } from "../api/queries";
-import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
 import { ConfirmDialog } from "../ui/confirm-dialog";
 import { Field } from "../ui/field";
@@ -16,6 +11,7 @@ import { Input } from "../ui/input";
 import { NativeSelect } from "../ui/native-select";
 import { toast } from "../ui/toast";
 import { WorkspaceDialog } from "./workspace-dialog";
+import { ApiProblems, ApiProblemText } from "./api-problems";
 import { documentLabel, type PageDocument } from "./model";
 
 /** Create a page in Preview, then hand its id over once the API has it. */
@@ -30,44 +26,6 @@ function useCreatePage(api: EditorApi, done: (id: string) => void) {
       done(page.id);
     },
   });
-}
-
-/** Why the API refused a change, as messages an author can act on. */
-function refusals(error: Error | null, otherwise: string) {
-  if (!error) return [];
-
-  if (!(error instanceof ApiFailure) || error.status === 0)
-    return ["The content API could not be reached. Try again."];
-
-  if (error.status === 401) return ["Your session has ended. Sign in again, then try again."];
-
-  if (error.errors.length === 0) return [otherwise];
-
-  return error.errors.map((item) => `${pageFieldLabel(item.field)}: ${item.message}`);
-}
-
-/** One problem as a sentence, several as a list. */
-function problemText(messages: readonly string[]) {
-  return messages.length === 1 ? (
-    messages[0]
-  ) : (
-    <ul className="list-disc ps-5">
-      {messages.map((message) => (
-        <li key={message}>{message}</li>
-      ))}
-    </ul>
-  );
-}
-
-/** Everything stopping the dialog, read out as one alert. */
-function Problems({ messages }: { messages: readonly string[] }) {
-  if (messages.length === 0) return null;
-
-  return (
-    <Banner tone="error" className="mt-4">
-      {problemText(messages)}
-    </Banner>
-  );
 }
 
 function PathField({
@@ -155,10 +113,14 @@ export function CreateRemoteServiceDialog({
             </NativeSelect>
           </Field>
           <PathField value={path} onChange={setEdited} />
-          <Problems
+          <ApiProblems
             messages={[
               ...problems,
-              ...refusals(create.error, "The page could not be created. Try again."),
+              ...apiFailureMessages(
+                create.error,
+                "The page could not be created. Try again.",
+                pageFieldLabel,
+              ),
             ]}
           />
         </>
@@ -232,10 +194,14 @@ export function CreateRemotePageDialog({
             <Input value={title} onChange={(event) => setTitle(event.target.value)} />
           </Field>
           <PathField value={path} onChange={setEdited} readOnly={start} />
-          <Problems
+          <ApiProblems
             messages={[
               ...problems,
-              ...refusals(create.error, "The page could not be created. Try again."),
+              ...apiFailureMessages(
+                create.error,
+                "The page could not be created. Try again.",
+                pageFieldLabel,
+              ),
             ]}
           />
         </>
@@ -296,8 +262,15 @@ export function DeleteRemotePageDialog({
       pendingLabel={service ? "Deleting service…" : "Deleting page…"}
       pending={remove.isPending}
       error={
-        remove.error &&
-        problemText(refusals(remove.error, "The page could not be deleted. Try again."))
+        remove.error && (
+          <ApiProblemText
+            messages={apiFailureMessages(
+              remove.error,
+              "The page could not be deleted. Try again.",
+              pageFieldLabel,
+            )}
+          />
+        )
       }
       onConfirm={() => remove.mutate()}
     />

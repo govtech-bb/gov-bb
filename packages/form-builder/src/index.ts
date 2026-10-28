@@ -33,6 +33,15 @@ export type {
 export { VALIDATION_RULE_DESCRIPTORS } from "./behaviors/validation-builder";
 export type { ValidationRuleDescriptor } from "./behaviors/validation-builder";
 
+// Type-specific settings (#2873): which override keys each htmlType's renderer
+// honours beyond Label/Hint, and the control that edits each.
+export { CUSTOM_ATTRIBUTE_DESCRIPTORS } from "./custom-attributes";
+export type {
+  CustomAttributeDescriptor,
+  CustomAttributeKey,
+  CustomAttributeStringKey,
+} from "./custom-attributes";
+
 // Processor authoring defaults
 export { makeDefaultProcessor } from "./processor-defaults";
 
@@ -60,7 +69,11 @@ export type { RequiredMessageDefect } from "@govtech-bb/form-validation";
 export { isFieldlessRequiredWording } from "@govtech-bb/form-validation";
 export { UnknownRefError } from "./errors";
 export type { UnknownRef } from "./errors";
-export { serializeRecipeDraft, deserializeRecipe } from "./serialization";
+export {
+  serializeRecipeDraft,
+  deserializeRecipe,
+  foldLegacyNextSteps,
+} from "./serialization";
 export { validateFormContract } from "./validation";
 export type {
   ValidationResult,

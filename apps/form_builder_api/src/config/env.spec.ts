@@ -8,6 +8,7 @@ const PROD = {
   ADMIN_API_TOKEN: "secret",
   GITHUB_ORG: "govtech-bb",
   CORS_ORIGIN: "https://forms.gov.bb",
+  RECIPE_PREVIEW_TOKEN: "preview-secret",
 };
 
 describe("parseEnv", () => {
@@ -27,7 +28,7 @@ describe("parseEnv", () => {
     expect(env.AI_MODEL).toBe(
       "global.anthropic.claude-haiku-4-5-20251001-v1:0",
     );
-    expect(env.PUBLISH_BASE_BRANCH).toBe("dev");
+    expect(env.PUBLISH_BASE_BRANCH).toBe("main");
   });
 
   it("coerces numeric vars from strings", () => {
@@ -65,14 +66,19 @@ describe("parseEnv", () => {
     expect(() => parseEnv(PROD)).not.toThrow();
   });
 
-  it("keeps RECIPE_PREVIEW_TOKEN optional and parses it through (#1835)", () => {
-    // Optional everywhere — unset in prod must NOT fail fast (missing token →
-    // the proxy falls back to the public-only list, never a boot crash).
+  it("fails fast when RECIPE_PREVIEW_TOKEN is missing in production (#2875)", () => {
+    // The builder shows a form's status from the authoring list this token
+    // unlocks and nothing else, so an unset token must not silently degrade
+    // every status to "unavailable" in prod (the old #1835 fail-open).
     expect(() =>
       parseEnv({ ...PROD, RECIPE_PREVIEW_TOKEN: undefined }),
-    ).not.toThrow();
+    ).toThrow(/RECIPE_PREVIEW_TOKEN/);
     const env = parseEnv({ ...PROD, RECIPE_PREVIEW_TOKEN: "s3cret" });
     expect(env.RECIPE_PREVIEW_TOKEN).toBe("s3cret");
+  });
+
+  it("keeps RECIPE_PREVIEW_TOKEN optional outside production", () => {
+    expect(parseEnv({}).RECIPE_PREVIEW_TOKEN).toBeUndefined();
   });
 
   it("fails fast when ADMIN_API_TOKEN is missing in production", () => {

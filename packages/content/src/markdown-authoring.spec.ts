@@ -111,6 +111,14 @@ describe("markdown authoring contract", () => {
         "form-content",
       ),
     ).toMatchObject({ mode: "source-only" });
+    expect(
+      analyzeMarkdownCompatibility(
+        '<a href="https://gov.bb" class="button">Apply</a>',
+        "landing-page",
+      ).reasons.map((reason) => reason.message),
+    ).toContain(
+      'The <a href="https://gov.bb" class="button"> HTML tag can only be edited safely in Markdown mode.',
+    );
   });
 
   it("only enables visual mode for source the editor can round-trip", () => {

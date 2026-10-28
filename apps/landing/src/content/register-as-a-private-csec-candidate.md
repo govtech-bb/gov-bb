@@ -27,7 +27,7 @@ You can apply online. It takes about 10 to 20 minutes to complete, depending on 
 
 ## What the form asks for
 
-- your name, date of birth, sex and National ID number
+- your name, date of birth, sex and Barbados National Identification (ID) number
 - your home address, telephone number and email address
 - which sitting you prefer (January or May/June)
 - how many subjects you want to enter

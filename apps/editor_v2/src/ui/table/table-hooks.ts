@@ -64,3 +64,16 @@ export const {
   cellComponents: { TextCell, DateCell },
   headerComponents: { SortButton },
 });
+
+/** Whether search words or a filter leave rows out, and how to show every row again. */
+export function useTableFilters() {
+  const table = useTableContext();
+
+  return {
+    filtered: !!table.state.globalFilter || table.state.columnFilters.length > 0,
+    clear: () => {
+      table.resetGlobalFilter(true);
+      table.resetColumnFilters(true);
+    },
+  };
+}

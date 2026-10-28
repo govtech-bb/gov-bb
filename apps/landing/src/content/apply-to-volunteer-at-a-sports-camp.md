@@ -40,7 +40,7 @@ As well as your contact details, the application form asks about your:
 
 The application form also asks you to:
 
-1. Share your National Registration number.
+1. Share your Barbados National Identification (ID) number.
 
 2. Give the names and contact details of 2 references.
 

@@ -54,10 +54,9 @@
               }
             },
             "national-id-number": {
-              "label": "National Registration Number (ID No.)",
               "validations": {
                 "required": {
-                  "error": "Please enter your National Registration Number",
+                  "error": "Barbados National Identification (ID) number is required",
                   "value": true
                 }
               }
@@ -122,18 +121,16 @@
         {
           "ref": "components/home-telephone",
           "overrides": {
-            "label": "Home Telephone Number",
             "fieldId": "home-telephone"
           }
         },
         {
           "ref": "components/mobile-telephone",
           "overrides": {
-            "label": "Cell / Mobile Number",
             "fieldId": "mobile-telephone",
             "validations": {
               "required": {
-                "error": "Please enter a mobile number",
+                "error": "Mobile telephone is required",
                 "value": true
               }
             }
@@ -142,7 +139,6 @@
         {
           "ref": "components/work-telephone",
           "overrides": {
-            "label": "Work Telephone Number",
             "fieldId": "work-telephone"
           }
         },
@@ -577,7 +573,13 @@
               }
             },
             "telephone": {
-              "label": "Emergency Contact Work Telephone"
+              "label": "Emergency contact work telephone",
+              "validations": {
+                "required": {
+                  "value": true,
+                  "error": "Emergency contact work telephone is required"
+                }
+              }
             },
             "first-name": {
               "label": "Emergency Contact First Name",
@@ -589,10 +591,10 @@
               }
             },
             "home-telephone": {
-              "label": "Emergency Contact Home Telephone",
+              "label": "Emergency contact home telephone",
               "validations": {
                 "required": {
-                  "error": "Please enter the emergency contact's home telephone number",
+                  "error": "Emergency contact home telephone is required",
                   "value": true
                 }
               }
@@ -602,7 +604,7 @@
         {
           "ref": "components/mobile-telephone",
           "overrides": {
-            "label": "Emergency Contact Cell / Mobile Number",
+            "label": "Emergency contact cell / mobile number",
             "fieldId": "emergency-contact-mobile"
           }
         },
@@ -622,7 +624,7 @@
       ]
     },
     {
-      "title": "Declaration",
+      "title": "Confirm and submit your application",
       "stepId": "declaration",
       "elements": [
         {
@@ -632,13 +634,13 @@
             "fieldId": "declaration-confirmed",
             "options": [
               {
-                "label": "I declare that the information provided in this registration form is true and correct to the best of my knowledge. I understand that providing false information may result in my application being rejected or my enrolment being cancelled.",
+                "label": "I confirm that the information I have provided is true and correct to the best of my knowledge.",
                 "value": "confirmed"
               }
             ],
             "validations": {
               "required": {
-                "error": "You must confirm the declaration to submit your registration",
+                "error": "You must confirm the declaration to continue.",
                 "value": true
               }
             }
@@ -650,18 +652,13 @@
       "title": "Registration Submitted",
       "stepId": "submission-confirmation",
       "elements": [],
-      "nextSteps": [
-        {
-          "title": "What happens next",
-          "content": "Thank you for registering for the Youth Development Programme – Performing Arts 2025–2026. We have received your registration and you will receive a confirmation email at the address you provided. You will be contacted regarding your interview and audition date."
-        }
-      ]
+      "markdownContent": "## What happens next\n\nThank you for registering for the Youth Development Programme – Performing Arts 2025–2026. We have received your registration and you will receive a confirmation email at the address you provided. You will be contacted regarding your interview and audition date."
     }
   ],
   "title": "Youth Development Programme – Performing Arts Registration 2025–2026",
   "formId": "ydp-performing-arts-registration-2025-2026",
   "createdAt": "2025-01-01T00:00:00Z",
-  "updatedAt": "2026-06-05T00:00:00Z",
+  "updatedAt": "2026-10-21T16:52:59.000Z",
   "processors": [
     {
       "type": "email",

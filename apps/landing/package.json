@@ -7,8 +7,9 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "dev": "vite dev --port 3000",
-    "build": "vite build && node scripts/check-no-secret-leak.mjs",
+    "dev": "pnpm build:cms-preview --mode development && vite dev --port 3000",
+    "build": "pnpm build:cms-preview && vite build && node scripts/check-no-secret-leak.mjs",
+    "build:cms-preview": "vite build --config vite.cms-preview.config.ts",
     "preview": "nitro preview",
     "start": "node .amplify-hosting/compute/default/server.js",
     "test": "vitest run",
@@ -40,7 +41,7 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-leaflet": "^5.0.0",
-    "remark-directive": "4.0.0",
+    "remark-directive": "^4.0.0",
     "tailwindcss": "^4.3.0",
     "zod": "^4.4.3"
   },

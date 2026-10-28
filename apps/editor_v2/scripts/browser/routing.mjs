@@ -50,11 +50,11 @@ async function historyMove(delta, expected) {
 
 async function cancelDeparture() {
   await question.waitFor();
-  assert.equal(
-    await question
-      .getByRole("button", { name: "Cancel", exact: true })
-      .evaluate((element) => element === document.activeElement),
-    true,
+  // Base UI applies initial focus after the popup becomes visible, especially in the production build.
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll('[role="alertdialog"] button')].some(
+      (element) => element.textContent === "Cancel" && element === document.activeElement,
+    ),
   );
   await question.getByRole("button", { name: "Cancel", exact: true }).click();
   await question.waitFor({ state: "hidden" });
@@ -95,9 +95,12 @@ try {
   await header.getByRole("button").click();
   assert.equal(await header.getAttribute("aria-sort"), "descending");
   assert.match(await rows.first().innerText(), /^What prescription colours mean/);
-  await page.getByLabel("Category", { exact: true }).selectOption(service.category.title);
+  const category = page.getByRole("combobox", { name: "Category", exact: true });
+  await category.click();
+  await page.getByRole("option", { name: service.category.title, exact: true }).click();
   assert.equal(await rows.count(), 1);
-  await page.getByLabel("Category", { exact: true }).selectOption("");
+  await category.click();
+  await page.getByRole("option", { name: "All categories", exact: true }).click();
   assert.equal(await page.getByText("Drafts in this browser", { exact: true }).count(), 0);
 
   // Keep the history chain in one document; a full-page goto would test unload instead of router blocking.
@@ -115,7 +118,7 @@ try {
   );
   await title.fill("Unsaved fees");
   const length = await page.evaluate(() => history.length);
-  await page.getByRole("link", { name: "Services", exact: true }).click();
+  await page.locator("header").getByRole("link", { name: "Services", exact: true }).click();
   await cancelDeparture();
 
   for (const delta of [-1, 1, -2]) {

@@ -75,7 +75,8 @@ it("expands a block ref into one entry per child fieldId with a prefixed label",
     },
     {
       fieldId: "national-id-number",
-      displayName: "personal-information › National Identification (ID) number",
+      displayName:
+        "personal-information › Barbados National Identification (ID) number",
     },
   ]);
 });

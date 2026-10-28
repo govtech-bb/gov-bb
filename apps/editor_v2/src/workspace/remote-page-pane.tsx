@@ -1,23 +1,26 @@
-import { ClockCounterClockwise } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import type { ApiPage, EditorApi, TaxonomyCategory } from "../api/client";
+import { ApiFailure, type ApiPage, type EditorApi, type TaxonomyCategory } from "../api/client";
 import { pageToMarkdown, pickerCategories, pageFieldLabel } from "../api/page-markdown";
-import { PRELOAD_FRESH, pageQuery, servicesQuery, taxonomyQuery } from "../api/queries";
+import {
+  PRELOAD_FRESH,
+  pageQuery,
+  serviceQuery,
+  servicesQuery,
+  taxonomyQuery,
+} from "../api/queries";
 import { PageDraftEditor } from "../host/page-editor";
 import { download } from "../host/source-ui";
 import { readPageMetadata } from "../pages";
 import { DraftStore } from "../persistence/draft-store";
 import { govbbPageCodec } from "../presets/govbb-page";
 import { Banner } from "../ui/banner";
-import { Bar } from "../ui/bar";
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
 import { LoadingState } from "../ui/loading-state";
 import type { SaveStateProps } from "../ui/save-state";
 import { toast } from "../ui/toast";
-import { PageHistoryDialog } from "./page-history-dialog";
 import { EditorSessionProvider } from "../editor/react/composer";
 import type { DocumentSessions } from "./document-views";
 import { savePageDraft, type PageSession, type ServerPageBaseline } from "./page-sync";
@@ -76,6 +79,12 @@ export function RemotePagePane({
       categories={taxonomy.data}
       active={active}
       onSession={onSession}
+      readError={page.error ?? taxonomy.error}
+      reading={page.isFetching || taxonomy.isFetching}
+      retryRead={() => {
+        void page.refetch();
+        void taxonomy.refetch();
+      }}
     />
   );
 
@@ -91,12 +100,18 @@ function RemotePageEditor({
   categories,
   active,
   onSession,
+  readError,
+  reading,
+  retryRead,
 }: {
   api: EditorApi;
   page: ApiPage;
   categories: readonly TaxonomyCategory[];
   active: boolean;
   onSession: SessionListener;
+  readError: Error | null;
+  reading: boolean;
+  retryRead: () => void;
 }) {
   const [base, setBase] = useState<ServerPageBaseline>(() => ({
     page: server,
@@ -114,17 +129,49 @@ function RemotePageEditor({
 
   const client = useQueryClient();
   const navigate = useNavigate();
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const href = useRouterState({ select: (state) => state.location.href });
   const draft = useSyncExternalStore(store.subscribe, store.getSnapshot);
   // Links find the site's services by name; the content API lists their entry pages
   const services = useQuery(servicesQuery(api)).data;
+
+  const service = services?.find(
+    (item) => server.id === item.id || server.url.startsWith(`${item.url}/`),
+  );
+
+  const servicePages = useQuery({
+    ...serviceQuery(api, service?.id ?? ""),
+    enabled: !!service,
+  }).data;
+
+  const previewContext = useMemo(() => {
+    const path = readPageMetadata(draft.committed).url ?? server.url;
+    const breadcrumbs = [{ label: "Home", href: "/" }];
+    const parts = path.split("/").filter(Boolean);
+
+    for (let index = 1; index < parts.length; index++) {
+      const href = `/${parts.slice(0, index).join("/")}`;
+      const category = categories.find((item) => item.url === href);
+      const page = servicePages?.pages.find((item) => item.url === href);
+
+      const label =
+        category?.title ??
+        page?.title ??
+        (href === service?.url
+          ? service.title
+          : href === `/${service?.category.slug}`
+            ? service?.category.title
+            : undefined);
+
+      if (label) breadcrumbs.push({ label, href });
+    }
+
+    return { breadcrumbs, publishedAt: server.published_at };
+  }, [draft.committed, server.url, server.published_at, categories, service, servicePages]);
 
   const linkPages = useMemo(
     () => services?.map((service) => ({ title: service.title, url: service.url })),
     [services],
   );
-
-  const [historyOpen, setHistoryOpen] = useState(false);
 
   const save = useMutation({
     mutationFn: (current: { base: ServerPageBaseline; markdown: string }) =>
@@ -184,6 +231,14 @@ function RemotePageEditor({
     store.edit(markdown);
 
     if (store.apply()) rebase({ page: server, markdown });
+    else {
+      // Discard the rejected source so the existing working copy remains editable.
+      store.discard();
+      toast("The saved version couldn't be opened", {
+        tone: "error",
+        description: "Your open copy is unchanged.",
+      });
+    }
   };
 
   const newerVersion = "A newer version of this page has been saved since you opened it.";
@@ -222,6 +277,50 @@ function RemotePageEditor({
     };
   };
 
+  const signInAction = (
+    <Button
+      variant="secondary"
+      onClick={() =>
+        void navigate({
+          to: "/auth",
+          search: { state: "sign-in", returnTo: href, reason: "provider" },
+        })
+      }
+    >
+      Sign in again
+    </Button>
+  );
+
+  const readStatus = readError instanceof ApiFailure ? readError.status : undefined;
+  const readRefused = readStatus === 401 || readStatus === 403 || readStatus === 404;
+
+  const readNotice = readError && (
+    <Banner
+      tone={readRefused ? "error" : "warning"}
+      layout="strip"
+      actions={
+        <>
+          {readStatus === 401 ? (
+            signInAction
+          ) : (
+            <Button variant="secondary" pending={reading} onClick={retryRead}>
+              {reading ? "Refreshing page…" : "Try again"}
+            </Button>
+          )}
+          {readRefused && <Button onClick={downloadMine}>Download my version</Button>}
+        </>
+      }
+    >
+      {readStatus === 401
+        ? "Your session has ended. Download your changes before signing in again."
+        : readStatus === 403
+          ? "You no longer have access to this page. Download a copy to keep your changes."
+          : readStatus === 404
+            ? "This page is no longer available. Download a copy to keep your changes."
+            : "We could not refresh this page. Your open copy and unsaved changes are unchanged."}
+    </Banner>
+  );
+
   // The save state reads out the newer version, so its notice doesn't too
   const notice = stale ? (
     <Banner
@@ -259,83 +358,47 @@ function RemotePageEditor({
       </ul>
     </Banner>
   ) : outcome?.kind === "signed-out" ? (
-    <Banner
-      tone="warning"
-      layout="strip"
-      role="alert"
-      actions={
-        <Button
-          variant="secondary"
-          onClick={() =>
-            void navigate({
-              to: "/auth",
-              search: { state: "sign-in", returnTo: pathname, reason: "provider" },
-            })
-          }
-        >
-          Sign in again
-        </Button>
-      }
-    >
+    <Banner tone="warning" layout="strip" role="alert" actions={signInAction}>
       Your session has ended. Download your changes before signing in again; unsaved work will be
       lost when you leave.
     </Banner>
   ) : undefined;
 
   return (
-    <>
-      <PageDraftEditor
-        store={store}
-        active={active}
-        server={standing()}
-        versions={
-          <Bar.Tool
-            icon={<ClockCounterClockwise />}
-            label="History"
-            onClick={() => setHistoryOpen(true)}
-          />
-        }
-        publish={
-          <Button
-            variant="accent"
-            disabled={!unsaved || stale || blocked || save.isPending || outcome?.kind === "missing"}
-            onClick={saveDraft}
-          >
-            {visibility === "public" ? "Publish changes" : "Save"}
-          </Button>
-        }
-        notice={notice}
-        linkPages={linkPages}
-        settings={{
-          ...(server.parent_id === null && {
-            categories: pickerCategories(categories),
-            single: true,
-          }),
-          publishedAt: server.published_at,
-          errors: Object.fromEntries(errors.map((error) => [error.field, error.message])),
-        }}
-      />
-      {historyOpen && (
-        <PageHistoryDialog
-          api={api}
-          current={server}
-          categories={categories}
-          canRestore={!blocked && !save.isPending}
-          close={() => setHistoryOpen(false)}
-          restore={(markdown) => {
-            store.edit(markdown);
-
-            // The dialog closes on the restored page, which isn't saved yet
-            if (store.apply())
-              toast("Version restored", {
-                tone: "info",
-                description:
-                  visibility === "public" ? "Publish changes to make it live." : "Save to keep it.",
-              });
-            setHistoryOpen(false);
-          }}
-        />
-      )}
-    </>
+    <PageDraftEditor
+      store={store}
+      active={active}
+      server={standing()}
+      publish={
+        <Button
+          variant="accent"
+          disabled={!unsaved || stale || blocked || save.isPending || outcome?.kind === "missing"}
+          onClick={saveDraft}
+        >
+          {visibility === "public" ? "Publish changes" : "Save"}
+        </Button>
+      }
+      notice={
+        readNotice ? (
+          <>
+            {readNotice}
+            {notice}
+          </>
+        ) : (
+          notice
+        )
+      }
+      linkPages={linkPages}
+      previewContext={previewContext}
+      settings={{
+        ...(server.parent_id === null && {
+          categories: pickerCategories(categories),
+          single: true,
+        }),
+        publishedAt: server.published_at,
+        savedVisibility: base.page.visibility,
+        errors: Object.fromEntries(errors.map((error) => [error.field, error.message])),
+      }}
+    />
   );
 }

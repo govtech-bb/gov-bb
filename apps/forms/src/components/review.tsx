@@ -17,10 +17,14 @@ export default function Review({
   formMeta,
   form,
   visibleSteps,
+  previewToken,
+  draftToken,
 }: {
   formMeta: FormMeta;
   form: AnyFormApi;
   visibleSteps: ClientFormStep[];
+  previewToken?: string;
+  draftToken?: string;
 }) {
   const navigate = useNavigate({ from: "/forms/$formId/" });
 
@@ -42,6 +46,19 @@ export default function Review({
     return formattedDate;
   };
 
+  // The href a new tab, middle-click or copied link uses. The click handler
+  // keeps the whole current search; this has to carry the version tokens
+  // itself, or the step opens the published form instead.
+  const changeHref = (stepId: string) => {
+    const params = new URLSearchParams({
+      step: stepId,
+      returnTo: "check-your-answers",
+    });
+    if (previewToken) params.set("preview", previewToken);
+    if (draftToken) params.set("draft", draftToken);
+    return `/forms/${formMeta.formId}?${params}`;
+  };
+
   const handleChangeClick =
     (stepId: string) => (event: React.MouseEvent<HTMLAnchorElement>) => {
       if (
@@ -60,10 +77,13 @@ export default function Review({
         category: formCategory(formMeta.formId),
         step: stepId,
       });
+      // returnTo brings Continue back here rather than through every later
+      // step (#2812).
       void navigate({
         search: (prev: Record<string, unknown>) => ({
           ...prev,
           step: stepId,
+          returnTo: "check-your-answers",
         }),
       });
     };
@@ -199,7 +219,7 @@ export default function Review({
                   {marker ? `${stepTitle} — ${marker.text}` : stepTitle}
                 </Heading>
                 <Link
-                  href={`/forms/${formMeta.formId}?step=${step.stepId}`}
+                  href={changeHref(step.stepId)}
                   onClick={handleChangeClick(step.stepId)}
                 >
                   Change{" "}

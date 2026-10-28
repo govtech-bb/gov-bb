@@ -518,7 +518,7 @@ export function StepEditor({
                   tabIndex={-1}
                   className="mb-3 scroll-mt-5 rounded text-sm font-semibold focus-visible:outline-2 focus-visible:outline-ui-focus"
                 >
-                  When this page is shown
+                  Step / page behaviours
                 </h3>
                 <BehavioursEditor
                   scope="step"

@@ -187,6 +187,28 @@ describe("rekeyFormHandler — POST /builder/forms/:formId/rekey", () => {
     expect(save).not.toHaveBeenCalled();
   });
 
+  it("stamps updated_at = NOW() on both form_definitions writes (#2489)", async () => {
+    // A re-key is a save of the author's draft under a new id, so the row's
+    // updated_at must move with it — the raw SQL has to do this itself (see
+    // forms.update-published-only.spec.ts).
+    const { ds, query } = fakeDataSource({
+      oldRows: [{ id: "row1", version: "1.0.0", published_at: null }],
+      existingNewVersion: [{ id: "row1" }],
+    });
+    getDataSourceMock.mockResolvedValue(ds);
+
+    await rekeyFormHandler(
+      mockReq({ formId: "birth-reg-old" }, { recipe: recipe() }),
+      mockRes(),
+    );
+
+    const writes = sqlsOf(query).filter((s) =>
+      /UPDATE form_definitions/i.test(s),
+    );
+    expect(writes).toHaveLength(2);
+    for (const sql of writes) expect(sql).toMatch(/updated_at = NOW\(\)/i);
+  });
+
   it("moves the form_config MDA-contact link to the new ID (#732)", async () => {
     const { ds, query } = fakeDataSource({
       oldRows: [{ id: "row1", version: "1.0.0", published_at: null }],

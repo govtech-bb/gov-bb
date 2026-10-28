@@ -1,0 +1,112 @@
+name: Deploy editor_v2 to Sandbox
+
+# Builds apps/editor_v2 on its Amplify app, gov-bb-editor-v2-sandbox
+# (https://editor-v2.sandbox.alpha.gov.bb). Infrastructure: alpha-infra
+# environments/sandbox/modular-forms-sandbox/amplify-editor-v2.tf (gov-bb#2962).
+#
+# The Amplify branch has auto-build OFF on purpose, so a push to v2-rewrite
+# builds nothing by itself. This workflow is what deploys the editor: it
+# starts a RELEASE build of the pushed commit, but only when something the
+# editor is built from changed (the `paths` below, same pattern as
+# deploy-api-v2-sandbox.yml). Run it by hand to rebuild without a change.
+#
+# Lives on v2-rewrite for the same reason as the api_v2 workflow: the file has
+# to exist on the branch that is pushed.
+#
+# Paths: the editor's own folder, plus everything else its Amplify build reads
+# (amplify.yml runs `nvm use $(cat .nvmrc)`, installs pnpm from package.json's
+# packageManager, then `pnpm install --frozen-lockfile`). The editor has no
+# workspace-package dependencies, only published ones, so no packages/** path.
+#
+# Role: api-v2-github-actions-sandbox, which trusts gov-bb v2-rewrite and main
+# and may start/read jobs on this one Amplify branch only (alpha-infra#738).
+
+on:
+  push:
+    branches: [v2-rewrite]
+    paths:
+      - "apps/editor_v2/**"
+      - "amplify.yml"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - ".nvmrc"
+      - ".github/workflows/deploy-editor-v2-sandbox.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write # assume the deploy role via OIDC
+  contents: read
+
+# Queue deploys; never cancel one mid-flight. Amplify also refuses a second
+# RELEASE job while one is running on the branch.
+concurrency:
+  group: deploy-editor-v2-sandbox
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ca-central-1
+  AWS_ROLE_ARN: arn:aws:iam::672203047922:role/api-v2-github-actions-sandbox
+  AMPLIFY_APP_ID: d2bjaphcrcz9hl
+  AMPLIFY_BRANCH: v2-rewrite
+  APP_URL: https://editor-v2.sandbox.alpha.gov.bb
+
+jobs:
+  deploy:
+    name: Build editor_v2 on Amplify
+    runs-on: ubuntu-latest
+    # No `environment:` here: it would change the OIDC subject to
+    # repo:...:environment:<name>, which the deploy role does not trust.
+    # No checkout either: Amplify clones the commit itself.
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # --commit-id builds exactly the commit that triggered this run, not
+      # whatever the branch head is by the time Amplify clones it.
+      - name: Start the Amplify build and wait for it
+        run: |
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE \
+            --commit-id "$GITHUB_SHA" \
+            --commit-message "GitHub Actions run $GITHUB_RUN_ID" \
+            --query jobSummary.jobId \
+            --output text)
+          echo "Amplify editor_v2 job started: $JOB_ID (commit $GITHUB_SHA)"
+
+          # 40 x 30 s = 20 minutes. The 12 Oct build took about 4.
+          for i in $(seq 1 40); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" \
+              --query job.summary.status \
+              --output text)
+            echo "[$i/40] Amplify editor_v2 status: $STATUS"
+            case "$STATUS" in
+              SUCCEED) exit 0 ;;
+              FAILED|CANCELLED)
+                echo "::error::Amplify job $JOB_ID ended $STATUS. Logs: Amplify console, app $AMPLIFY_APP_ID, branch $AMPLIFY_BRANCH, job $JOB_ID."
+                exit 1 ;;
+            esac
+            sleep 30
+          done
+          echo "::error::Amplify job $JOB_ID still running after 20 minutes."
+          exit 1
+
+      # The CDN can serve the previous build for a few seconds after SUCCEED.
+      - name: Smoke test
+        run: |
+          for j in 1 2 3 4 5; do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$APP_URL/" || echo 000)
+            echo "attempt $j: $APP_URL -> $CODE"
+            [ "$CODE" = "200" ] && exit 0
+            sleep 10
+          done
+          echo "::error::$APP_URL did not answer 200 after the build."
+          exit 1

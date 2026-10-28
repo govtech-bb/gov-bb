@@ -5,33 +5,24 @@ import {
   createRootRouteWithContext,
   redirect,
 } from '@tanstack/react-router'
-import { Footer, FooterLink, SkipLink } from '@govtech-bb/react'
+import { SkipLink } from '@govtech-bb/react'
+import { SiteFooter } from '../components/SiteFooter'
 import { BreadcrumbRegion } from '../components/BreadcrumbRegion'
 import Header from '../components/Header'
+import { CATEGORY_BY_SLUG, isCategoryVisible } from '../content/registry'
 import { ErrorPage } from '../components/ErrorPage'
 import { trackEvent } from '../lib/analytics'
 import { COOKIE_MAX_AGE_SECONDS, resolveViewLevel } from '../lib/preview'
-import { getServiceStatuses } from '../lib/service-status'
+import {
+  deriveVisibilityOverlay,
+  getServiceStatuses,
+} from '../lib/service-status'
 import { SITE_URL } from '../lib/site-url'
 import { buildOrganizationLd, buildWebSiteLd } from '../lib/structured-data'
 
 import appCss from '../styles.css?url'
 
 import type { QueryClient } from '@tanstack/react-query'
-
-const FOOTER_LINKS = [
-  { label: 'Home', href: '/', onClick: () => trackEvent('footer-home') },
-  {
-    label: 'Terms & Conditions',
-    href: '/terms-conditions',
-    onClick: () => trackEvent('footer-terms'),
-  },
-  {
-    label: 'Careers',
-    href: 'https://job-boards.greenhouse.io/govtechbarbados',
-    onClick: () => trackEvent('footer-careers'),
-  },
-]
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -139,6 +130,30 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     links: [
       { rel: 'stylesheet', href: appCss },
       { rel: 'manifest', href: '/manifest.json' },
+      { rel: 'icon', href: '/favicon.ico', sizes: '16x16 32x32 48x48' },
+      {
+        rel: 'icon',
+        type: 'image/svg+xml',
+        sizes: 'any',
+        href: '/favicon.svg',
+      },
+      {
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '192x192',
+        href: '/icon-192.png',
+      },
+      {
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '512x512',
+        href: '/icon-512.png',
+      },
+      {
+        rel: 'apple-touch-icon',
+        sizes: '180x180',
+        href: '/apple-touch-icon.png',
+      },
     ],
     scripts: [
       // Site-wide structured data — present on every page (#1643).
@@ -221,28 +236,25 @@ function ServerErrorPage() {
 }
 
 function RootLayout() {
+  const { level, serviceStatuses } = Route.useRouteContext()
+  const showAboutBarbados = isCategoryVisible(
+    CATEGORY_BY_SLUG['about-barbados'],
+    level,
+    deriveVisibilityOverlay(serviceStatuses),
+  )
+
   return (
     <>
       <SkipLink href="#main-content" />
       <div className="print:hidden">
-        <Header />
+        <Header showAboutBarbados={showAboutBarbados} />
       </div>
       <BreadcrumbRegion>
         <main id="main-content" tabIndex={-1}>
           <Outlet />
         </main>
       </BreadcrumbRegion>
-      <Footer
-        className="print:hidden"
-        coatSrc="/images/coat-of-arms.png"
-        copy={`© ${new Date().getFullYear()} Government of Barbados`}
-      >
-        {FOOTER_LINKS.map(({ label, ...link }) => (
-          <FooterLink key={label} {...link}>
-            {label}
-          </FooterLink>
-        ))}
-      </Footer>
+      <SiteFooter onNavigate={trackEvent} />
     </>
   )
 }

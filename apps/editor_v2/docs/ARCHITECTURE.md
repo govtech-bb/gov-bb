@@ -47,6 +47,8 @@ src/ui/table                 shared list table: features and components once; ea
 src/routes                   TanStack routes and server-safe document shell
 ```
 
+`src/api/client.ts` also hosts a temporary, in-memory category preview: it reads real taxonomy and service counts, uses `ApiFailure` for local validation/refusals, and never persists category edits or changes the real taxonomy used by page/service pickers. See [Development](DEVELOPMENT.md#app-shell-and-routes).
+
 The TypeScript boundary checker enforces these dependency boundaries. Generic editor code cannot import forms, presets, the app or persistence. Pure layers cannot reach browser globals or React UI. Form behavior is owned by installed form contributions; it is not selected from a second global catalog.
 
 The app uses TanStack Start in SPA mode. Its root document can render at build time; the client-only workspace owns in-memory document sessions. Route changes reuse clean cached editors. Framework imports stay outside reusable editor/state layers.
@@ -90,7 +92,7 @@ A `DraftStore` receives explicit source and a codec: `new DraftStore(source, cod
 
 ## Service pages and workspace
 
-`workspace/page-sync.ts` compares a working copy with an in-memory `ServerPageBaseline` and saves explicitly using its `updated_at` token. A response acknowledges the submitted snapshot, never later edits. Background refresh does not overwrite the working copy or silently advance its write token. `workspace/service-pages.ts` maps only API pages into sidebar rows. `api/page-markdown.ts` owns page/save conversion and selective history restoration.
+`workspace/page-sync.ts` compares a working copy with an in-memory `ServerPageBaseline` and saves explicitly using its `updated_at` token. A response acknowledges the submitted snapshot, never later edits. Background refresh does not overwrite the working copy or silently advance its write token. `workspace/service-pages.ts` maps only API pages into sidebar rows. `api/page-markdown.ts` owns page/save conversion.
 
 `PageDocument` contains API navigation metadata, not content or storage keys. `ServicePageRole` describes entry/start/supporting content; the reusable form schema's `PageRole` describes questions/review/declaration/confirmation/result pages.
 
@@ -98,11 +100,13 @@ Authoring controls share the form builder's visual primitives in `src/ui`: butto
 
 `definePageEditor` extends the kernel definition with installed Markdown handlers. Each page module supplies its supported syntax, Lexical import/export and safe preview rendering. The GovBB preset combines page metadata, text, components, native Lexical lists/tables and shared history, links and formatting. A list-item subclass preserves separate paragraphs within numbered instructions; form list nodes remain unchanged.
 
-Page metadata lives in a hidden document node, retaining its YAML document, original source and initial canonical fingerprint. Editing the title shares the body's undo and save operation. Export returns original bytes until content or metadata changes; afterwards it normalizes Markdown without discarding unknown YAML fields, link targets or body structure. Unsupported content makes the whole page source-only, so conversion cannot silently flatten part of it.
+Page metadata lives in a hidden document node, retaining its YAML document, original source and initial canonical fingerprint. Editing the title shares the body's undo and save operation. Export returns original bytes until content or metadata changes; afterwards it normalizes Markdown without discarding unknown YAML fields, link targets or body structure. Unsupported content makes the whole page source-only, so conversion cannot silently flatten part of it; the page editor opens such a page read-only, with no Markdown source tool.
+
+The editable site preview mounts landing's public renderer inside the CMS document. Title, introduction and body reuse the active editor session and history; the workspace retains save and publication ownership. See [Site preview](SITE-PREVIEW.md) for the runtime contract, style isolation and delivery requirements.
 
 Services and pages come only from the API. Form IDs remain page metadata, without a browser-form join. The workspace keeps three clean views and pins any additional dirty/error/pending views. Reopened clean sessions compare API versions; confirmed discard also drops undo. One coordinated guard covers page/workspace departure, sign-out and unload. Cancel changes neither location nor working copies. Old local workspace/draft keys are inert and left untouched. Historical ADR 0007 describes the former local workspace.
 
-Remote page sessions live in `workspace/remote-page-pane.tsx`; page history and navigation have their own UI modules. `remote-page-dialogs.tsx` performs API creation/deletion through the existing `workspace-dialog.tsx` shell. There are no local-document dialogs or production form-editor route.
+Remote page sessions live in `workspace/remote-page-pane.tsx`; navigation has its own UI modules. `remote-page-dialogs.tsx` performs API creation/deletion through the existing `workspace-dialog.tsx` shell. There are no local-document dialogs or production form-editor route.
 
 ## Extension proofs
 

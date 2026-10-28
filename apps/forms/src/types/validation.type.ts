@@ -25,6 +25,10 @@ export interface FieldValidationProperties<
   onDynamic?(
     input: FieldValidationContext<TValue, TFieldApi>,
   ): FieldError[] | undefined;
+  /** Runs after `onDynamic` passes; for checks that must wait on a lookup. */
+  onDynamicAsync?(
+    input: FieldValidationContext<TValue, TFieldApi>,
+  ): Promise<FieldError[] | undefined>;
   onBlur?(input: FieldValidationContext<TValue, TFieldApi>): void; // Method called when a field loses focus.
   onChangeListenTo?: string[];
 }

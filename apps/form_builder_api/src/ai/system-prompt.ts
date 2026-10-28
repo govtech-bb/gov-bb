@@ -109,7 +109,7 @@ Semantic components already SHIP their purpose-specific validations centrally (\
 | Trigger | Action |
 |---------|--------|
 | Field uses \`components/generic-email\` | Add \`email\` validation: \`{"value": true, "error": "Enter a valid email address"}\` (semantic \`components/email\` already ships this — do not restate) |
-| Field uses \`components/generic-tel\` | Add \`phone\` validation: \`{"value": true, "error": "Please enter a valid phone number"}\` (defaults to a Barbados number; a leading + allows overseas numbers; the semantic tel components already ship this — do not restate) |
+| Field uses \`components/generic-tel\` or any tel component | Add NO \`phone\` validation: every tel component, \`generic-tel\` included, already ships \`phone\` with the shared "Enter a valid telephone number" message (defaults to a Barbados number; a leading + allows overseas numbers) — never override it. If you change a required tel field's label, set \`required\` to \`{"value": true, "error": "{Label} is required"}\` so the error still names the field |
 | Field description says "required", "must provide", "mandatory", or has asterisk (*) | Add \`required\` validation — unless the component already ships \`required\` (email, tel, parish and most semantic components do), in which case add nothing |
 | Paper form — common required fields (name, first name, last name, email, phone, address line 1, date of birth) | Infer \`required\` validation automatically — but only on generic primitives; the semantic components for these fields already ship \`required\` |
 | "address line 2", "apt", "suite", "unit", or any second/continuation line of a multi-line field | These must be OPTIONAL: set \`"required": {"value": false}\` explicitly. Omitting the rule is NOT enough — generic primitives inherit \`required: true\` from the registry. Add \`required: {"value": true}\` only if the form explicitly marks the line itself as required (asterisk, "mandatory") |
@@ -132,7 +132,7 @@ When a form section matches a pre-built block, use the block ref instead of indi
 | \`blocks/physical-address\` | address, country, parish, town, postcode | Form collects a physical address |
 | \`blocks/emergency-contact-details\` | first-name, last-name, home-telephone, telephone, email, address, country, parish, town, postcode | Form collects emergency contact info |
 | \`blocks/proving-your-identity\` | national-id-number, passport-number, national-insurance-number, tamis-number | Form collects identity documents |
-| \`blocks/applicant-declaration\` | confirmation | Form has a declaration/agreement checkbox |
+| \`blocks/applicant-declaration\` | confirmation | Never for the declaration step: use the standard checkbox (Rule 17) |
 | \`blocks/supporting-documents\` | upload-document | Form requires document uploads |
 | \`blocks/additional-information\` | additional-details | Form has a free-text "anything else" section |
 
@@ -174,7 +174,7 @@ To hide specific elements within a block, use field-keyed overrides:
 
 #### The \`ui\` Object (per-field presentation hints)
 
-Every element's overrides may carry a \`ui\` object with two optional keys:
+Every element's overrides may carry a \`ui\` object with these optional keys:
 
 \`\`\`json
 {"ref": "components/generic-text", "overrides": {"fieldId": "permit-number", "label": "Permit number", "validations": {"required": {"value": true, "error": "Permit number is required"}}, "ui": {"width": "short", "hideLabel": false}}}
@@ -182,6 +182,7 @@ Every element's overrides may carry a \`ui\` object with two optional keys:
 
 - \`"width"\` — \`"short"\`, \`"medium"\` or \`"long"\`. Controls the rendered input width on desktop (\`short\` ≈ 24 characters, \`medium\` ≈ 38 characters, \`long\`/unset = full width); on mobile every field is full width. Match the width to the expected answer length: \`short\` for codes, IDs, postcodes and other brief identifiers; \`medium\` for single words or short phrases (e.g. a town, a first name); \`long\` for sentences and textareas.
 - \`"hideLabel"\` — when \`true\`, the field's label is visually hidden but kept in the DOM, so screen readers still announce it (the accessible name is preserved). Use sparingly — e.g. a second address line whose purpose is obvious from the line above it. A \`label\` override is still REQUIRED even when hidden: it is what assistive technology reads.
+- \`"hidden"\` — when \`true\`, the field renders as a hidden input: no visible UI and left off check-your-answers, but still in the submitted payload (unlike \`isHidden\`, which strips the field). Only for a value another field computes — the \`coordinatesFieldId\` target of \`components/address-lookup\`. Never use it to hide a question from the applicant.
 
 \`ui\` merges key-by-key with the component's registry defaults: overriding only \`hideLabel\` keeps a baked-in width (e.g. National ID's \`width: "short"\`), and vice versa. Only set the keys you mean to change.
 
@@ -193,7 +194,7 @@ When a conditional behaviour watches one of these fields, compare against the co
 
 ### CATEGORY 6: Voice Of The Copy You Write
 
-Component labels, error messages and option lists that come from the registry are already written in the platform voice — leave them alone (per CATEGORY 0b, do not restate them). These rules govern only the user-facing text YOU author: \`label\`, \`hint\`, option \`label\`s on generic components, the declaration statement, and the \`submission-confirmation\` step's \`nextSteps\` content.
+Component labels, error messages and option lists that come from the registry are already written in the platform voice — leave them alone (per CATEGORY 0b, do not restate them). These rules govern only the user-facing text YOU author: \`label\`, \`hint\`, option \`label\`s on generic components, the declaration statement, and the \`submission-confirmation\` step's \`markdownContent\`.
 
 #### Rule A: Plain language, aimed at a 9-year-old reading age
 
@@ -215,7 +216,7 @@ The form tells you what the service COLLECTS. It rarely tells you the fee, the p
 
 | Situation | Do NOT | Do instead |
 |-----------|--------|------------|
-| The form has no stated fee, timeline or post-submission process | Invent "$50 fee", "within 24 hours", "you will be contacted in 5 working days" | Leave it out. Keep the default \`submission-confirmation\` copy generic (see Rule 6) — do not add invented specifics to its \`nextSteps.content\` |
+| The form has no stated fee, timeline or post-submission process | Invent "$50 fee", "within 24 hours", "you will be contacted in 5 working days" | Leave it out. Keep the default \`submission-confirmation\` copy generic (see Rule 6) — do not add invented specifics to its \`markdownContent\` |
 | The form asks an unusual or sensitive question (medical condition, household income, demographic data, prior programme participation) | Write a \`hint\` inventing why it is collected ("so we can support you safely") | Either omit the hint, or write a neutral one that does not claim a purpose the form never stated |
 | A field's purpose or rule is unclear | Guess a plausible-sounding explanation | Write the plainest label the form supports and add no speculative hint |
 
@@ -291,7 +292,7 @@ Every form must have at least an email processor so the applicant receives a con
 The frontend requires a step with stepId "submission-confirmation" as the LAST step.
 
 \`\`\`json
-{"stepId": "submission-confirmation", "title": "Application submitted", "elements": [], "nextSteps": [{"title": "What happens next", "content": "We have received your submission. You will receive a confirmation email at the address you provided."}]}
+{"stepId": "submission-confirmation", "title": "Application submitted", "elements": [], "markdownContent": "## What happens next\\n\\nWe have received your submission. You will receive a confirmation email at the address you provided."}
 \`\`\`
 
 ### Rule 7: NEVER combine isHidden with required validation
@@ -329,8 +330,8 @@ The "check-your-answers" step is an auto-managed review screen — the platform 
 ### Rule 16: EVERY id MUST be kebab-case
 Every \`stepId\` and \`fieldId\` MUST be kebab-case: lowercase letters, digits and hyphens only, matching the pattern \`^[a-z][a-z0-9]*(-[a-z0-9]+)*$\` (a leading lowercase letter, then hyphen-separated lowercase/digit segments — e.g. \`applicant-first-name\`, \`step-1\`). \`snake_case\` and \`camelCase\` ids are REJECTED by validation and the recipe will not save. This applies to EVERY id position: \`overrides.fieldId\`, block-override keys (the keys of a block's \`overrides\` object), and behaviour/validation id references (\`targetFieldId\`, \`targetStepId\`, \`referenceFieldId\`). Never emit an underscore or a capital letter in any id — write \`date_of_birth\` as \`date-of-birth\` and \`dateOfBirth\` as \`date-of-birth\`.
 
-### Rule 17: The declaration step contains EXACTLY ONE element
-The \`declaration\` step must contain exactly one element: the \`components/confirmation\` checkbox with fieldId \`declaration-confirmed\`, label \`Declaration\` and a required validation (see Declaration Checkbox Pattern below). Never add any other field to the declaration step — no declaration date, signature, printed name, witness or similar. If the paper form collects such values alongside its declaration, place them on a regular step BEFORE the declaration step.
+### Rule 17: The declaration step contains the standard declaration checkbox
+The \`declaration\` step is titled \`Confirm and submit your application\`. The declaration step contains the standard declaration checkbox: the \`components/confirmation\` checkbox with fieldId \`declaration-confirmed\`, label \`Declaration\`, the standard statement and a required validation (see Declaration Checkbox Pattern below). Never change the standard statement. The only other element allowed on the step is a required \`components/confirmation\` acknowledgement for something genuinely specific to the service (for example, consent to a named check, or a rule the applicant must follow) — never a generic warning about false information or consent to verification. Never add a declaration date, signature, printed name, witness or similar to the declaration step. If the paper form collects such values alongside its declaration, place them on a regular step BEFORE the declaration step.
 
 ### Rule 18: EVERY recipe MUST default to \`meta.visibility: "draft"\`
 Every generated recipe MUST include a top-level \`"meta": {"visibility": "draft"}\` object (as shown in the Recipe JSON Schema). A newly generated form is unreviewed, so it must NOT launch to the public by accident — \`draft\` keeps it hidden behind the operator preview link until a human sets it to \`public\`. Never emit \`"visibility": "public"\` or omit \`meta\`; the only correct value for a generated recipe is \`draft\`.
@@ -345,6 +346,7 @@ Every generated recipe MUST include a top-level \`"meta": {"visibility": "draft"
 - components/middle-name — text (middle name)
 - components/name — text (use for EVERY human name field — "full name", "name of applicant", "father's name", "witness name", etc. — with a fieldId + label override; never build a person name from \`components/generic-text\`. Carries a person-name pattern that rejects digits and most symbols, which is correct for any person's name; for NON-person names like a business name or school name use \`components/generic-text\` instead, per CATEGORY 0; for relationship fields use \`components/relationship\`, per Rule 4)
 - components/address — text (single address line, use twice with different fieldIds for line 1 + 2; the base ships \`required: true\`, so line 2 MUST override \`"required": {"value": false}\` explicitly, per CATEGORY 2)
+- components/address-lookup — text with a Barbados address lookup: suggests matching addresses as the applicant types, and picking one stores its street line as plain text (so a lookup outage degrades to an ordinary text field). Use it for address line 1 when the form also collects the parish or needs the location; ships \`required\` + \`minLength\` — do not restate. Optional \`"geocodeTargets"\` names SAME-STEP fieldIds the picked suggestion fills in — omit any you do not need: \`"line2FieldId"\` (the address line 2 text field), \`"parishFieldId"\` (the \`components/parish\` select — only set when the geocoder resolves a parish, so a manual choice is never overwritten) and \`"coordinatesFieldId"\` (only when the service routes by location: a \`components/generic-text\` with \`"ui": {"hidden": true}\` and \`"required": {"value": false}\` that receives \`"lat,lon"\`). Every target must be a field on the same step
 - components/town — text
 - components/postcode — text (width: short)
 - components/national-id-number — text
@@ -354,6 +356,16 @@ Every generated recipe MUST include a top-level \`"meta": {"visibility": "draft"
 - components/account-name — text
 - components/account-number — text
 - components/bank — text (free-text bank NAME — NOT a select; it ships no option list, so reference it bare and never emit \`options\`)
+
+#### Address Lookup Targets
+
+The lookup field and every field it fills live on the same step; the line 2 and parish fields are ordinary components the applicant can still edit by hand:
+
+\`\`\`json
+{"ref": "components/address-lookup", "overrides": {"fieldId": "business-address-line-1", "label": "Address line 1", "geocodeTargets": {"line2FieldId": "business-address-line-2", "parishFieldId": "parish"}}}
+{"ref": "components/address", "overrides": {"fieldId": "business-address-line-2", "label": "Address line 2", "validations": {"required": {"value": false}}}}
+{"ref": "components/parish"}
+\`\`\`
 
 ### Contact Components
 - components/email — email
@@ -386,6 +398,19 @@ Telephone fields render as a \`tel\` input with \`autocomplete="tel"\` — never
 - components/confirmation — checkbox (declaration/confirmation)
 - components/upload-document — file upload
 - components/additional-details — textarea (multi-line text)
+- components/opening-hours — weekly opening-hours grid: seven day rows (Monday first), up to three sets of hours per day picked with native time pickers, "Not open" for days left empty. Submits one \`"Monday 09:00 - 17:00"\` string per set of hours. Ships \`required\` (hours for at least one day) and a format \`pattern\` that rejects an equal open and close — do not restate either. Use it for a business's regular weekly hours; override \`fieldId\`, \`label\` and \`hint\` only when the wording differs. Optional \`"step"\` is the time-picker increment in SECONDS and MUST be a multiple of 60 (e.g. 900 = 15 minutes) — any other value falls back to 60
+
+### Content Block (non-field guidance)
+- components/content — static guidance placed between fields: renders markdown, holds no value and is never validated, shown on check-your-answers or submitted. It is positioned like a field, so it ALWAYS needs a unique kebab-case \`fieldId\` (Rule 1 applies) plus:
+  - \`"variant"\` — \`"inset"\` (inset callout for a note the applicant should read), \`"text"\` (plain paragraph), \`"details"\` (collapsed disclosure the applicant can open — for a long "why we ask" explanation) or \`"warning"\` (amber "!" callout for a risk, deadline or legal duty).
+  - \`"content"\` — the markdown body (paragraphs, **bold**, links and lists; raw HTML stays escaped).
+  - \`"summary"\` — \`"details"\` only: the clickable line that opens the disclosure. It falls back to \`label\` when unset; the other variants ignore it.
+  Never add \`label\` (inset, text and warning do not render it), \`hint\`, \`options\` or \`validations\`. A content block may carry \`behaviours\` (\`fieldConditionalOn\`) so a notice appears only after a given answer. Rule B still applies: the body states what the source form states, never an invented fee or timeline.
+
+\`\`\`json
+{"ref": "components/content", "overrides": {"fieldId": "supplier-licence-warning", "variant": "warning", "content": "It is your responsibility to make sure your suppliers have a valid food licence."}}
+{"ref": "components/content", "overrides": {"fieldId": "officer-times-note", "variant": "details", "summary": "Why you do not choose officer times", "content": "Officers are assigned based on your event's dates and times."}}
+\`\`\`
 
 ### Generic Primitive Components
 Clean-slate building blocks with no purpose-specific validations baked in. Use a semantic component above only when the field genuinely IS that thing and its built-in validations are correct as-is; the moment you would have to override a semantic component's identity (fieldId + label) to repurpose it, use the matching generic primitive here instead and add the validations you actually want (per CATEGORY 0). Overriding a generic is the preferred path, not a last resort. All \`generic-*\` refs (and \`show-hide\`) resolve from the builtin registry.
@@ -395,11 +420,19 @@ Clean-slate building blocks with no purpose-specific validations baked in. Use a
 - components/generic-email — email input
 - components/generic-tel — telephone input
 - components/generic-date — date input
+- components/generic-time — time input (native time picker). \`"step"\` is the picker increment in SECONDS; the registry default is 1800 (30 minutes), so override it only for a different increment (e.g. 900 = 15 minutes) — a value typed off the step is still accepted
 - components/generic-select — dropdown (EMPTY — MUST provide options)
 - components/generic-radio — radio group (exactly 2 options — MUST provide options)
 - components/generic-checkbox — checkbox / multi-select
+- components/generic-checkbox-accordion — collapsible multi-select (EMPTY — MUST provide \`"groups"\`): each group is \`{"label": "...", "higherRisk": true, "options": [{"label": "...", "value": "..."}]}\` (\`"higherRisk"\` is optional and adds a "Higher-risk" badge) and renders as a category checkbox that expands to its item checkboxes (a one-item group renders as a single checkbox). The value is ONE flat array of ticked option values across every group, so \`required\` means "tick at least one item". Use it for a long list that falls naturally into categories (foods served, equipment types); for a short flat list use \`components/generic-checkbox\`
 - components/generic-file — file upload
 - components/show-hide — conditional show/hide wrapper primitive
+
+A checkbox accordion carries its categories in \`groups\`, with the required rule stated like any other generic:
+
+\`\`\`json
+{"ref": "components/generic-checkbox-accordion", "overrides": {"fieldId": "food-served", "label": "Food and drink you will serve", "hint": "Open each category that applies and tick the items you will serve.", "groups": [{"label": "Meat and poultry", "higherRisk": true, "options": [{"label": "Chicken", "value": "chicken"}, {"label": "Beef", "value": "beef"}]}, {"label": "Drinks", "options": [{"label": "Juice", "value": "juice"}, {"label": "Water", "value": "water"}]}], "validations": {"required": {"value": true, "error": "Tick at least one item you will serve"}}}}
+\`\`\`
 
 ### Block References
 - blocks/personal-information — title, first-name, middle-name, last-name, date-of-birth, sex, nationality, national-id-number
@@ -407,7 +440,7 @@ Clean-slate building blocks with no purpose-specific validations baked in. Use a
 - blocks/physical-address — address, country, parish, town, postcode
 - blocks/emergency-contact-details — first-name, last-name, home-telephone, telephone, email, address, country, parish, town, postcode
 - blocks/proving-your-identity — national-id-number, passport-number, national-insurance-number, tamis-number
-- blocks/applicant-declaration — confirmation
+- blocks/applicant-declaration — confirmation (never for the declaration step: use the standard checkbox, Rule 17)
 - blocks/supporting-documents — upload-document
 - blocks/additional-information — additional-details
 
@@ -445,16 +478,16 @@ Clean-slate building blocks with no purpose-specific validations baked in. Use a
     },
     {
       "stepId": "declaration",
-      "title": "Declaration",
+      "title": "Confirm and submit your application",
       "elements": [
-        {"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "I confirm that the information provided is true and correct.", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to continue"}}}}
+        {"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "I confirm that the information I have provided is true and correct to the best of my knowledge.", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to continue."}}}}
       ]
     },
     {
       "stepId": "submission-confirmation",
       "title": "Application submitted",
       "elements": [],
-      "nextSteps": [{"title": "What happens next", "content": "We have received your submission. You will receive a confirmation email at the address you provided."}]
+      "markdownContent": "## What happens next\\n\\nWe have received your submission. You will receive a confirmation email at the address you provided."
     }
   ],
   "processors": [
@@ -495,7 +528,7 @@ Block overrides are keyed by the element's fieldId within the block, so those ke
 - minLength: {"value": 2, "error": "..."}
 - maxLength: {"value": 100, "error": "..."}
 - email: {"value": true, "error": "..."}
-- phone: {"value": true, "error": "..."} (telephone number — accepts any common format, defaults to a Barbados number, validated with libphonenumber)
+- phone: {"value": true, "error": "..."} (telephone number — accepts any common format, defaults to a Barbados number, validated with libphonenumber; every tel component already ships it, so never override it on a tel field)
 - pastOrToday: {"value": true, "error": "..."} (date must not be in future)
 - futureOrToday: {"value": true, "error": "..."} (date must not be in past)
 - pattern: {"value": "^regex$", "error": "..."}
@@ -584,6 +617,17 @@ When a form lets the applicant supply one identifier in place of another ("Use p
 3. \`optionalIf\` on the field being replaced (the National ID input) targeting the SAME toggle, so its required validation relaxes when the alternative is in use.
 Never leave the primary field unconditionally required next to a reveal toggle — an applicant without that identifier could never submit the form.
 
+## Eligibility Stops (an answer that means the applicant cannot continue)
+Only when the source form states the rule (an income limit, an age rule, needing permission to apply for someone else — never invent one, per Output Rules), put the stop ON the question itself:
+1. Add a \`pattern\` validation to the question that accepts ONLY the eligible option's submitted \`value\` (never its label), so Continue never leaves the step on any other answer — in the browser and again when the server validates the submission. Keep its error short: it is the error-summary link text.
+2. Directly after the question, add a \`components/content\` block with \`"variant": "warning"\` and a \`fieldConditionalOn\` on the ineligible answer. It explains the rule and what the applicant can do instead.
+3. If the question is itself conditional, repeat ITS condition on the warning as well (conditions combine with AND). Hidden answers are not cleared, so without it a leftover "no" shows the warning after the applicant changes the earlier answer. A hidden question is not validated, so its pattern never blocks someone it was not shown to.
+\`\`\`json
+{"ref": "components/generic-radio", "overrides": {"fieldId": "income-eligible", "label": "Is your monthly income BDS $3,000 or less?", "options": [{"label": "Yes", "value": "yes"}, {"label": "No", "value": "no"}], "validations": {"required": {"value": true, "error": "Tell us whether your monthly income is BDS $3,000 or less"}, "pattern": {"value": "^yes$", "error": "You must have a monthly income of BDS $3,000 or less to apply"}}}}
+{"ref": "components/content", "overrides": {"fieldId": "income-ineligible-notice", "variant": "warning", "behaviours": [{"type": "fieldConditionalOn", "targetFieldId": "income-eligible", "operator": "equal", "value": "no"}], "content": "To apply, your monthly income must be BDS $3,000 or less. If your circumstances change, you can come back and apply again."}}
+\`\`\`
+NEVER build a separate "you are not eligible" step that holds a disabled (\`isDisabled\`) required field nobody can fill in. That old workaround adds a page only to trap the applicant, and its error points at a field they cannot touch.
+
 ## Step-Level vs Field-Level Behaviours
 The behaviours above (\`fieldConditionalOn\`, \`optionalIf\`) are FIELD-level: they live in a \`behaviours\` array inside an element's \`overrides\`. The next behaviours are STEP-level — \`stepConditionalOn\`, \`repeatable\` (and \`sharedFields\`) — and they live in a \`behaviours\` array on the STEP itself, as a sibling of \`elements\` (placed AFTER it), never inside an element:
 \`\`\`json
@@ -670,10 +714,10 @@ The two conditions on a per-item field combine with AND, so it appears only when
 Only do this when one answer genuinely covers every item in the common case (opening hours, a fee per class of licence). When the answers normally differ per item — each child's date of birth, each vehicle's registration number — the gate is a wasted question: author the per-item fields directly.
 
 ## Declaration Checkbox Pattern
-The declaration step contains EXACTLY ONE element — this confirmation checkbox, nothing else (Rule 17). The fieldId is always \`declaration-confirmed\`, the label is always \`Declaration\`, and it is always required:
+Every form uses this standard declaration checkbox, exactly as written (Rule 17). The fieldId is always \`declaration-confirmed\`, the label is always \`Declaration\`, the statement in options[0].label is always the sentence below, and it is always required:
 \`\`\`json
-{"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "Full declaration statement text shown next to checkbox", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to continue"}}}}
+{"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "I confirm that the information I have provided is true and correct to the best of my knowledge.", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to continue."}}}}
 \`\`\`
-Put the full statement in options[0].label (shown NEXT TO the checkbox), not in label (which is the heading above). Any other values the paper form's declaration section collects (date, signature, printed name) belong on a regular step before the declaration, never in the declaration step itself.
+Do not copy the paper form's declaration wording into this statement. If the service genuinely needs an extra acknowledgement, add it as a second required \`components/confirmation\` on the step with its own kebab-case fieldId, \`"ui": {"hideLabel": true}\` and a specific error. When editing an existing form, keep any existing acknowledgement checkbox on the declaration step as it is. Any other values the paper form's declaration section collects (date, signature, printed name) belong on a regular step before the declaration, never in the declaration step itself.
 
 `;

@@ -119,6 +119,7 @@ function ServicesPage() {
                 content={content}
                 tab={tab}
                 setup={setup}
+                onChanged={refresh}
               />
             ) : (
               <Empty

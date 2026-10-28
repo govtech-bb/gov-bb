@@ -50,7 +50,8 @@ export function usePageMetadata() {
   return { editor, yaml, metadata: pageMetadataFromYaml(yaml) };
 }
 
-function useMetadataUpdate() {
+/** Metadata fields share the body editor's history and read-only state. */
+export function useMetadataUpdate() {
   const { editor, yaml, metadata } = usePageMetadata();
   const editable = useLexicalEditable();
   const typing = useRef(false);
@@ -96,7 +97,8 @@ function useMetadataUpdate() {
   return { editor, yaml, metadata, editable, update, historyKeys };
 }
 
-function useAutoHeight(value: string | undefined) {
+/** Resize a metadata textarea without replacing its value or selection. */
+export function useAutoHeight(value: string | undefined) {
   const input = useRef<HTMLTextAreaElement>(null);
 
   useLayoutEffect(() => {
@@ -313,6 +315,8 @@ export type PageSettingsOptions = {
   single?: boolean;
   /** When the server dates publication, its date shown read-only; null until the page first goes public. */
   publishedAt?: string | null;
+  /** The accepted server visibility, so an unsaved change can return to a legacy draft. */
+  savedVisibility?: string;
   /** Why the host refused each field, keyed by field name. */
   errors?: Readonly<Record<string, string>>;
 };
@@ -322,6 +326,7 @@ export function PageSettings({
   categories = [],
   single = false,
   publishedAt,
+  savedVisibility,
   errors = {},
 }: PageSettingsOptions) {
   const { metadata, yaml, editable, update, historyKeys } = useMetadataUpdate();
@@ -339,6 +344,7 @@ export function PageSettings({
   );
 
   const visibility = metadata.visibility ?? "";
+  const showDraft = visibility === "draft" || savedVisibility === "draft";
   const unusualVisibility = !["", "public", "preview", "draft"].includes(visibility);
 
   const date =
@@ -386,8 +392,8 @@ export function PageSettings({
           <Field
             label="Visibility"
             hint={
-              visibility === "draft"
-                ? "This page stays hidden until you choose Public or Preview and save."
+              showDraft
+                ? "Draft pages are hidden, even from preview links. Visibility changes take effect only when you save."
                 : undefined
             }
             error={errors.visibility}
@@ -402,8 +408,8 @@ export function PageSettings({
                   {visibilityLabels.get(value)}
                 </option>
               ))}
-              {visibility === "draft" && (
-                <option value="draft" disabled>
+              {showDraft && (
+                <option value="draft" disabled={visibility === "draft"}>
                   {visibilityLabels.get("draft")}
                 </option>
               )}

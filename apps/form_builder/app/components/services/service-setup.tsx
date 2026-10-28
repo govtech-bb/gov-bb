@@ -3,7 +3,8 @@ import { useBlocker } from "@tanstack/react-router";
 import { useConfirmation } from "../ui/dialog/confirmation";
 import { previewRecipe } from "../../server/registry";
 import {
-  classifyRecipientField,
+  deriveServiceSetup,
+  isApplicantEmailAction,
   type ServiceContract,
   type MdaContact,
   type ServiceSnapshot,
@@ -53,19 +54,14 @@ export function ServiceSetup({
   const dirty = JSON.stringify(value) !== JSON.stringify(baseline);
   useBlocker({
     enableBeforeUnload: dirty,
-    shouldBlockFn: async () => {
-      if (!dirty) return false;
-      if (
-        !(await confirm({
-          title: "Save setup before leaving?",
-          description:
-            "Keep the contact details and delivery choices you entered.",
-          confirmLabel: "Save and leave",
-        }))
-      )
-        return true;
-      return !(await workspace.save(value));
-    },
+    shouldBlockFn: async () =>
+      dirty &&
+      !(await confirm({
+        title: "Discard unsaved changes?",
+        description: "Unsaved changes will be lost. Continue?",
+        confirmLabel: "Discard changes",
+        destructive: true,
+      })),
   });
   const manifest = value.manifest;
   const change = (patch: Partial<typeof manifest>) =>
@@ -101,16 +97,7 @@ export function ServiceSetup({
         setup: {
           ...manifest.setup,
           ...(section === "delivery" && value.recipe
-            ? {
-                applicantEmail: value.recipe.processors?.some(isApplicantEmail)
-                  ? "configured"
-                  : "none",
-                delivery:
-                  value.recipe.processors?.some((p) => !isApplicantEmail(p)) ||
-                  value.pendingConfig.processors?.length
-                    ? "configured"
-                    : "none",
-              }
+            ? deriveServiceSetup(value.recipe, value.pendingConfig)
             : {}),
         },
       },
@@ -128,6 +115,21 @@ export function ServiceSetup({
     } finally {
       setBusy(false);
     }
+  };
+  const discard = async () => {
+    if (
+      !(await confirm({
+        title: "Discard unsaved changes?",
+        description:
+          "Discard unsaved changes and revert to the last saved version?",
+        confirmLabel: "Discard changes",
+        destructive: true,
+      }))
+    )
+      return;
+    setValue(baseline);
+    setSaved(false);
+    setActionError(null);
   };
   const details = section === "details";
   return (
@@ -185,7 +187,9 @@ export function ServiceSetup({
                 <Select
                   label="Where do people start?"
                   value={manifest.entryPoint ?? ""}
-                  onValueChange={(v) => change({ entryPoint: String(v) || null })}
+                  onValueChange={(v) =>
+                    change({ entryPoint: String(v) || null })
+                  }
                   items={[
                     { value: "", label: "Choose a starting point" },
                     ...manifest.pages.map((p) => ({
@@ -263,27 +267,10 @@ export function ServiceSetup({
                   />
                 </Field>
                 <p className="text-sm text-ui-subtle">
-                  These details help applicants contact the department.
-                  Department notifications use the department email chosen in
-                  After submission.
+                  Optional. These details help applicants contact the
+                  department. Department notifications use the department email
+                  chosen in After submission.
                 </p>
-              </div>
-              <div className="space-y-5">
-                <h3 className="text-base font-semibold text-ui-strong">
-                  Release
-                </h3>
-                <Select
-                  label="Who can use this service?"
-                  value={manifest.visibility ?? "draft"}
-                  onValueChange={(v) =>
-                    change({ visibility: v as "draft" | "preview" | "public" })
-                  }
-                  items={{
-                    draft: "Keep as a draft",
-                    preview: "People with preview access",
-                    public: "Everyone",
-                  }}
-                />
               </div>
             </>
           ) : (
@@ -308,13 +295,18 @@ export function ServiceSetup({
                     ? "Save to update the service draft."
                     : "Save to apply these settings to the form."}
           </p>
-          <Button
-            variant="primary"
-            onClick={() => void save()}
-            disabled={busy || !manifest.title.trim()}
-          >
-            {busy ? "Saving…" : "Save changes"}
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => void discard()} disabled={!dirty || busy}>
+              Discard changes
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => void save()}
+              disabled={busy || !manifest.title.trim()}
+            >
+              {busy ? "Saving…" : "Save changes"}
+            </Button>
+          </div>
         </LayerCard.Secondary>
       </LayerCard>
     </section>
@@ -324,17 +316,6 @@ export function ServiceSetup({
 type SubmissionAction = NonNullable<
   NonNullable<ServiceSnapshot["recipe"]>["processors"]
 >[number];
-
-function isApplicantEmail(
-  p: SubmissionAction,
-): p is Extract<SubmissionAction, { type: "email" }> {
-  return (
-    p.type === "email" &&
-    typeof p.config.recipientField === "string" &&
-    !!p.config.recipientField.trim() &&
-    classifyRecipientField(p.config.recipientField) === "submitted"
-  );
-}
 
 function DeliverySettings({
   value,
@@ -412,14 +393,14 @@ function DeliverySettings({
       </div>
     );
   const processors = recipe.processors ?? [];
-  const applicantEmails = processors.filter(isApplicantEmail);
+  const applicantEmails = processors.filter(isApplicantEmailAction);
   const departmentEmails = processors.filter(
     (p) => p.type === "email" && p.config.recipientField === "config.mdaEmail",
   );
   const otherEmails = processors.filter(
     (p) =>
       p.type === "email" &&
-      !isApplicantEmail(p) &&
+      !isApplicantEmailAction(p) &&
       !departmentEmails.includes(p),
   );
   const integrations = [
@@ -822,6 +803,9 @@ function ServiceSubmissionActions({
     ...EMPTY_DRAFT,
     processors,
     contactDetails: recipe.contactDetails ?? value.manifest.contactDetails,
+    // So the editor's catchment-needs-a-mapped-webhook warning (#2877) fires
+    // here too; the dispatch below never writes it back.
+    catchmentRouting: recipe.catchmentRouting,
   };
   return (
     <ProcessorsEditor

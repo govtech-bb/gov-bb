@@ -5,8 +5,10 @@ import { SaveState, type SaveStateProps } from "./save-state";
 type DocumentBarProps = {
   /** Names its toolbar, such as “Page tools”. */
   label: string;
-  /** The document's title: the screen's h1. */
+  /** The document title, rendered as an h1 by default. */
   title: ReactNode;
+  /** Use false when the content already supplies the page heading. */
+  heading?: boolean;
   /** Where its work stands: beside the title, and a failed save's message first among the notices. */
   save?: SaveStateProps;
   /** Undo and redo. */
@@ -14,8 +16,6 @@ type DocumentBarProps = {
   preview?: ReactNode;
   /** The document's source: its Markdown, and a form's JSON. */
   source?: ReactNode;
-  /** The versions saved before this one. */
-  versions?: ReactNode;
   /** Sends the changes on for everyone: Publish changes, or Save. */
   publish?: ReactNode;
   /** Shows and hides the document's settings. */
@@ -34,21 +34,20 @@ type DocumentBarProps = {
 export function DocumentBar({
   label,
   title,
+  heading = true,
   save,
   undo,
   preview,
   source,
-  versions,
   publish,
   settings,
   notices,
   hidden,
 }: DocumentBarProps) {
-  const views = (preview || source || versions) && (
+  const views = (preview || source) && (
     <>
       {preview}
       {source}
-      {versions}
     </>
   );
 
@@ -74,7 +73,7 @@ export function DocumentBar({
       >
         {/* The title is cut short to make room: for the tools beside it from a tablet up, where the bar keeps to one
             row, and for where it stands on a phone, where the tools have their own row */}
-        <Bar.Title render={<h1 />} className="max-md:grow max-md:basis-0">
+        <Bar.Title render={heading ? <h1 /> : undefined} className="max-md:grow max-md:basis-0">
           {title}
         </Bar.Title>
         {save && (

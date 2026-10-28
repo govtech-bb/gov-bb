@@ -20,8 +20,8 @@ const CATALOG: RegistryCatalog = { components: [], blocks: [], custom: [] };
 const CLEAN: FormUniquenessResult = { idError: null, titleError: null };
 
 // A draft that clears every pre-flight gate: a content-only editable step
-// (markdown, no fields — valid), a well-formed formId/title, and non-draft
-// visibility so the server round-trip is actually reached.
+// (markdown, no fields — valid) and a well-formed formId/title, so the server
+// round-trip is actually reached.
 const VALID_DRAFT: RecipeDraft = {
   ...EMPTY_DRAFT,
   formId: "test-form",
@@ -163,24 +163,12 @@ describe("useRecipeValidation", () => {
     });
   });
 
-  describe("blockedByDraftVisibility", () => {
-    it("blocks a draft-visibility form", () => {
-      const { result } = render({ draft: EMPTY_DRAFT }); // visibility: draft
-      let blocked!: boolean;
-      act(() => {
-        blocked = result.current.blockedByDraftVisibility();
-      });
-      expect(blocked).toBe(true);
-    });
-
-    it("allows a preview/public form", () => {
-      const { result } = render({ draft: VALID_DRAFT }); // visibility: preview
-      let blocked!: boolean;
-      act(() => {
-        blocked = result.current.blockedByDraftVisibility();
-      });
-      expect(blocked).toBe(false);
-    });
+  it("exposes no visibility gate — a form's status is the API's, not the recipe's (#2875)", () => {
+    // #1682's blockedByDraftVisibility read `meta.visibility` off the draft;
+    // the builder no longer reads or edits that field, so a `draft` seed must
+    // not block Deploy.
+    const { result } = render({ draft: EMPTY_DRAFT }); // meta.visibility: draft
+    expect(result.current).not.toHaveProperty("blockedByDraftVisibility");
   });
 
   describe("blockedByIncompletePayment", () => {

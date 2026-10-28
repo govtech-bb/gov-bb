@@ -1,6 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { interpolateConfirmationMarkdown } from "@govtech-bb/form-conditions";
+import { summaryValueToText } from "@govtech-bb/submission-summary";
 import { markdownUrlTransform } from "./markdown-url-transform";
 import { LANDING_URL } from "../config/landing";
 import { isSafePaymentUrl } from "../lib/security/safe-payment-url";
@@ -9,7 +10,6 @@ import {
   Button,
   Heading,
   LinkButton,
-  List,
   Payment,
   ServiceHeading,
   SummaryList,
@@ -40,7 +40,6 @@ export default function SubmissionConfirmation({
   serviceTitle,
   stepTitle,
   processingMessage,
-  nextSteps,
   markdownContent,
   contactDetails,
   onTryAgain,
@@ -74,6 +73,7 @@ export default function SubmissionConfirmation({
     paymentDescription,
     polyclinic,
     polyclinicContact,
+    sections,
   } = submissionState;
 
   // Substitute the resolved polyclinic name into the recipe's `{polyclinic}`
@@ -107,38 +107,36 @@ export default function SubmissionConfirmation({
     ({ value }) => value !== undefined && value !== null && value !== "",
   );
 
-  // Trailing sections (what-happens-next, contact, feedback) are shared by every
-  // successful state — payment or not — and rendered below the lead panel.
+  // Trailing sections (markdown, printed answers, contact, feedback) are shared
+  // by every successful state — payment or not — and rendered below the lead
+  // panel.
   const trailingSections = (
     <>
-      {nextSteps && nextSteps.length > 0 && (
-        <div className="form-page__next-steps flex flex-col gap-8">
-          {nextSteps.map((section, index) => (
-            <div key={index} className="flex flex-col gap-4">
-              <Heading as="h2">{section.title}</Heading>
-              {section.content && <Text>{section.content}</Text>}
-              {section.items && section.items.length > 0 && (
-                <List variant="bullet">
-                  {section.items.map((item, i) => (
-                    <li key={i}>{item}</li>
-                  ))}
-                </List>
-              )}
+      {/* The applicant's answers, for the printed copy only (#2587). Built at
+          submit time from the same shared builder the MDA email uses, so the
+          paper copy reads exactly like the email the MDA received — the same
+          question text, the same order, the same dates, and nothing the
+          applicant was never asked. Hidden on screen: the confirmation page
+          itself is a receipt, not a review screen. */}
+      {sections && sections.length > 0 && (
+        <div className="form-page__printed-answers hidden print:block">
+          <Heading as="h2">Your answers</Heading>
+          {sections.map((section, index) => (
+            <div
+              key={`${section.stepId}-${index}`}
+              className="form-page__printed-answers-section"
+            >
+              <Heading as="h3">{section.title}</Heading>
+              <SummaryList
+                rows={section.fields.map((field) => ({
+                  key: field.label,
+                  value: summaryValueToText(field.value),
+                }))}
+              />
             </div>
           ))}
         </div>
       )}
-
-      {/* Print the confirmation (submission ID, next steps, contact) for
-          citizens who need a paper copy. Sits directly after "what happens
-          next" so it's adjacent to the content it prints. The button itself is
-          hidden in the printed output via the `form-page__print` @media print
-          rule in govtech.css. */}
-      <div className="form-page__print">
-        <Button variant="secondary" onClick={() => window.print()}>
-          Print
-        </Button>
-      </div>
 
       {resolvedMarkdown && (
         <div className="form-page__markdown-content govbb-prose wrap-anywhere">
@@ -153,6 +151,17 @@ export default function SubmissionConfirmation({
           </ReactMarkdown>
         </div>
       )}
+
+      {/* Print the confirmation (submission ID, next steps, contact) for
+          citizens who need a paper copy. Sits after the recipe's markdown and
+          before the contact details. The button itself is hidden in the
+          printed output via the `form-page__print` @media print rule in
+          govtech.css. */}
+      <div className="form-page__print">
+        <Button variant="secondary" onClick={() => window.print()}>
+          Print
+        </Button>
+      </div>
 
       {contactDetails && (
         <div className="form-page__contact">
@@ -221,7 +230,7 @@ export default function SubmissionConfirmation({
   // Submission is in flight — an idempotency-key replay returned `processing`
   // (#463). Show a neutral status panel with the reference number, but none of
   // the finished-submission furniture: no Try again (nothing failed), no
-  // payment block, and no trailing next-steps/contact/feedback (it isn't a
+  // payment block, and no trailing markdown/contact/feedback (it isn't a
   // completed submission yet).
   if (processing) {
     return (

@@ -34,15 +34,19 @@ Use [Code quality](CODE-QUALITY.md) for formatting commands and the validation e
 
 TanStack Start builds a static shell and renders the workspace in the browser. Keep the root document safe to render during builds. Editing state belongs to the client-only workspace; browser storage is used only for unrelated clipboard data and UI preferences.
 
-Routes use `/services`, `/services/$serviceId` and `/services/$serviceId/$documentId`; `/` opens Services. Old `/#/services/...` links are replaced on startup. Clean views are cached with per-page undo; dirty/error/pending views cannot be silently evicted. Leaving unsaved work asks before changing documents. Confirmed discard removes the copy and its undo session; navigation never flushes or saves.
+Routes use `/services`, `/services/$serviceId`, `/services/$serviceId/$documentId` and `/categories`; `/` opens Services. Old `/#/services/...` links are replaced on startup. Clean views are cached with per-page undo; dirty/error/pending views cannot be silently evicted. Leaving unsaved work asks before changing documents. Confirmed discard removes the copy and its undo session; navigation never flushes or saves.
 
 Start generates `src/routeTree.gen.ts` during development and builds. Keep that file checked in so standalone typechecks work on a fresh checkout. It is excluded from linting and formatting; edit route files instead. Vitest uses its own configuration without the Start plugin.
 
 `getRouter` composes the Better Auth client from the public API origin. The workspace layout checks the API session before rendering. `/auth` stays outside that layout so failed sign-ins and sign-out cannot create redirect loops. The client includes cookies on API calls; its origin is configured with `VITE_API_ORIGIN`, which must be HTTPS in production. Building the static shell does not contact the API or GitHub.
 
+Category management is a frontend shell until api_v2 can change categories. `createEditorApi` seeds the preview from `/taxonomy` once and reads `/services` on each category refresh for current counts. Add, edit and move update the in-memory list; delete rechecks service counts first. A read uses the latest local list after its network requests finish. Moves update the query cache without a remote-save queue. The original API category name is retained for Services filters, and page settings/Create service still use real taxonomy. Preview changes survive internal navigation, but reload resets them. The backend brief is [plans/categories-backend.md](../../../plans/categories-backend.md); these local methods do not define its HTTP or concurrency contract.
+
+Only the sign-in button starts OAuth. Initial admission and callback checks use contextual entry pending views; content preloads remain non-blocking, and the router has no blanket full-page loading component. `LoadingState` shows its label visibly and announces it once. Lists and page panes handle their own first-load and refresh states: transient network/5xx failures retain usable data, while session/access/deletion failures remain explicit without silently discarding open drafts. Unexpected route failures offer an app-owned retry, not a document reload.
+
 ## Browser checks
 
-Start the app, then run the browser suites against the same URL:
+Start the app, then run the browser suites against the same URL. The full suite includes site preview: also build/start landing and set `VITE_SITE_PREVIEW_URL` in the CMS and test-process environments as described in [Site preview](SITE-PREVIEW.md). Its normal-page reference defaults to `http://127.0.0.1:3040`:
 
 ```sh
 PLAYWRIGHT_MODULE_PATH=/path/to/playwright-core \
@@ -51,9 +55,11 @@ PLAYWRIGHT_MODULE_PATH=/path/to/playwright-core \
 
 The runner resolves an existing `playwright` or `playwright-core` installation, with `PLAYWRIGHT_MODULE_PATH` as an alternative. Chromium must be available to that installation. Each suite uses an isolated browser context.
 
-App UI suites supply employee/API responses at the HTTP boundary. `authentication.mjs` covers login, callback, outages, sign-out and cancelled expiry without revoking auth prematurely. Reusable form and page-canvas suites use `buildBrowserFixture` and `tests/browser/editor-host.tsx`, intercepted only by Playwright—not a production route. `openDemoForm` and `seedFormSource` supply explicit source; `reloadEditorFromSource` explicitly exports and reopens it to test conversion. A normal reload restores only fixture input. No production draft-storage seeding is needed. Real GitHub consent/cookies still require a deployment smoke test.
+App UI suites supply employee/API responses at the HTTP boundary. `authentication.mjs` covers explicit sign-in, duplicate activation, delayed session/callback checks, deep-link return paths, outages, sign-out and cancelled expiry without revoking auth prematurely. It also captures transient framework-error screens and uncaught errors. Reusable form and page-canvas suites use `buildBrowserFixture` and `tests/browser/editor-host.tsx`, intercepted only by Playwright—not a production route. `openDemoForm` and `seedFormSource` supply explicit source; `reloadEditorFromSource` explicitly exports and reopens it to test conversion. A normal reload restores only fixture input. No production draft-storage seeding is needed. Real GitHub consent/cookies still require a deployment smoke test.
 
-`remote-page-editing.mjs` checks explicit saves, version conflicts, history restoration and API reloads; `service-workspace.mjs` checks API creation/deletion. `routing.mjs` checks cancelled links/Back/Forward, reload/tab-close warnings and clean-view eviction. `persistence-isolation.mjs` seeds malformed old keys and proves editing/lifecycle events neither read nor write them.
+`remote-page-editing.mjs` checks explicit saves, version conflicts, undo/redo, safe preview links, the absence of history controls/requests and API reloads; `service-workspace.mjs` checks API creation/deletion and holds list/service/page/taxonomy responses to verify contextual loading without remounting the header. Run the auth and service-workspace suites against both development and production-built `dist/client` served with the documented `/_shell.html` rewrite; keep auth bypass off for these checks. `routing.mjs` checks cancelled links/Back/Forward, reload/tab-close warnings and clean-view eviction. `persistence-isolation.mjs` seeds malformed old keys and proves editing/lifecycle events neither read nor write them.
+
+`categories.mjs` checks the desktop menu/rail and mobile drawer/row menu, keyboard move focus, local add/edit/delete, validation, renamed-category service links, reload reset, and isolation from the real service/page category pickers. It also checks the component gallery's mobile menu trigger.
 
 Pass suite names after the URL to run a subset:
 
@@ -62,6 +68,12 @@ pnpm exec node scripts/browser/run.mjs http://localhost:3000/ page-writer.mjs se
 ```
 
 Avoid editing source while checking undo and document switching: a development reload can reset in-memory editor history. The insertion/undo regression starts on a question page because confirmation pages reject answer insertion.
+
+## Editable site preview checks
+
+[Site preview](SITE-PREVIEW.md) documents the landing renderer build, `VITE_SITE_PREVIEW_URL`, local two-app setup and production asset delivery. `scripts/browser/site-preview.mjs <cms-url> [landing-url]` uses the actual authenticated route with API fixtures to verify editing/history, matched public-page rendering, style lifecycle, error recovery and explicit publication. Run it against development and production-built CMS output. `site-preview-parity.mjs <landing-url>` separately compares the fresh renderer to the ordinary mentor page.
+
+The page-writer fixture builds its own bundle, so pass `VITE_SITE_PREVIEW_URL` to the browser-test process as well as the dev server. Keep the normal landing reference available while running these suites. Real deployment headers, sign-in, assistive technology and phone IME still need manual checks; synthetic composition and narrow viewports are not substitutes.
 
 ## Persistence and recovery
 
@@ -85,16 +97,15 @@ Paths below are relative to `src`. Symbols not listed as renamed keep their name
 | --- | --- |
 | `workspace/api-pages.ts` synchronization | `workspace/page-sync.ts`: `ServerPageBaseline`, `PageSaveOutcome`, `savePageDraft`; browser baseline storage/seeding helpers removed |
 | `workspace/api-pages.ts` service mapping | `workspace/service-pages.ts`: `apiPageDocument` → `pageDocumentFromApi`, `roleOf` → `inferServicePageRole`; local `serviceDocuments` joins removed |
-| `workspace/api-pages.ts` Markdown helpers | `api/page-markdown.ts`: `restoredMarkdown` → `pageVersionToDraftMarkdown`, `fieldLabel` → `pageFieldLabel` |
+| `workspace/api-pages.ts` Markdown helpers | `api/page-markdown.ts`: `fieldLabel` → `pageFieldLabel`; `restoredMarkdown` removed with saved-page history |
 | `workspace/api-page.tsx` | `workspace/remote-page-pane.tsx`: `RemotePagePane`, private `RemotePageEditor`; baseline state is in memory |
 | `workspace/api-service.tsx` | `workspace/service-nav.tsx`: `ServiceNav`, listing API pages only |
-| `workspace/api-history.tsx` | `workspace/page-history-dialog.tsx`; `PageHistoryDialog` unchanged |
 | `workspace/api-dialogs.tsx` | `workspace/remote-page-dialogs.tsx`: `ApiServiceDialog` → `CreateRemoteServiceDialog`, `ApiPageDialog` → `CreateRemotePageDialog`, `DeletePageDialog` → `DeleteRemotePageDialog` |
 | `workspace/dialogs.tsx` | Local dialogs removed; shared shell remains in `workspace/workspace-dialog.tsx` |
 | Workspace model types only | `PageDocument` and `ServicePageRole`; local service/form models removed, reusable form schema unchanged |
 | `api/client.ts` input types | `NewPage` → `CreatePageInput`, `SaveFields` → `SavePageInput`; transport method `EditorApi.savePage` unchanged |
 | `api/page-markdown.ts` save conversion | `SaveFieldsResult` → `PageSaveInputResult`, `markdownToSaveFields` → `markdownToPageSaveInput` |
-| `api/queries.ts` | `historyQuery` → `pageHistoryQuery`, `versionQuery` → `estateVersionQuery`; cache keys and timing unchanged |
+| `api/queries.ts` | `versionQuery` → `estateVersionQuery`; polling keys and timing unchanged; `historyQuery` removed |
 | `converters/lexicalToMarkdown/index.ts` | `converters/lexical-to-form-markdown.ts`: `lexicalToMarkdown` → `lexicalToFormMarkdown` |
 | `converters/markdownToLexical/index.ts` | `converters/form-markdown-to-lexical.ts`: `markdownToLexical` → `formMarkdownToLexical` |
 | `converters/formSchemaToLexical/index.ts` | `converters/form-schema-to-lexical.ts` |

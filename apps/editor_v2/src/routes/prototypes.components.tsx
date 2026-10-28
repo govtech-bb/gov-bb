@@ -13,13 +13,14 @@ import {
   CaretDown,
   ChatCircle,
   CheckSquare,
-  ClockCounterClockwise,
   Code,
   Copy,
   DotsSixVertical,
   Envelope,
   Eye,
   EyeSlash,
+  Files,
+  Folders,
   Funnel,
   Hash,
   Info,
@@ -74,6 +75,7 @@ import { NativeSelect } from "../ui/native-select";
 import { Popover } from "../ui/popover";
 import { PreviewQuestion, PreviewSheet } from "../ui/preview-sheet";
 import { SaveState, type SaveStatus } from "../ui/save-state";
+import { ScreenHeader } from "../ui/screen-header";
 import { Select, type SelectItem } from "../ui/select";
 import { SidePanel, useSidePanel } from "../ui/side-panel";
 import { Sidebar, useSidebar } from "../ui/sidebar";
@@ -107,6 +109,7 @@ const sections = [
   ["drawer", "Drawer"],
   ["side-panel", "Side panel"],
   ["sidebar", "Sidebar"],
+  ["screen-header", "Screen header"],
   ["select", "Select"],
   ["field", "Field"],
   ["checkbox", "Checkbox"],
@@ -232,7 +235,7 @@ function ComponentsPreview() {
             <div className="flex flex-wrap items-center justify-center gap-2">
               <Button variant="accent">Publish changes</Button>
               <Button variant="secondary">Cancel</Button>
-              <Button>History</Button>
+              <Button>Download</Button>
               <Button variant="danger" icon={<Trash />}>
                 Delete page
               </Button>
@@ -570,7 +573,7 @@ function ComponentsPreview() {
         <Section
           id="sidebar"
           title="Sidebar"
-          lead="A service’s pages and its form, beside the page you’re working on."
+          lead="The editor’s menu, and a service’s pages and its form, beside the page you’re working on."
         >
           <Specimen
             wide
@@ -578,6 +581,37 @@ function ComponentsPreview() {
             note="Groups under labels, pages under the page they belong to, each dotted with how far it’s published, the current page tinted, a rule before the form and the service’s actions underneath. Pages hides the column and gives the page its width; narrower than 992 pixels, it opens as a drawer from the start edge."
           >
             <SidebarDemo />
+          </Specimen>
+          <Specimen
+            wide
+            title="The editor’s menu"
+            note="Where the editor’s screens are, under group labels, each row led by an icon that fills while it’s current. Inside a service it folds to a rail of icons named by tooltips, so the service’s pages have the room; narrower than 992 pixels, it opens as a drawer from Menu."
+          >
+            <MenuDemo />
+          </Specimen>
+        </Section>
+
+        <Section
+          id="screen-header"
+          title="Screen header"
+          lead="A screen’s title, what it’s for and its main action, as on Services and Categories."
+        >
+          <Specimen
+            wide
+            title="A list’s screen"
+            note="The title is the screen’s heading; the line under it, when there is one, says what the screen is for. The action sits at the end, and wraps under the title on a narrow screen."
+          >
+            <div className="w-full max-w-3xl">
+              <ScreenHeader
+                title="Categories"
+                lead="People browse these to find services on the site."
+                action={
+                  <Button variant="accent" size="md">
+                    Add category
+                  </Button>
+                }
+              />
+            </div>
           </Specimen>
         </Section>
 
@@ -649,6 +683,45 @@ function ComponentsPreview() {
             <div className="flex w-full max-w-xs flex-col gap-4">
               <Select label="Status" items={statuses} defaultValue="published" disabled />
               <Select label="Move to" placeholder="Choose a status" items={statuses} />
+            </div>
+          </Specimen>
+          <Specimen
+            wide
+            title="Filter"
+            note="In the toolbar over a list, as wide as its value. While it narrows the list it turns the chosen blue."
+          >
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap gap-2">
+                <Select
+                  variant="filter"
+                  aria-label="Category"
+                  items={filterCategories}
+                  defaultValue=""
+                />
+                <Select
+                  variant="filter"
+                  multiple
+                  aria-label="Status"
+                  placeholder="All statuses"
+                  items={visibilityFilters}
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Select
+                  variant="filter"
+                  aria-label="Category, narrowed"
+                  items={filterCategories}
+                  defaultValue="business"
+                />
+                <Select
+                  variant="filter"
+                  multiple
+                  aria-label="Status, narrowed"
+                  placeholder="All statuses"
+                  items={visibilityFilters}
+                  defaultValue={["preview", "draft"]}
+                />
+              </div>
             </div>
           </Specimen>
         </Section>
@@ -1003,7 +1076,7 @@ function ComponentsPreview() {
             title="Loading"
             note="The trident where the content will be, named for a screen reader."
           >
-            <LoadingState label="Loading history…" />
+            <LoadingState label="Loading page…" />
           </Specimen>
           <Specimen
             title="No results in a list"
@@ -1264,7 +1337,6 @@ function DocumentBarDemo() {
         undo={undoRedo}
         preview={<Bar.Tool icon={<Eye />} label="Preview page" />}
         source={<Bar.Tool icon={<Code />} label="Markdown" />}
-        versions={<Bar.Tool icon={<ClockCounterClockwise />} label="History" />}
         publish={<Button variant="accent">Publish changes</Button>}
         settings={<SidePanel.Toggle panel={panel} label="Page settings" />}
       />
@@ -1400,6 +1472,46 @@ function SidebarDemo() {
           </Sidebar.Content>
         </Sidebar.Root>
         <p className="min-w-0 flex-1 p-6 text-14 text-muted">{current}, as you’d write it.</p>
+      </div>
+    </div>
+  );
+}
+
+function MenuDemo() {
+  const sidebar = useSidebar();
+  const [rail, setRail] = useState(false);
+  const [current, setCurrent] = useState("Services");
+
+  const item = (name: string, icon: ReactNode) => (
+    <Sidebar.Item
+      icon={icon}
+      current={current === name}
+      render={
+        <button
+          type="button"
+          className={rail ? undefined : "w-full text-start"}
+          onClick={() => setCurrent(name)}
+        />
+      }
+    >
+      {name}
+    </Sidebar.Item>
+  );
+
+  return (
+    <div className="flex w-full max-w-3xl flex-col overflow-hidden rounded-sm border border-line">
+      <div className="flex min-h-14 items-center gap-3 border-b border-line px-4 text-14">
+        {!sidebar.wide && <Sidebar.Toggle sidebar={sidebar}>Menu</Sidebar.Toggle>}
+        <Switch label="Inside a service" checked={rail} onCheckedChange={setRail} />
+      </div>
+      <div className="flex min-h-72">
+        <Sidebar.Root sidebar={sidebar} label="Menu" rail={rail}>
+          <Sidebar.Content>
+            <Sidebar.Group label="Content">{item("Services", <Files />)}</Sidebar.Group>
+            <Sidebar.Group label="Manage">{item("Categories", <Folders />)}</Sidebar.Group>
+          </Sidebar.Content>
+        </Sidebar.Root>
+        <p className="min-w-0 flex-1 p-6 text-14 text-muted">{current}</p>
       </div>
     </div>
   );
@@ -1989,6 +2101,18 @@ const categories: SelectItem[] = [
   { value: "travel", label: "Travel and immigration", group: "Getting around" },
 ];
 
+// A filter's "everything" is its item valued ""
+const filterCategories: SelectItem[] = [
+  { value: "", label: "All categories" },
+  ...categories.map(({ value, label }) => ({ value, label })),
+];
+
+const visibilityFilters: SelectItem[] = ["public", "preview", "draft"].map((visibility) => ({
+  value: visibility,
+  label: visibilityLabels.get(visibility) ?? visibility,
+  icon: <StatusDot tone={visibilityTones.get(visibility) ?? "neutral"} />,
+}));
+
 const answers: SelectItem[] = [
   { value: "text", label: "Short answer", icon: <TextT /> },
   { value: "paragraph", label: "Long answer", icon: <TextAlignLeft /> },
@@ -2017,7 +2141,7 @@ const roles: SelectItem[] = [
 ];
 
 const statuses: SelectItem[] = [
-  { value: "draft", label: "Draft" },
+  { value: "draft", label: "Draft (hidden)" },
   { value: "review", label: "In review" },
   { value: "published", label: "Published" },
   { value: "archived", label: "Archived", disabled: true },

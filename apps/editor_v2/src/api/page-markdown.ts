@@ -1,6 +1,7 @@
 import { isMap, isScalar, isSeq, parseDocument, stringify } from "yaml";
 import { parsePageMarkdown } from "../pages/markdown";
-import type { ApiPage, FieldError, PageSnapshot, SavePageInput, TaxonomyCategory } from "./client";
+import type { ApiPage, FieldError, SavePageInput, TaxonomyCategory } from "./client";
+import { slugify } from "./slug";
 
 const TEXT_FRONTMATTER = ["stage", "section", "service_type", "source_url"] as const;
 
@@ -20,6 +21,7 @@ const KNOWN_KEYS = new Set([
   ...TEXT_FRONTMATTER,
 ]);
 
+// Legacy drafts must round-trip without changing visibility on unrelated saves.
 const VISIBILITIES = ["public", "preview", "draft"] as const;
 
 /** The editor's Markdown for a page: its fields as YAML frontmatter, then its body. */
@@ -135,7 +137,8 @@ export function markdownToPageSaveInput(
   const visibilityText = text("visibility") || "public";
   const visibility = VISIBILITIES.find((value) => value === visibilityText);
 
-  if (!visibility) errors.push({ field: "visibility", message: "Choose public, preview or draft" });
+  if (!visibility)
+    errors.push({ field: "visibility", message: "Choose Public or Preview link only" });
 
   const categoryId = categoryOf(document, base, categories, errors);
   const frontmatter: SavePageInput["frontmatter"] = {};
@@ -263,16 +266,7 @@ export function pickerCategories(categories: readonly TaxonomyCategory[]) {
 
 /** A path for a new page: its title as a slug beneath a prefix, such as its category's path. */
 export function suggestedUrl(prefix: string, title: string) {
-  const slug = title
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 200)
-    .replace(/-+$/, "");
-
-  return `${prefix}/${slug}`;
+  return `${prefix}/${slugify(title, 200)}`;
 }
 
 const FIELD_LABELS = new Map([
@@ -292,26 +286,3 @@ const FIELD_LABELS = new Map([
 
 /** How the editor names a field the API refused. */
 export const pageFieldLabel = (field: string) => FIELD_LABELS.get(field) ?? field;
-
-/**
- * A past version's content over the page as it stands. Its path, category,
- * parent and visibility stay as they are: restoring an old visibility could
- * unpublish a live page.
- */
-export function pageVersionToDraftMarkdown(
-  current: ApiPage,
-  version: PageSnapshot,
-  categories: readonly TaxonomyCategory[],
-) {
-  return pageToMarkdown(
-    {
-      ...current,
-      title: version.title,
-      description: version.description,
-      form_id: version.form_id,
-      body_markdown: version.body_markdown,
-      frontmatter: version.frontmatter,
-    },
-    categories,
-  );
-}

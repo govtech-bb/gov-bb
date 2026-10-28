@@ -64,6 +64,48 @@ it("offers a useful recovery message when the access service is unreachable", as
   ).rejects.toThrow("The AI service could not be reached. Retry in a moment.");
 });
 
+it.each([
+  [
+    "the access service is unreachable",
+    () =>
+      vi
+        .mocked(createAiAccess)
+        .mockRejectedValueOnce(new TypeError("access failed")),
+    { message: "access failed" },
+  ],
+  [
+    "the AI API is blocked or unreachable",
+    () =>
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockRejectedValue(new TypeError("Failed to fetch")),
+      ),
+    { message: "Failed to fetch" },
+  ],
+  [
+    "the AI API rejects the request",
+    () =>
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(new Response("nope", { status: 502 })),
+      ),
+    { status: 502 },
+  ],
+])("keeps and logs the underlying cause when %s", async (_, arrange, cause) => {
+  arrange();
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  const error = await aiRequest(
+    "/chat",
+    {},
+    new AbortController().signal,
+  ).catch((error: unknown) => error);
+  expect(error).toMatchObject({
+    message: "The AI service could not be reached. Retry in a moment.",
+    cause: expect.objectContaining(cause),
+  });
+  expect(log).toHaveBeenCalledWith(expect.any(String), (error as Error).cause);
+});
+
 it("sends document names and OCR references, never private attachment URLs, to the chat endpoint", async () => {
   const fetcher = vi.fn().mockResolvedValue(new Response());
   vi.stubGlobal("fetch", fetcher);

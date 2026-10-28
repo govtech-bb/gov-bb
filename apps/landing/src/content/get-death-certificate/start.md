@@ -25,8 +25,8 @@ Each certified copy costs $5 BBD.
 
 The form asks for:
 
-- the applicant’s name, address and National ID number
-- the deceased’s full name, date of death, place of death and National ID number
+- the applicant’s name, address and Barbados National Identification (ID) number
+- the deceased’s full name, date of death, place of death and Barbados National Identification (ID) number
 - the cause of death
 
 <a data-start-link>Start</a>

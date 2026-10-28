@@ -25,17 +25,8 @@ async function editLink() {
   await link.waitFor();
 }
 
-async function savedSource() {
-  await page.getByRole("button", { name: /^Markdown(?:$| —)/ }).click();
-
-  const value = await page
-    .getByRole("textbox", { name: "Markdown source", exact: true })
-    .inputValue();
-
-  await button("Close source").click();
-
-  return value;
-}
+// Read serialized content through the fixture; pages have no source editor.
+const savedSource = () => page.evaluate(() => window.editorFixture.source());
 
 try {
   await openPageFixture(page, process.argv[2] ?? "http://localhost:3000/");
