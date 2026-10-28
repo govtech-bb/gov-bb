@@ -133,11 +133,14 @@ function refOf(
 export function categoryChain(
   categoryId: string | null,
   categories: readonly CategoryRecord[],
-): CategoryRecord[] {
+):
+  | readonly []
+  | readonly [CategoryRecord]
+  | readonly [CategoryRecord, CategoryRecord] {
   const category = categories.find((row) => row.id === categoryId);
   if (!category) return [];
   const parent = categories.find((row) => row.id === category.parentId);
-  return [...(parent ? [parent] : []), category];
+  return parent ? [parent, category] : [category];
 }
 
 /** A page's category crumbs: the parent category first, for a subcategory. */

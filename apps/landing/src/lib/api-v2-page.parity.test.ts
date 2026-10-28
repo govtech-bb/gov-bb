@@ -1,34 +1,45 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { z } from 'zod'
+import type { Root } from 'hast'
 import { findPage } from '../content/registry'
-import { fromApiV2 } from './api-v2-page'
-import type { PageResponse } from './api-v2-page'
+import { resolveApiV2Page } from './api-v2-page'
 
-// Every page api_v2 seeds must map to the same ContentPage as its static twin.
-const estate = JSON.parse(
-  readFileSync(
-    fileURLToPath(
-      new URL('../../../api_v2/src/seed-data/estate.json', import.meta.url),
+// Only the snapshot fields used to construct the wire response; the page reader parses it.
+const estate = z
+  .object({
+    categories: z.array(
+      z.object({ slug: z.string(), parent: z.string().nullable() }),
     ),
-    'utf8',
-  ),
-) as {
-  categories: Array<{ slug: string; parent: string | null }>
-  pages: Array<{
-    url: string
-    category: string | null
-    parent: string | null
-    title: string
-    description: string | null
-    form_id: string | null
-    published_at: string | null
-    body_markdown: string
-    frontmatter: Omit<PageResponse['frontmatter'], 'title' | 'description'>
-  }>
-}
+    pages: z
+      .array(
+        z.object({
+          url: z.string(),
+          category: z.string().nullable(),
+          parent: z.string().nullable(),
+          title: z.string(),
+          description: z.string().nullable(),
+          form_id: z.string().nullable(),
+          published_at: z.string().nullable(),
+          body_markdown: z.string(),
+          frontmatter: z.record(z.string(), z.unknown()),
+        }),
+      )
+      .min(1),
+  })
+  .parse(
+    JSON.parse(
+      readFileSync(
+        fileURLToPath(
+          new URL('../../../api_v2/src/seed-data/estate.json', import.meta.url),
+        ),
+        'utf8',
+      ),
+    ),
+  )
 
-const strip = (hast: unknown): unknown =>
+const withoutPositions = (hast: Root): unknown =>
   JSON.parse(
     JSON.stringify(hast, (key, value) =>
       key === 'position' ? undefined : value,
@@ -44,7 +55,7 @@ describe('api_v2 / static parity', () => {
         twin,
         `no static page for ${seed.url}: run pnpm --filter @govtech-bb/api-v2 seed-data`,
       ).toBeDefined()
-      if (!twin) return
+      if (!twin) throw new Error(`No static page for ${seed.url}`)
 
       const row = estate.categories.find((c) => c.slug === seed.category)
       const [category, subcategory] = row
@@ -52,22 +63,31 @@ describe('api_v2 / static parity', () => {
           ? [row.parent, row.slug]
           : [row.slug, null]
         : [null, null]
-      const api = await fromApiV2({
-        url: seed.url,
-        frontmatter: {
-          ...seed.frontmatter,
-          title: seed.title,
-          ...(seed.description && { description: seed.description }),
-        },
-        body_markdown: seed.body_markdown,
-        form_id: seed.form_id,
-        hide_start_links: false,
-        breadcrumbs: [],
-        published_at: seed.published_at,
-        updated_at: '2026-01-01T00:00:00.000Z',
-        category,
-        subcategory,
-      })
+      const result = await resolveApiV2Page(
+        'http://api.example',
+        seed.url,
+        async () =>
+          Response.json({
+            url: seed.url,
+            frontmatter: {
+              ...seed.frontmatter,
+              title: seed.title,
+              ...(seed.description && { description: seed.description }),
+            },
+            body_markdown: seed.body_markdown,
+            form_id: seed.form_id,
+            hide_start_links: false,
+            breadcrumbs: [],
+            published_at: seed.published_at,
+            updated_at: '2026-01-01T00:00:00.000Z',
+            category,
+            subcategory,
+          }),
+      )
+      expect(result.kind).toBe('page')
+      if (result.kind !== 'page')
+        throw new Error(`API page did not resolve: ${seed.url}`)
+      const api = result.page
 
       expect(api.url).toBe(twin.url)
       expect(api.frontmatter).toEqual({
@@ -90,7 +110,7 @@ describe('api_v2 / static parity', () => {
         // description and landing renders '' and undefined alike.
         description: twin.frontmatter.description || undefined,
       })
-      expect(strip(api.hast)).toEqual(strip(twin.hast))
+      expect(withoutPositions(api.hast)).toEqual(withoutPositions(twin.hast))
     },
   )
 })

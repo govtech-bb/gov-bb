@@ -27,12 +27,14 @@ top-level pages. The `GET /pages` response had no category field to map from.
 - **Singular `category`/`subcategory`, not `categories: string[]`.** The DB
   has one `category_id`. #3242 picks the plural shape when it stores secondary
   categories.
-- **`isPageResponse` is not extended.** An older api_v2 without the fields
-  degrades to `categories: []` instead of turning every page into a miss.
+- **Landing parses the response with Zod.** Missing taxonomy fields from an
+  older api_v2 become null, preserving `categories: []`. Malformed slugs and a
+  subcategory without a category take the existing logged-miss fallback.
 - **Parity is checked offline against the snapshot.** The responses are built
-  from `estate.json`, not the DB, so the test is cheap and also catches a stale
-  snapshot: a content change without `pnpm --filter @govtech-bb/api-v2
-  seed-data` fails `landing:test`.
+  from parsed `estate.json` data and pass through `resolveApiV2Page`, including
+  the HTTP response parser and markdown compiler. A content change without
+  `pnpm --filter @govtech-bb/api-v2 seed-data` fails `landing:test`. Nx also
+  hashes the snapshot for that target, so a seed-only change reruns the test.
 
 ## What we almost got wrong
 
@@ -53,7 +55,31 @@ caught this. It now applies only to `/start` urls and expects the parent's
 - The `/start` category gap between api_v2 and static content is real and is
   now only documented. Analytics (`-page-view-event.ts`) will report the
   parent's category for these pages once api_v2 serves them.
-- The editor_v2 failures seen during the build are outside this change: 6
-  "current GovBB landing content" cases in `tests/pages/markdown.test.tsx`
-  (About Barbados image pages), and the prerender error `'@tanstack/router-core'
-  does not provide an export named '_getRenderedMatches'`. Not yet filed.
+- Six editor_v2 "current GovBB landing content" cases still fail in
+  `tests/pages/markdown.test.tsx` (About Barbados image pages). They also fail
+  on the unchanged `v2-rewrite` base at `597abd6f`.
+
+## Review follow-up
+
+The branch now includes `v2-rewrite` at `597abd6f`. The breadcrumb parser and
+the updated history documentation survive the merge. Category metadata and
+breadcrumbs still use one chain, whose type permits only zero, one or two levels.
+
+The API tests cover a page whose address differs from its category, unfiled
+pages, and a seeded subcategory page that remains hidden without a preview token.
+The built-server HTTP tests check the same public response fields. Landing's
+regression tests reject malformed taxonomy and keep older API responses working.
+
+Verification on the integrated branch:
+
+- api_v2: 521 tests pass; the built-server page suite passes all 13 HTTP tests.
+- Landing: all 122 snapshot pages pass through the parser and compiler and match
+  their static twins.
+- All three app typechecks and changed-file lint pass. Both generated API
+  contract snapshots match.
+- All 24 non-landing build targets pass with `VITE_API_ORIGIN` configured.
+  The earlier `_getRenderedMatches` failure no longer reproduces on this base.
+- Postgres must use the C locale for the unrelated employee-list order assertion:
+  `en_US.utf8` sorts the two fixture email addresses in the opposite order.
+  This review used a disposable Postgres 16 container initialized with
+  `POSTGRES_INITDB_ARGS=--locale=C`. No application code changed for that check.

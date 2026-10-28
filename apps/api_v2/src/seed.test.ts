@@ -86,23 +86,30 @@ describe("seed", () => {
     await close();
   }, 60_000);
 
-  it("serves a seeded subcategory page with its category and subcategory", async () => {
+  it("serves a seeded subcategory page only in preview with its taxonomy", async ({
+    onTestFinished,
+  }) => {
     const { db, close } = await createTestDb();
+    onTestFinished(close);
     await seed(db);
+    const app = await createTestApp(db, {
+      previewSecret: new Redacted("preview"),
+    });
+    onTestFinished(() => app.close());
+    const url =
+      "/pages?url=%2Fyouth-and-community%2Farts-culture%2Fcommunity-canvas";
 
-    const resolved = expectOk(
-      await createTestServices(db).resolution.resolve(
-        "/youth-and-community/arts-culture/community-canvas",
-        "preview",
-      ),
-    );
-
-    expect(resolved).toMatchObject({
-      kind: "page",
-      page: { category: "youth-and-community", subcategory: "arts-culture" },
+    expect((await app.inject({ url })).statusCode).toBe(404);
+    const response = await app.inject({
+      url,
+      headers: { [PREVIEW_TOKEN]: "preview" },
     });
 
-    await close();
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      category: "youth-and-community",
+      subcategory: "arts-culture",
+    });
   }, 60_000);
 
   it("files subcategories, sub-pages and the pages landing nests by hand", async () => {

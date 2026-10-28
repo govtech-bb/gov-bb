@@ -14,40 +14,47 @@ import type { Frontmatter } from './frontmatter'
 
 export const API_V2_TIMEOUT_MS = 5_000
 
-/** Copied from apps/api_v2/src/modules/page-visibility.ts (`breadcrumbs`). */
-const PageBreadcrumbs = z.array(z.object({ name: z.string(), url: z.string() }))
+// Category slugs follow the editor's category contract (ADR 0078).
+const PageCategorySlug = z
+  .string()
+  .max(100)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
 
-/** Copied from apps/api_v2/src/modules/page-visibility.ts (`PublicPage`). */
-export interface PageResponse {
-  url: string
-  frontmatter: {
-    lede?: string
-    stage?: string
-    featured?: boolean
-    section?: string
-    service_type?: string
-    keywords?: Array<string>
-    source_url?: string
-    title: string
-    description?: string
-  }
-  body_markdown: string
-  /** The form a href-less Start link in the markdown opens. */
-  form_id: string | null
-  /** True when the `/start` sub-page is hidden from this viewer; the form's
-   * own state still comes from the forms API. */
-  hide_start_links: boolean
-  breadcrumbs: z.infer<typeof PageBreadcrumbs>
-  /** When the page first went public; null until it has. */
-  published_at: string | null
-  /** The page's last save — also bumped by a visibility-only change, so not
-   * used for "Last updated". */
-  updated_at: string
-  /** The slug of the category the page is filed under; null when unfiled. */
-  category: string | null
-  /** The slug of its subcategory, or null. */
-  subcategory: string | null
-}
+/** PublicPage from api_v2's modules/page-visibility.ts, with legacy taxonomy defaults. */
+const PageResponse = z
+  .object({
+    url: z.string(),
+    frontmatter: z.object({
+      lede: z.string().optional(),
+      stage: z.string().optional(),
+      featured: z.boolean().optional(),
+      section: z.string().optional(),
+      service_type: z.string().optional(),
+      keywords: z.array(z.string()).optional(),
+      source_url: z.string().optional(),
+      title: z.string(),
+      description: z.string().optional(),
+    }),
+    body_markdown: z.string(),
+    /** The form a href-less Start link in the markdown opens. */
+    form_id: z.string().nullable(),
+    /** True when the start sub-page is hidden; form status comes from the forms API. */
+    hide_start_links: z.boolean(),
+    breadcrumbs: z.array(z.object({ name: z.string(), url: z.string() })),
+    /** First publication, not the last save. */
+    published_at: z.iso.datetime().nullable(),
+    updated_at: z.iso.datetime(),
+    // Older API deployments omit taxonomy fields; treat those pages as unfiled.
+    category: PageCategorySlug.nullable().default(null),
+    subcategory: PageCategorySlug.nullable().default(null),
+  })
+  .refine((page) => page.subcategory === null || page.category !== null, {
+    message: 'A subcategory requires a top-level category',
+    path: ['subcategory'],
+  })
+
+/** Parsed public page response, with omitted legacy taxonomy fields set to null. */
+export type PageResponse = z.infer<typeof PageResponse>
 
 /** A `ContentPage` that can cross the server-function boundary. */
 export type SerializedContentPage = Omit<
@@ -74,17 +81,6 @@ export function resolveApiV2Base(
 export function apiV2Base(): string | null {
   const config = useRuntimeConfig() as { apiV2Url?: string }
   return resolveApiV2Base(config.apiV2Url, process.env.VITE_API_V2_URL)
-}
-
-function isPageResponse(body: unknown): body is PageResponse {
-  const page = body as PageResponse | null
-  return (
-    typeof page?.url === 'string' &&
-    typeof page.frontmatter?.title === 'string' &&
-    typeof page.body_markdown === 'string' &&
-    PageBreadcrumbs.safeParse(page.breadcrumbs).success &&
-    typeof page.hide_start_links === 'boolean'
-  )
 }
 
 /** `/…` only: not `//`, no backslash, no whitespace — the three ways a
@@ -140,7 +136,8 @@ export async function fetchApiV2Page(
       return { kind: 'miss' }
     }
     const body: unknown = await response.json()
-    if (isPageResponse(body)) return { kind: 'page', body }
+    const parsed = PageResponse.safeParse(body)
+    if (parsed.success) return { kind: 'page', body: parsed.data }
     console.warn(`[api-v2] malformed page for ${url}`)
     return { kind: 'miss' }
   } catch (error) {

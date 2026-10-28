@@ -39,7 +39,11 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
 
   beforeAll(async () => {
     database = await createScratchDatabase();
-    server = await startServer({ DB_NAME: database, SEED: "true" });
+    server = await startServer({
+      DB_NAME: database,
+      SEED: "true",
+      PREVIEW_SECRET: "preview",
+    });
     // An editor and approver, since these sessions create and delete public pages.
     cookie = (
       await createEmployeeSession(database, server.url, {
@@ -103,6 +107,10 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
     const { status, body } = await byUrl(SEEDED);
 
     expect(status).toBe(200);
+    expect(body).toMatchObject({
+      category: "money-financial-support",
+      subcategory: null,
+    });
     expect(z.string().parse(body.body_markdown).length).toBeGreaterThan(0);
     expect(z.array(z.unknown()).parse(body.breadcrumbs)[0]).toEqual({
       name: "Money and financial support",
@@ -112,6 +120,27 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
     expect(body.published_at).toBe("2026-05-12T00:00:00.000Z");
     expect(z.iso.datetime().parse(body.updated_at)).toBeTruthy();
   });
+
+  it.each([
+    { url: "/terms-conditions", category: null, subcategory: null },
+    {
+      url: "/youth-and-community/arts-culture/community-canvas",
+      category: "youth-and-community",
+      subcategory: "arts-culture",
+    },
+  ])(
+    "serves the stored taxonomy for $url over HTTP",
+    async ({ url, category, subcategory }) => {
+      const response = await fetch(
+        `${server.url}/pages?url=${encodeURIComponent(url)}`,
+        { headers: { "x-preview-token": "preview" } },
+      );
+
+      expect(response.status).toBe(200);
+      const body: unknown = await response.json();
+      expect(body).toMatchObject({ category, subcategory });
+    },
+  );
 
   it("redirects a bare slug to its canonical url", async () => {
     const response = await fetch(

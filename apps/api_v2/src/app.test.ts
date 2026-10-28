@@ -198,14 +198,14 @@ describe("GET /pages?url=", () => {
     ]);
   });
 
-  it("names the parent category before a subcategory", async () => {
+  it("serves the stored category and subcategory even when the url differs", async () => {
     const parent = await seedCategory();
     const [sub] = await db
       .insert(categories)
       .values({ slug: "arts-culture", title: "Arts", parentId: parent.id })
       .returning();
     if (!sub) throw new Error("The subcategory was not inserted");
-    const url = "/money-financial-support/arts-culture/canvas";
+    const url = "/old-place/canvas";
     await seedPage({ url, title: "Canvas", category_id: sub.id });
 
     const page = (await read(url)).json();

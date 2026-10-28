@@ -202,6 +202,26 @@ describe('fetchApiV2Page', () => {
     expect(result).toEqual({ kind: 'miss' })
   })
 
+  it.each([
+    { category: 42 },
+    { category: ['family-birth-relationships'] },
+    { category: '' },
+    { category: '../other' },
+    { subcategory: { slug: 'arts-culture' } },
+    { subcategory: '' },
+    { category: null, subcategory: 'arts-culture' },
+    { category: undefined, subcategory: 'arts-culture' },
+  ])('rejects malformed page categories %j', async (categories) => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const result = await fetchApiV2Page(BASE, '/x', async () =>
+      jsonResponse(200, { ...pageBody(), ...categories }),
+    )
+
+    expect(result).toEqual({ kind: 'miss' })
+    expect(warn).toHaveBeenCalledWith('[api-v2] malformed page for /x')
+  })
+
   it('maps a 301 to a redirect from the body', async () => {
     const result = await fetchApiV2Page(
       BASE,
@@ -442,13 +462,52 @@ describe('resolveApiV2Page', () => {
     expect(fetchImpl).not.toHaveBeenCalled()
   })
 
-  it('compiles a hit into a page', async () => {
-    const result = await resolveApiV2Page(
-      BASE,
-      '/x',
-      stubFetch(jsonResponse(200, pageBody())),
+  it('compiles a hit with taxonomy from the response, not the url', async () => {
+    const result = await resolveApiV2Page(BASE, '/old-place/page', async () =>
+      jsonResponse(
+        200,
+        pageBody({
+          url: '/old-place/page',
+          category: 'youth-and-community',
+          subcategory: 'arts-culture',
+        }),
+      ),
     )
-    expect(result.kind).toBe('page')
+
+    expect(result).toMatchObject({
+      kind: 'page',
+      page: {
+        frontmatter: {
+          categories: ['youth-and-community'],
+          subcategory: 'arts-culture',
+        },
+      },
+    })
+  })
+
+  it('serves an older API response with no taxonomy fields as an unfiled page', async () => {
+    const {
+      category: _category,
+      subcategory: _subcategory,
+      ...body
+    } = pageBody()
+
+    const fetched = await fetchApiV2Page(BASE, '/x', async () =>
+      jsonResponse(200, body),
+    )
+    expect(fetched).toEqual({
+      kind: 'page',
+      body: { ...body, category: null, subcategory: null },
+    })
+
+    const resolved = await resolveApiV2Page(BASE, '/x', async () =>
+      jsonResponse(200, body),
+    )
+    expect(resolved.kind).toBe('page')
+    if (resolved.kind !== 'page')
+      throw new Error('The legacy page did not resolve')
+    expect(resolved.page.frontmatter.categories).toEqual([])
+    expect(resolved.page.frontmatter).not.toHaveProperty('subcategory')
   })
 
   it('falls back (miss) when the markdown fails to compile', async () => {
