@@ -5,16 +5,46 @@ import ErrorMessage from "./error-message";
 import { optionalSuffix } from "./field-renderer/optional-suffix";
 import { trackEvent } from "../lib/analytics";
 import { formCategory } from "../lib/form-category";
-import { uploadFile, FileUploadError } from "../lib/api/files";
-import { fileTypesRunner } from "@govtech-bb/form-validation";
+import { sendFile, checkFile, UPLOAD_PROBLEM_MESSAGE } from "../lib/api/files";
+import {
+  fileTypesRunner,
+  INFECTED_FILE_MESSAGE,
+  UNSCANNABLE_FILE_MESSAGE,
+} from "@govtech-bb/form-validation";
 
-/** A file being uploaded, or one whose upload failed. */
+/**
+ * Where a picked file is on its way to becoming a form value (#2940).
+ * - uploading / checking: in progress (sending to S3, then the malware scan)
+ * - rejected: refused before upload (type or size); Dismiss only
+ * - infected / unscannable: the scan refused it; Remove only
+ * - timeout / error: the scan took too long, or a request failed; Retry or Remove
+ * Only a clean file leaves this list, by becoming a form value.
+ */
+type PendingStatus =
+  | "uploading"
+  | "checking"
+  | "rejected"
+  | "infected"
+  | "unscannable"
+  | "timeout"
+  | "error";
+
 interface PendingUpload {
   id: number;
   name: string;
-  status: "uploading" | "error";
+  status: PendingStatus;
+  /** Fraction sent to S3, 0 to 1, while uploading. */
+  progress?: number;
   error?: string;
+  /** Kept so Retry can run again without the person picking the file again. */
+  file?: File;
+  /** Set once the file is in S3, so Retry only re-checks it. */
+  key?: string;
 }
+
+const CHECKING_MESSAGE = "Checking your file";
+const SCAN_TIMEOUT_MESSAGE =
+  "We could not finish checking your file. Try again.";
 
 const formatMb = (bytes: number) =>
   `${(bytes / (1024 * 1024)).toPrecision(2)} MB`;
@@ -59,8 +89,9 @@ export default function FileUpload({
   const maxSize = field.validations?.maxSize?.value as number | undefined;
 
   const appendConfirmed = (uploaded: UploadedFile) => {
-    // Store the reference WITHOUT the expiring preview url (kept in memory only).
-    const { url: _url, ...ref } = uploaded;
+    // Store the reference WITHOUT the expiring preview url (kept in memory only)
+    // or the scan verdict: the API reads the verdict itself at submit.
+    const { url: _url, scanStatus: _scanStatus, ...ref } = uploaded;
     const next = [...confirmedRef.current, ref];
     confirmedRef.current = next;
     onFileChange(next);
@@ -79,6 +110,75 @@ export default function FileUpload({
   const dismissPending = (id: number) => {
     inputRef.current?.focus();
     setPending((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const updatePending = (id: number, patch: Partial<PendingUpload>) =>
+    setPending((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+    );
+
+  /** Leave the row showing why the file was not added, and say so. */
+  const settle = (
+    id: number,
+    name: string,
+    status: PendingStatus,
+    error: string,
+  ) => {
+    updatePending(id, { status, error });
+    setStatusMessage(`${name}: ${error}`);
+  };
+
+  /**
+   * Sends the file (unless it is already in S3), waits for the scan verdict,
+   * and adds it to the form only when it is clean. A missing verdict counts as
+   * clean: the upload page is for the person's benefit, and the API still
+   * refuses a file that isn't clean at submit (ADR 0078).
+   */
+  const runUpload = async (id: number, file: File, sentKey?: string) => {
+    let key = sentKey;
+    try {
+      if (!key) {
+        updatePending(id, {
+          status: "uploading",
+          progress: 0,
+          error: undefined,
+        });
+        setStatusMessage(`Uploading ${file.name}`);
+        key = await sendFile({
+          file,
+          formId: formId ?? "",
+          stepId: presignStepId,
+          fieldId: field.fieldId,
+          previewToken,
+          draftToken,
+          onProgress: (progress) => updatePending(id, { progress }),
+        });
+      }
+      updatePending(id, { status: "checking", key, error: undefined });
+      setStatusMessage(`Checking ${file.name}`);
+      const checked = await checkFile({
+        key,
+        formId: formId ?? "",
+        stepId: presignStepId,
+        fieldId: field.fieldId,
+        previewToken,
+        draftToken,
+      });
+      if (checked === "timeout") {
+        settle(id, file.name, "timeout", SCAN_TIMEOUT_MESSAGE);
+      } else if (checked.scanStatus === "infected") {
+        settle(id, file.name, "infected", INFECTED_FILE_MESSAGE);
+      } else if (checked.scanStatus === "unscannable") {
+        settle(id, file.name, "unscannable", UNSCANNABLE_FILE_MESSAGE);
+      } else {
+        appendConfirmed(checked);
+        setPending((prev) => prev.filter((p) => p.id !== id));
+      }
+    } catch {
+      // Keep the key: if the file reached S3, Retry only re-checks it.
+      updatePending(id, { key });
+      settle(id, file.name, "error", UPLOAD_PROBLEM_MESSAGE);
+    }
   };
 
   // Accepts either MIME types ("image/png" → "png") or extension values
@@ -171,7 +271,7 @@ export default function FileUpload({
         if (rejection) {
           setPending((prev) => [
             ...prev,
-            { id, name: file.name, status: "error", error: rejection },
+            { id, name: file.name, status: "rejected", error: rejection },
           ]);
           setStatusMessage(`${file.name}: ${rejection}`);
           return;
@@ -182,7 +282,7 @@ export default function FileUpload({
           const error = `This file is larger than the ${formatMb(maxSize)} limit.`;
           setPending((prev) => [
             ...prev,
-            { id, name: file.name, status: "error", error },
+            { id, name: file.name, status: "rejected", error },
           ]);
           setStatusMessage(`${file.name}: ${error}`);
           return;
@@ -190,32 +290,9 @@ export default function FileUpload({
 
         setPending((prev) => [
           ...prev,
-          { id, name: file.name, status: "uploading" },
+          { id, name: file.name, status: "uploading", progress: 0, file },
         ]);
-
-        try {
-          const confirmed = await uploadFile({
-            file,
-            formId: formId ?? "",
-            stepId: presignStepId,
-            fieldId: field.fieldId,
-            previewToken,
-            draftToken,
-          });
-          appendConfirmed(confirmed);
-          setPending((prev) => prev.filter((p) => p.id !== id));
-        } catch (err) {
-          const message =
-            err instanceof FileUploadError
-              ? err.message
-              : "Upload failed. Please try again.";
-          setPending((prev) =>
-            prev.map((p) =>
-              p.id === id ? { ...p, status: "error", error: message } : p,
-            ),
-          );
-          setStatusMessage(`${file.name}: ${message}`);
-        }
+        await runUpload(id, file);
       }),
     );
   };
@@ -293,26 +370,81 @@ export default function FileUpload({
               className="govbb-file-upload__item govbb-file-upload__item--pending"
             >
               <span className="govbb-file-upload__name">{p.name}</span>
-              {p.status === "uploading" ? (
-                <span className="govbb-file-upload__status">Uploading…</span>
-              ) : (
-                <span className="govbb-file-upload__status govbb-file-upload__status--error">
-                  {p.error}{" "}
-                  <Button
-                    variant="text"
-                    negative
-                    className="no-print"
-                    aria-label={`Dismiss ${p.name}`}
-                    onClick={() => dismissPending(p.id)}
-                  >
-                    Dismiss
-                  </Button>
-                </span>
-              )}
+              <PendingStatusView
+                upload={p}
+                onRetry={() => {
+                  // The Retry button goes away as the row restarts.
+                  inputRef.current?.focus();
+                  if (p.file) void runUpload(p.id, p.file, p.key);
+                }}
+                onRemove={() => dismissPending(p.id)}
+              />
             </li>
           ))}
         </ul>
       )}
     </div>
+  );
+}
+
+/** The status line for one file that is not (yet) a form value. */
+function PendingStatusView({
+  upload: p,
+  onRetry,
+  onRemove,
+}: {
+  upload: PendingUpload;
+  onRetry: () => void;
+  onRemove: () => void;
+}) {
+  if (p.status === "uploading") {
+    return (
+      <span className="govbb-file-upload__status">
+        Uploading…{" "}
+        <progress
+          className="govbb-file-upload__progress"
+          max={1}
+          value={p.progress ?? 0}
+          aria-label={`Uploading ${p.name}`}
+        />
+      </span>
+    );
+  }
+  if (p.status === "checking") {
+    // GuardDuty reports no percentage, so this bar has no value (indeterminate).
+    return (
+      <span className="govbb-file-upload__status">
+        {CHECKING_MESSAGE}{" "}
+        <progress
+          className="govbb-file-upload__progress"
+          aria-label={`Checking ${p.name}`}
+        />
+      </span>
+    );
+  }
+  const retryable = p.status === "timeout" || p.status === "error";
+  return (
+    <span className="govbb-file-upload__status govbb-file-upload__status--error">
+      {p.error}{" "}
+      {retryable && (
+        <Button
+          variant="text"
+          className="no-print"
+          aria-label={`Retry ${p.name}`}
+          onClick={onRetry}
+        >
+          Retry
+        </Button>
+      )}
+      <Button
+        variant="text"
+        negative
+        className="no-print"
+        aria-label={`${p.status === "rejected" ? "Dismiss" : "Remove"} ${p.name}`}
+        onClick={onRemove}
+      >
+        {p.status === "rejected" ? "Dismiss" : "Remove"}
+      </Button>
+    </span>
   );
 }

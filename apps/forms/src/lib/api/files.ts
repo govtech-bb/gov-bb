@@ -258,20 +258,3 @@ export const checkFile = async ({
     await wait(SCAN_RECHECK_INTERVAL_MS);
   }
 };
-
-/**
- * Runs the full upload flow for a single file:
- *   presign → PUT to S3 → confirm.
- * Returns the confirmed reference to store in form state / the submission.
- */
-export const uploadFile = async (
-  params: UploadFileParams,
-): Promise<UploadedFile> => {
-  const key = await sendFile(params);
-  const { previewToken, draftToken, formId, stepId, fieldId } = params;
-  return confirmUpload(
-    { key, formId, stepId, fieldId },
-    previewToken,
-    draftToken,
-  );
-};

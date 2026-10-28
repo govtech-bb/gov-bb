@@ -1,27 +1,30 @@
 import type { Mock } from "vitest";
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "jest-axe";
 import FileUpload from "./file-upload";
 import type { FileUploadProps, UploadedFile } from "@forms/types";
 
-// Mock the presigned-upload client so tests don't hit the network.
-vi.mock("../lib/api/files", () => {
-  class FileUploadError extends Error {
-    constructor(
-      message: string,
-      public readonly stage: string,
-    ) {
-      super(message);
-      this.name = "FileUploadError";
-    }
-  }
-  return { uploadFile: vi.fn(), FileUploadError };
-});
-import { uploadFile, FileUploadError } from "../lib/api/files";
+// Mock the network calls; keep the real error class and messages.
+vi.mock("../lib/api/files", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../lib/api/files")>()),
+  sendFile: vi.fn(),
+  checkFile: vi.fn(),
+}));
+import {
+  sendFile,
+  checkFile,
+  FileUploadError,
+  UPLOAD_PROBLEM_MESSAGE,
+} from "../lib/api/files";
+import {
+  INFECTED_FILE_MESSAGE,
+  UNSCANNABLE_FILE_MESSAGE,
+} from "@govtech-bb/form-validation";
 
-const mockUploadFile = uploadFile as Mock;
+const mockSendFile = sendFile as Mock;
+const mockCheckFile = checkFile as Mock;
 
 function makeFile(name: string, type: string, sizeBytes: number): File {
   return new File(["x".repeat(sizeBytes)], name, { type });
@@ -95,10 +98,41 @@ function renderComponent(overrides: Partial<FileUploadProps> = {}) {
   };
 }
 
+// The widget's own announcer (the design-system input may render another).
+const liveRegion = () =>
+  document.querySelector('div[role="status"].govbb-visually-hidden');
+
+// Controlled wrapper: feeds onFileChange back into value, like the real form,
+// so a confirmed file renders as a list row.
+function renderHarness(field: FileUploadProps["field"] = baseField) {
+  const onFileChange = vi.fn();
+  function Harness() {
+    const [value, setValue] = React.useState<UploadedFile[] | null>(null);
+    return (
+      <FileUpload
+        field={field}
+        sharedProps={baseSharedProps}
+        value={value}
+        onFileChange={(files) => {
+          onFileChange(files);
+          setValue(files);
+        }}
+      />
+    );
+  }
+  const { container } = render(<Harness />);
+  harnessOnFileChange = onFileChange;
+  return container.querySelector(
+    ".govbb-file-upload__input",
+  ) as HTMLInputElement;
+}
+let harnessOnFileChange: Mock;
+
 describe("FileUpload", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUploadFile.mockResolvedValue(makeUploaded("default.pdf"));
+    mockSendFile.mockResolvedValue("uploads/k");
+    mockCheckFile.mockResolvedValue(makeUploaded("default.pdf"));
   });
 
   it("sets the multiple attribute on the input when field.multiple is true", () => {
@@ -130,14 +164,14 @@ describe("FileUpload", () => {
 
   it("uploads the selected file and stores the confirmed reference (without url)", async () => {
     const user = userEvent.setup();
-    mockUploadFile.mockResolvedValue(makeUploaded("report.pdf"));
+    mockCheckFile.mockResolvedValue(makeUploaded("report.pdf"));
     const { onFileChange, fileInput } = renderComponent({ formId: "f1" });
 
     const file = makeFile("report.pdf", "application/pdf", 512);
     await user.upload(fileInput, file);
 
     await waitFor(() => expect(onFileChange).toHaveBeenCalled());
-    expect(mockUploadFile).toHaveBeenCalledWith(
+    expect(mockSendFile).toHaveBeenCalledWith(
       expect.objectContaining({
         fieldId: "doc-field",
         stepId: "step-1",
@@ -153,7 +187,7 @@ describe("FileUpload", () => {
     expect(calledWith[0].key).toBeDefined();
   });
 
-  it("forwards the previewToken prop to uploadFile", async () => {
+  it("forwards the previewToken prop to sendFile", async () => {
     const user = userEvent.setup();
     const { fileInput } = renderComponent({
       formId: "f1",
@@ -165,13 +199,13 @@ describe("FileUpload", () => {
       makeFile("report.pdf", "application/pdf", 512),
     );
 
-    await waitFor(() => expect(mockUploadFile).toHaveBeenCalled());
-    expect(mockUploadFile).toHaveBeenCalledWith(
+    await waitFor(() => expect(mockSendFile).toHaveBeenCalled());
+    expect(mockSendFile).toHaveBeenCalledWith(
       expect.objectContaining({ previewToken: "preview-tok" }),
     );
   });
 
-  it("forwards the draftToken prop to uploadFile (#1682)", async () => {
+  it("forwards the draftToken prop to sendFile (#1682)", async () => {
     const user = userEvent.setup();
     const { fileInput } = renderComponent({
       formId: "f1",
@@ -183,17 +217,15 @@ describe("FileUpload", () => {
       makeFile("report.pdf", "application/pdf", 512),
     );
 
-    await waitFor(() => expect(mockUploadFile).toHaveBeenCalled());
-    expect(mockUploadFile).toHaveBeenCalledWith(
+    await waitFor(() => expect(mockSendFile).toHaveBeenCalled());
+    expect(mockSendFile).toHaveBeenCalledWith(
       expect.objectContaining({ draftToken: "draft-tok" }),
     );
   });
 
   it("appends a newly uploaded file to existing files in the list", async () => {
     const user = userEvent.setup();
-    mockUploadFile.mockResolvedValue(
-      makeUploaded("new.jpg", "image/jpeg", 200),
-    );
+    mockCheckFile.mockResolvedValue(makeUploaded("new.jpg", "image/jpeg", 200));
     const { onFileChange, fileInput } = renderComponent({
       value: [makeUploaded("existing.png", "image/png", 100)],
     });
@@ -206,69 +238,79 @@ describe("FileUpload", () => {
     expect(calledWith.map((f) => f.name)).toEqual(["existing.png", "new.jpg"]);
   });
 
-  it("shows an uploading status while in progress, then the file when confirmed", async () => {
+  it("goes uploading → checking → added for a clean file", async () => {
     const user = userEvent.setup();
-    let resolveUpload: (f: UploadedFile) => void = () => {};
-    mockUploadFile.mockReturnValue(
+    let finishSend: (key: string) => void = () => {};
+    let finishCheck: (f: UploadedFile) => void = () => {};
+    let reportProgress: (fraction: number) => void = () => {};
+    mockSendFile.mockImplementation(
+      ({ onProgress }: { onProgress: (f: number) => void }) => {
+        reportProgress = onProgress;
+        return new Promise<string>((resolve) => {
+          finishSend = resolve;
+        });
+      },
+    );
+    mockCheckFile.mockReturnValue(
       new Promise<UploadedFile>((resolve) => {
-        resolveUpload = resolve;
+        finishCheck = resolve;
       }),
     );
-
-    // Controlled wrapper: feed onFileChange back into value, like the real form,
-    // so the confirmed file renders once the upload resolves.
-    function Harness() {
-      const [value, setValue] = React.useState<UploadedFile[] | null>(null);
-      return (
-        <FileUpload
-          field={baseField}
-          sharedProps={baseSharedProps}
-          value={value}
-          onFileChange={setValue}
-        />
-      );
-    }
-    const { container } = render(<Harness />);
-    const fileInput = container.querySelector(
-      ".govbb-file-upload__input",
-    ) as HTMLInputElement;
+    const fileInput = renderHarness();
 
     await user.upload(fileInput, makeFile("slow.pdf", "application/pdf", 100));
-    expect(await screen.findByText(/uploading/i)).toBeInTheDocument();
+    const bar = await screen.findByRole("progressbar", {
+      name: "Uploading slow.pdf",
+    });
+    act(() => reportProgress(0.4));
+    expect(bar).toHaveAttribute("value", "0.4");
+    expect(liveRegion()).toHaveTextContent("Uploading slow.pdf");
 
-    resolveUpload(makeUploaded("slow.pdf"));
-    await waitFor(() =>
-      expect(screen.queryByText(/uploading/i)).not.toBeInTheDocument(),
+    await act(async () => finishSend("uploads/k"));
+    expect(
+      screen.getByRole("progressbar", { name: "Checking slow.pdf" }),
+    ).not.toHaveAttribute("value");
+    expect(screen.getByText(/checking your file/i)).toBeInTheDocument();
+    expect(liveRegion()).toHaveTextContent("Checking slow.pdf");
+
+    await act(async () =>
+      finishCheck({ ...makeUploaded("slow.pdf"), scanStatus: "clean" }),
     );
-    expect(screen.getByText("slow.pdf")).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Remove slow.pdf" }),
+    ).toBeInTheDocument();
+    expect(liveRegion()).toHaveTextContent("slow.pdf added.");
   });
 
-  it("shows an error and does not store the file when the upload fails", async () => {
+  it("shows the agreed message, Retry and Remove when the upload fails", async () => {
     const user = userEvent.setup();
-    mockUploadFile.mockRejectedValue(
-      new FileUploadError("File upload failed (put). Please try again.", "put"),
+    mockSendFile.mockRejectedValue(
+      new FileUploadError(UPLOAD_PROBLEM_MESSAGE, "put"),
     );
     const { onFileChange, fileInput } = renderComponent();
 
     await user.upload(fileInput, makeFile("bad.pdf", "application/pdf", 100));
 
     expect(
-      await screen.findByText(/file upload failed/i, {
+      await screen.findByText(UPLOAD_PROBLEM_MESSAGE, {
         selector: ".govbb-file-upload__status--error",
+        exact: false,
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/bad\.pdf:.*file upload failed/i, {
+      screen.getByText(`bad.pdf: ${UPLOAD_PROBLEM_MESSAGE}`, {
         selector: '[role="status"]',
       }),
     ).toBeInTheDocument();
     expect(onFileChange).not.toHaveBeenCalled();
-
-    await user.click(screen.getByRole("button", { name: "Dismiss bad.pdf" }));
-    expect(fileInput).toHaveFocus();
     expect(
-      screen.queryByRole("button", { name: "Dismiss bad.pdf" }),
-    ).toBeNull();
+      screen.getByRole("button", { name: "Retry bad.pdf" }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Remove bad.pdf" }));
+    expect(fileInput).toHaveFocus();
+    expect(screen.queryByRole("button", { name: "Remove bad.pdf" })).toBeNull();
   });
 
   it("rejects an oversize file client-side without calling the upload API", async () => {
@@ -292,7 +334,7 @@ describe("FileUpload", () => {
         selector: '[role="status"]',
       }),
     ).toBeInTheDocument();
-    expect(mockUploadFile).not.toHaveBeenCalled();
+    expect(mockSendFile).not.toHaveBeenCalled();
     expect(onFileChange).not.toHaveBeenCalled();
   });
 
@@ -438,7 +480,7 @@ describe("FileUpload", () => {
 
     await user.upload(fileInput, makeFile("a.pdf", "application/pdf", 10));
 
-    await waitFor(() => expect(mockUploadFile).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockSendFile).toHaveBeenCalledTimes(1));
     expect(onFileChange).toHaveBeenCalled();
     warn.mockRestore();
   });
@@ -457,7 +499,7 @@ describe("FileUpload", () => {
         selector: ".govbb-file-upload__status--error",
       }),
     ).toBeInTheDocument();
-    expect(mockUploadFile).not.toHaveBeenCalled();
+    expect(mockSendFile).not.toHaveBeenCalled();
     expect(onFileChange).not.toHaveBeenCalled();
     warn.mockRestore();
   });
@@ -605,7 +647,7 @@ describe("FileUpload", () => {
   // -------------------------------------------------------------------------
   it("announces the chosen file name once the upload is confirmed", async () => {
     const user = userEvent.setup();
-    mockUploadFile.mockResolvedValue(makeUploaded("report.pdf"));
+    mockCheckFile.mockResolvedValue(makeUploaded("report.pdf"));
     const { fileInput } = renderComponent();
 
     await user.upload(fileInput, makeFile("report.pdf", "application/pdf", 64));
@@ -687,5 +729,177 @@ describe("FileUpload", () => {
     });
     const results = await axe(container);
     expect(results).toHaveNoViolations();
+  });
+
+  describe("scan verdict (#2940)", () => {
+    const pdf = () => makeFile("doc.pdf", "application/pdf", 100);
+
+    it.each([
+      ["infected", INFECTED_FILE_MESSAGE],
+      ["unscannable", UNSCANNABLE_FILE_MESSAGE],
+    ] as const)(
+      "shows the %s message, offers only Remove, and never adds the file",
+      async (scanStatus, message) => {
+        const user = userEvent.setup();
+        mockCheckFile.mockResolvedValue({
+          ...makeUploaded("doc.pdf"),
+          scanStatus,
+        });
+        const fileInput = renderHarness();
+
+        await user.upload(fileInput, pdf());
+
+        expect(
+          await screen.findByText(message, {
+            exact: false,
+            selector: ".govbb-file-upload__status--error",
+          }),
+        ).toBeVisible();
+        expect(liveRegion()).toHaveTextContent(`doc.pdf: ${message}`);
+        expect(harnessOnFileChange).not.toHaveBeenCalled();
+        expect(screen.queryByRole("button", { name: /retry/i })).toBeNull();
+
+        await user.click(
+          screen.getByRole("button", { name: "Remove doc.pdf" }),
+        );
+        expect(
+          screen.queryByText(message, {
+            exact: false,
+            selector: ".govbb-file-upload__status--error",
+          }),
+        ).toBeNull();
+      },
+    );
+
+    // An API older than #3333 sends no verdict. The submit check is the
+    // security control, so the upload page doesn't block on it.
+    it("adds a file whose confirm response has no verdict", async () => {
+      const user = userEvent.setup();
+      mockCheckFile.mockResolvedValue(makeUploaded("doc.pdf"));
+      const fileInput = renderHarness();
+
+      await user.upload(fileInput, pdf());
+
+      await waitFor(() => expect(harnessOnFileChange).toHaveBeenCalled());
+      expect(harnessOnFileChange.mock.calls[0][0][0]).not.toHaveProperty(
+        "scanStatus",
+      );
+    });
+
+    it("never stores the verdict in the form value", async () => {
+      const user = userEvent.setup();
+      mockCheckFile.mockResolvedValue({
+        ...makeUploaded("doc.pdf"),
+        scanStatus: "clean",
+      });
+      const fileInput = renderHarness();
+
+      await user.upload(fileInput, pdf());
+
+      await waitFor(() => expect(harnessOnFileChange).toHaveBeenCalled());
+      expect(harnessOnFileChange.mock.calls[0][0][0]).toEqual({
+        key: expect.any(String),
+        name: "doc.pdf",
+        size: 100,
+        type: "application/pdf",
+      });
+    });
+
+    it("after a scan that took too long, Retry re-checks without uploading again", async () => {
+      const user = userEvent.setup();
+      mockCheckFile
+        .mockResolvedValueOnce("timeout")
+        .mockResolvedValueOnce({
+          ...makeUploaded("doc.pdf"),
+          scanStatus: "clean",
+        });
+      const fileInput = renderHarness();
+
+      await user.upload(fileInput, pdf());
+      expect(
+        await screen.findByText(/could not finish checking your file/i, {
+          selector: ".govbb-file-upload__status--error",
+        }),
+      ).toBeVisible();
+
+      await user.click(screen.getByRole("button", { name: "Retry doc.pdf" }));
+
+      await waitFor(() => expect(harnessOnFileChange).toHaveBeenCalled());
+      expect(mockSendFile).toHaveBeenCalledTimes(1);
+      expect(mockCheckFile).toHaveBeenCalledTimes(2);
+      expect(mockCheckFile).toHaveBeenLastCalledWith(
+        expect.objectContaining({ key: "uploads/k" }),
+      );
+      expect(fileInput).toHaveFocus();
+    });
+
+    it("after a failed send, Retry uploads the same file again without re-picking it", async () => {
+      const user = userEvent.setup();
+      mockSendFile
+        .mockRejectedValueOnce(
+          new FileUploadError(UPLOAD_PROBLEM_MESSAGE, "put"),
+        )
+        .mockResolvedValueOnce("uploads/k2");
+      const fileInput = renderHarness();
+      const file = pdf();
+
+      await user.upload(fileInput, file);
+      await user.click(
+        await screen.findByRole("button", { name: "Retry doc.pdf" }),
+      );
+
+      await waitFor(() => expect(harnessOnFileChange).toHaveBeenCalled());
+      expect(mockSendFile).toHaveBeenCalledTimes(2);
+      expect(mockSendFile.mock.calls[1][0].file).toBe(file);
+      expect(mockCheckFile).toHaveBeenCalledWith(
+        expect.objectContaining({ key: "uploads/k2" }),
+      );
+    });
+
+    it("after a failed check, Retry re-checks the file already sent", async () => {
+      const user = userEvent.setup();
+      mockCheckFile
+        .mockRejectedValueOnce(
+          new FileUploadError(UPLOAD_PROBLEM_MESSAGE, "confirm"),
+        )
+        .mockResolvedValueOnce({
+          ...makeUploaded("doc.pdf"),
+          scanStatus: "clean",
+        });
+      const fileInput = renderHarness();
+
+      await user.upload(fileInput, pdf());
+      await user.click(
+        await screen.findByRole("button", { name: "Retry doc.pdf" }),
+      );
+
+      await waitFor(() => expect(harnessOnFileChange).toHaveBeenCalled());
+      expect(mockSendFile).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ["uploading", () => mockSendFile.mockReturnValue(new Promise(() => {}))],
+      ["checking", () => mockCheckFile.mockReturnValue(new Promise(() => {}))],
+      [
+        "refused",
+        () =>
+          mockCheckFile.mockResolvedValue({
+            ...makeUploaded("doc.pdf"),
+            scanStatus: "infected",
+          }),
+      ],
+      ["timed out", () => mockCheckFile.mockResolvedValue("timeout")],
+    ])("passes axe while %s", async (_state, arrange) => {
+      const user = userEvent.setup();
+      arrange();
+      const fileInput = renderHarness();
+
+      await user.upload(fileInput, pdf());
+      await screen.findByText("doc.pdf");
+
+      expect(
+        await axe(fileInput.closest(".govbb-file-upload") as HTMLElement),
+      ).toHaveNoViolations();
+    });
   });
 });

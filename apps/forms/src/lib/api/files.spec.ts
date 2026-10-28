@@ -2,7 +2,6 @@ import {
   presignUpload,
   confirmUpload,
   putFileToS3,
-  uploadFile,
   sendFile,
   checkFile,
   FileUploadError,
@@ -10,6 +9,11 @@ import {
 } from "./files";
 
 const API_URL = "http://localhost:3001";
+
+// The widget's full flow: send, then check. Lets the end-to-end cases below
+// assert the order and headers of every request.
+const uploadFile = async (params: Parameters<typeof sendFile>[0]) =>
+  checkFile({ ...params, key: await sendFile(params) });
 
 const presignOk = {
   uploadUrl: "https://s3/put?sig=1",
