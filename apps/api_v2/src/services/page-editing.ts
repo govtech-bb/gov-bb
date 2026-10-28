@@ -372,14 +372,15 @@ export class PageEditing {
       if (fields.visibility === "public" && !this.review.allowSelfApproval) {
         // Making it public approves every change since it was last public,
         // this save's included, so none of them may be the approver's.
-        const changers = await records.changedSincePublic(id);
-        if (!changers.ok) return changers;
         if (
-          changers.value.includes(actor.id) ||
           changesOf(current, placed.value).some(
             ({ field }) => field !== "visibility",
           )
         )
+          return err(new SelfApproval(CHANGED_SINCE_PUBLIC));
+        const changers = await records.changedSincePublic(id);
+        if (!changers.ok) return changers;
+        if (changers.value.includes(actor.id))
           return err(new SelfApproval(CHANGED_SINCE_PUBLIC));
       }
       // Only a public page has a revision, so there is none to close here.

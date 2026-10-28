@@ -1033,6 +1033,39 @@ describe("making a page public (#3201)", () => {
     expect(response.statusCode).toBe(200);
   });
 
+  it("doesn't count a sub-page's category carried along by a write above it", async () => {
+    const [category] = await db
+      .insert(categories)
+      .values({ slug: "money-financial-support", title: "Money" })
+      .returning();
+    const parent = expectOk(
+      await services.editing.create(
+        aPage({ url: "/parent", visibility: "draft", category_id: null }),
+        TEST_EDITOR,
+      ),
+    );
+    const sub = expectOk(
+      await services.editing.create(
+        aPage({
+          url: "/parent/sub",
+          visibility: "draft",
+          category_id: null,
+          parent_id: parent.id,
+        }),
+        TEST_EDITOR,
+      ),
+    );
+    expect(
+      (await edit(APPROVER, parent.id, { category_id: category?.id }))
+        .statusCode,
+    ).toBe(200);
+    expect((await stored(sub.id))?.category_id).toBe(category?.id);
+
+    const response = await edit(APPROVER, sub.id, { visibility: "public" });
+
+    expect(response.statusCode).toBe(200);
+  });
+
   it("refuses an approver who creates a page as public, so another approver makes it public", async () => {
     const payload = withDefaults(aPage({ category_id: null }));
 

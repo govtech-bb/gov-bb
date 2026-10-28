@@ -885,24 +885,29 @@ export class PostgresPages
 
   /**
    * Who changed a page's content since it was last public, or ever when it
-   * never was, from its history: the actors of each create or update whose
-   * row differs from the one before it in more than visibility and stamps.
-   * Review events are left out, since their snapshot is a revision row.
+   * never was, from its history: the actors of each created, updated,
+   * published or unpublished entry whose row differs from the one before it
+   * in more than visibility and stamps. A sub-page's category is left out
+   * too: it follows its parent's, so a write above it that carries it along
+   * changes nothing of its own. Review events are left out, since their
+   * snapshot is a revision row.
    */
   async changedSincePublic(
     id: PageId,
   ): Promise<Result<string[], ContentStoreUnavailable>> {
     const rows = await attempt("changedSincePublic", () =>
       this.db.execute<{ actor: string }>(sql`
-        with history as (
+        with entries as (
           select version_no, actor,
                  snapshot->>'visibility' = 'public' as public,
-                 snapshot - array['visibility', 'published_at', 'updated_at', 'created_at'] as content,
-                 lag(snapshot - array['visibility', 'published_at', 'updated_at', 'created_at'])
-                   over (order by version_no) as before
+                 snapshot - array['visibility', 'published_at', 'updated_at', 'created_at']
+                   - case when snapshot->>'parent_id' is null then '' else 'category_id' end
+                   as content
             from change_events
            where entity_kind = 'content_page' and entity_id = ${id}
              and action in ('created', 'updated', 'published', 'unpublished')
+        ), history as (
+          select *, lag(content) over (order by version_no) as before from entries
         )
         select distinct actor from history
          where version_no > coalesce((select max(version_no) from history where public), 0)

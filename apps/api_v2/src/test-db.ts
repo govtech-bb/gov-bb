@@ -116,7 +116,7 @@ export const SELF_APPROVAL = { allowSelfApproval: true } as const;
 /** Compose the content services over a test database, as main.ts does over its pool. */
 export function createTestServices(
   db: Database,
-  review: { readonly allowSelfApproval: boolean } = {
+  review: ConstructorParameters<typeof PageEditing>[2] = {
     allowSelfApproval: false,
   },
 ) {

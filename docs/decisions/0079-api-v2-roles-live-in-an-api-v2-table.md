@@ -24,10 +24,11 @@ can hold any of three roles:
 
 - `editor` can create and edit content and submit changes for review (ADR
   0078's "people who can edit pages" are editors).
-- `approver` can change an existing page's visibility, create a page as
-  Public, delete a public page, approve, reject and publish changes to live
-  content, and create, edit, reorder and delete categories (#3201), so
-  landing shows only category changes an approver made. An editor can still create a page as Preview or Draft, so
+- `approver` can change an existing page's visibility (making it public
+  only when someone else changed its content, below), delete a public page,
+  approve, reject and publish changes to live content, and create, edit,
+  reorder and delete categories (#3201), so landing shows only category
+  changes an approver made. An editor can still create a page as Preview or Draft, so
   the Preview default from #3191 works for editors (decided in #3187 on
   25 Oct 2026).
 - `admin` can grant and revoke roles.
