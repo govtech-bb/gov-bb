@@ -492,6 +492,9 @@ importers:
 
   apps/api_v2:
     dependencies:
+      '@aws-sdk/client-sesv2':
+        specifier: ^3.1136.0
+        version: 3.1136.0
       '@fastify/cors':
         specifier: ^11.1.0
         version: 11.3.1
