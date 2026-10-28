@@ -36,11 +36,11 @@ import { rankActions } from "../../editor/core/actions";
 import { Button } from "../../ui/button";
 import { Calendar } from "../../ui/calendar";
 import { formatDay, parseDay, shortDate } from "../core/dates";
-import { PillInput, pill, pillChevron, pillIcon } from "../../ui/pill";
+import { Pill, pill, pillChevron, pillIcon } from "../../ui/pill";
 import { Menu } from "../../ui/menu";
 import { NativeSelect } from "../../ui/native-select";
 import { Popover } from "../../ui/popover";
-import { SelectOption, SelectPopup } from "../../ui/select";
+import { Select as KitSelect } from "../../ui/select";
 import {
   fieldList,
   fieldPopup,
@@ -431,13 +431,13 @@ export function Pick<T extends string>({
       }}
     >
       {iconOnly && current ? <Tip content={current.label}>{trigger}</Tip> : trigger}
-      <SelectPopup footer={footer}>
+      <KitSelect.Content footer={footer}>
         {items.map((i) => (
-          <SelectOption key={i.value} value={i.value} icon={i.icon}>
+          <KitSelect.Item key={i.value} value={i.value} icon={i.icon}>
             {i.label}
-          </SelectOption>
+          </KitSelect.Item>
         ))}
-      </SelectPopup>
+      </KitSelect.Content>
     </Select.Root>
   );
 }
@@ -489,13 +489,13 @@ export function OptionsPick({
           <CaretDown />
         </Select.Icon>
       </Select.Trigger>
-      <SelectPopup>
+      <KitSelect.Content>
         {options.map(([v, l]) => (
-          <SelectOption key={v} value={v}>
+          <KitSelect.Item key={v} value={v}>
             {l}
-          </SelectOption>
+          </KitSelect.Item>
         ))}
-      </SelectPopup>
+      </KitSelect.Content>
     </Select.Root>
   );
 }
@@ -603,11 +603,11 @@ export function FieldCombobox({
               <span className={pillValue}>{text}</span>
             </Combobox.Trigger>
           ) : (
-            <PillInput
+            <Pill.Input
               placeholder={placeholder}
               label={label}
               value={draft ?? text}
-              onChange={(next) => {
+              onValueChange={(next) => {
                 setDraft(next);
                 onType?.(next);
               }}
@@ -783,10 +783,10 @@ export function DatePick({
         <div className="py-2">
           <Calendar
             mode="single"
-            selected={day}
-            month={day}
+            value={day}
+            defaultMonth={day}
             weekStartsOn={1}
-            onDayClick={(picked) => {
+            onValueChange={(_, picked) => {
               if (day && isSameDay(day, picked)) return onChange("");
               onChange(formatDay(picked));
               close();

@@ -13,6 +13,7 @@ import {
   type PropsSingle,
 } from "react-day-picker";
 import { cn } from "../cn";
+import { Button } from "./button";
 import { hiddenControlFocus } from "./focus";
 
 export { addToRange } from "react-day-picker";
@@ -29,13 +30,28 @@ const locale: Locale = {
   },
 };
 
-export type CalendarProps = {
-  /** Range mode displays the selected interval; single and multiple modes display individual dates. */
-  mode: "single" | "multiple" | "range";
-  selected?: Date | Date[] | DateRange;
-  onDayClick: (day: Date) => void;
-  /** The month shown first, else today's (as react-day-picker, which doesn't go by the selection). */
-  month?: Date;
+// What a mode shows, and what a press on a day makes of it: react-day-picker's next value, then the day pressed, for a
+// caller that draws a value of its own, such as everything before a date as a range
+type Selection =
+  | {
+      mode: "single";
+      value?: Date;
+      onValueChange: (value: Date | undefined, day: Date) => void;
+    }
+  | {
+      mode: "multiple";
+      value?: Date[];
+      onValueChange: (value: Date[] | undefined, day: Date) => void;
+    }
+  | {
+      mode: "range";
+      value?: DateRange;
+      onValueChange: (value: DateRange | undefined, day: Date) => void;
+    };
+
+export type CalendarProps = Selection & {
+  /** The month shown first, else today's: react-day-picker doesn't go by the value. */
+  defaultMonth?: Date;
   /** 0 is Sunday; defaults to Monday. */
   weekStartsOn?: Weekday;
   disabled?: (day: Date) => boolean;
@@ -48,9 +64,6 @@ export type CalendarProps = {
 const [firstMonth, lastMonth] = [parseISO("0001-01-01"), parseISO("2199-12-31")];
 
 const daySize = "size-10 max-sm:size-9 max-[320px]:size-7.5";
-
-const navButton =
-  "flex aspect-square h-full cursor-pointer items-center justify-center rounded-sm border-0 bg-tint text-ink hover:bg-line disabled:cursor-default disabled:opacity-50";
 
 // The wrapper's CSS for DayPicker's parts, keeping react-day-picker's rdp-* names
 const classNames: Partial<ClassNames> = {
@@ -112,24 +125,20 @@ function Day({ day: _day, modifiers: m, className, ...props }: DayProps) {
 function Nav({ onPreviousClick, onNextClick, previousMonth, nextMonth, ...props }: NavProps) {
   return (
     <nav {...props}>
-      <button
-        type="button"
+      <Button
+        icon={<CaretLeft />}
         aria-label="Previous month"
         disabled={!previousMonth}
         onClick={onPreviousClick}
-        className={cn("rdp-button_previous", navButton)}
-      >
-        <CaretLeft className="size-4" />
-      </button>
-      <button
-        type="button"
+        className="rdp-button_previous"
+      />
+      <Button
+        icon={<CaretRight />}
         aria-label="Next month"
         disabled={!nextMonth}
         onClick={onNextClick}
-        className={cn("rdp-button_next", navButton)}
-      >
-        <CaretRight className="size-4" />
-      </button>
+        className="rdp-button_next"
+      />
     </nav>
   );
 }
@@ -143,38 +152,26 @@ const Chevron = ({ className }: ChevronProps) => (
 
 const components = { Chevron, Day, Nav };
 
-export function Calendar({
-  mode,
-  selected,
-  onDayClick,
-  month,
-  weekStartsOn = 1,
-  disabled,
-  startMonth,
-  endMonth,
-}: CalendarProps) {
-  // The caller keeps the selection: a pick only reports its day
-  const onSelect = (_selection: Date | Date[] | DateRange | undefined, day: Date) =>
-    onDayClick(day);
+/**
+ * A month of days to pick one, several or a range from. The caller keeps the value: `onValueChange` reports the next
+ * one and the day pressed.
+ */
+export function Calendar(props: CalendarProps) {
+  const { defaultMonth, weekStartsOn = 1, disabled, startMonth, endMonth } = props;
 
   let selection: PropsSingle | PropsMulti | PropsRange;
 
-  if (mode === "single")
-    selection = { mode, selected: selected instanceof Date ? selected : undefined, onSelect };
-  else if (mode === "multiple")
-    selection = { mode, selected: Array.isArray(selected) ? selected : undefined, onSelect };
-  else
-    selection = {
-      mode,
-      selected: selected instanceof Date || Array.isArray(selected) ? undefined : selected,
-      onSelect,
-    };
+  if (props.mode === "single")
+    selection = { mode: "single", selected: props.value, onSelect: props.onValueChange };
+  else if (props.mode === "multiple")
+    selection = { mode: "multiple", selected: props.value, onSelect: props.onValueChange };
+  else selection = { mode: "range", selected: props.value, onSelect: props.onValueChange };
 
   return (
     <DayPicker
       {...selection}
       captionLayout="dropdown"
-      defaultMonth={month}
+      defaultMonth={defaultMonth}
       startMonth={startMonth ?? firstMonth}
       endMonth={endMonth ?? lastMonth}
       weekStartsOn={weekStartsOn}

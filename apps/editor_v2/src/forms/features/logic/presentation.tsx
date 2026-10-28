@@ -25,7 +25,7 @@ import { cn } from "../../../cn";
 import { Button } from "../../../ui/button";
 import { Input } from "../../../ui/input";
 import { pill } from "../../../ui/pill";
-import { SelectOption, SelectPopup } from "../../../ui/select";
+import { Select as KitSelect } from "../../../ui/select";
 import { Tip } from "../../../ui/tooltip";
 import type { Action, CalculateOperator, Condition, LogicalOperator } from "../../core/logic";
 import { ageConditionError, conditionMode } from "../../core/logic-age";
@@ -225,13 +225,13 @@ export function Match({
           {value === "OR" ? "any" : "all"}
           <CaretDown />
         </Select.Trigger>
-        <SelectPopup>
+        <KitSelect.Content>
           {(["AND", "OR"] as const).map((op) => (
-            <SelectOption key={op} value={op}>
+            <KitSelect.Item key={op} value={op}>
               {op === "OR" ? "any" : "all"}
-            </SelectOption>
+            </KitSelect.Item>
           ))}
-        </SelectPopup>
+        </KitSelect.Content>
       </Select.Root>
       match
     </>

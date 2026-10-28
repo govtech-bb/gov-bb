@@ -90,6 +90,15 @@ import { Textarea } from "../ui/textarea";
 import { toast } from "../ui/toast";
 import { Tip } from "../ui/tooltip";
 import { TurnIntoMenu, TurnIntoSubmenu, type TurnIntoOption } from "../ui/turn-into";
+import { Equals, GreaterThan, LessThan, NotEquals, SealCheck, Sigma } from "@phosphor-icons/react";
+import { Calendar, type DateRange } from "../ui/calendar";
+import { AuthorCard, Caption } from "../ui/caption";
+import { Checklist, type ChecklistRow } from "../ui/checklist";
+import { Combobox } from "../ui/combobox";
+import { EditableList } from "../ui/editable-list";
+import { FieldChip, fieldChip } from "../ui/field-chip";
+import { Note } from "../ui/note";
+import { Pill } from "../ui/pill";
 
 export const Route = createFileRoute("/prototypes/components")({
   head: () => ({ meta: [{ title: "Components · Design preview · GovBB" }] }),
@@ -124,6 +133,17 @@ const sections = [
   ["toast", "Toast"],
   ["preview-sheet", "Preview sheet"],
   ["govbb", "GovBB controls"],
+  ["calendar", "Calendar"],
+  ["pill", "Pill"],
+  ["select-parts", "Select’s parts"],
+  ["combobox", "Combobox"],
+  ["menu-rows", "Switch and field rows"],
+  ["editable-list", "Editable list"],
+  ["checklist", "Checklist"],
+  ["caption", "Caption"],
+  ["author-card", "Author card"],
+  ["note", "Note"],
+  ["field-chip", "Field chip"],
 ] as const;
 
 /** Every shared component in its states, to try with the mouse and the keyboard. Nothing here is saved. */
@@ -1243,6 +1263,7 @@ function ComponentsPreview() {
             </p>
           </Specimen>
         </Section>
+        <AuthoringSections />
       </main>
     </div>
   );
@@ -2211,3 +2232,582 @@ const spaceSteps = [
   ["24", "Section to section, dialog padding", "w-6"],
   ["32", "Page sections", "w-8"],
 ] as const;
+
+/** The parts form authoring is built from, each in its states. */
+function AuthoringSections() {
+  return (
+    <>
+      <Section
+        id="calendar"
+        title="Calendar"
+        lead="A month to pick a day, several days or a range from."
+      >
+        <Specimen title="One day" note="Pressing the chosen day again clears it.">
+          <CalendarDemo />
+        </Specimen>
+        <Specimen title="A range" note="The first press starts it and the next ends it.">
+          <RangeDemo />
+        </Specimen>
+      </Section>
+
+      <Section
+        id="pill"
+        title="Pill"
+        lead="A word in a sentence that sets a value, as in a logic rule."
+      >
+        <Specimen title="Typed" note="As wide as what’s typed, and muted until then.">
+          <p className="max-w-sm text-16 leading-8">
+            Save the total as{" "}
+            <Pill>
+              <Pill.Icon>
+                <Sigma />
+              </Pill.Icon>
+              <Pill.Input placeholder="Field name" />
+            </Pill>
+          </p>
+        </Specimen>
+        <Specimen title="Opens a list" note="A pill can be the button that opens a popover.">
+          <DatePillDemo />
+        </Specimen>
+        <Specimen
+          wide
+          title="Quiet"
+          note="For a rule on the form’s own page: grey, with the same edge, and its placeholder still muted."
+        >
+          <p className="max-w-lg text-16 leading-8">
+            Show this page when{" "}
+            <Select.Root items={questions} defaultValue="age">
+              <Select.Trigger look="pill" tone="quiet" aria-label="Question" />
+              <Select.Content>{questionOptions}</Select.Content>
+            </Select.Root>{" "}
+            is over{" "}
+            <Pill tone="quiet">
+              <Pill.Input placeholder="Number" defaultValue="18" />
+            </Pill>{" "}
+            or{" "}
+            <Select.Root items={questions}>
+              <Select.Trigger
+                look="pill"
+                tone="quiet"
+                aria-label="Another question"
+                placeholder="Select a question"
+              />
+              <Select.Content>{questionOptions}</Select.Content>
+            </Select.Root>{" "}
+            is empty.
+          </p>
+        </Specimen>
+      </Section>
+
+      <Section
+        id="select-parts"
+        title="Select’s parts"
+        lead="Select, put together from its parts, for what the ready-made one doesn’t do."
+      >
+        <Specimen
+          title="A footer under the list"
+          note="It stays put while the list scrolls, for a setting about the choice."
+        >
+          <p className="text-16 leading-8">
+            When{" "}
+            <Select.Root items={questions}>
+              <Select.Trigger look="pill" aria-label="Question" placeholder="Select a question" />
+              <Select.Content
+                footer={
+                  <Field size="sm" label="Answer scope">
+                    <NativeSelect size="sm" defaultValue="current">
+                      <option value="current">This repeat</option>
+                      <option value="form">Any repeat</option>
+                    </NativeSelect>
+                  </Field>
+                }
+              >
+                <Select.Group label="Questions">{questionOptions}</Select.Group>
+              </Select.Content>
+            </Select.Root>{" "}
+            is answered
+          </p>
+        </Specimen>
+        <Specimen
+          title="The icon alone"
+          note="A tooltip names the choice, and screen readers hear its words."
+        >
+          <OperatorDemo />
+        </Specimen>
+      </Section>
+
+      <Section id="combobox" title="Combobox" lead="A select whose list can be searched.">
+        <Specimen title="Field" note="Its search box filters the groups as you type.">
+          <div className="w-full max-w-xs">
+            <Combobox.Root
+              items={fieldGroups}
+              itemToStringLabel={(field: GalleryField) => field.title}
+            >
+              <Combobox.Trigger aria-label="Answer from" placeholder="Choose a field" />
+              <Combobox.Content search="Search fields" empty="No fields match">
+                {fieldOptions}
+              </Combobox.Content>
+            </Combobox.Root>
+          </div>
+        </Specimen>
+        <Specimen title="Typed or picked" note="A value typed in, or a field picked and cleared.">
+          <ValuePickDemo />
+        </Specimen>
+      </Section>
+
+      <Section
+        id="menu-rows"
+        title="Switch and field rows"
+        lead="Settings in a menu, which take effect as they change."
+      >
+        <Specimen title="Switches" note="They slide, and turn white on the highlighted row.">
+          <Menu.Root>
+            <Menu.Trigger render={<Button iconEnd={<CaretDown />}>Question settings</Button>} />
+            <Menu.Content aria-label="Question settings">
+              <Menu.SwitchItem defaultChecked>Required</Menu.SwitchItem>
+              <Menu.SwitchItem>Hide question label</Menu.SwitchItem>
+              <Menu.SwitchItem icon={<EyeSlash />} disabled>
+                Hide on the summary page
+              </Menu.SwitchItem>
+            </Menu.Content>
+          </Menu.Root>
+        </Specimen>
+        <Specimen
+          title="Fields"
+          note="Typing stays in the field: letters and arrows don’t move the menu."
+        >
+          <Menu.Root>
+            <Menu.Trigger render={<Button iconEnd={<CaretDown />}>Answer settings</Button>} />
+            <Menu.Content aria-label="Answer settings" className="w-72">
+              <Menu.SwitchItem defaultChecked>Min characters</Menu.SwitchItem>
+              <Menu.Field label="At least" type="number" defaultValue="2" />
+              <Menu.Field
+                label="Internal alias"
+                hint="Names the question when its label is blank."
+                className="font-mono"
+              />
+            </Menu.Content>
+          </Menu.Root>
+        </Specimen>
+      </Section>
+
+      <Section
+        id="editable-list"
+        title="Editable list"
+        lead="Items to add, reorder and remove, such as a rule’s conditions."
+      >
+        <Specimen
+          wide
+          title="Conditions"
+          note="Each row’s ⋮ menu moves, copies or removes it. A move is announced, and Remove hands the focus on."
+        >
+          <EditableListDemo />
+        </Specimen>
+      </Section>
+
+      <Section
+        id="checklist"
+        title="Checklist"
+        lead="Rows to tick, as one Tab stop: arrows move, Space ticks."
+      >
+        <Specimen title="With a search" note="Arrow down from the search box into the rows.">
+          <ChecklistDemo />
+        </Specimen>
+        <Specimen
+          title="A tree"
+          note="A page is ticked when all its blocks are, and partly when some are. Right and Left open and close it."
+        >
+          <ChecklistTreeDemo />
+        </Specimen>
+      </Section>
+
+      <Section
+        id="caption"
+        title="Caption"
+        lead="What a part of the canvas only the author sees is."
+      >
+        <Specimen
+          wide
+          title="Over a preview"
+          note="An icon in GovBB’s blue, then a few words. DOM-built nodes take its class."
+        >
+          <div className="w-full max-w-md text-(length:--form-text) leading-[1.5]">
+            <Caption icon={<SealCheck />}>Preview</Caption>
+            <p className="pt-1">Your application has been submitted.</p>
+          </div>
+        </Specimen>
+      </Section>
+
+      <Section
+        id="author-card"
+        title="Author card"
+        lead="A block only the author sees, on the desk’s grey rather than the page."
+      >
+        <Specimen
+          wide
+          title="Calculated fields"
+          note="Its caption says what it is, and that the form won’t show it."
+        >
+          <AuthorCard icon={<Sigma />} title="Calculated fields" className="w-full max-w-lg">
+            <p className="pt-2 leading-8">
+              <Pill>
+                <Pill.Icon>
+                  <Sigma />
+                </Pill.Icon>
+                <Pill.Input placeholder="Field name" defaultValue="Total" />
+              </Pill>{" "}
+              = <FieldChip icon={<Hash />}>Price</FieldChip> ×{" "}
+              <FieldChip icon={<Hash />}>Quantity</FieldChip>
+            </p>
+          </AuthorCard>
+        </Specimen>
+      </Section>
+
+      <Section id="note" title="Note" lead="Small print that stands alone.">
+        <Specimen
+          wide
+          title="Tones"
+          note="Muted to explain, red for an error, and a warning in ink after its sign. A field’s own notes are its hint and error."
+        >
+          <div className="flex max-w-xs flex-col gap-3">
+            <Note>Used to identify this question when its label is blank.</Note>
+            <Note tone="error">Enter a whole number</Note>
+            <Note tone="warning">Check answers goes before the declaration</Note>
+          </div>
+        </Specimen>
+      </Section>
+
+      <Section
+        id="field-chip"
+        title="Field chip"
+        lead="A field’s answer, wherever it stands in for it."
+      >
+        <Specimen title="In a formula" note="With the field’s icon. A long name is cut short.">
+          <p className="text-14 leading-8">
+            = <FieldChip icon={<CalendarBlank />}>Date of birth</FieldChip> +{" "}
+            <FieldChip icon={<Hash />} className="max-w-32">
+              Years of residence in Barbados
+            </FieldChip>
+          </p>
+        </Specimen>
+        <Specimen title="In a sentence" note="Without an icon it wraps with the words around it.">
+          <p className="max-w-xs text-16 leading-normal">
+            Thank you, <span className={fieldChip}>@First name</span>. We’ll write to{" "}
+            <span className={fieldChip}>@Email address</span> within five working days.
+          </p>
+        </Specimen>
+      </Section>
+    </>
+  );
+}
+
+type GalleryField = { key: string; title: string; icon: ReactNode };
+
+type GalleryFieldGroup = { label: string; items: GalleryField[] };
+
+const fieldGroups: GalleryFieldGroup[] = [
+  {
+    label: "Input fields",
+    items: [
+      { key: "name", title: "Full name", icon: <TextT /> },
+      { key: "dob", title: "Date of birth", icon: <CalendarBlank /> },
+      { key: "email", title: "Email address", icon: <At /> },
+      { key: "phone", title: "Phone number", icon: <Phone /> },
+    ],
+  },
+  { label: "Calculated fields", items: [{ key: "total", title: "Total", icon: <Sigma /> }] },
+];
+
+const questions: SelectItem[] = [
+  { value: "age", label: "Age", icon: <Hash /> },
+  { value: "name", label: "Full name", icon: <TextT /> },
+  { value: "dob", label: "Date of birth", icon: <CalendarBlank /> },
+];
+
+const questionOptions = questions.map((item) => (
+  <Select.Item key={item.value} value={item.value} icon={item.icon}>
+    {item.label}
+  </Select.Item>
+));
+
+/** A combobox's group of fields, under its heading. */
+const fieldOptions = (fields: GalleryFieldGroup) => (
+  <Combobox.Group key={fields.label} label={fields.label} items={fields.items}>
+    {(field: GalleryField) => (
+      <Combobox.Item key={field.key} value={field} icon={field.icon}>
+        {field.title}
+      </Combobox.Item>
+    )}
+  </Combobox.Group>
+);
+
+const operators: SelectItem[] = [
+  { value: "eq", label: "is equal to", icon: <Equals /> },
+  { value: "ne", label: "is not equal to", icon: <NotEquals /> },
+  { value: "gt", label: "is more than", icon: <GreaterThan /> },
+  { value: "lt", label: "is less than", icon: <LessThan /> },
+];
+
+/** A day, picked and cleared. */
+function CalendarDemo() {
+  const [day, setDay] = useState<Date>();
+
+  return <Calendar mode="single" value={day} onValueChange={setDay} />;
+}
+
+function RangeDemo() {
+  const [range, setRange] = useState<DateRange>();
+
+  return <Calendar mode="range" value={range} onValueChange={setRange} />;
+}
+
+/** A pill that opens a calendar, showing the day picked. */
+function DatePillDemo() {
+  const [day, setDay] = useState<Date>();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <p className="text-16 leading-8">
+      Open from{" "}
+      <Popover.Root open={open} onOpenChange={setOpen}>
+        <Pill
+          render={<Popover.Trigger />}
+          aria-label="Date"
+          data-placeholder={day ? undefined : ""}
+        >
+          {day
+            ? day.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+            : "Date"}
+          <Pill.Caret />
+        </Pill>
+        <Popover.Content align="start" aria-label="Date" className="px-0 py-2">
+          <Calendar
+            mode="single"
+            value={day}
+            defaultMonth={day}
+            onValueChange={(next) => {
+              setDay(next);
+              setOpen(false);
+            }}
+          />
+        </Popover.Content>
+      </Popover.Root>
+    </p>
+  );
+}
+
+/** An operator shown by its icon alone, named in a tooltip. */
+function OperatorDemo() {
+  const [operator, setOperator] = useState("gt");
+  const chosen = operators.find((item) => item.value === operator);
+
+  return (
+    <p className="text-16 leading-8">
+      Age{" "}
+      <Select.Root
+        items={operators}
+        value={operator}
+        onValueChange={(next) => next && setOperator(next)}
+      >
+        <Tip content={chosen?.label}>
+          <Select.Trigger look="pill" iconOnly aria-label="Operator" />
+        </Tip>
+        <Select.Content>
+          {operators.map((item) => (
+            <Select.Item key={item.value} value={item.value} icon={item.icon}>
+              {item.label}
+            </Select.Item>
+          ))}
+        </Select.Content>
+      </Select.Root>{" "}
+      18
+    </p>
+  );
+}
+
+/**
+ * A value typed into a pill, or a field picked from its list in place of one: the list opens from the caret, or from
+ * the field once picked, and Clear goes back to typing.
+ */
+function ValuePickDemo() {
+  const [field, setField] = useState<GalleryField | null>(null);
+  const [typed, setTyped] = useState("");
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+
+  return (
+    <p className="text-16 leading-8">
+      Is over{" "}
+      <Combobox.Root
+        items={fieldGroups}
+        itemToStringLabel={(item: GalleryField) => item.title}
+        value={field}
+        onValueChange={setField}
+      >
+        <Pill ref={setAnchor}>
+          {field ? (
+            <Combobox.Trigger look="inline" icon={field.icon} aria-label="Value" />
+          ) : (
+            <>
+              <Pill.Input placeholder="Value" value={typed} onValueChange={setTyped} />
+              <Combobox.Trigger look="inline" aria-label="Value from a field">
+                {null}
+              </Combobox.Trigger>
+            </>
+          )}
+          <Combobox.Clear />
+        </Pill>
+        <Combobox.Content anchor={anchor} search="Search fields" empty="No fields match">
+          {fieldOptions}
+        </Combobox.Content>
+      </Combobox.Root>
+    </p>
+  );
+}
+
+type GalleryCondition = { id: number; question: string; value: string };
+
+/** A rule's conditions, each a sentence of pills, to add, move, copy and remove. */
+function EditableListDemo() {
+  const [conditions, setConditions] = useState<GalleryCondition[]>([
+    { id: 1, question: "age", value: "18" },
+    { id: 2, question: "name", value: "" },
+  ]);
+
+  const [next, setNext] = useState(3);
+
+  const change = (index: number, patch: Partial<GalleryCondition>) =>
+    setConditions(conditions.map((c, at) => (at === index ? { ...c, ...patch } : c)));
+
+  const add = (at: number, condition: Omit<GalleryCondition, "id">) => {
+    setConditions(conditions.toSpliced(at, 0, { ...condition, id: next }));
+    setNext(next + 1);
+  };
+
+  return (
+    <EditableList
+      className="w-full max-w-lg"
+      items={conditions}
+      label="Conditions"
+      itemLabel={(_, index) => `Condition ${index + 1}`}
+      itemKey={(condition) => condition.id}
+      onMove={(from, to) =>
+        setConditions(conditions.toSpliced(from, 1).toSpliced(to, 0, conditions[from]!))
+      }
+      onDuplicate={(index) => add(index + 1, conditions[index]!)}
+      onRemove={(index) => setConditions(conditions.toSpliced(index, 1))}
+      onAdd={() => add(conditions.length, { question: "", value: "" })}
+      addLabel="Add condition"
+    >
+      {(condition, index) => (
+        <p className="text-16 leading-8">
+          <Select.Root
+            items={questions}
+            value={condition.question || null}
+            onValueChange={(question) => question && change(index, { question })}
+          >
+            <Select.Trigger
+              look="pill"
+              aria-label={`Condition ${index + 1} question`}
+              placeholder="Select a question"
+            />
+            <Select.Content>{questionOptions}</Select.Content>
+          </Select.Root>{" "}
+          is{" "}
+          <Pill>
+            <Pill.Input
+              label={`Condition ${index + 1} value`}
+              placeholder="Value"
+              value={condition.value}
+              onValueChange={(value) => change(index, { value })}
+            />
+          </Pill>
+        </p>
+      )}
+    </EditableList>
+  );
+}
+
+const formBlocks = [
+  { key: "name", label: "Full name", icon: <TextT /> },
+  { key: "dob", label: "Date of birth", icon: <CalendarBlank /> },
+  { key: "email", label: "Email address", icon: <At /> },
+  { key: "phone", label: "Phone number", icon: <Phone /> },
+  { key: "age", label: "Age", icon: <Hash /> },
+];
+
+/** Blocks to show, found by a search the caller runs. */
+function ChecklistDemo() {
+  const [query, setQuery] = useState("");
+  const [ticked, setTicked] = useState(new Set(["dob"]));
+  const words = query.trim().toLowerCase();
+
+  return (
+    <Checklist
+      label="Blocks to show"
+      className="max-h-64 w-full max-w-xs rounded-sm shadow-input"
+      query={query}
+      onQueryChange={setQuery}
+      searchLabel="Search blocks"
+      rows={formBlocks.flatMap((block) =>
+        block.label.toLowerCase().includes(words)
+          ? [{ ...block, checked: ticked.has(block.key) }]
+          : [],
+      )}
+      onCheckedChange={(key, checked) =>
+        setTicked(new Set(checked ? [...ticked, key] : [...ticked].filter((at) => at !== key)))
+      }
+    />
+  );
+}
+
+const pages = [
+  { key: "about", label: "About you", blocks: formBlocks.slice(0, 3) },
+  { key: "contact", label: "Contact details", blocks: formBlocks.slice(3) },
+];
+
+/** Pages and their blocks, a page ticked when all its blocks are and partly when some are. */
+function ChecklistTreeDemo() {
+  const [ticked, setTicked] = useState(new Set(["phone"]));
+  const [open, setOpen] = useState(new Set(["contact"]));
+
+  const tick = (keys: string[], checked: boolean) =>
+    setTicked(
+      new Set(checked ? [...ticked, ...keys] : [...ticked].filter((key) => !keys.includes(key))),
+    );
+
+  const rows = pages.flatMap((page): ChecklistRow[] => {
+    const count = page.blocks.filter((block) => ticked.has(block.key)).length;
+
+    const head: ChecklistRow = {
+      key: page.key,
+      label: page.label,
+      depth: 0,
+      expanded: open.has(page.key),
+      checked: count === page.blocks.length ? true : count ? "mixed" : false,
+    };
+
+    return open.has(page.key)
+      ? [
+          head,
+          ...page.blocks.map((block) => ({ ...block, depth: 1, checked: ticked.has(block.key) })),
+        ]
+      : [head];
+  });
+
+  return (
+    <Checklist
+      label="Blocks to show"
+      className="w-full max-w-xs rounded-sm shadow-input"
+      rows={rows}
+      onCheckedChange={(key, checked) =>
+        tick(
+          pages.find((page) => page.key === key)?.blocks.map((block) => block.key) ?? [key],
+          checked,
+        )
+      }
+      onExpandedChange={(key, expanded) =>
+        setOpen(new Set(expanded ? [...open, key] : [...open].filter((at) => at !== key)))
+      }
+    />
+  );
+}

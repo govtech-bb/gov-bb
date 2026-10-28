@@ -1,7 +1,7 @@
 import { $getNodeByKey, HISTORY_PUSH_TAG, SKIP_DOM_SELECTION_TAG, type NodeKey } from "lexical";
 import { Sigma } from "@phosphor-icons/react";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
-import { pill, pillIcon, PillInput } from "../../../ui/pill";
+import { Pill, pill, pillIcon } from "../../../ui/pill";
 import { Button } from "../../../ui/button";
 import { Checkbox } from "../../../ui/checkbox";
 import { $native } from "../../editor/native-state";
@@ -61,7 +61,7 @@ export function NativeCalculatedField({
             <span className={pillIcon}>
               <Sigma />
             </span>
-            <PillInput
+            <Pill.Input
               label="Name"
               placeholder={
                 block.key ||
@@ -70,7 +70,7 @@ export function NativeCalculatedField({
                   : block.id)
               }
               value={block.name ?? ""}
-              onChange={(name) => save({ name: name || undefined })}
+              onValueChange={(name) => save({ name: name || undefined })}
             />
           </span>
           <Pick
