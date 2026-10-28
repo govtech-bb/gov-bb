@@ -956,7 +956,7 @@ export interface paths {
         };
         /**
          * Save a page
-         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row, or the page's pending revision, has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). Making a page public is refused (403) to an approver who changed its content since it was last public, in this save or before: another approver makes it public. A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view changes only its `visibility`: the other fields sent are ignored, the live content stays, and a draft revision is discarded. Returns the page as the editor now works on it. A save to a page whose revision is waiting for review is refused (409 `under_review`) until an approver publishes or rejects it.
+         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row, or the page's pending revision, has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). Making a page public is refused (403) to an approver who changed its content since it was last public, in this save or before: another approver makes it public. A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view changes only its `visibility`: the other fields sent are ignored, the live content stays, and the page's open revision is discarded: a draft is dropped, and one waiting for review is closed as `discarded`, which the page's history records. A save to a page whose revision is waiting for review updates that revision, which stays waiting; the saver joins its `contributors`, so may not approve it. Such a save needs `if-updated-at` (428 without it). Returns the page as the editor now works on it.
          */
         put: {
             parameters: {
@@ -1120,7 +1120,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": ({
+                        "application/json": {
                             /** @enum {string} */
                             error: "conflict";
                             message: string;
@@ -1128,10 +1128,6 @@ export interface paths {
                             documentId: string;
                         } & {
                             [key: string]: unknown;
-                        }) | {
-                            /** @enum {string} */
-                            error: "under_review" | "not_submitted";
-                            message: string;
                         };
                     };
                 };
@@ -1149,6 +1145,20 @@ export interface paths {
                                 field: string;
                                 message: string;
                             }[];
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
                         } & {
                             [key: string]: unknown;
                         };
@@ -1337,7 +1347,7 @@ export interface paths {
                             /** Format: uuid */
                             page_id: string;
                             /** @enum {string} */
-                            status: "draft" | "submitted" | "rejected" | "published";
+                            status: "draft" | "submitted" | "rejected" | "published" | "discarded";
                             /** @description The page as the change would make it. */
                             fields: {
                                 /** @description The site's routing key. */
@@ -3024,7 +3034,7 @@ export interface paths {
         put?: never;
         /**
          * Submit a page's draft revision for review
-         * @description Needs the editor role (403 otherwise). Records the submitter, who may not then approve it. 404 when the page has no draft revision; 409 `under_review` when it is already submitted, or `conflict` when the draft has been saved since `if-updated-at`. Saving the page is refused while it waits. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same `updated_at`, and the rejected one keeps its comment. The copy's `contributors` gain the rejected round's submitter, who may not approve it either.
+         * @description Needs the editor role (403 otherwise). Records the submitter, who may not then approve it. 404 when the page has no draft revision; 409 `under_review` when it is already submitted, or `conflict` when the draft has been saved since `if-updated-at`. Saves made while it waits update it, and it keeps waiting. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same `updated_at`, and the rejected one keeps its comment. The copy's `contributors` gain the rejected round's submitter, who may not approve it either.
          */
         post: {
             parameters: {
@@ -3052,7 +3062,7 @@ export interface paths {
                             /** Format: uuid */
                             page_id: string;
                             /** @enum {string} */
-                            status: "draft" | "submitted" | "rejected" | "published";
+                            status: "draft" | "submitted" | "rejected" | "published" | "discarded";
                             /** @description The page as the change would make it. */
                             fields: {
                                 /** @description The site's routing key. */
@@ -3275,7 +3285,7 @@ export interface paths {
                             /** Format: uuid */
                             page_id: string;
                             /** @enum {string} */
-                            status: "draft" | "submitted" | "rejected" | "published";
+                            status: "draft" | "submitted" | "rejected" | "published" | "discarded";
                             /** @description The page as the change would make it. */
                             fields: {
                                 /** @description The site's routing key. */

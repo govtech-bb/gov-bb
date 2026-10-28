@@ -58,7 +58,11 @@ so a revocation takes effect on the user's next request.
 
 **An approver can't approve their own change.** The person who approves or
 publishes a revision must be someone other than anyone who submitted it or
-changed its content.
+changed its content. That includes saves made while it waits for review:
+they update the waiting revision and add the saver to its contributors
+(#3203). Each save moves the revision's version, and an approver must name
+the version they reviewed, so they can only publish the version they last
+loaded.
 
 **Changing visibility, deleting a public page and changing categories are
 direct approver actions** (#3201). There is no request that waits for a
@@ -73,6 +77,10 @@ page as Public. Another approver makes it public. api_v2 works out who
 changed the content from the page's `change_events`, not from a new table.
 This closes the gap this ADR first accepted, where an approver could take a
 public page private, edit it and make it public again without review.
+
+Taking a public page out of public view while a change waits for review
+discards that change, and the page's history records the discard (#3203).
+The change's content never reaches the live page.
 
 **Roles are enforced in api_v2**, not only in editor_v2. editor_v2 hides or
 disables what a user's roles don't allow, but the API answers 403 and leaves
