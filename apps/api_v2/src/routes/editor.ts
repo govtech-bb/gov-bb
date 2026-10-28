@@ -271,6 +271,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
         case "PageRejected":
           return reply.status(422).send(rejected(created.error));
         case "NotApprover":
+        case "SelfApproval":
           return reply
             .status(403)
             .send({ error: "forbidden", message: created.error.message });

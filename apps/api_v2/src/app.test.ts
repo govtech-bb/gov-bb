@@ -24,6 +24,7 @@ import {
   createTestApp,
   createTestDb,
   createTestServices,
+  SELF_APPROVAL,
   expectOk,
   TEST_EMPLOYEE,
   TEST_HEADERS,
@@ -40,8 +41,10 @@ let services: ReturnType<typeof createTestServices>;
 
 beforeEach(async () => {
   ({ db, close } = await createTestDb());
-  services = createTestServices(db);
-  app = await createTestApp(db);
+  // Review has tests of its own (review.test.ts); here an approver's page
+  // goes public as they write it.
+  services = createTestServices(db, SELF_APPROVAL);
+  app = await createTestApp(db, SELF_APPROVAL);
   await app.ready();
 });
 

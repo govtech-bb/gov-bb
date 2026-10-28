@@ -106,15 +106,25 @@ export async function createEmptyDb(): Promise<TestDb> {
   return createDatabase(inject("templateDatabase").replace(/template$/, ""));
 }
 
+/**
+ * Content services that let an approver make public what they wrote, as
+ * AUTH_BYPASS does: for setting up fixtures, and for tests about something
+ * other than review (ADR 0079).
+ */
+export const SELF_APPROVAL = { allowSelfApproval: true } as const;
+
 /** Compose the content services over a test database, as main.ts does over its pool. */
-export function createTestServices(db: Database) {
+export function createTestServices(
+  db: Database,
+  review: ConstructorParameters<typeof PageEditing>[2] = {
+    allowSelfApproval: false,
+  },
+) {
   const pages = new PostgresPages(db);
   return {
     resolution: new PageResolution(pages),
     navigation: new SiteNavigation(pages),
-    editing: new PageEditing(pages, () => new Date(), {
-      allowSelfApproval: false,
-    }),
+    editing: new PageEditing(pages, () => new Date(), review),
     index: new EditorIndex(pages),
     categories: new CategoryEditing(pages, () => new Date()),
   };
@@ -177,12 +187,16 @@ export async function createTestApp(
     Pick<AppOptions, "auth" | "config" | "logger" | "previewSecret">
   > & {
     sessions?: SessionReader;
+    /** Let an approver make public what they changed, as AUTH_BYPASS does. */
+    allowSelfApproval?: boolean;
   } = {},
 ) {
   await registerTestEmployees(db);
   const roles = new PostgresRoles(db);
   return buildApp({
-    ...createTestServices(db),
+    ...createTestServices(db, {
+      allowSelfApproval: options.allowSelfApproval ?? false,
+    }),
     access: new EditorAccess(
       options.sessions ?? { findSession: async () => ok(TEST_EMPLOYEE) },
       roles,
