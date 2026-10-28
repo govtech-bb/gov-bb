@@ -18,11 +18,18 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
   let server: Server;
   let database: string;
   let cookie: string;
+  // A second approver, who makes public the pages the first one writes (#3201).
+  let reviewer: string;
   beforeAll(async () => {
     database = await createScratchDatabase();
     server = await startServer({ DB_NAME: database, SEED: "false" });
     // An editor and approver, since these sessions create and delete public pages.
     cookie = (
+      await createEmployeeSession(database, server.url, {
+        roles: ["editor", "approver"],
+      })
+    ).cookie;
+    reviewer = (
       await createEmployeeSession(database, server.url, {
         roles: ["editor", "approver"],
       })
@@ -33,11 +40,17 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
     if (database) await dropScratchDatabase(database);
   });
 
-  const send = (method: string, path: string, body?: object, stamp?: string) =>
+  const send = (
+    method: string,
+    path: string,
+    body?: object,
+    stamp?: string,
+    as = cookie,
+  ) =>
     fetch(server.url + path, {
       method,
       headers: {
-        cookie,
+        cookie: as,
         origin: AUTH_ENV.EDITOR_ORIGIN,
         ...(body ? { "content-type": "application/json" } : {}),
         ...(stamp ? { "if-updated-at": stamp } : {}),
@@ -156,17 +169,29 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
       });
     }
     for (const visibility of ["public", "draft"]) {
+      const page = {
+        url: `/socket-public/${visibility}`,
+        category_id: current.id,
+        title: visibility,
+        visibility,
+        body_markdown: "Content",
+        description: null,
+        form_id: null,
+        frontmatter: {},
+      };
+      // An approver can't make public a page they wrote, so another does.
+      const created = await send("POST", "/pages", {
+        ...page,
+        visibility: "preview",
+      });
+      expect(created.status).toBe(201);
+      const { id, updated_at } = (await created.json()) as {
+        id: string;
+        updated_at: string;
+      };
       expect(
-        (
-          await send("POST", "/pages", {
-            url: `/socket-public/${visibility}`,
-            category_id: current.id,
-            title: visibility,
-            visibility,
-            body_markdown: "Content",
-          })
-        ).status,
-      ).toBe(201);
+        (await send("PUT", `/pages/${id}`, page, updated_at, reviewer)).status,
+      ).toBe(200);
     }
     const blocked = await send(
       "DELETE",

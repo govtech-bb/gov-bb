@@ -140,7 +140,7 @@ export interface paths {
         put?: never;
         /**
          * Create a page
-         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Creating a page as `public` needs the approver role (403 otherwise).
+         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Creating a page as `public` needs the approver role, and an approver can't make a page they wrote public (403): create it as `preview` or `draft`, and another approver makes it public.
          */
         post: {
             parameters: {
@@ -1082,7 +1082,7 @@ export interface paths {
         };
         /**
          * Save a page
-         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row, or the page's pending revision, has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view changes only its `visibility`: the other fields sent are ignored, the live content stays, and the page's open revision is discarded: a draft is dropped, and one waiting for review is closed as `discarded`, which the page's history records. A save to a page whose revision is waiting for review updates that revision, which stays waiting; the saver joins its `contributors`, so may not approve it. Such a save needs `if-updated-at` (428 without it). Returns the page as the editor now works on it.
+         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row, or the page's pending revision, has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). Making a page public is refused (403) to an approver who changed its content since it was last public, in this save or before: another approver makes it public. A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view changes only its `visibility`: the other fields sent are ignored, the live content stays, and the page's open revision is discarded: a draft is dropped, and one waiting for review is closed as `discarded`, which the page's history records. A save to a page whose revision is waiting for review updates that revision, which stays waiting; the saver joins its `contributors`, so may not approve it. Such a save needs `if-updated-at` (428 without it). Returns the page as the editor now works on it.
          */
         put: {
             parameters: {
@@ -2155,7 +2155,7 @@ export interface paths {
         put?: never;
         /**
          * Append a category or subcategory
-         * @description Needs the editor role (403 otherwise).
+         * @description Needs the approver role (403 otherwise), so landing shows only category changes an approver made.
          */
         post: {
             parameters: {
@@ -2306,7 +2306,7 @@ export interface paths {
         get?: never;
         /**
          * Edit a category using its last-read version
-         * @description Needs the editor role (403 otherwise).
+         * @description Needs the approver role (403 otherwise), so landing shows only category changes an approver made.
          */
         put: {
             parameters: {
@@ -2475,7 +2475,7 @@ export interface paths {
         post?: never;
         /**
          * Delete an empty, unanchored category using its last-read version
-         * @description Needs the editor role (403 otherwise).
+         * @description Needs the approver role (403 otherwise), so landing shows only category changes an approver made.
          */
         delete: {
             parameters: {
@@ -2620,7 +2620,7 @@ export interface paths {
         get?: never;
         /**
          * Atomically reorder a complete, versioned sibling snapshot
-         * @description Needs the editor role (403 otherwise).
+         * @description Needs the approver role (403 otherwise), so landing shows only category changes an approver made.
          */
         put: {
             parameters: {

@@ -150,6 +150,10 @@ export interface PageRecords {
     pageId: PageId,
     chunks: readonly SearchChunk[],
   ): Promise<Result<void, ContentStoreUnavailable>>;
+  /** Who changed a page's content since it was last public, or ever when it never was. */
+  changedSincePublic(
+    id: PageId,
+  ): Promise<Result<readonly string[], ContentStoreUnavailable>>;
   /** Delete a page, returning it as it stood, or null when there was none; one with sub-pages is refused. */
   remove(
     id: PageId,
@@ -168,7 +172,9 @@ export interface PageRecords {
  * the live page as it is (#3198). An editor submits the revision for review,
  * and an approver who neither changed nor submitted it rejects it or
  * publishes it to the live page (#3199). Saves to a revision waiting for
- * review update it, and it keeps waiting (#3203).
+ * review update it, and it keeps waiting (#3203). Making a page public is a
+ * direct approver action, by an approver who hasn't changed its content
+ * since it was last public, nor creates it public (#3201).
  */
 export class PageEditing {
   /**
@@ -210,16 +216,26 @@ export class PageEditing {
     return ok(revision.value && viewOf(live.value, revision.value));
   }
 
-  /** Create a page where it belongs, stamping publication when it starts public, and index it. */
+  /**
+   * Create a page where it belongs, stamping publication when it starts
+   * public, and index it. Only an approver creates one public, and not one
+   * they wrote, which is every one, unless self-approval is allowed.
+   */
   create(
     page: NewPage,
     actor: Employee,
   ): Promise<
-    Result<PageDocument, PageRejected | NotApprover | ContentStoreUnavailable>
+    Result<
+      PageDocument,
+      PageRejected | NotApprover | SelfApproval | ContentStoreUnavailable
+    >
   > {
     return this.records.atomically(actor.id, async (records) => {
       if (page.visibility === "public" && !actor.roles.includes("approver"))
         return err(new NotApprover());
+      // Its author wrote all of it, so another approver makes it public.
+      if (page.visibility === "public" && !this.review.allowSelfApproval)
+        return err(new SelfApproval(CREATED_PUBLIC));
       const available = await records.checkPageUrl(page.url);
       if (!available.ok) return available;
       const placed = await place(records, page.id, withDefaults(page));
@@ -259,6 +275,10 @@ export class PageEditing {
    * dropped, and one waiting for review is marked `discarded`, which the
    * page's history records (#3203). A rejected revision is retired by the
    * live page moving on.
+   *
+   * Making a page public approves its content, so an approver who changed
+   * it since it was last public, in this save or before, is refused: another
+   * approver makes it public (#3201).
    */
   save(
     id: PageId,
@@ -273,6 +293,7 @@ export class PageEditing {
       | PageConflict
       | PageVersionRequired
       | NotApprover
+      | SelfApproval
       | ContentStoreUnavailable
     >
   > {
@@ -363,6 +384,20 @@ export class PageEditing {
         return proposed.ok
           ? ok(workingCopy(current, proposed.value))
           : proposed;
+      }
+      if (fields.visibility === "public" && !this.review.allowSelfApproval) {
+        // Making it public approves every change since it was last public,
+        // this save's included, so none of them may be the approver's.
+        if (
+          changesOf(current, placed.value).some(
+            ({ field }) => field !== "visibility",
+          )
+        )
+          return err(new SelfApproval(CHANGED_SINCE_PUBLIC));
+        const changers = await records.changedSincePublic(id);
+        if (!changers.ok) return changers;
+        if (changers.value.includes(actor.id))
+          return err(new SelfApproval(CHANGED_SINCE_PUBLIC));
       }
       // Only a public page has a revision, so there is none to close here.
       const saved = await writeLive(records, current, placed.value, now);
@@ -556,6 +591,14 @@ export class PageEditing {
     });
   }
 }
+
+/** Why an approver can't create a page as Public (ADR 0079, #3201). */
+const CREATED_PUBLIC =
+  "Another approver needs to make a page you wrote public. Create it as Preview or Draft.";
+
+/** Why an approver can't make public a page they changed (ADR 0079, #3201). */
+const CHANGED_SINCE_PUBLIC =
+  "You changed this page since it was last public, so another approver needs to make it public.";
 
 /** A revision with what it changes against the live page. */
 function viewOf(live: PageDocument, revision: PendingRevision): RevisionView {
