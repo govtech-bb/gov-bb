@@ -175,6 +175,14 @@ const button = (name) => page.getByRole("button", { name, exact: true });
 
 const focused = (locator) => locator.evaluate((node) => node === document.activeElement);
 
+// Menus and dialogs fade out before they hand the focus back, so a check waits for it to land
+const waitForFocus = (name) =>
+  page.waitForFunction((name) => {
+    const active = document.activeElement;
+
+    return (active?.getAttribute("aria-label") ?? active?.textContent?.trim()) === name;
+  }, name);
+
 const menu = page.getByRole("navigation", { name: "Menu", exact: true });
 
 const categoryName = "tbody tr td:first-child .font-semibold > span:first-child";
@@ -308,12 +316,12 @@ try {
   await page.getByRole("menuitem", { name: "Move up", exact: true }).focus();
   await page.keyboard.press("Enter");
   await waitForOrder(["Health", "Schools", "Youth", LONG, "Sport", "Housing"]);
-  assert.equal(await focused(button(`Actions for ${LONG}`)), true);
+  await waitForFocus(`Actions for ${LONG}`);
   await button("Actions for Housing").click();
   await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
   await button("Delete category").click();
   await button("Actions for Housing").waitFor({ state: "detached" });
-  assert.equal(await focused(button("Add category")), true);
+  await waitForFocus("Add category");
   assert.equal(await fitsWidth(), true);
 
   // Every change was the content API's, so a reload shows them all

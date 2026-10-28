@@ -172,6 +172,9 @@ function EditablePageSlashMenu() {
             <Popover.Content
               aria-label="Insert page content"
               anchor={anchor.current}
+              // Inside Lexical's anchor, which reads its options from there
+              container={anchor.current}
+              role="presentation"
               side={side}
               align="start"
               sideOffset={4}

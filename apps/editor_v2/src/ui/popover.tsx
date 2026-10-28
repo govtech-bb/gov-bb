@@ -42,6 +42,10 @@ type ContentProps = Pick<
   PopupName & {
     /** For the popup: its width, or less padding for content that brings its own. */
     className?: string;
+    /** Where its portal goes, when not the page's body: such as a typeahead's own anchor, which the editor owns. */
+    container?: HTMLElement | null;
+    /** A dialog unless said otherwise: `presentation` for a list the focus never enters, such as a typeahead's. */
+    role?: "dialog" | "presentation";
     children: ReactNode;
   };
 
@@ -57,11 +61,13 @@ function PopoverContent({
   "aria-label": label,
   "aria-labelledby": labelledBy,
   className,
+  container,
+  role,
   children,
   ...placement
 }: ContentProps) {
   return (
-    <BasePopover.Portal>
+    <BasePopover.Portal container={container ?? undefined}>
       <BasePopover.Positioner
         sideOffset={6}
         collisionPadding={8}
@@ -69,6 +75,7 @@ function PopoverContent({
         className="z-popup outline-none"
       >
         <BasePopover.Popup
+          role={role ?? "dialog"}
           initialFocus={initialFocus}
           finalFocus={finalFocus}
           onClick={onClick}

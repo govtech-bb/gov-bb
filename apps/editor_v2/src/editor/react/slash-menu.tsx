@@ -199,6 +199,9 @@ export function SlashMenu() {
               <Popover.Content
                 aria-label="Insert block"
                 anchor={anchor.current}
+                // Inside Lexical's anchor, which reads its options from there
+                container={anchor.current}
+                role="presentation"
                 side={side}
                 align="start"
                 sideOffset={4}
