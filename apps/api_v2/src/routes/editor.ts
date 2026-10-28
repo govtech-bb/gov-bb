@@ -1,7 +1,7 @@
 import type { FastifyRequest } from "fastify";
 import type { ICategoryEditing } from "../services/category-editing";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
-import type { Employee } from "../modules/auth";
+import type { Employee, Role } from "../modules/auth";
 import { Redacted } from "../modules/redacted";
 import type { EmployeeGate, RoleRecords } from "../services/editor-access";
 import type { EditorIndex } from "../services/editor-index";
@@ -11,7 +11,25 @@ import { IF_UPDATED_AT, SCHEMAS } from "./contracts";
 import { EDITOR_READ, rejected, storageFailed } from "./responses";
 import { editorRoleRoutes } from "./roles";
 
-/** Authenticated editor operations, behind an employee session and the editor's Origin. */
+declare module "fastify" {
+  interface FastifyContextConfig {
+    /**
+     * The role a route needs (ADR 0079). Every write route names one; the
+     * editor scope refuses a write that names none, so a new route fails
+     * closed rather than open.
+     */
+    role?: Role;
+  }
+}
+
+/** Why an employee without the role a route needs is refused. */
+const NEEDS_ROLE: Readonly<Record<Role, string>> = {
+  editor: "You need the editor role to make changes. Ask an admin to grant it.",
+  approver: "Only approvers can do this.",
+  admin: "Only admins can see or change who has which role.",
+};
+
+/** Authenticated editor operations, behind an employee session, the editor's Origin and the route's role. */
 export const editorRoutes: FastifyPluginAsyncZod<{
   editing: PageEditing;
   index: EditorIndex;
@@ -60,6 +78,18 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     ) {
       return reply.status(403).send({ error: "forbidden" });
     }
+    const { role } = request.routeOptions.config;
+    // Fail closed: a write route that names no role is a bug, which
+    // route-auth.test.ts catches before it ships.
+    if (role === undefined && !["GET", "HEAD"].includes(request.method))
+      return reply.status(403).send({
+        error: "forbidden",
+        message: "Nobody can make this change: its route names no role.",
+      });
+    if (role !== undefined && !employee.value.roles.includes(role))
+      return reply
+        .status(403)
+        .send({ error: "forbidden", message: NEEDS_ROLE[role] });
     request.setDecorator("employee", employee.value);
   });
 
@@ -142,6 +172,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     method: "POST",
     url: "/pages",
     schema: SCHEMAS.createPage,
+    config: { role: "editor" },
     handler: async (request, reply) => {
       const created = await editing.create(request.body, actor(request));
       if (created.ok) return reply.status(201).send(created.value);
@@ -167,6 +198,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     method: "PUT",
     url: "/pages/:id",
     schema: SCHEMAS.savePage,
+    config: { role: "editor" },
     handler: async (request, reply) => {
       const saved = await editing.save(
         request.params.id,
@@ -207,6 +239,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     method: "DELETE",
     url: "/pages/:id",
     schema: SCHEMAS.deletePage,
+    config: { role: "editor" },
     handler: async (request, reply) => {
       const deleted = await editing.delete(request.params.id, actor(request));
       if (deleted.ok) return reply.status(204).send();

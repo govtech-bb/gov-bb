@@ -281,7 +281,8 @@ export async function createEmployeeSession(
         options.emailVerified ?? true,
       ],
     );
-    for (const role of options.roles ?? [])
+    // Every employee is an editor unless a test says otherwise, as at a real first sign-in.
+    for (const role of options.roles ?? ["editor"])
       await pool.query(
         "insert into user_roles (user_id, role) values ($1, $2)",
         [userId, role],

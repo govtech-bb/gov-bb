@@ -11,12 +11,14 @@ import {
   vi,
 } from "vitest";
 import { parseConfig, type AuthConfig } from "../config";
+import { createTestDb } from "../test-db";
 import { betterAuthOptions } from "./better-auth";
 
 const pool = new Pool();
-const authWith = (config: AuthConfig) =>
-  betterAuth(betterAuthOptions(pool, config, pino({ enabled: false })));
+const authWith = (config: AuthConfig, on = pool) =>
+  betterAuth(betterAuthOptions(on, config, pino({ enabled: false })));
 let auth: ReturnType<typeof authWith>;
+let authConfig: AuthConfig;
 
 beforeAll(() => {
   const config = parseConfig({
@@ -27,7 +29,8 @@ beforeAll(() => {
     GITHUB_CLIENT_SECRET: "test-client-secret",
   });
   if (!config.ok) throw config.error;
-  auth = authWith(config.value.auth);
+  authConfig = config.value.auth;
+  auth = authWith(authConfig);
 });
 afterEach(() => vi.unstubAllGlobals());
 afterAll(() => pool.end());
@@ -128,5 +131,43 @@ describe("GitHub provider boundary", () => {
     expect(context.socialProviders.map((provider) => provider.id)).toEqual([
       "github",
     ]);
+  });
+});
+
+describe("a new user", () => {
+  it("is made an editor when created, and only then, so a revocation outlasts later sign-ins", async () => {
+    const test = await createTestDb();
+    try {
+      const { databaseHooks } = authWith(authConfig, test.pool).options;
+      // Creating a user runs this hook; a returning sign-in creates none.
+      expect(Object.keys(databaseHooks)).toEqual(["user", "account"]);
+      expect(Object.keys(databaseHooks.user)).toEqual(["create"]);
+      expect(Object.keys(databaseHooks.user.create)).toEqual(["after"]);
+      const user = {
+        id: "new-employee",
+        name: "New employee",
+        email: "new@govtech.bb",
+        emailVerified: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      await test.pool.query(
+        'insert into auth_user (id, name, email, "emailVerified") values ($1, $2, $3, true)',
+        [user.id, user.name, user.email],
+      );
+
+      await databaseHooks.user.create.after(user);
+
+      expect(
+        (
+          await test.pool.query(
+            "select role, granted_by from user_roles where user_id = $1",
+            [user.id],
+          )
+        ).rows,
+      ).toEqual([{ role: "editor", granted_by: null }]);
+    } finally {
+      await test.close();
+    }
   });
 });

@@ -140,7 +140,7 @@ export interface paths {
         put?: never;
         /**
          * Create a page
-         * @description Requires an employee session and the editor's Origin header. Creating a page as `public` needs the approver role (403 otherwise).
+         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Creating a page as `public` needs the approver role (403 otherwise).
          */
         post: {
             parameters: {
@@ -942,7 +942,7 @@ export interface paths {
         };
         /**
          * Save a page
-         * @description Requires an employee session and the editor's Origin header. Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise).
+         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise).
          */
         put: {
             parameters: {
@@ -1162,7 +1162,7 @@ export interface paths {
         post?: never;
         /**
          * Delete a page
-         * @description Requires an employee session and the editor's Origin header. A page with sub-pages is refused (422) until they are moved or deleted. Deleting a `public` page needs the approver role (403 otherwise).
+         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). A page with sub-pages is refused (422) until they are moved or deleted. Deleting a `public` page needs the approver role (403 otherwise).
          */
         delete: {
             parameters: {
@@ -1666,7 +1666,10 @@ export interface paths {
             };
         };
         put?: never;
-        /** Append a category or subcategory */
+        /**
+         * Append a category or subcategory
+         * @description Needs the editor role (403 otherwise).
+         */
         post: {
             parameters: {
                 query?: never;
@@ -1814,7 +1817,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Edit a category using its last-read version */
+        /**
+         * Edit a category using its last-read version
+         * @description Needs the editor role (403 otherwise).
+         */
         put: {
             parameters: {
                 query?: never;
@@ -1980,7 +1986,10 @@ export interface paths {
             };
         };
         post?: never;
-        /** Delete an empty, unanchored category using its last-read version */
+        /**
+         * Delete an empty, unanchored category using its last-read version
+         * @description Needs the editor role (403 otherwise).
+         */
         delete: {
             parameters: {
                 query?: never;
@@ -2122,7 +2131,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Atomically reorder a complete, versioned sibling snapshot */
+        /**
+         * Atomically reorder a complete, versioned sibling snapshot
+         * @description Needs the editor role (403 otherwise).
+         */
         put: {
             parameters: {
                 query?: never;

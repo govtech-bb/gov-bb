@@ -37,6 +37,7 @@ export const editorRoleRoutes: FastifyPluginAsyncZod<{
     method: "PUT",
     url: "/editor/employees/:id/roles/:role",
     schema: SCHEMAS.grantRole,
+    config: { role: "admin" },
     handler: async (request, reply) => {
       const { id, role } = request.params;
       const granted = await roles.grant(id, role, actor(request).id);
@@ -61,6 +62,7 @@ export const editorRoleRoutes: FastifyPluginAsyncZod<{
     method: "DELETE",
     url: "/editor/employees/:id/roles/:role",
     schema: SCHEMAS.revokeRole,
+    config: { role: "admin" },
     handler: async (request, reply) => {
       const { id, role } = request.params;
       const revoked = await roles.revoke(id, role);

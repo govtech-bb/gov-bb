@@ -333,6 +333,29 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
     expect(response.status).toBe(403);
   });
 
+  it("lets an employee with no role read but not write", async () => {
+    const reader = await createEmployeeSession(database, server.url, {
+      roles: [],
+    });
+    const headers = { ...editorHeaders(), cookie: reader.cookie };
+    expect((await fetch(`${server.url}/version`, { headers })).status).toBe(
+      200,
+    );
+    const response = await fetch(`${server.url}/pages`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ ...pageInput, url: "/auth-test/no-role" }),
+    });
+    expect(response.status).toBe(403);
+    expect(
+      await databaseQuery(
+        database,
+        "select id from content_pages where url = $1",
+        ["/auth-test/no-role"],
+      ),
+    ).toEqual([]);
+  });
+
   it("starts GitHub OAuth with a PKCE challenge and rejects external callback URLs", async () => {
     const body = {
       provider: "github",

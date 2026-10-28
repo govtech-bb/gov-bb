@@ -27,6 +27,7 @@ const ALL = [
   "004_github_sessions",
   "005_hierarchy_and_search",
   "008_user_roles",
+  "009_default_editor_role",
 ];
 
 const freshDb = async () => {
@@ -110,6 +111,7 @@ describe("migrate", () => {
       "004_github_sessions",
       "005_hierarchy_and_search",
       "008_user_roles",
+      "009_default_editor_role",
     ]);
     const pages = await exec("select count(*)::int as n from content_pages");
     expect(pages.rows).toEqual([{ n: 0 }]);
@@ -137,6 +139,7 @@ describe("migrate", () => {
     await expect(migrate(db, exec)).resolves.toEqual([
       "005_hierarchy_and_search",
       "008_user_roles",
+      "009_default_editor_role",
     ]);
     await exec(
       `insert into categories (slug, title) values ('c', 'C');
@@ -204,6 +207,42 @@ describe("migrate", () => {
     expect(
       (await exec("select count(*)::int as count from auth_account")).rows,
     ).toEqual([{ count: 2 }]);
+    await close();
+  });
+
+  it("makes everyone who has signed in an editor, once, so a revocation sticks", async () => {
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+    await exec(`
+      delete from schema_migrations where name = '009_default_editor_role';
+      insert into auth_user (id, name, email, "emailVerified") values
+        ('editor', 'Editor already', 'editor@govtech.bb', true),
+        ('approver', 'Approver only', 'approver@govtech.bb', true),
+        ('nobody', 'No role yet', 'nobody@govtech.bb', true);
+      insert into user_roles (user_id, role, granted_by) values
+        ('editor', 'editor', 'admin'),
+        ('approver', 'approver', 'admin');
+    `);
+    const editors = async () =>
+      (
+        await exec(
+          "select user_id, granted_by from user_roles where role = 'editor' order by user_id",
+        )
+      ).rows;
+
+    expect(await migrate(db, exec)).toEqual(["009_default_editor_role"]);
+    expect(await editors()).toEqual([
+      { user_id: "approver", granted_by: null },
+      { user_id: "editor", granted_by: "admin" },
+      { user_id: "nobody", granted_by: null },
+    ]);
+
+    await exec("delete from user_roles where user_id = 'nobody'");
+    expect(await migrate(db, exec)).toEqual([]);
+    expect(await editors()).toEqual([
+      { user_id: "approver", granted_by: null },
+      { user_id: "editor", granted_by: "admin" },
+    ]);
     await close();
   });
 });

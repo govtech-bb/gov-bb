@@ -62,9 +62,11 @@ Migration `003_auth` adds BetterAuth's four core tables: `auth_user`, `auth_sess
 
 Signing in decides who is an employee; roles decide what they can do (ADR 0079). Roles are rows in `user_roles` (migration `008_user_roles`, numbered after #3340's 006 and 007), read on every request, so a revocation applies to the employee's next request.
 
-- `approver` changes what citizens see: changing a page's `visibility`, creating a page as `public`, or deleting a `public` page. Anyone else gets a 403 `{error: "forbidden", message}` and the database is unchanged. Every other edit stays open to any employee.
+- `editor` writes: creating, saving and deleting pages, and managing categories. Every employee is an editor by default: api_v2 grants the role, with no grantor, when it creates the user at their first sign-in, and migration `009_default_editor_role` granted it once to everyone who had signed in before. It is never granted again, so an admin can revoke it to stop one person writing without removing them from the organisation.
+- `approver` changes what citizens see: changing a page's `visibility`, creating a page as `public`, or deleting a `public` page. An editor who isn't an approver can make every other edit.
 - `admin` lists employees and grants and revokes roles (`/editor/employees…`), recording who granted each. A signed-in employee whose email `API_V2_ADMIN_EMAILS` lists is granted `admin`, with no grantor, if they lack it; so an admin cannot revoke a listed admin for good.
-- `editor` is stored but not yet enforced (#3197).
+
+A refusal is a 403 `{error: "forbidden", message}` and the database is unchanged. Reads stay open to every signed-in employee, roles or not. Each write route names the role it needs in its route options (`config: { role: "editor" }`), and the editor scope's `onRequest` hook enforces it; a write route that names none is refused to everyone, and `src/route-auth.test.ts` fails until it names one.
 
 Under `AUTH_BYPASS` the local developer holds every role. `GET /editor/me` returns the signed-in employee and their roles, which the editor uses to hide what they cannot do.
 

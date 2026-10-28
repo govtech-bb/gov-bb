@@ -188,7 +188,8 @@ export const userRoles = pgTable(
   {
     userId: text("user_id").notNull(),
     role: text("role", { enum: ROLES }).notNull(),
-    // The admin who granted it; null when it came from API_V2_ADMIN_EMAILS.
+    // The admin who granted it; null when api_v2 granted it itself: the
+    // default editor role, or admin from API_V2_ADMIN_EMAILS.
     grantedBy: text("granted_by"),
     grantedAt: timestamp("granted_at", { withTimezone: true, precision: 3 })
       .notNull()
