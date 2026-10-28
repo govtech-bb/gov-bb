@@ -30,6 +30,13 @@ try {
     localStorage.setItem("govbb-editor:draft:markdown:v2", "Old browser-only form");
   });
   const firstRead = Promise.withResolvers();
+  // Services filters start the shared category read before a page is opened.
+  const categoriesRead = Promise.withResolvers();
+  await context.route("**/editor/categories", async (route) => {
+    if (route.request().method() === "GET") await categoriesRead.promise;
+
+    return route.fallback();
+  });
   await context.route("**/services", async (route) => {
     if (route.request().resourceType() !== "document" && route.request().method() === "GET")
       await firstRead.promise;
@@ -57,12 +64,10 @@ try {
 
   const detailRead = Promise.withResolvers();
   const pageRead = Promise.withResolvers();
-  const categoriesRead = Promise.withResolvers();
 
   for (const [path, held] of [
     [`/services/${service.id}`, detailRead],
     [`/pages/${service.id}`, pageRead],
-    ["/editor/categories", categoriesRead],
   ]) {
     await context.route(`**${path}`, async (route) => {
       if (route.request().resourceType() !== "document" && route.request().method() === "GET")

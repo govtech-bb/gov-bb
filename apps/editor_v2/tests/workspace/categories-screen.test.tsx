@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -12,6 +12,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { Category, CategoryFields, CategoryOrder } from "../../src/api/categories";
 import { createEditorApi } from "../../src/api/client";
+import { retryContentRead } from "../../src/api/queries";
 import { Toaster } from "../../src/ui/toast";
 import { CategoriesScreen } from "../../src/workspace/categories-screen";
 
@@ -630,6 +631,192 @@ test("the tint stays on through a run of moves, and clears two seconds after the
   } finally {
     vi.useRealTimers();
   }
+});
+
+const categoryReads = () =>
+  server.fetch.mock.calls.filter(([, init]) => !init?.method || init.method === "GET").length;
+
+/** The next GET holds an already-read response, not a database read delayed until after the write. */
+async function holdCategorySnapshot() {
+  const snapshot = await server.fetch("https://api.example.test/editor/categories");
+  const held = Promise.withResolvers<void>();
+
+  server.fetch.mockImplementationOnce(async () => {
+    await held.promise;
+
+    return snapshot;
+  });
+
+  return () => held.resolve();
+}
+
+test.each([
+  ["POST", "Add category", "Housing"],
+  ["PUT", "Edit Health", "Health services"],
+  ["DELETE", "Delete Health", ""],
+] as const)(
+  "a lost %s checks a new response, not a pre-write snapshot",
+  async (method, open, name) => {
+    await render();
+    await loaded();
+    await press(open);
+
+    if (name) await enter("Name", name);
+    const release = await holdCategorySnapshot();
+    let refreshing = Promise.resolve();
+
+    await act(async () => {
+      refreshing = client.refetchQueries({ queryKey: ["content", "categories"] });
+    });
+    const reads = categoryReads();
+    server.lose(method);
+
+    try {
+      if (method === "DELETE") await press("Delete category");
+      else await submit();
+      expect(categoryReads()).toBeGreaterThan(reads);
+      await closed();
+    } finally {
+      await act(async () => {
+        release();
+        await refreshing;
+      });
+    }
+
+    await until(() => expect(client.isFetching()).toBe(0));
+
+    if (name) expect(names()).toContain(name);
+    else expect(names()).not.toContain("Health");
+    expect(server.writes.filter((write) => write.method === method)).toHaveLength(1);
+  },
+);
+
+test("a lost move checks a new response, not a pre-write snapshot", async () => {
+  await render();
+  await loaded();
+  const release = await holdCategorySnapshot();
+  let refreshing = Promise.resolve();
+
+  await act(async () => {
+    refreshing = client.refetchQueries({ queryKey: ["content", "categories"] });
+  });
+  const reads = categoryReads();
+  server.lose("order");
+
+  try {
+    await press("Move Health up");
+    expect(categoryReads()).toBeGreaterThan(reads);
+    await until(() => expect(said()).toContain("Health moved up: 1 of 3"));
+  } finally {
+    await act(async () => {
+      release();
+      await refreshing;
+    });
+  }
+
+  await until(() => expect(names()[0]).toBe("Health"));
+  expect(server.writes).toHaveLength(1);
+});
+
+test("another group's successful move cannot cancel a lost move's check", async () => {
+  await render();
+  await loaded();
+  const release = server.hold("read");
+  const reads = categoryReads();
+  server.lose("order");
+  await press("Move Health up");
+  await until(() => expect(categoryReads()).toBe(reads + 1));
+
+  try {
+    await press("Move Arts up");
+    await until(() => expect(names()).toContain("Arts"));
+    expect(button("Move Health down").getAttribute("aria-disabled")).toBe("true");
+    await press("Move Health down");
+    expect(server.writes).toHaveLength(2);
+  } finally {
+    await act(async () => release());
+  }
+
+  await until(() => expect(said()).toContain("Health moved up: 1 of 3"));
+  await until(() =>
+    expect(names()).toEqual(["Health", "Education", "Youth and community", "Arts", "Sport"]),
+  );
+});
+
+test.each([true, false])(
+  "a failed recovery read releases the dialog without retries (online: %s)",
+  async (online) => {
+    await render();
+    await loaded();
+    client.setDefaultOptions({ queries: { retry: retryContentRead } });
+    await press("Edit Health");
+    await enter("Name", "Health services");
+    server.lose("PUT");
+    server.failReads(4);
+    const reads = categoryReads();
+    onlineManager.setOnline(online);
+
+    try {
+      await submit();
+      await until(() => expect(mainAction().textContent).toBe("Check again"));
+      expect(button("Cancel").disabled).toBe(false);
+      expect(control("Name").value).toBe("Health services");
+      expect(categoryReads()).toBe(reads + 1);
+      expect(server.writes).toHaveLength(1);
+    } finally {
+      onlineManager.setOnline(true);
+    }
+  },
+);
+
+test.each(["edit", "delete"] as const)(
+  "loading a conflicting %s's version is labelled as a check, not a write",
+  async (operation) => {
+    await render();
+    await loaded();
+    await press(operation === "edit" ? "Edit Health" : "Delete Health");
+    server.change(HEALTH, { description: "Clinics" });
+
+    if (operation === "edit") await submit();
+    else await press("Delete category");
+    await until(() => expect(mainAction().textContent).toBe("Load their version"));
+    const writes = server.writes.length;
+    const release = server.hold("read");
+
+    try {
+      await act(async () => mainAction().click());
+      expect(mainAction().textContent).toBe("Checking category…");
+      expect(server.writes).toHaveLength(writes);
+    } finally {
+      await act(async () => release());
+    }
+
+    await until(() =>
+      expect(mainAction().textContent).toBe(
+        operation === "edit" ? "Save category" : "Delete category",
+      ),
+    );
+  },
+);
+
+test.each([
+  ["POST", "Add category", "added"],
+  ["PUT", "Edit Health", "saved"],
+  ["DELETE", "Delete Health", "deleted"],
+] as const)("a refused %s explains what was not saved", async (method, open, verb) => {
+  await render();
+  await loaded();
+  await press(open);
+
+  if (method === "POST") await enter("Name", "Housing");
+  server.failBeforeWrite(method, 400);
+
+  if (method === "DELETE") await press("Delete category");
+  else await submit();
+  await until(() =>
+    expect(dialog()?.textContent).toContain(`The category could not be ${verb}. Try again.`),
+  );
+  expect(server.writes).toHaveLength(0);
 });
 
 test("a background read started before a move doesn't put the old order back", async () => {

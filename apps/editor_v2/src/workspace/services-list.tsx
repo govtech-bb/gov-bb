@@ -2,8 +2,9 @@ import { X } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { categoryLabel } from "../api/categories";
 import { ApiFailure, type EditorApi, type ServiceSummary } from "../api/client";
-import { servicesQuery } from "../api/queries";
+import { categoriesQuery, servicesQuery } from "../api/queries";
 import { visibilityLabels, visibilityTones } from "../pages";
 import { Badge } from "../ui/badge";
 import { Banner } from "../ui/banner";
@@ -219,6 +220,7 @@ export function ServicesList({
   onCreate: () => void;
 }) {
   const services = useQuery(servicesQuery(api));
+  const categoryList = useQuery(categoriesQuery(api));
   const status = services.error instanceof ApiFailure ? services.error.status : undefined;
 
   const refreshFailed =
@@ -236,8 +238,15 @@ export function ServicesList({
 
   useEffect(() => remember(place), [place]);
 
-  // Each category services are filed under, by slug, named as the list names it; two with one name show their slugs
   const categories = useMemo(() => {
+    const saved = categoryList.data;
+
+    if (saved)
+      return saved
+        .map((category) => ({ value: category.slug, label: categoryLabel(category, saved) }))
+        .toSorted((a, b) => a.label.localeCompare(b.label));
+
+    // Until categories can be read, the services still provide usable filter labels.
     const titles = new Map(
       (services.data ?? []).map((service) => [service.category.slug, service.category.title]),
     );
@@ -251,7 +260,7 @@ export function ServicesList({
         label: shared(slug, title) ? `${title} (${slug})` : title,
       }))
       .toSorted((a, b) => a.label.localeCompare(b.label));
-  }, [services.data]);
+  }, [categoryList.data, services.data]);
 
   const table = useAppTable({
     columns,

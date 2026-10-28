@@ -14,7 +14,7 @@ The editor owns content authoring and conversion, including common page metadata
 
 ## Categories
 
-Every admitted editor can add, edit, reorder and delete categories through the API. Changes survive reload. There are two levels, categories and subcategories, with no separate lists per content type. New categories and ones moved to another parent go last among their new siblings. Services filters use slugs, so renaming a category does not lose its services; an old title-valued bookmark remains visible as an unmatched filter that the author can clear.
+Every admitted editor can add, edit, reorder and delete categories through the API. Changes survive reload. There are two levels, categories and subcategories, with no separate lists per content type. New categories and ones moved to another parent go last among their new siblings. Services filters use slugs, so renaming a category does not lose its services. Known categories appear by their current name even when empty; an old title-valued bookmark remains visible as an unmatched filter that the author can clear.
 
 Editing a name never changes its address automatically. A category's slug or parent can change only while it has no pages or subcategories and is not an app-route anchor. Those same blockers prevent deletion. Draft and preview pages count too. Category changes never delete content, move page URLs or create redirects.
 

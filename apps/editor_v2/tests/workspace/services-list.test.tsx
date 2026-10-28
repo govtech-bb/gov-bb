@@ -11,8 +11,9 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import type { Category } from "../../src/api/categories";
 import { ApiFailure, createEditorApi, type ServiceSummary } from "../../src/api/client";
-import { servicesQuery } from "../../src/api/queries";
+import { categoriesQuery, servicesQuery } from "../../src/api/queries";
 import { ServicesList } from "../../src/workspace/services-list";
 import type { ServicesSearch } from "../../src/workspace/services-search";
 
@@ -41,14 +42,43 @@ const router = createRouter({
 
 const api = createEditorApi("http://localhost:3020", "https://alpha.gov.bb");
 
+const business: Category = {
+  id: "00000000-0000-4000-8000-000000000099",
+  parent_id: null,
+  slug: "business-trade",
+  title: "Business and trade",
+  description: null,
+  url: "/business-trade",
+  position: 0,
+  services: 30,
+  reserved_route: false,
+  updated_at: "2026-10-28T12:00:00.000Z",
+};
+
+const housing: Category = {
+  ...business,
+  id: "00000000-0000-4000-8000-000000000100",
+  slug: "housing",
+  title: "Housing support",
+  url: "/housing",
+  services: 0,
+};
+
+function cacheCategories(client: QueryClient, categories: Category[] = [business]) {
+  client.setQueryDefaults(categoriesQuery(api).queryKey, { staleTime: Infinity });
+  client.setQueryData(categoriesQuery(api).queryKey, categories);
+}
+
 const listed = (
   services: ServiceSummary[],
   search: ServicesSearch,
   actions: { onSearch?: (search: ServicesSearch) => void; onCreate?: () => void } = {},
+  categories: Category[] = [business],
 ) => {
   // These list-interaction fixtures are already loaded; a real local API must not replace them mid-test.
   const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
   client.setQueryData(servicesQuery(api).queryKey, services);
+  cacheCategories(client, categories);
 
   return (
     <RouterContextProvider router={router}>
@@ -262,6 +292,66 @@ test("a category link by slug shows its category's title", async () => {
   expect(titles()).toHaveLength(25);
 });
 
+test("a known empty category keeps its current title and its filter can be cleared", async () => {
+  const onSearch = vi.fn();
+
+  await show(listed(thirty, { category: "housing" }, { onSearch }, [business, housing]));
+  expect(filter("Category").textContent).toBe("Housing support");
+  expect(titles()).toHaveLength(0);
+  await act(async () => button("Clear filters").click());
+  expect(titles()).toHaveLength(25);
+  expect(onSearch).toHaveBeenLastCalledWith(expect.objectContaining({ category: undefined }));
+});
+
+test("the shared category title wins over an older service summary", async () => {
+  await show(
+    listed(thirty, { category: "business-trade" }, {}, [
+      { ...business, title: "Business services" },
+    ]),
+  );
+  expect(filter("Category").textContent).toBe("Business services");
+});
+
+test("equal category titles use the shared category labels, including empty categories", async () => {
+  await show(
+    listed(thirty, { category: "housing" }, {}, [business, { ...housing, title: business.title }]),
+  );
+  expect(filter("Category").textContent).toBe("Business and trade (/housing)");
+});
+
+test("a failed category read leaves service-derived filters usable", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response(null, { status: 503 })),
+  );
+
+  const client = new QueryClient({
+    defaultOptions: { queries: { staleTime: Infinity, retry: false } },
+  });
+
+  client.setQueryData(servicesQuery(api).queryKey, thirty);
+  await show(
+    <RouterContextProvider router={router}>
+      <QueryClientProvider client={client}>
+        <ServicesList
+          api={api}
+          search={{ category: "business-trade" }}
+          onSearch={() => {}}
+          onCreate={() => {}}
+        />
+      </QueryClientProvider>
+    </RouterContextProvider>,
+  );
+  await act(async () => {
+    await vi.waitFor(() =>
+      expect(client.getQueryState(categoriesQuery(api).queryKey)?.status).toBe("error"),
+    );
+  });
+  expect(filter("Category").textContent).toBe("Business and trade");
+  expect(titles()).toHaveLength(25);
+  client.clear();
+});
+
 test("an old title-valued category link matches nothing, but names itself so it can be cleared", async () => {
   const onSearch = vi.fn();
 
@@ -353,6 +443,7 @@ test("the first services load names its results region without replacing its con
     vi.fn(() => held.promise),
   );
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  cacheCategories(client);
   await show(
     <RouterContextProvider router={router}>
       <QueryClientProvider client={client}>
@@ -392,6 +483,7 @@ test.each([0, 503, 401, 403, 404])(
     });
 
     const query = servicesQuery(api);
+    cacheCategories(client);
     client.setQueryData(query.queryKey, thirty);
     await show(
       <RouterContextProvider router={router}>
@@ -460,6 +552,7 @@ test.each([0, 503, 401, 403, 404])(
 
 test("a failed load is an alert with Try again", async () => {
   const failing = new QueryClient();
+  cacheCategories(failing);
   failing.setQueryDefaults(servicesQuery(api).queryKey, { retryOnMount: false });
   failing
     .getQueryCache()
@@ -485,6 +578,7 @@ test("a failed load's Try again waits on its retry, so another press sends nothi
   // The list had loaded before the refusal, so the failure stays up while it's tried again. A failed first load goes
   // back to loading instead.
   const refused = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
+  cacheCategories(refused);
   refused
     .getQueryCache()
     .build(refused, { queryKey: servicesQuery(api).queryKey })

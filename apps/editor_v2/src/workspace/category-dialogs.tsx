@@ -17,7 +17,6 @@ import {
   type CategoryProblem,
 } from "../api/categories";
 import type { CategoryRefusal, EditorApi } from "../api/client";
-import { categoriesQuery } from "../api/queries";
 import { button, Button } from "../ui/button";
 import { ConfirmDialog } from "../ui/confirm-dialog";
 import { Dialog } from "../ui/dialog";
@@ -32,12 +31,14 @@ import { WorkspaceDialog } from "./workspace-dialog";
 /**
  * Where a category change stands once it has been sent, short of done: refused for a reason the author can act on,
  * changed or deleted by someone else since the dialog opened, or sent without an answer, so the list is read again to
- * find out whether it took before it may be sent again.
+ * find out whether it took before it may be sent again. Checks read directly, outside the shared query's request,
+ * cancellation and retry lifecycle.
  */
 type Attempt =
   | { readonly _tag: "Refused"; readonly error: CategoryRefusal }
   | { readonly _tag: "Superseded" }
   | { readonly _tag: "Gone" }
+  | { readonly _tag: "Saving" }
   | { readonly _tag: "Checking" }
   | { readonly _tag: "Unclear" }
   | { readonly _tag: "Unconfirmed" };
@@ -45,19 +46,6 @@ type Attempt =
 const CHECKING: Attempt = { _tag: "Checking" };
 
 const UNCLEAR: Attempt = { _tag: "Unclear" };
-
-/** Reads the categories again now, as the content API has them, or undefined when it can't be asked. */
-function useFreshCategories(api: EditorApi) {
-  const client = useQueryClient();
-
-  return async () => {
-    try {
-      return await client.fetchQuery({ ...categoriesQuery(api), staleTime: 0 });
-    } catch {
-      return undefined;
-    }
-  };
-}
 
 /** Every content read again: page settings, Create service and the Services list file under categories too. */
 function useContentChanged() {
@@ -113,6 +101,7 @@ function refusalMessages(error: CategoryRefusal, otherwise: string) {
 function attemptMessages(attempt: Attempt | undefined, otherwise: string, noun: string) {
   switch (attempt?._tag) {
     case undefined:
+    case "Saving":
     case "Checking":
       return [];
     case "Refused":
@@ -156,7 +145,7 @@ const addWords = {
   action: "Add category",
   pending: "Adding category…",
   done: "Category added",
-  failed: "Try again.",
+  failed: "The category could not be added. Try again.",
 };
 
 const editWords = {
@@ -165,7 +154,7 @@ const editWords = {
   action: "Save category",
   pending: "Saving category…",
   done: "Category saved",
-  failed: "Try again.",
+  failed: "The category could not be saved. Try again.",
 };
 
 /**
@@ -189,7 +178,6 @@ export function CategoryDialog({
   categories: readonly Category[];
   close: () => void;
 }) {
-  const fresh = useFreshCategories(api);
   const contentChanged = useContentChanged();
   const words = category ? editWords : addWords;
   // The version this edit saves over: the one the dialog opened with until the author loads a newer one
@@ -218,7 +206,7 @@ export function CategoryDialog({
   const parent = categories.find((item) => item.id === parentId);
   const locked = base && addressLock(base, categories);
   const deletedMeanwhile = !!base && !categories.some((item) => item.id === base.id);
-  const working = attempt?._tag === "Checking";
+  const working = attempt?._tag === "Saving" || attempt?._tag === "Checking";
 
   const done = () => {
     contentChanged();
@@ -232,15 +220,16 @@ export function CategoryDialog({
 
     if (!values) return;
     setAttempt(CHECKING);
-    const list = await fresh();
+    const result = await api.categories();
 
-    if (!list) return setAttempt(UNCLEAR);
+    if (!result.ok) return setAttempt(UNCLEAR);
 
     const saved = base
-      ? list.find((item) => item.id === base.id)
-      : list.find((item) => item.slug === values.slug);
+      ? result.value.find((item) => item.id === base.id)
+      : result.value.find((item) => item.slug === values.slug);
 
     if (saved && holdsFields(saved, values)) return done();
+    contentChanged();
 
     if (base && !saved) return setAttempt({ _tag: "Gone" });
 
@@ -252,7 +241,7 @@ export function CategoryDialog({
 
   const save = async (values: CategoryFields) => {
     sent.current = values;
-    setAttempt(CHECKING);
+    setAttempt({ _tag: "Saving" });
 
     const result = base
       ? await api.updateCategory(base.id, values, base.updated_at)
@@ -275,10 +264,11 @@ export function CategoryDialog({
   // Takes the newer version to save over, keeping what the author typed
   const loadLatest = async () => {
     setAttempt(CHECKING);
-    const list = await fresh();
-    const latest = list?.find((item) => item.id === base?.id);
+    const result = await api.categories();
 
-    if (!list) return setAttempt(UNCLEAR);
+    if (!result.ok) return setAttempt(UNCLEAR);
+    contentChanged();
+    const latest = result.value.find((item) => item.id === base?.id);
 
     if (!latest) return setAttempt({ _tag: "Gone" });
     setBase(latest);
@@ -323,7 +313,13 @@ export function CategoryDialog({
       </Button>
     ) : (
       <Button type="submit" variant="accent" size="md" pending={working}>
-        {working ? words.pending : unsettled ? "Check again" : words.action}
+        {attempt?._tag === "Saving"
+          ? words.pending
+          : working
+            ? "Checking category…"
+            : unsettled
+              ? "Check again"
+              : words.action}
       </Button>
     );
 
@@ -443,13 +439,12 @@ export function DeleteCategoryDialog({
   /** Where the focus goes once the category has gone, taking its row's buttons with it. */
   focusAfter: RefObject<HTMLElement | null>;
 }) {
-  const fresh = useFreshCategories(api);
   const contentChanged = useContentChanged();
   const [base, setBase] = useState(category);
   const [attempt, setAttempt] = useState<Attempt>();
   const deleted = useRef(false);
   const blocked = deleteBlocker(base, categories);
-  const working = attempt?._tag === "Checking";
+  const working = attempt?._tag === "Saving" || attempt?._tag === "Checking";
   const unsettled = attempt?._tag === "Unclear";
 
   const done = (words: string) => {
@@ -462,19 +457,20 @@ export function DeleteCategoryDialog({
   // A deletion whose answer was lost: done once the category is gone from the list
   const reconcile = async () => {
     setAttempt(CHECKING);
-    const list = await fresh();
+    const result = await api.categories();
 
-    if (!list) return setAttempt(UNCLEAR);
-    const still = list.find((item) => item.id === base.id);
+    if (!result.ok) return setAttempt(UNCLEAR);
+    const still = result.value.find((item) => item.id === base.id);
 
     if (!still) return done("Category deleted");
+    contentChanged();
     setAttempt(
       still.updated_at === base.updated_at ? { _tag: "Unconfirmed" } : { _tag: "Superseded" },
     );
   };
 
   const remove = async () => {
-    setAttempt(CHECKING);
+    setAttempt({ _tag: "Saving" });
     const result = await api.deleteCategory(base.id, base.updated_at);
 
     if (result.ok) return done("Category deleted");
@@ -493,12 +489,13 @@ export function DeleteCategoryDialog({
 
   const loadLatest = async () => {
     setAttempt(CHECKING);
-    const list = await fresh();
+    const result = await api.categories();
 
-    if (!list) return setAttempt(UNCLEAR);
-    const latest = list.find((item) => item.id === base.id);
+    if (!result.ok) return setAttempt(UNCLEAR);
+    const latest = result.value.find((item) => item.id === base.id);
 
     if (!latest) return done("Category already deleted");
+    contentChanged();
     setBase(latest);
     setAttempt(undefined);
   };
@@ -538,7 +535,7 @@ export function DeleteCategoryDialog({
   const refusal =
     attempt?._tag === "Refused" && attempt.error._tag === "CategoryInUse"
       ? [blockerText(base.title, attempt.error.blockers)]
-      : attemptMessages(attempt, "Try again.", "category");
+      : attemptMessages(attempt, "The category could not be deleted. Try again.", "category");
 
   const superseded = attempt?._tag === "Superseded";
 
@@ -550,7 +547,7 @@ export function DeleteCategoryDialog({
       description="Services can no longer be filed under it. This can't be undone."
       confirm={superseded ? "Load their version" : unsettled ? "Check again" : "Delete category"}
       tone={superseded || unsettled ? "accent" : "danger"}
-      pendingLabel={working ? "Deleting category…" : undefined}
+      pendingLabel={attempt?._tag === "Saving" ? "Deleting category…" : "Checking category…"}
       pending={working}
       error={refusal.length > 0 && <ApiProblemText messages={refusal} />}
       finalFocus={() => (deleted.current ? focusAfter.current : true)}

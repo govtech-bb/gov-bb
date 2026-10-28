@@ -262,14 +262,6 @@ export function CategoriesScreen({ api }: { api: EditorApi }) {
     setMoving(next);
   }, []);
 
-  const fresh = useCallback(async () => {
-    try {
-      return await client.fetchQuery({ ...categoriesQuery(api), staleTime: 0 });
-    } catch {
-      return undefined;
-    }
-  }, [api, client]);
-
   // Says where a moved row is now, keeps its control focused and tints it for a while
   const showMoved = useCallback(
     (list: readonly Category[], id: string, by: Direction, from: "button" | "menu") => {
@@ -286,14 +278,14 @@ export function CategoriesScreen({ api }: { api: EditorApi }) {
     [],
   );
 
-  // A move whose answer was lost: the list says whether it took, before anything in its group moves again
+  // An independent read: a pre-write query or another group's cancellation must not settle this move.
   const checkMove = useCallback(
     async (group: string, order: CategoryOrder) => {
       settle(group, "saving");
       setMoved("Checking whether the move was saved…");
-      const list = await fresh();
+      const result = await api.categories();
 
-      if (!list) {
+      if (!result.ok) {
         settle(group, order);
         setMoved("");
         toast(
@@ -309,9 +301,9 @@ export function CategoriesScreen({ api }: { api: EditorApi }) {
       settle(group);
       void client.invalidateQueries({ queryKey: ["content"] });
 
-      return list;
+      return result.value;
     },
-    [client, fresh, settle],
+    [api, client, settle],
   );
 
   // Reads the list as it is now, so each move is made from the latest versions of its siblings

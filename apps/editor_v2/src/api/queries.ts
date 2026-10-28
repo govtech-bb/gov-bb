@@ -28,7 +28,7 @@ export const pageQuery = (api: EditorApi, id: string) =>
   queryOptions({ queryKey: ["content", "page", id], queryFn: () => api.page(id) });
 
 /**
- * The one shared category list, read by the Categories screen, page settings and Create service alike. A failed read
+ * The one shared category list for Categories, Services filters, page settings and Create service. A failed read
  * is thrown here, where React Query keeps it as the query's error for the screen to show.
  */
 export const categoriesQuery = (api: EditorApi) =>
