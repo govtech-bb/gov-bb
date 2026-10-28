@@ -366,7 +366,7 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
           )}
           {!location && onCategories && (
             <section className="mx-auto w-full max-w-300 px-6 py-10">
-              <CategoriesScreen api={api} />
+              <CategoriesScreen api={api} readOnly={readOnly} />
             </section>
           )}
           {!location && !onCategories && (

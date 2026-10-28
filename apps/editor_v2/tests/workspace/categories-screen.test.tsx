@@ -379,12 +379,12 @@ afterEach(async () => {
 });
 
 /** The screen on a fresh cache, as the workspace shows it. */
-const render = () =>
+const render = (readOnly = false) =>
   act(async () =>
     root.render(
       <RouterContextProvider router={router}>
         <QueryClientProvider client={client}>
-          <CategoriesScreen api={createEditorApi("https://api.example.test")} />
+          <CategoriesScreen api={createEditorApi("https://api.example.test")} readOnly={readOnly} />
           <Toaster />
         </QueryClientProvider>
       </RouterContextProvider>,
@@ -849,6 +849,34 @@ test("a move someone else got to first is refused, and the list shows their chan
   await until(() => expect(names()).toContain("Schools"));
   expect(document.body.textContent).toContain("Someone changed these categories first");
   expect(names()).toEqual(["Schools", "Health", "Youth and community", "Sport", "Arts"]);
+});
+
+test("someone who can't make changes can't move a category", async () => {
+  await render(true);
+  await loaded();
+
+  expect(button("Move Health up").disabled).toBe(true);
+  expect(button("Move Health down").disabled).toBe(true);
+});
+
+test("a move the API refuses (403) says why, not to try again", async () => {
+  const message = "You need the editor role to make changes. Ask an admin to grant it.";
+
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+      init?.method === "PUT"
+        ? Response.json({ error: "forbidden", message }, { status: 403 })
+        : server.fetch(input, init),
+    ),
+  );
+  await render();
+  await loaded();
+  await press("Move Health up");
+
+  await until(() => expect(document.body.textContent).toContain(message));
+  expect(document.body.textContent).not.toContain("Try again");
+  expect(names()).toEqual(["Education", "Health", "Youth and community", "Sport", "Arts"]);
 });
 
 test("a move whose answer was lost is checked against the list before another can be sent", async () => {
