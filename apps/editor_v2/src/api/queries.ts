@@ -1,5 +1,11 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
-import { ApiFailure, CategoryAnswerMalformed, type EditorApi, type EstateVersion } from "./client";
+import {
+  ApiFailure,
+  CategoryAnswerMalformed,
+  isText,
+  type EditorApi,
+  type EstateVersion,
+} from "./client";
 
 // Every content read sits under "content", so one invalidation refreshes them all.
 
@@ -26,6 +32,14 @@ export const serviceQuery = (api: EditorApi, id: string) =>
 
 export const pageQuery = (api: EditorApi, id: string) =>
   queryOptions({ queryKey: ["content", "page", id], queryFn: () => api.page(id) });
+
+/** The changes waiting for an approver. */
+export const reviewQueueQuery = (api: Pick<EditorApi, "reviewQueue">) =>
+  queryOptions({ queryKey: ["content", "review-queue"], queryFn: () => api.reviewQueue() });
+
+/** A page's current change with what it changes against the live page; a 404 when it has none. */
+export const revisionQuery = (api: Pick<EditorApi, "revision">, id: string) =>
+  queryOptions({ queryKey: ["content", "revision", id], queryFn: () => api.revision(id) });
 
 /**
  * The one shared category list for Categories, Services filters, page settings and Create service. A failed read
@@ -54,6 +68,17 @@ export const rolesQuery = (api: Pick<EditorApi, "me">) =>
       const me: unknown = await api.me();
 
       return me instanceof Object && "roles" in me && Array.isArray(me.roles) ? me.roles : [];
+    },
+  });
+
+/** The signed-in employee's user id, which tells a change they worked on from anyone else's; null if not given. */
+export const employeeIdQuery = (api: Pick<EditorApi, "me">) =>
+  queryOptions({
+    queryKey: ["me", "id"],
+    queryFn: async (): Promise<string | null> => {
+      const me: unknown = await api.me();
+
+      return me instanceof Object && "id" in me && isText(me.id) ? me.id : null;
     },
   });
 

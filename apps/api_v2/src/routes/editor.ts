@@ -196,6 +196,17 @@ export const editorRoutes: FastifyPluginAsyncZod<{
   });
   editor.route({
     method: "GET",
+    url: "/revisions",
+    schema: SCHEMAS.listRevisions,
+    handler: async (request, reply) => {
+      const queue = await index.reviewQueue();
+      return queue.ok
+        ? { revisions: queue.value }
+        : reply.status(500).send(storageFailed(request.log, queue.error));
+    },
+  });
+  editor.route({
+    method: "GET",
     url: "/services",
     schema: SCHEMAS.listServices,
     handler: async (request, reply) => {
