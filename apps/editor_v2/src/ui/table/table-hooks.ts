@@ -21,8 +21,9 @@ import { DataTable, Pagination, Search } from "./table-components";
 /**
  * Per-column presentation. A secondary column folds away when the table is narrow. `width` is the column's width as a
  * class, such as `w-36`, so it stays put whatever its rows hold; the leading column has none and takes the rest.
+ * `align: "end"` lines its header and its cells up at their end, as for a count or a row's actions.
  */
-export type ColumnMeta = { secondary?: boolean; width?: string };
+export type ColumnMeta = { secondary?: boolean; width?: string; align?: "end" };
 
 /** Keeps rows whose value is one of the chosen values, as a list's filters choose them. */
 const oneOf = constructFilterFn({

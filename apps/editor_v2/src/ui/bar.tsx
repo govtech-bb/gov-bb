@@ -1,16 +1,28 @@
 import { mergeProps } from "@base-ui/react/merge-props";
-import { Toolbar } from "@base-ui/react/toolbar";
 import { useRender } from "@base-ui/react/use-render";
 import { createContext, useContext, type ComponentProps, type ReactNode } from "react";
 import { cn } from "../cn";
 import { Button } from "./button";
+import { touchTarget } from "./surface";
+import { Toolbar, toolbarRule } from "./toolbar";
 import { Tip } from "./tooltip";
 import { useMediaQuery, wideScreen } from "./use-media-query";
 
-// White over a document, ruled off from it; GovBB's navy for the app's own header. Each with its quiet text and rule
+// White over a document, ruled off from it; GovBB's navy for the app's own header. Each with its quiet text, its rule
+// and the tint a link takes under the pointer
 const tones = {
-  light: { bar: "border-b border-line bg-white text-ink", status: "text-muted", rule: "bg-line" },
-  dark: { bar: "bg-brand-dark text-white", status: "text-blue-20", rule: "bg-white/25" },
+  light: {
+    bar: "border-b border-line bg-white text-ink",
+    status: "text-muted",
+    rule: "bg-line",
+    hover: "hover:bg-hover",
+  },
+  dark: {
+    bar: "bg-brand-dark text-white",
+    status: "text-blue-20",
+    rule: "bg-white/25",
+    hover: "hover:bg-white/10",
+  },
 };
 
 type Tone = keyof typeof tones;
@@ -22,14 +34,17 @@ const BarContext = createContext<{ tone: Tone; toolbar: boolean }>({
 
 type RootProps = Omit<ComponentProps<"div">, "aria-label"> & {
   tone?: Tone;
-  /** Names its controls for screen readers, which makes it a toolbar, such as “Page tools”. */
+  /**
+   * Names its controls for screen readers, which makes it a Toolbar, such as “Page tools”: its Buttons are one Tab stop,
+   * with the arrow keys between them.
+   */
   label?: string;
 };
 
 /**
  * A bar across a screen, a document or a drawer: its title, a status beside it and its actions at the end. Every bar
  * is 56px (`--bar-height`) and inset like the others, so their edges line up; narrow, its actions wrap under the
- * title. With a label it's a Base UI toolbar.
+ * title. With a label it's a toolbar.
  */
 function BarRoot({ tone = "light", label, className, ...props }: RootProps) {
   const classes = cn(
@@ -43,7 +58,7 @@ function BarRoot({ tone = "light", label, className, ...props }: RootProps) {
       {label === undefined ? (
         <div {...props} className={classes} />
       ) : (
-        <Toolbar.Root {...props} aria-label={label} className={classes} />
+        <Toolbar.Root {...props} label={label} className={classes} />
       )}
     </BarContext>
   );
@@ -94,7 +109,8 @@ type ToolProps = Omit<ComponentProps<"button">, "children"> & {
 
 /**
  * One of the bar's tools, such as Preview or Markdown. Narrower than 1200px it's only its icon, its name in a tooltip
- * and still read out, so a document's bar keeps to one row beside a sidebar or on a tablet.
+ * and still read out, so a document's bar keeps to one row beside a sidebar or on a tablet. In a labelled bar it's one
+ * of the toolbar's controls, as any Button is.
  */
 function BarTool({ icon, label, children, className, ...props }: ToolProps) {
   const wide = useMediaQuery(wideScreen);
@@ -125,18 +141,71 @@ function BarTool({ icon, label, children, className, ...props }: ToolProps) {
  */
 function BarSeparator() {
   const { tone, toolbar } = useContext(BarContext);
-  const rule = cn("mx-2 h-5 w-px shrink-0 max-md:hidden", tones[tone].rule);
+  const rule = cn("max-md:hidden", tones[tone].rule);
 
   return toolbar ? (
     <Toolbar.Separator className={rule} />
   ) : (
-    <span aria-hidden="true" className={rule} />
+    <span aria-hidden="true" className={cn(toolbarRule, rule)} />
   );
 }
 
-/** The tool's bars: Root holds a Title, a Status and Actions, ruled into groups by Separators, some of them Tools. */
+/** A step of the trail: its words, and the router's Link, say, when it leads somewhere. */
+export type Crumb = { label: ReactNode; render?: useRender.RenderProp };
+
+function BarCrumb({ label, render, current }: Crumb & { current: boolean }) {
+  const { tone } = useContext(BarContext);
+
+  return useRender({
+    render,
+    defaultTagName: "span",
+    props: {
+      "aria-current": current ? "page" : undefined,
+      // A link is underlined, with room round its words for the pointer, a finger and the focus ring
+      className: cn(
+        "min-w-0 max-w-100 truncate",
+        render &&
+          `rounded-sm px-2 py-2 underline underline-offset-4 transition-colors ${touchTarget}`,
+        render && tones[tone].hover,
+      ),
+      children: label,
+    },
+  });
+}
+
+/**
+ * Where the screen is, as a trail from the bar's start, such as Services, then the service open in it: a navigation
+ * landmark round a list, its last step the screen you're on. In either tone; the bar's font weight carries into it.
+ */
+function BarCrumbs({ label = "Breadcrumb", crumbs }: { label?: string; crumbs: readonly Crumb[] }) {
+  const { tone } = useContext(BarContext);
+
+  return (
+    <nav aria-label={label} className="min-w-0">
+      <ol className="flex min-w-0 flex-wrap items-center gap-x-3">
+        {crumbs.map((crumb, index) => (
+          // By its place, so the trail's first link stays the same element, and keeps the focus, as screens change
+          <li key={index} className="flex min-w-0 items-center gap-x-3">
+            {index > 0 && (
+              <span aria-hidden="true" className={tones[tone].status}>
+                /
+              </span>
+            )}
+            <BarCrumb {...crumb} current={index === crumbs.length - 1} />
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
+/**
+ * The tool's bars: Root holds Crumbs or a Title, a Status and Actions, ruled into groups by Separators, some of them
+ * Tools.
+ */
 export const Bar = {
   Root: BarRoot,
+  Crumbs: BarCrumbs,
   Title: BarTitle,
   Status: BarStatus,
   Actions: BarActions,

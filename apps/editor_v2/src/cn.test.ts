@@ -19,3 +19,8 @@ test("named layers are z-indexes, so a later one replaces an earlier", () => {
   expect(cn("fixed z-popup", "z-toast")).toBe("fixed z-toast");
   expect(cn("z-10", "z-bar")).toBe("z-bar");
 });
+
+test("the theme's easing is an easing, so a later one replaces it", () => {
+  expect(cn("ease-out-quint", "ease-out")).toBe("ease-out");
+  expect(cn("ease-linear", "ease-out-quint")).toBe("ease-out-quint");
+});

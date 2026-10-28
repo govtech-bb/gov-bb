@@ -24,9 +24,12 @@ import {
   Funnel,
   Hash,
   Info,
+  LinkBreak,
+  LinkSimple,
   ListBullets,
   ListNumbers,
   MapPin,
+  PencilSimple,
   Phone,
   Plus,
   RadioButton,
@@ -46,6 +49,10 @@ import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
 import { DocumentBar } from "../ui/document-bar";
 import { EmptyState } from "../ui/empty-state";
+import { FileButton } from "../ui/file-button";
+import { FormDialog } from "../ui/form-dialog";
+import { ListBox, useListNavigation } from "../ui/list-box";
+import { ListScreen } from "../ui/list-screen";
 import { LoadingState } from "../ui/loading-state";
 import { Drawer } from "../ui/drawer";
 import { cn } from "../cn";
@@ -74,20 +81,24 @@ import { Menu } from "../ui/menu";
 import { NativeSelect } from "../ui/native-select";
 import { Popover } from "../ui/popover";
 import { PreviewQuestion, PreviewSheet } from "../ui/preview-sheet";
+import { RefreshFailure } from "../ui/refresh-failure";
 import { SaveState, type SaveStatus } from "../ui/save-state";
 import { ScreenHeader } from "../ui/screen-header";
 import { Select, type SelectItem } from "../ui/select";
 import { SidePanel, useSidePanel } from "../ui/side-panel";
 import { Sidebar, useSidebar } from "../ui/sidebar";
 import { StatusDot } from "../ui/status-dot";
-import { listEmpty, surface } from "../ui/surface";
+import { surface } from "../ui/surface";
 import { Switch } from "../ui/switch";
+import { NameCell } from "../ui/table/cell-components";
+import { createAppColumnHelper, useAppTable } from "../ui/table/table-hooks";
 import { Tag } from "../ui/tag";
 import { LinkAtCaret } from "../ui/link-at-caret";
 import { LinkPicker, type LinkPage } from "../ui/link-picker";
 import { link, TextLink } from "../ui/text-link";
 import { Textarea } from "../ui/textarea";
 import { toast } from "../ui/toast";
+import { Toolbar } from "../ui/toolbar";
 import { Tip } from "../ui/tooltip";
 import { TurnIntoMenu, TurnIntoSubmenu, type TurnIntoOption } from "../ui/turn-into";
 import { Equals, GreaterThan, LessThan, NotEquals, SealCheck, Sigma } from "@phosphor-icons/react";
@@ -99,6 +110,7 @@ import { EditableList } from "../ui/editable-list";
 import { FieldChip, fieldChip } from "../ui/field-chip";
 import { Note } from "../ui/note";
 import { Pill } from "../ui/pill";
+import { GovbbLogo } from "../workspace/govbb-logo";
 
 export const Route = createFileRoute("/prototypes/components")({
   head: () => ({ meta: [{ title: "Components · Design preview · GovBB" }] }),
@@ -110,15 +122,18 @@ const sections = [
   ["button", "Button"],
   ["link", "Link"],
   ["menu", "Menu"],
+  ["list-box", "List box"],
   ["popover", "Popover"],
   ["dialog", "Dialog"],
   ["bar", "Bar"],
+  ["toolbar", "Toolbar"],
   ["document-bar", "Document bar"],
   ["save-state", "Save state"],
   ["drawer", "Drawer"],
   ["side-panel", "Side panel"],
   ["sidebar", "Sidebar"],
   ["screen-header", "Screen header"],
+  ["table", "Table"],
   ["select", "Select"],
   ["field", "Field"],
   ["checkbox", "Checkbox"],
@@ -153,8 +168,8 @@ function ComponentsPreview() {
       <header className="border-b border-line bg-white">
         <div className="mx-auto max-w-6xl px-6 pt-12 pb-8">
           <p className="text-14 font-semibold text-muted">Design preview</p>
-          <h1 className="mt-1 text-40 leading-tight font-semibold">Components</h1>
-          <p className="mt-3 max-w-2xl text-18 leading-normal text-pretty text-muted">
+          <h1 className="mt-1 text-28 font-semibold">Components</h1>
+          <p className="mt-2 max-w-2xl text-16 text-pretty text-muted">
             The editor’s menus, popovers, dialogs, selects, fields and messages, each built once.
             Try them with the mouse, then with the keyboard: arrows move, Enter chooses, Esc closes.
           </p>
@@ -179,7 +194,7 @@ function ComponentsPreview() {
         >
           <Specimen
             title="Type"
-            note="Five steps, each with its own line height. Semibold is the one emphasis."
+            note="Five steps, each with its own line height. Semibold is the one emphasis. A bar’s title, a drawer’s among them, keeps to 16, as the bar is 56px tall."
           >
             <dl className="flex w-full max-w-sm flex-col gap-3">
               {typeSteps.map(([size, use, sample]) => (
@@ -218,7 +233,10 @@ function ComponentsPreview() {
               ))}
             </div>
           </Specimen>
-          <Specimen title="Spacing" note="A 4px grid, kept to six steps.">
+          <Specimen
+            title="Spacing"
+            note="A 4px grid in six steps. A control's own inset can take a half step, 6, 10 or 14px, so its words sit where a list's start."
+          >
             <dl className="flex w-full max-w-sm flex-col gap-2">
               {spaceSteps.map(([px, use, width]) => (
                 <div
@@ -244,6 +262,20 @@ function ComponentsPreview() {
                 <Input defaultValue="Renew a passport" />
               </Field>
             </div>
+          </Specimen>
+          <Specimen
+            wide
+            title="Vocabulary"
+            note="One word for one idea, in every part, so a part's props can be guessed from another's."
+          >
+            <dl className="grid w-full max-w-3xl gap-x-6 gap-y-3 text-14 sm:grid-cols-[11rem_minmax(0,1fr)]">
+              {vocabulary.map(([props, meaning]) => (
+                <div key={props} className="contents">
+                  <dt className="font-mono text-12 leading-5 text-ink">{props}</dt>
+                  <dd className="text-pretty text-muted max-sm:mb-2">{meaning}</dd>
+                </div>
+              ))}
+            </dl>
           </Specimen>
         </Section>
 
@@ -294,6 +326,39 @@ function ComponentsPreview() {
               </Button>
               <Button variant="inverse">Sign out</Button>
             </div>
+          </Specimen>
+          <Specimen
+            title="An icon alone"
+            note="Named for screen readers, and with tip that name shows on hover and focus too, so nobody is left guessing what it does."
+          >
+            <div className="flex items-center gap-1">
+              <Button icon={<PencilSimple />} aria-label="Edit link" tip />
+              <Button icon={<LinkBreak />} aria-label="Remove link" tip />
+            </div>
+          </Specimen>
+          <Specimen
+            title="Somewhere to go"
+            note="A link that looks like a button, such as the router’s Link: render it, and it keeps its role, its address and the router’s way of following it."
+          >
+            <Button
+              size="md"
+              variant="accent"
+              render={<Link to="/prototypes/components" hash="table" />}
+            >
+              See its services
+            </Button>
+          </Specimen>
+          <Specimen
+            title="From a file"
+            note="Opens the system’s file picker; its file input stays out of sight, and the same file can be chosen again."
+          >
+            <FileButton
+              icon={<ArrowUp />}
+              accept=".md,.markdown,text/markdown,text/plain"
+              onFile={(file) => toast(`${file.name} is ready to apply`, { tone: "info" })}
+            >
+              Replace from file
+            </FileButton>
           </Specimen>
         </Section>
 
@@ -361,6 +426,27 @@ function ComponentsPreview() {
           </Specimen>
         </Section>
 
+        <Section
+          id="list-box"
+          title="List box"
+          lead="Rows to pick from while the focus stays where it is, in a search box or in the text. Actions are a Menu’s; anything else in a panel, a Popover’s."
+        >
+          <Specimen
+            title="Search and pick"
+            note="The arrows move round the list, Home and End go to its ends, Enter picks, and the typing stays in the search box. Only a pointer that moves takes the highlight. The footer says what the highlighted row does."
+          >
+            <ListBoxDemo />
+          </Specimen>
+          <Specimen
+            title="Nothing found"
+            note="One line where the rows would be, read out as it changes."
+          >
+            <div className={cn(surface, "w-60 py-1")}>
+              <ListBox.Empty>No blocks match</ListBox.Empty>
+            </div>
+          </Specimen>
+        </Section>
+
         <Section id="popover" title="Popover" lead="A small panel for changing something in place.">
           <Specimen
             title="Link at the caret"
@@ -395,7 +481,7 @@ function ComponentsPreview() {
         >
           <Specimen
             title="Short form"
-            note="Header, fields 16px apart, and the buttons that finish the task."
+            note="FormDialog: a header, fields 16px apart, then Cancel and the button that finishes the task. Enter in a field sends it, and while it works it can’t be closed or cancelled."
           >
             <CreateServiceDialog />
           </Specimen>
@@ -426,8 +512,14 @@ function ComponentsPreview() {
                   />
                 </Dialog.Body>
                 <Dialog.Actions>
-                  <Dialog.Close render={<Button variant="secondary">Cancel</Button>} />
-                  <Dialog.Close render={<Button variant="accent">Insert options</Button>} />
+                  <Dialog.Cancel />
+                  <Dialog.Close
+                    render={
+                      <Button size="md" variant="accent">
+                        Insert options
+                      </Button>
+                    }
+                  />
                 </Dialog.Actions>
               </Dialog.Content>
             </Dialog.Root>
@@ -444,15 +536,22 @@ function ComponentsPreview() {
                 </Dialog.Header>
                 <Dialog.Body>
                   <Textarea
+                    variant="code"
                     aria-label="Markdown"
                     spellCheck={false}
                     defaultValue={pageSource}
-                    className="min-h-60 flex-1 resize-none p-3 font-mono leading-relaxed"
+                    className="min-h-60 flex-1 resize-none"
                   />
                 </Dialog.Body>
                 <Dialog.Actions>
-                  <Dialog.Close render={<Button variant="secondary">Cancel</Button>} />
-                  <Dialog.Close render={<Button variant="accent">Apply</Button>} />
+                  <Dialog.Cancel />
+                  <Dialog.Close
+                    render={
+                      <Button size="md" variant="accent">
+                        Apply
+                      </Button>
+                    }
+                  />
                 </Dialog.Actions>
               </Dialog.Content>
             </Dialog.Root>
@@ -493,13 +592,75 @@ function ComponentsPreview() {
           >
             <div className="w-full overflow-hidden rounded-sm">
               <Bar.Root tone="dark" className="font-semibold">
-                <span>Services</span>
+                <GovbbLogo fit="height" className="h-6 shrink-0" />
+                <Bar.Crumbs
+                  crumbs={[
+                    {
+                      label: "Services",
+                      render: <Link to="/prototypes/components" hash="bar" />,
+                    },
+                    { label: "Renew a passport" },
+                  ]}
+                />
                 <Bar.Actions>
                   <Bar.Status className="font-normal">employee@govtech.bb</Bar.Status>
                   <Button variant="inverse">Sign out</Button>
                 </Bar.Actions>
               </Bar.Root>
             </div>
+          </Specimen>
+          <Specimen
+            wide
+            title="Where you are"
+            note="Crumbs: a trail from the bar’s start, its links a finger’s size on a touch screen, and the last step the screen you’re on. On navy or on white."
+          >
+            <div className="w-full overflow-hidden rounded-sm border border-line">
+              <Bar.Root>
+                <Bar.Crumbs
+                  crumbs={[
+                    {
+                      label: "Categories",
+                      render: <Link to="/prototypes/components" hash="bar" />,
+                    },
+                    { label: "Health and wellbeing" },
+                  ]}
+                />
+              </Bar.Root>
+            </div>
+          </Specimen>
+        </Section>
+
+        <Section
+          id="toolbar"
+          title="Toolbar"
+          lead="Controls named as one, such as a document’s tools or the formatting over selected text."
+        >
+          <Specimen
+            title="Text formatting"
+            note="One Tab stop: the arrows move between its controls and Home and End go to its ends. Every Button in it is one of its controls; a disabled one is passed by."
+          >
+            <div className={cn(surface, "p-1")}>
+              <Toolbar.Root label="Text formatting" className="gap-0.5">
+                <Button icon={<TextB />} aria-label="Bold" aria-pressed tip />
+                <Button icon={<TextItalic />} aria-label="Italic" aria-pressed={false} tip />
+                <Toolbar.Separator />
+                <Button icon={<LinkSimple />} aria-label="Link" tip />
+                <Button icon={<LinkBreak />} aria-label="Remove link" disabled />
+              </Toolbar.Root>
+            </div>
+          </Specimen>
+          <Specimen
+            title="In groups"
+            note="Controls that belong together are a named group; the separator between groups is the bar’s own."
+          >
+            <Toolbar.Root label="History and views" className="gap-1">
+              <Toolbar.Group aria-label="History">
+                <Button icon={<ArrowCounterClockwise />} aria-label="Undo" tip />
+                <Button icon={<ArrowClockwise />} aria-label="Redo" disabled />
+              </Toolbar.Group>
+              <Toolbar.Separator />
+              <Button icon={<Eye />}>Preview</Button>
+            </Toolbar.Root>
           </Specimen>
         </Section>
 
@@ -640,6 +801,31 @@ function ComponentsPreview() {
                   </Button>
                 }
               />
+            </div>
+          </Specimen>
+        </Section>
+
+        <Section
+          id="table"
+          title="Table"
+          lead="A list of things to open, sort, search and page through, as Services and Categories are."
+        >
+          <Specimen
+            wide
+            title="A list’s screen"
+            note="ListScreen: the screen’s header over a card that holds the search, a status line for screen readers, and the table and its pagination. Its columns keep their widths, sorting from their headers; narrow, the secondary ones fold under each name."
+          >
+            <div className="w-full bg-tint">
+              <ServicesDemo />
+            </div>
+          </Specimen>
+          <Specimen
+            wide
+            title="An old list"
+            note="A refresh that failed leaves the last list on screen under a strip that says so, lined up with the card’s rows, and offers to try again."
+          >
+            <div className="w-full bg-tint">
+              <ServicesDemo stale />
             </div>
           </Specimen>
         </Section>
@@ -791,6 +977,27 @@ function ComponentsPreview() {
             </Field>
           </Specimen>
           <Specimen
+            title="Growing with its words"
+            note="autoGrow: as tall as what’s typed, never scrolling inside itself, so the whole of a long address shows."
+          >
+            <Field label="Path" className="w-full max-w-xs">
+              <Textarea
+                autoGrow
+                rows={1}
+                className="font-mono"
+                defaultValue="/travel-id-citizenship/renew-a-passport-that-has-expired"
+              />
+            </Field>
+          </Specimen>
+          <Specimen
+            title="Source"
+            note="variant code: monospaced on the field’s own white, so it never reads as the grey of a field that can’t be changed."
+          >
+            <Field label="Markdown source" className="w-full max-w-xs">
+              <Textarea variant="code" rows={4} spellCheck={false} defaultValue={pageSource} />
+            </Field>
+          </Specimen>
+          <Specimen
             title="Native select"
             note="The browser’s own picker, for a short list of plain options."
           >
@@ -808,6 +1015,10 @@ function ComponentsPreview() {
             <div className="flex w-full max-w-xs flex-col gap-4">
               <Input aria-label="Larger" placeholder="36 pixels tall" />
               <Input size="sm" aria-label="Smaller" placeholder="32 pixels tall" />
+              {/* A Field's size reaches its control */}
+              <Field size="sm" label="Button destination">
+                <Input placeholder="32 pixels tall, from its field" />
+              </Field>
             </div>
           </Specimen>
           <Specimen
@@ -1043,6 +1254,17 @@ function ComponentsPreview() {
               </ul>
             </Banner>
           </Specimen>
+          <Specimen
+            title="Inside a card"
+            note="A strip over a card’s rows takes the card’s inset rather than the bars’, so its words line up with theirs."
+          >
+            <div className="w-full max-w-sm rounded-sm bg-white shadow-sheet ring-1 ring-grey-40">
+              <Banner tone="warning" layout="strip" inset="card">
+                We could not refresh services.
+              </Banner>
+              <p className="px-4 py-3.5 text-14">Renew a passport</p>
+            </div>
+          </Specimen>
           <Specimen title="Tones" note="Each with its own icon, so colour isn’t the only signal.">
             <div className="flex w-full max-w-sm flex-col gap-2">
               <Banner tone="info">This page uses a form from the registry.</Banner>
@@ -1085,10 +1307,10 @@ function ComponentsPreview() {
           </Specimen>
           <Specimen
             title="Failed"
-            note="A red warning, read out at once, so it can’t pass for an empty list."
+            note="tone error: a red warning, read out at once, so it can’t pass for an empty list."
           >
             <EmptyState
-              kind="failed"
+              tone="error"
               title="We could not load services"
               description="Check you are still signed in, then try again."
               actions={<Button variant="secondary">Try again</Button>}
@@ -1108,12 +1330,10 @@ function ComponentsPreview() {
             <LoadingState label="Loading page…" />
           </Specimen>
           <Specimen
-            title="No results in a list"
-            note="One line where a popup’s search finds nothing."
+            title="Loading in a line"
+            note="Where a list’s rows will be, such as a sidebar group’s: the turning circle a working button shows, as the trident needs more room."
           >
-            <div className={cn(surface, "w-60 py-1")}>
-              <p className={listEmpty}>No blocks match</p>
-            </div>
+            <LoadingState size="inline" label="Loading pages…" />
           </Specimen>
         </Section>
 
@@ -1282,7 +1502,7 @@ function Section({
 }) {
   return (
     <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-8">
-      <h2 id={`${id}-title`} className="text-28 leading-tight font-semibold">
+      <h2 id={`${id}-title`} className="text-28 font-semibold">
         {title}
       </h2>
       <p className="mt-2 text-16 text-muted">{lead}</p>
@@ -1318,6 +1538,43 @@ function Specimen({
     </figure>
   );
 }
+
+// The words the kit's props share, and what each means wherever it appears
+const vocabulary = [
+  [
+    "variant",
+    "A control’s colour for what it does: Button, Menu.Item, ConfirmDialog. Red loses work.",
+  ],
+  [
+    "tone",
+    "A status colour: Badge, Tag, StatusDot, Banner, Toast, EmptyState’s error; a Bar’s light or dark.",
+  ],
+  [
+    "kind",
+    "Which sort of a thing, by its icon or words, not its colour: EmptyState’s empty or not found.",
+  ],
+  [
+    "size",
+    "A height on the one control scale, xs to lg. A Field passes its size on to its control.",
+  ],
+  ["label, aria-label", "A name for screen readers: a Bar’s or a Toolbar’s, a Tool’s, an icon’s."],
+  [
+    "closeLabel, confirmLabel, pendingLabel",
+    "Words for one of a part’s own buttons, or for one at work.",
+  ],
+  ["open, onOpenChange", "Anything that opens: dialogs, drawers, popovers, menus, tooltips."],
+  ["value, onValueChange", "Anything that holds a value its owner keeps: a select, a link picker."],
+  ["side, align", "Where a popup sits against what opened it, and how it lines up there."],
+  ["render", "Gives a part’s look and behaviour to another element, such as the router’s Link."],
+  [
+    "layout, inset",
+    "How a Banner sits: a box, or a strip lined up with the bars or a card’s rows.",
+  ],
+  [
+    "pending",
+    "Its work is under way: it keeps its colour and its place, and won’t be closed or pressed again.",
+  ],
+] as const;
 
 // Each kind of message, where it goes and an example (Banner)
 const messagePlaces = [
@@ -1391,10 +1648,7 @@ function SidePanelDemo() {
         <SidePanel.Root panel={panel} label="Page settings">
           <SidePanel.Section title="Publishing">
             <Field label="Visibility">
-              <NativeSelect
-                icon={<span className="size-2 rounded-full bg-green-80" />}
-                defaultValue="public"
-              >
+              <NativeSelect icon={<StatusDot tone="success" />} defaultValue="public">
                 <option value="public">Public</option>
                 <option value="preview">Preview link only</option>
                 <option value="draft">Draft link only</option>
@@ -1480,10 +1734,10 @@ function SidebarDemo() {
 
   return (
     <div className="flex w-full max-w-3xl flex-col overflow-hidden rounded-sm border border-line">
-      <div className="flex min-h-14 items-center gap-3 border-b border-line ps-4 pe-2 text-14">
-        <span className="font-semibold">Apply for a hotel licence</span>
+      <Bar.Root className="sm:px-4">
+        <Bar.Title>Apply for a hotel licence</Bar.Title>
         <Sidebar.Toggle sidebar={sidebar}>Pages</Sidebar.Toggle>
-      </div>
+      </Bar.Root>
       <div className="flex min-h-96">
         <Sidebar.Root sidebar={sidebar} label="Service documents">
           <Sidebar.Header />
@@ -1531,10 +1785,10 @@ function MenuDemo() {
 
   return (
     <div className="flex w-full max-w-3xl flex-col overflow-hidden rounded-sm border border-line">
-      <div className="flex min-h-14 items-center gap-3 border-b border-line px-4 text-14">
+      <Bar.Root className="sm:px-4">
         {!sidebar.wide && <Sidebar.Toggle sidebar={sidebar}>Menu</Sidebar.Toggle>}
         <Switch label="Inside a service" checked={rail} onCheckedChange={setRail} />
-      </div>
+      </Bar.Root>
       <div className="flex min-h-72">
         <Sidebar.Root sidebar={sidebar} label="Menu" rail={rail}>
           <Sidebar.Content>
@@ -1782,6 +2036,172 @@ function InsertMenu() {
         ))}
       </Menu.Content>
     </Menu.Root>
+  );
+}
+
+/** The blocks a page inserts, in a list popover with its search, as "+" opens it. */
+function ListBoxDemo() {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const found = blocks.flatMap(([heading, members]) =>
+    members
+      .filter(([name]) => name.toLowerCase().includes(query.trim().toLowerCase()))
+      .map(([name, icon]) => ({ heading, name, icon })),
+  );
+
+  const pick = (name: string) => {
+    setOpen(false);
+    toast(`${name} added`);
+  };
+
+  const list = useListNavigation(found.length, { onPick: (index) => pick(found[index]!.name) });
+
+  return (
+    <Popover.Root
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        setQuery("");
+        list.setIndex(0);
+      }}
+    >
+      <Popover.Trigger render={<Button icon={<Plus />}>Add content</Button>} />
+      <ListBox.Popover aria-label="Insert page content" className="w-72">
+        <ListBox.Search
+          aria-label="Search page content"
+          placeholder="Search content…"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            list.setIndex(0);
+          }}
+          {...list.comboboxProps}
+        />
+        <ListBox.Empty>{!found.length && "No content blocks match your search."}</ListBox.Empty>
+        <ListBox.Root {...list.listProps} aria-label="Blocks" className="max-h-72">
+          {blocks.map(([heading]) => {
+            const rows = found.flatMap((block, index) =>
+              block.heading === heading ? [{ ...block, index }] : [],
+            );
+
+            return (
+              rows.length > 0 && (
+                <ListBox.Group key={heading} label={heading}>
+                  {rows.map((block) => (
+                    <ListBox.Option
+                      key={block.name}
+                      {...list.optionProps(block.index)}
+                      icon={block.icon}
+                      onClick={() => pick(block.name)}
+                    >
+                      {block.name}
+                    </ListBox.Option>
+                  ))}
+                </ListBox.Group>
+              )
+            );
+          })}
+        </ListBox.Root>
+        <ListBox.Footer>{found[list.index] && `Adds ${found[list.index]!.name}`}</ListBox.Footer>
+      </ListBox.Popover>
+    </Popover.Root>
+  );
+}
+
+type DemoService = { id: string; title: string; url: string; updated: string };
+
+const demoServices: DemoService[] = [
+  {
+    id: "passport",
+    title: "Renew a passport",
+    url: "/travel-id-citizenship/renew-a-passport",
+    updated: "2026-10-21T09:00:00Z",
+  },
+  {
+    id: "birth",
+    title: "Register a birth",
+    url: "/family-birth-relationships/register-a-birth",
+    updated: "2026-10-27T14:30:00Z",
+  },
+  {
+    id: "loud-music",
+    title: "Get a permit to play loud music",
+    url: "/permits/loud-music",
+    updated: "2026-09-02T11:15:00Z",
+  },
+];
+
+const demoColumn = createAppColumnHelper<DemoService>();
+
+const demoColumns = demoColumn.columns([
+  demoColumn.accessor("title", {
+    header: "Service",
+    sortFn: "text",
+    cell: ({ row }) => (
+      <NameCell
+        name={
+          <TextLink render={<Link to="/prototypes/components" hash="table" />}>
+            {row.original.title}
+          </TextLink>
+        }
+        path={row.original.url}
+      />
+    ),
+  }),
+  demoColumn.accessor("updated", {
+    header: "Updated",
+    sortFn: "basic",
+    enableGlobalFilter: false,
+    meta: { secondary: true, width: "w-36" },
+    cell: ({ cell }) => <cell.DateCell />,
+  }),
+]);
+
+/** Services as the workspace lists them, from made-up rows, or under a refresh that failed. */
+function ServicesDemo({ stale = false }: { stale?: boolean }) {
+  const table = useAppTable({
+    columns: demoColumns,
+    data: demoServices,
+    getRowId: (service) => service.id,
+  });
+
+  return (
+    <table.AppTable>
+      <ListScreen
+        title="Services"
+        lead="Each service has an entry page, an optional start page and supporting pages."
+        action={
+          <Button variant="accent" size="md">
+            Create service
+          </Button>
+        }
+        filters={
+          <div role="search" aria-label="Filter services" className="border-b border-line p-3">
+            <table.Search label="Search title or URL" placeholder="Search title or URL" />
+          </div>
+        }
+        refreshFailure={
+          stale && (
+            <RefreshFailure
+              inset="card"
+              pending={false}
+              pendingLabel="Refreshing services…"
+              onRetry={() => toast("Services refreshed")}
+            >
+              We could not refresh services. Showing the last loaded list.
+            </RefreshFailure>
+          )
+        }
+      >
+        <table.DataTable
+          caption="Services"
+          rowLink
+          empty={{ title: "No services yet", description: "Create a service to add its pages." }}
+        />
+        <table.Pagination name={["service", "services"]} />
+      </ListScreen>
+    </table.AppTable>
   );
 }
 
@@ -2078,10 +2498,12 @@ function DeletePage() {
       </Button>
       <ConfirmDialog
         open={open}
-        onClose={close}
+        onOpenChange={(next) => {
+          if (!next) close();
+        }}
         title="Delete this page?"
         description="Visitors will no longer find it. Its browser draft is kept, so you can restore it."
-        confirm="Delete page"
+        confirmLabel="Delete page"
         pendingLabel="Deleting page…"
         pending={pending}
         error={failed && "The page could not be deleted. Try again."}
@@ -2100,35 +2522,57 @@ function DeletePage() {
   );
 }
 
+/** Create service as the workspace asks it: the FormDialog works for a moment, then closes and says it's done. */
 function CreateServiceDialog() {
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+
   return (
-    <Dialog.Root>
-      <Dialog.Trigger
-        render={
-          <Button variant="accent" icon={<Plus />}>
+    <>
+      <Button variant="accent" icon={<Plus />} onClick={() => setOpen(true)}>
+        Create service
+      </Button>
+      <FormDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Create a service"
+        description="It starts as a draft entry page. You can add a start page and a form later."
+        pending={pending}
+        onSubmit={() => {
+          setPending(true);
+          setTimeout(() => {
+            setPending(false);
+            setOpen(false);
+            toast("Service created");
+          }, 1500);
+        }}
+        actions={
+          <Button
+            type="submit"
+            variant="accent"
+            size="md"
+            pending={pending}
+            pendingLabel="Creating service…"
+          >
             Create service
           </Button>
         }
-      />
-      <Dialog.Content>
-        <Dialog.Header>
-          <Dialog.Title>Create a service</Dialog.Title>
-          <Dialog.Description>
-            It starts as a draft entry page. You can add a start page and a form later.
-          </Dialog.Description>
-        </Dialog.Header>
-        <Dialog.Body>
-          <Field label="Name">
-            <Input defaultValue="Renew a passport" />
-          </Field>
-          <Select label="Category" placeholder="Choose a category" items={categories} />
-        </Dialog.Body>
-        <Dialog.Actions>
-          <Dialog.Close render={<Button variant="secondary">Cancel</Button>} />
-          <Dialog.Close render={<Button variant="accent">Create service</Button>} />
-        </Dialog.Actions>
-      </Dialog.Content>
-    </Dialog.Root>
+      >
+        <Field label="Name">
+          <Input defaultValue="Renew a passport" />
+        </Field>
+        <Field label="Category">
+          <NativeSelect defaultValue="">
+            <option value="">Choose a category</option>
+            {categories.map((category) => (
+              <option key={category.value} value={category.value}>
+                {category.label}
+              </option>
+            ))}
+          </NativeSelect>
+        </Field>
+      </FormDialog>
+    </>
   );
 }
 

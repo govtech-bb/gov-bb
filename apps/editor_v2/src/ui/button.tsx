@@ -1,8 +1,13 @@
+import { mergeProps } from "@base-ui/react/merge-props";
+import { Toolbar } from "@base-ui/react/toolbar";
+import { useRender } from "@base-ui/react/use-render";
 import { CircleNotch } from "@phosphor-icons/react";
-import type { ComponentProps, ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
 import { cn } from "../cn";
 import { touchTarget } from "./surface";
 import { link } from "./text-link";
+import { InToolbar } from "./toolbar";
+import { Tip } from "./tooltip";
 
 // A rail's buttons: tinted under the pointer and while their menu is open, and pressed in while held, as a Button is
 export const blockHandle =
@@ -51,12 +56,11 @@ type Size = keyof typeof sizes;
 export type ButtonVariant = keyof typeof variants;
 
 /**
- * Classes for the tool's button, for the odd element that can't be a <Button>. Focus is GovBB's teal halo. Under a
- * coarse pointer it's 44px each way, except as a link, which keeps to the line of text it's in. Disabled, or
- * aria-disabled while it keeps its focus, it fades and the pointer doesn't change it; pending (data-pending) it keeps
- * its colour.
+ * The button's classes. Focus is GovBB's teal halo. Under a coarse pointer it's 44px each way, except as a link, which
+ * keeps to the line of text it's in. Disabled, or aria-disabled while it keeps its focus, it fades and the pointer
+ * doesn't change it; pending (data-pending) it keeps its colour.
  */
-export const button = (size: Size = "sm", variant: ButtonVariant = "ghost") =>
+const button = (size: Size = "sm", variant: ButtonVariant = "ghost") =>
   cn(
     "relative inline-flex shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-sm text-center align-middle leading-none font-semibold no-underline outline-offset-2 transition-colors focus-visible:outline-3 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:not-data-pending:cursor-not-allowed aria-disabled:not-data-pending:opacity-50",
     variant !== "link" && touchTarget,
@@ -84,29 +88,39 @@ type Decoration = {
   pendingLabel?: ReactNode;
 };
 
-type Props = Decoration &
-  (
-    | (ComponentProps<"button"> & { href?: never; target?: never })
-    | (ComponentProps<"a"> & { href: string })
-  );
+/**
+ * What it's called: its words, or for an icon alone an `aria-label`, unless a part that renders it brings the name,
+ * such as a trigger with a label of its own. `tip` shows an icon's label in a tooltip as well, so a sighted author
+ * isn't left guessing: the label is required then, and the button has no words of its own.
+ */
+type Name =
+  | { tip?: false }
+  | { tip: true; icon: ReactNode; "aria-label": string; children?: never };
+
+export type ButtonProps = Decoration & useRender.ComponentProps<"button"> & Name;
 
 /**
  * The tool's button. A ghost button shows when it's on: pressed, for a toggle, or the current page, in a pager. With
  * `aria-disabled` it can't be used but keeps its focus, such as a Save with nothing to save: it looks disabled and a
- * press does nothing.
+ * press does nothing. `render` gives the look to another element, such as the router's Link. In a toolbar it's one of
+ * the toolbar's controls; natively disabled, the arrow keys pass it by.
  */
-export function Button(props: Props) {
-  const {
-    size,
-    variant = "ghost",
-    icon,
-    iconEnd,
-    pending = false,
-    pendingLabel,
-    className,
-    children,
-  } = props;
-
+export function Button({
+  size,
+  variant = "ghost",
+  icon,
+  iconEnd,
+  pending = false,
+  pendingLabel,
+  tip,
+  render,
+  ref,
+  className,
+  children,
+  onClick,
+  ...props
+}: ButtonProps) {
+  const inToolbar = useContext(InToolbar);
   const solo = children == null && !iconEnd;
   // Turning only when motion is welcome: still, the circle and the words say it's working
   const lead = pending ? <CircleNotch className="motion-safe:animate-spin" /> : icon;
@@ -116,6 +130,8 @@ export function Button(props: Props) {
     (props["aria-pressed"] === true ||
       props["aria-pressed"] === "true" ||
       props["aria-current"] === "page");
+
+  const unusable = pending || props["aria-disabled"] === true || props["aria-disabled"] === "true";
 
   // Both labels in one cell, the one not in use invisible, so the button keeps the width of the wider
   const label =
@@ -138,70 +154,47 @@ export function Button(props: Props) {
       </span>
     );
 
-  const content = (
-    <>
-      {lead && <i className={cn(iconClass, !solo && "mr-[-0.1em] ml-[-0.15em]")}>{lead}</i>}
-      {label}
-      {iconEnd && <i className={cn(iconClass, "mr-[-0.15em] ml-[-0.1em]")}>{iconEnd}</i>}
-    </>
-  );
+  const element = useRender({
+    defaultTagName: "button",
+    // The control the toolbar's arrow keys move to. Its own render's type would win over a submit's, so it has none
+    render: inToolbar ? (
+      <Toolbar.Button
+        render={render ?? <button />}
+        disabled={props.disabled}
+        focusableWhenDisabled={false}
+      />
+    ) : (
+      render
+    ),
+    ref,
+    props: mergeProps<"button">(
+      {
+        type: render ? undefined : "button",
+        className: cn(
+          button(size, variant),
+          solo && "aspect-square px-0",
+          pressed && on,
+          pending && "cursor-progress",
+          className,
+        ),
+      },
+      props,
+      {
+        "aria-disabled": pending || props["aria-disabled"],
+        // A press while it's pending or aria-disabled does nothing, a form's submit included
+        onClick: unusable ? (event) => event.preventDefault() : onClick,
+        children: (
+          <>
+            {lead && <i className={cn(iconClass, !solo && "mr-[-0.1em] ml-[-0.15em]")}>{lead}</i>}
+            {label}
+            {iconEnd && <i className={cn(iconClass, "mr-[-0.15em] ml-[-0.1em]")}>{iconEnd}</i>}
+          </>
+        ),
+      },
+    ),
+    // data-pending, while it works
+    state: { pending },
+  });
 
-  const classes = cn(
-    button(size, variant),
-    solo && "aspect-square px-0",
-    pressed && on,
-    pending && "cursor-progress",
-    className,
-  );
-
-  if (props.href !== undefined) {
-    const {
-      size: _size,
-      variant: _variant,
-      icon: _icon,
-      iconEnd: _iconEnd,
-      pending: _pending,
-      pendingLabel: _pendingLabel,
-      className: _className,
-      children: _children,
-      ...linkProps
-    } = props;
-
-    return (
-      <a {...linkProps} className={classes}>
-        {content}
-      </a>
-    );
-  }
-
-  const {
-    size: _size,
-    variant: _variant,
-    icon: _icon,
-    iconEnd: _iconEnd,
-    pending: _pending,
-    pendingLabel: _pendingLabel,
-    href: _href,
-    target: _target,
-    className: _className,
-    children: _children,
-    ...buttonProps
-  } = props;
-
-  const unusable =
-    pending || buttonProps["aria-disabled"] === true || buttonProps["aria-disabled"] === "true";
-
-  return (
-    <button
-      type="button"
-      className={classes}
-      {...buttonProps}
-      aria-disabled={pending || buttonProps["aria-disabled"]}
-      data-pending={pending || undefined}
-      // A press while it's pending or aria-disabled does nothing, a form's submit included
-      onClick={unusable ? (event) => event.preventDefault() : buttonProps.onClick}
-    >
-      {content}
-    </button>
-  );
+  return tip ? <Tip content={props["aria-label"]}>{element}</Tip> : element;
 }

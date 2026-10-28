@@ -1,6 +1,6 @@
 import { Field as BaseField } from "@base-ui/react/field";
 import { Fieldset as BaseFieldset } from "@base-ui/react/fieldset";
-import type { ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import { cn } from "../cn";
 
 // As dense as its control: md beside a 36px field in a dialog or a panel, sm beside a 32px one in a popover or a menu
@@ -8,6 +8,13 @@ const sizes = {
   md: { root: "gap-2", note: "text-14" },
   sm: { root: "gap-1.5", note: "text-12" },
 };
+
+export type FieldSize = keyof typeof sizes;
+
+const SizeOfField = createContext<FieldSize | undefined>(undefined);
+
+/** The size of the Field a control is in, which it takes unless given its own. */
+export const useFieldSize = () => useContext(SizeOfField);
 
 const labelText = "text-14 font-semibold text-ink";
 
@@ -18,7 +25,8 @@ type FieldProps = {
   /** Why the value can't be used. It marks the control invalid. */
   error?: ReactNode;
   disabled?: boolean;
-  size?: keyof typeof sizes;
+  /** Its control's size too, which it takes unless given its own. */
+  size?: FieldSize;
   /**
    * False when the control is a button, such as a Select's trigger: the label then names it and focuses it, where a
    * native label would press it.
@@ -53,7 +61,7 @@ export function Field({
       >
         {label}
       </BaseField.Label>
-      {children}
+      <SizeOfField value={size}>{children}</SizeOfField>
       {hint && (
         <BaseField.Description className={cn("text-muted", sizes[size].note)}>
           {hint}

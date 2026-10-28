@@ -24,7 +24,7 @@ export function RouteError({ reset }: ErrorComponentProps) {
     <>
       <ScreenTitle names={["Unable to open this screen"]} />
       <EmptyState
-        kind="failed"
+        tone="error"
         size="page"
         title="Unable to open this screen"
         description="Try again. If you have unsaved changes, keep this tab open rather than refreshing."

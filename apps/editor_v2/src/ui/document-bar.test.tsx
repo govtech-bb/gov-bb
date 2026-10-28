@@ -2,7 +2,10 @@
 import { act, useEffect, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { Bar } from "./bar";
+import { Button } from "./button";
 import { DocumentBar } from "./document-bar";
+import { SidePanel, useSidePanel } from "./side-panel";
 
 let host: HTMLDivElement;
 
@@ -152,4 +155,65 @@ test("from a tablet up it's pinned to the top as the document scrolls under it, 
     expect.arrayContaining(["md:sticky", "md:top-0", "md:z-bar", "md:flex-nowrap"]),
   );
   expect(bar.hasAttribute("data-document-bar")).toBe(true);
+});
+
+test("every tool in its slots is one of its toolbar's controls: one Tab stop, the arrows between them", async () => {
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches: true,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }));
+
+  function Page() {
+    const panel = useSidePanel();
+
+    return (
+      <DocumentBar
+        label="Page tools"
+        title="Renew a passport"
+        undo={
+          <>
+            <Button icon={<svg />} aria-label="Undo" disabled />
+            <Button icon={<svg />} aria-label="Redo" />
+          </>
+        }
+        preview={<Bar.Tool icon={<svg />} label="Preview page" />}
+        publish={<Button variant="accent">Publish changes</Button>}
+        settings={<SidePanel.Toggle panel={panel} label="Page settings" />}
+      />
+    );
+  }
+
+  await render(<Page />);
+
+  const named = (control: Element) => control.getAttribute("aria-label") ?? control.textContent;
+  const controls = [...host.querySelectorAll<HTMLElement>('[role="toolbar"] button')];
+
+  expect(controls.map(named)).toEqual([
+    "Undo",
+    "Redo",
+    "Preview page",
+    "Publish changes",
+    "Page settings",
+  ]);
+  // Undo can't be used yet, so Redo holds the one Tab stop
+  expect(controls.map((control) => control.getAttribute("tabindex"))).toEqual([
+    "-1",
+    "0",
+    "-1",
+    "-1",
+    "-1",
+  ]);
+
+  await act(async () => controls[1]!.focus());
+
+  for (const name of ["Preview page", "Publish changes", "Page settings"]) {
+    await act(async () => {
+      document.activeElement!.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true }),
+      );
+    });
+    expect(named(document.activeElement!)).toBe(name);
+  }
 });

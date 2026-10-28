@@ -2,6 +2,7 @@ import { Popover as BasePopover } from "@base-ui/react/popover";
 import type { ReactNode } from "react";
 import { cn } from "../cn";
 import { surface, surfaceMotion, type PopupName } from "./surface";
+import { InToolbar } from "./toolbar";
 
 let barHeight: number | null = null;
 
@@ -52,7 +53,7 @@ type ContentProps = Pick<
 /**
  * The popover in its portal, below its trigger unless placed otherwise. `anchor` places it against something other
  * than the trigger, such as a block or the selected text. Name it with `aria-label`, or with `aria-labelledby` and
- * the id of its Title.
+ * the id of its Title. Scrolled to its end, it keeps the scroll rather than handing it to the page.
  */
 function PopoverContent({
   initialFocus,
@@ -84,11 +85,12 @@ function PopoverContent({
           className={cn(
             surface,
             surfaceMotion,
-            "max-h-(--available-height) max-w-[calc(100vw-2rem)] overflow-y-auto p-3.5",
+            "max-h-(--available-height) max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain p-3.5",
             className,
           )}
         >
-          {children}
+          {/* Opened from a toolbar, its buttons are its own rather than the toolbar's */}
+          <InToolbar value={false}>{children}</InToolbar>
         </BasePopover.Popup>
       </BasePopover.Positioner>
     </BasePopover.Portal>

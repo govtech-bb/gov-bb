@@ -57,7 +57,7 @@ export function RemotePagePane({
       <>
         {nav && <Bar.Root>{nav}</Bar.Root>}
         <EmptyState
-          kind="failed"
+          tone="error"
           size="page"
           title="We could not load this page"
           description="Check you are still signed in, then try again."

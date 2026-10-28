@@ -33,7 +33,7 @@ const columns = column.columns([
   }),
   column.accessor("status", {
     header: "Status",
-    meta: { secondary: true, width: "w-44" },
+    meta: { secondary: true, width: "w-44", align: "end" },
     cell: ({ row }) => (
       <>
         <span>{row.original.status}</span>
@@ -48,11 +48,20 @@ const services: Service[] = [
   { id: "permit", title: "Get a permit", status: "Draft link only" },
 ];
 
-function List({ loading = false, rowLink }: { loading?: boolean; rowLink?: boolean }) {
-  const table = useAppTable({ columns, data: services, getRowId: (row) => row.id });
+function List({
+  loading = false,
+  rowLink,
+  data = services,
+}: {
+  loading?: boolean;
+  rowLink?: boolean;
+  data?: Service[];
+}) {
+  const table = useAppTable({ columns, data, getRowId: (row) => row.id });
 
   return (
     <table.AppTable>
+      <table.Search label="Search services" placeholder="Search" />
       <table.DataTable
         caption="Services"
         loading={loading}
@@ -159,4 +168,64 @@ test("without one, rows still light up for scanning but don't open", async () =>
   expect(fees!.classList).not.toContain("cursor-pointer");
   await click(fees!.querySelector(".font-mono")!);
   expect(opened).not.toHaveBeenCalled();
+});
+
+test("a column sorts from its header, which says which way for screen readers", async () => {
+  await show(<List />);
+
+  const header = (name: string) =>
+    [...host.querySelectorAll("thead th")].find((cell) => cell.textContent === name)!;
+
+  const titles = () => rows().map((row) => row.querySelector("a")?.textContent);
+
+  // Each can sort, and none has yet
+  expect(header("Service").getAttribute("aria-sort")).toBe("none");
+  expect(header("Status").getAttribute("aria-sort")).toBe("none");
+  expect(titles()).toEqual(["Pay a fee", "Get a permit"]);
+
+  await click(header("Service").querySelector("button")!);
+  expect(header("Service").getAttribute("aria-sort")).toBe("ascending");
+  expect(titles()).toEqual(["Get a permit", "Pay a fee"]);
+
+  await click(header("Service").querySelector("button")!);
+  expect(header("Service").getAttribute("aria-sort")).toBe("descending");
+  expect(titles()).toEqual(["Pay a fee", "Get a permit"]);
+  // Only the sorted column says so
+  expect(header("Status").getAttribute("aria-sort")).toBe("none");
+});
+
+test("a search that leaves every row out says so, where an empty list offers its first step", async () => {
+  await show(<List />);
+
+  const search = host.querySelector<HTMLInputElement>('input[aria-label="Search services"]')!;
+
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+      search,
+      "passport",
+    );
+    search.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  expect(rows()).toHaveLength(1);
+  expect(rows()[0]!.textContent).toBe("Nothing matches these filters");
+
+  await show(<List data={[]} />);
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(search, "");
+    search.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  expect(rows()[0]!.textContent).toBe("No services yet");
+});
+
+test("a column aligned to its end lines up its header and its cells there", async () => {
+  await show(<List />);
+
+  const [service, status] = [...host.querySelectorAll("thead th")];
+  const [title, state] = [...rows()[0]!.querySelectorAll("td")];
+
+  expect(status!.classList).toContain("text-end");
+  expect(state!.classList).toContain("text-end");
+  expect(service!.classList).not.toContain("text-end");
+  expect(title!.classList).not.toContain("text-end");
 });

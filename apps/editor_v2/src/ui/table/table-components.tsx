@@ -130,6 +130,7 @@ export function DataTable({
                         className={cn(
                           "px-4 py-1.5 text-start font-semibold whitespace-nowrap",
                           meta?.width,
+                          meta?.align === "end" && "text-end",
                           meta?.secondary && secondary,
                         )}
                       >
@@ -204,6 +205,7 @@ export function DataTable({
                       <td
                         className={cn(
                           "px-4 py-3.5 align-middle",
+                          cell.column.columnDef.meta?.align === "end" && "text-end",
                           cell.column.columnDef.meta?.secondary && secondary,
                         )}
                       >

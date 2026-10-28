@@ -10,12 +10,15 @@ import { TextLink } from "../ui/text-link";
  */
 export function LoadFailure({
   noun,
+  title = `We could not load ${noun}`,
   error,
   retrying,
   retry,
 }: {
   /** What the list holds, such as “categories”. */
   noun: string;
+  /** What failed, when it isn't the list by its noun. */
+  title?: string;
   error: Error | null;
   retrying: boolean;
   retry: () => void;
@@ -25,8 +28,8 @@ export function LoadFailure({
 
   return (
     <EmptyState
-      kind="failed"
-      title={`We could not load ${noun}`}
+      tone="error"
+      title={title}
       description={
         status === 401
           ? `Your session has ended. Sign in again to load ${noun}.`

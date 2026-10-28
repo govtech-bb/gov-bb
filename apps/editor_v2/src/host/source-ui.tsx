@@ -281,10 +281,10 @@ export function SourceEditor({
       {/* The Markdown can't be had back once discarded, so ask; the focus then goes back to it */}
       <ConfirmDialog
         open={discarding}
-        onClose={() => setDiscarding(false)}
+        onOpenChange={setDiscarding}
         title="Discard your changes?"
         description={`Your changes to the Markdown haven’t been applied, and they’ll be lost. The ${documentLabel} stays as it is.`}
-        confirm="Discard changes"
+        confirmLabel="Discard changes"
         finalFocus={source}
         onConfirm={() => {
           draft.store.discard();

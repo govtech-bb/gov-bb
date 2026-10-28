@@ -1,6 +1,7 @@
 import { SidebarSimple } from "@phosphor-icons/react";
 import { createContext, useContext, useId, useState, type ReactNode } from "react";
-import { Drawer, PanelToggle, useDrawerPanel, type DrawerPanel } from "./drawer";
+import { cn } from "../cn";
+import { Drawer, PanelToggle, useColumnMotion, useDrawerPanel, type DrawerPanel } from "./drawer";
 import { wideScreen } from "./use-media-query";
 
 // A section is titled a level under what holds it: the document's h1 beside the page, the drawer's own h2 title
@@ -45,9 +46,11 @@ type RootProps = {
 
 /**
  * A document's settings: beside the canvas on a wide screen, where they stay in view as the page
- * scrolls, and a drawer from the end edge on a narrow one, which can be swiped away.
+ * scrolls and ease away as the panel hides, and a drawer from the end edge on a narrow one, which can be swiped away.
  */
 function SidePanelRoot({ panel, label, inert, children }: RootProps) {
+  const motion = useColumnMotion();
+
   if (panel.wide)
     return (
       <aside
@@ -55,10 +58,10 @@ function SidePanelRoot({ panel, label, inert, children }: RootProps) {
         aria-label={label}
         hidden={!panel.open}
         inert={inert}
-        className="w-80 shrink-0 border-s border-line bg-white text-14 text-ink"
+        className={cn("w-80 shrink-0 border-s border-line bg-white text-14 text-ink", motion)}
       >
         {/* In view as the page scrolls, under the document's bar pinned above it */}
-        <div className="sticky top-(--bar-height) max-h-[calc(100dvh-var(--bar-height))] overflow-y-auto overscroll-contain">
+        <div className="sticky top-(--bar-height) max-h-[calc(100dvh-var(--bar-height))] w-80 overflow-y-auto overscroll-contain">
           <SectionHeading value="h2">{children}</SectionHeading>
         </div>
       </aside>

@@ -1,17 +1,12 @@
 import { Toast as BaseToast } from "@base-ui/react/toast";
-import { CheckCircle, Info, WarningCircle, X } from "@phosphor-icons/react";
+import { X } from "@phosphor-icons/react";
 import { cn } from "../cn";
+import { toneIcons, type BannerTone } from "./banner";
 import { Button } from "./button";
 
 const manager = BaseToast.createToastManager();
 
-const icons = {
-  success: <CheckCircle className="text-green-80" />,
-  info: <Info className="text-blue-80" />,
-  error: <WarningCircle className="text-error" />,
-};
-
-type ToastTone = keyof typeof icons;
+type ToastTone = Exclude<BannerTone, "warning">;
 
 /**
  * Confirms what an action did once its own control has gone, such as a dialog that closed or a page that was left.
@@ -79,7 +74,7 @@ function Toasts() {
       {/* Behind the front toast, only its frame shows until the stack spreads */}
       <BaseToast.Content className="flex items-start gap-2.5 overflow-hidden py-3 ps-3.5 pe-2 transition-opacity duration-250 data-behind:opacity-0 data-expanded:opacity-100">
         <span aria-hidden="true" className="mt-0.5 flex shrink-0 [&>svg]:size-4">
-          {icons[item.type === "error" || item.type === "info" ? item.type : "success"]}
+          {toneIcons[item.type === "error" || item.type === "info" ? item.type : "success"]}
         </span>
         <div className="min-w-0 flex-1">
           <BaseToast.Title className="font-semibold" />
@@ -88,7 +83,10 @@ function Toasts() {
         {/* Renders only for a toast with an action; acting on it is the toast's last job */}
         <BaseToast.Action
           onClick={() => manager.close(item.id)}
-          className="-my-1 h-7 shrink-0 cursor-pointer rounded-sm px-2 font-semibold text-interactive hover:bg-hover hover:text-interactive-active pointer-coarse:h-11"
+          // In teal, apart from Dismiss beside it
+          render={
+            <Button className="-my-1.5 text-interactive pressable:hover:text-interactive-active pressable:active:text-interactive-active" />
+          }
         />
         <BaseToast.Close
           render={<Button icon={<X />} aria-label="Dismiss" className="-my-1.5" />}

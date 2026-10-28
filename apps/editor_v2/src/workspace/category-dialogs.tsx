@@ -17,16 +17,16 @@ import {
   type CategoryProblem,
 } from "../api/categories";
 import type { CategoryRefusal, EditorApi } from "../api/client";
-import { button, Button } from "../ui/button";
+import { Button } from "../ui/button";
 import { ConfirmDialog } from "../ui/confirm-dialog";
 import { Dialog } from "../ui/dialog";
 import { Field } from "../ui/field";
+import { FormDialog } from "../ui/form-dialog";
 import { Input } from "../ui/input";
 import { NativeSelect } from "../ui/native-select";
 import { Textarea } from "../ui/textarea";
 import { toast } from "../ui/toast";
 import { ApiProblems, ApiProblemText } from "./api-problems";
-import { WorkspaceDialog } from "./workspace-dialog";
 
 /**
  * Where a category change stands once it has been sent, short of done: refused for a reason the author can act on,
@@ -170,7 +170,7 @@ export function CategoryDialog({
   open,
   category,
   categories,
-  close,
+  onClose,
 }: {
   api: EditorApi;
   /** Shown; closed, it fades away as it was. Each opening is a new dialog. */
@@ -179,7 +179,7 @@ export function CategoryDialog({
   category?: Category;
   /** The list as it is now, to check the fields against. */
   categories: readonly Category[];
-  close: () => void;
+  onClose: () => void;
 }) {
   const contentChanged = useContentChanged();
   const words = category ? editWords : addWords;
@@ -214,7 +214,7 @@ export function CategoryDialog({
   const done = () => {
     contentChanged();
     toast(words.done);
-    close();
+    onClose();
   };
 
   // A save whose answer was lost: done if the list now holds what was sent, else it may be sent again
@@ -330,13 +330,15 @@ export function CategoryDialog({
     );
 
   return (
-    <WorkspaceDialog
+    <FormDialog
       open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
       title={words.title}
       description={words.description}
       // While a save or a check is out, the dialog stays: its answer, and what was typed, still need it
       pending={working}
-      close={close}
       onSubmit={() => {
         if (working || attempt?._tag === "Superseded") return;
 
@@ -348,71 +350,61 @@ export function CategoryDialog({
 
         if (found.length === 0) void save(fields);
       }}
-      body={
-        <>
-          <Field label="Name" error={errorOf("title")}>
-            <Input
-              ref={titleControl}
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-            />
-          </Field>
-          <Field
-            label="Slug"
-            hint={
-              <>
-                {locked ? `${locked} ` : "Its address on the site: "}
-                <span className="font-mono wrap-break-word">
-                  {categoryUrl(fields.slug || "…", parent)}
-                </span>
-              </>
-            }
-            error={errorOf("slug")}
-            disabled={!!locked}
-          >
-            <Input
-              ref={slugControl}
-              value={fields.slug}
-              spellCheck={false}
-              autoCapitalize="off"
-              autoComplete="off"
-              className="font-mono"
-              onChange={(event) => setSlug(event.target.value)}
-            />
-          </Field>
-          <Field label="Parent category" error={errorOf("parent_id")} disabled={!!locked}>
-            <NativeSelect
-              ref={parentControl}
-              value={parentId}
-              onChange={(event) => setParentId(event.target.value)}
-            >
-              <option value="">None (top level)</option>
-              {parents.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {categoryLabel(item, categories)}
-                </option>
-              ))}
-            </NativeSelect>
-          </Field>
-          <Field label="Description (optional)" error={errorOf("description")}>
-            <Textarea
-              rows={3}
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-            />
-          </Field>
-          <ApiProblems messages={messages} />
-        </>
-      }
-      footer={
-        <>
-          <Button size="md" disabled={working} onClick={close}>
-            Cancel
-          </Button>
-          {action}
-        </>
-      }
-    />
+      actions={action}
+    >
+      <Field label="Name" error={errorOf("title")}>
+        <Input
+          ref={titleControl}
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+        />
+      </Field>
+      <Field
+        label="Slug"
+        hint={
+          <>
+            {locked ? `${locked} ` : "Its address on the site: "}
+            <span className="font-mono wrap-break-word">
+              {categoryUrl(fields.slug || "…", parent)}
+            </span>
+          </>
+        }
+        error={errorOf("slug")}
+        disabled={!!locked}
+      >
+        <Input
+          ref={slugControl}
+          value={fields.slug}
+          spellCheck={false}
+          autoCapitalize="off"
+          autoComplete="off"
+          className="font-mono"
+          onChange={(event) => setSlug(event.target.value)}
+        />
+      </Field>
+      <Field label="Parent category" error={errorOf("parent_id")} disabled={!!locked}>
+        <NativeSelect
+          ref={parentControl}
+          value={parentId}
+          onChange={(event) => setParentId(event.target.value)}
+        >
+          <option value="">None (top level)</option>
+          {parents.map((item) => (
+            <option key={item.id} value={item.id}>
+              {categoryLabel(item, categories)}
+            </option>
+          ))}
+        </NativeSelect>
+      </Field>
+      <Field label="Description (optional)" error={errorOf("description")}>
+        <Textarea
+          rows={3}
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+        />
+      </Field>
+      <ApiProblems messages={messages} />
+    </FormDialog>
   );
 }
 
@@ -426,7 +418,7 @@ export function DeleteCategoryDialog({
   open,
   category,
   categories,
-  close,
+  onClose,
   focusAfter,
 }: {
   api: EditorApi;
@@ -436,7 +428,7 @@ export function DeleteCategoryDialog({
   category: Category;
   /** The list as it is now. */
   categories: readonly Category[];
-  close: () => void;
+  onClose: () => void;
   /** Where the focus goes once the category has gone, taking its row's buttons with it. */
   focusAfter: RefObject<HTMLElement | null>;
 }) {
@@ -452,7 +444,7 @@ export function DeleteCategoryDialog({
     deleted.current = true;
     contentChanged();
     toast(words);
-    close();
+    onClose();
   };
 
   // A deletion whose answer was lost: done once the category is gone from the list
@@ -507,7 +499,7 @@ export function DeleteCategoryDialog({
       <Dialog.Root
         open={open}
         onOpenChange={(next) => {
-          if (!next) close();
+          if (!next) onClose();
         }}
       >
         <Dialog.Content size="sm">
@@ -516,17 +508,17 @@ export function DeleteCategoryDialog({
             <Dialog.Description>{blocked}</Dialog.Description>
           </Dialog.Header>
           <Dialog.Actions>
-            <Button size="md" variant={base.services > 0 ? "ghost" : "accent"} onClick={close}>
+            <Button size="md" variant={base.services > 0 ? "ghost" : "accent"} onClick={onClose}>
               Close
             </Button>
             {base.services > 0 && (
-              <Link
-                to="/services"
-                search={{ category: base.slug }}
-                className={button("md", "accent")}
+              <Button
+                size="md"
+                variant="accent"
+                render={<Link to="/services" search={{ category: base.slug }} />}
               >
                 See its services
-              </Link>
+              </Button>
             )}
           </Dialog.Actions>
         </Dialog.Content>
@@ -543,11 +535,15 @@ export function DeleteCategoryDialog({
   return (
     <ConfirmDialog
       open={open}
-      onClose={close}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
       title={`Delete ${base.title}?`}
       description="Services can no longer be filed under it. This can’t be undone."
-      confirm={superseded ? "Load their version" : unsettled ? "Check again" : "Delete category"}
-      tone={superseded || unsettled ? "accent" : "danger"}
+      confirmLabel={
+        superseded ? "Load their version" : unsettled ? "Check again" : "Delete category"
+      }
+      variant={superseded || unsettled ? "accent" : "danger"}
       // Loading their version and Check again check the list; deleting otherwise
       pendingLabel={
         superseded || unsettled || attempt?._tag === "Checking"

@@ -8,15 +8,15 @@ import { categoriesQuery, pageQuery } from "../api/queries";
 import { Button } from "../ui/button";
 import { ConfirmDialog } from "../ui/confirm-dialog";
 import { Field } from "../ui/field";
+import { FormDialog } from "../ui/form-dialog";
 import { Input } from "../ui/input";
 import { NativeSelect } from "../ui/native-select";
 import { toast } from "../ui/toast";
-import { WorkspaceDialog } from "./workspace-dialog";
 import { ApiProblems, ApiProblemText } from "./api-problems";
 import { documentLabel, type PageDocument } from "./model";
 
 /** Create a page as a draft, then hand its id over once the API has it. */
-function useCreatePage(api: EditorApi, done: (id: string) => void) {
+function useCreatePage(api: EditorApi, onDone: (id: string) => void) {
   const client = useQueryClient();
 
   return useMutation({
@@ -24,7 +24,7 @@ function useCreatePage(api: EditorApi, done: (id: string) => void) {
     onSuccess: (page) => {
       client.setQueryData(pageQuery(api, page.id).queryKey, page);
       void client.invalidateQueries({ queryKey: ["content"] });
-      done(page.id);
+      onDone(page.id);
     },
   });
 }
@@ -58,31 +58,33 @@ function PathField({
 export function CreateRemoteServiceDialog({
   api,
   open,
-  close,
-  done,
+  onClose,
+  onDone,
 }: {
   api: EditorApi;
   /** Shown; closed, it fades away as it was. Each opening is a new dialog. */
   open: boolean;
-  close: () => void;
-  done: (id: string) => void;
+  onClose: () => void;
+  onDone: (id: string) => void;
 }) {
   const categories = useQuery(categoriesQuery(api)).data ?? [];
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [edited, setEdited] = useState<string>();
   const [problems, setProblems] = useState<string[]>([]);
-  const create = useCreatePage(api, done);
+  const create = useCreatePage(api, onDone);
   const category = categories.find((item) => item.id === categoryId);
   const path = edited ?? suggestedUrl(category?.url ?? "", title);
 
   return (
-    <WorkspaceDialog
+    <FormDialog
       open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
       title="Create a service"
       description="The service starts as a draft entry page. Add its start page and supporting pages once it exists."
       pending={create.isPending}
-      close={close}
       onSubmit={() => {
         const badPath = urlProblem(path);
 
@@ -103,56 +105,45 @@ export function CreateRemoteServiceDialog({
             body_markdown: "",
           });
       }}
-      body={
-        <>
-          <Field label="Service name">
-            <Input value={title} onChange={(event) => setTitle(event.target.value)} />
-          </Field>
-          <Field label="Category">
-            <NativeSelect
-              value={categoryId}
-              onChange={(event) => setCategoryId(event.target.value)}
-            >
-              <option value="">Choose a category</option>
-              {categoryRows(categories).map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.parent_id
-                    ? `- ${categoryLabel(item, categories)}`
-                    : categoryLabel(item, categories)}
-                </option>
-              ))}
-            </NativeSelect>
-          </Field>
-          <PathField value={path} onChange={setEdited} />
-          <ApiProblems
-            messages={[
-              ...problems,
-              ...apiFailureMessages(
-                create.error,
-                "The page could not be created. Try again.",
-                pageFieldLabel,
-              ),
-            ]}
-          />
-        </>
+      actions={
+        <Button
+          type="submit"
+          variant="accent"
+          size="md"
+          pending={create.isPending}
+          pendingLabel="Creating service…"
+        >
+          Create service
+        </Button>
       }
-      footer={
-        <>
-          <Button size="md" disabled={create.isPending} onClick={close}>
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="accent"
-            size="md"
-            pending={create.isPending}
-            pendingLabel="Creating service…"
-          >
-            Create service
-          </Button>
-        </>
-      }
-    />
+    >
+      <Field label="Service name">
+        <Input value={title} onChange={(event) => setTitle(event.target.value)} />
+      </Field>
+      <Field label="Category">
+        <NativeSelect value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+          <option value="">Choose a category</option>
+          {categoryRows(categories).map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.parent_id
+                ? `- ${categoryLabel(item, categories)}`
+                : categoryLabel(item, categories)}
+            </option>
+          ))}
+        </NativeSelect>
+      </Field>
+      <PathField value={path} onChange={setEdited} />
+      <ApiProblems
+        messages={[
+          ...problems,
+          ...apiFailureMessages(
+            create.error,
+            "The page could not be created. Try again.",
+            pageFieldLabel,
+          ),
+        ]}
+      />
+    </FormDialog>
   );
 }
 
@@ -164,15 +155,15 @@ export function CreateRemotePageDialog({
   api,
   open,
   detail,
-  close,
-  done,
+  onClose,
+  onDone,
 }: {
   api: EditorApi;
   /** Shown; closed, it fades away as it was. Each opening is a new dialog. */
   open: boolean;
   detail: ServiceDetail;
-  close: () => void;
-  done: (id: string) => void;
+  onClose: () => void;
+  onDone: (id: string) => void;
 }) {
   const entry = detail.service;
   const hasStart = detail.pages.some((page) => page.role === "start");
@@ -180,18 +171,20 @@ export function CreateRemotePageDialog({
   const [title, setTitle] = useState("");
   const [edited, setEdited] = useState<string>();
   const [problems, setProblems] = useState<string[]>([]);
-  const create = useCreatePage(api, done);
+  const create = useCreatePage(api, onDone);
   const start = kind === "start";
   const name = title.trim() || (start ? "Before you start" : "");
   const path = start ? `${entry.url}/start` : (edited ?? suggestedUrl(entry.url, title));
 
   return (
-    <WorkspaceDialog
+    <FormDialog
       open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
       title="Add a page"
       description="The page starts as a draft beneath this service’s entry page."
       pending={create.isPending}
-      close={close}
       onSubmit={() => {
         const badPath = urlProblem(path);
         const found = [...(name ? [] : ["Enter a page title"]), ...(badPath ? [badPath] : [])];
@@ -207,47 +200,39 @@ export function CreateRemotePageDialog({
             body_markdown: "",
           });
       }}
-      body={
-        <>
-          <Field label="Document type">
-            <NativeSelect value={kind} onChange={(event) => setKind(event.target.value)}>
-              {!hasStart && <option value="start">Start page</option>}
-              <option value="supporting">Supporting page</option>
-            </NativeSelect>
-          </Field>
-          <Field label={start ? "Page title (optional)" : "Page title"}>
-            <Input value={title} onChange={(event) => setTitle(event.target.value)} />
-          </Field>
-          <PathField value={path} onChange={setEdited} readOnly={start} />
-          <ApiProblems
-            messages={[
-              ...problems,
-              ...apiFailureMessages(
-                create.error,
-                "The page could not be created. Try again.",
-                pageFieldLabel,
-              ),
-            ]}
-          />
-        </>
+      actions={
+        <Button
+          type="submit"
+          variant="accent"
+          size="md"
+          pending={create.isPending}
+          pendingLabel="Adding page…"
+        >
+          Add page
+        </Button>
       }
-      footer={
-        <>
-          <Button size="md" disabled={create.isPending} onClick={close}>
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="accent"
-            size="md"
-            pending={create.isPending}
-            pendingLabel="Adding page…"
-          >
-            Add page
-          </Button>
-        </>
-      }
-    />
+    >
+      <Field label="Document type">
+        <NativeSelect value={kind} onChange={(event) => setKind(event.target.value)}>
+          {!hasStart && <option value="start">Start page</option>}
+          <option value="supporting">Supporting page</option>
+        </NativeSelect>
+      </Field>
+      <Field label={start ? "Page title (optional)" : "Page title"}>
+        <Input value={title} onChange={(event) => setTitle(event.target.value)} />
+      </Field>
+      <PathField value={path} onChange={setEdited} readOnly={start} />
+      <ApiProblems
+        messages={[
+          ...problems,
+          ...apiFailureMessages(
+            create.error,
+            "The page could not be created. Try again.",
+            pageFieldLabel,
+          ),
+        ]}
+      />
+    </FormDialog>
   );
 }
 
@@ -256,15 +241,15 @@ export function DeleteRemotePageDialog({
   api,
   open,
   page,
-  close,
-  done,
+  onClose,
+  onDone,
 }: {
   api: EditorApi;
   /** Shown; closed, it fades away as it was. Each opening is a new dialog. */
   open: boolean;
   page: PageDocument;
-  close: () => void;
-  done: () => void;
+  onClose: () => void;
+  onDone: () => void;
 }) {
   const client = useQueryClient();
 
@@ -274,7 +259,7 @@ export function DeleteRemotePageDialog({
       void client.invalidateQueries({ queryKey: ["content"] });
       // The editor leaves the page, so say it went
       toast("Page deleted");
-      done();
+      onDone();
     },
   });
 
@@ -285,14 +270,16 @@ export function DeleteRemotePageDialog({
   return (
     <ConfirmDialog
       open={open}
-      onClose={close}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
       title={service ? "Delete this service?" : "Delete this page?"}
       description={
         service
           ? `${documentLabel(page)} is this service’s entry page, so deleting it deletes the service. It’s removed from the content API and, if it’s public, from the site. Any unsaved changes will be lost.`
           : `${documentLabel(page)} is removed from the content API and, if it is public, from the site. Any unsaved changes will be lost.`
       }
-      confirm={service ? "Delete service" : "Delete page"}
+      confirmLabel={service ? "Delete service" : "Delete page"}
       pendingLabel={service ? "Deleting service…" : "Deleting page…"}
       pending={remove.isPending}
       error={

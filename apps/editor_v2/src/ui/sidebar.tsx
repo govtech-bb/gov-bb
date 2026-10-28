@@ -1,10 +1,20 @@
 import { useRender } from "@base-ui/react/use-render";
 import { IconContext, SidebarSimple } from "@phosphor-icons/react";
-import { createContext, useContext, useId, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { cn } from "../cn";
 import { Button, type ButtonVariant } from "./button";
-import { Drawer, PanelToggle, useDrawerPanel, type DrawerPanel } from "./drawer";
+import { Drawer, PanelToggle, useColumnMotion, useDrawerPanel, type DrawerPanel } from "./drawer";
 import { EmptyState } from "./empty-state";
+import { LoadingState } from "./loading-state";
 import { touchTarget } from "./surface";
 import { Tip } from "./tooltip";
 
@@ -71,10 +81,12 @@ type RootProps = {
 
 /**
  * The column, a navigation landmark. Beside the page its content stays in view as the page scrolls, and collapsed it
- * leaves the page its width. On a narrow screen it's a drawer from the start edge, which closes as a row or an action
- * is chosen.
+ * eases away, leaving the page its width. On a narrow screen it's a drawer from the start edge, which closes as a row
+ * or an action is chosen.
  */
 function SidebarRoot({ sidebar, label, rail = false, children }: RootProps) {
+  const motion = useColumnMotion();
+
   if (!sidebar.wide)
     return (
       <Place value={{ label, closeDrawer: () => sidebar.setOpen(false) }}>
@@ -96,9 +108,21 @@ function SidebarRoot({ sidebar, label, rail = false, children }: RootProps) {
         id={sidebar.id}
         aria-label={label}
         hidden={!sidebar.open}
-        className={cn("shrink-0 border-e border-line bg-white", rail ? "w-14" : "w-60")}
+        className={cn(
+          "flex shrink-0 items-start justify-end border-e border-line bg-white",
+          rail ? "w-14" : "w-60",
+          motion,
+        )}
       >
-        <div className="sticky top-0 max-h-dvh overflow-y-auto overscroll-contain">{children}</div>
+        {/* Its own width as the column eases away, held to the column's end so it slides off at the page's edge */}
+        <div
+          className={cn(
+            "sticky top-0 max-h-dvh shrink-0 overflow-y-auto overscroll-contain",
+            rail ? "w-14" : "w-60",
+          )}
+        >
+          {children}
+        </div>
       </nav>
     </Place>
   );
@@ -147,7 +171,7 @@ function SidebarHeader({ children }: { children?: ReactNode }) {
   if (closeDrawer) return null;
 
   return (
-    <div className="flex min-h-14 items-center justify-between gap-2 border-b border-line px-4 text-14 font-semibold">
+    <div className="flex min-h-(--bar-height) items-center justify-between gap-2 border-b border-line px-4 text-14 font-semibold">
       {label}
       {children}
     </div>
@@ -208,12 +232,22 @@ type ItemProps = {
 };
 
 /**
- * A row of a group: a link, marked as the current page while its page is on screen, its icon filled. In a rail it's
- * the icon alone, named by its words for screen readers and in a tooltip.
+ * A row of a group: a link, marked as the current page while its page is on screen, its words semibold and its icon
+ * filled. In a rail it's the icon alone, named by its words for screen readers and in a tooltip.
  */
 function SidebarItem({ current = false, icon, status, nested, render, children }: ItemProps) {
   const { rail, closeDrawer } = useContext(Place);
   const icons = useContext(IconContext);
+  const words = useRef<HTMLSpanElement>(null);
+
+  // Its words' semibold copy, which the row keeps room for: chosen or left, a long title wraps the same way, so the
+  // rows under it don't move
+  useLayoutEffect(() => {
+    const element = words.current;
+
+    if (element && element.dataset.words !== element.textContent)
+      element.dataset.words = element.textContent;
+  });
 
   const iconStyle = useMemo(
     () => (current ? { ...icons, weight: "fill" as const } : icons),
@@ -246,7 +280,12 @@ function SidebarItem({ current = false, icon, status, nested, render, children }
               {mark}
             </span>
           )}
-          <span className="min-w-0 flex-1 wrap-break-word">{children}</span>
+          <span
+            ref={words}
+            className="grid min-w-0 flex-1 grid-cols-1 wrap-break-word after:invisible after:col-start-1 after:row-start-1 after:font-semibold after:content-[attr(data-words)]"
+          >
+            <span className="col-start-1 row-start-1">{children}</span>
+          </span>
           {status && <span className="flex h-5 shrink-0 items-center">{status}</span>}
         </>
       ),
@@ -274,6 +313,11 @@ function SidebarEmpty({ children }: { children: ReactNode }) {
   return <EmptyState size="inline" title={children} className="px-3 py-1.5" />;
 }
 
+/** Where a group's rows will be while they load, such as “Loading pages…”. */
+function SidebarLoading({ children }: { children: string }) {
+  return <LoadingState size="inline" label={children} className="px-3 py-1.5" />;
+}
+
 /** Buttons for what the column's things can do, under its groups. In a drawer, choosing one closes it. */
 function SidebarActions({ children }: { children: ReactNode }) {
   const { closeDrawer } = useContext(Place);
@@ -292,7 +336,8 @@ function SidebarActions({ children }: { children: ReactNode }) {
 
 /**
  * A navigation column. `useSidebar` holds whether it shows and Toggle goes in the page's bar; Root names it, or folds
- * it to a rail of icons, Header titles it, and Content holds Groups of Items, Separators, an Empty note and Actions.
+ * it to a rail of icons, Header titles it, and Content holds Groups of Items, Separators, an Empty or Loading note and
+ * Actions.
  */
 export const Sidebar = {
   Root: SidebarRoot,
@@ -303,5 +348,6 @@ export const Sidebar = {
   Item: SidebarItem,
   Separator: SidebarSeparator,
   Empty: SidebarEmpty,
+  Loading: SidebarLoading,
   Actions: SidebarActions,
 };

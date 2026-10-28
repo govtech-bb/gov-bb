@@ -183,3 +183,29 @@ test("a group labels its controls together, and each keeps its own name", async 
   expect(select.getAttribute("aria-label")).toBe("Add category");
   expect(select.hasAttribute("aria-labelledby")).toBe(false);
 });
+
+test("its size reaches its control, which can still take its own", async () => {
+  await render(
+    <>
+      <Field size="sm" label="Button destination">
+        <Input />
+      </Field>
+      <Field size="sm" label="Button style">
+        <NativeSelect>
+          <option>Primary</option>
+        </NativeSelect>
+      </Field>
+      <Field size="sm" label="Search">
+        <Input size="md" />
+      </Field>
+      <Input aria-label="Alone" />
+    </>,
+  );
+
+  const [destination, search, alone] = host.querySelectorAll("input");
+
+  expect(destination!.classList).toContain("h-8");
+  expect(host.querySelector("select")!.classList).toContain("h-8");
+  expect(search!.classList).toContain("h-9");
+  expect(alone!.classList).toContain("h-9");
+});

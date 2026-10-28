@@ -383,7 +383,7 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
           )}
           {!missing && location && remote.isError && !remote.data && (
             <EmptyState
-              kind="failed"
+              tone="error"
               size="page"
               title="We could not load this service"
               description={
@@ -456,8 +456,8 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
           key={opened}
           api={api}
           open={dialog === "service"}
-          close={() => setDialog(null)}
-          done={(id) => {
+          onClose={() => setDialog(null)}
+          onDone={(id) => {
             setDialog(null);
             void navigate({ serviceId: id, documentId: id });
           }}
@@ -469,8 +469,8 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
           api={api}
           open={dialog === "page"}
           detail={remote.data}
-          close={() => setDialog(null)}
-          done={(id) => {
+          onClose={() => setDialog(null)}
+          onDone={(id) => {
             setDialog(null);
             void navigate({ serviceId: location.serviceId, documentId: id });
           }}
@@ -482,8 +482,8 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
           api={api}
           open={dialog === "delete"}
           page={deleting}
-          close={() => setDialog(null)}
-          done={() => {
+          onClose={() => setDialog(null)}
+          onDone={() => {
             setDialog(null);
             discardPages([deleting.id]);
             void navigate(

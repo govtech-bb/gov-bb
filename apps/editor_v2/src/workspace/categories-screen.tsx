@@ -545,7 +545,7 @@ export function CategoriesScreen({
             open={dialog !== null}
             category={shown.kind === "edit" ? shown.category : undefined}
             categories={categories.data ?? []}
-            close={close}
+            onClose={close}
           />
         )}
         {shown?.kind === "delete" && (
@@ -555,7 +555,7 @@ export function CategoriesScreen({
             open={dialog !== null}
             category={shown.category}
             categories={categories.data ?? []}
-            close={close}
+            onClose={close}
             focusAfter={add}
           />
         )}

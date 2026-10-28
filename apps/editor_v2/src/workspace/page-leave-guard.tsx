@@ -72,7 +72,8 @@ export function usePageLeaveGuard({
     dialog: (
       <ConfirmDialog
         open={signOutRequested || blocker.status === "blocked"}
-        onClose={() => {
+        onOpenChange={(open) => {
+          if (open) return;
           setSignOutRequested(false);
           blocker.reset?.();
         }}
@@ -92,7 +93,7 @@ export function usePageLeaveGuard({
               ? "Your unsaved changes will be lost. Cancel to keep editing, or download a copy before leaving."
               : "Your changes have been saved."
         }
-        confirm={signOutRequested ? "Sign out" : dirty ? "Leave without saving" : "Continue"}
+        confirmLabel={signOutRequested ? "Sign out" : dirty ? "Leave without saving" : "Continue"}
         confirmDisabled={pending}
         onConfirm={() => {
           if (saving()) return;

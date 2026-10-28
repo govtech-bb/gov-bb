@@ -2,12 +2,14 @@ import { MagnifyingGlass, Tray, WarningCircle } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 import { cn } from "../cn";
 
-// Each kind has an icon of its own, so a failure can't pass for an empty list: its warning is the error red where the
-// others are grey, and it is read out at once
-const kinds = {
-  empty: { icon: <Tray />, tint: "text-muted" },
-  "not-found": { icon: <MagnifyingGlass />, tint: "text-muted" },
-  failed: { icon: <WarningCircle />, tint: "text-error" },
+// Nothing here yet, or nothing found where the author looked: each with an icon of its own
+const kinds = { empty: <Tray />, "not-found": <MagnifyingGlass /> };
+
+// A failure has a warning of its own in the error red, where the rest are grey, and is read out at once, so it can't
+// pass for an empty list
+const tones = {
+  neutral: { tint: "text-muted", role: undefined },
+  error: { tint: "text-error", role: "alert" },
 };
 
 const sizes = {
@@ -38,10 +40,12 @@ const sizes = {
 };
 
 export type EmptyStateProps = {
-  /** Nothing here yet; nothing found where the author looked; or it couldn't load. */
+  /** Nothing here yet, or nothing found where the author looked. */
   kind?: keyof typeof kinds;
+  /** `error` for content that couldn't load, whatever its kind. */
+  tone?: keyof typeof tones;
   size?: keyof typeof sizes;
-  /** In place of the kind's own icon, such as one for what the list would hold. */
+  /** In place of its own icon, such as one for what the list would hold. */
   icon?: ReactNode;
   title: ReactNode;
   description?: ReactNode;
@@ -60,6 +64,7 @@ export type EmptyStateProps = {
  */
 export function EmptyState({
   kind = "empty",
+  tone = "neutral",
   size = "section",
   icon,
   title,
@@ -70,12 +75,9 @@ export function EmptyState({
   const Title = size === "page" ? "h1" : "p";
 
   return (
-    <div
-      role={kind === "failed" ? "alert" : undefined}
-      className={cn(sizes[size].frame, className)}
-    >
-      <span aria-hidden="true" className={cn("flex shrink-0", kinds[kind].tint, sizes[size].icon)}>
-        {icon ?? kinds[kind].icon}
+    <div role={tones[tone].role} className={cn(sizes[size].frame, className)}>
+      <span aria-hidden="true" className={cn("flex shrink-0", tones[tone].tint, sizes[size].icon)}>
+        {icon ?? (tone === "error" ? <WarningCircle /> : kinds[kind])}
       </span>
       <div className="min-w-0">
         <Title className={sizes[size].title}>{title}</Title>

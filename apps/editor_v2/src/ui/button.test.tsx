@@ -196,3 +196,50 @@ test("with a pending label, both labels share one cell, so it keeps the wider's 
     /><span>Sign out<\/span><\/button>$/,
   );
 });
+
+test("render gives its look to another element, such as the router's link, which keeps its own role", () => {
+  const html = renderToStaticMarkup(
+    <Button size="md" variant="accent" render={<a href="/services?category=health" />}>
+      See its services
+    </Button>,
+  );
+
+  const link = new DOMParser().parseFromString(html, "text/html").querySelector("a")!;
+
+  expect(link.getAttribute("href")).toBe("/services?category=health");
+  expect(link.hasAttribute("type")).toBe(false);
+  expect(link.classList).toContain("bg-interactive");
+  expect(link.classList).toContain("h-9");
+  expect(link.textContent).toBe("See its services");
+});
+
+test("with tip, an icon alone shows its name in a tooltip as well as to screen readers", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const root = createRoot(document.body.appendChild(document.createElement("div")));
+
+  await act(async () =>
+    root.render(
+      <>
+        <Button icon={<svg />} aria-label="Edit link" tip />
+        <Button icon={<svg />} aria-label="Remove link" />
+      </>,
+    ),
+  );
+
+  const [edit, remove] = document.querySelectorAll("button");
+
+  expect(edit!.getAttribute("aria-label")).toBe("Edit link");
+  expect(edit!.hasAttribute("data-base-ui-tooltip-trigger")).toBe(true);
+  expect(remove!.hasAttribute("data-base-ui-tooltip-trigger")).toBe(false);
+
+  // Focused, its tooltip says what it's called
+  await act(async () => edit!.focus());
+  await vi.waitFor(() =>
+    expect(
+      [...document.querySelectorAll("[data-side]")].some(
+        (popup) => popup.textContent === "Edit link",
+      ),
+    ).toBe(true),
+  );
+  await act(async () => root.unmount());
+});

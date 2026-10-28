@@ -87,7 +87,6 @@
   --color-muted: var(--govbb-color-muted); /* secondary text, hints, icons: 7:1 on white */
   --color-subtle: var(--govbb-grey-70); /* ghost prompts in empty blocks: 7:1, as AA wants of text */
   --color-line: var(--govbb-grey-20); /* dividers */
-  --color-line-strong: var(--govbb-grey-50); /* the chrome's field borders */
   --color-tint: var(--govbb-grey-10); /* quiet fills and hovers */
   --color-highlight: var(--govbb-color-highlight); /* selected blocks and rows */
   --color-interactive: var(--govbb-color-interactive); /* actions, switches on, checked fills */
@@ -145,7 +144,6 @@
   --shadow-input: inset 0 0 0 1px var(--govbb-grey-60);
   --shadow-input-hover: inset 0 0 0 1px var(--govbb-color-ink);
   --shadow-input-focus: inset 0 0 0 2px var(--govbb-color-ink), 0 0 0 3px var(--govbb-color-focus);
-  --shadow-input-active: inset 0 0 0 2px var(--govbb-color-interactive);
   /* A field whose value can't be used: a red edge, which focus replaces with its own */
   --shadow-input-error: inset 0 0 0 2px var(--govbb-color-error);
   /* A control held down: GovBB's pressed-in edge (its button.css :active), so a press shows on touch too */
@@ -164,7 +162,6 @@
 
   --default-transition-duration: 120ms;
   --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
-  --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
   /* Popups arriving: off the mark at once, then a long settle */
   --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
 
@@ -183,14 +180,17 @@
 }
 
 /*
- * How long things take to come and go, through duration-(--…). Popups and tooltips are quick; a dialog, a drawer and a
- * toast travel further, so take longer. Each leaves quicker than it came. Hovers keep the 120ms default.
+ * How long things take to come and go, through duration-(--…). Popups and tooltips are quick; a dialog, a panel beside
+ * the page, a drawer and a toast travel further, so take longer. Each leaves quicker than it came. Hovers keep the
+ * 120ms default.
  */
 :root {
   --duration-popup-in: 160ms;
   --duration-popup-out: 100ms;
   --duration-dialog-in: 200ms;
   --duration-dialog-out: 150ms;
+  --duration-panel-in: 200ms;
+  --duration-panel-out: 150ms;
   --duration-drawer-in: 300ms;
   --duration-drawer-out: 200ms;
   --duration-toast-in: 400ms;

@@ -39,16 +39,16 @@ const escape = () =>
   });
 
 test("asks its question in an alert dialog, with the action's verb on its button", async () => {
-  const onClose = vi.fn();
+  const onOpenChange = vi.fn();
   const onConfirm = vi.fn();
 
   await render(
     <ConfirmDialog
       open
-      onClose={onClose}
+      onOpenChange={onOpenChange}
       title="Delete this page?"
       description="Unsaved changes will be lost."
-      confirm="Delete page"
+      confirmLabel="Delete page"
       onConfirm={onConfirm}
     />,
   );
@@ -58,20 +58,24 @@ test("asks its question in an alert dialog, with the action's verb on its button
   await act(async () => button("Delete page").click());
   expect(onConfirm).toHaveBeenCalledOnce();
   await escape();
-  expect(onClose).toHaveBeenCalledOnce();
+  expect(onOpenChange).toHaveBeenLastCalledWith(false, expect.anything());
+  // Cancel closes it too
+  await act(async () => button("Cancel").click());
+  expect(onOpenChange).toHaveBeenCalledTimes(2);
+  expect(onOpenChange).toHaveBeenLastCalledWith(false, expect.anything());
 });
 
 test("while the action works, says so on its button and can't be closed or pressed again", async () => {
-  const onClose = vi.fn();
+  const onOpenChange = vi.fn();
   const onConfirm = vi.fn();
 
   await render(
     <ConfirmDialog
       open
-      onClose={onClose}
+      onOpenChange={onOpenChange}
       title="Delete this page?"
       description="Unsaved changes will be lost."
-      confirm="Delete page"
+      confirmLabel="Delete page"
       pendingLabel="Deleting page…"
       pending
       onConfirm={onConfirm}
@@ -86,17 +90,17 @@ test("while the action works, says so on its button and can't be closed or press
   expect(onConfirm).not.toHaveBeenCalled();
   expect(button("Cancel").disabled).toBe(true);
   await escape();
-  expect(onClose).not.toHaveBeenCalled();
+  expect(onOpenChange).not.toHaveBeenCalled();
 });
 
 test("shows why the action failed in the dialog, which stays open", async () => {
   await render(
     <ConfirmDialog
       open
-      onClose={() => {}}
+      onOpenChange={() => {}}
       title="Delete this page?"
       description="Unsaved changes will be lost."
-      confirm="Delete page"
+      confirmLabel="Delete page"
       error="The page could not be deleted. Try again."
       onConfirm={() => {}}
     />,
@@ -119,10 +123,10 @@ test("closing, it keeps the words it had open while it fades, whatever changes b
   const leave = (open: boolean, dirty: boolean) => (
     <ConfirmDialog
       open={open}
-      onClose={() => {}}
+      onOpenChange={() => {}}
       title={dirty ? "Leave without saving?" : "Continue?"}
       description={dirty ? "Your unsaved changes will be lost." : "Your changes have been saved."}
-      confirm={dirty ? "Leave without saving" : "Continue"}
+      confirmLabel={dirty ? "Leave without saving" : "Continue"}
       onConfirm={() => {}}
     />
   );
@@ -144,4 +148,21 @@ test("closing, it keeps the words it had open while it fades, whatever changes b
   // Open again, it says what's true now
   await render(leave(true, false));
   expect(text(dialog().getAttribute("aria-labelledby"))).toBe("Continue?");
+});
+
+test("an action that loses nothing is teal rather than red", async () => {
+  await render(
+    <ConfirmDialog
+      open
+      onOpenChange={() => {}}
+      title="Publish this page?"
+      description="Citizens will see it at once."
+      confirmLabel="Publish"
+      variant="accent"
+      onConfirm={() => {}}
+    />,
+  );
+
+  expect(button("Publish").className).toContain("bg-interactive");
+  expect(button("Publish").className).not.toContain("bg-error");
 });

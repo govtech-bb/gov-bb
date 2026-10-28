@@ -11,6 +11,7 @@ import {
 } from "react";
 import { cn } from "../cn";
 import { Button } from "./button";
+import { InToolbar } from "./toolbar";
 
 type Role = "dialog" | "alertdialog";
 
@@ -19,6 +20,9 @@ const DialogRole = createContext<Role>("dialog");
 
 // Whether the content's work is pending, which its Root reads before Esc or a click outside may close it
 const DialogPending = createContext<RefObject<boolean>>({ current: false });
+
+// The same, for the parts inside it that wait for the work, such as Cancel
+const DialogBusy = createContext(false);
 
 type RootProps =
   | (BaseDialog.Root.Props & { role?: "dialog" })
@@ -97,8 +101,8 @@ type ContentProps = Pick<BaseDialog.Popup.Props, "initialFocus" | "finalFocus"> 
   /** Names the close button, such as “Close source”. */
   closeLabel?: string;
   /**
-   * Its work is under way, such as a save: Esc, a click outside and the close button wait until it's done, so what the
-   * work answers still has somewhere to show. Disable its Cancel too.
+   * Its work is under way, such as a save: Esc, a click outside, the close button and Cancel wait until it's done, so
+   * what the work answers still has somewhere to show.
    */
   pending?: boolean;
   className?: string;
@@ -140,16 +144,19 @@ function DialogContent({
             className,
           )}
         >
-          {children}
-          {close && role === "dialog" && (
-            // Beside the title but last in the tab order, so opening the dialog focuses its first field, not this
-            <BaseDialog.Close
-              disabled={pending}
-              render={
-                <Button icon={<X />} aria-label={closeLabel} className="absolute end-4 top-5.5" />
-              }
-            />
-          )}
+          {/* Opened from a toolbar, its buttons are its own rather than the toolbar's */}
+          <InToolbar value={false}>
+            <DialogBusy value={pending}>{children}</DialogBusy>
+            {close && role === "dialog" && (
+              // Beside the title but last in the tab order, so opening the dialog focuses its first field, not this
+              <BaseDialog.Close
+                disabled={pending}
+                render={
+                  <Button icon={<X />} aria-label={closeLabel} className="absolute end-4 top-5.5" />
+                }
+              />
+            )}
+          </InToolbar>
         </BaseDialog.Popup>
       </BaseDialog.Viewport>
     </BaseDialog.Portal>
@@ -202,6 +209,13 @@ function DialogActions({ children }: { children: ReactNode }) {
   return <div className="flex shrink-0 flex-wrap justify-end gap-2 px-6 pt-6">{children}</div>;
 }
 
+/** Leaves without doing the task: a ghost button before the main action, which waits while the work is pending. */
+function DialogCancel({ children = "Cancel" }: { children?: ReactNode }) {
+  const pending = useContext(DialogBusy);
+
+  return <BaseDialog.Close disabled={pending} render={<Button size="md">{children}</Button>} />;
+}
+
 /** The tool's dialogs, on Base UI's Dialog and AlertDialog: Close is Base UI's own part. */
 export const Dialog = {
   Root: DialogRoot,
@@ -212,5 +226,6 @@ export const Dialog = {
   Description: DialogDescription,
   Body: DialogBody,
   Actions: DialogActions,
+  Cancel: DialogCancel,
   Close: BaseDialog.Close,
 };

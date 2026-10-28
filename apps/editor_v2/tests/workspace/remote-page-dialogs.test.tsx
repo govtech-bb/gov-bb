@@ -43,8 +43,8 @@ test("deleting a page asks in an alert dialog, which can't be closed while the p
           api={createEditorApi("https://api.example.invalid")}
           open
           page={page}
-          close={close}
-          done={() => {}}
+          onClose={close}
+          onDone={() => {}}
         />
       </QueryClientProvider>,
     ),
@@ -132,8 +132,8 @@ test("adding a page the API refuses (403) shows the API's reason", async () => {
           api={createEditorApi("https://api.example.invalid")}
           open
           detail={detail}
-          close={() => {}}
-          done={() => {}}
+          onClose={() => {}}
+          onDone={() => {}}
         />
       </QueryClientProvider>,
     ),
@@ -189,8 +189,8 @@ test("a service on its way can't be cancelled, so none is made after the author 
         <CreateRemoteServiceDialog
           api={createEditorApi("https://api.example.invalid")}
           open
-          close={close}
-          done={done}
+          onClose={close}
+          onDone={done}
         />
       </QueryClientProvider>,
     ),
@@ -227,7 +227,7 @@ test("a service on its way can't be cancelled, so none is made after the author 
 
   // Cancel, the close button and Esc all wait for the answer
   expect(button("Cancel").disabled).toBe(true);
-  expect(button("Close create a service").disabled).toBe(true);
+  expect(button("Close").disabled).toBe(true);
   await act(async () => {
     dialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   });

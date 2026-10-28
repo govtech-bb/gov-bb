@@ -1,10 +1,11 @@
 import { Drawer as BaseDrawer } from "@base-ui/react/drawer";
 import { X } from "@phosphor-icons/react";
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { cn } from "../cn";
 import { Bar } from "./bar";
 import { Button } from "./button";
 import { backdrop } from "./dialog";
+import { InToolbar } from "./toolbar";
 import { Tip } from "./tooltip";
 import { useMediaQuery } from "./use-media-query";
 
@@ -37,6 +38,23 @@ export function useDrawerPanel(
   }
 
   return { id, wide, open: wide ? beside : drawer, setOpen: wide ? setBeside : setDrawer };
+}
+
+/**
+ * Classes for a panel's column beside the page, which shows and hides with `hidden`. Folding away or opening, it eases
+ * between its width and none, rather than moving the page by its width in one frame; its content keeps its own width,
+ * clipped, so none of it re-wraps on the way. Not as it first shows, which would slide the page about as it loads, and
+ * at once where motion isn't welcome.
+ */
+export function useColumnMotion() {
+  const [shown, setShown] = useState(false);
+
+  useEffect(() => setShown(true), []);
+
+  return cn(
+    "overflow-x-clip transition-[width,display] transition-discrete duration-(--duration-panel-in) ease-out-quint motion-reduce:transition-none [&[hidden]]:w-0 [&[hidden]]:duration-(--duration-panel-out)",
+    shown && "starting:w-0",
+  );
 }
 
 // It slides in from its edge, follows a swipe, and leaves quicker than it came
@@ -87,13 +105,24 @@ type DrawerProps = {
   id?: string;
   /** Titles it. */
   label: string;
+  /** Names its close button. */
+  closeLabel?: string;
   /** Out of reach while what it holds can't be changed, such as while editing is paused. */
   inert?: boolean;
   children: ReactNode;
 };
 
 /** A panel over the dimmed page from one edge of the screen, under a title row with its close button. */
-export function Drawer({ open, onOpenChange, side, id, label, inert, children }: DrawerProps) {
+export function Drawer({
+  open,
+  onOpenChange,
+  side,
+  id,
+  label,
+  closeLabel = "Close",
+  inert,
+  children,
+}: DrawerProps) {
   return (
     <BaseDrawer.Root
       open={open}
@@ -120,14 +149,14 @@ export function Drawer({ open, onOpenChange, side, id, label, inert, children }:
             <Bar.Root className="shrink-0 flex-nowrap sm:px-4">
               <Bar.Title render={<BaseDrawer.Title />}>{label}</Bar.Title>
               <Bar.Actions className="-me-2">
-                <BaseDrawer.Close render={<Button icon={<X />} aria-label="Close" />} />
+                <BaseDrawer.Close render={<Button icon={<X />} aria-label={closeLabel} />} />
               </Bar.Actions>
             </Bar.Root>
             <BaseDrawer.Content
               inert={inert}
               className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
             >
-              {children}
+              <InToolbar value={false}>{children}</InToolbar>
             </BaseDrawer.Content>
           </BaseDrawer.Popup>
         </BaseDrawer.Viewport>
