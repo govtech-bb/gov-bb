@@ -279,10 +279,12 @@ export const SCHEMAS = {
       "the page's pending revision: citizens keep seeing the live page until " +
       "an approver publishes it. An approver's save that takes a `public` page out of " +
       "public view changes only its `visibility`: the other fields sent " +
-      "are ignored, the live content stays, and a draft revision is " +
-      "discarded. Returns the page as the editor now works on it. " +
-      "A save to a page whose revision is waiting for review is refused " +
-      "(409 `under_review`) until an approver publishes or rejects it.",
+      "are ignored, the live content stays, and the page's open revision " +
+      "is discarded: a draft is dropped, and one waiting for review is " +
+      "closed as `discarded`, which the page's history records. A save to " +
+      "a page whose revision is waiting for review updates that revision, " +
+      "which stays waiting; the saver joins its `contributors`, so may not " +
+      "approve it. Returns the page as the editor now works on it.",
     tags: ["pages"],
     params: idParams,
     headers: ifUpdatedAt(""),
@@ -292,7 +294,7 @@ export const SCHEMAS = {
       200: EditorPage,
       400: error,
       404: error,
-      409: z.union([conflict, revisionState]),
+      409: conflict,
       422: validationFailed,
       500: error,
       ...authErrors,
@@ -325,8 +327,8 @@ export const SCHEMAS = {
       "Needs the editor role (403 otherwise). Records the submitter, who " +
       "may not then approve it. 404 when the page has no draft revision; " +
       "409 `under_review` when it is already submitted, or `conflict` when " +
-      "the draft has been saved since `if-updated-at`. Saving the page is " +
-      "refused while it waits. A rejected revision can be submitted again " +
+      "the draft has been saved since `if-updated-at`. Saves made while it " +
+      "waits update it, and it keeps waiting. A rejected revision can be submitted again " +
       "as it is: it is copied into a new submitted revision with the same " +
       "`updated_at`, and the rejected one keeps its comment. The copy's " +
       "`contributors` gain the rejected round's submitter, who may not " +

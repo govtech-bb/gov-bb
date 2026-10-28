@@ -823,7 +823,7 @@ export class PostgresPages
     });
   }
 
-  /** Move a revision to a review status, recording who moved it; a rejection moves its version to its time. */
+  /** Move a revision to a review status, recording who moved it; a rejection moves its version to its time, and a discard closes it. */
   async markRevision(
     revisionId: string,
     mark: RevisionMark,

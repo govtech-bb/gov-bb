@@ -54,6 +54,7 @@ export const changeAction = pgEnum("change_action", [
   "submitted",
   "rejected",
   "approved",
+  "discarded",
 ]);
 
 const timestamps = {

@@ -69,7 +69,11 @@ export type RevisionMark =
       readonly at: Date;
       readonly comment: string;
     }
-  | { readonly status: "published"; readonly by: string; readonly at: Date };
+  | {
+      readonly status: "published" | "discarded";
+      readonly by: string;
+      readonly at: Date;
+    };
 
 /** The persistence the editor's page operations need. */
 export interface PageRecords {
@@ -135,7 +139,7 @@ export interface PageRecords {
   ): Promise<Result<PendingRevision, ContentStoreUnavailable>>;
   /** Discard a page's open revision, if it has one. */
   dropRevision(pageId: PageId): Promise<Result<void, ContentStoreUnavailable>>;
-  /** Move a revision to a review status, recording who moved it; a rejection moves its version to its time. */
+  /** Move a revision to a review status, recording who moved it; a rejection moves its version to its time, and a discard closes it. */
   markRevision(
     revisionId: string,
     mark: RevisionMark,
@@ -162,7 +166,8 @@ export interface PageRecords {
  * public, whoever makes it, goes into the page's pending revision and leaves
  * the live page as it is (#3198). An editor submits the revision for review,
  * and an approver who neither changed nor submitted it rejects it or
- * publishes it to the live page (#3199).
+ * publishes it to the live page (#3199). Saves to a revision waiting for
+ * review update it, and it keeps waiting (#3203).
  */
 export class PageEditing {
   /**
@@ -240,15 +245,19 @@ export class PageEditing {
    * A save that keeps a public page public goes into its pending revision.
    * A save to a page that is not public writes the page, as it always has.
    *
+   * A save to a revision waiting for review updates it in place and it stays
+   * submitted (#3203). The saver joins its contributors, so can't approve
+   * it, and its version moves, so an approver holding the earlier one gets a
+   * conflict rather than publishing a version they haven't seen.
+   *
    * An approver's save that takes a public page out of public view changes
    * only its visibility: every other field it sends is ignored and the live
    * content stays, so no unreviewed content reaches the page that way, to be
-   * made public again without review. It discards the page's draft revision,
-   * keeping #3198's rule that only a public page has an open one; a rejected
-   * revision is retired by the live page moving on.
-   *
-   * A revision waiting for review is refused until an approver decides on
-   * it, so the approver publishes what they reviewed. #3203 lifts this.
+   * made public again without review. It closes the page's open revision,
+   * keeping #3198's rule that only a public page has one: a draft is
+   * dropped, and one waiting for review is marked `discarded`, which the
+   * page's history records (#3203). A rejected revision is retired by the
+   * live page moving on.
    */
   save(
     id: PageId,
@@ -261,7 +270,6 @@ export class PageEditing {
       | PageRejected
       | PageNotFound
       | PageConflict
-      | RevisionStateConflict
       | NotApprover
       | ContentStoreUnavailable
     >
@@ -279,14 +287,6 @@ export class PageEditing {
           expectedUpdatedAt.toISOString()
       )
         return err(new PageConflict(id));
-      if (pending.value?.status === "submitted")
-        return err(
-          new RevisionStateConflict(
-            "under_review",
-            "This change is waiting for review. You can save more changes " +
-              "once an approver publishes or rejects it.",
-          ),
-        );
       if (
         fields.visibility !== current.visibility &&
         !actor.roles.includes("approver")
@@ -302,6 +302,16 @@ export class PageEditing {
         ),
       );
       if (current.visibility === "public" && fields.visibility !== "public") {
+        // Marked first, so the page's history reads the discard before the
+        // unpublish, as it reads an approval before the change it lets live.
+        if (pending.value?.status === "submitted") {
+          const discarded = await records.markRevision(pending.value.id, {
+            status: "discarded",
+            by: actor.id,
+            at: now,
+          });
+          if (!discarded.ok) return discarded;
+        }
         const hidden = await writeLive(
           records,
           current,

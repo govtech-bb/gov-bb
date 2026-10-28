@@ -534,6 +534,8 @@ const PENDING = "Your changes are saved but not live. Submit them for review whe
 const WAITING =
   "Waiting for review. Citizens will see these changes once an approver publishes them.";
 
+const KEEP_EDITING = "You can keep editing: changes you save are added to this review.";
+
 const live: ApiPage = { ...page, visibility: "public", published_at: "2026-10-01T12:00:00.000Z" };
 
 test("a change saved to a public page waits for an approver: the editor keeps it and says it isn't live", async () => {
@@ -700,28 +702,47 @@ test.each([409, 404])("a submission refused with %s reads the page again", async
   );
 });
 
-test("saving a change that's waiting for review says why it can't, and keeps the working copy", async () => {
-  const message =
-    "This change is waiting for review. You can save more changes once an approver publishes or rejects it.";
+test("a change waiting for review can still be saved, and keeps waiting", async () => {
+  const waiting: ApiPage = { ...live, pending_revision: { status: "submitted", comment: null } };
+  let current = waiting;
 
-  const h = await mountPage(async (_url, init) =>
-    init?.method === "PUT"
-      ? Response.json({ error: "under_review", message }, { status: 409 })
-      : Response.json({ ...live, pending_revision: { status: "submitted", comment: null } }),
-  );
+  const h = await mountPage(async (_url, init) => {
+    // api_v2 updates the waiting revision in place
+    if (init?.method === "PUT")
+      current = {
+        ...waiting,
+        ...JSON.parse(String(init.body)),
+        updated_at: "2026-10-07T13:00:00.000Z",
+      };
+
+    return Response.json(current);
+  });
 
   await vi.waitFor(() => expect(document.body.textContent).toContain(WAITING));
+  expect(document.body.textContent).toContain(KEEP_EDITING);
   const source = h.session().store.getSnapshot().source + "\n\nOne more thing";
   await applySource(h.session(), source);
   await savePage();
   await act(async () => {
     await vi.waitFor(() =>
-      expect(document.querySelector('[role="alert"]')?.textContent).toContain(message),
+      expect(h.session().getBaseline().page.updated_at).toBe("2026-10-07T13:00:00.000Z"),
     );
   });
-  expect(document.body.textContent).not.toContain("A newer version");
+  expect(document.body.textContent).toContain(WAITING);
+  expect(document.querySelector('[role="alert"]')).toBeNull();
   expect(h.session().store.getSnapshot().committed).toBe(source);
-  expect(pageHasUnsavedChanges(h.session())).toBe(true);
+  expect(pageHasUnsavedChanges(h.session())).toBe(false);
+});
+
+test("someone without the editor role isn't told they can keep editing a change waiting for review", async () => {
+  await mountPage(
+    async () =>
+      Response.json({ ...live, pending_revision: { status: "submitted", comment: null } }),
+    [],
+  );
+
+  await vi.waitFor(() => expect(document.body.textContent).toContain(WAITING));
+  await vi.waitFor(() => expect(document.body.textContent).not.toContain(KEEP_EDITING));
 });
 
 test("making a page public is offered as publishing, and its edit is unpublished until then", async () => {
