@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { FastifyRequest } from "fastify";
+import rateLimit from "@fastify/rate-limit";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { Viewer } from "../modules/page-visibility";
 import type { Redacted } from "../modules/redacted";
@@ -57,6 +58,10 @@ export const siteRoutes: FastifyPluginAsyncZod<{
   navigation: SiteNavigation;
   previewSecret: Redacted<string> | undefined;
 }> = async (site, { resolution, navigation, previewSecret }) => {
+  // Scoped to the site routes and keyed on request.ip (the ALB-forwarded
+  // client); sized so landing's cached reads from one egress address cannot
+  // reach it (#3129).
+  await site.register(rateLimit, { max: 1000, timeWindow: "1 minute" });
   site.decorateRequest("viewer", null);
   site.addHook("onRequest", async (request, reply) => {
     // Public and preview reads share a url, so a cache must key on the token.

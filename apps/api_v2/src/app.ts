@@ -93,6 +93,9 @@ class RequestLog extends LogController {
 export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   const { logger, config } = options;
   const app = Fastify({
+    // The ALB is the only peer with a private address, so request.ip is the
+    // client it forwards; a numeric hop count is disabled since Fastify 5.12.1.
+    trustProxy: "uniquelocal",
     logController: new RequestLog(),
     ...(logger ? { loggerInstance: logger } : {}),
   });

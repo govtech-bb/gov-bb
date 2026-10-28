@@ -264,6 +264,8 @@ Sandbox holds the snapshot today, loaded by `SEED=true`. Run `--dry-run`: it ref
 
 SIGINT/SIGTERM drain HTTP requests before closing the shared pool; startup failures also release acquired resources. JSON logs omit cookies, OAuth callback query parameters, provider tokens and raw driver error objects. The exact warning `idle database connection dropped` remains the operational alarm marker; its safe `code` identifies the failure. Public content failures continue to use the existing 500 response, while authentication outages fail closed with 503.
 
+The site routes (`/pages`, `/categories…`, `/catalog`, `/search/documents`) are limited to 1,000 requests a minute per client, answering 429 beyond it; editor, auth and `/docs` routes are not limited. `trustProxy` trusts only private-address peers (the ALB), so the client is the address the ALB forwards and a client's own `X-Forwarded-For` entries are ignored. Buckets are in memory, per task. The number is deliberately far above landing's cached call rate from one egress address (#3129).
+
 Migrations run at boot. Each script commits with its `schema_migrations` row under a PostgreSQL advisory lock, so instances that boot together apply them one at a time; every script must be safe to replay, because an instance that waited on the lock runs it again.
 
 ```sh
