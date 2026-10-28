@@ -37,8 +37,14 @@ export const editorRoutes: FastifyPluginAsyncZod<{
         case "Forbidden":
           return reply.status(403).send({ error: "forbidden" });
         case "AuthUnavailable":
+          // Which lookup failed, never the driver's message: it can carry SQL parameters.
           request.log.error(
-            { failure: "auth_unavailable" },
+            employee.error.failure.lookup === "roles"
+              ? {
+                  failure: "role_store_unavailable",
+                  operation: employee.error.failure.operation,
+                }
+              : { failure: "auth_unavailable" },
             "session lookup failed",
           );
           return reply.status(503).send({ error: "auth_unavailable" });

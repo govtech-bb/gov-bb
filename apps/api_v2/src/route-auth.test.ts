@@ -112,6 +112,22 @@ it("refuses every write without a session and leaves the database unchanged", as
   });
 });
 
+/**
+ * Writes that cannot touch a page's visibility, and why. Every other write
+ * route must accept the approver probe below (2xx); one it cannot exercise,
+ * because it wants another header, body or kind of id, fails the probe
+ * rather than passing unseen. Satisfy it in the probe, or list it here with
+ * the reason it cannot change what citizens see.
+ */
+const NOT_PAGE_VISIBILITY: Readonly<Record<string, string>> = {
+  "POST /editor/categories": "creates a category; pages are untouched",
+  "PUT /editor/categories/:id": "renames or moves a category, not its pages",
+  "PUT /editor/categories/order": "reorders categories; pages are untouched",
+  "DELETE /editor/categories/:id": "refuses a category any page is filed under",
+  "PUT /editor/employees/:id/roles/:role": "grants a role, in user_roles",
+  "DELETE /editor/employees/:id/roles/:role": "revokes a role, in user_roles",
+};
+
 /** Every page's visibility by id. */
 const visibilities = async () =>
   new Map(
@@ -124,9 +140,10 @@ const visibilities = async () =>
 
 /**
  * Send every write route, signed in as `employee`, at a page of each
- * visibility with a payload asking for each other visibility, and return the
- * routes that changed what citizens see: a page that went public or stopped
- * being public, or a public page that appeared or disappeared.
+ * visibility with a payload asking for each other visibility. Returns the
+ * routes that changed what citizens see (a page that went public or stopped
+ * being public, or a public page that appeared or disappeared), and the
+ * routes not in NOT_PAGE_VISIBILITY that refused a probe.
  */
 async function routesChangingVisibility(employee: Employee) {
   // Before the app below registers its own copies of the routes.
@@ -135,6 +152,7 @@ async function routesChangingVisibility(employee: Employee) {
     sessions: { findSession: async () => ok(employee) },
   });
   const changed = new Set<string>();
+  const refused = new Set<string>();
   let n = 0;
   for (const { method, url } of routes) {
     for (const from of ["public", "preview", "draft"] as const) {
@@ -147,7 +165,7 @@ async function routesChangingVisibility(employee: Employee) {
               values (${target}, ${`/existing-${n}`}, 'existing', 'Existing', ${from}, '')`,
         );
         const before = await visibilities();
-        await signedIn.inject({
+        const response = await signedIn.inject({
           method: method as InjectOptions["method"],
           url: url.replace(/:\w+/g, target).replace("*", "x"),
           payload: withDefaults(
@@ -155,6 +173,9 @@ async function routesChangingVisibility(employee: Employee) {
           ),
           headers: TEST_HEADERS,
         });
+        const route = `${method} ${url}`;
+        if (response.statusCode >= 300 && !(route in NOT_PAGE_VISIBILITY))
+          refused.add(`${route} (${response.statusCode})`);
         const after = await visibilities();
         const ids = new Set([...before.keys(), ...after.keys()]);
         if (
@@ -164,16 +185,25 @@ async function routesChangingVisibility(employee: Employee) {
               (before.get(id) === "public" || after.get(id) === "public"),
           )
         )
-          changed.add(`${method} ${url}`);
+          changed.add(route);
       }
     }
   }
   await signedIn.close();
-  return [...changed].sort();
+  return { changed: [...changed].sort(), refused: [...refused].sort() };
 }
 
-it("finds the routes an approver can change visibility through, so the payloads are real", async () => {
-  expect(await routesChangingVisibility(TEST_EMPLOYEE)).toEqual([
+it("lists only write routes that exist as unable to change visibility", () => {
+  const routes = writes().map(({ method, url }) => `${method} ${url}`);
+  for (const route of Object.keys(NOT_PAGE_VISIBILITY))
+    expect(routes, route).toContain(route);
+});
+
+it("exercises every write route as an approver, so a route the probe cannot reach fails rather than passes", async () => {
+  const { changed, refused } = await routesChangingVisibility(TEST_EMPLOYEE);
+  // A route here wants a header, body or id the probe does not send.
+  expect(refused).toEqual([]);
+  expect(changed).toEqual([
     "DELETE /pages/:id",
     "POST /pages",
     "PUT /pages/:id",
@@ -182,7 +212,7 @@ it("finds the routes an approver can change visibility through, so the payloads 
 
 it("lets no write route change what citizens see for a non-approver", async () => {
   expect(TEST_EDITOR.roles).not.toContain("approver");
-  expect(await routesChangingVisibility(TEST_EDITOR)).toEqual([]);
+  expect((await routesChangingVisibility(TEST_EDITOR)).changed).toEqual([]);
 });
 
 it("refuses every admin route to a non-admin", async () => {

@@ -82,8 +82,21 @@ export class UserNotFound extends Error {
 export class AuthUnavailable extends Error {
   /** Stable protocol-projection discriminator. */
   readonly _tag = "AuthUnavailable";
-  /** Do not retain SDK errors containing tokens or SQL parameters. */
-  constructor() {
+  /**
+   * Do not retain SDK errors containing tokens or SQL parameters. `failure`
+   * says which lookup failed, for the log: the session, or the employee's
+   * roles, naming the role-store operation.
+   */
+  constructor(
+    readonly failure:
+      | { readonly lookup: "session" }
+      | {
+          readonly lookup: "roles";
+          readonly operation: "rolesOf" | "grant";
+        } = {
+      lookup: "session",
+    },
+  ) {
     super("Sign-in is temporarily unavailable. Try again.");
   }
 }

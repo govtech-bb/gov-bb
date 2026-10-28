@@ -232,15 +232,16 @@ export class PageEditing {
     Result<void, PageRejected | NotApprover | ContentStoreUnavailable>
   > {
     return this.records.atomically(async (records) => {
-      const removed = await records.remove(id);
-      if (!removed.ok) return removed;
-      if (removed.value === null) return ok(undefined);
-      // Refusing rolls the removal back.
+      const locked = await records.lock(id);
+      if (!locked.ok) return locked;
       if (
-        removed.value.visibility === "public" &&
+        locked.value?.visibility === "public" &&
         !actor.roles.includes("approver")
       )
         return err(new NotApprover());
+      const removed = await records.remove(id);
+      if (!removed.ok) return removed;
+      if (removed.value === null) return ok(undefined);
       const logged = await records.appendChange({
         page: removed.value,
         action: "deleted",

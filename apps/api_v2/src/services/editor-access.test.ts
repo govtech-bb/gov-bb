@@ -88,7 +88,9 @@ describe("editor access", () => {
       await new EditorAccess(signedIn, roles).requireEmployee(
         new Redacted("cookie"),
       ),
-    ).toEqual(err(new AuthUnavailable()));
+    ).toEqual(
+      err(new AuthUnavailable({ lookup: "roles", operation: "rolesOf" })),
+    );
   });
   it("makes a listed email an admin, granted by nobody, once", async () => {
     const listed = rolesHolding(["editor"]);

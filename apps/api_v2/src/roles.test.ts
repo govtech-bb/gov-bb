@@ -7,10 +7,11 @@
 import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance, InjectOptions } from "fastify";
+import pino from "pino";
 import { PostgresRoles } from "./adapters/postgres-roles";
 import type { Database } from "./db";
 import type { Employee } from "./modules/auth";
-import { withDefaults } from "./modules/page";
+import { withDefaults, type PageId } from "./modules/page";
 import { Redacted } from "./modules/redacted";
 import { ok } from "./modules/result";
 import { changeEvents } from "./schema";
@@ -69,7 +70,7 @@ const as = (employee: Employee, options: InjectOptions) =>
 const seedPage = async (overrides: Record<string, unknown> = {}) =>
   expectOk(await services.editing.create(aPage(overrides), TEST_EMPLOYEE));
 
-const stored = async (id: string) => expectOk(await services.editing.get(id));
+const stored = async (id: PageId) => expectOk(await services.editing.get(id));
 
 const FORBIDDEN = {
   error: "forbidden",
@@ -317,5 +318,38 @@ describe("API_V2_ADMIN_EMAILS", () => {
           where user_id = ${TEST_EDITOR.id} and role = 'admin'`,
     );
     expect(rows).toEqual([{ granted_by: null }]);
+  });
+});
+
+describe("a role store that fails", () => {
+  it("closes access and logs which lookup failed, without the driver's message", async () => {
+    const logs: string[] = [];
+    const logged = await createTestApp(db, {
+      logger: pino({ level: "info" }, { write: (line) => logs.push(line) }),
+    });
+    await db.execute(sql`drop table user_roles`);
+    try {
+      const response = await logged.inject({
+        url: "/editor/me",
+        headers: {
+          cookie: "test-session=employee",
+          origin: TEST_HTTP_CONFIG.editorOrigin,
+        },
+      });
+
+      expect(response.statusCode).toBe(503);
+      expect(response.json()).toEqual({ error: "auth_unavailable" });
+      const failure = logs
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((line) => line.msg === "session lookup failed");
+      expect(failure).toMatchObject({
+        failure: "role_store_unavailable",
+        operation: "rolesOf",
+      });
+      // The driver's message names the table; it never reaches the log.
+      expect(logs.join("\n")).not.toContain("user_roles");
+    } finally {
+      await logged.close();
+    }
   });
 });

@@ -73,13 +73,19 @@ export class EditorAccess implements EmployeeGate {
     const identity = session.value;
     if (identity === null) return err(new Unauthenticated());
     const roles = await this.roles.rolesOf(identity.id);
-    if (!roles.ok) return err(new AuthUnavailable());
+    if (!roles.ok)
+      return err(
+        new AuthUnavailable({ lookup: "roles", operation: "rolesOf" }),
+      );
     if (
       this.adminEmails.includes(identity.email) &&
       !roles.value.includes("admin")
     ) {
       const granted = await this.roles.grant(identity.id, "admin", null);
-      if (!granted.ok) return err(new AuthUnavailable());
+      if (!granted.ok)
+        return err(
+          new AuthUnavailable({ lookup: "roles", operation: "grant" }),
+        );
       roles.value.push("admin");
     }
     return ok({
