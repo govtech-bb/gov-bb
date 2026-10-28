@@ -16,9 +16,10 @@ test("keeps the lines both versions share, and marks what one removes and the ot
 });
 
 test("an empty version is all added or all removed", () => {
-  expect(lineDiff("", "New")).toEqual([
-    { kind: "removed", text: "" },
+  expect(lineDiff("", "New\n")).toEqual([
     { kind: "added", text: "New" },
+    { kind: "added", text: "" },
   ]);
+  expect(lineDiff("Old", "")).toEqual([{ kind: "removed", text: "Old" }]);
   expect(lineDiff("Same", "Same")).toEqual([{ kind: "same", text: "Same" }]);
 });

@@ -1,12 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { categoryLabel } from "../api/categories";
 import { ApiFailure, type ApiRevision, type EditorApi } from "../api/client";
 import { apiMessage } from "../api/failure-messages";
 import { pageFieldLabel } from "../api/page-markdown";
-import { categoriesQuery, reviewQueueQuery, revisionQuery, rolesQuery } from "../api/queries";
+import {
+  categoriesQuery,
+  employeeIdQuery,
+  reviewQueueQuery,
+  revisionQuery,
+  rolesQuery,
+} from "../api/queries";
+import { authBypassed } from "../auth/bypass";
 import { Badge } from "../ui/badge";
 import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
@@ -83,13 +90,6 @@ export function ReviewQueueScreen({ api }: { api: EditorApi }) {
   );
 }
 
-const FIELD_NAMES = new Map([
-  ["body_markdown", "Content"],
-  ["frontmatter", "Page settings"],
-]);
-
-const fieldName = (field: string) => FIELD_NAMES.get(field) ?? pageFieldLabel(field);
-
 /** A field's value as the API compares it: whatever the page field holds. */
 type FieldValue = ApiRevision["changes"][number]["live"];
 
@@ -108,9 +108,12 @@ function valueText(
 
 /** The page's content, line by line: what the change removes struck through, what it adds marked, in words too. */
 function ContentDiff({ live, proposed }: { live: string; proposed: string }) {
+  // Not again on each keystroke in a dialog over it: it is quadratic in the lines
+  const lines = useMemo(() => lineDiff(live, proposed), [live, proposed]);
+
   return (
     <pre className="overflow-x-auto rounded-sm border border-line bg-white py-2 font-mono text-12 leading-5 whitespace-pre-wrap">
-      {lineDiff(live, proposed).map((line, index) =>
+      {lines.map((line, index) =>
         line.kind === "same" ? (
           <div key={index} className="px-3">
             <span aria-hidden="true">{"  "}</span>
@@ -151,7 +154,7 @@ function Changes({ api, revision }: { api: EditorApi; revision: ApiRevision }) {
     <ul className="flex flex-col gap-6">
       {revision.changes.map((change) => (
         <li key={change.field}>
-          <h3 className="mb-2 text-16 font-semibold">{fieldName(change.field)}</h3>
+          <h3 className="mb-2 text-16 font-semibold">{pageFieldLabel(change.field)}</h3>
           {change.field === "body_markdown" ? (
             <ContentDiff
               live={String(change.live ?? "")}
@@ -215,7 +218,9 @@ function refusal(error: Error, decision: Decision): Refusal {
       return {
         message:
           (error instanceof ApiFailure &&
-            error.errors.map((item) => `${fieldName(item.field)}: ${item.message}`).join(" ")) ||
+            error.errors
+              .map((item) => `${pageFieldLabel(item.field)}: ${item.message}`)
+              .join(" ")) ||
           "This change can't be published as it stands.",
         reload: false,
       };
@@ -241,6 +246,7 @@ export function ReviewScreen({ api, pageId }: { api: EditorApi; pageId: string }
   const navigate = useNavigate();
   const revision = useQuery(revisionQuery(api, pageId));
   const approver = useQuery(rolesQuery(api)).data?.includes("approver") ?? false;
+  const me = useQuery(employeeIdQuery(api)).data;
 
   const submitter = useQuery(reviewQueueQuery(api)).data?.find(
     (entry) => entry.page_id === pageId,
@@ -266,7 +272,11 @@ export function ReviewScreen({ api, pageId }: { api: EditorApi; pageId: string }
             : "The editor sees your comment with the change.",
       });
       setDeciding(undefined);
-      // Left first, so this screen doesn't read the change it just decided on again
+      // Off the queue before it shows, and not read again by this screen as it goes
+      client.setQueryData(reviewQueueQuery(api).queryKey, (queue) =>
+        queue?.filter((entry) => entry.page_id !== pageId),
+      );
+      client.removeQueries({ queryKey: revisionQuery(api, pageId).queryKey, exact: true });
       await navigate({ to: "/reviews" });
       document.getElementById("workspace-content")?.focus();
       void client.invalidateQueries({ queryKey: ["content"] });
@@ -279,8 +289,30 @@ export function ReviewScreen({ api, pageId }: { api: EditorApi; pageId: string }
       setDeciding(undefined);
       setScreenError(refused.message);
       void client.invalidateQueries({ queryKey: ["content"] });
+
+      // A role taken away since the editor loaded is why too, so the actions it offers are read again
+      if (error instanceof ApiFailure && error.status === 403)
+        void client.invalidateQueries({ queryKey: ["me"] });
     },
   });
+
+  const gone = useRef<HTMLDivElement>(null);
+  const missing = revision.error instanceof ApiFailure && revision.error.status === 404;
+  // A failed read keeps the last data, so with it the change was on screen and has gone since
+  const vanished = missing && !!revision.data;
+
+  useEffect(() => {
+    if (!vanished) return;
+
+    // Decided elsewhere while open: say so, rather than drop the dialog and the comment in it unexplained
+    if (deciding)
+      setScreenError(
+        "Another approver published or rejected this change while you were reviewing it.",
+      );
+    setDeciding(undefined);
+    // Its controls have gone, so the focus goes to what says why
+    gone.current?.focus();
+  }, [vanished]);
 
   const open = (decision: Decision) => {
     if (!revision.data) return;
@@ -306,16 +338,17 @@ export function ReviewScreen({ api, pageId }: { api: EditorApi; pageId: string }
     </TextLink>
   );
 
-  const missing = revision.error instanceof ApiFailure && revision.error.status === 404;
-
   if (missing)
     return (
-      <EmptyState
-        kind="not-found"
-        title="Nothing is waiting for review on this page"
-        description="It may have been published or rejected already."
-        actions={back}
-      />
+      <div ref={gone} tabIndex={-1} className="outline-none">
+        {screenError && <Banner tone="error">{screenError}</Banner>}
+        <EmptyState
+          kind="not-found"
+          title="Nothing is waiting for review on this page"
+          description="It may have been published or rejected already."
+          actions={back}
+        />
+      </div>
     );
 
   if (revision.isError && !revision.data)
@@ -332,7 +365,12 @@ export function ReviewScreen({ api, pageId }: { api: EditorApi; pageId: string }
 
   const change = revision.data;
   const status = STATUS[change.status];
-  const decidable = approver && change.status === "submitted";
+
+  // The API refuses anyone who worked on the change, except one local developer under the auth bypass
+  const own =
+    !authBypassed && !!me && (change.submitted_by === me || change.contributors.includes(me));
+
+  const decidable = approver && !own && change.status === "submitted";
 
   return (
     <>
@@ -383,9 +421,12 @@ export function ReviewScreen({ api, pageId }: { api: EditorApi; pageId: string }
           </Button>
         </div>
       ) : (
-        change.status === "submitted" &&
-        !approver && (
-          <p className="text-14 text-muted">An approver will publish or reject this change.</p>
+        change.status === "submitted" && (
+          <p className="text-14 text-muted">
+            {approver
+              ? "You worked on this change, so another approver must publish or reject it."
+              : "An approver will publish or reject this change."}
+          </p>
         )
       )}
       <ConfirmDialog

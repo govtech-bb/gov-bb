@@ -6,8 +6,9 @@ export type DiffLine = { kind: "same" | "removed" | "added"; text: string };
  * subsequence, a removed line before the line that replaces it. Quadratic in the line count, which a page's body keeps small.
  */
 export function lineDiff(before: string, after: string): DiffLine[] {
-  const a = before.split("\n");
-  const b = after.split("\n");
+  // An empty version has no lines, not one blank one
+  const a = before === "" ? [] : before.split("\n");
+  const b = after === "" ? [] : after.split("\n");
   // common[i][j]: the longest run a[i..] and b[j..] share
 
   const common = Array.from({ length: a.length + 1 }, () =>

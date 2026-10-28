@@ -65,6 +65,17 @@ export const rolesQuery = (api: Pick<EditorApi, "me">) =>
     },
   });
 
+/** The signed-in employee's user id, which tells a change they worked on from anyone else's; null if not given. */
+export const employeeIdQuery = (api: Pick<EditorApi, "me">) =>
+  queryOptions({
+    queryKey: ["me", "id"],
+    queryFn: async (): Promise<string | null> => {
+      const me: unknown = await api.me();
+
+      return me instanceof Object && "id" in me && String(me.id) === me.id ? me.id : null;
+    },
+  });
+
 const VERSION_KEY = ["version"];
 
 /** The estate's change token, polled; when it moves, every content read refreshes. */

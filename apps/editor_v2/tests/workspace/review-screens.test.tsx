@@ -227,6 +227,11 @@ test("someone who isn't an approver can compare the change but isn't offered a d
 test("an approver publishes the change at the version they reviewed, and returns to the queue", async () => {
   const { server, router } = await render("review");
   await shown();
+  server.answer(() => {
+    server.replace(null);
+
+    return Response.json({});
+  });
 
   await press("Approve and publish");
   await until(() => expect(dialog()?.textContent).toContain("Publish this change?"));
@@ -243,6 +248,12 @@ test("an approver publishes the change at the version they reviewed, and returns
     },
   ]);
   expect(text()).toContain("Change published");
+  // Gone from the queue it returns to
+  expect(
+    client
+      .getQueryData<ReviewQueueEntry[]>(["content", "review-queue"])
+      ?.map((item) => item.page_id),
+  ).toEqual([]);
   expect(document.activeElement?.id).toBe("workspace-content");
 });
 
@@ -350,4 +361,121 @@ test("a page with nothing waiting says so and leads back to the queue", async ()
   expect(
     [...host.querySelectorAll("a")].find((item) => item.textContent === "Back to the review queue"),
   ).toBeDefined();
+});
+
+test.each([
+  ["submitted", { submitted_by: "me" }],
+  ["saved to", { contributors: ["editor-1", "me"] }],
+])("an approver who %s the change isn't offered a decision on it", async (_how, own) => {
+  const { server } = await render("review");
+  server.replace({ ...revision, ...own });
+  await act(async () => client.invalidateQueries());
+
+  await until(() =>
+    expect(text()).toContain(
+      "You worked on this change, so another approver must publish or reject it.",
+    ),
+  );
+  expect(button("Approve and publish")).toBeUndefined();
+  expect(button("Reject")).toBeUndefined();
+});
+
+test("a publish refused because the change was decided elsewhere says so where the screen was, and takes the focus there", async () => {
+  const { server } = await render("review");
+  await shown();
+  server.answer(() => {
+    server.replace(null);
+
+    return Response.json({ error: "not_found", message: "Gone." }, { status: 404 });
+  });
+
+  await press("Approve and publish");
+  await until(() => expect(dialog()).not.toBeNull());
+  await act(async () => [...dialog()!.querySelectorAll("button")].at(-1)!.click());
+
+  await until(() => expect(text()).toContain("Nothing is waiting for review on this page"));
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+    "This change was updated or decided on after you opened it.",
+  );
+  await until(() => expect(document.activeElement?.textContent).toContain("Nothing is waiting"));
+});
+
+test("a change decided elsewhere while the approver writes a rejection says so, rather than losing the dialog unexplained", async () => {
+  const { server } = await render("review");
+  await shown();
+  await press("Reject");
+  await until(() => expect(dialog()).not.toBeNull());
+
+  server.replace(null);
+  await act(async () => client.invalidateQueries());
+
+  await until(() => expect(dialog()).toBeNull());
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+    "Another approver published or rejected this change while you were reviewing it.",
+  );
+  expect(server.sent).toEqual([]);
+});
+
+test("a rejection refused (403) says why and reads the change and the roles again", async () => {
+  const { server } = await render("review");
+  await shown();
+  const reads = server.reads().length;
+
+  const roleReads = server.fetch.mock.calls.filter(([url]) =>
+    String(url).endsWith("/editor/me"),
+  ).length;
+
+  server.answer(() =>
+    Response.json(
+      { error: "forbidden", message: "You need the approver role to do this." },
+      { status: 403 },
+    ),
+  );
+
+  await press("Reject");
+  await until(() => expect(dialog()).not.toBeNull());
+  const comment = dialog()!.querySelector("textarea")!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(
+      comment,
+      "No.",
+    );
+    comment.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () =>
+    dialog()!.querySelector<HTMLButtonElement>('button[type="submit"]')!.click(),
+  );
+
+  await until(() => expect(dialog()).toBeNull());
+  await until(() =>
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+      "You need the approver role to do this.",
+    ),
+  );
+  await until(() => expect(server.reads().length).toBeGreaterThan(reads));
+  await until(() =>
+    expect(
+      server.fetch.mock.calls.filter(([url]) => String(url).endsWith("/editor/me")).length,
+    ).toBeGreaterThan(roleReads),
+  );
+});
+
+test("a change that can't be published as it stands keeps the dialog open, naming the field", async () => {
+  const { server } = await render("review");
+  await shown();
+  server.answer(() =>
+    Response.json(
+      {
+        error: "validation_failed",
+        errors: [{ field: "parent_id", message: "No page with that id." }],
+      },
+      { status: 422 },
+    ),
+  );
+
+  await press("Approve and publish");
+  await until(() => expect(dialog()).not.toBeNull());
+  await act(async () => [...dialog()!.querySelectorAll("button")].at(-1)!.click());
+
+  await until(() => expect(dialog()?.textContent).toContain("Parent page: No page with that id."));
 });
