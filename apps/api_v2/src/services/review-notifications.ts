@@ -10,6 +10,11 @@ export interface ReviewEvent {
   readonly title: string;
   /** The user id of whoever submitted the change. */
   readonly submittedBy: string;
+  /**
+   * On a submission, everyone who changed it: none may decide on it, so no
+   * approver among them is told it waits for them.
+   */
+  readonly contributors?: readonly string[];
 }
 
 /**
@@ -50,8 +55,13 @@ export interface ReviewRecipients {
   emailOf(
     userId: string,
   ): Promise<Result<string | null, ContentStoreUnavailable>>;
-  /** The entry page of the service a page belongs to: the top of its parent chain. */
-  serviceOf(pageId: PageId): Promise<Result<PageId, ContentStoreUnavailable>>;
+  /**
+   * The entry page of the service a page belongs to: the top of its parent
+   * chain, or null when that has no category, so the editor lists no service.
+   */
+  serviceOf(
+    pageId: PageId,
+  ): Promise<Result<PageId | null, ContentStoreUnavailable>>;
 }
 
 /** Where a failed notification is reported. */
@@ -157,7 +167,10 @@ export class ReviewNotifications implements ReviewNotifier {
       return approvers.ok
         ? ok(
             approvers.value
-              .filter(({ id }) => id !== event.submittedBy)
+              .filter(
+                ({ id }) =>
+                  id !== event.submittedBy && !event.contributors?.includes(id),
+              )
               .map(({ email }) => email),
           )
         : approvers;
@@ -168,7 +181,9 @@ export class ReviewNotifications implements ReviewNotifier {
 
   /**
    * The editor's review screen for a change waiting for review; otherwise the
-   * page's own screen, which shows a rejection's comment.
+   * page's own screen, which shows a rejection's comment. A page in no
+   * service has no screen of its own, so a rejection links to its review
+   * screen, which shows the comment too, and a publication to the services.
    */
   private async linkFor(
     event: ReviewEvent,
@@ -177,10 +192,15 @@ export class ReviewNotifications implements ReviewNotifier {
     if (event.kind === "submitted")
       return ok(`${this.editorOrigin}/reviews/${page}`);
     const service = await this.recipients.serviceOf(event.pageId);
-    return service.ok
-      ? ok(
-          `${this.editorOrigin}/services/${encodeURIComponent(service.value)}/${page}`,
-        )
-      : service;
+    if (!service.ok) return service;
+    if (service.value !== null)
+      return ok(
+        `${this.editorOrigin}/services/${encodeURIComponent(service.value)}/${page}`,
+      );
+    return ok(
+      event.kind === "rejected"
+        ? `${this.editorOrigin}/reviews/${page}`
+        : `${this.editorOrigin}/services`,
+    );
   }
 }

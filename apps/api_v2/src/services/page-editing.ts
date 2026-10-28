@@ -473,6 +473,7 @@ export class PageEditing {
         pageId: id,
         title: submitted.value.fields.title,
         submittedBy: actor.id,
+        contributors: submitted.value.contributors,
       });
     return submitted;
   }

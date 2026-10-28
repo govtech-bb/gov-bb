@@ -25,10 +25,16 @@ interface Email {
 const emailsIn = (output: string): Email[] =>
   output
     .split("\n")
-    .filter((line) => line.startsWith("{"))
-    .map((line) => JSON.parse(line) as { msg?: string; email?: Email })
-    .filter((entry) => entry.msg === "review email")
-    .map((entry) => entry.email as Email);
+    // The last piece may be a line still arriving.
+    .slice(0, -1)
+    .flatMap((line) => {
+      try {
+        const entry = JSON.parse(line) as { msg?: string; email?: Email };
+        return entry.msg === "review email" && entry.email ? [entry.email] : [];
+      } catch {
+        return [];
+      }
+    });
 
 /**
  * The process's output once `count` emails are in it, or once `route` has

@@ -117,7 +117,7 @@ const environment = z
     // Off by default: an environment turns review emails on (#3267).
     REVIEW_NOTIFICATIONS: z.enum(["off", "log", "ses"]).default("off"),
     // The same sender settings as apps/api's SES mailer.
-    SES_FROM_ADDRESS: z.email().optional(),
+    SES_FROM_ADDRESS: z.string().min(1).optional(),
     SES_REGION: z.string().min(1).optional(),
     AWS_DEFAULT_REGION: z.string().min(1).optional(),
   })

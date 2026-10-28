@@ -54,21 +54,21 @@ export class PostgresReviewRecipients implements ReviewRecipients {
 
   async serviceOf(
     pageId: PageId,
-  ): Promise<Result<PageId, ContentStoreUnavailable>> {
-    // The parent chain's top, as the service index groups pages; a loop in
-    // the data ends rather than repeating, and a missing page is its own.
+  ): Promise<Result<PageId | null, ContentStoreUnavailable>> {
+    // The parent chain's top, as the service index groups pages, which lists
+    // only a top with a category; a loop in the data ends rather than repeating.
     const rows = await attempt("serviceOf", () =>
-      this.db.execute<{ id: string }>(sql`
+      this.db.execute<{ id: string; category_id: string | null }>(sql`
         with recursive chain as (
-          select id, parent_id from content_pages where id = ${pageId}
+          select id, parent_id, category_id from content_pages where id = ${pageId}
           union all
-          select p.id, p.parent_id from content_pages p
+          select p.id, p.parent_id, p.category_id from content_pages p
             join chain on p.id = chain.parent_id
         ) cycle id set is_cycle using path
-        select id from chain where parent_id is null and not is_cycle`),
+        select id, category_id from chain where parent_id is null and not is_cycle`),
     );
     if (!rows.ok) return rows;
-    const top = rows.value.rows[0]?.id;
-    return ok(top === undefined ? pageId : PageId.parse(top));
+    const top = rows.value.rows[0];
+    return ok(top?.category_id ? PageId.parse(top.id) : null);
   }
 }

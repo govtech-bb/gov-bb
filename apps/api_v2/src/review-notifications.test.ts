@@ -11,8 +11,8 @@ import { PostgresReviewRecipients } from "./adapters/postgres-review-recipients"
 import { parseConfig } from "./config";
 import type { Database } from "./db";
 import { UserId, type Employee } from "./modules/auth";
-import { withDefaults } from "./modules/page";
-import { ok } from "./modules/result";
+import { ContentStoreUnavailable, withDefaults } from "./modules/page";
+import { err, ok } from "./modules/result";
 import { IF_UPDATED_AT } from "./routes/contracts";
 import { categories } from "./schema";
 import {
@@ -184,6 +184,51 @@ describe("who hears of a review step", () => {
     expect(sent.map(({ to }) => to)).toEqual([APPROVER.email]);
   });
 
+  it("leaves out an approver who changed it, since they can't decide on it", async () => {
+    const page = await seedPage();
+    const saved = await as(TEST_EMPLOYEE, {
+      method: "PUT",
+      url: `/pages/${page.id}`,
+      headers: { [IF_UPDATED_AT]: page.updated_at },
+      payload: withDefaults(
+        aPage({ category_id: page.category_id, title: "Severance pay" }),
+      ),
+    });
+    expect(saved.statusCode).toBe(200);
+
+    const submitted = await as(TEST_EDITOR, {
+      method: "POST",
+      url: `/pages/${page.id}/revision/submit`,
+    });
+
+    expect(submitted.statusCode).toBe(200);
+    expect(sent.map(({ to }) => to)).toEqual([APPROVER.email]);
+  });
+
+  it("links a page in no service to its review screen, or the services list", async () => {
+    const page = await seedPage({
+      url: "/terms-conditions",
+      category_id: null,
+    });
+    await submit(TEST_EDITOR, page, { url: page.url, category_id: null });
+    sent = [];
+    await decide(page.id, "reject");
+    // Sent again as it is, then published.
+    await as(TEST_EDITOR, {
+      method: "POST",
+      url: `/pages/${page.id}/revision/submit`,
+    });
+    await decide(page.id, "publish");
+
+    const links = sent
+      .filter(({ to }) => to === TEST_EDITOR.email)
+      .map(({ text }) => text.split("\n").at(-1));
+    expect(links).toEqual([
+      `${EDITOR}/reviews/${page.id}`,
+      `${EDITOR}/services`,
+    ]);
+  });
+
   it("tells the submitter their change was published, linking to the page in its service", async () => {
     const entry = await seedPage();
     const child = await seedPage({
@@ -282,9 +327,8 @@ describe("a failed email", () => {
       new ReviewNotifications(
         mailer,
         {
-          approvers: async () => {
-            throw new Error("connection lost");
-          },
+          approvers: async () =>
+            err(new ContentStoreUnavailable("approvers", new Error("lost"))),
           emailOf: async () => ok(null),
           serviceOf: async (pageId) => ok(pageId),
         },
@@ -297,7 +341,7 @@ describe("a failed email", () => {
     expect((await submit(TEST_EDITOR, page)).statusCode).toBe(200);
     expect(sent).toEqual([]);
     expect(log.error).toHaveBeenCalledWith(
-      expect.objectContaining({ failure: "notify_failed" }),
+      expect.objectContaining({ failure: "recipients_unavailable" }),
       "review email not sent",
     );
   });

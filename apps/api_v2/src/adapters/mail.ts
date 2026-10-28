@@ -29,7 +29,12 @@ export class SesMailer implements Mailer {
     private readonly from: string,
     region: string,
   ) {
-    this.client = new SESv2Client({ region });
+    // Bounded, since a review step's response waits for its emails.
+    this.client = new SESv2Client({
+      region,
+      maxAttempts: 2,
+      requestHandler: { connectionTimeout: 2_000, requestTimeout: 5_000 },
+    });
   }
 
   async send(email: Email): Promise<void> {
