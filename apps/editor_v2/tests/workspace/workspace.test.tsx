@@ -226,6 +226,38 @@ test.each([
   },
 );
 
+test("someone without the editor role is told why, and can't add, delete or create", async () => {
+  const h = await mountWorkspace("/services/service/fees", { roles: [] });
+
+  const button = (name: string) =>
+    [...document.querySelectorAll("button")].find((item) => item.textContent === name)!;
+
+  await until(() => expect(document.body.textContent).toContain("you don't have the editor role"));
+  await until(() => expect(button("Delete page").disabled).toBe(true));
+  expect(button("Add document").disabled).toBe(true);
+  const reason = button("Add document").getAttribute("aria-describedby");
+  expect(reason && document.getElementById(reason)?.textContent).toBe(
+    "You need the editor role to add or delete pages.",
+  );
+  expect(button("Delete page").getAttribute("aria-describedby")).toBe(reason);
+
+  await act(async () => {
+    await h.router.navigate({ to: "/services" });
+  });
+  await until(() => expect(button("Create service").disabled).toBe(true));
+});
+
+test("an editor is offered adding and creating, with no read-only notice", async () => {
+  await mountWorkspace("/services/service/fees", { roles: ["editor"] });
+
+  const button = (name: string) =>
+    [...document.querySelectorAll("button")].find((item) => item.textContent === name)!;
+
+  await until(() => expect(button("Delete page").disabled).toBe(false));
+  expect(button("Add document").disabled).toBe(false);
+  expect(document.body.textContent).not.toContain("you don't have the editor role");
+});
+
 test("malformed old workspaces and drafts cannot shadow API pages or create browser-only flows", async () => {
   localStorage.setItem("govbb-editor:workspace:v1", "{broken");
   localStorage.setItem("govbb-editor:documents:fees:markdown", "Old local page");

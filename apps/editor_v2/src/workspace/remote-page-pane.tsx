@@ -135,8 +135,11 @@ function RemotePageEditor({
   const draft = useSyncExternalStore(store.subscribe, store.getSnapshot);
   // Links find the site's services by name; the content API lists their entry pages
   const services = useQuery(servicesQuery(api)).data;
+  const roles = useQuery(rolesQuery(api)).data;
   // Until the roles load, the visibility control waits rather than offering what the API may refuse
-  const approver = useQuery(rolesQuery(api)).data?.includes("approver") ?? false;
+  const approver = roles?.includes("approver") ?? false;
+  // Someone without the editor role can't save; the workspace says why
+  const readOnly = !!roles && !roles.includes("editor");
 
   const service = services?.find(
     (item) => server.id === item.id || server.url.startsWith(`${item.url}/`),
@@ -381,7 +384,14 @@ function RemotePageEditor({
       publish={
         <Button
           variant="accent"
-          disabled={!unsaved || stale || blocked || save.isPending || outcome?.kind === "missing"}
+          disabled={
+            !unsaved ||
+            stale ||
+            blocked ||
+            readOnly ||
+            save.isPending ||
+            outcome?.kind === "missing"
+          }
           onClick={saveDraft}
         >
           {visibility === "public" ? "Publish changes" : "Save"}
