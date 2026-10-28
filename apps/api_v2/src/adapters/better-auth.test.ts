@@ -27,6 +27,7 @@ beforeAll(() => {
     BETTER_AUTH_SECRET: "test-secret-with-at-least-32-characters",
     GITHUB_CLIENT_ID: "test-client",
     GITHUB_CLIENT_SECRET: "test-client-secret",
+    API_V2_ADMIN_EMAILS: "admin@govtech.bb",
   });
   if (!config.ok) throw config.error;
   authConfig = config.value.auth;

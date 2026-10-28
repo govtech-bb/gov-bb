@@ -52,7 +52,11 @@ async function main(): Promise<void> {
   if (!parsed.ok) {
     // Field names only: the supplied values may be secrets.
     logger.error(
-      { error: parsed.error._tag, fields: parsed.error.fields },
+      {
+        error: parsed.error._tag,
+        fields: parsed.error.fields,
+        reasons: parsed.error.reasons,
+      },
       parsed.error.message,
     );
     process.exitCode = 1;

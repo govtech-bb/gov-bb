@@ -112,6 +112,7 @@ export const AUTH_ENV = {
   BETTER_AUTH_SECRET: "api-v2-test-secret-at-least-thirty-two-characters",
   GITHUB_CLIENT_ID: "api-v2-test-client",
   GITHUB_CLIENT_SECRET: "api-v2-test-client-secret",
+  API_V2_ADMIN_EMAILS: "admin@govtech.bb",
 };
 
 const entrypoint = join(root, "dist", "src", "main.js");

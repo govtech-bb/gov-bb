@@ -8,6 +8,7 @@ const required = {
   BETTER_AUTH_SECRET: "test-only-secret-with-at-least-32-characters",
   GITHUB_CLIENT_ID: "test-client",
   GITHUB_CLIENT_SECRET: "test-client-secret",
+  API_V2_ADMIN_EMAILS: "admin@govtech.bb",
 };
 
 describe("auth configuration", () => {
@@ -131,8 +132,29 @@ describe("admin emails", () => {
     return parsed.ok ? parsed.value.adminEmails : parsed.error.fields;
   };
 
-  it("lists nobody unless set", () => {
-    expect(admins({})).toEqual([]);
+  it("refuses to start without one, since nobody could grant approver", () => {
+    for (const unset of [
+      { API_V2_ADMIN_EMAILS: "" },
+      { API_V2_ADMIN_EMAILS: " , " },
+    ]) {
+      const parsed = parseConfig({ ...required, ...unset });
+      expect(parsed.ok).toBe(false);
+      if (!parsed.ok) {
+        expect(parsed.error.fields).toEqual(["API_V2_ADMIN_EMAILS"]);
+        expect(parsed.error.reasons).toEqual([
+          expect.stringContaining("ADR 0079"),
+        ]);
+      }
+    }
+    const withoutAdmins: Record<string, string> = { ...required };
+    delete withoutAdmins.API_V2_ADMIN_EMAILS;
+    expect(parseConfig(withoutAdmins).ok).toBe(false);
+  });
+
+  it("needs none under AUTH_BYPASS, whose developer holds every role", () => {
+    expect(admins({ API_V2_ADMIN_EMAILS: "", AUTH_BYPASS: "true" })).toEqual(
+      [],
+    );
   });
 
   it("reads a comma-separated list, lowercased", () => {
