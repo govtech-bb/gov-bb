@@ -89,9 +89,10 @@ async function postJson<T>(
   const cancel = () => stop.abort();
   signal?.addEventListener("abort", cancel);
   if (signal?.aborted) stop.abort();
-  let response: Response;
+  // The timer stays on until the body is read: headers can arrive and the
+  // body stall, which would otherwise leave the row checking for good.
   try {
-    response = await fetch(`${API_URL}${endpoint}`, {
+    const response = await fetch(`${API_URL}${endpoint}`, {
       method: "POST",
       signal: stop.signal,
       headers,
@@ -102,18 +103,16 @@ async function postJson<T>(
       // CORS allows credentials and it's harmless on the normal citizen flow.
       credentials: "include",
     });
+    if (!response.ok) throw new Error(response.statusText);
+    // The API wraps payloads as { status, message, data, ... }.
+    const json = (await response.json()) as { data: T };
+    return json.data;
   } catch {
     throw new FileUploadError(UPLOAD_PROBLEM_MESSAGE, stage);
   } finally {
     clearTimeout(timer);
     signal?.removeEventListener("abort", cancel);
   }
-  if (!response.ok) {
-    throw new FileUploadError(UPLOAD_PROBLEM_MESSAGE, stage);
-  }
-  // The API wraps payloads as { status, message, data, ... }.
-  const json = (await response.json()) as { data: T };
-  return json.data;
 }
 
 export const presignUpload = (
@@ -176,6 +175,12 @@ export const putFileToS3 = (
   new Promise((resolve, reject) => {
     const failed = () =>
       reject(new FileUploadError(UPLOAD_PROBLEM_MESSAGE, "put"));
+    // A cancel can land while presign's body is read, so the signal may
+    // already be aborted; its abort event won't fire again, so check first.
+    if (signal?.aborted) {
+      failed();
+      return;
+    }
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", uploadUrl);
     // Must match the contentType sent at presign time — S3 signs it, so a
@@ -191,7 +196,7 @@ export const putFileToS3 = (
     xhr.onerror = failed;
     xhr.onabort = failed;
     xhr.ontimeout = failed;
-    signal?.addEventListener("abort", () => xhr.abort());
+    signal?.addEventListener("abort", () => xhr.abort(), { once: true });
     xhr.send(file);
   });
 
@@ -262,8 +267,19 @@ export type CheckFileParams = Omit<UploadFileParams, "file" | "onProgress"> & {
   key: string;
 };
 
-const wait = (ms: number) =>
-  new Promise<void>((resolve) => setTimeout(resolve, ms));
+/** Waits `ms`, or less when the caller cancels in the meantime. */
+const wait = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      { once: true },
+    );
+  });
 
 /**
  * Confirms an uploaded file and returns it with its scan verdict. While the
@@ -289,7 +305,7 @@ export const checkFile = async ({
     );
     if (file.scanStatus !== "pending") return file;
     if (Date.now() + SCAN_RECHECK_INTERVAL_MS > deadline) return "timeout";
-    await wait(SCAN_RECHECK_INTERVAL_MS);
+    await wait(SCAN_RECHECK_INTERVAL_MS, signal);
     if (signal?.aborted) {
       throw new FileUploadError(UPLOAD_PROBLEM_MESSAGE, "confirm");
     }

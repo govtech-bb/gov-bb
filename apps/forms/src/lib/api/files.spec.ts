@@ -617,6 +617,31 @@ describe("files API client", () => {
       });
     });
 
+    // The timer must cover the body too: headers can arrive and the body
+    // stall, which would leave the row on "Checking your file" for good.
+    it("gives up on a confirm whose body doesn't arrive within the request timeout", async () => {
+      fetchMock.mockImplementation((_url: string, init: RequestInit) =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            new Promise((_resolve, reject) => {
+              init.signal?.addEventListener("abort", () =>
+                reject(new DOMException("aborted", "AbortError")),
+              );
+            }),
+        } as unknown as Response),
+      );
+
+      const result = checkFile(ref).catch((e: unknown) => e);
+      await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
+
+      await expect(result).resolves.toMatchObject({
+        name: "FileUploadError",
+        message: UPLOAD_PROBLEM_MESSAGE,
+      });
+    });
+
     it("cancels the confirm when the caller aborts", async () => {
       fetchMock.mockImplementation(hangingFetch);
       const run = new AbortController();
@@ -644,6 +669,43 @@ describe("files API client", () => {
 
       await expect(result).resolves.toBeInstanceOf(FileUploadError);
       expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("stops waiting between checks as soon as the caller aborts", async () => {
+      fetchMock.mockResolvedValue(
+        jsonResponse({ key: "uploads/k", scanStatus: "pending" }),
+      );
+      const run = new AbortController();
+      let settled = false;
+
+      const result = checkFile({ ...ref, signal: run.signal })
+        .catch((e: unknown) => e)
+        .finally(() => (settled = true));
+      await vi.advanceTimersByTimeAsync(1000);
+      run.abort();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(settled).toBe(true);
+      await expect(result).resolves.toBeInstanceOf(FileUploadError);
+    });
+
+    // A cancel can land while presign's body is read, so the PUT can start
+    // with a signal that is already aborted, whose abort event never fires.
+    it("never sends the file when the caller has already cancelled", async () => {
+      const send = vi.spyOn(FakeXhr.prototype, "send");
+      const run = new AbortController();
+      run.abort();
+
+      const result = putFileToS3(
+        "https://s3/put",
+        new File(["x"], "a.pdf"),
+        undefined,
+        run.signal,
+      ).catch((e: unknown) => e);
+
+      await expect(result).resolves.toBeInstanceOf(FileUploadError);
+      expect(send).not.toHaveBeenCalled();
+      send.mockRestore();
     });
 
     it("aborts the S3 PUT when the caller aborts", async () => {
