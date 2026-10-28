@@ -562,7 +562,8 @@ export const SCHEMAS = {
   version: {
     summary: "A version token for recorded content changes",
     description:
-      "`change_events` records every page and category change. Its count " +
+      "`change_events` records every page and category change, and each " +
+      "review step of a page's revision. Its count " +
       "and newest timestamp identify those changes without reading the content.",
     tags: ["meta"],
     security: editorSecurity,

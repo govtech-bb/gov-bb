@@ -84,6 +84,35 @@ describe("the change history trigger", () => {
     await close();
   });
 
+  it("names a revision's review steps in its page's history, as system when no user is set", async () => {
+    const { db, close } = await createTestDb();
+    const run = (statement: ReturnType<typeof sql>) => db.execute(statement);
+    await run(
+      sql`insert into content_pages (id, url, slug, title, body_markdown)
+          values (${PAGE}, '/x', 'x', 'X', '')`,
+    );
+    const revise = (status: string) =>
+      run(sql`update page_revisions set status = ${status}`);
+
+    // A draft and the saves to it are not review steps.
+    await run(
+      sql`insert into page_revisions (page_id, fields, live_updated_at, created_by, contributors)
+          values (${PAGE}, '{}', now(), 'system', '{system}')`,
+    );
+    await run(sql`update page_revisions set fields = '{"title":"Y"}'`);
+    await revise("submitted");
+    await revise("rejected");
+    await revise("published");
+
+    expect(await historyOf(db, PAGE)).toEqual(
+      ["created", "submitted", "rejected", "approved"].map((action) => ({
+        action,
+        actor: "system",
+      })),
+    );
+    await close();
+  });
+
   it("snapshots the row as stored, and the row as it stood on delete", async () => {
     const { db, close } = await createTestDb();
     await db.execute(

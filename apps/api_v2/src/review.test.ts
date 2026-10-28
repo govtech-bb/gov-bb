@@ -282,6 +282,8 @@ describe("publishing a revision", () => {
     expect(JSON.stringify(after[4]?.body)).not.toContain("Ten dollars");
     expect(await events()).toEqual([
       { action: "created", actor: TEST_EMPLOYEE.id },
+      { action: "submitted", actor: TEST_EDITOR.id },
+      { action: "approved", actor: APPROVER.id },
       { action: "updated", actor: APPROVER.id },
     ]);
     const [revision] = await revisions();
@@ -351,7 +353,11 @@ describe("rejecting a revision", () => {
     expect(rejected > version).toBe(true);
     expect(await publicResponses()).toEqual(before);
     expect(await stored(page.id)).toEqual(page);
-    expect(await events()).toHaveLength(1);
+    expect(await events()).toEqual([
+      { action: "created", actor: TEST_EMPLOYEE.id },
+      { action: "submitted", actor: TEST_EDITOR.id },
+      { action: "rejected", actor: APPROVER.id },
+    ]);
     const opened = await as(TEST_EDITOR, { url: `/pages/${page.id}` });
     expect(opened.json()).toMatchObject({
       title: "Severance pay",
@@ -506,6 +512,76 @@ describe("rejecting a revision", () => {
 
     expect(response.statusCode).toBe(400);
     expect((await revisions())[0]?.status).toBe("submitted");
+  });
+});
+
+describe("the page's history (#3200)", () => {
+  it("records each review step by the one who took it, the rejection with its comment", async () => {
+    const { page } = await submitted();
+    const rejected = (
+      await review(APPROVER, page.id, "reject", {
+        comment: "The fee is wrong.",
+      })
+    ).json();
+    await review(TEST_EDITOR, page.id, "submit", {
+      version: rejected.updated_at,
+    });
+    expect((await review(APPROVER, page.id, "publish")).statusCode).toBe(200);
+
+    const history = await db
+      .select({
+        versionNo: changeEvents.versionNo,
+        action: changeEvents.action,
+        actor: changeEvents.actor,
+        status: sql`${changeEvents.snapshot}->>'status'`,
+        submittedBy: sql`${changeEvents.snapshot}->>'submitted_by'`,
+        decidedBy: sql`${changeEvents.snapshot}->>'decided_by'`,
+        comment: sql`${changeEvents.snapshot}->>'comment'`,
+      })
+      .from(changeEvents)
+      .where(eq(changeEvents.entityId, page.id))
+      .orderBy(changeEvents.versionNo);
+
+    // The draft save is not a step; the page's numbering has no gaps.
+    const step = (
+      versionNo: number,
+      action: string,
+      actor: string,
+      revision: Record<string, string | null> = {},
+    ) => ({
+      versionNo,
+      action,
+      actor,
+      status: null,
+      submittedBy: null,
+      decidedBy: null,
+      comment: null,
+      ...revision,
+    });
+    expect(history).toEqual([
+      step(1, "created", TEST_EMPLOYEE.id),
+      step(2, "submitted", TEST_EDITOR.id, {
+        status: "submitted",
+        submittedBy: TEST_EDITOR.id,
+      }),
+      step(3, "rejected", APPROVER.id, {
+        status: "rejected",
+        submittedBy: TEST_EDITOR.id,
+        decidedBy: APPROVER.id,
+        comment: "The fee is wrong.",
+      }),
+      step(4, "submitted", TEST_EDITOR.id, {
+        status: "submitted",
+        submittedBy: TEST_EDITOR.id,
+      }),
+      step(5, "approved", APPROVER.id, {
+        status: "published",
+        submittedBy: TEST_EDITOR.id,
+        decidedBy: APPROVER.id,
+      }),
+      // The live write the approval let through.
+      step(6, "updated", APPROVER.id),
+    ]);
   });
 });
 

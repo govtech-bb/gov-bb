@@ -496,14 +496,16 @@ export class PageEditing {
       const now = new Date(
         Math.max(this.clock().getTime(), Date.parse(revision.updated_at) + 1),
       );
-      const saved = await writeLive(records, live, placed.value, now);
-      if (!saved.ok) return saved;
+      // Marked first, so the page's history reads the approval before the
+      // change it lets live.
       const marked = await records.markRevision(revision.id, {
         status: "published",
         by: actor.id,
         at: now,
       });
-      return marked.ok ? ok(workingCopy(saved.value, null)) : marked;
+      if (!marked.ok) return marked;
+      const saved = await writeLive(records, live, placed.value, now);
+      return saved.ok ? ok(workingCopy(saved.value, null)) : saved;
     });
   }
 
