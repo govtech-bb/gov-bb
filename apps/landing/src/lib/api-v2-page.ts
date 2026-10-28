@@ -8,7 +8,7 @@ import type { Frontmatter } from './frontmatter'
  * Pages from api_v2 (#2944). When `VITE_API_V2_URL` is set, the catch-all asks
  * api_v2 for a page first and falls back to the static markdown on any miss;
  * unset, landing serves static content only. Unlike the forms API, a missing
- * URL is not an error.
+ * URL is not an error. A 301 is followed only to a same-site path.
  */
 
 export const API_V2_TIMEOUT_MS = 5_000
@@ -74,6 +74,12 @@ function isPageResponse(body: unknown): body is PageResponse {
   )
 }
 
+/** `/…` only: not `//`, no backslash, no whitespace — the three ways a
+ *  browser's URL parser turns a "path" into another origin (#3126). */
+function isSitePath(to: string): boolean {
+  return /^\/(?!\/)[^\\\s]*$/.test(to)
+}
+
 /**
  * `GET /pages?url=` without following redirects. A 404 is a silent miss;
  * anything else unexpected (status, network, timeout, bad body) is a logged
@@ -108,8 +114,11 @@ export async function fetchApiV2Page(
         typeof body?.redirect === 'string'
           ? body.redirect
           : response.headers.get('Location')
-      if (to) return { kind: 'redirect', to }
-      console.warn(`[api-v2] 301 for ${url} with no target`)
+      // Same-site paths only (#3126): a 301 here may come from a proxy, not
+      // api_v2, and the browser caches it, so an off-site target would outlive
+      // the misconfiguration that produced it.
+      if (to && isSitePath(to)) return { kind: 'redirect', to }
+      console.warn(`[api-v2] 301 for ${url} with no same-site target: ${to}`)
       return { kind: 'miss' }
     }
     if (response.status !== 200) {
