@@ -27,9 +27,10 @@ top-level pages. The `GET /pages` response had no category field to map from.
 - **Singular `category`/`subcategory`, not `categories: string[]`.** The DB
   has one `category_id`. #3242 picks the plural shape when it stores secondary
   categories.
-- **Landing parses the response with Zod.** Missing taxonomy fields from an
-  older api_v2 become null, preserving `categories: []`. Malformed slugs and a
-  subcategory without a category take the existing logged-miss fallback.
+- **Landing validates the response shape, not the taxonomy rules.** Its Zod
+  parser checks `string | null`; slug syntax, length and category relationships
+  belong to api_v2. Missing fields from older deployments become null, preserving
+  `categories: []`. Wrong field types take the existing logged-miss fallback.
 - **Parity is checked offline against the snapshot.** The responses are built
   from parsed `estate.json` data and pass through `resolveApiV2Page`, including
   the HTTP response parser and markdown compiler. A content change without
@@ -68,7 +69,8 @@ breadcrumbs still use one chain, whose type permits only zero, one or two levels
 The API tests cover a page whose address differs from its category, unfiled
 pages, and a seeded subcategory page that remains hidden without a preview token.
 The built-server HTTP tests check the same public response fields. Landing's
-regression tests reject malformed taxonomy and keep older API responses working.
+regression tests reject wrong taxonomy field types and keep older API responses
+working, without reapplying the API's authoring rules.
 
 Verification on the integrated branch:
 

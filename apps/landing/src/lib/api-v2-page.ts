@@ -14,44 +14,34 @@ import type { Frontmatter } from './frontmatter'
 
 export const API_V2_TIMEOUT_MS = 5_000
 
-// Category slugs follow the editor's category contract (ADR 0078).
-const PageCategorySlug = z
-  .string()
-  .max(100)
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
-
 /** PublicPage from api_v2's modules/page-visibility.ts, with legacy taxonomy defaults. */
-const PageResponse = z
-  .object({
-    url: z.string(),
-    frontmatter: z.object({
-      lede: z.string().optional(),
-      stage: z.string().optional(),
-      featured: z.boolean().optional(),
-      section: z.string().optional(),
-      service_type: z.string().optional(),
-      keywords: z.array(z.string()).optional(),
-      source_url: z.string().optional(),
-      title: z.string(),
-      description: z.string().optional(),
-    }),
-    body_markdown: z.string(),
-    /** The form a href-less Start link in the markdown opens. */
-    form_id: z.string().nullable(),
-    /** True when the start sub-page is hidden; form status comes from the forms API. */
-    hide_start_links: z.boolean(),
-    breadcrumbs: z.array(z.object({ name: z.string(), url: z.string() })),
-    /** First publication, not the last save. */
-    published_at: z.iso.datetime().nullable(),
-    updated_at: z.iso.datetime(),
-    // Older API deployments omit taxonomy fields; treat those pages as unfiled.
-    category: PageCategorySlug.nullable().default(null),
-    subcategory: PageCategorySlug.nullable().default(null),
-  })
-  .refine((page) => page.subcategory === null || page.category !== null, {
-    message: 'A subcategory requires a top-level category',
-    path: ['subcategory'],
-  })
+const PageResponse = z.object({
+  url: z.string(),
+  frontmatter: z.object({
+    lede: z.string().optional(),
+    stage: z.string().optional(),
+    featured: z.boolean().optional(),
+    section: z.string().optional(),
+    service_type: z.string().optional(),
+    keywords: z.array(z.string()).optional(),
+    source_url: z.string().optional(),
+    title: z.string(),
+    description: z.string().optional(),
+  }),
+  body_markdown: z.string(),
+  /** The form a href-less Start link in the markdown opens. */
+  form_id: z.string().nullable(),
+  /** True when the start sub-page is hidden; form status comes from the forms API. */
+  hide_start_links: z.boolean(),
+  breadcrumbs: z.array(z.object({ name: z.string(), url: z.string() })),
+  /** First publication, not the last save. */
+  published_at: z.iso.datetime().nullable(),
+  updated_at: z.iso.datetime(),
+  // The API owns slug syntax and taxonomy relationships.
+  // Older deployments omit these fields.
+  category: z.string().nullable().default(null),
+  subcategory: z.string().nullable().default(null),
+})
 
 /** Parsed public page response, with omitted legacy taxonomy fields set to null. */
 export type PageResponse = z.infer<typeof PageResponse>

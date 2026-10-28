@@ -205,13 +205,8 @@ describe('fetchApiV2Page', () => {
   it.each([
     { category: 42 },
     { category: ['family-birth-relationships'] },
-    { category: '' },
-    { category: '../other' },
     { subcategory: { slug: 'arts-culture' } },
-    { subcategory: '' },
-    { category: null, subcategory: 'arts-culture' },
-    { category: undefined, subcategory: 'arts-culture' },
-  ])('rejects malformed page categories %j', async (categories) => {
+  ])('rejects invalid taxonomy field types %j', async (categories) => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     const result = await fetchApiV2Page(BASE, '/x', async () =>
@@ -221,6 +216,24 @@ describe('fetchApiV2Page', () => {
     expect(result).toEqual({ kind: 'miss' })
     expect(warn).toHaveBeenCalledWith('[api-v2] malformed page for /x')
   })
+
+  it.each([
+    { category: 'health.services', subcategory: 'arts_culture' },
+    { category: 'a'.repeat(101), subcategory: 'b'.repeat(101) },
+    { category: '', subcategory: '' },
+    { category: null, subcategory: 'arts-culture' },
+  ])(
+    'reads taxonomy without reapplying API authoring rules %j',
+    async (taxonomy) => {
+      const body = pageBody(taxonomy)
+
+      const result = await fetchApiV2Page(BASE, '/x', async () =>
+        jsonResponse(200, body),
+      )
+
+      expect(result).toEqual({ kind: 'page', body })
+    },
+  )
 
   it('maps a 301 to a redirect from the body', async () => {
     const result = await fetchApiV2Page(
