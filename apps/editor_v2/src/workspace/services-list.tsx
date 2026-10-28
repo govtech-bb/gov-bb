@@ -11,6 +11,7 @@ import { Button } from "../ui/button";
 import { ScreenHeader } from "../ui/screen-header";
 import { Select, type SelectItem } from "../ui/select";
 import { StatusDot } from "../ui/status-dot";
+import { NameCell } from "../ui/table/cell-components";
 import { TextLink } from "../ui/text-link";
 import {
   createAppColumnHelper,
@@ -50,36 +51,36 @@ function VisibilityTag({ visibility }: { visibility: ServiceSummary["visibility"
 
 function ServiceCell({ service, href }: { service: ServiceSummary; href: string | undefined }) {
   return (
-    <div className="min-w-0 py-0.5 @3xl:min-w-72">
-      <TextLink
-        render={
-          <Link
-            to="/services/$serviceId/$documentId"
-            params={{ serviceId: service.id, documentId: service.id }}
-          />
-        }
-        className="text-14 font-semibold"
-      >
-        {service.title}
-      </TextLink>
-      {href ? (
+    <NameCell
+      className="@3xl:min-w-72"
+      name={
         <TextLink
-          external
-          href={href}
-          className="mt-0.5 block w-fit font-mono text-12 wrap-break-word text-muted"
+          render={
+            <Link
+              to="/services/$serviceId/$documentId"
+              params={{ serviceId: service.id, documentId: service.id }}
+            />
+          }
         >
-          {service.url}
+          {service.title}
         </TextLink>
-      ) : (
-        <span className="mt-0.5 block font-mono text-12 wrap-break-word text-muted">
-          {service.url}
-        </span>
-      )}
-      <span className="mt-2 hidden flex-wrap items-center gap-x-2 gap-y-1 text-12 text-muted @max-3xl:flex">
-        <VisibilityTag visibility={service.visibility} />
-        {service.category.title}
-      </span>
-    </div>
+      }
+      path={
+        href ? (
+          <TextLink external href={href} className="block w-fit text-muted">
+            {service.url}
+          </TextLink>
+        ) : (
+          service.url
+        )
+      }
+      details={
+        <>
+          <VisibilityTag visibility={service.visibility} />
+          {service.category.title}
+        </>
+      }
+    />
   );
 }
 
@@ -95,14 +96,15 @@ const serviceColumns = (api: EditorApi) =>
         <ServiceCell service={service} href={api.landingUrl(service.url)} />
       ),
     }),
-    column.accessor((service) => service.category.title, {
+    // Filtered by its slug, which the list's address keeps: a renamed category, or two with one name, stay apart
+    column.accessor((service) => service.category.slug, {
       id: "category",
       header: "Category",
-      sortFn: "text",
+      sortFn: (a, b) => a.original.category.title.localeCompare(b.original.category.title),
       filterFn: "oneOf",
       enableGlobalFilter: false,
       meta: { secondary: true },
-      cell: ({ cell }) => <cell.TextCell />,
+      cell: ({ row }) => <span className="text-14">{row.original.category.title}</span>,
     }),
     column.accessor("updated_at", {
       header: "Updated",
@@ -134,7 +136,7 @@ const statusItems: SelectItem[] = visibilities.map((visibility) => ({
  * The toolbar over the list: search, one category, any of the statuses, and Clear filters while any of them leave
  * services out. One row while there's room; on a phone the search takes a row of its own.
  */
-function ServiceFilters({ categories }: { categories: readonly string[] }) {
+function ServiceFilters({ categories }: { categories: readonly SelectItem[] }) {
   const table = useTableContext();
   const filters = useTableFilters();
   // Clear filters goes once pressed, so focus moves on to the search box
@@ -146,6 +148,15 @@ function ServiceFilters({ categories }: { categories: readonly string[] }) {
 
   const choose = (column: string, values: string[]) =>
     table.getColumn(column)?.setFilterValue(values.length ? values : undefined);
+
+  // A category from an old or edited link that no service is filed under, such as a title from before filters used
+  // slugs: it still matches nothing, but shows as itself, so the author sees why the list is empty and can clear it
+  const category = chosen("category")[0] ?? "";
+
+  const unknown =
+    category && !categories.some((item) => item.value === category)
+      ? [{ value: category, label: `${category} (no services)` }]
+      : [];
 
   return (
     <div
@@ -163,11 +174,8 @@ function ServiceFilters({ categories }: { categories: readonly string[] }) {
         variant="filter"
         aria-label="Category"
         className="grow basis-36 @xl:grow-0 @xl:basis-auto"
-        items={[
-          { value: "", label: "All categories" },
-          ...categories.map((category) => ({ value: category, label: category })),
-        ]}
-        value={chosen("category")[0] ?? ""}
+        items={[{ value: "", label: "All categories" }, ...unknown, ...categories]}
+        value={category}
         onValueChange={(category) => choose("category", category ? [category] : [])}
       />
       <Select
@@ -228,13 +236,22 @@ export function ServicesList({
 
   useEffect(() => remember(place), [place]);
 
-  const categories = useMemo(
-    () =>
-      [...new Set((services.data ?? []).map((service) => service.category.title))].toSorted(
-        (a, b) => a.localeCompare(b),
-      ),
-    [services.data],
-  );
+  // Each category services are filed under, by slug, named as the list names it; two with one name show their slugs
+  const categories = useMemo(() => {
+    const titles = new Map(
+      (services.data ?? []).map((service) => [service.category.slug, service.category.title]),
+    );
+
+    const shared = (slug: string, title: string) =>
+      [...titles].some(([other, name]) => other !== slug && name === title);
+
+    return [...titles]
+      .map(([slug, title]) => ({
+        value: slug,
+        label: shared(slug, title) ? `${title} (${slug})` : title,
+      }))
+      .toSorted((a, b) => a.label.localeCompare(b.label));
+  }, [services.data]);
 
   const table = useAppTable({
     columns,
@@ -288,7 +305,7 @@ export function ServicesList({
           </Button>
         }
       />
-      <div className="@container min-w-0 rounded-sm bg-white shadow-sheet">
+      <div className="@container min-w-0 rounded-sm bg-white shadow-sheet ring-1 ring-grey-40">
         <ServiceFilters categories={categories} />
         <p role="status" className="sr-only">
           {services.isPending ? "Loading services…" : null}

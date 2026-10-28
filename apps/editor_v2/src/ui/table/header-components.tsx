@@ -2,12 +2,21 @@ import { CaretDown, CaretUp, CaretUpDown } from "@phosphor-icons/react";
 import { cn } from "../../cn";
 import { useHeaderContext } from "./table-hooks";
 
-/** The column's label as a sort toggle; the unsorted arrows stay faint so the sorted column leads. */
+/**
+ * The column's label as a sort toggle; the unsorted arrows stay faint so the sorted column leads. A column that can't
+ * sort keeps its label in a box as tall as the toggle, so every table's header row is one height. The box is a full
+ * width block, so a label aligned to the end still reaches the end.
+ */
 export function SortButton() {
   const header = useHeaderContext();
   const sorted = header.column.getIsSorted();
 
-  if (!header.column.getCanSort()) return <header.FlexRender />;
+  if (!header.column.getCanSort())
+    return (
+      <div className="flex min-h-8 flex-col justify-center">
+        <header.FlexRender />
+      </div>
+    );
   const Icon = sorted === "asc" ? CaretUp : sorted === "desc" ? CaretDown : CaretUpDown;
 
   return (

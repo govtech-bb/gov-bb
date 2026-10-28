@@ -1,5 +1,5 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
-import type { EditorApi, EstateVersion } from "./client";
+import { ApiFailure, CategoryAnswerMalformed, type EditorApi, type EstateVersion } from "./client";
 
 // Every content read sits under "content", so one invalidation refreshes them all.
 
@@ -8,6 +8,15 @@ import type { EditorApi, EstateVersion } from "./client";
  * long as the router counts its own preloads fresh.
  */
 export const PRELOAD_FRESH = 30_000;
+
+/**
+ * Whether a failed content read is asked again: up to three times, except for a refusal or a malformed category list,
+ * which answer the same way however often they're asked.
+ */
+export const retryContentRead = (failures: number, error: Error) =>
+  failures < 3 &&
+  !(error instanceof ApiFailure && error.status >= 400 && error.status < 500) &&
+  !(error instanceof CategoryAnswerMalformed);
 
 export const servicesQuery = (api: EditorApi) =>
   queryOptions({ queryKey: ["content", "services"], queryFn: () => api.services() });
@@ -18,13 +27,21 @@ export const serviceQuery = (api: EditorApi, id: string) =>
 export const pageQuery = (api: EditorApi, id: string) =>
   queryOptions({ queryKey: ["content", "page", id], queryFn: () => api.page(id) });
 
-/** The categories saved in the content API, which page pickers offer; the preview's edits never appear here. */
-export const savedCategoriesQuery = (api: EditorApi) =>
-  queryOptions({ queryKey: ["content", "saved-categories"], queryFn: () => api.savedCategories() });
-
-/** The Categories screen's local preview, which page pickers never read. */
+/**
+ * The one shared category list, read by the Categories screen, page settings and Create service alike. A failed read
+ * is thrown here, where React Query keeps it as the query's error for the screen to show.
+ */
 export const categoriesQuery = (api: EditorApi) =>
-  queryOptions({ queryKey: ["content", "categories"], queryFn: () => api.categories() });
+  queryOptions({
+    queryKey: ["content", "categories"],
+    queryFn: async () => {
+      const listed = await api.categories();
+
+      if (!listed.ok) throw listed.error;
+
+      return listed.value;
+    },
+  });
 
 const VERSION_KEY = ["version"];
 

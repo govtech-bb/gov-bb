@@ -28,7 +28,7 @@ test("the Categories screen opens in the workspace, its list already loading", a
         ? Response.json({
             categories: [
               {
-                id: "health",
+                id: "6f1c1a52-2d0a-4f6e-9a57-8e0c2d1b3a01",
                 parent_id: null,
                 slug: "health",
                 url: "/health",

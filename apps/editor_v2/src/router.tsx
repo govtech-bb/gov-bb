@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
-import { ApiFailure, createEditorApi } from "./api/client";
+import { createEditorApi } from "./api/client";
+import { retryContentRead } from "./api/queries";
 import { createEditorAuth } from "./auth/better-auth-client";
 import { bypassAuth } from "./auth/bypass";
 import { parseApiOrigin } from "./auth/session";
@@ -24,10 +25,7 @@ export function getRouter() {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
-        // A refusal answers the same way however often it is asked.
-        retry: (failures, error) =>
-          failures < 3 &&
-          !(error instanceof ApiFailure && error.status >= 400 && error.status < 500),
+        retry: retryContentRead,
       },
     },
   });

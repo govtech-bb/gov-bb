@@ -81,6 +81,37 @@ test("lists API services newest change first, a page at a time, opening each in 
   expect(html).toContain("All statuses");
 });
 
+test("each service's name is a link in the shared name cell, its address the site's, its status folded under it", () => {
+  const html = renderToStaticMarkup(listed([service(1)], {}));
+  const cell = new DOMParser().parseFromString(html, "text/html").querySelector("tbody td")!;
+  const [name, path, details] = [...cell.firstElementChild!.children];
+
+  expect(name!.querySelector("a")?.getAttribute("href")).toBe(
+    `/services/${service(1).id}/${service(1).id}`,
+  );
+  expect(name!.className).toContain("font-semibold");
+  expect(path!.querySelector("a")?.getAttribute("href")).toBe(
+    "https://alpha.gov.bb/business-trade/service-1",
+  );
+  expect(path!.querySelector("a")?.getAttribute("target")).toBe("_blank");
+  expect(path!.className).toContain("font-mono");
+  // Only while the secondary columns are folded away
+  expect(details!.className).toContain("@max-3xl:flex");
+  expect(details!.textContent).toBe("Preview link onlyBusiness and trade");
+  // Its sortable headers stay buttons
+  expect(html).toMatch(/<th[^>]*aria-sort="descending"[^>]*><button/);
+});
+
+test("the list sits in a card with a defined grey edge over the sheet's shadow", () => {
+  const html = renderToStaticMarkup(listed([service(1)], {}));
+  const page = new DOMParser().parseFromString(html, "text/html");
+  const card = page.querySelector("table")!.closest(".shadow-sheet")!;
+
+  expect(card.classList).toContain("ring-1");
+  expect(card.classList).toContain("ring-grey-40");
+  expect(card.classList).toContain("rounded-sm");
+});
+
 let host: HTMLDivElement;
 
 let root: Root;
@@ -225,6 +256,26 @@ test("with no matches, one Clear filters button clears the list and returns focu
   });
 });
 
+test("a category link by slug shows its category's title", async () => {
+  await show(listed(thirty, { category: "business-trade" }));
+  expect(filter("Category").textContent).toBe("Business and trade");
+  expect(titles()).toHaveLength(25);
+});
+
+test("an old title-valued category link matches nothing, but names itself so it can be cleared", async () => {
+  const onSearch = vi.fn();
+
+  // A title from before filters used slugs: no service matches it, and the chip says what it holds
+  await show(listed(thirty, { category: "Business and trade" }, { onSearch }));
+  expect(titles()).toHaveLength(0);
+  expect(filter("Category").textContent).toBe("Business and trade (no services)");
+
+  await act(async () => button("Clear filters").click());
+  expect(titles()).toHaveLength(25);
+  expect(filter("Category").textContent).toBe("All categories");
+  expect(onSearch).toHaveBeenLastCalledWith(expect.objectContaining({ category: undefined }));
+});
+
 test("the toolbar's filters narrow the list at once, and Clear filters shows every service again", async () => {
   const onSearch = vi.fn();
 
@@ -235,7 +286,8 @@ test("the toolbar's filters narrow the list at once, and Clear filters shows eve
   expect(filter("Category").textContent).toBe("Business and trade");
   expect(onSearch).toHaveBeenLastCalledWith({
     page: undefined,
-    category: "Business and trade",
+    // The address keeps the slug, so a renamed category's link still filters
+    category: "business-trade",
     status: undefined,
   });
 
@@ -245,7 +297,7 @@ test("the toolbar's filters narrow the list at once, and Clear filters shows eve
   expect(titles().every((title) => Number(title.slice(-2)) % 2 === 1)).toBe(true);
   expect(onSearch).toHaveBeenLastCalledWith({
     page: undefined,
-    category: "Business and trade",
+    category: "business-trade",
     status: ["preview"],
   });
 
