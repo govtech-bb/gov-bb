@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { Category } from "../api/categories";
 import { ApiFailure, type ApiPage, type EditorApi } from "../api/client";
@@ -22,6 +22,7 @@ import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
 import { LoadingState } from "../ui/loading-state";
+import { TextLink } from "../ui/text-link";
 import type { SaveStateProps } from "../ui/save-state";
 import { toast } from "../ui/toast";
 import { EditorSessionProvider } from "../editor/react/composer";
@@ -205,7 +206,7 @@ function RemotePageEditor({
         rebase(outcome.base);
         client.setQueryData(pageQuery(api, server.id).queryKey, outcome.base.page);
         void client.invalidateQueries({ queryKey: ["content"] });
-      } else if (outcome.kind === "conflict" || outcome.kind === "under-review")
+      } else if (outcome.kind === "conflict")
         void client.invalidateQueries({ queryKey: pageQuery(api, server.id).queryKey });
     },
     onSettled: () => {
@@ -420,7 +421,7 @@ function RemotePageEditor({
         ))}
       </ul>
     </Banner>
-  ) : outcome?.kind === "forbidden" || outcome?.kind === "under-review" ? (
+  ) : outcome?.kind === "forbidden" ? (
     // A refusal, not a failure: saving again won't change the answer, so nothing offers a retry
     <Banner tone="error" layout="strip" role="alert">
       {outcome.message}
@@ -431,8 +432,22 @@ function RemotePageEditor({
       lost when you leave.
     </Banner>
   ) : server.pending_revision?.status === "submitted" ? (
-    <Banner tone="info" layout="strip">
+    <Banner
+      tone="info"
+      layout="strip"
+      actions={
+        approver && (
+          <TextLink render={<Link to="/reviews/$pageId" params={{ pageId: server.id }} />}>
+            Review this change
+          </TextLink>
+        )
+      }
+    >
       Waiting for review. Citizens will see these changes once an approver publishes them.
+      {roles?.includes("editor") &&
+        (approver
+          ? " You can keep editing, but if you save changes you can't approve or reject this review."
+          : " You can keep editing: changes you save are added to this review.")}
     </Banner>
   ) : server.pending_revision?.status === "rejected" ? (
     <Banner
@@ -489,6 +504,7 @@ function RemotePageEditor({
           single: true,
         }),
         publishedAt: server.published_at,
+        savedVisibility: base.page.visibility,
         visibilityLocked: !approver,
         errors: Object.fromEntries(errors.map((error) => [error.field, error.message])),
       }}

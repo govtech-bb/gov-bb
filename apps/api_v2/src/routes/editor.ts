@@ -196,6 +196,17 @@ export const editorRoutes: FastifyPluginAsyncZod<{
   });
   editor.route({
     method: "GET",
+    url: "/revisions",
+    schema: SCHEMAS.listRevisions,
+    handler: async (request, reply) => {
+      const queue = await index.reviewQueue();
+      return queue.ok
+        ? { revisions: queue.value }
+        : reply.status(500).send(storageFailed(request.log, queue.error));
+    },
+  });
+  editor.route({
+    method: "GET",
     url: "/services",
     schema: SCHEMAS.listServices,
     handler: async (request, reply) => {
@@ -260,6 +271,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
         case "PageRejected":
           return reply.status(422).send(rejected(created.error));
         case "NotApprover":
+        case "SelfApproval":
           return reply
             .status(403)
             .send({ error: "forbidden", message: created.error.message });
@@ -291,6 +303,11 @@ export const editorRoutes: FastifyPluginAsyncZod<{
         return reply
           .status(403)
           .send({ error: "forbidden", message: saved.error.message });
+      if (saved.error._tag === "PageVersionRequired")
+        return reply.status(428).send({
+          error: "precondition_required",
+          message: saved.error.message,
+        });
       return pageRefused(request, reply, saved.error);
     },
   });

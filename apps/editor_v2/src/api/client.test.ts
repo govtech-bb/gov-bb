@@ -121,6 +121,33 @@ describe("editor API client", () => {
     expect(JSON.parse(requests.at(-1)?.body ?? "null")).toEqual(fields);
   });
 
+  it("reads the review queue, and decides on a change at the version the approver reviewed", async () => {
+    const api = createEditorApi(origin);
+    const reviewed = "2026-10-07T12:00:00.000Z";
+    status = 200;
+    response = JSON.stringify({ revisions: [{ page_id: "page-1" }] });
+
+    expect(await api.reviewQueue()).toEqual([{ page_id: "page-1" }]);
+    expect(requests.at(-1)).toMatchObject({ url: "/revisions?status=submitted", method: "GET" });
+
+    response = JSON.stringify({ id: "page-1" });
+    await api.publishRevision("page-1", reviewed);
+    expect(requests.at(-1)).toMatchObject({
+      url: "/pages/page-1/revision/publish",
+      method: "POST",
+      headers: { "if-updated-at": reviewed },
+    });
+    expect(requests.at(-1)?.headers["content-type"]).toBeUndefined();
+
+    await api.rejectRevision("page-1", "Check the fees.", reviewed);
+    expect(requests.at(-1)).toMatchObject({
+      url: "/pages/page-1/revision/reject",
+      method: "POST",
+      headers: { "if-updated-at": reviewed, "content-type": "application/json" },
+    });
+    expect(JSON.parse(requests.at(-1)?.body ?? "null")).toEqual({ comment: "Check the fees." });
+  });
+
   it("sends no content type with a request that has no body", async () => {
     status = 204;
     response = "";
