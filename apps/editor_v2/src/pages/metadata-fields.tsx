@@ -295,7 +295,7 @@ export const visibilityLabels = new Map([
   ["", "Public"],
   ["public", "Public"],
   ["preview", "Preview link only"],
-  ["draft", "Draft link only"],
+  ["draft", "Draft (hidden)"],
 ]);
 
 const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" });
@@ -315,6 +315,8 @@ export type PageSettingsOptions = {
   single?: boolean;
   /** When the server dates publication, its date shown read-only; null until the page first goes public. */
   publishedAt?: string | null;
+  /** The accepted server visibility, so an unsaved change can return to a legacy draft. */
+  savedVisibility?: string;
   /** Why the host refused each field, keyed by field name. */
   errors?: Readonly<Record<string, string>>;
   /** Visibility shown but not offered, for someone who isn't an approver. */
@@ -326,6 +328,7 @@ export function PageSettings({
   categories = [],
   single = false,
   publishedAt,
+  savedVisibility,
   errors = {},
   visibilityLocked = false,
 }: PageSettingsOptions) {
@@ -344,6 +347,7 @@ export function PageSettings({
   );
 
   const visibility = metadata.visibility ?? "";
+  const showDraft = visibility === "draft" || savedVisibility === "draft";
   const unusualVisibility = !["", "public", "preview", "draft"].includes(visibility);
 
   const date =
@@ -398,17 +402,30 @@ export function PageSettings({
             </span>
           </FieldText>
         ) : (
-          <Field label="Visibility" error={errors.visibility}>
+          <Field
+            label="Visibility"
+            hint={
+              showDraft
+                ? "Draft pages are hidden, even from preview links. Visibility changes take effect only when you save."
+                : undefined
+            }
+            error={errors.visibility}
+          >
             <NativeSelect
               icon={<StatusDot tone={visibilityTones.get(visibility) ?? "neutral"} />}
               value={visibility === "public" ? "" : visibility}
               onChange={(event) => update({ visibility: event.target.value || undefined }, true)}
             >
-              {["", "preview", "draft"].map((value) => (
+              {["", "preview"].map((value) => (
                 <option key={value} value={value}>
                   {visibilityLabels.get(value)}
                 </option>
               ))}
+              {showDraft && (
+                <option value="draft" disabled={visibility === "draft"}>
+                  {visibilityLabels.get("draft")}
+                </option>
+              )}
               {unusualVisibility && (
                 <option value={visibility}>{visibility} (from Markdown)</option>
               )}

@@ -466,6 +466,7 @@ function RemotePageEditor({
           single: true,
         }),
         publishedAt: server.published_at,
+        savedVisibility: base.page.visibility,
         visibilityLocked: !approver,
         errors: Object.fromEntries(errors.map((error) => [error.field, error.message])),
       }}
