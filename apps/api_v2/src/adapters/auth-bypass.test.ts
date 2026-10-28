@@ -9,8 +9,8 @@ describe("registerBypassEmployee", () => {
   it("lets the bypass developer write, however often it runs", async () => {
     const { db, close } = await createTestDb();
     try {
-      await registerBypassEmployee(db);
-      await registerBypassEmployee(db);
+      expectOk(await registerBypassEmployee(db));
+      expectOk(await registerBypassEmployee(db));
 
       const created = await new PostgresPages(db).atomically(
         BYPASS_EMPLOYEE.id,
@@ -26,7 +26,7 @@ describe("registerBypassEmployee", () => {
     }
   });
 
-  it("fails when another user already has the developer's email", async () => {
+  it("refuses, saying why, when another user already has the developer's email", async () => {
     const { db, close } = await createTestDb();
     try {
       await db.insert(authUser).values({
@@ -36,7 +36,12 @@ describe("registerBypassEmployee", () => {
         emailVerified: true,
       });
 
-      await expect(registerBypassEmployee(db)).rejects.toThrow();
+      const registered = await registerBypassEmployee(db);
+
+      expect(registered).toMatchObject({
+        ok: false,
+        error: { _tag: "BypassRegistrationFailed", reason: "email_taken" },
+      });
     } finally {
       await close();
     }

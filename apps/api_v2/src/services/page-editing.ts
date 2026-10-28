@@ -1,4 +1,4 @@
-import { NotApprover, type Employee } from "../modules/auth";
+import { NotApprover, type Employee, type UserId } from "../modules/auth";
 import {
   creationOf,
   cycleOf,
@@ -44,7 +44,7 @@ export interface PageRecords {
    * advisory lock; an error result rolls back everything it wrote.
    */
   atomically<R extends Result<unknown, Error>>(
-    actorId: string,
+    actorId: UserId,
     work: (records: PageRecords) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>>;
   /** The page with this id, or null. */

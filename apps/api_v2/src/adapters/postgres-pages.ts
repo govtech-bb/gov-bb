@@ -31,6 +31,7 @@ import {
   isCategoryAnchor,
   type CategoryValues,
 } from "../modules/category";
+import type { UserId } from "../modules/auth";
 import type { CategoryRecords } from "../services/category-editing";
 import {
   ContentStoreUnavailable,
@@ -207,7 +208,7 @@ export class PostgresPages
    * connection never carries it into another request.
    */
   async atomically<R extends Result<unknown, Error>>(
-    actorId: string,
+    actorId: UserId,
     work: (records: PageRecords & CategoryRecords) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>> {
     let refused: R | undefined;

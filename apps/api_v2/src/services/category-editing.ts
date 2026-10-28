@@ -1,4 +1,4 @@
-import type { Employee } from "../modules/auth";
+import type { Employee, UserId } from "../modules/auth";
 import {
   categoryAddress,
   CategoryConflict,
@@ -29,7 +29,7 @@ export interface CategoryRecords {
    * writes, and the shared advisory lock is acquired first.
    */
   atomically<R extends Result<unknown, Error>>(
-    actorId: string,
+    actorId: UserId,
     work: (records: CategoryRecords) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>>;
   /** All category rows in sibling order, with direct-service counts of every visibility. */

@@ -97,7 +97,15 @@ async function main(): Promise<void> {
       logger.warn(
         "AUTH_BYPASS is on: every editor request runs as a local developer without signing in",
       );
-      await registerBypassEmployee(db);
+      const registered = await registerBypassEmployee(db);
+      if (!registered.ok) {
+        logger.error(
+          { error: registered.error._tag, reason: registered.error.reason },
+          registered.error.message,
+        );
+        process.exitCode = 1;
+        return;
+      }
       ({ access, auth } = authBypass);
     } else {
       const github = await createBetterAuth(db, config.auth, logger);

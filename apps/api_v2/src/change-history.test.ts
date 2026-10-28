@@ -10,6 +10,7 @@ import { Pool } from "pg";
 import { describe, expect, it } from "vitest";
 import { PostgresPages } from "./adapters/postgres-pages";
 import type { Database } from "./db";
+import { UserId } from "./modules/auth";
 import { creationOf, withDefaults } from "./modules/page";
 import { seed } from "./seed";
 import {
@@ -124,7 +125,7 @@ describe("the change history trigger", () => {
     const { db, close } = await createTestDb();
 
     const outcome = await new PostgresPages(db).atomically(
-      "nobody",
+      UserId.parse("nobody"),
       (records) => records.insert(newPage()),
     );
 
