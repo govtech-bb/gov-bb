@@ -677,3 +677,45 @@ test("taking a public page with a waiting change out of view shows its live cont
     document.querySelector<HTMLButtonElement>('[aria-label="Dismiss"]')?.click(),
   );
 });
+
+test("a change discarded while more was typed is still announced, and the typing is kept for checking", async () => {
+  const waiting: ApiPage = {
+    ...live,
+    body_markdown: "Unreviewed rewrite.",
+    pending_revision: { status: "draft", comment: null },
+  };
+
+  let answer: (response: Response) => void = () => {};
+
+  const h = await mountPage(async (_url, init) =>
+    init?.method === "PUT"
+      ? new Promise<Response>((resolve) => {
+          answer = resolve;
+        })
+      : Response.json(waiting),
+  );
+
+  await vi.waitFor(() => expect(visibilitySelect()).toBeDefined());
+  await act(async () => {
+    const select = visibilitySelect()!;
+    select.value = "preview";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await savePage();
+  const typed = h.session().store.getSnapshot().source + "\n\nTyped during the save";
+  await applySource(h.session(), typed);
+  await act(async () => {
+    answer(
+      Response.json({ ...live, visibility: "preview", updated_at: "2026-10-07T13:00:00.000Z" }),
+    );
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain("your open copy still contains them"),
+    );
+  });
+
+  expect(h.session().store.getSnapshot().committed).toContain("Typed during the save");
+  expect(pageHasUnsavedChanges(h.session())).toBe(true);
+  await act(async () =>
+    document.querySelector<HTMLButtonElement>('[aria-label="Dismiss"]')?.click(),
+  );
+});

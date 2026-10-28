@@ -328,8 +328,9 @@ export const SCHEMAS = {
       "the draft has been saved since `if-updated-at`. Saving the page is " +
       "refused while it waits. A rejected revision can be submitted again " +
       "as it is: it is copied into a new submitted revision with the same " +
-      "contributors and `updated_at`, and the rejected one keeps its " +
-      "comment.",
+      "`updated_at`, and the rejected one keeps its comment. The copy's " +
+      "`contributors` gain the rejected round's submitter, who may not " +
+      "approve it either.",
     tags: ["pages"],
     params: idParams,
     headers: ifUpdatedAt(" for the revision"),

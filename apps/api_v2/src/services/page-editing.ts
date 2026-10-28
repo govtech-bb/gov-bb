@@ -12,6 +12,7 @@ import {
   PageNotFound,
   pendingRevisionOf,
   fieldsOf,
+  inheritedFrom,
   placedUnder,
   revisionOf,
   RevisionNotFound,
@@ -359,8 +360,9 @@ export class PageEditing {
    * saved since the caller read it is refused.
    *
    * A rejected revision can be submitted again as it is: it is copied into a
-   * new revision with the same contributors and version, since its content
-   * is unchanged, and the rejected one is kept with its comment.
+   * new revision with the same version, since its content is unchanged, and
+   * the rejected one is kept with its comment. The copy's contributors gain
+   * the rejected round's submitter, so they still can't approve it.
    */
   submit(
     id: PageId,
@@ -392,7 +394,7 @@ export class PageEditing {
           liveUpdatedAt: new Date(live.updated_at),
           updatedAt: new Date(revision.updated_at),
           createdBy: actor.id,
-          contributors: revision.contributors,
+          contributors: inheritedFrom(revision),
         });
         if (!again.ok) return again;
         draft = again.value;
