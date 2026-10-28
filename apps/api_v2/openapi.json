@@ -5415,11 +5415,11 @@
     },
     "/version": {
       "get": {
-        "summary": "A version token for recorded page changes",
+        "summary": "A version token for recorded content changes",
         "tags": [
           "meta"
         ],
-        "description": "`change_events` currently records page writes only. Its count and newest timestamp identify those changes without reading the pages. Category changes do not advance this token until trigger-based events land.",
+        "description": "`change_events` records every page and category change. Its count and newest timestamp identify those changes without reading the content.",
         "security": [
           {
             "editorSession": []

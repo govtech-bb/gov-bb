@@ -333,15 +333,7 @@ export function revisionOf(
       : fields.visibility === "public"
         ? updatedAt
         : null;
-  return {
-    values: pageValues(fields),
-    updatedAt,
-    publishedAt,
-    action:
-      current.published_at === null && publishedAt !== null
-        ? ("published" as const)
-        : ("updated" as const),
-  };
+  return { values: pageValues(fields), updatedAt, publishedAt };
 }
 
 /**

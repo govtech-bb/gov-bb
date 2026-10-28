@@ -20,7 +20,7 @@ import { PostgresPages } from "./adapters/postgres-pages";
 import { PostgresRoles } from "./adapters/postgres-roles";
 import { buildApp, type AppOptions } from "./app";
 import type { Database } from "./db";
-import { ROLES, type Employee } from "./modules/auth";
+import { ROLES, UserId, type Employee } from "./modules/auth";
 import { ok, type Result } from "./modules/result";
 import { EditorAccess, type SessionReader } from "./services/editor-access";
 import { EditorIndex } from "./services/editor-index";
@@ -128,14 +128,14 @@ export function expectOk<T>(result: Result<T, Error>): T {
 
 /** An employee fixture holding every role, never accepted by the production session adapter. */
 export const TEST_EMPLOYEE: Employee = {
-  id: "employee-test",
+  id: UserId.parse("employee-test"),
   email: "editor@govtech.bb",
   name: "Test editor",
   roles: ROLES,
 };
 /** An employee who edits but neither approves nor administers. */
 export const TEST_EDITOR: Employee = {
-  id: "editor-test",
+  id: UserId.parse("editor-test"),
   email: "editor-only@govtech.bb",
   name: "Test editor without approval",
   roles: ["editor"],

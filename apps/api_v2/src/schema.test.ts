@@ -14,6 +14,10 @@ import { getTableColumns } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import {
+  authAccount,
+  authSession,
+  authUser,
+  authVerification,
   categories,
   changeEvents,
   contentPages,
@@ -43,6 +47,10 @@ const rowsOf = async (db: Database) => {
 };
 
 const TABLES = {
+  auth_account: authAccount,
+  auth_session: authSession,
+  auth_user: authUser,
+  auth_verification: authVerification,
   categories,
   content_pages: contentPages,
   change_events: changeEvents,
@@ -83,9 +91,11 @@ describe("the Drizzle schema and the migration", () => {
     const timestamps = (await rowsOf(db)).filter(
       (row) =>
         row.data_type === "timestamp with time zone" &&
-        // `schema_migrations` is the runner's own bookkeeping and never
-        // crosses the wire, so its precision does not matter.
-        row.table_name in TABLES,
+        // `schema_migrations` is the runner's own bookkeeping, and
+        // BetterAuth's tables are BetterAuth's; neither crosses the wire in
+        // a concurrency check, so their precision does not matter.
+        row.table_name in TABLES &&
+        !row.table_name.startsWith("auth_"),
     );
 
     expect(timestamps.length).toBeGreaterThan(0);

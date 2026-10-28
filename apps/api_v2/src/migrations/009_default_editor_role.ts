@@ -1,7 +1,8 @@
 /**
  * Every employee is an editor by default (ADR 0079). From now on api_v2
  * grants the role when it creates a user at their first sign-in; this grants
- * it to everyone who signed in before that, with no grantor.
+ * it to everyone who signed in before that, with no grantor. The `system`
+ * user (007) can never sign in, so it gets none.
  *
  * Replayed, it would give the role back to everyone an admin took it from,
  * so it guards itself rather than relying on the runner skipping it. The
@@ -18,7 +19,8 @@
 export const SQL = `
 insert into user_roles (user_id, role)
 select id, 'editor' from auth_user
-where not exists (
+where id <> 'system'
+and not exists (
   select 1 from schema_migrations where name = '009_default_editor_role'
 )
 on conflict do nothing;

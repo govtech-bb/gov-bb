@@ -4,11 +4,11 @@
  * that is not public saves as it always has.
  */
 
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import type { Database } from "./db";
-import type { Employee } from "./modules/auth";
+import { UserId, type Employee } from "./modules/auth";
 import { PostgresPages } from "./adapters/postgres-pages";
 import { withDefaults, type PageId } from "./modules/page";
 import { ok } from "./modules/result";
@@ -28,7 +28,7 @@ import {
 
 /** Signed in, but holding no role: reads stay open to them. */
 const READER: Employee = {
-  id: "reader-test",
+  id: UserId.parse("reader-test"),
   email: "reader@govtech.bb",
   name: "Test employee without roles",
   roles: [],
@@ -113,10 +113,12 @@ const save = (
   });
 
 const revisions = () => db.select().from(pageRevisions);
+/** The pages' history; the trigger records the seeded category's too. */
 const events = () =>
   db
     .select({ action: changeEvents.action, actor: changeEvents.actor })
     .from(changeEvents)
+    .where(eq(changeEvents.entityKind, "content_page"))
     .orderBy(changeEvents.versionNo);
 
 /** Everything the site reads, as the public sees it. */
@@ -160,6 +162,27 @@ describe("a save to a public page", () => {
       ]);
     },
   );
+
+  it("leaves no gap in the page's history, though its check writes the page and rolls back", async () => {
+    const page = await seedPage();
+    const pending = (
+      await save(TEST_EDITOR, page, { title: "Waiting" })
+    ).json();
+    // Taking it out of public view is the next live write.
+    await save(TEST_EMPLOYEE, pending, {
+      visibility: "preview",
+      title: "Waiting",
+    });
+
+    const { rows } = await db.execute<{ version_no: number; action: string }>(
+      sql`select version_no, action from change_events
+            where entity_id = ${page.id} order by version_no`,
+    );
+    expect(rows).toEqual([
+      { version_no: 1, action: "created" },
+      { version_no: 2, action: "unpublished" },
+    ]);
+  });
 
   it("returns the page as the editor now works on it, marked as waiting", async () => {
     const page = await seedPage();
@@ -414,7 +437,7 @@ describe("changing a public page's visibility", () => {
       404,
     );
     expect((await events()).at(-1)).toEqual({
-      action: "updated",
+      action: "unpublished",
       actor: TEST_EMPLOYEE.id,
     });
   });

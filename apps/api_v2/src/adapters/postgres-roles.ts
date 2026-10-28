@@ -91,6 +91,8 @@ export class PostgresRoles implements RoleRecords {
                ) as roles
         from auth_user u
         left join user_roles r on r.user_id = u.id
+        -- The history's author of last resort; it has no account to sign in with.
+        where u.id <> 'system'
         group by u.id
         order by u.email`),
     );

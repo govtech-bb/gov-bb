@@ -13,9 +13,19 @@ export const Role = z.enum(ROLES);
 /** A role: `editor` writes content, `approver` changes what citizens see, `admin` grants and revokes roles. */
 export type Role = z.infer<typeof Role>;
 
+/**
+ * An `auth_user` id: what the history records as a change's actor. Not
+ * always a UUID (`system`, `local-developer`), but never empty, which the
+ * history would silently read as `system`.
+ */
+export const UserId = z.string().min(1).brand<"UserId">();
+
+/** An `auth_user` id. */
+export type UserId = z.infer<typeof UserId>;
+
 /** A verified session's user, before their roles are read. */
 export interface Identity {
-  readonly id: string;
+  readonly id: UserId;
   readonly email: string;
   readonly name: string;
 }
@@ -115,7 +125,7 @@ export class AuthUnavailable extends Error {
 
 const employeeEmail = z.email().transform((email) => email.toLowerCase());
 const employeeSchema = z.object({
-  id: z.string().min(1),
+  id: UserId,
   email: employeeEmail,
   name: z.string(),
   emailVerified: z.literal(true),

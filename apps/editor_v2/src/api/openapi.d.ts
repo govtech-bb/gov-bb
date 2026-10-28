@@ -2922,8 +2922,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * A version token for recorded page changes
-         * @description `change_events` currently records page writes only. Its count and newest timestamp identify those changes without reading the pages. Category changes do not advance this token until trigger-based events land.
+         * A version token for recorded content changes
+         * @description `change_events` records every page and category change. Its count and newest timestamp identify those changes without reading the content.
          */
         get: {
             parameters: {

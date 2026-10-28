@@ -145,8 +145,9 @@ describe("editor categories", () => {
     ]);
     expect((await request({ url: "/taxonomy" })).statusCode).toBe(404);
     expect(app.swagger().paths).not.toHaveProperty("/taxonomy");
+    // Three creates and a save, each a recorded change.
     const version = await request({ url: "/version" });
-    expect(version.json()).toEqual({ count: 0, latest: null });
+    expect(version.json()).toEqual({ count: 4, latest: expect.any(String) });
     const another = await createTestApp(test.db);
     try {
       expect(

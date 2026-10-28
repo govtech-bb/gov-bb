@@ -1,8 +1,8 @@
 /**
  * Loads the live estate's categories and markdown pages — the snapshot in
- * `seed-data/estate.json` — with each new page's search chunks and the first
- * entry in its history. That entry's actor defaults to `seed`; the one-shot
- * import names its own.
+ * `seed-data/estate.json` — with each new page's search chunks. The database
+ * records each insert in the history; nothing here names a user, so it is
+ * recorded as `system`.
  *
  * Every insert is `on conflict do nothing`, so this is additive and
  * idempotent: it inserts what is missing and never overwrites what an author
@@ -11,20 +11,13 @@
  */
 
 import { count, eq, sql, TransactionRollbackError } from "drizzle-orm";
-import {
-  toDocument,
-  writeChange,
-  writeSearchChunks,
-} from "./adapters/postgres-pages";
+import { writeSearchChunks } from "./adapters/postgres-pages";
 import type { Database } from "./db";
 import { chunkMarkdown } from "./modules/search-text";
 import { categories, changeEvents, contentPages } from "./schema";
 import { ESTATE } from "./seed-data";
 
-export async function seed(
-  db: Database,
-  actorId = "seed",
-): Promise<{
+export async function seed(db: Database): Promise<{
   categories: number;
   documents: number;
 }> {
@@ -105,11 +98,6 @@ export async function seed(
             row.id,
             chunkMarkdown(page.body_markdown),
           );
-          await writeChange(tx, {
-            page: toDocument(row),
-            action: "created",
-            actorId,
-          });
         }
         return row;
       });
@@ -133,6 +121,10 @@ export async function seed(
 
 /** What a one-shot import wrote, or would have written on a dry run. */
 export type ImportReport = {
+  /** The markdown commit the estate snapshot was taken from. */
+  source: string;
+  /** Why existing content was replaced, or null when it was not. */
+  reason: string | null;
   /** Rows `content_pages` held before the import. */
   existing: number;
   /** `change_events` actors and their row counts before the import. */
@@ -147,9 +139,9 @@ export type ImportReport = {
  * `content_pages` already has rows, because `seed()` is additive and would
  * bring back deleted pages without updating changed ones. `force` replaces
  * instead: the content tables, pending revisions included, are always
- * truncated first, in the same transaction, and the stated reason lands in
- * every history entry. History
- * (`change_events`) is never truncated; it is append-only and the record of
+ * emptied first, in the same transaction, so history records each replaced
+ * page and category as deleted, and the stated reason goes in the report.
+ * History (`change_events`) is never emptied; it is append-only and the record of
  * what happened. `dryRun` does the real work and rolls it back.
  */
 export async function importEstate(
@@ -182,15 +174,21 @@ export async function importEstate(
         );
       }
       if (options.force) {
-        await tx.execute(
-          sql`truncate search_chunks, page_revisions, content_pages, categories`,
-        );
+        // `delete`, not `truncate`: truncate fires no row triggers, so the
+        // replaced pages and categories would vanish from the history.
+        await tx.execute(sql`delete from search_chunks`);
+        await tx.execute(sql`delete from page_revisions`);
+        await tx.execute(sql`delete from content_pages`);
+        await tx.execute(sql`delete from categories`);
       }
-      const actor = options.force
-        ? `import:${ESTATE.source} force: ${options.force}`
-        : `import:${ESTATE.source}`;
-      const counts = await seed(tx, actor);
-      report = { existing, actors, ...counts };
+      const counts = await seed(tx);
+      report = {
+        source: ESTATE.source,
+        reason: options.force ?? null,
+        existing,
+        actors,
+        ...counts,
+      };
       if (options.dryRun) tx.rollback();
     });
   } catch (error) {

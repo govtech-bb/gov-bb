@@ -4,11 +4,11 @@
  * comment or publishes it to the live page.
  */
 
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import type { Database } from "./db";
-import type { Employee } from "./modules/auth";
+import { UserId, type Employee } from "./modules/auth";
 import { PostgresPages } from "./adapters/postgres-pages";
 import { withDefaults, type PageId } from "./modules/page";
 import { ok } from "./modules/result";
@@ -28,7 +28,7 @@ import {
 
 /** An approver who has written nothing, so may decide on anyone's change. */
 const APPROVER: Employee = {
-  id: "approver-test",
+  id: UserId.parse("approver-test"),
   email: "approver@govtech.bb",
   name: "Test approver",
   roles: ["approver"],
@@ -159,10 +159,12 @@ const submitted = async (fields: Record<string, unknown> = {}) => {
 
 const revisions = () =>
   db.select().from(pageRevisions).orderBy(pageRevisions.createdAt);
+/** The pages' history; the trigger records the seeded category's too. */
 const events = () =>
   db
     .select({ action: changeEvents.action, actor: changeEvents.actor })
     .from(changeEvents)
+    .where(eq(changeEvents.entityKind, "content_page"))
     .orderBy(changeEvents.versionNo);
 
 /** Everything the site reads, as the public sees it. */

@@ -34,6 +34,7 @@ import {
   isCategoryAnchor,
   type CategoryValues,
 } from "../modules/category";
+import type { UserId } from "../modules/auth";
 import type { CategoryRecords } from "../services/category-editing";
 import {
   ContentStoreUnavailable,
@@ -59,7 +60,6 @@ import {
 import type { EstateVersion, IndexReads } from "../services/editor-index";
 import type {
   NewPageRecord,
-  PageChange,
   PageRecords,
   PageRevision,
   PendingRevisionRecord,
@@ -219,32 +219,6 @@ export async function writeSearchChunks(
     .values(chunks.map((chunk, ordinal) => ({ pageId, ordinal, ...chunk })));
 }
 
-/** Append an entry to a page's change log, numbered after its last. */
-export async function writeChange(
-  db: Database,
-  change: PageChange,
-): Promise<void> {
-  const [next] = await db
-    .select({
-      versionNo: sql<number>`coalesce(max(${changeEvents.versionNo}), 0) + 1`,
-    })
-    .from(changeEvents)
-    .where(
-      and(
-        eq(changeEvents.entityKind, "content_page"),
-        eq(changeEvents.entityId, change.page.id),
-      ),
-    );
-  await db.insert(changeEvents).values({
-    entityKind: "content_page",
-    entityId: change.page.id,
-    versionNo: Number(next?.versionNo ?? 1),
-    action: change.action,
-    actor: change.actorId,
-    snapshot: change.page,
-  });
-}
-
 /** Pages, categories, search text and the change log, in the content database. */
 export class PostgresPages
   implements
@@ -257,8 +231,14 @@ export class PostgresPages
   /** The root supplies the drizzle database over its shared pool. */
   constructor(private readonly db: Database) {}
 
-  /** Acquire the shared content lock first; an error Result rolls back the entire transaction. */
+  /**
+   * Run `work` in one transaction as `actorId`, whom the change-log trigger
+   * records, after taking the shared content lock; an error result rolls back
+   * everything it wrote. The setting is transaction-local, so a pooled
+   * connection never carries it into another request.
+   */
   async atomically<R extends Result<unknown, Error>>(
+    actorId: UserId,
     work: (records: PageRecords & CategoryRecords) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>> {
     let refused: R | undefined;
@@ -266,6 +246,9 @@ export class PostgresPages
       return await this.db.transaction(async (tx) => {
         await tx.execute(
           sql`select pg_advisory_xact_lock(hashtext('content_pages.parent_id'))`,
+        );
+        await tx.execute(
+          sql`select set_config('app.user_id', ${actorId}, true)`,
         );
         const result = await work(new PostgresPages(tx));
         if (!result.ok) {
@@ -452,11 +435,13 @@ export class PostgresPages
     fields: CategoryValues,
     position: number,
     stamp: CategoryStamp,
-  ): Promise<Result<void, CategoryRejected | ContentStoreUnavailable>> {
+  ): Promise<
+    Result<CategoryStamp, CategoryRejected | ContentStoreUnavailable>
+  > {
     return attempt(
       "replaceCategory",
       async () => {
-        await this.db
+        const rows = await this.db
           .update(categories)
           .set({
             title: fields.title,
@@ -466,7 +451,9 @@ export class PostgresPages
             position,
             updatedAt: new Date(stamp),
           })
-          .where(eq(categories.id, id));
+          .where(eq(categories.id, id))
+          .returning({ updatedAt: categories.updatedAt });
+        return CategoryStamp.parse(rows[0]?.updatedAt.toISOString());
       },
       categoryRejectionOf,
     );
@@ -890,13 +877,6 @@ export class PostgresPages
       refusedDelete,
     );
     return rows.ok ? ok(firstDocument(rows.value)) : rows;
-  }
-
-  /** Append an entry to the change log, numbered after the page's last. */
-  appendChange(
-    change: PageChange,
-  ): Promise<Result<void, ContentStoreUnavailable>> {
-    return attempt("appendChange", () => writeChange(this.db, change));
   }
 
   /** Every page with its category, for the service index. */

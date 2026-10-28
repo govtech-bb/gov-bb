@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import pino from "pino";
 import { z } from "zod";
@@ -27,7 +28,9 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
   let employee: EmployeeSession;
   let pool: Pool;
   const authFor = (config: AuthConfig) =>
-    betterAuth(betterAuthOptions(pool, config, pino({ enabled: false })));
+    betterAuth(
+      betterAuthOptions(drizzle(pool), config, pino({ enabled: false })),
+    );
   let auth: ReturnType<typeof authFor>;
 
   beforeAll(async () => {
@@ -58,7 +61,9 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
   };
 
   it("matches the installed BetterAuth schema without another migration", async () => {
-    const expected = await getMigrations(auth.options);
+    // getMigrations reads the live schema only through BetterAuth's own
+    // Kysely adapter, so it gets the pool; the running API uses Drizzle.
+    const expected = await getMigrations({ ...auth.options, database: pool });
     expect(expected.toBeCreated).toEqual([]);
     expect(expected.toBeAdded).toEqual([]);
     expect(expected.toBeAddedIndexes).toEqual([]);

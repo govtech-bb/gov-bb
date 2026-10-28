@@ -20,7 +20,7 @@ Use `http://localhost:3000` for the editor and set its public `VITE_API_ORIGIN` 
 
 Generate `BETTER_AUTH_SECRET` with `openssl rand -base64 32` and keep it stable. Set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` from the GitHub OAuth App. The provider requests `read:user`, `user:email`, and `read:org`; grant the app access to `govtech-bb` if the organization restricts OAuth apps. Missing credentials prevent startup in every environment.
 
-For local development only, `AUTH_BYPASS=true` skips sign-in. BetterAuth is not started, so the credentials above are unused and placeholders will do, and every editor request runs as a fixed local developer. Pair it with the editor's `VITE_AUTH_BYPASS=true`. Under the bypass `API_V2_ADMIN_EMAILS` may be left empty, since the local developer holds every role; otherwise startup refuses without it. Because a bypassed API admits any caller, startup refuses it in production and whenever `EDITOR_ORIGIN` is not `localhost` or `127.0.0.1`.
+For local development only, `AUTH_BYPASS=true` skips sign-in. BetterAuth is not started, so the credentials above are unused and placeholders will do, and every editor request runs as a fixed local developer. Pair it with the editor's `VITE_AUTH_BYPASS=true`. Under the bypass `API_V2_ADMIN_EMAILS` may be left empty, since the local developer holds every role; otherwise startup refuses without it. Because a bypassed API admits any caller, startup refuses it in production and whenever `EDITOR_ORIGIN` is not `localhost` or `127.0.0.1`, and a bypassed API listens on `127.0.0.1` only. The developer is added to `auth_user` at startup, so their edits are recorded against them. #3342 replaces the bypass with a real local session.
 
 | Variable                                           | Purpose/default                                                                                                                                                                                                        |
 | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -56,7 +56,7 @@ Route plugins receive their services and request identity readers explicitly thr
 
 Better Auth verifies the GitHub email, and the API checks `GET /user/memberships/orgs/govtech-bb` using the sign-in token on both first and returning sign-ins. Only `state: active` membership in `govtech-bb` is admitted; pending invitations, missing membership, and failed checks deny access. Any verified email domain is allowed. Password login and client-supplied ID-token sign-in are disabled. Existing users can link GitHub through the same verified email only after passing the membership check; provider trust never bypasses email verification. OAuth tokens are discarded before account persistence. Sessions expire absolutely after eight hours; reads do not extend them. Session cookies are checked against PostgreSQL on every protected request, so revocation takes effect immediately. Organization membership changes are checked on the next GitHub sign-in; existing application sessions must be revoked when immediate removal is required.
 
-Migration `003_auth` adds BetterAuth's four core tables: `auth_user`, `auth_session`, `auth_account`, and `auth_verification`. It does not replace content tables or author data. The migration is checked against the installed BetterAuth schema in the PostgreSQL integration suite. Migration `004_github_sessions` revokes sessions without a linked GitHub account, forcing existing Google users through the new membership check. User IDs, accounts, content, audit history, and browser drafts are preserved. Use the same verified email on GitHub to retain an existing user ID.
+Migration `003_auth` adds BetterAuth's four core tables: `auth_user`, `auth_session`, `auth_account`, and `auth_verification`. It does not replace content tables or author data. BetterAuth reads and writes them through its Drizzle adapter, over the same tables defined in `schema.ts` (where `schema.test.ts` checks them column for column); migrations stay hand-written and replay-safe, never generated. The migration is checked against the installed BetterAuth schema in the PostgreSQL integration suite. Migration `004_github_sessions` revokes sessions without a linked GitHub account, forcing existing Google users through the new membership check. User IDs, accounts, content, audit history, and browser drafts are preserved. Use the same verified email on GitHub to retain an existing user ID.
 
 ### Roles
 
@@ -161,7 +161,7 @@ erDiagram
     int4 version_no
     change_action action
     jsonb snapshot
-    text actor
+    text actor FK
     timestamptz(3) occurred_at
   }
   content_pages {
@@ -213,6 +213,7 @@ erDiagram
   auth_user ||--o{ auth_account : "userId -> id"
   auth_user ||--o{ auth_session : "userId -> id"
   categories |o--o{ categories : "parent_id -> id"
+  auth_user ||--o{ change_events : "actor -> id"
   categories |o--o{ content_pages : "category_id -> id"
   content_pages |o--o{ content_pages : "parent_id, category_id -> id, category_id"
   content_pages |o--o{ content_pages : "parent_id -> id"
@@ -257,7 +258,9 @@ erDiagram
 | DELETE   | `/editor/employees/:id/roles/:role` | Admin; revoke a role                                                   |
 | GET/POST | `/api/auth/*`                       | BetterAuth's GitHub/session protocol                                   |
 
-Missing, expired, or revoked sessions produce JSON 401 responses; disallowed employees or write origins produce 403; unavailable session verification produces 503. The API does not redirect protected content requests to GitHub. The editor handles navigation. Authenticated writes require `Origin: <EDITOR_ORIGIN>`. Auth/session/editor responses use `Cache-Control: no-store` and do not receive ETags. Page create, save and delete audit rows record the authenticated user ID, never a caller-supplied actor, and commit with the write they record. Category writes do not yet emit events or attributed history; see the release dependency below.
+Missing, expired, or revoked sessions produce JSON 401 responses; disallowed employees or write origins produce 403; unavailable session verification produces 503. The API does not redirect protected content requests to GitHub. The editor handles navigation. Authenticated writes require `Origin: <EDITOR_ORIGIN>`. Auth/session/editor responses use `Cache-Control: no-store` and do not receive ETags. Page and category write audit rows record the authenticated user ID, never a caller-supplied actor, and commit with the write they record.
+
+The database writes the history itself: a trigger (`record_change`, migration `007`) adds a `change_events` row for every insert, update and delete of a content table (`content_pages`, `categories`), including the sub-pages a parent's move carries with it. Its `actor` is the transaction's `app.user_id`, which the editor's writes set (transaction-local, so a pooled connection never carries it into the next request), or `system`, a user with no account, when nothing set it: the seed, the import, raw SQL. `actor` references `auth_user`, so a user with history cannot be deleted. An update that changes nothing but `updated_at` is not recorded; a page going public is `published` and one leaving public is `unpublished`. The snapshot is the row as stored. A new content table attaches `record_change` in the migration that creates it, or `migrate.test.ts` fails.
 
 Public site reads (`/pages?url=`, `/categories…`, `/catalog`, `/search/documents`) send `public, max-age=60, stale-while-revalidate=300, stale-if-error=86400`; unknown public URLs send `public, max-age=10`. ETags and 304s remain available for public reads. These routes do not look up or refresh employee sessions.
 
@@ -265,7 +268,7 @@ Preview: the site's server sends its `PREVIEW_SECRET` as `x-preview-token`, and 
 
 The hierarchy is `parent_id`, not the url. A page is served only when it and every page above it are visible; its breadcrumbs are its category (and parent category, for a subcategory), then the pages above it; a category lists only the pages at its root (`parent_id` null), so `start` steps and sub-pages never appear in a listing. A sub-page must share its parent's category (moving the parent moves its sub-pages), a page cannot sit beneath itself, and a page with sub-pages cannot be deleted: each is a field-specific 422.
 
-`GET /pages?url=` returns `{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs}`. `hide_start_links` is true when the page's `start` sub-page is hidden from the viewer. Whether a form is open is the forms API's to say: `form_id` is a name, and the site asks the forms API for the form's status. The API serves markdown as written; the site owns sanitization and rendering. Editor writes return field-specific 422s for invalid references or duplicates, 409 for a stale supplied version, and stamp `published_at` only on first publication. A save replaces the page, so it sends every field; only `parent_id` may be left out, which keeps the page's parent. Changing `url` moves that page alone: its sub-pages keep theirs, and nothing redirects from the old url. Each write still records an append-only audit snapshot; page-history readers are no longer exposed. A request its route's schema refuses (a missing field, an id that is not a UUID, an `if-updated-at` that is not a timestamp, a url over 512 characters, a title over 300) is a 400; Fastify's own refusals keep their status (a body that is not JSON is a 415), and an unknown route is a JSON 404.
+`GET /pages?url=` returns `{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs}`. `hide_start_links` is true when the page's `start` sub-page is hidden from the viewer. Whether a form is open is the forms API's to say: `form_id` is a name, and the site asks the forms API for the form's status. The API serves markdown as written; the site owns sanitization and rendering. Editor writes return field-specific 422s for invalid references or duplicates, 409 for a stale supplied version, and stamp `published_at` only on first publication. A save replaces the page, so it sends every field; only `parent_id` may be left out, which keeps the page's parent. Changing `url` moves that page alone: its sub-pages keep theirs, and nothing redirects from the old url. Each write still records an append-only audit snapshot (see above); page-history readers are no longer exposed. A request its route's schema refuses (a missing field, an id that is not a UUID, an `if-updated-at` that is not a timestamp, a url over 512 characters, a title over 300) is a 400; Fastify's own refusals keep their status (a body that is not JSON is a 415), and an unknown route is a JSON 404.
 
 ### Category management
 
@@ -306,15 +309,15 @@ Do not automatically retry a mutation whose response was lost or was a 5xx.
 The write may already have committed. Refresh and reconcile the saved slug/fields,
 sibling order or deleted ID first; a changed timestamp alone does not prove success.
 
-Category writes do not yet emit events or advance `/version`. #3169 owns
-trigger-based category events and transaction-local actor attribution; #3171
-owns private last-editor reads. There is no temporary category audit log or
-polling workaround. The editor's persisted category controls are tracked in
-#3178, landing integration in #3179, and sandbox acceptance in #3180.
+Category writes are recorded by the change history trigger against the
+signed-in employee and advance `/version`. A save that changes nothing keeps
+the category's `updated_at`, so other editors' copies stay current. #3171
+owns private last-editor reads. The editor's persisted category controls are
+tracked in #3178, landing integration in #3179, and sandbox acceptance in #3180.
 
 `search_chunks` holds each page's body split at its headings, as plain text, rewritten in the same transaction as every save. Rejoined, a page's chunks are exactly the text landing's search indexes today (`search-text.test.ts` checks every seeded page), so moving search onto the API does not move its ranking. The generated `tsv` column and its GIN index are there for server-side search and are not read yet.
 
-The seed is a committed snapshot of legacy markdown and the category taxonomy, subcategories included, with each sub-page's parent. Inserts are additive and idempotent and never replace authored changes. It runs only with `SEED=true`, because an additive insert also brings back a page an editor deleted. Each page it adds records a `created` entry by `seed` for the audit log and editor's change token. Regenerate it with `pnpm seed-data` when intentionally updating the snapshot. `pnpm seed-data` also records `source`, the last commit that touched `apps/landing/src/content`, and the one-time import names it in every history entry it writes (see "Importing the estate" below).
+The seed is a committed snapshot of legacy markdown and the category taxonomy, subcategories included, with each sub-page's parent. Inserts are additive and idempotent and never replace authored changes. It runs only with `SEED=true`, because an additive insert also brings back a page an editor deleted. Each page and category it adds gets a `created` entry by `system` in the audit log, which also moves the editor's change token. Regenerate it with `pnpm seed-data` when intentionally updating the snapshot. `pnpm seed-data` also records `source`, the last commit that touched `apps/landing/src/content`, which the one-time import prints in its report (see "Importing the estate" below).
 
 ## Importing the estate (one-time)
 
@@ -326,13 +329,13 @@ node dist/src/import-estate.js [--dry-run] [--force "<reason>"]
 
 Locally, from this directory, run `pnpm import-estate --dry-run` or `pnpm import-estate`; it reads `.env` like `pnpm dev`. Do not add a `--` separator: this pnpm forwards it literally and tsx then rejects the flag.
 
-The command migrates first, prints `database: <name> host: <addr>` before writing anything, then one JSON line: `{"mode":"dry-run"|"import"|"replace","existing":N,"actors":{…},"categories":N,"documents":N}`. It refuses, with exit code 1, when `content_pages` already has rows: `content_pages has N rows (history actors: …); refusing. Pass --force "<reason>" to replace them.` `--force` truncates `search_chunks`, `page_revisions` (the pending revisions of the pages it replaces), `content_pages` and `categories` and then imports, all in one transaction; `change_events` is never truncated. The transaction holds a lock on `content_pages` until it commits or rolls back, so editor saves stall for the few seconds it takes, and a forced run (which truncates) stalls public reads for that time too. `--dry-run` does the real work and rolls it back, so its counts and errors are real. Every imported page's `created` history entry is by `import:<source sha>`, with ` force: <reason>` appended when forced.
+The command migrates first, prints `database: <name> host: <addr>` before writing anything, then one JSON line: `{"mode":"dry-run"|"import"|"replace","source":"<sha>","reason":"<reason>"|null,"existing":N,"actors":{…},"categories":N,"documents":N}`. It refuses, with exit code 1, when `content_pages` already has rows: `content_pages has N rows (history actors: …); refusing. Pass --force "<reason>" to replace them.` `--force` deletes every row of `search_chunks`, `page_revisions` (the pending revisions of the pages it replaces), `content_pages` and `categories` and then imports, all in one transaction, so the history records each replaced page and category as `deleted` by `system`; `change_events` is never emptied. The transaction holds a lock on `content_pages` until it commits or rolls back, so editor saves stall for the few seconds it takes; public reads keep seeing the old content until it commits. `--dry-run` does the real work and rolls it back, so its counts and errors are real. Every imported page's and category's `created` history entry is by `system`; the source sha and the `--force` reason are in the JSON line, not the history.
 
 ### Per environment
 
 Do sandbox first, then staging and prod once their api_v2 services exist.
 
-1. Refresh the snapshot: merge `main` into `v2-rewrite`, run `pnpm seed-data`, commit `estate.json`, merge, and let the deploy build the image. The `source` sha in that commit is what the audit log records.
+1. Refresh the snapshot: merge `main` into `v2-rewrite`, run `pnpm seed-data`, commit `estate.json`, merge, and let the deploy build the image. The `source` sha in that commit is what the import reports.
 2. Confirm the task definition does not set `SEED`: `aws ecs describe-task-definition --task-definition api-v2-<env> --query 'taskDefinition.containerDefinitions[0].environment'`. If it does, see #3052.
 3. Run the command inside the live container with ECS Exec (needs the AWS Session Manager plugin and credentials for the account). The deployed image has no `psql`, so every database step goes through the command. Dry run first; read the `database:` line and the counts; then the real run.
 
@@ -360,7 +363,7 @@ Do sandbox first, then staging and prod once their api_v2 services exist.
 
    A one-shot form also works when the command needs no quoting, e.g. `--command "node dist/src/import-estate.js --dry-run"`; for a forced run as a one-shot, wrap it as `--command "/bin/sh -c 'node dist/src/import-estate.js --force \"<reason>\"'"` and confirm the quoting on the sandbox rehearsal before relying on it.
 
-4. Record it: run `--dry-run` once more. It refuses and prints `history actors:`, which is the ledger: `import:<sha>=116` after a plain import, or `import:<sha> force: <reason>=116` alongside the old `seed=116` after a forced replace (the sandbox rehearsal). The `change_events` rows carry `occurred_at` and the sha names the markdown commit.
+4. Record it: keep the real run's JSON line, which names the `source` sha and any `--force` reason. The `change_events` rows it wrote are by `system` and carry `occurred_at`.
 5. Smoke from your machine. Every `public` page in `estate.json` returns 200 from `GET /pages?url=`; `preview` pages return 200 only with the `x-preview-token` header (the task's `PREVIEW_SECRET`); `draft` pages are never served by that endpoint.
 
    ```sh
@@ -376,7 +379,7 @@ Do sandbox first, then staging and prod once their api_v2 services exist.
 
 #3095 contains the sandbox rehearsal and snapshot evidence; #3234 tracks the later refresh. The production `SEED` guard is implemented (#3052). An open issue is not a reason to repeat an import. Verify the target task definition and recorded source/actor evidence before any separately approved environment work.
 
-`--dry-run` refuses an occupied database and shows its page-event actor histogram. That histogram cannot prove that no editor has changed categories: category writes do not emit events until #3169 lands. Do not use `seed`/`spike` actors alone as permission to force-replace an estate. Preserve editor-owned data; fix forward in the editor, or use an approved RDS point-in-time recovery to a moment before a bad import.
+Run `--dry-run`: it refuses an occupied database and shows the actor histogram of every recorded page and category event. A histogram containing only `system` does not prove that no editor has changed content: category edits made before migration `007` left no events, and migration `007` rewrites legacy non-user actors to `system`. Do not use the histogram alone as permission to replace an estate. Only run `--force "<reason>"` after separately verifying that no editor-owned content will be overwritten and obtaining approval for the replacement. If editors have written, or that cannot be established, do not replace: preserve editor-owned data; fix forward in the editor, or use an approved RDS point-in-time recovery to a moment before the bad import. The same rule is the rollback rule after a bad import.
 
 ### The markdown freeze
 

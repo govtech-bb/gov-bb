@@ -1,4 +1,9 @@
-import { NotApprover, SelfApproval, type Employee } from "../modules/auth";
+import {
+  NotApprover,
+  SelfApproval,
+  type Employee,
+  type UserId,
+} from "../modules/auth";
 import {
   changesOf,
   creationOf,
@@ -64,17 +69,15 @@ export type RevisionMark =
     }
   | { readonly status: "published"; readonly by: string; readonly at: Date };
 
-/** An audit entry: what happened to a page, who did it, and the page as it then stood. */
-export interface PageChange {
-  readonly page: PageDocument;
-  readonly action: "created" | "updated" | "published" | "deleted";
-  readonly actorId: string;
-}
-
 /** The persistence the editor's page operations need. */
 export interface PageRecords {
-  /** Take the shared content advisory lock first; an error Result rolls back everything written. */
+  /**
+   * Run `work` as one transaction on behalf of `actorId`, whom storage
+   * records against every change it makes, after taking the shared content
+   * advisory lock; an error result rolls back everything it wrote.
+   */
   atomically<R extends Result<unknown, Error>>(
+    actorId: UserId,
     work: (records: PageRecords) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>>;
   /** The page with this id, or null. */
@@ -146,15 +149,12 @@ export interface PageRecords {
   ): Promise<
     Result<PageDocument | null, PageRejected | ContentStoreUnavailable>
   >;
-  /** Append an entry to the append-only change log. */
-  appendChange(
-    change: PageChange,
-  ): Promise<Result<void, ContentStoreUnavailable>>;
 }
 
 /**
  * The editor's page operations: reads of any visibility, and writes that
- * commit with their search text and audit entry or not at all. Only an
+ * commit with their search text or not at all, recorded against the
+ * employee. Only an
  * approver changes what citizens see: sets a page's visibility, creates one
  * public, or deletes a public one. A save to a public page that keeps it
  * public, whoever makes it, goes into the page's pending revision and leaves
@@ -202,14 +202,14 @@ export class PageEditing {
     return ok(revision.value && viewOf(live.value, revision.value));
   }
 
-  /** Create a page where it belongs, stamping publication when it starts public, and index and audit it. */
+  /** Create a page where it belongs, stamping publication when it starts public, and index it. */
   create(
     page: NewPage,
     actor: Employee,
   ): Promise<
     Result<PageDocument, PageRejected | NotApprover | ContentStoreUnavailable>
   > {
-    return this.records.atomically(async (records) => {
+    return this.records.atomically(actor.id, async (records) => {
       if (page.visibility === "public" && !actor.roles.includes("approver"))
         return err(new NotApprover());
       const available = await records.checkPageUrl(page.url);
@@ -224,13 +224,7 @@ export class PageEditing {
         created.value.id,
         chunkMarkdown(created.value.body_markdown),
       );
-      if (!indexed.ok) return indexed;
-      const logged = await records.appendChange({
-        page: created.value,
-        action: "created",
-        actorId: actor.id,
-      });
-      return logged.ok ? created : logged;
+      return indexed.ok ? created : indexed;
     });
   }
 
@@ -266,7 +260,7 @@ export class PageEditing {
       | ContentStoreUnavailable
     >
   > {
-    return this.records.atomically(async (records) => {
+    return this.records.atomically(actor.id, async (records) => {
       const locked = await records.lock(id);
       if (!locked.ok) return locked;
       const current = locked.value;
@@ -336,7 +330,7 @@ export class PageEditing {
           pending.value === null ? 0 : Date.parse(pending.value.updated_at) + 1,
         ),
       );
-      const saved = await writeLive(records, current, placed.value, now, actor);
+      const saved = await writeLive(records, current, placed.value, now);
       if (!saved.ok) return saved;
       if (pending.value !== null) {
         const dropped = await records.dropRevision(id);
@@ -365,7 +359,7 @@ export class PageEditing {
       | ContentStoreUnavailable
     >
   > {
-    return this.records.atomically(async (records) => {
+    return this.records.atomically(actor.id, async (records) => {
       const reviewing = await underReview(
         records,
         id,
@@ -404,7 +398,7 @@ export class PageEditing {
       | ContentStoreUnavailable
     >
   > {
-    return this.records.atomically(async (records) => {
+    return this.records.atomically(actor.id, async (records) => {
       const reviewing = await underReview(
         records,
         id,
@@ -448,7 +442,7 @@ export class PageEditing {
       | ContentStoreUnavailable
     >
   > {
-    return this.records.atomically(async (records) => {
+    return this.records.atomically(actor.id, async (records) => {
       const reviewing = await underReview(
         records,
         id,
@@ -468,7 +462,7 @@ export class PageEditing {
       const now = new Date(
         Math.max(this.clock().getTime(), Date.parse(revision.updated_at) + 1),
       );
-      const saved = await writeLive(records, live, placed.value, now, actor);
+      const saved = await writeLive(records, live, placed.value, now);
       if (!saved.ok) return saved;
       const marked = await records.markRevision(revision.id, {
         status: "published",
@@ -488,14 +482,14 @@ export class PageEditing {
     );
   }
 
-  /** Delete a page and audit it; one with sub-pages is refused, and one already gone is not an error. */
+  /** Delete a page; one with sub-pages is refused, and one already gone is not an error. */
   delete(
     id: PageId,
     actor: Employee,
   ): Promise<
     Result<void, PageRejected | NotApprover | ContentStoreUnavailable>
   > {
-    return this.records.atomically(async (records) => {
+    return this.records.atomically(actor.id, async (records) => {
       const locked = await records.lock(id);
       if (!locked.ok) return locked;
       if (
@@ -504,14 +498,7 @@ export class PageEditing {
       )
         return err(new NotApprover());
       const removed = await records.remove(id);
-      if (!removed.ok) return removed;
-      if (removed.value === null) return ok(undefined);
-      const logged = await records.appendChange({
-        page: removed.value,
-        action: "deleted",
-        actorId: actor.id,
-      });
-      return logged.ok ? ok(undefined) : logged;
+      return removed.ok ? ok(undefined) : removed;
     });
   }
 }
@@ -575,18 +562,19 @@ async function underReview(
 
 /**
  * Write `fields` over the live page as a save does: filing its uncategorised
- * sub-pages under its category, re-cutting its search chunks and auditing it
- * by `actor`.
+ * sub-pages under its category and re-cutting its search chunks. The history
+ * trigger records it against the transaction's actor.
  */
 async function writeLive(
   records: PageRecords,
   current: PageDocument,
   fields: PageFields,
   now: Date,
-  actor: Employee,
 ): Promise<Result<PageDocument, PageRejected | ContentStoreUnavailable>> {
-  const revision = revisionOf(current, fields, now);
-  const saved = await records.replace(current.id, revision);
+  const saved = await records.replace(
+    current.id,
+    revisionOf(current, fields, now),
+  );
   if (!saved.ok) return saved;
   if (saved.value.category_id !== null) {
     const filed = await records.fileUncategorisedBelow(
@@ -599,13 +587,7 @@ async function writeLive(
     current.id,
     chunkMarkdown(saved.value.body_markdown),
   );
-  if (!indexed.ok) return indexed;
-  const logged = await records.appendChange({
-    page: saved.value,
-    action: revision.action,
-    actorId: actor.id,
-  });
-  return logged.ok ? saved : logged;
+  return indexed.ok ? saved : indexed;
 }
 
 /**

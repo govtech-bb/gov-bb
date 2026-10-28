@@ -230,7 +230,7 @@ describe("GET /editor/me", () => {
 });
 
 describe("role management", () => {
-  const grant = (role: string, id = TEST_EDITOR.id) =>
+  const grant = (role: string, id: string = TEST_EDITOR.id) =>
     as(TEST_EMPLOYEE, {
       method: "PUT",
       url: `/editor/employees/${id}/roles/${role}`,

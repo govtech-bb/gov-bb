@@ -706,8 +706,8 @@ describe("PUT /pages/:id", () => {
     expect(rows.map((row) => row.action)).toEqual([
       "created",
       "published",
-      "updated",
-      "updated",
+      "unpublished",
+      "published",
     ]);
   });
 

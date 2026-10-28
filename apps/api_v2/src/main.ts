@@ -9,7 +9,7 @@ import { PostgresRoles } from "./adapters/postgres-roles";
 import { parseConfig } from "./config";
 import { connect, createPool, type DatabaseFailure } from "./db";
 import { migrate } from "./migrate";
-import { authBypass } from "./adapters/auth-bypass";
+import { authBypass, registerBypassEmployee } from "./adapters/auth-bypass";
 import type { AuthHandler } from "./routes/auth";
 import { EditorAccess, type EmployeeGate } from "./services/editor-access";
 import { EditorIndex } from "./services/editor-index";
@@ -97,9 +97,18 @@ async function main(): Promise<void> {
       logger.warn(
         "AUTH_BYPASS is on: every editor request runs as a local developer without signing in",
       );
+      const registered = await registerBypassEmployee(db);
+      if (!registered.ok) {
+        logger.error(
+          { error: registered.error._tag, reason: registered.error.reason },
+          registered.error.message,
+        );
+        process.exitCode = 1;
+        return;
+      }
       ({ access, auth } = authBypass);
     } else {
-      const github = await createBetterAuth(pool, config.auth, logger);
+      const github = await createBetterAuth(db, config.auth, logger);
       access = new EditorAccess(github, roles, config.adminEmails);
       auth = github;
     }
@@ -125,7 +134,11 @@ async function main(): Promise<void> {
       logger,
     });
     if (shutdown.signal.aborted) return;
-    await app.listen({ port: config.port, host: "0.0.0.0" });
+    // A bypassed API admits any caller, so only this machine may reach it.
+    await app.listen({
+      port: config.port,
+      host: config.authBypass ? "127.0.0.1" : "0.0.0.0",
+    });
     if (!shutdown.signal.aborted) await once(shutdown.signal, "abort");
   } catch (error) {
     const code =
