@@ -1,8 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
-import { getCookie } from '@tanstack/react-start/server'
 import { resolveCachedValue } from './cached-resolver'
 import { formsApiBase } from './forms-api-url'
-import { COOKIE_NAME, levelFromCookie } from './preview'
 import type { ViewLevel } from './frontmatter'
 
 /**
@@ -222,12 +220,10 @@ export async function resolveServiceStatuses({
 const moduleCache: CacheRef = { current: null }
 
 /** Resolve the statuses through the per-instance cache, with cold-start retries. */
-function resolveFromModuleCache(
-  ttlMs: number = TTL_MS,
-): Promise<ServiceStatusEntry[]> {
+function resolveFromModuleCache(): Promise<ServiceStatusEntry[]> {
   return resolveServiceStatuses({
     now: Date.now(),
-    ttlMs,
+    ttlMs: TTL_MS,
     fetcher: fetchServiceStatuses,
     cache: moduleCache,
     coldStartRetries: COLD_START_RETRIES,
@@ -238,18 +234,9 @@ function resolveFromModuleCache(
  * Server function returning the current service statuses as `[slug, status]`
  * entries, backed by the per-instance cache. Returns a plain array so it
  * serialises across the SSR boundary; the consumer builds the overlays.
- *
- * A preview/draft viewer — an operator, or the post-deploy feature-flag journey
- * (#3010) — gets an UNCACHED read (`ttlMs: 0`), so a just-flipped
- * `service_status` reflects immediately instead of after the 60s TTL. Citizens
- * carry no preview cookie and keep the cached path unchanged; the read is a
- * public, throttled API GET, so the extra fetches are harmless.
  */
 export const getServiceStatuses = createServerFn().handler(
-  async (): Promise<ServiceStatusEntry[]> => {
-    const previewing = levelFromCookie(getCookie(COOKIE_NAME)) !== 'public'
-    return resolveFromModuleCache(previewing ? 0 : TTL_MS)
-  },
+  async (): Promise<ServiceStatusEntry[]> => resolveFromModuleCache(),
 )
 
 // Warm the cache as soon as this module loads on the server, so the first

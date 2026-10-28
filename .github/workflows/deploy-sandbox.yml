@@ -709,11 +709,17 @@ jobs:
 
   # Journey 3 (#3010): proves a feature-flag change reaches landing AND forms —
   # the propagation a misconfigured deploy once broke silently (#2029). Flips a
-  # DEDICATED non-public test service (`e2e-maintenance-check`) to maintenance
-  # and back via `PUT /service_status`, asserting both apps, then always resets
-  # it to live. `needs` the three apps the journey touches, so it runs once they
-  # are all (re)deployed; a partial deploy that skips one simply skips this too.
-  # It is in `promote-to-staging`'s needs below, so a FAILURE blocks staging.
+  # DEDICATED non-public test service (`e2e-maintenance-check`) to maintenance and
+  # back via `PUT /service_status`, asserting both apps, then resets it to its
+  # hidden (`disabled` → preview) seeded state. Wired into `promote-to-staging`'s
+  # needs — plus the summary and failure-notifier below — so a FAILURE blocks and
+  # is announced, never silently stops staging.
+  #
+  # `if: always() && !failure() && !cancelled()` runs it on EVERY push deploy, not
+  # only when all three apps were nx-affected: a forms-only or landing-only merge
+  # still re-checks propagation, which can break in one app — or at the domain
+  # layer with no code change at all, as in #2029. Skipped only if an upstream
+  # deploy actually failed.
   #
   # Auth: `PUT /service_status` requires a GitHub *user* token (classic PAT) for
   # an identity that is a team member / repo writer — the default GITHUB_TOKEN
@@ -723,9 +729,11 @@ jobs:
   journey-feature-flag:
     name: Journey 3 — feature-flag reaches landing + forms
     needs: [deploy-api, amplify-forms, amplify-landing]
+    if: ${{ github.event_name == 'push' && always() && !failure() && !cancelled() }}
     runs-on: ubuntu-latest
-    # The journey itself is budgeted to under 2 minutes (see the spec); this is a
-    # backstop against a hang (install + browser), not a performance budget.
+    # The journey polls past landing's 60s status cache across two flips, so it is
+    # budgeted to ~3.5 min (see the spec); this 15m is a backstop against a hang
+    # (install + browser), not a performance budget.
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -769,9 +777,7 @@ jobs:
             exit 1
           fi
           pnpm --filter @govtech-bb/forms exec playwright test \
-            --config playwright.smoke.config.ts \
-            journey-3-feature-flag.smoke.spec.ts \
-            --retries=1
+            --config playwright.journey.config.ts
       - name: Upload Playwright trace on failure
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -1012,7 +1018,7 @@ jobs:
 
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging]
+    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, journey-feature-flag]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -1074,7 +1080,7 @@ jobs:
 
   notify-failure:
     name: Notify Slack on failure
-    needs: [deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging]
+    needs: [deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, journey-feature-flag]
     if: always() && contains(needs.*.result, 'failure')
     runs-on: ubuntu-latest
     steps:

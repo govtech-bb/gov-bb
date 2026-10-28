@@ -2,32 +2,35 @@
  * Drives the API's `service_status` feature flag for the post-deploy maintenance
  * journey (J3, #3010).
  *
- * - `GET /service_status` is a public read: `{ data: [{ slug, status }] }`.
- * - `PUT /service_status` is admin-gated by `GitHubAuthGuard`: it needs a real
- *   GitHub *user* token (classic PAT) whose login is a team member / repo
- *   writer. Body is `{ slug, status }`; the author is the verified login, never
- *   the body. The controller throttles (5/10s, 30/60s), so poll gently.
+ * `PUT /service_status` is admin-gated by `GitHubAuthGuard`: it needs a real
+ * GitHub *user* token (classic PAT) whose login is a team member / repo writer.
+ * Body is `{ slug, status }`; the author is the verified login, never the body.
+ * The controller throttles (5/10s), so callers should flip sparingly.
  */
 
 /** Mirrors the API's `ServiceStatus` enum (service-status.entity.ts). */
 export type ServiceStatusValue = "enabled" | "form_disabled" | "disabled";
 
-/** The current status of `slug`, or null when the service has no status row. */
-export async function getServiceStatus(
-  apiBaseUrl: string,
-  slug: string,
-): Promise<ServiceStatusValue | null> {
-  const res = await fetch(`${apiBaseUrl}/service_status`, {
-    headers: { Accept: "application/json" },
-  });
-  if (!res.ok) {
-    throw new Error(`GET /service_status failed: HTTP ${res.status}`);
+/**
+ * Validate the API base is HTTPS on the government domain before any request —
+ * the base comes from CI config, but an allowlist keeps a mistyped/injected host
+ * from turning this into an SSRF against an internal address.
+ */
+function trustedApiBase(apiBaseUrl: string): URL {
+  let url: URL;
+  try {
+    url = new URL(apiBaseUrl);
+  } catch {
+    throw new Error(`E2E_API_BASE_URL is not a valid URL: ${apiBaseUrl}`);
   }
-  const body = (await res.json()) as {
-    data?: { slug: string; status: ServiceStatusValue }[];
-  };
-  const row = (body.data ?? []).find((r) => r.slug === slug);
-  return row?.status ?? null;
+  const host = url.hostname;
+  const trusted = host === "alpha.gov.bb" || host.endsWith(".alpha.gov.bb");
+  if (url.protocol !== "https:" || !trusted) {
+    throw new Error(
+      `Refusing to call an untrusted API base: ${apiBaseUrl} — expected https on *.alpha.gov.bb`,
+    );
+  }
+  return url;
 }
 
 /**
@@ -40,7 +43,8 @@ export async function setServiceStatus(
   slug: string,
   status: ServiceStatusValue,
 ): Promise<void> {
-  const res = await fetch(`${apiBaseUrl}/service_status`, {
+  const endpoint = new URL("/service_status", trustedApiBase(apiBaseUrl));
+  const res = await fetch(endpoint, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${token}`,
