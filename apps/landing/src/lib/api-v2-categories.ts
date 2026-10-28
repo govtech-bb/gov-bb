@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
+import { QueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { API_V2_TIMEOUT_MS, apiV2Base } from './api-v2-page'
 
@@ -237,9 +238,19 @@ export async function resolveCategoryAddress(
   }
 }
 
-/** Server function: `fetchCategoryTree` against the configured api_v2. */
+const publicCategoryCache = new QueryClient()
+
+/** Public category reads shared across server requests, never the router's private viewer state. */
+export function fetchCachedCategoryTree(base: string | null) {
+  return publicCategoryCache.fetchQuery({
+    ...categoryTreeQuery(() => fetchCategoryTree(base)),
+    queryKey: ['public-category-tree', base],
+  })
+}
+
+/** Server function: the cached public tree from the configured api_v2. */
 export const getApiV2CategoryTree = createServerFn().handler(() =>
-  fetchCategoryTree(apiV2Base()),
+  fetchCachedCategoryTree(apiV2Base()),
 )
 
 /** Server function: `fetchCategoryListing` against the configured api_v2. */
@@ -247,15 +258,16 @@ export const getApiV2CategoryListing = createServerFn()
   .validator(CategoryPath)
   .handler(({ data: path }) => fetchCategoryListing(apiV2Base(), path))
 
-/** Matches api_v2's public `max-age=60`, so a change shows within a minute. */
+/** A minute per cache layer, within api_v2's freshness/revalidation window. */
 export const CATEGORY_TREE_STALE_MS = 60_000
 
 /**
  * The public category tree, read once per QueryClient (one per request on the
  * server, one per tab in the browser) and reread once it is a minute old. A
- * failed read waits the same minute, as `cached-resolver.ts` does, so a down
- * api_v2 doesn't add its timeout to every navigation. Disabled never changes
- * within a build.
+ * failed read waits the same minute, so a down api_v2 doesn't add its timeout
+ * to every navigation. The server function also caches the public response
+ * between requests, separately from each request's viewer state. Disabled
+ * never changes within a build.
  *
  * The tree is optional to every route that shows it, so the query never
  * rejects: a server-function call that fails in the browser is `unavailable`.

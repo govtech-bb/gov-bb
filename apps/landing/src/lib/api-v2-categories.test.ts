@@ -14,6 +14,7 @@ import {
 import {
   CATEGORY_TREE_STALE_MS,
   categoryTreeQuery,
+  fetchCachedCategoryTree,
   fetchCategoryListing,
   fetchCategoryTree,
   resolveCategoryAddress,
@@ -310,6 +311,93 @@ describe('categoryTreeQuery', () => {
         categoryTreeQuery(() => Promise.reject(new Error('offline'))),
       ),
     ).resolves.toEqual({ kind: 'unavailable' })
+  })
+})
+
+describe('fetchCachedCategoryTree', () => {
+  it('shares a public read between concurrent request clients and expires it after a minute', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    reply = json(200, { categories: TREE })
+    const load = () => fetchCachedCategoryTree(`${base}/shared`)
+    const first = new QueryClient()
+    const second = new QueryClient()
+
+    try {
+      const results = await Promise.all([
+        first.fetchQuery(categoryTreeQuery(load)),
+        second.fetchQuery(categoryTreeQuery(load)),
+      ])
+      expect(results).toEqual([
+        { kind: 'found', categories: TREE },
+        { kind: 'found', categories: TREE },
+      ])
+      expect(requests).toHaveLength(1)
+      expect(requests[0].headers).not.toHaveProperty('cookie')
+      expect(requests[0].headers).not.toHaveProperty('x-preview-token')
+
+      reply = json(200, { categories: [] })
+      vi.advanceTimersByTime(CATEGORY_TREE_STALE_MS - 1)
+      expect(await load()).toEqual({ kind: 'found', categories: TREE })
+      expect(requests).toHaveLength(1)
+      vi.advanceTimersByTime(1)
+      expect(await load()).toEqual({ kind: 'found', categories: [] })
+      expect(requests).toHaveLength(2)
+    } finally {
+      first.clear()
+      second.clear()
+    }
+  })
+
+  it.each([
+    ['unavailable', json(503, { error: 'internal_error' })],
+    ['malformed', json(200, { categories: 'broken' })],
+  ] as const)(
+    'caches %s across requests without preserving stale categories',
+    async (kind, failure) => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const load = () => fetchCachedCategoryTree(`${base}/${kind}`)
+      reply = json(200, { categories: TREE })
+      expect(await load()).toEqual({ kind: 'found', categories: TREE })
+      vi.advanceTimersByTime(CATEGORY_TREE_STALE_MS)
+      reply = failure
+      expect(await load()).toEqual({ kind })
+      expect(requests).toHaveLength(2)
+      reply = json(200, { categories: [] })
+      expect(await load()).toEqual({ kind })
+      expect(requests).toHaveLength(2)
+      vi.advanceTimersByTime(CATEGORY_TREE_STALE_MS)
+      expect(await load()).toEqual({ kind: 'found', categories: [] })
+    },
+  )
+
+  it('a timed-out read does not make the next request wait for the API again', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+    reply = 'hang'
+    const load = () => fetchCachedCategoryTree(`${base}/timeout`)
+    const pending = load()
+    await vi.waitFor(() => expect(requests).toHaveLength(1))
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(await pending).toEqual({ kind: 'unavailable' })
+    reply = json(200, { categories: TREE })
+    expect(await load()).toEqual({ kind: 'unavailable' })
+    expect(requests).toHaveLength(1)
+  })
+
+  it('keeps different API bases separate and disabled mode makes no request', async () => {
+    reply = json(200, { categories: TREE })
+    expect(await fetchCachedCategoryTree(`${base}/one`)).toEqual({
+      kind: 'found',
+      categories: TREE,
+    })
+    reply = json(200, { categories: [] })
+    expect(await fetchCachedCategoryTree(`${base}/two`)).toEqual({
+      kind: 'found',
+      categories: [],
+    })
+    expect(await fetchCachedCategoryTree(null)).toEqual({ kind: 'disabled' })
+    expect(requests).toHaveLength(2)
   })
 })
 

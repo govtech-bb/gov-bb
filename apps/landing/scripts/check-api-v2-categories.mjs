@@ -1,27 +1,16 @@
-// Checks the built landing's api_v2 category reads over real HTTP (ADR 0078):
-// listings, not-found fallthrough, unavailable/malformed errors, and an
-// unreadable tree, and the listing server function's transport parsing. Vitest
-// can't run these paths, because a Start server function needs the built
-// server's RPC manifest.
+// Checks the built landing's Request/Response handler (ADR 0078): listings,
+// page fallback, category failures, public caching and server-function parsing.
+// The API stand-in uses real HTTP; landing runs through its built SSR entry
+// without binding the Amplify preset's port or interrupting an existing preview.
+// The built RPC manifest is required, so this is separate from Vitest.
 //
-// It starts a local stand-in for api_v2's public reads, points the existing
-// build at it through Nitro's runtime override (NITRO_API_V2_URL), and requests
-// pages from the build. It writes nothing anywhere.
-//
-// Usage, after `pnpm build`, with port 3000 free (the Amplify preset's fixed
-// port; the check refuses to take it from another process):
+// After a configured `pnpm build`:
 //   node scripts/check-api-v2-categories.mjs
-import { spawn } from 'node:child_process'
+// Includes one minute waiting for the public category cache to expire.
 import { readFileSync } from 'node:fs'
 import { createServer } from 'node:http'
-import { connect } from 'node:net'
-import { fileURLToPath } from 'node:url'
 
-const SITE = 'http://127.0.0.1:3000'
-
-const SERVER = fileURLToPath(
-  new URL('../.amplify-hosting/compute/default/server.js', import.meta.url),
-)
+const SITE = 'http://landing.example.test'
 
 const SSR_ENTRY = new URL(
   '../.amplify-hosting/compute/default/_ssr/ssr.mjs',
@@ -71,14 +60,16 @@ function callListing(id, data) {
 
   const query = new URLSearchParams({ payload })
 
-  return fetch(`${SITE}/_serverFn/${id}?${query}`, {
-    // Same-origin, as the browser sends it; Start's CSRF check refuses others.
-    headers: {
-      'x-tsr-serverFn': 'true',
-      accept: 'application/json',
-      'sec-fetch-site': 'same-origin',
-    },
-  })
+  return site.fetch(
+    new Request(`${SITE}/_serverFn/${id}?${query}`, {
+      // Same-origin, as the browser sends it; Start's CSRF check refuses others.
+      headers: {
+        'x-tsr-serverFn': 'true',
+        accept: 'application/json',
+        'sec-fetch-site': 'same-origin',
+      },
+    }),
+  )
 }
 
 const ref = (url, title) => ({
@@ -175,6 +166,10 @@ const FALLBACK_PAGES = {
 /** What the stand-in's tree read answers: the tree, or an outage. */
 let treeMode = 'ok'
 
+let listingMode = 'ok'
+
+let pagesDown = false
+
 const requests = []
 
 const api = createServer((request, response) => {
@@ -195,6 +190,20 @@ const api = createServer((request, response) => {
       ? send(200, TREE)
       : send(500, { error: 'internal_error' })
   }
+
+  if (listingMode !== 'ok' && url.pathname.startsWith('/categories/'))
+    return listingMode === 'down'
+      ? send(503, { error: 'internal_error' })
+      : send(200, { category: 'broken' })
+
+  if (pagesDown && url.pathname === '/pages')
+    return send(503, { error: 'internal_error' })
+
+  if (
+    url.pathname === '/service_status' ||
+    url.pathname.startsWith('/form-definitions')
+  )
+    return send(200, { status: 'success', data: [] })
 
   if (url.pathname in LISTINGS) return send(200, LISTINGS[url.pathname])
 
@@ -220,7 +229,7 @@ function check(name, ok, detail = '') {
 }
 
 const get = async (path) => {
-  const response = await fetch(`${SITE}${path}`, { redirect: 'manual' })
+  const response = await site.fetch(new Request(`${SITE}${path}`))
 
   return { status: response.status, html: await response.text() }
 }
@@ -264,50 +273,19 @@ function trailOf(html) {
   )
 }
 
-function portInUse(port) {
-  return new Promise((resolve) => {
-    const socket = connect(port, '127.0.0.1')
-    socket.once('connect', () => {
-      socket.destroy()
-      resolve(true)
-    })
-    socket.once('error', () => resolve(false))
-  })
-}
-
-async function waitForSite() {
-  for (let attempt = 0; attempt < 100; attempt++) {
-    if (await portInUse(3000)) return
-    await new Promise((resolve) => setTimeout(resolve, 100))
-  }
-
-  throw new Error('the built landing did not start on :3000')
-}
-
-if (await portInUse(3000)) {
-  console.error(
-    'Port 3000 is in use; stop that process first. Nothing was started.',
-  )
-  process.exit(2)
-}
-
 await new Promise((resolve) => api.listen(0, '127.0.0.1', resolve))
 
 const base = `http://127.0.0.1:${api.address().port}`
 
-const site = spawn(process.execPath, [SERVER], {
-  env: { ...process.env, NITRO_API_V2_URL: base },
-  stdio: ['ignore', 'pipe', 'pipe'],
-})
+process.env.NITRO_API_V2_URL = base
+process.env.NITRO_FORMS_API_URL = base
 
-let siteLog = ''
-
-site.stdout.on('data', (chunk) => (siteLog += chunk))
-
-site.stderr.on('data', (chunk) => (siteLog += chunk))
+let site
 
 try {
-  await waitForSite()
+  // The same SSR export imported by the generated Amplify entry, without its listener.
+  const { c } = await import(SSR_ENTRY.href)
+  site = c.default
 
   const parent = await get('/check-parent')
   check('category is 200', parent.status === 200, String(parent.status))
@@ -430,8 +408,13 @@ try {
     String(legacy.status),
   )
 
-  // An unreadable tree: each server-rendered request reads it afresh.
+  check(
+    'server-rendered requests share one public tree read',
+    requests.filter((request) => request.path === '/categories').length === 1,
+  )
+
   treeMode = 'down'
+  await new Promise((resolve) => setTimeout(resolve, 60_001))
   const home = await get('/')
   check(
     'home says categories are unavailable, listing none',
@@ -471,6 +454,61 @@ try {
       !sitemap.html.includes('/youth-and-community</loc>'),
     String(sitemap.status),
   )
+
+  // If both category reads fail, a page still gets its existing fallback.
+  listingMode = 'down'
+  const apiPage = await get('/check-gone')
+  check(
+    'a failed tree and listing still allow an API page',
+    apiPage.status === 200 &&
+      apiPage.html.includes('A page where a category was'),
+    String(apiPage.status),
+  )
+  pagesDown = true
+  const staticPage = await get(
+    '/money-financial-support/apply-financial-assistance',
+  )
+  check(
+    'a full API outage still allows an existing static page',
+    staticPage.status === 200 &&
+      /<h1[^>]*>Apply for financial assistance<\/h1>/.test(staticPage.html),
+    String(staticPage.status),
+  )
+  for (const path of [
+    '/check-parent',
+    '/youth-and-community',
+    '/not-a-real-category',
+  ]) {
+    const failed = await get(path)
+    check(
+      `${path} retains the category error when no page resolves`,
+      failed.status === 500 && failed.html.includes('Something went wrong'),
+      String(failed.status),
+    )
+  }
+  listingMode = 'malformed'
+  const malformed = await get(
+    '/money-financial-support/apply-financial-assistance',
+  )
+  check(
+    'an unreadable tree and malformed listing still allow a static page',
+    malformed.status === 200 &&
+      /<h1[^>]*>Apply for financial assistance<\/h1>/.test(malformed.html),
+    String(malformed.status),
+  )
+  const noPage = await get('/check-parent')
+  check(
+    'a malformed listing remains an error when no page resolves',
+    noPage.status === 500,
+    String(noPage.status),
+  )
+  check(
+    'failed tree reads are also shared across server-rendered requests',
+    requests.filter((request) => request.path === '/categories').length === 3,
+  )
+  // One expired tree read, plus the sitemap's independent category read.
+  listingMode = 'ok'
+  pagesDown = false
 
   // The transport: a well-formed call reads the listing; a malformed one is
   // refused before any api_v2 request.
@@ -520,14 +558,12 @@ try {
     `${requests.length} requests`,
   )
 } finally {
-  site.kill()
-  api.close()
+  api.closeAllConnections()
+  await new Promise((resolve) => api.close(resolve))
 }
 
 const failed = results.filter((ok) => !ok).length
 
 console.log(`${results.length - failed}/${results.length} passed`)
-
-if (failed) console.log(siteLog.slice(-2000))
 
 process.exitCode = failed ? 1 : 0

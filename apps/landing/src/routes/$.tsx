@@ -112,12 +112,12 @@ export const Route = createFileRoute('/$')({
     const splat = (params._splat ?? '').replace(/^\/+|\/+$/g, '')
     const segments = splat.split('/').filter(Boolean)
 
-    // api_v2 mode (ADR 0078): categories come from api_v2 alone. Only a
-    // missing category tries the address as a page; an unreadable one is an
-    // error at once. Neither a page at its address nor the static taxonomy,
-    // which would bring back removed categories, stands in for it.
+    // A known category's failed listing is an error. Without a readable tree,
+    // the address may instead be a page; preserve page fallback, never a
+    // static category listing (ADR 0078).
     const tree = context.categoryTree
     const apiMode = tree.kind !== 'disabled'
+    let categoryFailure: Error | undefined
 
     if (tree.kind !== 'disabled') {
       const address = await resolveCategoryAddress(segments, tree, (path) =>
@@ -137,8 +137,12 @@ export const Route = createFileRoute('/$')({
         }
       }
 
-      if (address.kind !== 'not_category')
-        throw new Error(`Category listing ${address.kind} for /${splat}`)
+      if (address.kind !== 'not_category') {
+        categoryFailure = new Error(
+          `Category listing ${address.kind} for /${splat}`,
+        )
+        if (tree.kind === 'found') throw categoryFailure
+      }
     }
 
     if (!apiMode && segments.length === 1) {
@@ -253,6 +257,8 @@ export const Route = createFileRoute('/$')({
         }),
       }
     }
+
+    if (categoryFailure) throw categoryFailure
 
     if (!apiMode && segments.length === 2) {
       const cat = CATEGORY_BY_SLUG[segments[0]]
