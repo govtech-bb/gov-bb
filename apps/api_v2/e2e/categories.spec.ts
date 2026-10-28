@@ -21,7 +21,12 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
   beforeAll(async () => {
     database = await createScratchDatabase();
     server = await startServer({ DB_NAME: database, SEED: "false" });
-    cookie = (await createEmployeeSession(database, server.url)).cookie;
+    // An approver, since these sessions create and delete public pages.
+    cookie = (
+      await createEmployeeSession(database, server.url, {
+        roles: ["approver"],
+      })
+    ).cookie;
   });
   afterAll(async () => {
     await server?.stop();

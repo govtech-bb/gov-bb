@@ -35,6 +35,7 @@ For local development only, `AUTH_BYPASS=true` skips sign-in. BetterAuth is not 
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`         | Required server-side GitHub OAuth credentials                                                                                                                                                                          |
 | `AUTH_BYPASS`                                      | Local development only: `true` skips sign-in (see above)                                                                                                                                                               |
 | `PREVIEW_SECRET`                                   | Optional; the site's preview token. Unset, every preview read is refused                                                                                                                                               |
+| `API_V2_ADMIN_EMAILS`                              | Comma-separated emails granted the `admin` role whenever they sign in (see Roles). Every deployed environment needs one, or nobody can grant `approver`                                                                |
 
 Production requires HTTPS API/editor origins on the same site, such as separate subdomains of the same organizational domain. Cookies are host-only, HttpOnly, Secure on HTTPS, and SameSite=Lax; API requests from the editor include credentials. Do not enable broad cookie domains or permissive CORS. Register the production API's exact `/api/auth/callback/github` URI in GitHub. Forwarded Host headers do not determine callback URLs; the configured origin does. This change does not configure hosting, DNS, or a reverse proxy.
 
@@ -56,6 +57,16 @@ Route plugins receive their services and request identity readers explicitly thr
 Better Auth verifies the GitHub email, and the API checks `GET /user/memberships/orgs/govtech-bb` using the sign-in token on both first and returning sign-ins. Only `state: active` membership in `govtech-bb` is admitted; pending invitations, missing membership, and failed checks deny access. Any verified email domain is allowed. Password login and client-supplied ID-token sign-in are disabled. Existing users can link GitHub through the same verified email only after passing the membership check; provider trust never bypasses email verification. OAuth tokens are discarded before account persistence. Sessions expire absolutely after eight hours; reads do not extend them. Session cookies are checked against PostgreSQL on every protected request, so revocation takes effect immediately. Organization membership changes are checked on the next GitHub sign-in; existing application sessions must be revoked when immediate removal is required.
 
 Migration `003_auth` adds BetterAuth's four core tables: `auth_user`, `auth_session`, `auth_account`, and `auth_verification`. It does not replace content tables or author data. The migration is checked against the installed BetterAuth schema in the PostgreSQL integration suite. Migration `004_github_sessions` revokes sessions without a linked GitHub account, forcing existing Google users through the new membership check. User IDs, accounts, content, audit history, and browser drafts are preserved. Use the same verified email on GitHub to retain an existing user ID.
+
+### Roles
+
+Signing in decides who is an employee; roles decide what they can do (ADR 0079). Roles are rows in `user_roles` (migration `008_user_roles`, numbered after #3340's 006 and 007), read on every request, so a revocation applies to the employee's next request.
+
+- `approver` changes what citizens see: changing a page's `visibility`, creating a page as `public`, or deleting a `public` page. Anyone else gets a 403 `{error: "forbidden", message}` and the database is unchanged. Every other edit stays open to any employee.
+- `admin` lists employees and grants and revokes roles (`/editor/employees…`), recording who granted each. A signed-in employee whose email `API_V2_ADMIN_EMAILS` lists is granted `admin`, with no grantor, if they lack it; so an admin cannot revoke a listed admin for good.
+- `editor` is stored but not yet enforced (#3197).
+
+Under `AUTH_BYPASS` the local developer holds every role. `GET /editor/me` returns the signed-in employee and their roles, which the editor uses to hide what they cannot do.
 
 ## Database
 
@@ -151,6 +162,12 @@ erDiagram
     text body
     tsvector tsv "generated"
   }
+  user_roles {
+    text user_id PK, FK
+    text role PK
+    text granted_by "nullable"
+    timestamptz(3) granted_at
+  }
   auth_user ||--o{ auth_account : "userId -> id"
   auth_user ||--o{ auth_session : "userId -> id"
   categories |o--o{ categories : "parent_id -> id"
@@ -158,35 +175,40 @@ erDiagram
   content_pages |o--o{ content_pages : "parent_id, category_id -> id, category_id"
   content_pages |o--o{ content_pages : "parent_id -> id"
   content_pages ||--o{ search_chunks : "page_id -> id"
+  auth_user ||--o{ user_roles : "user_id -> id"
 ```
 
 <!-- ERD:END -->
 
 ## HTTP surface
 
-| Method   | Path                       | Access                                                                 |
-| -------- | -------------------------- | ---------------------------------------------------------------------- |
-| GET      | `/pages?url=…`             | Site page resolution (public, or preview with the token)               |
-| GET      | `/categories`              | Site category tree                                                     |
-| GET      | `/categories/:slug`        | A category's subcategories and root pages                              |
-| GET      | `/categories/:c/:s`        | A subcategory's root pages                                             |
-| GET      | `/catalog`                 | Every visible page (sitemap, service lists)                            |
-| GET      | `/search/documents`        | Every visible page with its search text in chunks                      |
-| GET      | `/docs`                    | Public API reference (Scalar)                                          |
-| GET      | `/docs/openapi.json`       | Public OpenAPI document                                                |
-| GET      | `/pages/:id`               | Employee; includes drafts and previews                                 |
-| GET      | `/services`                | Employee service index, grouped by `parent_id`                         |
-| GET      | `/services/:id`            | Employee; one service's pages with their roles, entry first            |
-| GET      | `/editor/categories`       | Employee; every shared category, counts, address protection and stamps |
-| POST     | `/editor/categories`       | Employee; append a category or subcategory                             |
-| PUT      | `/editor/categories/:id`   | Employee; edit with mandatory `if-updated-at`                          |
-| PUT      | `/editor/categories/order` | Employee; reorder a complete expected sibling snapshot                 |
-| DELETE   | `/editor/categories/:id`   | Employee; delete an empty category with `if-updated-at`                |
-| GET      | `/version`                 | Employee change token                                                  |
-| POST     | `/pages`                   | Employee create                                                        |
-| PUT      | `/pages/:id`               | Employee save; existing optional `if-updated-at` concurrency check     |
-| DELETE   | `/pages/:id`               | Employee delete                                                        |
-| GET/POST | `/api/auth/*`              | BetterAuth's GitHub/session protocol                                   |
+| Method   | Path                                | Access                                                                 |
+| -------- | ----------------------------------- | ---------------------------------------------------------------------- |
+| GET      | `/pages?url=…`                      | Site page resolution (public, or preview with the token)               |
+| GET      | `/categories`                       | Site category tree                                                     |
+| GET      | `/categories/:slug`                 | A category's subcategories and root pages                              |
+| GET      | `/categories/:c/:s`                 | A subcategory's root pages                                             |
+| GET      | `/catalog`                          | Every visible page (sitemap, service lists)                            |
+| GET      | `/search/documents`                 | Every visible page with its search text in chunks                      |
+| GET      | `/docs`                             | Public API reference (Scalar)                                          |
+| GET      | `/docs/openapi.json`                | Public OpenAPI document                                                |
+| GET      | `/pages/:id`                        | Employee; includes drafts and previews                                 |
+| GET      | `/services`                         | Employee service index, grouped by `parent_id`                         |
+| GET      | `/services/:id`                     | Employee; one service's pages with their roles, entry first            |
+| GET      | `/editor/categories`                | Employee; every shared category, counts, address protection and stamps |
+| POST     | `/editor/categories`                | Employee; append a category or subcategory                             |
+| PUT      | `/editor/categories/:id`            | Employee; edit with mandatory `if-updated-at`                          |
+| PUT      | `/editor/categories/order`          | Employee; reorder a complete expected sibling snapshot                 |
+| DELETE   | `/editor/categories/:id`            | Employee; delete an empty category with `if-updated-at`                |
+| GET      | `/version`                          | Employee change token                                                  |
+| POST     | `/pages`                            | Employee create; as `public`, approver only                            |
+| PUT      | `/pages/:id`                        | Employee save, optional `if-updated-at`; `visibility`, approver only   |
+| DELETE   | `/pages/:id`                        | Employee delete; a `public` page, approver only                        |
+| GET      | `/editor/me`                        | Employee; who is signed in, with their roles                           |
+| GET      | `/editor/employees`                 | Admin; everyone who has signed in, with their roles                    |
+| PUT      | `/editor/employees/:id/roles/:role` | Admin; grant a role                                                    |
+| DELETE   | `/editor/employees/:id/roles/:role` | Admin; revoke a role                                                   |
+| GET/POST | `/api/auth/*`                       | BetterAuth's GitHub/session protocol                                   |
 
 Missing, expired, or revoked sessions produce JSON 401 responses; disallowed employees or write origins produce 403; unavailable session verification produces 503. The API does not redirect protected content requests to GitHub. The editor handles navigation. Authenticated writes require `Origin: <EDITOR_ORIGIN>`. Auth/session/editor responses use `Cache-Control: no-store` and do not receive ETags. Page create, save and delete audit rows record the authenticated user ID, never a caller-supplied actor, and commit with the write they record. Category writes do not yet emit events or attributed history; see the release dependency below.
 

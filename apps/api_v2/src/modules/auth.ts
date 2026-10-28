@@ -4,12 +4,37 @@ import { err, ok, type Result } from "./result";
 /** Only active members of this GitHub organization can provision editor sessions. */
 export const GITHUB_ORGANIZATION = "govtech-bb";
 
-/** An admitted employee, without session or provider tokens. */
-export interface Employee {
+/** What an employee may do beyond editing, as `user_roles` stores it. */
+export const ROLES = ["editor", "approver", "admin"] as const;
+
+/** Parses a role. */
+export const Role = z.enum(ROLES);
+
+/** A role: `approver` changes what citizens see, `admin` grants and revokes roles. */
+export type Role = z.infer<typeof Role>;
+
+/** A verified session's user, before their roles are read. */
+export interface Identity {
   readonly id: string;
   readonly email: string;
   readonly name: string;
 }
+
+/** An admitted employee and their roles, without session or provider tokens. */
+export interface Employee extends Identity {
+  readonly roles: readonly Role[];
+}
+
+/** An employee as the editor and the role routes read them. */
+export const EmployeeView = z.object({
+  id: z.string(),
+  email: z.string(),
+  name: z.string(),
+  roles: z.array(Role),
+});
+
+/** An employee as the editor and the role routes read them. */
+export type EmployeeView = z.infer<typeof EmployeeView>;
 
 /** No live employee session accompanied the request. */
 export class Unauthenticated extends Error {
@@ -33,6 +58,26 @@ export class Forbidden extends Error {
   }
 }
 
+/** A change to what citizens see, by an employee without the approver role. */
+export class NotApprover extends Error {
+  /** Stable protocol-projection discriminator. */
+  readonly _tag = "NotApprover";
+  /** Say who can make the change. */
+  constructor() {
+    super("Only approvers can change who can see a page.");
+  }
+}
+
+/** A role grant named a user who has never signed in. */
+export class UserNotFound extends Error {
+  /** Stable protocol-projection discriminator. */
+  readonly _tag = "UserNotFound";
+  /** The id that matched nobody. */
+  constructor(readonly id: string) {
+    super(`No user with id ${id}. They must sign in once first.`);
+  }
+}
+
 /** Session verification could not be completed; access must remain closed. */
 export class AuthUnavailable extends Error {
   /** Stable protocol-projection discriminator. */
@@ -52,7 +97,7 @@ const employeeSchema = z.object({
 });
 
 /** Reapply local employee policy to the user in a verified database session. */
-export function parseEmployee(input: unknown): Result<Employee, Forbidden> {
+export function parseEmployee(input: unknown): Result<Identity, Forbidden> {
   const parsed = employeeSchema.safeParse(input);
   return parsed.success
     ? ok({

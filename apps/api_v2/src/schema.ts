@@ -1,7 +1,7 @@
 /**
- * The Drizzle schema, matching migrations `001_init` to
- * `005_hierarchy_and_search` applied in order, table for table and column for
- * column.
+ * The Drizzle schema, matching migrations `001_init` to `008_user_roles`
+ * applied in order, table for table and column for column. BetterAuth's
+ * `auth_*` tables are its own and are not mapped here.
  *
  * The DDL in `migrations/` stays the source of truth and this file is the
  * typed view of it that queries are written against. `schema.test.ts` asserts
@@ -14,6 +14,7 @@
 
 import {
   type AnyPgColumn,
+  check,
   customType,
   index,
   integer,
@@ -21,6 +22,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -28,6 +30,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import { ROLES } from "./modules/auth";
 import { VISIBILITIES, type Frontmatter, type PageId } from "./modules/page";
 
 export const pageVisibility = pgEnum("page_visibility", VISIBILITIES);
@@ -172,6 +175,30 @@ export const changeEvents = pgTable(
       table.entityKind,
       table.entityId,
       table.versionNo,
+    ),
+  ],
+);
+
+/**
+ * An employee's roles, a row each. `user_id` references `auth_user`, which
+ * BetterAuth owns, so the key is in the migration only.
+ */
+export const userRoles = pgTable(
+  "user_roles",
+  {
+    userId: text("user_id").notNull(),
+    role: text("role", { enum: ROLES }).notNull(),
+    // The admin who granted it; null when it came from API_V2_ADMIN_EMAILS.
+    grantedBy: text("granted_by"),
+    grantedAt: timestamp("granted_at", { withTimezone: true, precision: 3 })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.role] }),
+    check(
+      "user_roles_role_check",
+      sql`${table.role} in ('editor', 'approver', 'admin')`,
     ),
   ],
 );

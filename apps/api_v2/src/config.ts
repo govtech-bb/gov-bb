@@ -30,6 +30,8 @@ export interface AppConfig {
   readonly previewSecret?: Redacted<string>;
   readonly database: DatabaseConfig;
   readonly auth: AuthConfig;
+  /** Emails, lowercased, granted the admin role whenever they sign in. */
+  readonly adminEmails: readonly string[];
   /**
    * Local development only: skip sign-in and run every editor request as a
    * fixed developer. Refused in production and unless the editor is local.
@@ -81,6 +83,17 @@ const environment = z
     GITHUB_CLIENT_SECRET: z.string().min(1),
     AUTH_BYPASS: z.enum(["true", "false"]).optional(),
     PREVIEW_SECRET: z.string().min(1).optional(),
+    // Comma-separated; how an environment always has an admin (ADR 0079).
+    API_V2_ADMIN_EMAILS: z
+      .string()
+      .default("")
+      .transform((value) =>
+        value
+          .split(",")
+          .map((email) => email.trim().toLowerCase())
+          .filter(Boolean),
+      )
+      .pipe(z.array(z.email())),
   })
   .superRefine((value, context) => {
     // A bypassed API admits any caller, so it is only for an editor on this machine.
@@ -149,6 +162,7 @@ export function parseConfig(
       githubClientId: env.GITHUB_CLIENT_ID,
       githubClientSecret: new Redacted(env.GITHUB_CLIENT_SECRET),
     },
+    adminEmails: env.API_V2_ADMIN_EMAILS,
     authBypass: env.AUTH_BYPASS === "true",
   });
 }

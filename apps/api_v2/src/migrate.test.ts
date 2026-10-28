@@ -26,6 +26,7 @@ const ALL = [
   "003_auth",
   "004_github_sessions",
   "005_hierarchy_and_search",
+  "008_user_roles",
 ];
 
 const freshDb = async () => {
@@ -61,6 +62,7 @@ describe("migrate", () => {
       "content_pages",
       "schema_migrations",
       "search_chunks",
+      "user_roles",
     ]);
     await close();
   });
@@ -107,6 +109,7 @@ describe("migrate", () => {
       "003_auth",
       "004_github_sessions",
       "005_hierarchy_and_search",
+      "008_user_roles",
     ]);
     const pages = await exec("select count(*)::int as n from content_pages");
     expect(pages.rows).toEqual([{ n: 0 }]);
@@ -133,6 +136,7 @@ describe("migrate", () => {
 
     await expect(migrate(db, exec)).resolves.toEqual([
       "005_hierarchy_and_search",
+      "008_user_roles",
     ]);
     await exec(
       `insert into categories (slug, title) values ('c', 'C');

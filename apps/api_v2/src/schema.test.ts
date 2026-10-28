@@ -13,7 +13,13 @@
 import { getTableColumns } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { categories, changeEvents, contentPages, searchChunks } from "./schema";
+import {
+  categories,
+  changeEvents,
+  contentPages,
+  searchChunks,
+  userRoles,
+} from "./schema";
 import { createTestDb } from "./test-db";
 import type { Database } from "./db";
 
@@ -40,6 +46,7 @@ const TABLES = {
   content_pages: contentPages,
   change_events: changeEvents,
   search_chunks: searchChunks,
+  user_roles: userRoles,
 };
 
 describe("the Drizzle schema and the migration", () => {

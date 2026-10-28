@@ -255,7 +255,12 @@ export interface EmployeeSession {
 export async function createEmployeeSession(
   database: string,
   apiOrigin: string,
-  options: { expiresAt?: Date; email?: string; emailVerified?: boolean } = {},
+  options: {
+    expiresAt?: Date;
+    email?: string;
+    emailVerified?: boolean;
+    roles?: string[];
+  } = {},
 ): Promise<EmployeeSession> {
   const config = parseConfig({ ...AUTH_ENV, BETTER_AUTH_URL: apiOrigin });
   if (!config.ok) throw config.error;
@@ -276,6 +281,11 @@ export async function createEmployeeSession(
         options.emailVerified ?? true,
       ],
     );
+    for (const role of options.roles ?? [])
+      await pool.query(
+        "insert into user_roles (user_id, role) values ($1, $2)",
+        [userId, role],
+      );
     const session = await context.internalAdapter.createSession(
       userId,
       false,

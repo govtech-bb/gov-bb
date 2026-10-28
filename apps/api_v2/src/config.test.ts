@@ -124,3 +124,26 @@ describe("auth bypass", () => {
     ).toBe("refused");
   });
 });
+
+describe("admin emails", () => {
+  const admins = (input: Record<string, string>) => {
+    const parsed = parseConfig({ ...required, ...input });
+    return parsed.ok ? parsed.value.adminEmails : parsed.error.fields;
+  };
+
+  it("lists nobody unless set", () => {
+    expect(admins({})).toEqual([]);
+  });
+
+  it("reads a comma-separated list, lowercased", () => {
+    expect(
+      admins({ API_V2_ADMIN_EMAILS: " Ada@govtech.bb, ,grace@govtech.bb" }),
+    ).toEqual(["ada@govtech.bb", "grace@govtech.bb"]);
+  });
+
+  it("refuses something that is not an email", () => {
+    expect(admins({ API_V2_ADMIN_EMAILS: "ada" })).toEqual([
+      "API_V2_ADMIN_EMAILS",
+    ]);
+  });
+});

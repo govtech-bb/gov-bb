@@ -8,7 +8,7 @@ import {
   AuthUnavailable,
   parseEmployee,
   GITHUB_ORGANIZATION,
-  type Employee,
+  type Identity,
   type Forbidden,
 } from "../modules/auth";
 import type { Redacted } from "../modules/redacted";
@@ -155,7 +155,7 @@ export async function createBetterAuth(
     /** Verify the cookie in Postgres, then retain only the admitted employee. */
     async findSession(
       credential: Redacted<string>,
-    ): Promise<Result<Employee | null, Forbidden | AuthUnavailable>> {
+    ): Promise<Result<Identity | null, Forbidden | AuthUnavailable>> {
       try {
         const session = await instance.api.getSession({
           headers: new Headers({ cookie: credential.reveal() }),
