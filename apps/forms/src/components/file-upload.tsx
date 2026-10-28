@@ -5,7 +5,14 @@ import ErrorMessage from "./error-message";
 import { optionalSuffix } from "./field-renderer/optional-suffix";
 import { trackEvent } from "../lib/analytics";
 import { formCategory } from "../lib/form-category";
-import { sendFile, checkFile, UPLOAD_PROBLEM_MESSAGE } from "../lib/api/files";
+import {
+  sendFile,
+  checkFile,
+  UPLOAD_PROBLEM_MESSAGE,
+  UPLOAD_IN_PROGRESS_MESSAGE,
+  UPLOAD_NOT_ADDED_MESSAGE,
+  setUploadBlock,
+} from "../lib/api/files";
 import {
   fileTypesRunner,
   INFECTED_FILE_MESSAGE,
@@ -43,6 +50,22 @@ interface PendingUpload {
 }
 
 const CHECKING_MESSAGE = "Checking your file";
+
+/**
+ * Why Continue has to wait for this field, or undefined. A file refused before
+ * upload (`rejected`) doesn't block: it never started, so nothing is lost.
+ */
+function continueBlock(pending: PendingUpload[]): string | undefined {
+  if (
+    pending.some((p) => p.status === "uploading" || p.status === "checking")
+  ) {
+    return UPLOAD_IN_PROGRESS_MESSAGE;
+  }
+  if (pending.some((p) => p.status !== "rejected")) {
+    return UPLOAD_NOT_ADDED_MESSAGE;
+  }
+  return undefined;
+}
 const SCAN_TIMEOUT_MESSAGE =
   "We could not finish checking your file. Try again.";
 
@@ -64,6 +87,7 @@ export default function FileUpload({
   formId,
   previewToken,
   draftToken,
+  onUploadsChange,
 }: FileUploadProps) {
   const files = value ?? [];
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -78,6 +102,17 @@ export default function FileUpload({
 
   const [pending, setPending] = React.useState<PendingUpload[]>([]);
   const idRef = React.useRef(0);
+
+  // Tell the step's Continue (through the field validator) whether it has to
+  // wait, and let the field re-judge a shown error as that changes.
+  const blockReason = continueBlock(pending);
+  const onUploadsChangeRef = React.useRef(onUploadsChange);
+  onUploadsChangeRef.current = onUploadsChange;
+  React.useEffect(() => {
+    setUploadBlock(field.id, blockReason);
+    onUploadsChangeRef.current?.();
+  }, [field.id, blockReason]);
+  React.useEffect(() => () => setUploadBlock(field.id, undefined), [field.id]);
 
   // Single live region announcing every terminal change to screen readers —
   // added, removed, rejected, or failed (WCAG 4.1.3).

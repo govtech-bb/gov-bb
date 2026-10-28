@@ -10,6 +10,7 @@ import { valueIsEmpty } from "./validation-methods";
 import { getVisibleFields } from "./helpers/behavior-helper";
 import { buildStepScopedValues } from "./helpers/value-tree";
 import { placeBeingLocated, ROUTING_COORDINATE } from "../api/geocode";
+import { uploadBlock } from "../api/files";
 import {
   validate,
   validateDateField,
@@ -178,6 +179,17 @@ export const buildFieldValidationProperties = (
   field: ClientPrimitive,
 ): FieldValidationProperties => {
   const properties = buildRuleValidationProperties(field);
+  if (field.htmlType === "file") {
+    // A file still uploading, or refused, isn't a value yet: say why Continue
+    // has to wait before judging the value itself (#2940).
+    return {
+      ...properties,
+      onDynamic(input) {
+        const blocked = uploadBlock(field.id);
+        return blocked ? [blocked] : properties.onDynamic?.(input);
+      },
+    };
+  }
   const coordinatesFieldId = field.geocodeTargets?.coordinatesFieldId;
   if (field.htmlType !== "address-lookup" || !coordinatesFieldId) {
     return properties;

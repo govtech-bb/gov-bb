@@ -19,6 +19,11 @@ import {
   stepPassesValidation,
 } from "./validation-builder";
 import { locatingPlace } from "../api/geocode";
+import {
+  setUploadBlock,
+  UPLOAD_IN_PROGRESS_MESSAGE,
+  UPLOAD_NOT_ADDED_MESSAGE,
+} from "../api/files";
 import type {
   ClientFormStep,
   ClientServiceContract,
@@ -1012,5 +1017,51 @@ describe("stepPassesValidation", () => {
     expect(
       stepPassesValidation(repeatable, makeFormApi({ step1_hasJob: "yes" })),
     ).toBe(true);
+  });
+});
+
+// A file not yet added — still uploading, or refused — stops Continue with a
+// reason, instead of being lost or slipping past on an optional field (#2940).
+describe("file field with an upload that is not added yet", () => {
+  const fileField = (validations: ClientPrimitive["validations"] = {}) =>
+    makeField("proof", "docs", { htmlType: "file", validations });
+
+  afterEach(() => setUploadBlock("docs_proof", undefined));
+
+  it.each([UPLOAD_IN_PROGRESS_MESSAGE, UPLOAD_NOT_ADDED_MESSAGE])(
+    "fails an optional field with %j",
+    (reason) => {
+      const { onDynamic } = buildFieldValidationProperties(fileField());
+      setUploadBlock("docs_proof", reason);
+
+      expect(onDynamic!({ value: null, fieldApi: makeFieldApi() })).toEqual([
+        reason,
+      ]);
+    },
+  );
+
+  // "Wait for it" is more useful than "this field is required" while the file
+  // the person picked is still on its way.
+  it("puts the upload reason before the field's own rules", () => {
+    const { onDynamic } = buildFieldValidationProperties(
+      fileField({ required: { value: true, error: "Upload the proof" } }),
+    );
+    setUploadBlock("docs_proof", UPLOAD_IN_PROGRESS_MESSAGE);
+
+    expect(onDynamic!({ value: null, fieldApi: makeFieldApi() })).toEqual([
+      UPLOAD_IN_PROGRESS_MESSAGE,
+    ]);
+  });
+
+  it("falls back to the field's own rules once nothing is blocking", () => {
+    const { onDynamic } = buildFieldValidationProperties(
+      fileField({ required: { value: true, error: "Upload the proof" } }),
+    );
+    setUploadBlock("docs_proof", UPLOAD_IN_PROGRESS_MESSAGE);
+    setUploadBlock("docs_proof", undefined);
+
+    expect(onDynamic!({ value: null, fieldApi: makeFieldApi() })).toEqual([
+      "Upload the proof",
+    ]);
   });
 });

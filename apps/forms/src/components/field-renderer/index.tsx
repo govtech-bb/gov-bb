@@ -148,6 +148,10 @@ export default function FieldRenderer({
                   sharedProps={ctx.sharedProps}
                   value={f.state.value as UploadedFile[] | null | undefined}
                   onFileChange={(files) => ctx.commitChange(files)}
+                  // Same re-judge as commitChange: only once an error shows.
+                  onUploadsChange={() => {
+                    if (!f.state.meta.isValid) void f.validate("submit");
+                  }}
                   errorMessage={ctx.errorMessage}
                   errorId={ctx.errorId}
                   formId={formId}

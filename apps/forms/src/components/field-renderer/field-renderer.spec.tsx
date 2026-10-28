@@ -43,6 +43,7 @@ const mockFieldApi = {
   },
   handleBlur: vi.fn(),
   handleChange: vi.fn(),
+  validate: vi.fn(),
 };
 
 const mockForm = {
@@ -1716,6 +1717,27 @@ describe("FieldRenderer", () => {
       const legend = container.querySelector(".govbb-fieldset__legend");
       expect(legend).toBeTruthy();
       expect(legend).not.toHaveClass("govbb-visually-hidden");
+    });
+  });
+
+  // The upload widget reports when its Continue block changes; a field already
+  // showing an error is re-judged so "Wait for your file…" clears (#2940).
+  describe("file field re-judging its error as uploads change", () => {
+    const fileField = primitive("file", {
+      validations: { fileTypes: { value: [".pdf"], error: "Upload a PDF" } },
+    });
+
+    it("re-validates a field that is showing an error", () => {
+      mockState = { value: null, meta: { isValid: false, errors: ["x"] } };
+      renderField(fileField);
+      expect(mockFieldApi.validate).toHaveBeenCalledWith("submit");
+    });
+
+    it("leaves a field with no error alone, so nothing shows before Continue", () => {
+      mockState = { value: null, meta: { isValid: true, errors: [] } };
+      mockFieldApi.validate.mockClear();
+      renderField(fileField);
+      expect(mockFieldApi.validate).not.toHaveBeenCalled();
     });
   });
 });

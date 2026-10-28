@@ -17,6 +17,9 @@ import {
   checkFile,
   FileUploadError,
   UPLOAD_PROBLEM_MESSAGE,
+  UPLOAD_IN_PROGRESS_MESSAGE,
+  UPLOAD_NOT_ADDED_MESSAGE,
+  uploadBlock,
 } from "../lib/api/files";
 import {
   INFECTED_FILE_MESSAGE,
@@ -807,12 +810,10 @@ describe("FileUpload", () => {
 
     it("after a scan that took too long, Retry re-checks without uploading again", async () => {
       const user = userEvent.setup();
-      mockCheckFile
-        .mockResolvedValueOnce("timeout")
-        .mockResolvedValueOnce({
-          ...makeUploaded("doc.pdf"),
-          scanStatus: "clean",
-        });
+      mockCheckFile.mockResolvedValueOnce("timeout").mockResolvedValueOnce({
+        ...makeUploaded("doc.pdf"),
+        scanStatus: "clean",
+      });
       const fileInput = renderHarness();
 
       await user.upload(fileInput, pdf());
@@ -900,6 +901,71 @@ describe("FileUpload", () => {
       expect(
         await axe(fileInput.closest(".govbb-file-upload") as HTMLElement),
       ).toHaveNoViolations();
+    });
+  });
+
+  // The step's Continue reads this through the file field's validator.
+  describe("Continue gate (#2940)", () => {
+    const pdf = () => makeFile("doc.pdf", "application/pdf", 100);
+
+    it("blocks while uploading, then clears once the file is added", async () => {
+      const user = userEvent.setup();
+      let finishCheck: (f: UploadedFile) => void = () => {};
+      mockCheckFile.mockReturnValue(
+        new Promise<UploadedFile>((resolve) => (finishCheck = resolve)),
+      );
+      const onUploadsChange = vi.fn();
+      const { fileInput } = renderComponent({ onUploadsChange });
+
+      await user.upload(fileInput, pdf());
+      await waitFor(() =>
+        expect(uploadBlock(baseField.id)).toBe(UPLOAD_IN_PROGRESS_MESSAGE),
+      );
+
+      await act(async () => finishCheck(makeUploaded("doc.pdf")));
+      expect(uploadBlock(baseField.id)).toBeUndefined();
+      expect(onUploadsChange).toHaveBeenCalled();
+    });
+
+    it("blocks while a refused file is on the field, until it is removed", async () => {
+      const user = userEvent.setup();
+      mockCheckFile.mockResolvedValue({
+        ...makeUploaded("doc.pdf"),
+        scanStatus: "infected",
+      });
+      const { fileInput } = renderComponent();
+
+      await user.upload(fileInput, pdf());
+      await waitFor(() =>
+        expect(uploadBlock(baseField.id)).toBe(UPLOAD_NOT_ADDED_MESSAGE),
+      );
+
+      await user.click(screen.getByRole("button", { name: "Remove doc.pdf" }));
+      expect(uploadBlock(baseField.id)).toBeUndefined();
+    });
+
+    // A wrong type or an oversize file never started uploading, so nothing is
+    // lost by moving on; the field's own rules judge what is there.
+    it("does not block for a file refused before upload", async () => {
+      const user = userEvent.setup({ applyAccept: false });
+      const { fileInput } = renderComponent();
+
+      await user.upload(fileInput, makeFile("notes.txt", "text/plain", 10));
+      await screen.findByRole("button", { name: "Dismiss notes.txt" });
+
+      expect(uploadBlock(baseField.id)).toBeUndefined();
+    });
+
+    it("clears the block when the field leaves the page", async () => {
+      const user = userEvent.setup();
+      mockSendFile.mockReturnValue(new Promise(() => {}));
+      const { fileInput, unmount } = renderComponent();
+
+      await user.upload(fileInput, pdf());
+      await waitFor(() => expect(uploadBlock(baseField.id)).toBeDefined());
+
+      unmount();
+      expect(uploadBlock(baseField.id)).toBeUndefined();
     });
   });
 });

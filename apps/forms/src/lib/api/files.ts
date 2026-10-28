@@ -258,3 +258,26 @@ export const checkFile = async ({
     await wait(SCAN_RECHECK_INTERVAL_MS);
   }
 };
+
+/** Continue pressed while a file on the field is still uploading or checking. */
+export const UPLOAD_IN_PROGRESS_MESSAGE =
+  "Wait for your file to finish uploading";
+/** Continue pressed while a refused or failed file is still on the field. */
+export const UPLOAD_NOT_ADDED_MESSAGE =
+  "Remove or retry the file that could not be added";
+
+// File fields whose picked file isn't a form value yet, by field id, with the
+// reason Continue must wait. The upload widget keeps this current and the
+// field's validator reads it, so the step can't move on mid-upload or past a
+// refused file (#2940) — the same shape as `placesBeingLocated` in geocode.ts.
+const uploadsNotAdded = new Map<string, string>();
+
+/** Record why `fieldId` can't be continued past, or clear it with undefined. */
+export function setUploadBlock(fieldId: string, reason: string | undefined) {
+  if (reason) uploadsNotAdded.set(fieldId, reason);
+  else uploadsNotAdded.delete(fieldId);
+}
+
+/** Why `fieldId` can't be continued past yet; undefined when nothing blocks. */
+export const uploadBlock = (fieldId: string): string | undefined =>
+  uploadsNotAdded.get(fieldId);

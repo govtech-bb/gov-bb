@@ -86,6 +86,11 @@ export type FileUploadProps = {
   field: ClientPrimitive;
   sharedProps: React.InputHTMLAttributes<HTMLInputElement>;
   onFileChange: (files: UploadedFile[] | null) => void;
+  /**
+   * Called when whether this field blocks Continue changes (a file starts or
+   * stops uploading, or a refused file is removed), so a shown error is re-judged.
+   */
+  onUploadsChange?: () => void;
   value?: UploadedFile[] | null;
   errorMessage?: string;
   /** id for the error element, so the input's aria-describedby resolves. */
