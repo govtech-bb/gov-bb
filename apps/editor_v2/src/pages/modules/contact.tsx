@@ -205,22 +205,21 @@ function contactSettings(node: Parameters<PageHandler["$import"]>[0]): ContactSe
     throw new UnsupportedPageContent(node);
   const data = node.attributes ?? {};
 
+  const fields = (data.fields ?? "")
+    .split(",")
+    .map((field) => field.trim())
+    .filter(Boolean);
+
+  // Only the form the block saves in, so opening and saving never rewrites a block nobody touched
   if (
     node.children.length ||
-    Object.keys(data).some((key) => !ATTRIBUTES.includes(key)) ||
-    ATTRIBUTES.some((key) => data[key] == null) ||
-    !data.collection
+    Object.keys(data).join() !== ATTRIBUTES.join() ||
+    !data.collection ||
+    fields.join(",") !== data.fields
   )
     throw new UnsupportedPageContent(node, "This contact block needs Markdown source editing");
 
-  return {
-    collection: data.collection,
-    record: data.record ?? "",
-    fields: (data.fields ?? "")
-      .split(",")
-      .map((field) => field.trim())
-      .filter(Boolean),
-  };
+  return { collection: data.collection, record: data.record ?? "", fields };
 }
 
 const contact: PageHandler = {

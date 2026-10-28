@@ -105,6 +105,9 @@ describe("the contact block's Markdown", () => {
     ['::contact{collection="contacts" record="x" fields="phone" onclick="y"}'],
     ['::contact{record="x" fields="phone"}'],
     ['::contact[Label]{collection="contacts" record="x" fields="phone"}'],
+    ['::contact{collection="contacts" record="x" fields="phone, email"}'],
+    ['::contact{collection="contacts" record="x" fields="phone,,email"}'],
+    ['::contact{record="x" collection="contacts" fields="phone"}'],
   ])("leaves a contact block it can't keep exactly to source editing: %s", (source) => {
     expect(govbbPageCodec.prepare(`${source}\n`).mode).toBe("source");
   });

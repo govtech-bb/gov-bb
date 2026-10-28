@@ -12,11 +12,12 @@ advised in a browser that anyone can bypass.
 
 ## Entry points
 
-| Import                             | What it is                              |
-| ---------------------------------- | --------------------------------------- |
-| `@govtech-bb/block-kit`            | the barrel: the format and the renderer |
-| `@govtech-bb/block-kit/document`   | the format and rules, free of React     |
-| `@govtech-bb/block-kit/styles.css` | the renderer's styles                   |
+| Import                             | What it is                               |
+| ---------------------------------- | ---------------------------------------- |
+| `@govtech-bb/block-kit`            | the barrel: the format and the renderer  |
+| `@govtech-bb/block-kit/document`   | the format and rules, free of React      |
+| `@govtech-bb/block-kit/contact`    | a contact block's details, free of React |
+| `@govtech-bb/block-kit/styles.css` | the renderer's styles                    |
 
 The React renderer (`src/render/`) arrived from the block-editor spike with
 `landing_v2` in #2702. Only the barrel re-exports it; `./document` stays the
