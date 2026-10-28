@@ -1,18 +1,20 @@
 import assert from "node:assert/strict";
 import { authenticatedContext, servicesFixture } from "./auth-fixture.mjs";
-import { fixturePage, installPageApi } from "./page-api-fixture.mjs";
+import { fixtureCategory, fixturePage, installPageApi } from "./page-api-fixture.mjs";
 import { chromium } from "./playwright.mjs";
 
 const baseURL = process.argv[2];
 
 const service = { ...servicesFixture[0], category: { slug: "education", title: "Education" } };
 
-const taxonomy = [
-  { id: "education", parent_id: null, slug: "education", title: "Education", url: "/education" },
-  { id: "health", parent_id: null, slug: "health", title: "Health", url: "/health" },
-  { id: "youth", parent_id: null, slug: "youth", title: "Youth", url: "/youth" },
-  { id: "sport", parent_id: "youth", slug: "sport", title: "Sport", url: "/youth/sport" },
-  { id: "arts", parent_id: "youth", slug: "arts", title: "Arts", url: "/youth/arts" },
+const youth = fixtureCategory("youth", "youth", "Youth", { position: 2 });
+
+const saved = [
+  fixtureCategory("education", "education", "Education", { services: 1 }),
+  fixtureCategory("health", "health", "Health", { position: 1 }),
+  youth,
+  fixtureCategory("sport", "sport", "Sport", {}, youth),
+  fixtureCategory("arts", "arts", "Arts", { position: 1 }, youth),
 ];
 
 const browser = await chromium.launch();
@@ -28,14 +30,14 @@ const firstRead = Promise.withResolvers();
 
 let held = false;
 
-await context.route("**/taxonomy", async (route) => {
+await context.route("**/editor/categories", async (route) => {
   if (!held) {
     held = true;
     await firstRead.promise;
   }
 
   await route.fulfill({
-    json: { categories: taxonomy },
+    json: { categories: saved },
     headers: {
       "access-control-allow-origin": route.request().headers().origin ?? "*",
       "access-control-allow-credentials": "true",

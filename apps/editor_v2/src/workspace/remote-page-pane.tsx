@@ -1,14 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { ApiFailure, type ApiPage, type EditorApi, type TaxonomyCategory } from "../api/client";
+import { ApiFailure, type ApiPage, type EditorApi, type SavedCategory } from "../api/client";
 import { pageToMarkdown, pickerCategories, pageFieldLabel } from "../api/page-markdown";
 import {
   PRELOAD_FRESH,
   pageQuery,
+  savedCategoriesQuery,
   serviceQuery,
   servicesQuery,
-  taxonomyQuery,
 } from "../api/queries";
 import { PageDraftEditor } from "../host/page-editor";
 import { download } from "../host/source-ui";
@@ -43,9 +43,9 @@ export function RemotePagePane({
 }) {
   const opened = useRef(false);
   const page = useQuery({ ...pageQuery(api, id), staleTime: PRELOAD_FRESH });
-  const taxonomy = useQuery(taxonomyQuery(api));
+  const categories = useQuery(savedCategoriesQuery(api));
 
-  if (!opened.current && (page.isError || taxonomy.isError))
+  if (!opened.current && (page.isError || categories.isError))
     return active ? (
       <EmptyState
         kind="failed"
@@ -57,7 +57,7 @@ export function RemotePagePane({
             variant="secondary"
             onClick={() => {
               void page.refetch();
-              void taxonomy.refetch();
+              void categories.refetch();
             }}
           >
             Try again
@@ -66,7 +66,7 @@ export function RemotePagePane({
       />
     ) : null;
 
-  if (!page.data || !taxonomy.data || (!opened.current && page.isFetching && page.isStale))
+  if (!page.data || !categories.data || (!opened.current && page.isFetching && page.isStale))
     return active ? <LoadingState size="page" label="Loading page…" /> : null;
 
   opened.current = true;
@@ -76,14 +76,14 @@ export function RemotePagePane({
       key={id}
       api={api}
       page={page.data}
-      categories={taxonomy.data}
+      categories={categories.data}
       active={active}
       onSession={onSession}
-      readError={page.error ?? taxonomy.error}
-      reading={page.isFetching || taxonomy.isFetching}
+      readError={page.error ?? categories.error}
+      reading={page.isFetching || categories.isFetching}
       retryRead={() => {
         void page.refetch();
-        void taxonomy.refetch();
+        void categories.refetch();
       }}
     />
   );
@@ -106,7 +106,7 @@ function RemotePageEditor({
 }: {
   api: EditorApi;
   page: ApiPage;
-  categories: readonly TaxonomyCategory[];
+  categories: readonly SavedCategory[];
   active: boolean;
   onSession: SessionListener;
   readError: Error | null;

@@ -1,6 +1,6 @@
 import { isMap, isScalar, isSeq, parseDocument, stringify } from "yaml";
 import { parsePageMarkdown } from "../pages/markdown";
-import type { ApiPage, FieldError, SavePageInput, TaxonomyCategory } from "./client";
+import type { ApiPage, FieldError, SavePageInput, SavedCategory } from "./client";
 import { slugify } from "./slug";
 
 const TEXT_FRONTMATTER = ["stage", "section", "service_type", "source_url"] as const;
@@ -24,7 +24,7 @@ const KNOWN_KEYS = new Set([
 const VISIBILITIES = ["public", "preview", "draft"] as const;
 
 /** The editor's Markdown for a page: its fields as YAML frontmatter, then its body. */
-export function pageToMarkdown(page: ApiPage, categories: readonly TaxonomyCategory[]) {
+export function pageToMarkdown(page: ApiPage, categories: readonly SavedCategory[]) {
   const values = new Map<string, string | boolean | string[]>([["title", page.title]]);
 
   if (page.frontmatter.lede !== undefined) values.set("lede", page.frontmatter.lede);
@@ -84,7 +84,7 @@ export type PageSaveInputResult =
 export function markdownToPageSaveInput(
   markdown: string,
   base: ApiPage,
-  categories: readonly TaxonomyCategory[],
+  categories: readonly SavedCategory[],
 ): PageSaveInputResult {
   const first = parsePageMarkdown(markdown).children[0];
   const yaml = first?.type === "yaml" ? first : undefined;
@@ -188,7 +188,7 @@ export function markdownToPageSaveInput(
 function categoryOf(
   document: ReturnType<typeof parseDocument>,
   base: ApiPage,
-  categories: readonly TaxonomyCategory[],
+  categories: readonly SavedCategory[],
   errors: FieldError[],
 ) {
   const named = document.get("category");
@@ -246,7 +246,7 @@ function categoryOf(
 }
 
 /** The categories page details offers: each top-level category with its subcategories. */
-export function pickerCategories(categories: readonly TaxonomyCategory[]) {
+export function pickerCategories(categories: readonly SavedCategory[]) {
   return categories.flatMap((category) =>
     category.parent_id === null
       ? [
