@@ -1727,16 +1727,41 @@ describe("FieldRenderer", () => {
       validations: { fileTypes: { value: [".pdf"], error: "Upload a PDF" } },
     });
 
-    it("re-validates a field that is showing an error", () => {
+    // Picking a file starts an upload, which changes the block.
+    const pickFile = async (container: HTMLElement) => {
+      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+      const input = container.querySelector(
+        ".govbb-file-upload__input",
+      ) as HTMLInputElement;
+      await userEvent.upload(
+        input,
+        new File(["x"], "a.pdf", { type: "application/pdf" }),
+      );
+    };
+
+    afterEach(() => vi.restoreAllMocks());
+
+    it("re-validates a field that is showing an error", async () => {
       mockState = { value: null, meta: { isValid: false, errors: ["x"] } };
-      renderField(fileField);
+      const { container } = renderField(fileField);
+      await pickFile(container);
       expect(mockFieldApi.validate).toHaveBeenCalledWith("submit");
     });
 
-    it("leaves a field with no error alone, so nothing shows before Continue", () => {
-      mockState = { value: null, meta: { isValid: true, errors: [] } };
+    // The form sends the person back here with the server's refusal (an unsafe
+    // file) on the field; re-judging on arrival would wipe it.
+    it("doesn't re-validate an error on arrival, before any upload changes", () => {
+      mockState = { value: null, meta: { isValid: false, errors: ["x"] } };
       mockFieldApi.validate.mockClear();
       renderField(fileField);
+      expect(mockFieldApi.validate).not.toHaveBeenCalled();
+    });
+
+    it("leaves a field with no error alone, so nothing shows before Continue", async () => {
+      mockState = { value: null, meta: { isValid: true, errors: [] } };
+      mockFieldApi.validate.mockClear();
+      const { container } = renderField(fileField);
+      await pickFile(container);
       expect(mockFieldApi.validate).not.toHaveBeenCalled();
     });
   });

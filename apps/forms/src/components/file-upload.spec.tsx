@@ -955,13 +955,23 @@ describe("FileUpload", () => {
         expect(uploadBlock(baseField.id)).toBe(UPLOAD_IN_PROGRESS_MESSAGE),
       );
 
-      // Once on mount, once when the upload started blocking...
-      expect(onUploadsChange).toHaveBeenCalledTimes(2);
+      // Once when the upload started blocking...
+      expect(onUploadsChange).toHaveBeenCalledTimes(1);
 
       await act(async () => finishCheck(makeUploaded("doc.pdf")));
       expect(uploadBlock(baseField.id)).toBeUndefined();
       // ...and once more when it stopped, so a shown error is re-judged.
-      expect(onUploadsChange).toHaveBeenCalledTimes(3);
+      expect(onUploadsChange).toHaveBeenCalledTimes(2);
+    });
+
+    // Arriving on the step changes nothing about the uploads. Re-judging then
+    // would wipe an error the server put on the field at submit (an unsafe
+    // file), leaving the step blank after the form sends the person back.
+    it("doesn't ask the field to re-judge when the step first shows", () => {
+      const onUploadsChange = vi.fn();
+      renderComponent({ onUploadsChange });
+
+      expect(onUploadsChange).not.toHaveBeenCalled();
     });
 
     // An unsafe file has only Remove, so the message mustn't send the person

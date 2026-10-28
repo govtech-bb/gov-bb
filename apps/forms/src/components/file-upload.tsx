@@ -109,12 +109,17 @@ export default function FileUpload({
   const idRef = React.useRef(0);
 
   // Tell the step's Continue (through the field validator) whether it has to
-  // wait, and let the field re-judge a shown error as that changes.
+  // wait, and let the field re-judge a shown error as that changes. Only on a
+  // change: re-judging as the step first shows would wipe the error the server
+  // put on the field at submit (an unsafe file), and nothing has changed yet.
   const blockReason = continueBlock(pending);
   const onUploadsChangeRef = React.useRef(onUploadsChange);
   onUploadsChangeRef.current = onUploadsChange;
+  const reportedBlockRef = React.useRef<string | undefined>(undefined);
   React.useEffect(() => {
     setUploadBlock(field.id, blockReason);
+    if (reportedBlockRef.current === blockReason) return;
+    reportedBlockRef.current = blockReason;
     onUploadsChangeRef.current?.();
   }, [field.id, blockReason]);
   React.useEffect(() => () => setUploadBlock(field.id, undefined), [field.id]);
