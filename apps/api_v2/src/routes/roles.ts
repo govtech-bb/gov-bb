@@ -7,25 +7,18 @@ import { storageFailed } from "./responses";
 
 /**
  * Role management: admins only. It inherits the editor scope's employee,
- * Origin and no-store checks, and its own hook refuses everyone else before
- * any route here runs.
+ * Origin and no-store checks, and each route declares the admin role, which
+ * the editor scope's hook enforces before it runs.
  */
 export const editorRoleRoutes: FastifyPluginAsyncZod<{
   roles: RoleRecords;
   actor: (request: FastifyRequest) => Employee;
 }> = async (admin, { roles, actor }) => {
-  admin.addHook("onRequest", async (request, reply) => {
-    if (!actor(request).roles.includes("admin"))
-      return reply.status(403).send({
-        error: "forbidden",
-        message: "Only admins can see or change who has which role.",
-      });
-  });
-
   admin.route({
     method: "GET",
     url: "/editor/employees",
     schema: SCHEMAS.listEmployees,
+    config: { role: "admin" },
     handler: async (request, reply) => {
       const listed = await roles.employees();
       return listed.ok

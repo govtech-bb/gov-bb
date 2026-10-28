@@ -118,9 +118,10 @@ export function betterAuthOptions(
                 [user.id],
               );
             } catch {
-              // The driver's message can carry SQL parameters.
+              // The driver's message can carry SQL parameters. The user id
+              // tells an operator whom to grant `editor` to.
               logger.error(
-                { failure: "default_role_grant_failed" },
+                { failure: "default_role_grant_failed", userId: user.id },
                 "could not make a new user an editor",
               );
             }

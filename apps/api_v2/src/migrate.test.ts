@@ -17,6 +17,7 @@ import { SQL as INIT_SQL } from "./migrations/001_init";
 import { SQL as MARKDOWN_PAGES_SQL } from "./migrations/002_markdown_pages";
 import { SQL as AUTH_SQL } from "./migrations/003_auth";
 import { SQL as GITHUB_SESSIONS_SQL } from "./migrations/004_github_sessions";
+import { SQL as DEFAULT_EDITOR_SQL } from "./migrations/009_default_editor_role";
 import type { Database } from "./db";
 import { createEmptyDb } from "./test-db";
 
@@ -243,6 +244,23 @@ describe("migrate", () => {
       { user_id: "approver", granted_by: null },
       { user_id: "editor", granted_by: "admin" },
     ]);
+    await close();
+  });
+
+  it("does not give a revoked editor role back when 009 is replayed", async () => {
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+    await exec(`
+      insert into auth_user (id, name, email, "emailVerified") values
+        ('revoked', 'Revoked editor', 'revoked@govtech.bb', true);
+    `);
+
+    await exec(DEFAULT_EDITOR_SQL);
+
+    expect(
+      (await exec("select user_id from user_roles where user_id = 'revoked'"))
+        .rows,
+    ).toEqual([]);
     await close();
   });
 });

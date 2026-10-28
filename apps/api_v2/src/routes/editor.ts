@@ -14,9 +14,9 @@ import { editorRoleRoutes } from "./roles";
 declare module "fastify" {
   interface FastifyContextConfig {
     /**
-     * The role a route needs (ADR 0079). Every write route names one; the
-     * editor scope refuses a write that names none, so a new route fails
-     * closed rather than open.
+     * The role a route needs (ADR 0079). Every write route names one, and
+     * a read may; the editor scope refuses a write that names none, so a new
+     * route fails closed rather than open.
      */
     role?: Role;
   }
