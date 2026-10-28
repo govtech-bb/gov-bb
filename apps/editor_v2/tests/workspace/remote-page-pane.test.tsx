@@ -9,7 +9,7 @@ import {
 import { act } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { createEditorApi, type ApiPage } from "../../src/api/client";
-import { pageQuery, savedCategoriesQuery } from "../../src/api/queries";
+import { categoriesQuery, pageQuery } from "../../src/api/queries";
 import { govbbPageCodec } from "../../src/presets/govbb-page";
 import { Toaster } from "../../src/ui/toast";
 import { RemotePagePane } from "../../src/workspace/remote-page-pane";
@@ -196,7 +196,7 @@ test("a page preloaded just now, as its link was pointed at, opens without waiti
   const api = createEditorApi("http://localhost:3020");
   const client = new QueryClient();
   client.setQueryData(pageQuery(api, page.id).queryKey, page);
-  client.setQueryData(savedCategoriesQuery(api).queryKey, []);
+  client.setQueryData(categoriesQuery(api).queryKey, []);
 
   await renderInPage(
     <RouterContextProvider router={router}>

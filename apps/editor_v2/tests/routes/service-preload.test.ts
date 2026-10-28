@@ -3,12 +3,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { createMemoryHistory, createRouter } from "@tanstack/react-router";
 import { afterEach, expect, test, vi } from "vitest";
 import { createEditorApi, type ServiceSummary } from "../../src/api/client";
-import {
-  pageQuery,
-  savedCategoriesQuery,
-  serviceQuery,
-  servicesQuery,
-} from "../../src/api/queries";
+import { categoriesQuery, pageQuery, serviceQuery, servicesQuery } from "../../src/api/queries";
 import type { EditorAuth } from "../../src/auth/session";
 import { routeTree } from "../../src/routeTree.gen";
 
@@ -76,7 +71,7 @@ test("pointing at a service's link starts loading the service and its entry page
   await vi.waitFor(() => expect(asked).toHaveLength(3));
   expect(queryClient.getQueryData(serviceQuery(api, service.id).queryKey)).toBeDefined();
   expect(queryClient.getQueryData(pageQuery(api, service.id).queryKey)).toBeDefined();
-  expect(queryClient.getQueryData(savedCategoriesQuery(api).queryKey)).toEqual([]);
+  expect(queryClient.getQueryData(categoriesQuery(api).queryKey)).toEqual([]);
   // Preloading never asks who's signed in
   expect(session).not.toHaveBeenCalled();
 });

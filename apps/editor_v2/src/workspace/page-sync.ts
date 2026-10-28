@@ -1,10 +1,5 @@
-import {
-  ApiFailure,
-  type ApiPage,
-  type EditorApi,
-  type FieldError,
-  type SavedCategory,
-} from "../api/client";
+import type { Category } from "../api/categories";
+import { ApiFailure, type ApiPage, type EditorApi, type FieldError } from "../api/client";
 import { markdownToPageSaveInput } from "../api/page-markdown";
 import type { DraftStore } from "../persistence/draft-store";
 
@@ -40,7 +35,7 @@ export async function savePageDraft(
   api: Pick<EditorApi, "savePage">,
   base: ServerPageBaseline,
   markdown: string,
-  categories: readonly SavedCategory[],
+  categories: readonly Category[],
 ): Promise<PageSaveOutcome> {
   const fields = markdownToPageSaveInput(markdown, base.page, categories);
 

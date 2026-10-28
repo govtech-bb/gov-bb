@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { categoryLabel, categoryRows } from "../api/categories";
 import type { EditorApi, CreatePageInput, ServiceDetail } from "../api/client";
 import { apiFailureMessages } from "../api/failure-messages";
 import { suggestedUrl, urlProblem, pageFieldLabel } from "../api/page-markdown";
-import { pageQuery, savedCategoriesQuery } from "../api/queries";
+import { categoriesQuery, pageQuery } from "../api/queries";
 import { Button } from "../ui/button";
 import { ConfirmDialog } from "../ui/confirm-dialog";
 import { Field } from "../ui/field";
@@ -60,7 +61,7 @@ export function CreateRemoteServiceDialog({
   close: () => void;
   done: (id: string) => void;
 }) {
-  const categories = useQuery(savedCategoriesQuery(api)).data ?? [];
+  const categories = useQuery(categoriesQuery(api)).data ?? [];
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [edited, setEdited] = useState<string>();
@@ -105,9 +106,11 @@ export function CreateRemoteServiceDialog({
               onChange={(event) => setCategoryId(event.target.value)}
             >
               <option value="">Choose a category</option>
-              {categories.map((item) => (
+              {categoryRows(categories).map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.parent_id ? `— ${item.title}` : item.title}
+                  {item.parent_id
+                    ? `- ${categoryLabel(item, categories)}`
+                    : categoryLabel(item, categories)}
                 </option>
               ))}
             </NativeSelect>

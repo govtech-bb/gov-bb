@@ -1,27 +1,41 @@
 import { slugify } from "./slug";
 
-// Category preview data and validation. These local rules are not a category-write API contract.
-
-/** A category services are filed under, with its place among its siblings and how many services it holds. */
+/** A saved category and the metadata used by the editor's category rules. */
 export type Category = {
   id: string;
-  /** The category it's a subcategory of; null at the top level. */
+  /** The parent category; null at the top level. */
   parent_id: string | null;
   slug: string;
   title: string;
-  description: string;
-  /** `/<category>`, or `/<category>/<subcategory>`. */
+  description: string | null;
+  /** `/<category>` or `/<category>/<subcategory>`. */
   url: string;
-  /** Its place among the categories with the same parent: the lowest comes first. */
+  /** Sibling sort position; lower values come first. */
   position: number;
-  /** The services filed directly under it. */
+  /** Direct service roots, including drafts. */
   services: number;
-  /** The real API name used by Services filters, unchanged by preview edits. */
-  serviceCategoryTitle: string;
+  /** An app-owned route depends on this category's address. */
+  reserved_route: boolean;
+  /** Last-read version, sent when saving, deleting or reordering. */
+  updated_at: string;
 };
 
-/** What adding or editing a category sets. */
+/** Fields shared by category creation and editing; a blank description is saved as null. */
 export type CategoryFields = Pick<Category, "title" | "slug" | "parent_id" | "description">;
+
+/** A complete sibling snapshot and its requested order; the whole group saves or none does. */
+export type CategoryOrder = {
+  parent_id: string | null;
+  expected: Pick<Category, "id" | "updated_at">[];
+  ordered_ids: string[];
+};
+
+/** Deletion blockers count every assigned page, not just service roots. */
+export type CategoryBlockers = {
+  pages: number;
+  subcategories: number;
+  reserved_route: boolean;
+};
 
 /** A field that can't be saved, and why: the shape the content API refuses a change in. */
 export type CategoryProblem = { field: keyof CategoryFields; message: string };
@@ -92,15 +106,11 @@ export function movedOrder(categories: readonly Category[], id: string, by: -1 |
   return ids.toSpliced(from, 1).toSpliced(to, 0, id);
 }
 
-/** The categories with one group of siblings put in this order. */
-export function reordered(categories: readonly Category[], ids: readonly string[]) {
-  const positions = new Map(ids.map((id, position) => [id, position]));
+/** The categories with these, as the content API just saved them, in place of the versions read before. */
+export function withSavedCategories(categories: readonly Category[], saved: readonly Category[]) {
+  const byId = new Map(saved.map((category) => [category.id, category]));
 
-  return categories.map((category) => {
-    const position = positions.get(category.id);
-
-    return position === undefined ? category : { ...category, position };
-  });
+  return categories.map((category) => byId.get(category.id) ?? category);
 }
 
 /** What stops a category being added or saved with these fields; nothing when it can be. */
@@ -144,8 +154,76 @@ export function categoryProblems(
   return problems;
 }
 
-/** Why a preview category cannot be deleted: services or subcategories still use it. */
+/**
+ * How a category is named in a list of them: its name, or with its address too when another category shares the name,
+ * such as two subcategories called Grants under different parents.
+ */
+export function categoryLabel(category: Category, categories: readonly Category[]) {
+  const shared = categories.some(
+    (other) => other.id !== category.id && other.title === category.title,
+  );
+
+  return shared ? `${category.title} (${category.url})` : category.title;
+}
+
+/**
+ * Why a category's address, its slug and its parent, can't change now, or undefined when it can: an app route is
+ * built on it, or something is filed under it. Its name, description and place among its siblings can still change.
+ */
+export function addressLock(category: Category, categories: readonly Category[]) {
+  if (category.reserved_route)
+    return "A page of the site's own is at this address, so it keeps its slug and parent.";
+
+  if (category.services > 0) return "Services are filed under it, so it keeps its slug and parent.";
+
+  if (categories.some((other) => other.parent_id === category.id))
+    return "It has subcategories, so it keeps its slug and stays at the top level.";
+
+  return undefined;
+}
+
+/**
+ * The save that moves a category a place up (-1) or down (1) among its siblings: their new order, with every sibling's
+ * version as read, so the content API refuses it if any of them has changed since. Undefined at either end.
+ */
+export function moveOrder(
+  categories: readonly Category[],
+  id: string,
+  by: -1 | 1,
+): CategoryOrder | undefined {
+  const moving = categories.find((category) => category.id === id);
+
+  if (!moving) return undefined;
+  const siblings = siblingsOf(categories, moving.parent_id);
+  const orderedIds = movedOrder(categories, id, by);
+
+  if (orderedIds.every((sibling, index) => siblings[index]?.id === sibling)) return undefined;
+
+  return {
+    parent_id: moving.parent_id,
+    expected: siblings.map((sibling) => ({ id: sibling.id, updated_at: sibling.updated_at })),
+    ordered_ids: orderedIds,
+  };
+}
+
+/** Whether a sibling group is in this order now, as when a move whose answer was lost is checked. */
+export const inOrder = (categories: readonly Category[], order: CategoryOrder) =>
+  siblingsOf(categories, order.parent_id)
+    .map((category) => category.id)
+    .join() === order.ordered_ids.join();
+
+/** Whether a category now holds the fields a save sent, as the content API keeps them: trimmed, a blank description none. */
+export const holdsFields = (category: Category, fields: CategoryFields) =>
+  category.title === fields.title.trim() &&
+  category.slug === fields.slug &&
+  category.parent_id === fields.parent_id &&
+  category.description === (fields.description?.trim() || null);
+
+/** Why a category cannot be deleted: services, subcategories or an app route still use it. */
 export function deleteBlocker(category: Category, categories: readonly Category[]) {
+  if (category.reserved_route)
+    return `A page of the site's own is at ${category.url}, so ${category.title} stays.`;
+
   if (category.services === 1)
     return `1 service is filed under ${category.title}. Move it to another category first.`;
 
@@ -156,49 +234,4 @@ export function deleteBlocker(category: Category, categories: readonly Category[
     return `${category.title} has subcategories. Delete them, or move them to another category, first.`;
 
   return undefined;
-}
-
-/** The preview's categories from the saved ones, each in the order the API lists it among its siblings. */
-export function categoriesFrom(
-  saved: readonly Pick<Category, "id" | "parent_id" | "slug" | "url" | "title">[],
-): Category[] {
-  const places = new Map<string | null, number>();
-
-  return saved.map((entry) => {
-    const position = places.get(entry.parent_id) ?? 0;
-
-    places.set(entry.parent_id, position + 1);
-
-    return {
-      id: entry.id,
-      parent_id: entry.parent_id,
-      slug: entry.slug,
-      title: entry.title,
-      serviceCategoryTitle: entry.title,
-      description: "",
-      url: entry.url,
-      position,
-      services: 0,
-    };
-  });
-}
-
-/**
- * Each category with the services filed directly under it now. A service names its category by slug: `ids` gives the
- * category each slug belonged to when the list was read, so a category whose slug has changed since keeps its services.
- */
-export function withServiceCounts(
-  categories: readonly Category[],
-  services: readonly { category: { slug: string } }[],
-  ids: ReadonlyMap<string, string>,
-): Category[] {
-  const counts = new Map<string, number>();
-
-  for (const service of services) {
-    const id = ids.get(service.category.slug);
-
-    if (id) counts.set(id, (counts.get(id) ?? 0) + 1);
-  }
-
-  return categories.map((category) => ({ ...category, services: counts.get(category.id) ?? 0 }));
 }

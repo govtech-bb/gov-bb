@@ -1,65 +1,58 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  categoriesFrom,
+  addressLock,
+  categoryLabel,
   categoryProblems,
   categoryRows,
   deleteBlocker,
+  holdsFields,
+  inOrder,
   movedOrder,
+  moveOrder,
   categorySlug,
-  withServiceCounts,
+  withSavedCategories,
   type Category,
   type CategoryFields,
 } from "./categories";
-import { ApiFailure, createEditorApi, type SavedCategory } from "./client";
 
-/** A category as `GET /editor/categories` answers; a subcategory's address starts with its parent's. */
-const savedCategory = (
+const category = (
   id: string,
-  slug: string,
   title: string,
-  { position, services }: Pick<SavedCategory, "position" | "services">,
-  parent?: SavedCategory,
-): SavedCategory => ({
-  id,
-  parent_id: parent?.id ?? null,
-  slug,
-  title,
-  description: null,
-  url: parent ? `${parent.url}/${slug}` : `/${slug}`,
-  position,
-  services,
-  reserved_route: false,
-  updated_at: "2026-10-26T12:00:00.000Z",
-});
+  position: number,
+  services: number,
+  parent?: Category,
+): Category => {
+  const slug = id === "youth" ? "youth-and-community" : id;
 
-const youth = savedCategory("youth", "youth-and-community", "Youth and community", {
-  position: 2,
-  services: 0,
-});
+  return {
+    id,
+    parent_id: parent?.id ?? null,
+    title,
+    slug,
+    description: null,
+    url: parent ? `${parent.url}/${slug}` : `/${slug}`,
+    position,
+    services,
+    reserved_route: false,
+    updated_at: "2026-10-26T12:00:00.000Z",
+  };
+};
 
-const saved = [
-  savedCategory("education", "education", "Education", { position: 0, services: 2 }),
-  savedCategory("health", "health", "Health", { position: 1, services: 0 }),
+const youth = category("youth", "Youth and community", 2, 0);
+
+const categories: Category[] = [
+  category("education", "Education", 0, 2),
+  category("health", "Health", 1, 0),
   youth,
-  savedCategory("sport", "sport", "Sport", { position: 0, services: 1 }, youth),
-  savedCategory("arts", "arts", "Arts", { position: 1, services: 0 }, youth),
+  category("sport", "Sport", 0, 1, youth),
+  category("arts", "Arts", 1, 0, youth),
 ];
-
-const services = [
-  { category: { slug: "education", title: "Education" } },
-  { category: { slug: "education", title: "Education" } },
-  { category: { slug: "sport", title: "Sport" } },
-];
-
-const slugs = new Map(saved.map((entry) => [entry.slug, entry.id]));
-
-const categories = withServiceCounts(categoriesFrom(saved), services, slugs);
 
 const fields = (changes: Partial<CategoryFields> = {}): CategoryFields => ({
   title: "Housing",
   slug: "housing",
   parent_id: null,
-  description: "",
+  description: null,
   ...changes,
 });
 
@@ -75,16 +68,6 @@ describe("category rules", () => {
 
     expect(long.length).toBeLessThanOrEqual(100);
     expect(long.endsWith("-")).toBe(false);
-  });
-
-  it("counts each category's services and keeps the API's order among siblings", () => {
-    expect(categories.map((item) => [item.id, item.position, item.services])).toEqual([
-      ["education", 0, 2],
-      ["health", 1, 0],
-      ["youth", 2, 0],
-      ["sport", 0, 1],
-      ["arts", 1, 0],
-    ]);
   });
 
   it("lists each top-level category with its subcategories straight after it", () => {
@@ -129,6 +112,75 @@ describe("category rules", () => {
     expect(problems({ parent_id: "youth" })).toEqual([]);
   });
 
+  it("saves a move with every sibling's version, and none at either end", () => {
+    expect(moveOrder(categories, "health", -1)).toEqual({
+      parent_id: null,
+      expected: ["education", "health", "youth"].map((sibling) => ({
+        id: sibling,
+        updated_at: "2026-10-26T12:00:00.000Z",
+      })),
+      ordered_ids: ["health", "education", "youth"],
+    });
+    expect(moveOrder(categories, "arts", -1)?.ordered_ids).toEqual(["arts", "sport"]);
+    expect(moveOrder(categories, "education", -1)).toBeUndefined();
+    expect(moveOrder(categories, "arts", 1)).toBeUndefined();
+    expect(moveOrder(categories, "missing", 1)).toBeUndefined();
+  });
+
+  it("every move of every sibling is a permutation its group can be checked against", () => {
+    for (const sibling of categories)
+      for (const by of [-1, 1] as const) {
+        const order = moveOrder(categories, sibling.id, by);
+
+        if (!order) continue;
+        const group = categories.filter((item) => item.parent_id === sibling.parent_id);
+
+        expect(order.ordered_ids.toSorted()).toEqual(group.map((item) => item.id).toSorted());
+        expect(inOrder(categories, order)).toBe(false);
+
+        const saved = order.ordered_ids.map((orderedId, position) => ({
+          ...categories.find((item) => item.id === orderedId)!,
+          position,
+        }));
+
+        expect(inOrder(withSavedCategories(categories, saved), order)).toBe(true);
+      }
+  });
+
+  it("recognises a save the content API kept, trimmed and with a blank description as none", () => {
+    const health = byId(categories, "health")!;
+
+    expect(
+      holdsFields(health, { title: " Health ", slug: "health", parent_id: null, description: " " }),
+    ).toBe(true);
+    expect(
+      holdsFields(health, { title: "Health", slug: "health", parent_id: null, description: "x" }),
+    ).toBe(false);
+    expect(holdsFields(health, { ...fields(), title: "Health", slug: "healthy" })).toBe(false);
+  });
+
+  it("names a category by its address too only when another shares its name", () => {
+    const twin = { ...byId(categories, "arts")!, id: "twin", parent_id: null, url: "/arts" };
+
+    expect(categoryLabel(byId(categories, "arts")!, categories)).toBe("Arts");
+    expect(categoryLabel(twin, [...categories, twin])).toBe("Arts (/arts)");
+    expect(categoryLabel(byId(categories, "arts")!, [...categories, twin])).toBe(
+      "Arts (/youth-and-community/arts)",
+    );
+  });
+
+  it("locks an address that services, subcategories or an app route depend on", () => {
+    expect(addressLock(byId(categories, "education")!, categories)).toMatch(/Services/);
+    expect(addressLock(byId(categories, "youth")!, categories)).toMatch(/subcategories/);
+    expect(addressLock(byId(categories, "health")!, categories)).toBeUndefined();
+    expect(
+      addressLock({ ...byId(categories, "health")!, reserved_route: true }, categories),
+    ).toMatch(/site's own/);
+    expect(
+      deleteBlocker({ ...byId(categories, "health")!, reserved_route: true }, categories),
+    ).toMatch(/site's own is at \/health/);
+  });
+
   it("refuses to delete a category while services or subcategories are filed under it", () => {
     expect(deleteBlocker(byId(categories, "education")!, categories)).toBe(
       "2 services are filed under Education. Move them to another category first.",
@@ -138,198 +190,5 @@ describe("category rules", () => {
     );
     expect(deleteBlocker(byId(categories, "youth")!, categories)).toMatch(/has subcategories/);
     expect(deleteBlocker(byId(categories, "health")!, categories)).toBeUndefined();
-  });
-});
-
-describe("categories kept in memory until the editor sends category writes", () => {
-  const fetches = vi.fn<(path: string) => Response>((path) =>
-    path === "/editor/categories"
-      ? Response.json({ categories: saved })
-      : path === "/services"
-        ? Response.json(services)
-        : new Response(null, { status: 404 }),
-  );
-
-  const editorApi = () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL) =>
-        fetches(new URL(input instanceof Request ? input.url : input).pathname),
-      ),
-    );
-
-    return createEditorApi("https://api.example.test");
-  };
-
-  afterEach(() => {
-    // Back to the original answers, and no calls
-    fetches.mockReset();
-    vi.unstubAllGlobals();
-  });
-
-  async function failureOf(promise: Promise<unknown>) {
-    try {
-      await promise;
-    } catch (error) {
-      if (error instanceof ApiFailure) return error;
-    }
-
-    return undefined;
-  }
-
-  it("reads the saved categories once, and counts the services filed now on every read", async () => {
-    const api = editorApi();
-    const count = async (id: string) => byId(await api.categories(), id)?.services;
-
-    expect((await api.categories()).map((item) => item.slug)).toEqual(
-      saved.map((item) => item.slug),
-    );
-    expect(await count("health")).toBe(0);
-
-    // A service filed under Health since: counted, and Health can no longer be deleted
-    const filed = [...services, { category: { slug: "health", title: "Health" } }];
-
-    fetches.mockImplementation((path) =>
-      path === "/editor/categories" ? Response.json({ categories: saved }) : Response.json(filed),
-    );
-    expect(await count("health")).toBe(1);
-    expect((await failureOf(api.deleteCategory("health")))?.status).toBe(409);
-    expect(fetches.mock.calls.filter(([path]) => path === "/editor/categories")).toHaveLength(1);
-
-    // A new slug keeps the services filed under the old one
-    await api.updateCategory("education", fields({ title: "Schools", slug: "schools" }));
-    expect(await count("education")).toBe(2);
-  });
-
-  it("keeps an addition made while the initial service count is loading", async () => {
-    const started = Promise.withResolvers<void>();
-    const pending = Promise.withResolvers<void>();
-
-    vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
-      const path = new URL(input instanceof Request ? input.url : input).pathname;
-
-      if (path === "/editor/categories") return Response.json({ categories: saved });
-      started.resolve();
-      await pending.promise;
-
-      return Response.json(services);
-    });
-
-    const api = createEditorApi("https://api.example.test");
-    const reading = api.categories();
-
-    await started.promise;
-    const added = await api.createCategory(fields());
-
-    pending.resolve();
-    expect(await reading).toContainEqual(added);
-  });
-
-  it("asks again after a failed first read", async () => {
-    const api = editorApi();
-
-    fetches.mockImplementationOnce(() => new Response(null, { status: 503 }));
-    expect((await failureOf(api.categories()))?.status).toBe(503);
-    expect(await api.categories()).toHaveLength(5);
-  });
-
-  it("adds a category after its siblings, and refuses one the API would refuse", async () => {
-    const api = editorApi();
-
-    const added = await api.createCategory(
-      fields({ title: " Dance ", slug: "dance", parent_id: "youth" }),
-    );
-
-    expect(added).toMatchObject({
-      title: "Dance",
-      url: "/youth-and-community/dance",
-      position: 2,
-      services: 0,
-    });
-
-    const refused = await failureOf(api.createCategory(fields({ slug: "dance" })));
-
-    expect(refused?.status).toBe(422);
-    expect(refused?.errors).toEqual([
-      { field: "slug", message: "Another category already uses this slug" },
-    ]);
-  });
-
-  it("moves a renamed parent's subcategories to its new address", async () => {
-    const api = editorApi();
-
-    await api.updateCategory(
-      "youth",
-      fields({ title: "Youth", slug: "youth", description: "Clubs and sport" }),
-    );
-
-    const list = await api.categories();
-
-    expect(byId(list, "youth")).toMatchObject({ url: "/youth", description: "Clubs and sport" });
-    expect(byId(list, "sport")?.url).toBe("/youth/sport");
-  });
-
-  it("puts a category moved under another parent at the end of its new siblings", async () => {
-    const api = editorApi();
-
-    await api.updateCategory(
-      "health",
-      fields({ title: "Health", slug: "health", parent_id: "youth" }),
-    );
-
-    expect(byId(await api.categories(), "health")).toMatchObject({
-      parent_id: "youth",
-      url: "/youth-and-community/health",
-      position: 2,
-    });
-  });
-
-  it("applies rapid moves to the current local order, within each sibling group", async () => {
-    const api = editorApi();
-
-    await api.categories();
-    await Promise.all([
-      api.moveCategory("youth", -1),
-      api.moveCategory("youth", -1),
-      api.moveCategory("arts", -1),
-    ]);
-    expect(categoryRows(await api.categories()).map((row) => row.id)).toEqual([
-      "youth",
-      "arts",
-      "sport",
-      "education",
-      "health",
-    ]);
-  });
-
-  it("keeps preview changes out of the saved categories, and drops them on a fresh page load", async () => {
-    const api = editorApi();
-
-    await api.createCategory(fields());
-    await api.updateCategory("education", fields({ title: "Schools", slug: "schools" }));
-    await api.moveCategory("arts", -1);
-    await api.deleteCategory("health");
-    expect(categoryRows(await api.categories()).map((row) => row.slug)).toEqual([
-      "schools",
-      "youth-and-community",
-      "arts",
-      "sport",
-      "housing",
-    ]);
-    // What page pickers offer
-    expect(await api.savedCategories()).toEqual(saved);
-    expect((await editorApi().categories()).map((category) => category.slug)).toEqual(
-      saved.map((category) => category.slug),
-    );
-  });
-
-  it("deletes a category nothing is filed under, and refuses one still in use", async () => {
-    const api = editorApi();
-
-    expect((await failureOf(api.deleteCategory("education")))?.status).toBe(409);
-    expect((await failureOf(api.deleteCategory("youth")))?.status).toBe(409);
-    await api.deleteCategory("health");
-    expect(byId(await api.categories(), "health")).toBeUndefined();
-    expect((await failureOf(api.deleteCategory("health")))?.status).toBe(404);
   });
 });
