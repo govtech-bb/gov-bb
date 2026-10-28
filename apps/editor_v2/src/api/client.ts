@@ -3,6 +3,19 @@ import type { paths } from "./openapi";
 
 type Json<Content> = Content extends { content: { "application/json": infer Body } } ? Body : never;
 
+type ApiCategory = Json<paths["/editor/categories"]["get"]["responses"][200]>["categories"][number];
+
+type CreateCategoryInput = Json<paths["/editor/categories"]["post"]["requestBody"]>;
+
+type UpdateCategoryInput = Json<paths["/editor/categories/{id}"]["put"]["requestBody"]>;
+
+type OrderCategoriesInput = Json<paths["/editor/categories/order"]["put"]["requestBody"]>;
+
+type ApiCategoryBlockers = Extract<
+  Json<paths["/editor/categories/{id}"]["delete"]["responses"][409]>,
+  { error: "category_in_use" }
+>["blockers"];
+
 /** A page as the editor reads and saves it. */
 export type ApiPage = Json<paths["/pages/{id}"]["get"]["responses"][200]>;
 
@@ -198,7 +211,7 @@ const STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(?:Z|[+-]\d{2}:\d{2})$
 const isStamp = (value: unknown): value is string =>
   isText(value) && STAMP.test(value) && Number.isFinite(Date.parse(value));
 
-const isCategory = (value: unknown): value is Category =>
+const isCategory = (value: unknown): value is ApiCategory =>
   value instanceof Object &&
   "id" in value &&
   isId(value.id) &&
@@ -222,7 +235,7 @@ const isCategory = (value: unknown): value is Category =>
   "updated_at" in value &&
   isStamp(value.updated_at);
 
-const isCategoryList = (value: unknown): value is { categories: Category[] } =>
+const isCategoryList = (value: unknown): value is { categories: ApiCategory[] } =>
   value instanceof Object &&
   "categories" in value &&
   Array.isArray(value.categories) &&
@@ -239,7 +252,7 @@ const isFieldErrors = (value: unknown): value is FieldError[] =>
       isText(item.message),
   );
 
-const isCategoryBlockers = (value: unknown): value is CategoryBlockers =>
+const isCategoryBlockers = (value: unknown): value is ApiCategoryBlockers =>
   value instanceof Object &&
   "pages" in value &&
   isCount(value.pages) &&
@@ -360,7 +373,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
     const saved = await bodyOf(response);
 
     return isCategory(saved)
-      ? ok(saved)
+      ? ok<Category>(saved)
       : failed(new CategoryOutcomeUnknown(operation, new CategoryAnswerMalformed()));
   }
 
@@ -407,7 +420,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
         ["CategoryAccessDenied", "CategoryRejected"],
         "POST",
         "/editor/categories",
-        fields,
+        fields satisfies CreateCategoryInput,
       );
 
       return written.ok ? savedCategory("create", written.value) : written;
@@ -419,7 +432,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
         ["CategoryAccessDenied", "CategoryNotFound", "CategoryRejected", "CategoryConflict"],
         "PUT",
         `/editor/categories/${id}`,
-        fields,
+        fields satisfies UpdateCategoryInput,
         ifUpdatedAt,
       );
 
@@ -432,14 +445,14 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
         ["CategoryAccessDenied", "CategoryRejected", "CategoryConflict"],
         "PUT",
         "/editor/categories/order",
-        order,
+        order satisfies OrderCategoriesInput,
       );
 
       if (!written.ok) return written;
       const saved = await bodyOf(written.value);
 
       return isCategoryList(saved)
-        ? ok(saved.categories)
+        ? ok<Category[]>(saved.categories)
         : failed(new CategoryOutcomeUnknown("order", new CategoryAnswerMalformed()));
     },
     /** Deletes a category nothing uses, at the version last read, `ifUpdatedAt`. */

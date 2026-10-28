@@ -1,32 +1,41 @@
-import type { paths } from "./openapi";
 import { slugify } from "./slug";
 
-// The one shared category list's rules, as the editor checks them before the content API does (ADR 0078).
+/** A saved category and the metadata used by the editor's category rules. */
+export type Category = {
+  id: string;
+  /** The parent category; null at the top level. */
+  parent_id: string | null;
+  slug: string;
+  title: string;
+  description: string | null;
+  /** `/<category>` or `/<category>/<subcategory>`. */
+  url: string;
+  /** Sibling sort position; lower values come first. */
+  position: number;
+  /** Direct service roots, including drafts. */
+  services: number;
+  /** An app-owned route depends on this category's address. */
+  reserved_route: boolean;
+  /** Last-read version, sent when saving, deleting or reordering. */
+  updated_at: string;
+};
 
-type CategoryRoutes = paths["/editor/categories"];
+/** Fields shared by category creation and editing; a blank description is saved as null. */
+export type CategoryFields = Pick<Category, "title" | "slug" | "parent_id" | "description">;
 
-/**
- * A category in the one shared list services are filed under, as `GET /editor/categories` reads it. `url` is
- * `/<category>` or `/<category>/<subcategory>`; `position` is its place among its siblings, lowest first; `services`
- * counts the services filed directly under it, drafts included; `reserved_route` means an app-owned route anchors its
- * address, so its slug and parent can't change and it can't be deleted; `updated_at` is its version, sent back to
- * change it.
- */
-export type Category =
-  CategoryRoutes["get"]["responses"][200]["content"]["application/json"]["categories"][number];
+/** A complete sibling snapshot and its requested order; the whole group saves or none does. */
+export type CategoryOrder = {
+  parent_id: string | null;
+  expected: Pick<Category, "id" | "updated_at">[];
+  ordered_ids: string[];
+};
 
-/** What adding or editing a category sets. A blank description is saved as none. */
-export type CategoryFields = CategoryRoutes["post"]["requestBody"]["content"]["application/json"];
-
-/** A sibling group's new order, with the versions of every sibling as they were read: all of it saves, or none. */
-export type CategoryOrder =
-  paths["/editor/categories/order"]["put"]["requestBody"]["content"]["application/json"];
-
-/** What still uses a category the content API won't delete: pages of any status, subcategories, an app route. */
-export type CategoryBlockers = Extract<
-  paths["/editor/categories/{id}"]["delete"]["responses"][409]["content"]["application/json"],
-  { error: "category_in_use" }
->["blockers"];
+/** Deletion blockers count every assigned page, not just service roots. */
+export type CategoryBlockers = {
+  pages: number;
+  subcategories: number;
+  reserved_route: boolean;
+};
 
 /** A field that can't be saved, and why: the shape the content API refuses a change in. */
 export type CategoryProblem = { field: keyof CategoryFields; message: string };
