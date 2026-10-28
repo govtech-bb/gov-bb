@@ -68,6 +68,18 @@ export class NotApprover extends Error {
   }
 }
 
+/** An approver deciding on a revision they changed or submitted (ADR 0079). */
+export class SelfApproval extends Error {
+  /** Stable protocol-projection discriminator. */
+  readonly _tag = "SelfApproval";
+  /** Say who can decide instead. */
+  constructor() {
+    super(
+      "You can't approve or reject a change you made or submitted. Ask another approver.",
+    );
+  }
+}
+
 /** A role grant named a user who has never signed in. */
 export class UserNotFound extends Error {
   /** Stable protocol-projection discriminator. */

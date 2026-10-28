@@ -108,7 +108,10 @@ async function main(): Promise<void> {
     app = await buildApp({
       resolution: new PageResolution(pages),
       navigation: new SiteNavigation(pages),
-      editing: new PageEditing(pages, () => new Date()),
+      // One local developer runs the whole review flow (ADR 0079).
+      editing: new PageEditing(pages, () => new Date(), {
+        allowSelfApproval: config.authBypass,
+      }),
       index: new EditorIndex(pages),
       categories: new CategoryEditing(pages, () => new Date()),
       access,

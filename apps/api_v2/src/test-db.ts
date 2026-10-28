@@ -112,7 +112,9 @@ export function createTestServices(db: Database) {
   return {
     resolution: new PageResolution(pages),
     navigation: new SiteNavigation(pages),
-    editing: new PageEditing(pages, () => new Date()),
+    editing: new PageEditing(pages, () => new Date(), {
+      allowSelfApproval: false,
+    }),
     index: new EditorIndex(pages),
     categories: new CategoryEditing(pages, () => new Date()),
   };
