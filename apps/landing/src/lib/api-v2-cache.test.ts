@@ -107,6 +107,21 @@ describe('createApiV2Cache', () => {
     expect(failing).toHaveBeenCalledTimes(4)
   })
 
+  it('logs one circuit_open error when the breaker trips, not per short-circuited read', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const cache = createApiV2Cache()
+    const failing = resolver({ kind: 'miss', reason: 'network' })
+    for (const url of ['/a', '/b', '/c']) await cache.get(url, failing, 0)
+    for (const url of ['/d', '/e']) await cache.get(url, failing, 1)
+    expect(error).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(error.mock.calls[0][0] as string)).toEqual({
+      event: 'api_v2_fallback',
+      reason: 'circuit_open',
+      url: '/c',
+    })
+    error.mockRestore()
+  })
+
   it('resets the failure count on a success', async () => {
     const cache = createApiV2Cache()
     const failing = resolver({ kind: 'miss', reason: 'network' })

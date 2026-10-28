@@ -42,9 +42,14 @@ vi.mock('../lib/preview-form-access', () => accessMocks)
 // api_v2 is asked first (#2944); a miss falls back to the registry, so the
 // static-page tests above keep their behaviour.
 const v2Mocks = vi.hoisted(() => ({
-  getApiV2Page: vi.fn(async (): Promise<unknown> => ({ kind: 'miss' })),
+  getApiV2Page: vi.fn(
+    async (): Promise<unknown> => ({ kind: 'miss', reason: 'not_found' }),
+  ),
 }))
-vi.mock('../lib/api-v2-page', () => v2Mocks)
+vi.mock('../lib/api-v2-page', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  ...v2Mocks,
+}))
 
 const fakePage: ContentPage = {
   slug: 'secret-service',
@@ -73,7 +78,7 @@ beforeEach(() => {
   mocks.isUrlVisible.mockReturnValue(true)
   mocks.urlLevel.mockReturnValue('public')
   mocks.resolveBareSlugRedirect.mockReturnValue(undefined)
-  v2Mocks.getApiV2Page.mockResolvedValue({ kind: 'miss' })
+  v2Mocks.getApiV2Page.mockResolvedValue({ kind: 'miss', reason: 'not_found' })
   // The loader asks api_v2 only when it is configured (#3127).
   vi.stubEnv('VITE_API_V2_URL', 'http://api.example')
 })
@@ -226,6 +231,7 @@ describe('$ route loader gating', () => {
       applicationClosed: false,
       level: 'public',
       startSubPageVisible: true,
+      source: 'static',
     })
     expect((data as { page?: unknown }).page).toBeUndefined()
     expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'draft', new Map())
@@ -382,6 +388,7 @@ describe('$ route api_v2 pages (#2944)', () => {
       page: v2Page,
       level: 'public',
       startSubPageVisible: true,
+      source: 'api_v2',
     })
     // api_v2 already enforced visibility.
     expect(mocks.isVisible).not.toHaveBeenCalled()
@@ -397,7 +404,42 @@ describe('$ route api_v2 pages (#2944)', () => {
       context: { level: 'public', serviceStatuses: [] },
     })) as Record<string, unknown>
     expect(v2Mocks.getApiV2Page).not.toHaveBeenCalled()
-    expect(data).toMatchObject({ kind: 'page', url: fakePage.url })
+    expect(data).toMatchObject({
+      kind: 'page',
+      url: fakePage.url,
+      source: 'static',
+    })
+  })
+
+  it.each([
+    ['not_found', 'static'],
+    ['network', 'static-fallback'],
+  ])(
+    'marks a registry page served on a %s miss as %s',
+    async (reason, source) => {
+      v2Mocks.getApiV2Page.mockResolvedValue({ kind: 'miss', reason })
+      mocks.findPage.mockReturnValue(fakePage)
+      mocks.isVisible.mockReturnValue(true)
+      const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+      const data = await loader({
+        params: { _splat: fakePage.url },
+        context: { level: 'public', serviceStatuses: [] },
+      })
+      expect(data).toMatchObject({ kind: 'page', source })
+    },
+  )
+
+  it('sends x-content-source on every response with loader data', () => {
+    const headers = Route.options.headers as (a: unknown) => unknown
+    for (const source of ['api_v2', 'static', 'static-fallback'])
+      expect(headers({ loaderData: { kind: 'page', source } })).toEqual({
+        'x-content-source': source,
+      })
+    for (const kind of ['category', 'subcategory-index', 'subcategory'])
+      expect(headers({ loaderData: { kind } })).toEqual({
+        'x-content-source': 'static',
+      })
+    expect(headers({ loaderData: undefined })).toBeUndefined()
   })
 
   it('301-redirects to the api_v2 redirect target', async () => {

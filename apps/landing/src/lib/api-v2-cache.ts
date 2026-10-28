@@ -1,4 +1,4 @@
-import type { ApiV2Result } from './api-v2-page'
+import type { ApiV2MissReason, ApiV2Result } from './api-v2-page'
 
 /**
  * In-memory cache in front of api_v2 page reads (#3127), per server instance.
@@ -25,6 +25,19 @@ const FAILURES = new Set([
   'timeout',
   'network',
 ])
+
+/** The `api_v2_fallback` line (contract in api-v2-page.ts). Here, not there,
+ *  because api-v2-page.ts imports this module. */
+export function logFallback(
+  level: 'error' | 'warn',
+  reason: ApiV2MissReason,
+  url: string,
+  detail: Record<string, unknown> = {},
+) {
+  console[level](
+    JSON.stringify({ event: 'api_v2_fallback', reason, url, ...detail }),
+  )
+}
 
 const failed = (r: ApiV2Result) => r.kind === 'miss' && FAILURES.has(r.reason)
 
@@ -60,6 +73,7 @@ export function createApiV2Cache() {
           if (++failures >= FAILURES_TO_OPEN) {
             openUntil = now + OPEN_MS
             failures = 0
+            logFallback('error', 'circuit_open', url)
           }
           return result
         }
