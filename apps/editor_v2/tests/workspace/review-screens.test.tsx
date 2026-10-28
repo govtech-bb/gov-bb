@@ -352,7 +352,7 @@ test.each([
   },
 );
 
-test("a page with nothing waiting says so and leads back to the queue", async () => {
+test("a page with nothing waiting, such as one whose change was discarded, says so and leads back to the queue", async () => {
   const { server } = await render("review");
   server.replace(null);
   await act(async () => client.invalidateQueries());

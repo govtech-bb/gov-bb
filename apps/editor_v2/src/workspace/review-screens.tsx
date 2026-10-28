@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { flushSync } from "react-dom";
 import { categoryLabel } from "../api/categories";
 import { ApiFailure, isText, type ApiRevision, type EditorApi } from "../api/client";
 import { apiMessage } from "../api/failure-messages";
@@ -13,7 +12,6 @@ import {
   revisionQuery,
   rolesQuery,
 } from "../api/queries";
-import { authBypassed } from "../auth/bypass";
 import { Badge } from "../ui/badge";
 import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
@@ -187,6 +185,7 @@ const STATUS = {
   submitted: { label: "Waiting for review", tone: "info" },
   rejected: { label: "Rejected", tone: "error" },
   published: { label: "Published", tone: "success" },
+  discarded: { label: "Discarded", tone: "neutral" },
 } as const;
 
 type Decision = "publish" | "reject";
@@ -241,7 +240,16 @@ const MAX_COMMENT = 2000;
  * One page's change against its live page. An approver publishes or rejects it at the version shown; anyone else
  * reads it only.
  */
-export function ReviewScreen({ api, pageId }: { api: EditorApi; pageId: string }) {
+export function ReviewScreen({
+  api,
+  pageId,
+  selfApproval = false,
+}: {
+  api: EditorApi;
+  pageId: string;
+  /** Whether the API lets someone decide on their own change, as it does for one local developer under the auth bypass. */
+  selfApproval?: boolean;
+}) {
   const client = useQueryClient();
   const navigate = useNavigate();
   const revision = useQuery(revisionQuery(api, pageId));
@@ -257,6 +265,12 @@ export function ReviewScreen({ api, pageId }: { api: EditorApi; pageId: string }
   const [comment, setComment] = useState("");
   const [commentError, setCommentError] = useState("");
   const commentField = useRef<HTMLTextAreaElement>(null);
+  const [refusals, setRefusals] = useState(0);
+
+  // Once the error shows, the focus goes to the field it describes, so a screen reader reads them together
+  useEffect(() => {
+    if (refusals) commentField.current?.focus();
+  }, [refusals]);
   const [screenError, setScreenError] = useState("");
 
   const decide = useMutation({
@@ -345,7 +359,7 @@ export function ReviewScreen({ api, pageId }: { api: EditorApi; pageId: string }
         <EmptyState
           kind="not-found"
           title="Nothing is waiting for review on this page"
-          description="It may have been published or rejected already."
+          description="It may have been published or rejected, or discarded when the page was taken out of public view."
           actions={back}
         />
       </div>
@@ -366,9 +380,9 @@ export function ReviewScreen({ api, pageId }: { api: EditorApi; pageId: string }
   const change = revision.data;
   const status = STATUS[change.status];
 
-  // The API refuses anyone who worked on the change, except one local developer under the auth bypass
+  // The API refuses anyone who worked on the change, unless it allows self-approval
   const own =
-    !authBypassed && !!me && (change.submitted_by === me || change.contributors.includes(me));
+    !selfApproval && !!me && (change.submitted_by === me || change.contributors.includes(me));
 
   const decidable = approver && !own && change.status === "submitted";
 
@@ -455,10 +469,9 @@ export function ReviewScreen({ api, pageId }: { api: EditorApi; pageId: string }
                 ? `Use ${MAX_COMMENT} characters or fewer`
                 : "";
 
-            // Shown before the focus moves, so a screen reader reads the error with the field it lands on
-            flushSync(() => setCommentError(problem));
+            setCommentError(problem);
 
-            if (problem) return commentField.current?.focus();
+            if (problem) return setRefusals((count) => count + 1);
             decide.mutate(deciding);
           }}
           body={

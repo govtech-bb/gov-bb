@@ -42,6 +42,8 @@ import { usePageLeaveGuard } from "./page-leave-guard";
 
 type Account = {
   email: string;
+  /** Whether the API lets someone decide on their own change: only for one local developer under the auth bypass. */
+  selfApproval?: boolean;
   onSignOut: () => Promise<string | undefined>;
   notice?: string;
 };
@@ -57,7 +59,13 @@ const READ_ONLY =
   "You can read pages and categories but not change them, because you don't have the editor role. Ask an admin to give it to you.";
 
 /** Authenticated API services and page editors; no browser-local workspace is loaded. */
-export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { api: EditorApi }) {
+export function ServiceWorkspace({
+  api,
+  email,
+  selfApproval,
+  onSignOut,
+  notice,
+}: Account & { api: EditorApi }) {
   const params = useParams({ strict: false });
   const href = useRouterState({ select: (state) => state.location.href });
   const routerNavigate = useNavigate();
@@ -383,7 +391,12 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
           {!location && onReviews && (
             <section className="mx-auto w-full max-w-300 px-6 py-10">
               {reviewing ? (
-                <ReviewScreen key={reviewing} api={api} pageId={reviewing} />
+                <ReviewScreen
+                  key={reviewing}
+                  api={api}
+                  pageId={reviewing}
+                  selfApproval={selfApproval}
+                />
               ) : (
                 <ReviewQueueScreen api={api} />
               )}
