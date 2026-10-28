@@ -54,7 +54,7 @@ const crumb =
 
 /** What someone without the editor role is told, on every screen. */
 const READ_ONLY =
-  "You can read pages and categories but not change them, because you don't have the editor role. Ask an admin to give it to you.";
+  "You can read pages, categories and collections but not change them, because you don't have the editor role. Ask an admin to give it to you.";
 
 /** Authenticated API services and page editors; no browser-local workspace is loaded. */
 export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { api: EditorApi }) {
@@ -400,6 +400,7 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
             <section className="mx-auto w-full max-w-300 px-6 py-10">
               {collectionKey ? (
                 <CollectionScreen
+                  key={collectionKey}
                   api={api}
                   collectionKey={collectionKey}
                   record={collectionSearch?.record}

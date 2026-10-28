@@ -82,11 +82,11 @@ const recordColumns = (
         <div className="flex justify-end gap-1">
           <Button
             icon={<PencilSimple />}
-            aria-label={`Edit ${record.record_key}`}
+            aria-label={`${readOnly ? "View" : "Edit"} ${record.record_key}`}
             data-edit={record.record_key}
             onClick={() => edit(record)}
           >
-            Edit
+            {readOnly ? "View" : "Edit"}
           </Button>
           <Button
             icon={<Trash />}

@@ -83,6 +83,14 @@ test("a collection's screen keeps ?record= from its address, its records already
   );
 });
 
+test("a record key of digits, typed into the address, still names the record", async () => {
+  const { router } = await open("/collections/contacts?record=2024");
+
+  expect(
+    router.state.matches.find((match) => match.routeId === "/_workspace/collections/$key")?.search,
+  ).toEqual({ record: "2024" });
+});
+
 test("a record's own address, as sign-in returns to it, opens its collection with its dialog", async () => {
   const { router } = await open("/collections/contacts/nis");
 
@@ -93,6 +101,8 @@ test("a record's own address, as sign-in returns to it, opens its collection wit
 test("only a non-empty record name is kept from the address", () => {
   expect(parseCollectionSearch({ record: "nis" })).toEqual({ record: "nis" });
   expect(parseCollectionSearch({ record: "" })).toEqual({});
-  expect(parseCollectionSearch({ record: 7 })).toEqual({});
+  // The router reads `?record=2024` as JSON, a number; the key is its text
+  expect(parseCollectionSearch({ record: 2024 })).toEqual({ record: "2024" });
+  expect(parseCollectionSearch({ record: true })).toEqual({});
   expect(parseCollectionSearch({})).toEqual({});
 });

@@ -252,6 +252,11 @@ try {
   await tabTo(keep);
   assert.equal(await focusShown(), true, "Keep my version shows its focus");
   await page.keyboard.press("Enter");
+  // Its notice goes, and the focus moves into the form rather than to the page behind
+  await page.waitForFunction(() =>
+    document.querySelector('[role="dialog"]')?.contains(document.activeElement),
+  );
+  assert.equal(await focused(dialog.getByLabel("Key", { exact: true })), true);
   await dialog.getByRole("button", { name: "Save changes" }).click();
   await dialog.waitFor({ state: "detached" });
   assert.equal(

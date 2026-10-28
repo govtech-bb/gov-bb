@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import type { Collection } from "../../src/api/client";
 import {
+  droppedFields,
   keyProblem,
   recordData,
   recordValues,
@@ -37,12 +38,13 @@ test("a record's dialog opens with its values and its key", () => {
   });
 });
 
-test("saving sends trimmed values, leaves blanks out and returns unlisted values as they came", () => {
-  expect(recordData(collection, { key: "nis", name: " NIS  ", phone: "  " }, record)).toEqual({
+test("saving sends trimmed values, leaving out blanks and fields the collection no longer lists", () => {
+  expect(recordData(collection, { ...record.data, name: " NIS  ", phone: "  " })).toEqual({
     key: "nis",
     name: "NIS",
-    fax: "431-0000",
   });
+  expect(droppedFields(collection, record)).toEqual(["fax"]);
+  expect(droppedFields(collection)).toEqual([]);
   expect(recordData(collection, { key: "new", name: "New" })).toEqual({ key: "new", name: "New" });
 });
 

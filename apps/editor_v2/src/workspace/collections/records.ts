@@ -26,21 +26,13 @@ export function keyProblem(key: string) {
 
 /**
  * What saving sends: the whole record, which replaces the stored one. A blank field is left out, so clearing it
- * removes its value. A value for a field the collection no longer lists goes back as it came, for the content API to
- * keep or refuse, rather than being dropped unseen.
+ * removes its value. A value for a field the collection no longer lists is left out too, since api_v2 refuses it: the
+ * dialog says so before saving (`droppedFields`).
  */
-export function recordData(
-  collection: Collection,
-  values: RecordValues,
-  record?: CollectionRecord,
-): RecordInput["data"] {
-  const listed = new Set(collection.schema.fields.map((field) => field.key));
+export function recordData(collection: Collection, values: RecordValues): RecordInput["data"] {
   const data: RecordValues = {};
 
-  for (const [key, value] of Object.entries(record?.data ?? {}))
-    if (!listed.has(key)) data[key] = value;
-
-  for (const key of listed) {
+  for (const { key } of collection.schema.fields) {
     const value = values[key]?.trim();
 
     if (value) data[key] = value;
@@ -48,6 +40,12 @@ export function recordData(
 
   return data;
 }
+
+/** The fields a record holds a value for that its collection no longer lists, which saving removes. */
+export const droppedFields = (collection: Collection, record?: CollectionRecord) =>
+  Object.keys(record?.data ?? {}).filter(
+    (key) => !collection.schema.fields.some((field) => field.key === key),
+  );
 
 /** Whether the dialog's values differ from a record's, as when a newer version of it was saved meanwhile. */
 export function valuesDiffer(

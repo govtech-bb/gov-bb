@@ -499,6 +499,8 @@ test("Load saved version puts the newer values in the dialog", async () => {
   await press("Load saved version");
 
   expect(control("Name (optional)").value).toBe("Theirs");
+  // The notice and its button have gone, so the focus moves into the form, not to the page behind
+  await until(() => expect(document.activeElement).toBe(control("Name (optional)")));
   expect(dialog()?.textContent).not.toContain("A newer version");
 });
 
@@ -558,4 +560,30 @@ test("without the editor role, records can be read but not added, saved or delet
   expect(dialog()!.querySelector('button[type="submit"]')).toBeNull();
   expect(button("Add record").disabled).toBe(true);
   expect(button("Delete nis").disabled).toBe(true);
+  expect(button("View nis").textContent).toBe("View");
+});
+
+test("a value for a field the collection no longer lists is named, then removed on save", async () => {
+  server.change("nis", { fax: "431-0000" });
+  await renderCollection({ record: "nis" }).ready;
+  await until(() => expect(dialog()).not.toBeNull());
+
+  expect(dialog()?.textContent).toContain(
+    "Saving removes values for fields this collection no longer has: fax.",
+  );
+  await submit();
+  await closed();
+  expect(server.writes.at(-1)?.body).toEqual({ data: { key: "nis", name: "National Insurance" } });
+});
+
+test("a save whose answer is lost is never reported as failed", async () => {
+  await renderCollection({ record: "nis" }).ready;
+  await until(() => expect(dialog()).not.toBeNull());
+  server.refuse(503, { error: "unavailable", message: "Down." });
+  await submit();
+  await until(() =>
+    expect(dialog()?.textContent).toContain("We couldn't confirm whether this record was saved."),
+  );
+
+  expect(dialog()?.textContent).not.toContain("Try again.");
 });

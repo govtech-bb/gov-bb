@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import {
   ApiFailure,
   type Collection,
@@ -18,6 +18,7 @@ import { toast } from "../../ui/toast";
 import { ApiProblems, ApiProblemText } from "../api-problems";
 import { WorkspaceDialog } from "../workspace-dialog";
 import {
+  droppedFields,
   keyProblem,
   recordData,
   recordValues,
@@ -75,6 +76,8 @@ export function RecordDialog({
         ? api.saveRecord(collection.key, base.record_key, data, base.updated_at)
         : api.createRecord(collection.key, recordKey, data),
     onSuccess: (saved) => {
+      // Its own save is no newer version, while the dialog closes
+      setBase(saved);
       client.setQueryData(
         query.queryKey,
         (old) => old && { ...old, records: withRecord(old.records, saved) },
@@ -83,11 +86,8 @@ export function RecordDialog({
       toast(base ? "Record saved" : "Record added");
       close();
     },
-    onError: (error) => {
-      // Someone else changed or deleted it: read it again, so the dialog can say which
-      if (refusedWith(error, 409, "conflict") || refusedWith(error, 404))
-        void client.invalidateQueries({ queryKey: query.queryKey });
-    },
+    // Someone else changed or deleted it, or the answer was lost: read it again, so the dialog can say which
+    onError: () => void client.invalidateQueries({ queryKey: query.queryKey }),
   });
 
   // The saved version now, from the collection as last read
@@ -100,7 +100,7 @@ export function RecordDialog({
     !gone &&
     !!base &&
     ((!!latest && latest.updated_at !== base.updated_at) ||
-      refusedWith(save.error, 409, "conflict"));
+      (refusedWith(save.error, 409, "conflict") && current.isFetching));
 
   const unsaved = !base || valuesDiffer(collection, values, base);
   const failure = save.error instanceof ApiFailure ? save.error : undefined;
@@ -122,26 +122,42 @@ export function RecordDialog({
         .map((item) => item.message)
     : [];
 
+  // No answer, or a server failure, may follow a save that went through: never say it failed
+  const unknown = !!failure && (failure.status === 0 || failure.status >= 500);
+
   const otherProblems =
     rejected || taken || gone || stale
       ? []
-      : apiFailureMessages(
-          save.error,
-          "The record could not be saved. Try again.",
-          (field) => field,
-        );
+      : unknown
+        ? [
+            "We couldn't confirm whether this record was saved. Close this, check the records, then try again if it isn't there.",
+          ]
+        : apiFailureMessages(
+            save.error,
+            "The record could not be saved. Try again.",
+            (field) => field,
+          );
 
   const downloadMine = () =>
     download(
-      JSON.stringify(recordData(collection, values, base), null, 2),
+      JSON.stringify(recordData(collection, values), null, 2),
       `${recordKey || collection.key}.json`,
     );
+
+  // The stale notice goes once it's answered, taking its focused button with it: the first field takes the focus
+  const body = useRef<HTMLDivElement>(null);
+  const [answered, setAnswered] = useState(0);
+
+  useEffect(() => {
+    if (answered) body.current?.querySelector("input")?.focus();
+  }, [answered]);
 
   // Save the next change over the saved version, keeping what's typed
   const keepMine = () => {
     if (!latest) return;
     setBase(latest);
     save.reset();
+    setAnswered((count) => count + 1);
   };
 
   const loadSaved = () => {
@@ -149,7 +165,10 @@ export function RecordDialog({
     setBase(latest);
     setValues(recordValues(collection, latest));
     save.reset();
+    setAnswered((count) => count + 1);
   };
+
+  const dropped = droppedFields(collection, base);
 
   const submit = () => {
     if (readOnly || stale || gone || save.isPending) return;
@@ -157,7 +176,7 @@ export function RecordDialog({
 
     setKeyError(problem);
 
-    if (!problem) save.mutate(recordData(collection, values, base));
+    if (!problem) save.mutate(recordData(collection, values));
   };
 
   const keyHint = base
@@ -195,7 +214,7 @@ export function RecordDialog({
       close={close}
       onSubmit={submit}
       body={
-        <div className="flex flex-col gap-4">
+        <div ref={body} className="flex flex-col gap-4">
           {gone ? (
             <Banner
               tone="error"
@@ -211,7 +230,7 @@ export function RecordDialog({
                 role="alert"
                 actions={
                   <>
-                    {unsaved && (
+                    {unsaved && !readOnly && (
                       <Button
                         variant="secondary"
                         disabled={!latest || current.isFetching}
@@ -227,13 +246,20 @@ export function RecordDialog({
                     >
                       Load saved version
                     </Button>
-                    {unsaved && <Button onClick={downloadMine}>Download my version</Button>}
+                    {unsaved && !readOnly && (
+                      <Button onClick={downloadMine}>Download my version</Button>
+                    )}
                   </>
                 }
               >
                 {NEWER}
               </Banner>
             )
+          )}
+          {dropped.length > 0 && !readOnly && (
+            <Banner tone="info">
+              Saving removes values for fields this collection no longer has: {dropped.join(", ")}.
+            </Banner>
           )}
           {!keyListed && input(collection.record_key, "Key", "slug", keyHint, keyError ?? taken)}
           {fields.map((field) => {
