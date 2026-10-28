@@ -1,6 +1,7 @@
 ---
 title: Flag Etiquette
 category: about-barbados
+subcategory: national-symbols
 source_url: https://www.gov.bb/Visit-Barbados/flag-etiquette
 visibility: preview
 ---

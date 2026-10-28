@@ -259,12 +259,6 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "public",
   },
   {
-    slug: "archaeological-history",
-    title: "Archaeological History",
-    category: "about-barbados",
-    visibility: "preview",
-  },
-  {
     slug: "bank-holiday-calendar",
     title: "Check bank holiday dates",
     category: "work-employment",
@@ -305,7 +299,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "coat-of-arms",
-    title: "Coat of Arms",
+    title: "Coat of arms of Barbados",
     category: "about-barbados",
     visibility: "preview",
   },
@@ -323,8 +317,20 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "draft",
   },
   {
+    slug: "early-history",
+    title: "Barbados' early history",
+    category: "about-barbados",
+    visibility: "preview",
+  },
+  {
     slug: "flag-etiquette",
     title: "Flag Etiquette",
+    category: "about-barbados",
+    visibility: "preview",
+  },
+  {
+    slug: "freedom-and-independence",
+    title: "Barbados' struggle for freedom and independence",
     category: "about-barbados",
     visibility: "preview",
   },
@@ -426,13 +432,19 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "national-anthem",
-    title: "The National Anthem",
+    title: "National anthem of Barbados",
+    category: "about-barbados",
+    visibility: "preview",
+  },
+  {
+    slug: "national-flag",
+    title: "The national flag of Barbados",
     category: "about-barbados",
     visibility: "preview",
   },
   {
     slug: "national-flower",
-    title: "National Flower",
+    title: "National flower of Barbados",
     category: "about-barbados",
     visibility: "preview",
   },
@@ -444,7 +456,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "national-pledge",
-    title: "National Pledge",
+    title: "National pledge of Barbados",
     category: "about-barbados",
     visibility: "preview",
   },
