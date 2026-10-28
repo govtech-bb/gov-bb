@@ -44,6 +44,7 @@ const pages: ApiPage[] = estate.pages.map((page) => ({
   published_at: page.published_at,
   created_at: "2026-10-07T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
+  pending_revision: null,
 }));
 
 const entry = pages.find((page) => page.url === "/money-financial-support/calculate-severance-pay");

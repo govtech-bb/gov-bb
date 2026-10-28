@@ -25,6 +25,9 @@ export type CreatePageInput = Json<paths["/pages"]["post"]["requestBody"]>;
 /** What saving a page sends: every field, with `parent_id` left out to keep the parent. */
 export type SavePageInput = Json<paths["/pages/{id}"]["put"]["requestBody"]>;
 
+/** A public page's change waiting for an approver, with what it changes. */
+export type ApiRevision = Json<paths["/pages/{id}/revision"]["get"]["responses"][200]>;
+
 /** One row of the services list. */
 export type ServiceSummary = Json<paths["/services"]["get"]["responses"][200]>[number];
 
@@ -43,7 +46,7 @@ export type EstateVersion = Json<paths["/version"]["get"]["responses"][200]>;
 /** A field the API refused, and what the editor can do about it. */
 export type FieldError = Json<paths["/pages"]["post"]["responses"][422]>["errors"][number];
 
-type FailureBody = { message?: string; errors?: FieldError[] };
+type FailureBody = { error?: string; message?: string; errors?: FieldError[] };
 
 /** A request the API refused or never answered: status 0 means it was not reached. */
 export class ApiFailure extends Error {
@@ -51,6 +54,8 @@ export class ApiFailure extends Error {
     readonly status: number,
     readonly errors: readonly FieldError[] = [],
     message = status === 0 ? "The content API could not be reached" : `HTTP ${status}`,
+    /** The API's `error`, which tells refusals with one status apart. */
+    readonly code?: string,
   ) {
     super(message);
   }
@@ -300,7 +305,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
   }
 
   const refused = (status: number, failure: FailureBody | null | undefined) =>
-    new ApiFailure(status, failure?.errors, failure?.message);
+    new ApiFailure(status, failure?.errors, failure?.message, failure?.error);
 
   async function send(...args: Parameters<typeof request>) {
     const response = await request(...args);
@@ -478,6 +483,8 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
       (await send("POST", "/pages", page)).json(),
     savePage: async (id: string, fields: SavePageInput, ifUpdatedAt: string): Promise<ApiPage> =>
       (await send("PUT", `/pages/${id}`, fields, ifUpdatedAt)).json(),
+    submitRevision: async (id: string, ifUpdatedAt: string): Promise<ApiRevision> =>
+      (await send("POST", `/pages/${id}/revision/submit`, undefined, ifUpdatedAt)).json(),
     deletePage: async (id: string) => {
       await send("DELETE", `/pages/${id}`);
     },

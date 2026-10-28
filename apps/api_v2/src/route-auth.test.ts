@@ -7,7 +7,9 @@
  * The same goes for roles (#3187, #3197): every write route declares the
  * role it needs and refuses an employee with no role, no write route lets a
  * signed-in employee who is not an approver change what citizens see, and
- * no admin route answers someone who is not an admin.
+ * no admin route answers someone who is not an admin. A route that changes
+ * what citizens see declares the approver role, unless it is one of the page
+ * writes whose approver check is in PageEditing (#3199).
  */
 
 import { randomUUID } from "node:crypto";
@@ -94,6 +96,9 @@ it("finds the editor's writes, so an empty route list cannot pass", () => {
       "POST /pages",
       "PUT /pages/:id",
       "DELETE /pages/:id",
+      "POST /pages/:id/revision/submit",
+      "POST /pages/:id/revision/reject",
+      "POST /pages/:id/revision/publish",
       "POST /editor/categories",
       "PUT /editor/categories/:id",
       "PUT /editor/categories/order",
@@ -146,6 +151,7 @@ it("refuses every write to an employee with no role and leaves the database unch
       await db.execute(sql`
         select (select json_agg(p order by p.id) from content_pages p) as pages,
                (select json_agg(c order by c.id) from categories c) as categories,
+               (select json_agg(r order by r.id) from page_revisions r) as revisions,
                (select count(*)::int from change_events) as events,
                (select json_agg(r order by r.user_id, r.role) from user_roles r) as roles`)
     ).rows;
@@ -189,24 +195,44 @@ const NOT_PAGE_VISIBILITY: Readonly<Record<string, string>> = {
   "DELETE /editor/employees/:id/roles/:role": "revokes a role, in user_roles",
 };
 
-/** Every page's visibility by id. */
-const visibilities = async () =>
+/**
+ * Page writes that change what citizens see only sometimes, so they declare
+ * the editor role and PageEditing refuses a non-approver the changes that
+ * need one. Every other route that changes what citizens see must declare
+ * the approver role.
+ */
+const GATED_IN_PAGE_EDITING = new Set([
+  "POST /pages",
+  "PUT /pages/:id",
+  "DELETE /pages/:id",
+]);
+
+/** What citizens see of each page by id: a public page's whole row, otherwise only its visibility. */
+const citizenView = async () =>
   new Map(
     (
-      await db.execute<{ id: string; visibility: Visibility }>(
-        sql`select id, visibility from content_pages`,
+      await db.execute<{ id: string; seen: string }>(
+        sql`select id, case when visibility = 'public' then row_to_json(p)::text
+                            else visibility::text end as seen
+            from content_pages p`,
       )
-    ).rows.map((row) => [row.id, row.visibility]),
+    ).rows.map((row) => [row.id, row.seen]),
   );
+const NOT_SEEN = new Set<string | undefined>([
+  undefined,
+  ...(["preview", "draft"] satisfies Visibility[]),
+]);
 
 /**
  * Send every write route, signed in as `employee`, at a page of each
- * visibility with a payload asking for each other visibility. Returns the
- * routes that changed what citizens see (a page that went public or stopped
- * being public, or a public page that appeared or disappeared), and the
- * routes not in NOT_PAGE_VISIBILITY that refused a probe.
+ * visibility with a payload asking for each visibility. A page the review
+ * routes are sent at gets a revision by someone else to act on: a draft for
+ * submit, a submitted one for the others. Returns the routes that changed
+ * what citizens see (a page that went public or stopped being public, a
+ * public page that appeared or disappeared, or a public page's content),
+ * and the routes not in NOT_PAGE_VISIBILITY that refused a probe.
  */
-async function routesChangingVisibility(employee: Employee) {
+async function routesChangingWhatCitizensSee(employee: Employee) {
   // Before the app below registers its own copies of the routes.
   const routes = writes();
   const signedIn = await createTestApp(db, {
@@ -218,32 +244,41 @@ async function routesChangingVisibility(employee: Employee) {
   for (const { method, url } of routes) {
     for (const from of ["public", "preview", "draft"] as const) {
       for (const to of ["public", "preview", "draft"] as const) {
-        if (from === to && method !== "POST") continue;
         n += 1;
         const target = randomUUID();
+        const fields = withDefaults(
+          aPage({ url: `/written-${n}`, visibility: to }),
+        );
         await db.execute(
           sql`insert into content_pages (id, url, slug, title, visibility, body_markdown)
               values (${target}, ${`/existing-${n}`}, 'existing', 'Existing', ${from}, '')`,
         );
-        const before = await visibilities();
+        if (url.includes("/revision/"))
+          await db.execute(
+            sql`insert into page_revisions
+                  (page_id, status, fields, live_updated_at, created_by, contributors, submitted_by)
+                select id, ${url.endsWith("/submit") ? "draft" : "submitted"},
+                       ${JSON.stringify(fields)}::jsonb, updated_at,
+                       'probe-author', '{probe-author}', 'probe-author'
+                from content_pages where id = ${target}`,
+          );
+        const before = await citizenView();
         const response = await signedIn.inject({
           method: method as InjectOptions["method"],
           url: url.replace(/:\w+/g, target).replace("*", "x"),
-          payload: withDefaults(
-            aPage({ url: `/written-${n}`, visibility: to }),
-          ),
+          payload: { ...fields, comment: "Probed" },
           headers: TEST_HEADERS,
         });
         const route = `${method} ${url}`;
         if (response.statusCode >= 300 && !(route in NOT_PAGE_VISIBILITY))
           refused.add(`${route} (${response.statusCode})`);
-        const after = await visibilities();
+        const after = await citizenView();
         const ids = new Set([...before.keys(), ...after.keys()]);
         if (
           [...ids].some(
             (id) =>
               before.get(id) !== after.get(id) &&
-              (before.get(id) === "public" || after.get(id) === "public"),
+              !(NOT_SEEN.has(before.get(id)) && NOT_SEEN.has(after.get(id))),
           )
         )
           changed.add(route);
@@ -261,19 +296,39 @@ it("lists only write routes that exist as unable to change visibility", () => {
 });
 
 it("exercises every write route as an approver, so a route the probe cannot reach fails rather than passes", async () => {
-  const { changed, refused } = await routesChangingVisibility(TEST_EMPLOYEE);
+  const { changed, refused } =
+    await routesChangingWhatCitizensSee(TEST_EMPLOYEE);
   // A route here wants a header, body or id the probe does not send.
   expect(refused).toEqual([]);
   expect(changed).toEqual([
     "DELETE /pages/:id",
     "POST /pages",
+    "POST /pages/:id/revision/publish",
     "PUT /pages/:id",
   ]);
+  const roles = new Map(
+    writes().map(({ method, url, role }) => [`${method} ${url}`, role]),
+  );
+  expect(
+    changed.filter(
+      (route) =>
+        roles.get(route) !== "approver" && !GATED_IN_PAGE_EDITING.has(route),
+    ),
+  ).toEqual([]);
 });
 
 it("lets no write route change what citizens see for a non-approver", async () => {
   expect(TEST_EDITOR.roles).not.toContain("approver");
-  expect((await routesChangingVisibility(TEST_EDITOR)).changed).toEqual([]);
+  expect((await routesChangingWhatCitizensSee(TEST_EDITOR)).changed).toEqual(
+    [],
+  );
+});
+
+it("needs the approver role to publish or reject a revision (#3199)", () => {
+  const declared = (route: string) =>
+    writes().find(({ method, url }) => `${method} ${url}` === route)?.role;
+  expect(declared("POST /pages/:id/revision/publish")).toBe("approver");
+  expect(declared("POST /pages/:id/revision/reject")).toBe("approver");
 });
 
 it("refuses every admin route to a non-admin", async () => {

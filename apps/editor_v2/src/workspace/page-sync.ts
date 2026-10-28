@@ -29,7 +29,7 @@ export function pageHasUnsavedChanges(session: PageSession) {
 export type PageSaveOutcome =
   | { kind: "saved"; base: ServerPageBaseline }
   | { kind: "invalid"; errors: readonly FieldError[] }
-  | { kind: "forbidden"; message: string }
+  | { kind: "forbidden" | "under-review"; message: string }
   | { kind: "conflict" | "missing" | "signed-out" | "failed" };
 
 /** Save a draft over the version it was edited from; the API refuses it if that version has moved on. */
@@ -54,7 +54,13 @@ export async function savePageDraft(
       case 422:
         return { kind: "invalid", errors: error.errors };
       case 409:
-        return { kind: "conflict" };
+        // Until #3203, a change waiting for review can't be saved over
+        return error.code === "under_review"
+          ? {
+              kind: "under-review",
+              message: apiMessage(error) ?? "This change is waiting for review.",
+            }
+          : { kind: "conflict" };
       case 404:
         return { kind: "missing" };
       case 401:
