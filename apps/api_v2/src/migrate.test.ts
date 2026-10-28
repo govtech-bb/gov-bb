@@ -30,6 +30,7 @@ const ALL = [
   "008_user_roles",
   "009_default_editor_role",
   "010_page_revisions",
+  "011_revision_review",
 ];
 
 const freshDb = async () => {
@@ -116,6 +117,7 @@ describe("migrate", () => {
       "008_user_roles",
       "009_default_editor_role",
       "010_page_revisions",
+      "011_revision_review",
     ]);
     const pages = await exec("select count(*)::int as n from content_pages");
     expect(pages.rows).toEqual([{ n: 0 }]);
@@ -145,6 +147,7 @@ describe("migrate", () => {
       "008_user_roles",
       "009_default_editor_role",
       "010_page_revisions",
+      "011_revision_review",
     ]);
     await exec(
       `insert into categories (slug, title) values ('c', 'C');
@@ -265,6 +268,43 @@ describe("migrate", () => {
       (await exec("select user_id from user_roles where user_id = 'revoked'"))
         .rows,
     ).toEqual([]);
+    await close();
+  });
+
+  it("keeps revisions, and one open revision a page, draft or submitted, when 010 and 011 are replayed", async () => {
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+    await exec(`
+      insert into content_pages (id, url, slug, title, body_markdown)
+        values ('11111111-1111-4111-8111-111111111111', '/p', 'p', 'P', '');
+      insert into page_revisions (page_id, status, fields, live_updated_at, created_by, contributors, comment)
+        select id, 'rejected', '{}', updated_at, 'a', '{a}', 'No' from content_pages;
+      insert into page_revisions (page_id, status, fields, live_updated_at, created_by, contributors)
+        select id, 'submitted', '{}', updated_at, 'a', '{a}' from content_pages;
+      delete from schema_migrations where name in ('010_page_revisions', '011_revision_review');
+    `);
+
+    expect(await migrate(db, exec)).toEqual([
+      "010_page_revisions",
+      "011_revision_review",
+    ]);
+    expect(
+      (await exec("select status, comment from page_revisions order by status"))
+        .rows,
+    ).toEqual([
+      { status: "rejected", comment: "No" },
+      { status: "submitted", comment: null },
+    ]);
+    const another = (status: string) =>
+      exec(`insert into page_revisions (page_id, status, fields, live_updated_at, created_by, contributors)
+              select id, '${status}', '{}', updated_at, 'b', '{b}' from content_pages`);
+    await expect(another("draft")).rejects.toThrow(
+      /page_revisions_open_page_id_key/,
+    );
+    await expect(another("approved")).rejects.toThrow(
+      /page_revisions_status_check/,
+    );
+    await expect(another("published")).resolves.toBeDefined();
     await close();
   });
 });

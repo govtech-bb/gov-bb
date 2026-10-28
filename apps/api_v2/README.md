@@ -63,10 +63,10 @@ Migration `003_auth` adds BetterAuth's four core tables: `auth_user`, `auth_sess
 Signing in decides who is an employee; roles decide what they can do (ADR 0079). Roles are rows in `user_roles` (migration `008_user_roles`, numbered after #3340's 006 and 007), read on every request, so a revocation applies to the employee's next request.
 
 - `editor` writes: creating, saving and deleting pages, and managing categories. Every employee is an editor by default: api_v2 grants the role, with no grantor, when it creates the user at their first sign-in, and migration `009_default_editor_role` granted it once to everyone who had signed in before. It is never granted again, so an admin can revoke it to stop one person writing without removing them from the organisation.
-- `approver` changes what citizens see: changing a page's `visibility`, creating a page as `public`, or deleting a `public` page. An editor who isn't an approver can make every other edit.
+- `approver` changes what citizens see: changing a page's `visibility`, creating a page as `public`, deleting a `public` page, and rejecting or publishing a pending revision. An editor who isn't an approver can make every other edit, and submit a revision for review.
 - `admin` lists employees and grants and revokes roles (`/editor/employees…`), recording who granted each. A signed-in employee whose email `API_V2_ADMIN_EMAILS` lists is granted `admin`, with no grantor, if they lack it; so an admin cannot revoke a listed admin for good.
 
-A refusal is a 403 `{error: "forbidden", message}` and the database is unchanged. Reads stay open to every signed-in employee, roles or not. Each write route names the role it needs in its route options (`config: { role: "editor" }`), and the editor scope's `onRequest` hook enforces it; a write route that names none is refused to everyone, and `src/route-auth.test.ts` fails until it names one.
+A refusal is a 403 `{error: "forbidden", message}` and the database is unchanged. Reads stay open to every signed-in employee, roles or not. Each write route names the role it needs in its route options (`config: { role: "editor" }`, or `"approver"` for publishing and rejecting revisions), and the editor scope's `onRequest` hook enforces it; a write route that names none is refused to everyone, and `src/route-auth.test.ts` fails until it names one. That test also fails when a route that changes what citizens see names neither `approver` nor is one of the page writes (`POST`, `PUT` and `DELETE /pages…`) whose approver check sits in `PageEditing`, because only some of their writes need one.
 
 Under `AUTH_BYPASS` the local developer holds every role. `GET /editor/me` returns the signed-in employee and their roles, which the editor uses to hide what they cannot do.
 
@@ -77,6 +77,22 @@ A save that keeps a `public` page public, whoever sends it, approvers included, 
 The editor reads and saves the working copy: `GET /pages/:id` and the save's response lay the revision over the live page, set `pending_revision`, and give the revision's `updated_at`, which is what the next save sends in `if-updated-at`. `GET /pages/:id/revision` returns the revision itself, or 404 when there is none.
 
 A save to a page that is not public writes the page as before. Changing `visibility` stays a direct approver action (ADR 0079): an approver's save that takes a public page out of public view writes the whole working copy to the page, which citizens no longer see, and closes the revision. A revision save writes no `change_events` entry, because the live page did not change; #3200 records revisions in the audit trail.
+
+### Reviewing a revision
+
+Migration `011_revision_review` (#3199) adds the review statuses and who moved a revision through them. A revision goes `draft` → `submitted` → `rejected` or `published`:
+
+- `POST /pages/:id/revision/submit` (editor role) sends the page's draft for review and records the submitter. With no draft it is a 404; already submitted, a 409 `under_review`.
+- `POST /pages/:id/revision/reject` (approver role) takes `{ comment }`, 1 to 2000 characters after trimming. The live page is unchanged. The rejected revision is kept with its comment and the rejecter, and the editor keeps working from it: `GET /pages/:id` lays it over the live page with `pending_revision: { status: "rejected", comment }`. The next save starts a new draft beside it, carrying its contributors over, since it starts from their content. A live write retires a rejection: it no longer shows once the live page has moved past the version it was saved over.
+- `POST /pages/:id/revision/publish` (approver role) approves and publishes in one transaction: the revision's fields are checked again as a save checks them (placement, a url a category owns, and the database's own refusals), since its parent, its category or its url can have changed while it waited. A stale revision is a 422 naming the field, and nothing changes. Otherwise the live row is written, its search chunks re-cut and an `updated` (or `published`) `change_events` entry appended by the approver, and the revision is marked `published` with the approver and the time.
+
+Publish and reject are a 404 when nothing waits for review, and a 409 `not_submitted` for a draft. All three take an optional `if-updated-at`, the revision's `updated_at` the caller read, and answer a 409 `conflict` when its content has been saved since; submitting and rejecting don't move it. Each runs under the page's row lock, as a save does.
+
+**Self-approval** (ADR 0079): the approver who publishes or rejects a revision must not be its submitter or one of its `contributors`; otherwise it is a 403. It is allowed only under `AUTH_BYPASS`, where `main.ts` passes `allowSelfApproval` to `PageEditing` so one developer can try the whole flow.
+
+**One open revision.** A page has at most one revision that is `draft` or `submitted` (`page_revisions_open_page_id_key`). Until #3203 lets editors keep working while a change waits, a save to a page whose revision is `submitted` is refused with a 409 `under_review`: "This change is waiting for review. You can save more changes once an approver publishes or rejects it."
+
+`GET /pages/:id/revision`, and the submit and reject responses, carry `changes`: `{ field, live, proposed }` for each page field whose proposed value differs from the live page's, in field order. Publish returns the page as it now stands.
 
 ## Database
 
@@ -174,6 +190,11 @@ erDiagram
     text[] contributors
     timestamptz(3) created_at
     timestamptz(3) updated_at
+    text submitted_by "nullable"
+    timestamptz(3) submitted_at "nullable"
+    text decided_by "nullable"
+    timestamptz(3) decided_at "nullable"
+    text comment "nullable"
   }
   search_chunks {
     uuid id PK
@@ -215,7 +236,7 @@ erDiagram
 | GET      | `/docs`                             | Public API reference (Scalar)                                          |
 | GET      | `/docs/openapi.json`                | Public OpenAPI document                                                |
 | GET      | `/pages/:id`                        | Employee; includes drafts and previews, with any pending revision      |
-| GET      | `/pages/:id/revision`               | Employee; a public page's pending revision                             |
+| GET      | `/pages/:id/revision`               | Employee; a public page's pending revision, with its `changes`         |
 | GET      | `/services`                         | Employee service index, grouped by `parent_id`                         |
 | GET      | `/services/:id`                     | Employee; one service's pages with their roles, entry first            |
 | GET      | `/editor/categories`                | Employee; every shared category, counts, address protection and stamps |
@@ -227,6 +248,9 @@ erDiagram
 | POST     | `/pages`                            | Employee create; as `public`, approver only                            |
 | PUT      | `/pages/:id`                        | Editor save, optional `if-updated-at`; public pages save to a revision |
 | DELETE   | `/pages/:id`                        | Employee delete; a `public` page, approver only                        |
+| POST     | `/pages/:id/revision/submit`        | Editor; submit the draft revision for review                           |
+| POST     | `/pages/:id/revision/reject`        | Approver, not its author or submitter; reject with a `comment`         |
+| POST     | `/pages/:id/revision/publish`       | Approver, not its author or submitter; publish it to the live page     |
 | GET      | `/editor/me`                        | Employee; who is signed in, with their roles                           |
 | GET      | `/editor/employees`                 | Admin; everyone who has signed in, with their roles                    |
 | PUT      | `/editor/employees/:id/roles/:role` | Admin; grant a role                                                    |

@@ -20,7 +20,8 @@ import {
   EditorPage,
   NewPage,
   PageId,
-  PendingRevision,
+  RevisionComment,
+  RevisionView,
   SaveFields,
 } from "../modules/page";
 import {
@@ -74,7 +75,26 @@ const conflict = z.looseObject({
   documentId: z.guid(),
 });
 
+/** A review step refused because the revision is not in the state it needs. */
+const revisionState = z.object({
+  error: z.enum(["under_review", "not_submitted"]),
+  message: z.string(),
+});
+
 const idParams = z.object({ id: PageId });
+
+/** The version a write was made against; a 409 when it has moved on. */
+const ifUpdatedAt = (read: string) =>
+  z.object({
+    "if-updated-at": z.iso
+      .datetime({ offset: true })
+      .transform((value) => new Date(value))
+      .optional()
+      .describe(
+        `The \`updated_at\` this client last read${read}. Omit to accept ` +
+          "whatever is stored.",
+      ),
+  });
 
 const editorSecurity = [{ editorSession: [] }];
 const authErrors = { 401: error, 403: error, 503: error };
@@ -244,26 +264,19 @@ export const SCHEMAS = {
       "the page's pending revision: citizens keep seeing the live page until " +
       "an approver publishes it. An approver's save that takes a `public` " +
       "page out of public view writes the whole page and closes its pending " +
-      "revision. Returns the page as the editor now works on it.",
+      "revision. Returns the page as the editor now works on it. " +
+      "A save to a page whose revision is waiting for review is refused " +
+      "(409 `under_review`) until an approver publishes or rejects it.",
     tags: ["pages"],
     params: idParams,
-    headers: z.object({
-      "if-updated-at": z.iso
-        .datetime({ offset: true })
-        .transform((value) => new Date(value))
-        .optional()
-        .describe(
-          "The `updated_at` this client last read. Omit to accept " +
-            "whatever is stored.",
-        ),
-    }),
+    headers: ifUpdatedAt(""),
     body: SaveFields,
     security: editorSecurity,
     response: {
       200: EditorPage,
       400: error,
       404: error,
-      409: conflict,
+      409: z.union([conflict, revisionState]),
       422: validationFailed,
       500: error,
       ...authErrors,
@@ -273,15 +286,93 @@ export const SCHEMAS = {
   getRevision: {
     summary: "Get a page's pending revision",
     description:
-      "The change to a `public` page that is waiting for an approver. 404 " +
+      "The change to a `public` page that is waiting for an approver: a " +
+      "draft, or one submitted for review. A rejected one is returned " +
+      "until a save starts a new draft, or the live page changes. " +
+      "`changes` lists the fields it changes against the live page. 404 " +
       "when the page has none.",
     tags: ["pages"],
     params: idParams,
     security: editorSecurity,
     response: {
-      200: PendingRevision,
+      200: RevisionView,
       400: error,
       404: error,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  submitRevision: {
+    summary: "Submit a page's draft revision for review",
+    description:
+      "Needs the editor role (403 otherwise). Records the submitter, who " +
+      "may not then approve it. 404 when the page has no draft revision; " +
+      "409 `under_review` when it is already submitted, or `conflict` when " +
+      "the draft has been saved since `if-updated-at`. Saving the page is " +
+      "refused while it waits.",
+    tags: ["pages"],
+    params: idParams,
+    headers: ifUpdatedAt(" for the revision"),
+    security: editorSecurity,
+    response: {
+      200: RevisionView,
+      400: error,
+      404: error,
+      409: z.union([conflict, revisionState]),
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  rejectRevision: {
+    summary: "Reject a submitted revision with a comment",
+    description:
+      "Needs the approver role, and the approver must not have changed or " +
+      "submitted the revision (403 otherwise). The live page is unchanged; " +
+      "the revision is kept with the comment, and the next save starts a " +
+      "new draft from it. 404 when nothing is waiting for review; 409 " +
+      "`not_submitted` for a draft, or `conflict` when the revision has " +
+      "been saved since `if-updated-at`.",
+    tags: ["pages"],
+    params: idParams,
+    headers: ifUpdatedAt(" for the revision"),
+    body: z.object({
+      comment: RevisionComment.describe("Why, for the editor."),
+    }),
+    security: editorSecurity,
+    response: {
+      200: RevisionView,
+      400: error,
+      404: error,
+      409: z.union([conflict, revisionState]),
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  publishRevision: {
+    summary: "Approve a submitted revision and publish it",
+    description:
+      "Needs the approver role, and the approver must not have changed or " +
+      "submitted the revision (403 otherwise). Writes the revision to the " +
+      "live page as a save would, re-indexes it and records the approver " +
+      "in `change_events`, all in one transaction. A revision that has gone " +
+      "stale while it waited (its parent or category gone, or its url " +
+      "taken) is refused with a 422 naming the field, and nothing changes. " +
+      "404 when nothing is waiting for review; 409 `not_submitted` for a " +
+      "draft, or `conflict` when the revision has been saved since " +
+      "`if-updated-at`. Returns the page as it now stands.",
+    tags: ["pages"],
+    params: idParams,
+    headers: ifUpdatedAt(" for the revision"),
+    security: editorSecurity,
+    response: {
+      200: EditorPage,
+      400: error,
+      404: error,
+      409: z.union([conflict, revisionState]),
+      422: validationFailed,
       500: error,
       ...authErrors,
     },

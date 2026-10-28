@@ -11,10 +11,12 @@
 import {
   and,
   count,
+  desc,
   eq,
   inArray,
   isNull,
   max,
+  or,
   sql,
   TransactionRollbackError,
   type SQL,
@@ -35,6 +37,7 @@ import {
 import type { CategoryRecords } from "../services/category-editing";
 import {
   ContentStoreUnavailable,
+  OPEN_REVISION_STATUSES,
   PageRejected,
   type FieldError,
   type Frontmatter,
@@ -60,6 +63,7 @@ import type {
   PageRecords,
   PageRevision,
   PendingRevisionRecord,
+  RevisionMark,
 } from "../services/page-editing";
 import type { PublicPageReads } from "../services/page-resolution";
 import type { NavigationReads } from "../services/site-navigation";
@@ -98,9 +102,17 @@ const toRevision = (row: RevisionRow): PendingRevision => ({
   live_updated_at: row.liveUpdatedAt.toISOString(),
   created_by: row.createdBy,
   contributors: row.contributors,
+  submitted_by: row.submittedBy,
+  submitted_at: row.submittedAt?.toISOString() ?? null,
+  decided_by: row.decidedBy,
+  decided_at: row.decidedAt?.toISOString() ?? null,
+  comment: row.comment,
   created_at: row.createdAt.toISOString(),
   updated_at: row.updatedAt.toISOString(),
 });
+
+/** A page's one open revision, as the partial unique index defines it. */
+const isOpen = inArray(pageRevisions.status, OPEN_REVISION_STATUSES);
 
 /** The constraints a write can break, as the field an editor can fix. */
 const REFUSALS: Readonly<Record<string, FieldError>> = {
@@ -744,24 +756,40 @@ export class PostgresPages
     return filed.ok ? ok(undefined) : filed;
   }
 
-  /** A page's open revision, or null. */
-  async openRevision(
+  /**
+   * A page's open revision; otherwise its latest rejected one, while the live
+   * page is still the version it was saved over; or null. A live write after
+   * the rejection (an unpublish, or another revision published) retires it.
+   */
+  async currentRevision(
     pageId: PageId,
   ): Promise<Result<PendingRevision | null, ContentStoreUnavailable>> {
-    const rows = await attempt("openRevision", () =>
+    const rows = await attempt("currentRevision", () =>
       this.db
-        .select()
+        .select({ revision: pageRevisions })
         .from(pageRevisions)
+        .innerJoin(contentPages, eq(contentPages.id, pageRevisions.pageId))
         .where(
           and(
             eq(pageRevisions.pageId, pageId),
-            eq(pageRevisions.status, "draft"),
+            or(
+              isOpen,
+              and(
+                eq(pageRevisions.status, "rejected"),
+                eq(pageRevisions.liveUpdatedAt, contentPages.updatedAt),
+              ),
+            ),
           ),
-        ),
+        )
+        .orderBy(
+          sql`${pageRevisions.status} = 'rejected'`,
+          desc(pageRevisions.decidedAt),
+        )
+        .limit(1),
     );
     if (!rows.ok) return rows;
     const [row] = rows.value;
-    return ok(row ? toRevision(row) : null);
+    return ok(row ? toRevision(row.revision) : null);
   }
 
   /** Start a page's open revision, or overwrite it, keeping who started it. */
@@ -783,7 +811,7 @@ export class PostgresPages
         })
         .onConflictDoUpdate({
           target: pageRevisions.pageId,
-          targetWhere: sql`status = 'draft'`,
+          targetWhere: sql`status in ('draft', 'submitted')`,
           set: {
             fields: revision.fields,
             liveUpdatedAt: revision.liveUpdatedAt,
@@ -804,13 +832,39 @@ export class PostgresPages
     return attempt("dropRevision", async () => {
       await this.db
         .delete(pageRevisions)
-        .where(
-          and(
-            eq(pageRevisions.pageId, pageId),
-            eq(pageRevisions.status, "draft"),
-          ),
-        );
+        .where(and(eq(pageRevisions.pageId, pageId), isOpen));
     });
+  }
+
+  /** Move a revision to a review status, recording who moved it. Its version stays. */
+  async markRevision(
+    revisionId: string,
+    mark: RevisionMark,
+  ): Promise<Result<PendingRevision, ContentStoreUnavailable>> {
+    const rows = await attempt("markRevision", () =>
+      this.db
+        .update(pageRevisions)
+        .set(
+          mark.status === "submitted"
+            ? {
+                status: mark.status,
+                submittedBy: mark.by,
+                submittedAt: mark.at,
+              }
+            : {
+                status: mark.status,
+                decidedBy: mark.by,
+                decidedAt: mark.at,
+                comment: mark.status === "rejected" ? mark.comment : null,
+              },
+        )
+        .where(eq(pageRevisions.id, revisionId))
+        .returning(),
+    );
+    if (!rows.ok) return rows;
+    const [row] = rows.value;
+    if (!row) throw new Error("Postgres returned no row for a write");
+    return ok(toRevision(row));
   }
 
   /** Replace a page's search chunks. */

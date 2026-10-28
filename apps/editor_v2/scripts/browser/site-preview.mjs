@@ -76,6 +76,7 @@ await context.route("**/*", async (route) => {
     "/services": [service],
     [`/services/${service.id}`]: { service, pages: [{ ...current, role: "entry" }] },
     [`/pages/${service.id}`]: current,
+    [`/pages/${service.id}/revision/submit`]: undefined,
     "/editor/categories": { categories: [category] },
     "/version": { count: 1, latest: current.updated_at },
     // An approver, so the page's visibility can be changed
@@ -92,11 +93,18 @@ await context.route("**/*", async (route) => {
   const headers = {
     "access-control-allow-origin": request.headers().origin ?? "*",
     "access-control-allow-credentials": "true",
-    "access-control-allow-methods": "GET, PUT, OPTIONS",
+    "access-control-allow-methods": "GET, POST, PUT, OPTIONS",
     "access-control-allow-headers": "content-type, if-updated-at",
   };
 
   if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers });
+
+  // As api_v2 does: submitting sends the draft for review without moving the page's version
+  if (path.endsWith("/revision/submit")) {
+    current = { ...current, pending_revision: { status: "submitted", comment: null } };
+
+    return route.fulfill({ json: { status: "submitted", comment: null, changes: [] }, headers });
+  }
 
   if (request.method() !== "GET") {
     const fields = request.postDataJSON();
@@ -115,7 +123,7 @@ await context.route("**/*", async (route) => {
       ...current,
       ...fields,
       updated_at: new Date(Date.parse(current.updated_at) + 1000).toISOString(),
-      pending_revision: reviewed ? { status: "draft" } : null,
+      pending_revision: reviewed ? { status: "draft", comment: null } : null,
     };
 
     return route.fulfill({ json: current, headers });
@@ -347,7 +355,14 @@ try {
   await button("Save").click();
   await page.locator("[data-document-bar]:visible").getByText("Saved", { exact: true }).waitFor();
   await page
-    .getByText("Your changes are saved but not live. An approver needs to publish them.")
+    .getByText("Your changes are saved but not live. Submit them for review when they're ready.")
+    .first()
+    .waitFor();
+  await button("Submit for review").click();
+  await page
+    .getByText(
+      "Waiting for review. Citizens will see these changes once an approver publishes them.",
+    )
     .first()
     .waitFor();
   assert.equal(writes.length, 1);

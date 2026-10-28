@@ -1,7 +1,15 @@
-import type { FastifyRequest } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import type { ICategoryEditing } from "../services/category-editing";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
-import type { Employee, Role } from "../modules/auth";
+import type { Employee, Role, SelfApproval } from "../modules/auth";
+import type {
+  ContentStoreUnavailable,
+  PageConflict,
+  PageNotFound,
+  PageRejected,
+  RevisionNotFound,
+  RevisionStateConflict,
+} from "../modules/page";
 import { Redacted } from "../modules/redacted";
 import type { EmployeeGate, RoleRecords } from "../services/editor-access";
 import type { EditorIndex } from "../services/editor-index";
@@ -25,9 +33,53 @@ declare module "fastify" {
 /** Why an employee without the role a route needs is refused. */
 const NEEDS_ROLE: Readonly<Record<Role, string>> = {
   editor: "You need the editor role to make changes. Ask an admin to grant it.",
-  approver: "Only approvers can do this.",
+  approver: "You need the approver role to do this.",
   admin: "Only admins can see or change who has which role.",
 };
+
+/** Why a review step was refused, as its response. */
+function reviewRefused(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  error:
+    | PageNotFound
+    | RevisionNotFound
+    | PageConflict
+    | RevisionStateConflict
+    | SelfApproval
+    | PageRejected
+    | ContentStoreUnavailable,
+) {
+  switch (error._tag) {
+    case "PageNotFound":
+    case "RevisionNotFound":
+      return reply
+        .status(404)
+        .send({ error: "not_found", message: error.message });
+    case "PageConflict":
+      return reply.status(409).send({
+        error: "conflict",
+        message: error.message,
+        documentId: error.documentId,
+      });
+    case "RevisionStateConflict":
+      return reply
+        .status(409)
+        .send({ error: error.reason, message: error.message });
+    case "SelfApproval":
+      return reply
+        .status(403)
+        .send({ error: "forbidden", message: error.message });
+    case "PageRejected":
+      return reply.status(422).send(rejected(error));
+    case "ContentStoreUnavailable":
+      return reply.status(500).send(storageFailed(request.log, error));
+    default: {
+      const unexpected: never = error;
+      throw unexpected;
+    }
+  }
+}
 
 /** Authenticated editor operations, behind an employee session, the editor's Origin and the route's role. */
 export const editorRoutes: FastifyPluginAsyncZod<{
@@ -245,6 +297,10 @@ export const editorRoutes: FastifyPluginAsyncZod<{
             message: saved.error.message,
             documentId: saved.error.documentId,
           });
+        case "RevisionStateConflict":
+          return reply
+            .status(409)
+            .send({ error: saved.error.reason, message: saved.error.message });
         case "ContentStoreUnavailable":
           return reply
             .status(500)
@@ -254,6 +310,55 @@ export const editorRoutes: FastifyPluginAsyncZod<{
           throw unexpected;
         }
       }
+    },
+  });
+  editor.route({
+    method: "POST",
+    url: "/pages/:id/revision/submit",
+    schema: SCHEMAS.submitRevision,
+    config: { role: "editor" },
+    handler: async (request, reply) => {
+      const submitted = await editing.submit(
+        request.params.id,
+        request.headers[IF_UPDATED_AT] ?? null,
+        actor(request),
+      );
+      return submitted.ok
+        ? submitted.value
+        : reviewRefused(request, reply, submitted.error);
+    },
+  });
+  editor.route({
+    method: "POST",
+    url: "/pages/:id/revision/reject",
+    schema: SCHEMAS.rejectRevision,
+    config: { role: "approver" },
+    handler: async (request, reply) => {
+      const decided = await editing.reject(
+        request.params.id,
+        request.body.comment,
+        request.headers[IF_UPDATED_AT] ?? null,
+        actor(request),
+      );
+      return decided.ok
+        ? decided.value
+        : reviewRefused(request, reply, decided.error);
+    },
+  });
+  editor.route({
+    method: "POST",
+    url: "/pages/:id/revision/publish",
+    schema: SCHEMAS.publishRevision,
+    config: { role: "approver" },
+    handler: async (request, reply) => {
+      const published = await editing.publish(
+        request.params.id,
+        request.headers[IF_UPDATED_AT] ?? null,
+        actor(request),
+      );
+      return published.ok
+        ? published.value
+        : reviewRefused(request, reply, published.error);
     },
   });
   editor.route({

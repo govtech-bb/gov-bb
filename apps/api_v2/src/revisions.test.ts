@@ -175,7 +175,7 @@ describe("a save to a public page", () => {
       title: "Severance pay",
       body_markdown: aPage().body_markdown,
       updated_at: revision?.updatedAt.toISOString(),
-      pending_revision: { status: "draft" },
+      pending_revision: { status: "draft", comment: null },
     });
     expect(response.json().updated_at > page.updated_at).toBe(true);
   });
@@ -442,6 +442,7 @@ describe("an approver taking a page out of public view", () => {
     const editing = new PageEditing(
       new PostgresPages(db),
       () => new Date(Date.parse(page.updated_at) - 60_000),
+      { allowSelfApproval: false },
     );
     const fields = (overrides: Record<string, unknown>) =>
       withDefaults(aPage({ category_id: page.category_id, ...overrides }));
