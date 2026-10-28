@@ -294,11 +294,11 @@ describe('categoryTreeQuery', () => {
   })
 
   it('keeps disabled for the life of the client', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] })
     const load = vi.fn(() => fetchCategoryTree(null))
     const client = freshClient()
     await client.fetchQuery(categoryTreeQuery(load))
-    vi.advanceTimersByTime(CATEGORY_TREE_STALE_MS * 10)
+    await vi.advanceTimersByTimeAsync(CATEGORY_TREE_STALE_MS * 10)
     await client.fetchQuery(categoryTreeQuery(load))
     expect(load).toHaveBeenCalledTimes(1)
   })

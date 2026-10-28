@@ -288,6 +288,7 @@ export function categoryTreeQuery(
     },
     staleTime: ({ state }: { state: { data?: CategoryTreeResult } }) =>
       state.data?.kind === 'disabled' ? Infinity : CATEGORY_TREE_STALE_MS,
-    gcTime: CATEGORY_TREE_STALE_MS,
+    // Keep disabled mode for this client's lifetime; staleTime still refreshes API reads.
+    gcTime: Infinity,
   }
 }
