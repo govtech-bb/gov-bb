@@ -1,24 +1,40 @@
 import { betterAuth, type BetterAuthOptions } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { github } from "better-auth/social-providers";
-import type { Pool } from "pg";
 import type { Logger } from "pino";
 import type { AuthConfig } from "../config";
+import type { Database } from "../db";
 import {
   admitGitHubIdentity,
   AuthUnavailable,
   parseEmployee,
   GITHUB_ORGANIZATION,
-  type Employee,
+  type Identity,
   type Forbidden,
 } from "../modules/auth";
 import type { Redacted } from "../modules/redacted";
 import { err, ok, type Result } from "../modules/result";
 import type { AuthHandler } from "../routes/auth";
+import {
+  authAccount,
+  authSession,
+  authUser,
+  authVerification,
+  userRoles,
+} from "../schema";
 import type { SessionReader } from "../services/editor-access";
 
-/** BetterAuth's configuration: GitHub sign-in admitted by organization membership, sessions in Postgres. */
+/** The Drizzle tables BetterAuth reads and writes, keyed by each model's `modelName`. */
+const AUTH_SCHEMA = {
+  auth_user: authUser,
+  auth_session: authSession,
+  auth_account: authAccount,
+  auth_verification: authVerification,
+};
+
+/** BetterAuth's configuration: GitHub sign-in admitted by organization membership, sessions in Postgres through Drizzle. */
 export function betterAuthOptions(
-  pool: Pool,
+  db: Database,
   config: AuthConfig,
   logger: Pick<Logger, "error" | "warn">,
 ) {
@@ -44,7 +60,13 @@ export function betterAuthOptions(
     baseURL: config.apiOrigin,
     basePath: "/api/auth",
     secret: config.secret.reveal(),
-    database: pool,
+    // The adapter defaults to no transactions; a first sign-in must insert its
+    // user and account together or not at all.
+    database: drizzleAdapter(db, {
+      provider: "pg",
+      schema: AUTH_SCHEMA,
+      transaction: true,
+    }),
     trustedOrigins: [config.editorOrigin],
     emailAndPassword: { enabled: false },
     socialProviders: {
@@ -104,6 +126,31 @@ export function betterAuthOptions(
       accountLinking: { enabled: true, trustedProviders: [] },
     },
     databaseHooks: {
+      user: {
+        create: {
+          // Every employee is an editor by default (ADR 0079). The grant is
+          // made once, when the user is created, so a revocation outlasts
+          // their next sign-in. BetterAuth runs it after the sign-in's
+          // transaction commits, so it writes through `db`; if it
+          // fails, sign-in still succeeds without the role, which an admin
+          // can grant.
+          after: async (user) => {
+            try {
+              await db
+                .insert(userRoles)
+                .values({ userId: user.id, role: "editor" })
+                .onConflictDoNothing();
+            } catch {
+              // The driver's message can carry SQL parameters. The user id
+              // tells an operator whom to grant `editor` to.
+              logger.error(
+                { failure: "default_role_grant_failed", userId: user.id },
+                "could not make a new user an editor",
+              );
+            }
+          },
+        },
+      },
       account: {
         create: { before: discardOAuthTokens },
         update: { before: discardOAuthTokens },
@@ -135,13 +182,13 @@ export function betterAuthOptions(
   } satisfies BetterAuthOptions;
 }
 
-/** Build the provider boundary once, using the process's existing Postgres pool. */
+/** Build the provider boundary once, over the process's existing database handle. */
 export async function createBetterAuth(
-  pool: Pool,
+  db: Database,
   config: AuthConfig,
   logger: Pick<Logger, "error" | "warn">,
 ): Promise<AuthHandler & SessionReader> {
-  const instance = betterAuth(betterAuthOptions(pool, config, logger));
+  const instance = betterAuth(betterAuthOptions(db, config, logger));
   await instance.$context;
   return {
     /** Delegate the auth protocol without exposing unexpected provider failures. */
@@ -155,7 +202,7 @@ export async function createBetterAuth(
     /** Verify the cookie in Postgres, then retain only the admitted employee. */
     async findSession(
       credential: Redacted<string>,
-    ): Promise<Result<Employee | null, Forbidden | AuthUnavailable>> {
+    ): Promise<Result<Identity | null, Forbidden | AuthUnavailable>> {
       try {
         const session = await instance.api.getSession({
           headers: new Headers({ cookie: credential.reveal() }),

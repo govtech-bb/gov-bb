@@ -3,24 +3,30 @@ import estate from "../../../api_v2/src/seed-data/estate.json";
 import { createHeadlessEditor } from "../editor/core/create-editor";
 import { $setPageMetadata } from "../pages/metadata";
 import { govbbPageCodec, govbbPageEditor } from "../presets/govbb-page";
-import type { ApiPage, SavedCategory } from "./client";
-import { markdownToPageSaveInput, pageToMarkdown, suggestedUrl } from "./page-markdown";
+import type { Category } from "./categories";
+import type { ApiPage } from "./client";
+import {
+  markdownToPageSaveInput,
+  pageToMarkdown,
+  pickerCategories,
+  suggestedUrl,
+} from "./page-markdown";
 
 const VISIBILITIES = ["public", "preview", "draft"] as const;
 
 const idOf = (key: string) => `id:${key}`;
 
-const categories: SavedCategory[] = estate.categories.map((category) => ({
+const categories: Category[] = estate.categories.map((category, position) => ({
   id: idOf(category.slug),
   parent_id: category.parent ? idOf(category.parent) : null,
   slug: category.slug,
   url: category.parent ? `/${category.parent}/${category.slug}` : `/${category.slug}`,
   title: category.title,
-  description: category.description,
-  position: category.position,
+  description: null,
+  position,
   services: 0,
   reserved_route: false,
-  updated_at: "2026-10-07T12:00:00.000Z",
+  updated_at: "2026-10-26T12:00:00.000Z",
 }));
 
 const pages: ApiPage[] = estate.pages.map((page) => ({
@@ -38,6 +44,7 @@ const pages: ApiPage[] = estate.pages.map((page) => ({
   published_at: page.published_at,
   created_at: "2026-10-07T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
+  pending_revision: null,
 }));
 
 const entry = pages.find((page) => page.url === "/money-financial-support/calculate-severance-pay");
@@ -96,7 +103,7 @@ describe("page markdown", () => {
     if (prepared.mode === "source") throw new Error("The entry page should open visually");
     const editor = createHeadlessEditor(govbbPageEditor, prepared.state);
 
-    editor.update(() => $setPageMetadata({ visibility: "draft", subcategory: undefined }), {
+    editor.update(() => $setPageMetadata({ visibility: "preview", subcategory: undefined }), {
       discrete: true,
     });
     const edited = govbbPageCodec.encode(editor.getEditorState().toJSON());
@@ -109,8 +116,46 @@ describe("page markdown", () => {
     // An edit re-exports the body in the editor's normal form (a hard break becomes <br>).
     expect({ ...after.value, body_markdown: "" }).toEqual({
       ...before.value,
-      visibility: "draft",
+      visibility: "preview",
       body_markdown: "",
+    });
+  });
+
+  it("keeps a legacy draft hidden when unrelated edits are saved", () => {
+    const page: ApiPage = { ...entry, visibility: "draft" };
+    const prepared = govbbPageCodec.prepare(pageToMarkdown(page, categories));
+
+    if (prepared.mode === "source") throw new Error("The draft page should open visually");
+    const editor = createHeadlessEditor(govbbPageEditor, prepared.state);
+
+    try {
+      editor.update(() => $setPageMetadata({ title: "Edited hidden page" }), { discrete: true });
+
+      const saved = markdownToPageSaveInput(
+        govbbPageCodec.encode(editor.getEditorState().toJSON()),
+        page,
+        categories,
+      );
+
+      expect(saved.ok && saved.value.title).toBe("Edited hidden page");
+      expect(saved.ok && saved.value.visibility).toBe("draft");
+    } finally {
+      editor.dispose();
+    }
+  });
+
+  it("names the available visibility choices when an imported value cannot be saved", () => {
+    const saved = markdownToPageSaveInput(
+      markdownOf(
+        "title: Severance\nurl: /money/severance\ncategory: money-financial-support\nvisibility: secret",
+      ),
+      entry,
+      categories,
+    );
+
+    expect(saved).toEqual({
+      ok: false,
+      errors: [{ field: "visibility", message: "Choose Public or Preview link only" }],
     });
   });
 
@@ -165,6 +210,47 @@ describe("page markdown", () => {
     );
 
     expect(saved.ok ? [] : saved.errors.map((error) => error.field)).toEqual([field]);
+  });
+
+  it("names categories that share a name by their addresses in page details' picker", () => {
+    const row = (slug: string, title: string, parent?: string): Category => ({
+      id: idOf(slug),
+      parent_id: parent ? idOf(parent) : null,
+      slug,
+      title,
+      url: parent ? `/${parent}/${slug}` : `/${slug}`,
+      description: null,
+      position: 0,
+      services: 0,
+      reserved_route: false,
+      updated_at: "2026-10-26T12:00:00.000Z",
+    });
+
+    const picked = pickerCategories([
+      row("health", "Health"),
+      row("health-care", "Health"),
+      row("grants", "Grants", "health"),
+      row("money", "Money"),
+      row("money-grants", "Grants", "money"),
+      row("pensions", "Pensions", "money"),
+    ]);
+
+    expect(picked).toEqual([
+      {
+        slug: "health",
+        title: "Health (/health)",
+        subcategories: [{ slug: "grants", title: "Grants (/health/grants)" }],
+      },
+      { slug: "health-care", title: "Health (/health-care)", subcategories: [] },
+      {
+        slug: "money",
+        title: "Money",
+        subcategories: [
+          { slug: "money-grants", title: "Grants (/money/money-grants)" },
+          { slug: "pensions", title: "Pensions" },
+        ],
+      },
+    ]);
   });
 
   it("suggests a new page's path from its title, beneath its prefix", () => {

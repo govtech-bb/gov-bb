@@ -30,6 +30,13 @@ try {
     localStorage.setItem("govbb-editor:draft:markdown:v2", "Old browser-only form");
   });
   const firstRead = Promise.withResolvers();
+  // Services filters start the shared category read before a page is opened.
+  const categoriesRead = Promise.withResolvers();
+  await context.route("**/editor/categories", async (route) => {
+    if (route.request().method() === "GET") await categoriesRead.promise;
+
+    return route.fallback();
+  });
   await context.route("**/services", async (route) => {
     if (route.request().resourceType() !== "document" && route.request().method() === "GET")
       await firstRead.promise;
@@ -55,14 +62,23 @@ try {
   assert.equal(await button("Create browser draft").count(), 0);
   assert.equal(await page.getByText("Drafts in this browser", { exact: true }).count(), 0);
 
+  await page.getByRole("combobox", { name: "Status", exact: true }).click();
+  await page.getByRole("option", { name: "Draft (hidden)", exact: true }).click();
+  await page.keyboard.press("Escape");
+  assert.equal(
+    await page.getByRole("link", { name: servicesFixture[2].title, exact: true }).isVisible(),
+    true,
+  );
+  assert.equal(await page.getByRole("link", { name: service.title, exact: true }).count(), 0);
+  await button("Clear filters").click();
+  await page.getByRole("link", { name: service.title, exact: true }).waitFor();
+
   const detailRead = Promise.withResolvers();
   const pageRead = Promise.withResolvers();
-  const categoriesRead = Promise.withResolvers();
 
   for (const [path, held] of [
     [`/services/${service.id}`, detailRead],
     [`/pages/${service.id}`, pageRead],
-    ["/editor/categories", categoriesRead],
   ]) {
     await context.route(`**${path}`, async (route) => {
       if (route.request().resourceType() !== "document" && route.request().method() === "GET")
@@ -112,6 +128,12 @@ try {
 
   await button("Create service").click();
   const create = page.getByRole("dialog", { name: "Create a service", exact: true });
+  await create
+    .getByText(
+      "The service starts in Preview. Add its start page and supporting pages once it exists.",
+      { exact: true },
+    )
+    .waitFor();
   await create.getByLabel("Service name", { exact: true }).fill("API workspace checks");
   await create
     .getByLabel("Category", { exact: true })
@@ -120,17 +142,35 @@ try {
   await title.waitFor();
   assert.equal(await title.inputValue(), "API workspace checks");
   const created = api.writes.find((write) => write.method === "POST");
-  assert.equal(created.fields.visibility, "draft");
+  assert.equal(created.fields.visibility, "preview");
+  assert.equal(created.fields.body_markdown, "");
+  assert.equal(created.fields.category_id, "55555555-5555-4555-8555-555555555551");
   assert.equal(new URL(page.url()).pathname, `/services/${created.id}/${created.id}`);
   assert.equal(await page.getByRole("link", { name: "Application form", exact: true }).count(), 0);
 
   await button("Add document").click();
   const add = page.getByRole("dialog", { name: "Add a page", exact: true });
+  await add
+    .getByText("The page starts in Preview beneath this service's entry page.", { exact: true })
+    .waitFor();
   assert.deepEqual(await add.getByLabel("Document type").locator("option").allTextContents(), [
     "Start page",
     "Supporting page",
   ]);
   assert.equal(await add.locator('input[type="file"]').count(), 0);
+  await add.getByRole("button", { name: "Add page", exact: true }).click();
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll('textarea[aria-label="Page title"]')].some(
+      (input) => !input.closest("[hidden]") && input.value === "Before you start",
+    ),
+  );
+  const start = api.writes.filter((write) => write.method === "POST").at(-1);
+  assert.equal(start.fields.parent_id, created.id);
+  assert.equal(start.fields.url, `${created.fields.url}/start`);
+  assert.equal(start.fields.visibility, "preview");
+  assert.equal(start.fields.body_markdown, "");
+
+  await button("Add document").click();
   await add.getByLabel("Document type").selectOption("supporting");
   await add.getByLabel("Page title", { exact: true }).fill("Fees");
   await add.getByRole("button", { name: "Add page", exact: true }).click();
@@ -143,6 +183,9 @@ try {
   );
   const child = api.writes.filter((write) => write.method === "POST").at(-1);
   assert.equal(child.fields.parent_id, created.id);
+  assert.equal(child.fields.visibility, "preview");
+  assert.equal(child.fields.body_markdown, "");
+  assert.equal(child.fields.url, `${created.fields.url}/fees`);
   await page.getByLabel("Form ID", { exact: true }).fill("externally-managed-form");
   assert.equal(api.writes.filter((write) => write.method === "PUT").length, 0);
   await button("Save").click();

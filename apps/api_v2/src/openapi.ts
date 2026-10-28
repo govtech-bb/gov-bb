@@ -30,6 +30,7 @@ export const OPENAPI_DOCUMENT = {
       name: "auth",
       description: "GitHub organization member sign-in and sessions",
     },
+    { name: "admin", description: "Who holds which role; admins only" },
   ],
   components: {
     securitySchemes: {

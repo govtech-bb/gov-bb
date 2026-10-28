@@ -166,7 +166,7 @@ test("a page sits in the list under its parent, dotted with how far it's publish
     ["Entry page", "Fees", "Refunds", "Contact"].map((name) =>
       item(name).querySelector('[role="img"]')?.getAttribute("aria-label"),
     ),
-  ).toEqual(["Public", "Preview link only", "Draft link only", "Draft link only"]);
+  ).toEqual(["Public", "Preview link only", "Draft (hidden)", "Draft (hidden)"]);
 });
 
 test("while a service's pages load, its sidebar shows what's known and offers nothing yet", async () => {

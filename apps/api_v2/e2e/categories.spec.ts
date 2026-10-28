@@ -21,7 +21,12 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
   beforeAll(async () => {
     database = await createScratchDatabase();
     server = await startServer({ DB_NAME: database, SEED: "false" });
-    cookie = (await createEmployeeSession(database, server.url)).cookie;
+    // An editor and approver, since these sessions create and delete public pages.
+    cookie = (
+      await createEmployeeSession(database, server.url, {
+        roles: ["editor", "approver"],
+      })
+    ).cookie;
   });
   afterAll(async () => {
     await server?.stop();
@@ -121,9 +126,10 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
     expect(
       (await fetch(server.url + "/categories/socket-a/socket-child")).status,
     ).toBe(404);
+    // Three creates, a save, two reordered rows and a delete.
     expect(await (await send("GET", "/version")).json()).toEqual({
-      count: 0,
-      latest: null,
+      count: 7,
+      latest: expect.any(String),
     });
   });
 

@@ -17,6 +17,9 @@ import { SQL as INIT_SQL } from "./migrations/001_init";
 import { SQL as MARKDOWN_PAGES_SQL } from "./migrations/002_markdown_pages";
 import { SQL as AUTH_SQL } from "./migrations/003_auth";
 import { SQL as GITHUB_SESSIONS_SQL } from "./migrations/004_github_sessions";
+import { SQL as HIERARCHY_SQL } from "./migrations/005_hierarchy_and_search";
+import { SQL as UNPUBLISHED_SQL } from "./migrations/006_change_action_unpublished";
+import { SQL as DEFAULT_EDITOR_SQL } from "./migrations/009_default_editor_role";
 import type { Database } from "./db";
 import { createEmptyDb } from "./test-db";
 
@@ -26,7 +29,24 @@ const ALL = [
   "003_auth",
   "004_github_sessions",
   "005_hierarchy_and_search",
+  "006_change_action_unpublished",
+  "007_change_history_trigger",
+  "008_user_roles",
+  "009_default_editor_role",
+  "010_page_revisions",
+  "011_revision_review",
+  "012_change_action_review",
+  "013_review_history_trigger",
+  "015_revision_discarded",
 ];
+
+/** Tables whose rows are not content, so the history does not record them. */
+const UNAUDITED = new Set([
+  "change_events",
+  "schema_migrations",
+  "search_chunks",
+  "user_roles",
+]);
 
 const freshDb = async () => {
   const test = await createEmptyDb();
@@ -59,8 +79,10 @@ describe("migrate", () => {
       "categories",
       "change_events",
       "content_pages",
+      "page_revisions",
       "schema_migrations",
       "search_chunks",
+      "user_roles",
     ]);
     await close();
   });
@@ -107,6 +129,15 @@ describe("migrate", () => {
       "003_auth",
       "004_github_sessions",
       "005_hierarchy_and_search",
+      "006_change_action_unpublished",
+      "007_change_history_trigger",
+      "008_user_roles",
+      "009_default_editor_role",
+      "010_page_revisions",
+      "011_revision_review",
+      "012_change_action_review",
+      "013_review_history_trigger",
+      "015_revision_discarded",
     ]);
     const pages = await exec("select count(*)::int as n from content_pages");
     expect(pages.rows).toEqual([{ n: 0 }]);
@@ -133,6 +164,15 @@ describe("migrate", () => {
 
     await expect(migrate(db, exec)).resolves.toEqual([
       "005_hierarchy_and_search",
+      "006_change_action_unpublished",
+      "007_change_history_trigger",
+      "008_user_roles",
+      "009_default_editor_role",
+      "010_page_revisions",
+      "011_revision_review",
+      "012_change_action_review",
+      "013_review_history_trigger",
+      "015_revision_discarded",
     ]);
     await exec(
       `insert into categories (slug, title) values ('c', 'C');
@@ -195,11 +235,250 @@ describe("migrate", () => {
       { id: "member-session" },
     ]);
     expect(
-      (await exec("select count(*)::int as count from auth_user")).rows,
+      (
+        await exec(
+          "select count(*)::int as count from auth_user where id <> 'system'",
+        )
+      ).rows,
     ).toEqual([{ count: 2 }]);
     expect(
       (await exec("select count(*)::int as count from auth_account")).rows,
     ).toEqual([{ count: 2 }]);
+    await close();
+  });
+
+  it("makes everyone who has signed in an editor, once, so a revocation sticks", async () => {
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+    await exec(`
+      delete from schema_migrations where name = '009_default_editor_role';
+      insert into auth_user (id, name, email, "emailVerified") values
+        ('editor', 'Editor already', 'editor@govtech.bb', true),
+        ('approver', 'Approver only', 'approver@govtech.bb', true),
+        ('nobody', 'No role yet', 'nobody@govtech.bb', true);
+      insert into user_roles (user_id, role, granted_by) values
+        ('editor', 'editor', 'admin'),
+        ('approver', 'approver', 'admin');
+    `);
+    const editors = async () =>
+      (
+        await exec(
+          "select user_id, granted_by from user_roles where role = 'editor' order by user_id",
+        )
+      ).rows;
+
+    expect(await migrate(db, exec)).toEqual(["009_default_editor_role"]);
+    expect(await editors()).toEqual([
+      { user_id: "approver", granted_by: null },
+      { user_id: "editor", granted_by: "admin" },
+      { user_id: "nobody", granted_by: null },
+    ]);
+
+    await exec("delete from user_roles where user_id = 'nobody'");
+    expect(await migrate(db, exec)).toEqual([]);
+    expect(await editors()).toEqual([
+      { user_id: "approver", granted_by: null },
+      { user_id: "editor", granted_by: "admin" },
+    ]);
+    await close();
+  });
+
+  it("does not give a revoked editor role back when 009 is replayed", async () => {
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+    await exec(`
+      insert into auth_user (id, name, email, "emailVerified") values
+        ('revoked', 'Revoked editor', 'revoked@govtech.bb', true);
+    `);
+
+    await exec(DEFAULT_EDITOR_SQL);
+
+    expect(
+      (await exec("select user_id from user_roles where user_id = 'revoked'"))
+        .rows,
+    ).toEqual([]);
+    await close();
+  });
+
+  it("keeps revisions, and one open revision a page, draft or submitted, when 010 and 011 are replayed", async () => {
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+    await exec(`
+      insert into content_pages (id, url, slug, title, body_markdown)
+        values ('11111111-1111-4111-8111-111111111111', '/p', 'p', 'P', '');
+      insert into page_revisions (page_id, status, fields, live_updated_at, created_by, contributors, comment)
+        select id, 'rejected', '{}', updated_at, 'a', '{a}', 'No' from content_pages;
+      insert into page_revisions (page_id, status, fields, live_updated_at, created_by, contributors)
+        select id, 'submitted', '{}', updated_at, 'a', '{a}' from content_pages;
+      delete from schema_migrations where name in ('010_page_revisions', '011_revision_review');
+    `);
+
+    expect(await migrate(db, exec)).toEqual([
+      "010_page_revisions",
+      "011_revision_review",
+    ]);
+    expect(
+      (await exec("select status, comment from page_revisions order by status"))
+        .rows,
+    ).toEqual([
+      { status: "rejected", comment: "No" },
+      { status: "submitted", comment: null },
+    ]);
+    const another = (status: string) =>
+      exec(`insert into page_revisions (page_id, status, fields, live_updated_at, created_by, contributors)
+              select id, '${status}', '{}', updated_at, 'b', '{b}' from content_pages`);
+    await expect(another("draft")).rejects.toThrow(
+      /page_revisions_open_page_id_key/,
+    );
+    await expect(another("approved")).rejects.toThrow(
+      /page_revisions_status_check/,
+    );
+    await expect(another("published")).resolves.toBeDefined();
+    await close();
+  });
+
+  it("records a review step once, numbered after the page's history, when 012 and 013 are replayed", async () => {
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+    await exec(`
+      insert into content_pages (id, url, slug, title, body_markdown)
+        values ('11111111-1111-4111-8111-111111111111', '/p', 'p', 'P', '');
+      insert into page_revisions (page_id, fields, live_updated_at, created_by, contributors)
+        select id, '{}', updated_at, 'a', '{a}' from content_pages;
+      delete from schema_migrations
+        where name in ('012_change_action_review', '013_review_history_trigger');
+    `);
+
+    expect(await migrate(db, exec)).toEqual([
+      "012_change_action_review",
+      "013_review_history_trigger",
+    ]);
+    await exec("update page_revisions set status = 'submitted'");
+
+    expect(
+      (
+        await exec(
+          "select version_no, action, actor from change_events order by version_no",
+        )
+      ).rows,
+    ).toEqual([
+      { version_no: 1, action: "created", actor: "system" },
+      { version_no: 2, action: "submitted", actor: "system" },
+    ]);
+    await close();
+  });
+
+  it("closes a revision as discarded, logged once in its page's history, when 015 is replayed", async () => {
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+    await exec(`
+      insert into content_pages (id, url, slug, title, body_markdown)
+        values ('11111111-1111-4111-8111-111111111111', '/p', 'p', 'P', '');
+      insert into page_revisions (page_id, status, fields, live_updated_at, created_by, contributors)
+        select id, 'submitted', '{}', updated_at, 'a', '{a}' from content_pages;
+      delete from schema_migrations where name = '015_revision_discarded';
+    `);
+
+    expect(await migrate(db, exec)).toEqual(["015_revision_discarded"]);
+    await exec("update page_revisions set status = 'discarded'");
+
+    expect(
+      (
+        await exec(
+          "select version_no, action, snapshot->>'status' as status from change_events order by version_no",
+        )
+      ).rows,
+    ).toEqual([
+      { version_no: 1, action: "created", status: null },
+      { version_no: 2, action: "discarded", status: "discarded" },
+    ]);
+    // A discarded revision is closed, so the page can start another.
+    await expect(
+      exec(`insert into page_revisions (page_id, fields, live_updated_at, created_by, contributors)
+              select id, '{}', updated_at, 'b', '{b}' from content_pages`),
+    ).resolves.toBeDefined();
+    await close();
+  });
+
+  it("hands history written before the trigger to system, and replays", async () => {
+    const { db, exec, close } = await freshDb();
+    for (const script of [
+      INIT_SQL,
+      MARKDOWN_PAGES_SQL,
+      AUTH_SQL,
+      GITHUB_SESSIONS_SQL,
+      HIERARCHY_SQL,
+      UNPUBLISHED_SQL,
+    ])
+      await exec(script);
+    await exec(
+      `create table schema_migrations (name text primary key, applied_at timestamptz not null default now());
+       insert into schema_migrations (name) select unnest(array[${ALL.slice(
+         0,
+         6,
+       )
+         .map((name) => `'${name}'`)
+         .join(", ")}]);
+       insert into auth_user (id, name, email, "emailVerified")
+         values ('editor', 'Editor', 'editor@govtech.bb', true);
+       insert into change_events (entity_kind, entity_id, version_no, action, snapshot, actor)
+         values ('content_page', 'a', 1, 'created', '{}', 'spike'),
+                ('content_page', 'a', 2, 'updated', '{}', 'seed'),
+                ('content_page', 'a', 3, 'updated', '{}', 'import:abc force: why'),
+                ('content_page', 'a', 4, 'updated', '{}', 'editor');`,
+    );
+
+    expect(await migrate(db, exec)).toEqual(ALL.slice(6));
+    await db.execute(
+      sql`delete from schema_migrations where name = '007_change_history_trigger'`,
+    );
+    expect(await migrate(db, exec)).toEqual(["007_change_history_trigger"]);
+
+    const { rows } = await exec(
+      "select actor from change_events order by version_no",
+    );
+    expect(rows).toEqual([
+      { actor: "system" },
+      { actor: "system" },
+      { actor: "system" },
+      { actor: "editor" },
+    ]);
+    const orphans = await exec(
+      `select count(*)::int as n from change_events
+         where actor not in (select id from auth_user)`,
+    );
+    expect(orphans.rows).toEqual([{ n: 0 }]);
+    expect(
+      (await exec("select email from auth_user where id = 'system'")).rows,
+    ).toEqual([{ email: "system@api-v2.invalid" }]);
+    await close();
+  });
+
+  it("records the history of every content table", async () => {
+    // A content table added without `record_change` would change with no
+    // history at all; this names it until its migration attaches the trigger.
+    // A page's revisions record their review steps with `record_review`
+    // instead; every other content table needs `record_change`.
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+
+    const { rows } = await exec(
+      `select c.relname as table from pg_class c
+         where c.relnamespace = current_schema()::regnamespace
+           and c.relkind = 'r'
+           and not exists (
+             select 1 from pg_trigger t join pg_proc p on p.oid = t.tgfoid
+               where t.tgrelid = c.oid
+                 and p.proname = case c.relname
+                   when 'page_revisions' then 'record_review'
+                   else 'record_change' end)
+         order by 1`,
+    );
+    expect(
+      rows
+        .map((row: { table: string }) => row.table)
+        .filter((table) => !UNAUDITED.has(table) && !table.startsWith("auth_")),
+    ).toEqual([]);
     await close();
   });
 });

@@ -1,4 +1,4 @@
-import type { Employee } from "../modules/auth";
+import type { Employee, UserId } from "../modules/auth";
 import {
   categoryAddress,
   CategoryConflict,
@@ -23,8 +23,13 @@ import type { Clock } from "./page-editing";
 
 /** Content persistence; every write transaction takes the shared content lock before any other locks. */
 export interface CategoryRecords {
-  /** A failed Result rolls back all writes; the shared advisory lock is acquired first. */
+  /**
+   * Run `work` as one transaction on behalf of `actorId`, whom storage
+   * records against every change it makes; a failed Result rolls back all
+   * writes, and the shared advisory lock is acquired first.
+   */
   atomically<R extends Result<unknown, Error>>(
+    actorId: UserId,
     work: (records: CategoryRecords) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>>;
   /** All category rows in sibling order, with direct-service counts of every visibility. */
@@ -47,13 +52,16 @@ export interface CategoryRecords {
     position: number,
     stamp: CategoryStamp,
   ): Promise<Result<CategoryId, CategoryRejected | ContentStoreUnavailable>>;
-  /** Replace category fields without changing any page or sibling. */
+  /**
+   * Replace category fields without changing any page or sibling. Returns the
+   * stored stamp, which stays the old one when nothing else changed.
+   */
   replaceCategory(
     id: CategoryId,
     fields: CategoryValues,
     position: number,
     stamp: CategoryStamp,
-  ): Promise<Result<void, CategoryRejected | ContentStoreUnavailable>>;
+  ): Promise<Result<CategoryStamp, CategoryRejected | ContentStoreUnavailable>>;
   /** Delete an already-checked empty category. */
   removeCategory(
     id: CategoryId,
@@ -110,7 +118,7 @@ export interface ICategoryEditing {
   ): Promise<Result<void, CategoryDeleteFailure>>;
 }
 
-/** Category workflow owner; event attribution waits for the shared transaction actor work. */
+/** Category workflow owner; every write is recorded against the acting employee. */
 export class CategoryEditing implements ICategoryEditing {
   /** The composition root supplies content storage and time. */
   constructor(
@@ -136,13 +144,13 @@ export class CategoryEditing implements ICategoryEditing {
   /** Append under the shared lock, without a stale sibling precondition. */
   async create(
     fields: CategoryFields,
-    _actor: Employee,
+    actor: Employee,
   ): Promise<
     Result<EditorCategory, CategoryRejected | ContentStoreUnavailable>
   > {
     const parsed = parseCategoryFields(fields);
     if (!parsed.ok) return parsed;
-    return this.records.atomically(async (records) => {
+    return this.records.atomically(actor.id, async (records) => {
       const rows = await records.editorCategories();
       if (!rows.ok) return rows;
       const url = categoryAddress(parsed.value, rows.value);
@@ -175,11 +183,11 @@ export class CategoryEditing implements ICategoryEditing {
     id: CategoryId,
     fields: CategoryFields,
     expected: CategoryStamp,
-    _actor: Employee,
+    actor: Employee,
   ): Promise<Result<EditorCategory, CategoryUpdateFailure>> {
     const parsed = parseCategoryFields(fields);
     if (!parsed.ok) return parsed;
-    return this.records.atomically(async (records) => {
+    return this.records.atomically(actor.id, async (records) => {
       const rows = await records.editorCategories();
       if (!rows.ok) return rows;
       const current = rows.value.find((row) => row.id === id);
@@ -231,14 +239,14 @@ export class CategoryEditing implements ICategoryEditing {
         saved.position,
         saved.updated_at,
       );
-      return written.ok ? ok(saved) : written;
+      return written.ok ? ok({ ...saved, updated_at: written.value }) : written;
     });
   }
 
   /** A stale sibling snapshot never partially replaces the current order. */
   async reorder(
     order: CategoryOrder,
-    _actor: Employee,
+    actor: Employee,
   ): Promise<
     Result<
       EditorCategory[],
@@ -247,7 +255,7 @@ export class CategoryEditing implements ICategoryEditing {
   > {
     const parsed = parseCategoryOrder(order);
     if (!parsed.ok) return parsed;
-    return this.records.atomically(async (records) => {
+    return this.records.atomically(actor.id, async (records) => {
       const rows = await records.editorCategories();
       if (!rows.ok) return rows;
       if (
@@ -300,7 +308,7 @@ export class CategoryEditing implements ICategoryEditing {
           row.updated_at,
         );
         if (!written.ok) return written;
-        saved.push(row);
+        saved.push({ ...row, updated_at: written.value });
       }
       return ok(saved);
     });
@@ -310,9 +318,9 @@ export class CategoryEditing implements ICategoryEditing {
   async delete(
     id: CategoryId,
     expected: CategoryStamp,
-    _actor: Employee,
+    actor: Employee,
   ): Promise<Result<void, CategoryDeleteFailure>> {
-    return this.records.atomically(async (records) => {
+    return this.records.atomically(actor.id, async (records) => {
       const rows = await records.editorCategories();
       if (!rows.ok) return rows;
       const current = rows.value.find((row) => row.id === id);

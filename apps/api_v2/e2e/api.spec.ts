@@ -40,7 +40,12 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
   beforeAll(async () => {
     database = await createScratchDatabase();
     server = await startServer({ DB_NAME: database, SEED: "true" });
-    cookie = (await createEmployeeSession(database, server.url)).cookie;
+    // An editor and approver, since these sessions create and delete public pages.
+    cookie = (
+      await createEmployeeSession(database, server.url, {
+        roles: ["editor", "approver"],
+      })
+    ).cookie;
   });
 
   afterAll(async () => {
