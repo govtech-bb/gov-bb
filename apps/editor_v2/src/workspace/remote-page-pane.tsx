@@ -206,7 +206,7 @@ function RemotePageEditor({
         rebase(outcome.base);
         client.setQueryData(pageQuery(api, server.id).queryKey, outcome.base.page);
         void client.invalidateQueries({ queryKey: ["content"] });
-      } else if (outcome.kind === "conflict" || outcome.kind === "under-review")
+      } else if (outcome.kind === "conflict")
         void client.invalidateQueries({ queryKey: pageQuery(api, server.id).queryKey });
     },
     onSettled: () => {
@@ -421,7 +421,7 @@ function RemotePageEditor({
         ))}
       </ul>
     </Banner>
-  ) : outcome?.kind === "forbidden" || outcome?.kind === "under-review" ? (
+  ) : outcome?.kind === "forbidden" ? (
     // A refusal, not a failure: saving again won't change the answer, so nothing offers a retry
     <Banner tone="error" layout="strip" role="alert">
       {outcome.message}
@@ -444,6 +444,10 @@ function RemotePageEditor({
       }
     >
       Waiting for review. Citizens will see these changes once an approver publishes them.
+      {roles?.includes("editor") &&
+        (approver
+          ? " You can keep editing, but if you save changes you can't approve or reject this review."
+          : " You can keep editing: changes you save are added to this review.")}
     </Banner>
   ) : server.pending_revision?.status === "rejected" ? (
     <Banner

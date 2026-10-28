@@ -104,13 +104,15 @@ export type PageDocument = z.infer<typeof PageDocument>;
 
 /**
  * Where a pending revision stands: an editor submits a `draft`, and an
- * approver rejects or publishes a `submitted` one (#3199).
+ * approver rejects or publishes a `submitted` one (#3199). Taking the page
+ * out of public view while it waits closes it as `discarded` (#3203).
  */
 export const REVISION_STATUSES = [
   "draft",
   "submitted",
   "rejected",
   "published",
+  "discarded",
 ] as const;
 
 /** The statuses of a page's one open revision. */
@@ -213,7 +215,7 @@ export type ReviewQueueEntry = z.infer<typeof ReviewQueueEntry>;
 export const EditorPage = PageDocument.extend({
   pending_revision: z
     .object({
-      status: RevisionStatus.exclude(["published"]),
+      status: RevisionStatus.exclude(["published", "discarded"]),
       comment: z
         .string()
         .nullable()
@@ -359,13 +361,18 @@ export function revisionOf(
 
 /**
  * What the editor works on: the live page, or its current revision laid over
- * it. A published revision is the live page, so it is never laid over.
+ * it. A published revision is the live page, and a discarded one is gone, so
+ * neither is laid over.
  */
 export function workingCopy(
   live: PageDocument,
   revision: PendingRevision | null,
 ): EditorPage {
-  if (revision === null || revision.status === "published")
+  if (
+    revision === null ||
+    revision.status === "published" ||
+    revision.status === "discarded"
+  )
     return { ...live, pending_revision: null };
   return {
     ...live,
@@ -486,6 +493,17 @@ export class PageConflict extends Error {
   }
 }
 
+/** A save to a revision waiting for review named no version, so it could overwrite another editor's change unseen. */
+export class PageVersionRequired extends Error {
+  /** Stable protocol-projection discriminator. */
+  readonly _tag = "PageVersionRequired" as const;
+  constructor() {
+    super(
+      "This change is waiting for review. Send the updated_at you last read in the if-updated-at header.",
+    );
+  }
+}
+
 /** There is no revision in the state the operation acts on. */
 export class RevisionNotFound extends Error {
   /** Stable protocol-projection discriminator. */
@@ -493,8 +511,8 @@ export class RevisionNotFound extends Error {
 }
 
 /**
- * A revision is not in the state the operation needs: a save or submit of
- * one already waiting for review, or a decision on one never submitted.
+ * A revision is not in the state the operation needs: a submission of one
+ * already waiting for review, or a decision on one never submitted.
  */
 export class RevisionStateConflict extends Error {
   /** Stable protocol-projection discriminator. */

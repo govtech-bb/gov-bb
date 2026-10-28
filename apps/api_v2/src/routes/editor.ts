@@ -302,6 +302,11 @@ export const editorRoutes: FastifyPluginAsyncZod<{
         return reply
           .status(403)
           .send({ error: "forbidden", message: saved.error.message });
+      if (saved.error._tag === "PageVersionRequired")
+        return reply.status(428).send({
+          error: "precondition_required",
+          message: saved.error.message,
+        });
       return pageRefused(request, reply, saved.error);
     },
   });

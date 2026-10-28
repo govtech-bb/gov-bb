@@ -37,6 +37,7 @@ const ALL = [
   "011_revision_review",
   "012_change_action_review",
   "013_review_history_trigger",
+  "015_revision_discarded",
 ];
 
 /** Tables whose rows are not content, so the history does not record them. */
@@ -136,6 +137,7 @@ describe("migrate", () => {
       "011_revision_review",
       "012_change_action_review",
       "013_review_history_trigger",
+      "015_revision_discarded",
     ]);
     const pages = await exec("select count(*)::int as n from content_pages");
     expect(pages.rows).toEqual([{ n: 0 }]);
@@ -170,6 +172,7 @@ describe("migrate", () => {
       "011_revision_review",
       "012_change_action_review",
       "013_review_history_trigger",
+      "015_revision_discarded",
     ]);
     await exec(
       `insert into categories (slug, title) values ('c', 'C');
@@ -362,6 +365,38 @@ describe("migrate", () => {
       { version_no: 1, action: "created", actor: "system" },
       { version_no: 2, action: "submitted", actor: "system" },
     ]);
+    await close();
+  });
+
+  it("closes a revision as discarded, logged once in its page's history, when 015 is replayed", async () => {
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+    await exec(`
+      insert into content_pages (id, url, slug, title, body_markdown)
+        values ('11111111-1111-4111-8111-111111111111', '/p', 'p', 'P', '');
+      insert into page_revisions (page_id, status, fields, live_updated_at, created_by, contributors)
+        select id, 'submitted', '{}', updated_at, 'a', '{a}' from content_pages;
+      delete from schema_migrations where name = '015_revision_discarded';
+    `);
+
+    expect(await migrate(db, exec)).toEqual(["015_revision_discarded"]);
+    await exec("update page_revisions set status = 'discarded'");
+
+    expect(
+      (
+        await exec(
+          "select version_no, action, snapshot->>'status' as status from change_events order by version_no",
+        )
+      ).rows,
+    ).toEqual([
+      { version_no: 1, action: "created", status: null },
+      { version_no: 2, action: "discarded", status: "discarded" },
+    ]);
+    // A discarded revision is closed, so the page can start another.
+    await expect(
+      exec(`insert into page_revisions (page_id, fields, live_updated_at, created_by, contributors)
+              select id, '{}', updated_at, 'b', '{b}' from content_pages`),
+    ).resolves.toBeDefined();
     await close();
   });
 
