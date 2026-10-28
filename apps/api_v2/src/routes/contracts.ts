@@ -204,7 +204,8 @@ export const SCHEMAS = {
   createPage: {
     summary: "Create a page",
     description:
-      "Requires an employee session and the editor's Origin header. " +
+      "Requires an employee session, the editor's Origin header and the " +
+      "editor role (403 otherwise). " +
       "Creating a page as `public` needs the approver role (403 otherwise).",
     tags: ["pages"],
     body: NewPage,
@@ -220,7 +221,8 @@ export const SCHEMAS = {
   savePage: {
     summary: "Save a page",
     description:
-      "Requires an employee session and the editor's Origin header. " +
+      "Requires an employee session, the editor's Origin header and the " +
+      "editor role (403 otherwise). " +
       "Send every field: a save replaces the page and defaults none, except " +
       "that leaving `parent_id` out keeps the page's parent. " +
       "Send the `updated_at` you last read in the `if-updated-at` header. " +
@@ -257,8 +259,9 @@ export const SCHEMAS = {
   deletePage: {
     summary: "Delete a page",
     description:
-      "Requires an employee session and the editor's Origin header. A page " +
-      "with sub-pages is refused (422) until they are moved or deleted. " +
+      "Requires an employee session, the editor's Origin header and the " +
+      "editor role (403 otherwise). A page with sub-pages is refused (422) " +
+      "until they are moved or deleted. " +
       "Deleting a `public` page needs the approver role (403 otherwise).",
     tags: ["pages"],
     params: idParams,
@@ -313,6 +316,7 @@ export const SCHEMAS = {
   },
   createCategory: {
     summary: "Append a category or subcategory",
+    description: "Needs the editor role (403 otherwise).",
     tags: ["categories"],
     security: editorSecurity,
     body: CategoryFields,
@@ -320,6 +324,7 @@ export const SCHEMAS = {
   },
   updateCategory: {
     summary: "Edit a category using its last-read version",
+    description: "Needs the editor role (403 otherwise).",
     tags: ["categories"],
     security: editorSecurity,
     params: categoryParams,
@@ -334,6 +339,7 @@ export const SCHEMAS = {
   },
   orderCategories: {
     summary: "Atomically reorder a complete, versioned sibling snapshot",
+    description: "Needs the editor role (403 otherwise).",
     tags: ["categories"],
     security: editorSecurity,
     body: CategoryOrder,
@@ -345,6 +351,7 @@ export const SCHEMAS = {
   },
   deleteCategory: {
     summary: "Delete an empty, unanchored category using its last-read version",
+    description: "Needs the editor role (403 otherwise).",
     tags: ["categories"],
     security: editorSecurity,
     params: categoryParams,

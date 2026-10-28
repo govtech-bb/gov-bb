@@ -4,13 +4,13 @@ import { err, ok, type Result } from "./result";
 /** Only active members of this GitHub organization can provision editor sessions. */
 export const GITHUB_ORGANIZATION = "govtech-bb";
 
-/** What an employee may do beyond editing, as `user_roles` stores it. */
+/** What an employee may do, as `user_roles` stores it. */
 export const ROLES = ["editor", "approver", "admin"] as const;
 
 /** Parses a role. */
 export const Role = z.enum(ROLES);
 
-/** A role: `approver` changes what citizens see, `admin` grants and revokes roles. */
+/** A role: `editor` writes content, `approver` changes what citizens see, `admin` grants and revokes roles. */
 export type Role = z.infer<typeof Role>;
 
 /** A verified session's user, before their roles are read. */

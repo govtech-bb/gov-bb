@@ -275,7 +275,7 @@
         "tags": [
           "pages"
         ],
-        "description": "Requires an employee session and the editor's Origin header. Creating a page as `public` needs the approver role (403 otherwise).",
+        "description": "Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Creating a page as `public` needs the approver role (403 otherwise).",
         "requestBody": {
           "required": true,
           "content": {
@@ -1778,7 +1778,7 @@
         "tags": [
           "pages"
         ],
-        "description": "Requires an employee session and the editor's Origin header. Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise).",
+        "description": "Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise).",
         "requestBody": {
           "required": true,
           "content": {
@@ -2249,7 +2249,7 @@
         "tags": [
           "pages"
         ],
-        "description": "Requires an employee session and the editor's Origin header. A page with sub-pages is refused (422) until they are moved or deleted. Deleting a `public` page needs the approver role (403 otherwise).",
+        "description": "Requires an employee session, the editor's Origin header and the editor role (403 otherwise). A page with sub-pages is refused (422) until they are moved or deleted. Deleting a `public` page needs the approver role (403 otherwise).",
         "parameters": [
           {
             "schema": {
@@ -3122,6 +3122,7 @@
         "tags": [
           "categories"
         ],
+        "description": "Needs the editor role (403 otherwise).",
         "requestBody": {
           "required": true,
           "content": {
@@ -3399,6 +3400,7 @@
         "tags": [
           "categories"
         ],
+        "description": "Needs the editor role (403 otherwise).",
         "requestBody": {
           "required": true,
           "content": {
@@ -3744,6 +3746,7 @@
         "tags": [
           "categories"
         ],
+        "description": "Needs the editor role (403 otherwise).",
         "parameters": [
           {
             "schema": {
@@ -3990,6 +3993,7 @@
         "tags": [
           "categories"
         ],
+        "description": "Needs the editor role (403 otherwise).",
         "requestBody": {
           "required": true,
           "content": {

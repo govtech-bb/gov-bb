@@ -132,6 +132,19 @@ test("someone who isn't an approver sees the page's visibility, and why they can
   expect(visibilitySelect()).toBeUndefined();
 });
 
+test("someone without the editor role can't save", async () => {
+  const h = await mountPage(async () => Response.json(page), []);
+
+  await applySource(h.session(), h.session().store.getSnapshot().source + "\n\nKeep this");
+  await vi.waitFor(() => expect(document.body.textContent).toContain(LOCKED));
+
+  const save = [...document.querySelectorAll("button")].find(
+    (item) => item.textContent === "Save",
+  )!;
+
+  expect(save.disabled).toBe(true);
+});
+
 test("a visual page stays editable without history controls or requests", async () => {
   const h = await mountPage(async () => Response.json(page));
 

@@ -213,11 +213,14 @@ export function ServicesList({
   search,
   onSearch,
   onCreate,
+  readOnly = false,
 }: {
   api: EditorApi;
   search: ServicesSearch;
   onSearch: (search: ServicesSearch) => void;
   onCreate: () => void;
+  /** Services can't be created, for someone who can't make changes; the workspace says why. */
+  readOnly?: boolean;
 }) {
   const services = useQuery(servicesQuery(api));
   const categoryList = useQuery(categoriesQuery(api));
@@ -309,7 +312,7 @@ export function ServicesList({
       <ScreenHeader
         title="Services"
         action={
-          <Button variant="accent" size="md" onClick={onCreate}>
+          <Button variant="accent" size="md" disabled={readOnly} onClick={onCreate}>
             Create service
           </Button>
         }
@@ -351,7 +354,7 @@ export function ServicesList({
               title: "No services yet",
               description: "Create a service to start adding its pages.",
               actions: (
-                <Button variant="secondary" onClick={onCreate}>
+                <Button variant="secondary" disabled={readOnly} onClick={onCreate}>
                   Create service
                 </Button>
               ),

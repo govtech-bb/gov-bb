@@ -1,7 +1,7 @@
 /**
- * Roles (#3187, ADR 0079): only an approver changes what citizens see, only
- * an admin changes who holds which role, and roles are read from the
- * database on every request.
+ * Roles (#3187, #3197, ADR 0079): only an editor writes, only an approver
+ * changes what citizens see, only an admin changes who holds which role,
+ * and roles are read from the database on every request.
  */
 
 import { sql } from "drizzle-orm";
@@ -186,6 +186,31 @@ describe("deleting a page", () => {
       expect(await stored(page.id)).toBeNull();
     },
   );
+});
+
+describe("an employee whose editor role is revoked", () => {
+  it("can still read, but every write is refused, from the next request", async () => {
+    const page = await seedPage({ visibility: "draft" });
+    await as(TEST_EMPLOYEE, {
+      method: "DELETE",
+      url: `/editor/employees/${TEST_EDITOR.id}/roles/editor`,
+    });
+
+    for (const url of ["/services", `/pages/${page.id}`, "/editor/me"])
+      expect((await as(TEST_EDITOR, { url })).statusCode, url).toBe(200);
+    const response = await as(TEST_EDITOR, {
+      method: "PUT",
+      url: `/pages/${page.id}`,
+      payload: withDefaults(aPage({ visibility: "draft", title: "Changed" })),
+    });
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      error: "forbidden",
+      message:
+        "You need the editor role to make changes. Ask an admin to grant it.",
+    });
+    expect((await stored(page.id))?.title).toBe(page.title);
+  });
 });
 
 describe("GET /editor/me", () => {

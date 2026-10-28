@@ -4,9 +4,10 @@
  * added anywhere, outside the editor plugin included, fails this test until
  * it sits behind sign-in or is added to PUBLIC_WRITES.
  *
- * The same goes for roles (#3187): no write route lets a signed-in employee
- * who is not an approver change what citizens see, and no admin route
- * answers someone who is not an admin.
+ * The same goes for roles (#3187, #3197): every write route declares the
+ * role it needs and refuses an employee with no role, no write route lets a
+ * signed-in employee who is not an approver change what citizens see, and
+ * no admin route answers someone who is not an admin.
  */
 
 import { randomUUID } from "node:crypto";
@@ -30,7 +31,7 @@ import {
 } from "./test-db";
 
 const registered = vi.hoisted(
-  () => [] as { method: string; url: string; tags: string[] }[],
+  () => [] as { method: string; url: string; tags: string[]; role?: string }[],
 );
 
 // buildApp has added its routes by the time it returns, so the onRoute hook
@@ -41,8 +42,9 @@ vi.mock("fastify", async (importOriginal) => {
     const app = actual.default(options);
     app.addHook("onRoute", (route) => {
       const tags = (route.schema as { tags?: string[] } | undefined)?.tags;
+      const role = (route.config as { role?: string } | undefined)?.role;
       for (const method of [route.method].flat())
-        registered.push({ method, url: route.url, tags: tags ?? [] });
+        registered.push({ method, url: route.url, tags: tags ?? [], role });
     });
     return app;
   }) as typeof actual.default;
@@ -61,6 +63,14 @@ const writes = () =>
     ({ method, url }) =>
       !READS.has(method) && !PUBLIC_WRITES.has(`${method} ${url}`),
   );
+
+/** A signed-in employee holding no role, as one is after an admin revokes theirs. */
+const NO_ROLES: Employee = {
+  id: "no-roles-test",
+  email: "no-roles@govtech.bb",
+  name: "Test employee without roles",
+  roles: [],
+};
 
 let app: FastifyInstance;
 let db: Database;
@@ -110,6 +120,57 @@ it("refuses every write without a session and leaves the database unchanged", as
     count: 0,
     latest: null,
   });
+});
+
+it("declares the role every write route needs, so none is open to any employee", () => {
+  const undeclared = writes()
+    .filter(({ role }) => role === undefined)
+    .map(({ method, url }) => `${method} ${url}`);
+  expect(undeclared).toEqual([]);
+});
+
+it("refuses every write to an employee with no role and leaves the database unchanged", async () => {
+  await db.execute(
+    sql`insert into auth_user (id, name, email, "emailVerified")
+        values (${NO_ROLES.id}, ${NO_ROLES.name}, ${NO_ROLES.email}, true)`,
+  );
+  // A draft, so no refusal here is the approver check's.
+  const page = expectOk(
+    await createTestServices(db).editing.create(
+      aPage({ visibility: "draft" }),
+      TEST_EMPLOYEE,
+    ),
+  );
+  const snapshot = async () =>
+    (
+      await db.execute(sql`
+        select (select json_agg(p order by p.id) from content_pages p) as pages,
+               (select json_agg(c order by c.id) from categories c) as categories,
+               (select count(*)::int from change_events) as events,
+               (select json_agg(r order by r.user_id, r.role) from user_roles r) as roles`)
+    ).rows;
+  const before = await snapshot();
+  const signedIn = await createTestApp(db, {
+    sessions: { findSession: async () => ok(NO_ROLES) },
+  });
+  for (const { method, url } of writes()) {
+    const response = await signedIn.inject({
+      method: method as InjectOptions["method"],
+      url: url
+        .replace(":id", page.id)
+        .replace(":role", "editor")
+        .replace("*", "x"),
+      payload: withDefaults(aPage({ url: "/written", visibility: "draft" })),
+      headers: TEST_HEADERS,
+    });
+    expect(response.statusCode, `${method} ${url}`).toBe(403);
+    expect(response.json(), `${method} ${url}`).toEqual({
+      error: "forbidden",
+      message: expect.stringMatching(/role/),
+    });
+  }
+  await signedIn.close();
+  expect(await snapshot()).toEqual(before);
 });
 
 /**
