@@ -146,7 +146,7 @@ describe('::contact (a record’s contact details, #3185)', () => {
       'barbados-drug-service': {
         phone: '(246) 535-0021',
         email: 'drugservice@health.gov.bb',
-        website: 'httpjavascript:alert(1)',
+        website: 'javascript:alert(1)',
         hours: '8:30am to 4:30pm',
       },
     },
@@ -173,8 +173,8 @@ describe('::contact (a record’s contact details, #3185)', () => {
 
   it('links only an address that passes the safe-address check', async () => {
     const html = await render({ contacts })
-    expect(html).toContain('httpjavascript:alert(1)')
-    expect(html).not.toContain('href="httpjavascript')
+    expect(html).toContain('javascript:alert(1)')
+    expect(html).not.toContain('href="javascript:')
   })
 
   it('shows nothing when the record is missing or couldn’t be read', async () => {

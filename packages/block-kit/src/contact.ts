@@ -33,7 +33,7 @@ export function contactLink(field: string, value: string): string | null {
   }
   if (field.includes("email")) return `mailto:${value}`;
   if (field.includes("website") || field.includes("url")) {
-    return value.startsWith("http") ? value : `https://${value}`;
+    return /^https?:\/\//i.test(value) ? value : `https://${value}`;
   }
   return null;
 }

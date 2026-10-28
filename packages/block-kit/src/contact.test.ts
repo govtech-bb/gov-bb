@@ -80,18 +80,24 @@ describe("a contact block read from a record", () => {
     ]);
   });
 
+  it("adds https only to a website without a scheme", () => {
+    const block = contactBlockFor(contacts, "x", ["website"]);
+    const href = (website: string) =>
+      contactDetails(block, { website })[0]?.href;
+
+    expect(href("http-services.gov.bb")).toBe("https://http-services.gov.bb");
+    expect(href("HTTP://gov.bb")).toBe("HTTP://gov.bb");
+  });
+
   it("puts every link through the same safe-address check as other links", () => {
     const block = contactBlockFor(contacts, "x", ["website"]);
 
+    // A script address is never a script link: it is read as a site name
     expect(
-      contactDetails(block, { website: "httpjavascript:alert(1)" }),
-    ).toEqual([
-      {
-        field: "website",
-        label: "Website",
-        text: "httpjavascript:alert(1)",
-        href: null,
-      },
-    ]);
+      contactDetails(block, { website: "javascript:alert(1)" })[0]?.href,
+    ).toBe("https://javascript:alert(1)");
+    expect(
+      contactDetails(block, { website: " java\tscript:alert(1)" })[0]?.href,
+    ).not.toMatch(/^\s*java/);
   });
 });

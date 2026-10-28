@@ -44,7 +44,7 @@ const CONTACTS: CollectionRecords = {
         name: "Barbados Drug Service",
         phone: "(246) 535-0021",
         email: "drugservice@health.gov.bb",
-        website: "httpjavascript:alert(1)",
+        website: "javascript:alert(1)",
         hours: "8:30am to 4:30pm",
       },
     },
@@ -111,6 +111,25 @@ describe("the contact block's Markdown", () => {
 });
 
 describe("inserting Contact details", () => {
+  test("from a list item's / menu, goes after the list rather than into the item", () => {
+    const editor = createHeadlessEditor(govbbPageEditor, visual("- One\n- Two\n"));
+
+    const targetKey = editor.getEditorState().read(() =>
+      $getRoot()
+        .getAllTextNodes()
+        .find((node) => node.getTextContent() === "Two")!
+        .getParent()!
+        .getKey(),
+    );
+
+    expect(
+      executeAction(editor, govbbPageEditor, "page-contact", { targetKey, typed: "/" }).executed,
+    ).toBe(true);
+    expect(govbbPageCodec.encode(editor.getEditorState().toJSON())).toBe(
+      '- One\n- Two\n\n::contact{collection="contacts" record fields="phone,email,hours"}\n',
+    );
+  });
+
   test("is offered by the / menu", () => {
     const editor = createHeadlessEditor(govbbPageEditor, visual("Intro\n"));
 
@@ -164,9 +183,10 @@ describe("the contact block in the editor", () => {
     expect([...block.querySelectorAll("a")].map((link) => link.getAttribute("href"))).toEqual([
       "tel:2465350021",
       "mailto:drugservice@health.gov.bb",
+      // A script address is read as a site name, never run
+      "https://javascript:alert(1)",
     ]);
-    // The unsafe website is shown, not linked
-    expect(block.textContent).toContain("httpjavascript:alert(1)");
+    expect(block.querySelector('a[href^="javascript"]')).toBeNull();
   });
 
   test("warns when the record has gone", async () => {

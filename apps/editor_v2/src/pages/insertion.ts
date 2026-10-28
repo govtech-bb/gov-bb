@@ -116,7 +116,10 @@ export function $placePageBlock(block: LexicalNode, target: LexicalNode, request
     else beside.insertAfter(block);
   } else if ($isElementNode(target) && !target.getTextContent())
     $liftLine(target, $leavable).replace(block);
-  else if ($isListItemNode(target)) target.append(block);
+  else if ($isListItemNode(target))
+    // A block of its own, such as Contact details, can't sit in a list item: it goes after the list
+    if ($isDecoratorNode(block)) ($rootBlock(target) ?? target).insertAfter(block);
+    else target.append(block);
   else target.insertAfter(block);
 }
 

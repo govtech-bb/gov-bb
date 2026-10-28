@@ -238,7 +238,8 @@ export const Route = createFileRoute('/$')({
       const underMaintenance =
         formDisabledByStatus ||
         (formId ? (await getMaintenanceForms()).includes(formId) : false)
-      const refs = contactRefs(page.hast)
+      // The server fn takes at most 50; more than that is an authoring slip, not a reason to fail the page
+      const refs = contactRefs(page.hast).slice(0, 50)
       const contactRecords =
         refs.length > 0 ? await getContactRecords({ data: refs }) : {}
       return {

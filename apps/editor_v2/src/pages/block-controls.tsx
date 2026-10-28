@@ -586,6 +586,8 @@ function PageBlockMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void 
         )}
         {model.contact && (
           <ContactBlockSettings
+            // A new form when the block changes underneath it, such as by undo
+            key={JSON.stringify(model.contact)}
             settings={model.contact}
             onChange={(patch) =>
               change((block) => {
