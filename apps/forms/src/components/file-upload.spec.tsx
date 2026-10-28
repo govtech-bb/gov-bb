@@ -19,6 +19,7 @@ import {
   UPLOAD_PROBLEM_MESSAGE,
   UPLOAD_IN_PROGRESS_MESSAGE,
   UPLOAD_NOT_ADDED_MESSAGE,
+  UPLOAD_REFUSED_MESSAGE,
   uploadBlock,
 } from "../lib/api/files";
 import {
@@ -291,6 +292,31 @@ describe("FileUpload", () => {
       screen.getByRole("button", { name: "Remove slow.pdf" }),
     ).toBeInTheDocument();
     expect(liveRegion()).toHaveTextContent("slow.pdf added.");
+  });
+
+  // A large file sends many progress events a second; the bar only needs to
+  // move on each whole percent, so the rest shouldn't re-render the widget.
+  it("updates the bar only when the whole percent changes", async () => {
+    const user = userEvent.setup();
+    let reportProgress: (fraction: number) => void = () => {};
+    mockSendFile.mockImplementation(
+      ({ onProgress }: { onProgress: (f: number) => void }) => {
+        reportProgress = onProgress;
+        return new Promise<string>(() => {});
+      },
+    );
+    const fileInput = renderHarness();
+
+    await user.upload(fileInput, makeFile("big.pdf", "application/pdf", 100));
+    const bar = await screen.findByRole("progressbar", {
+      name: "Uploading big.pdf",
+    });
+    act(() => reportProgress(0.4));
+    act(() => reportProgress(0.403));
+    expect(bar).toHaveAttribute("value", "0.4");
+
+    act(() => reportProgress(0.41));
+    expect(bar).toHaveAttribute("value", "0.41");
   });
 
   it("shows the agreed message, Retry and Remove when the upload fails", async () => {
@@ -938,6 +964,8 @@ describe("FileUpload", () => {
       expect(onUploadsChange).toHaveBeenCalledTimes(3);
     });
 
+    // An unsafe file has only Remove, so the message mustn't send the person
+    // looking for a Retry that isn't there.
     it("blocks while a refused file is on the field, until it is removed", async () => {
       const user = userEvent.setup();
       mockCheckFile.mockResolvedValue({
@@ -948,11 +976,22 @@ describe("FileUpload", () => {
 
       await user.upload(fileInput, pdf());
       await waitFor(() =>
-        expect(uploadBlock(baseField.id)).toBe(UPLOAD_NOT_ADDED_MESSAGE),
+        expect(uploadBlock(baseField.id)).toBe(UPLOAD_REFUSED_MESSAGE),
       );
 
       await user.click(screen.getByRole("button", { name: "Remove doc.pdf" }));
       expect(uploadBlock(baseField.id)).toBeUndefined();
+    });
+
+    it("asks to remove or retry while a file that can be retried is on the field", async () => {
+      const user = userEvent.setup();
+      mockCheckFile.mockResolvedValue("timeout");
+      const { fileInput } = renderComponent();
+
+      await user.upload(fileInput, pdf());
+      await screen.findByRole("button", { name: "Retry doc.pdf" });
+
+      expect(uploadBlock(baseField.id)).toBe(UPLOAD_NOT_ADDED_MESSAGE);
     });
 
     // A wrong type or an oversize file never started uploading, so nothing is

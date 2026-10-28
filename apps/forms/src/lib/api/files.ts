@@ -315,9 +315,11 @@ export const checkFile = async ({
 /** Continue pressed while a file on the field is still uploading or checking. */
 export const UPLOAD_IN_PROGRESS_MESSAGE =
   "Wait for your file to finish uploading";
-/** Continue pressed while a refused or failed file is still on the field. */
+/** Continue pressed while a file that can be retried is still on the field. */
 export const UPLOAD_NOT_ADDED_MESSAGE =
   "Remove or retry the file that could not be added";
+/** Continue pressed while only Remove can clear a file (unsafe, couldn't check). */
+export const UPLOAD_REFUSED_MESSAGE = "Remove the file that could not be added";
 
 // File fields whose picked file isn't a form value yet, by field id, with the
 // reason Continue must wait. The upload widget keeps this current and the

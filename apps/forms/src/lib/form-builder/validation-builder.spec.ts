@@ -16,6 +16,7 @@
 import {
   buildValidation,
   buildFieldValidationProperties,
+  collectStepErrorCodes,
   stepPassesValidation,
 } from "./validation-builder";
 import { locatingPlace } from "../api/geocode";
@@ -23,6 +24,7 @@ import {
   setUploadBlock,
   UPLOAD_IN_PROGRESS_MESSAGE,
   UPLOAD_NOT_ADDED_MESSAGE,
+  UPLOAD_REFUSED_MESSAGE,
 } from "../api/files";
 import type {
   ClientFormStep,
@@ -1026,19 +1028,25 @@ describe("file field with an upload that is not added yet", () => {
   const fileField = (validations: ClientPrimitive["validations"] = {}) =>
     makeField("proof", "docs", { htmlType: "file", validations });
 
+  const noRules = makeField("proof", "docs", {
+    htmlType: "file",
+    validations: undefined,
+  });
+
   afterEach(() => setUploadBlock("docs_proof", undefined));
 
-  it.each([UPLOAD_IN_PROGRESS_MESSAGE, UPLOAD_NOT_ADDED_MESSAGE])(
-    "fails an optional field with %j",
-    (reason) => {
-      const { onDynamic } = buildFieldValidationProperties(fileField());
-      setUploadBlock("docs_proof", reason);
+  it.each([
+    UPLOAD_IN_PROGRESS_MESSAGE,
+    UPLOAD_NOT_ADDED_MESSAGE,
+    UPLOAD_REFUSED_MESSAGE,
+  ])("fails an optional field with %j", (reason) => {
+    const { onDynamic } = buildFieldValidationProperties(fileField());
+    setUploadBlock("docs_proof", reason);
 
-      expect(onDynamic!({ value: null, fieldApi: makeFieldApi() })).toEqual([
-        reason,
-      ]);
-    },
-  );
+    expect(onDynamic!({ value: null, fieldApi: makeFieldApi() })).toEqual([
+      reason,
+    ]);
+  });
 
   // "Wait for it" is more useful than "this field is required" while the file
   // the person picked is still on its way.
@@ -1051,6 +1059,24 @@ describe("file field with an upload that is not added yet", () => {
     expect(onDynamic!({ value: null, fieldApi: makeFieldApi() })).toEqual([
       UPLOAD_IN_PROGRESS_MESSAGE,
     ]);
+  });
+
+  // The `form-validation-error` event reports why Continue was refused; an
+  // upload block is a reason too, even on a field with no rules of its own.
+  it.each([
+    [UPLOAD_IN_PROGRESS_MESSAGE, "uploadInProgress"],
+    [UPLOAD_NOT_ADDED_MESSAGE, "uploadNotAdded"],
+    [UPLOAD_REFUSED_MESSAGE, "uploadNotAdded"],
+  ])("reports %j to analytics as %s", (reason, code) => {
+    setUploadBlock("docs_proof", reason);
+
+    expect(collectStepErrorCodes([noRules], {})).toEqual([
+      { fieldId: "proof", codes: [code] },
+    ]);
+  });
+
+  it("reports nothing to analytics once nothing is blocking", () => {
+    expect(collectStepErrorCodes([noRules], {})).toEqual([]);
   });
 
   it("falls back to the field's own rules once nothing is blocking", () => {

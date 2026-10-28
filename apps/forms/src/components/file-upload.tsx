@@ -11,6 +11,7 @@ import {
   UPLOAD_PROBLEM_MESSAGE,
   UPLOAD_IN_PROGRESS_MESSAGE,
   UPLOAD_NOT_ADDED_MESSAGE,
+  UPLOAD_REFUSED_MESSAGE,
   setUploadBlock,
 } from "../lib/api/files";
 import {
@@ -61,8 +62,12 @@ function continueBlock(pending: PendingUpload[]): string | undefined {
   ) {
     return UPLOAD_IN_PROGRESS_MESSAGE;
   }
-  if (pending.some((p) => p.status !== "rejected")) {
+  // Only offer Retry in the message when a row actually has a Retry button.
+  if (pending.some((p) => p.status === "timeout" || p.status === "error")) {
     return UPLOAD_NOT_ADDED_MESSAGE;
+  }
+  if (pending.some((p) => p.status !== "rejected")) {
+    return UPLOAD_REFUSED_MESSAGE;
   }
   return undefined;
 }
@@ -183,10 +188,14 @@ export default function FileUpload({
    * know is treated as "couldn't check".
    */
   const runUpload = async (id: number, file: File, sentKey?: string) => {
+    // One run per row: stop any earlier run for it, so two never both add
+    // the file.
+    runsRef.current.get(id)?.abort();
     const run = new AbortController();
     runsRef.current.set(id, run);
     const { signal } = run;
     let key = sentKey;
+    let lastPercent = -1;
     try {
       if (!key) {
         updatePending(id, {
@@ -202,8 +211,13 @@ export default function FileUpload({
           fieldId: field.fieldId,
           previewToken,
           draftToken,
+          // Progress events come many times a second; re-render only when
+          // the bar would move a whole percent.
           onProgress: (progress) => {
-            if (!signal.aborted) updatePending(id, { progress });
+            const percent = Math.round(progress * 100);
+            if (signal.aborted || percent === lastPercent) return;
+            lastPercent = percent;
+            updatePending(id, { progress });
           },
           signal,
         });
