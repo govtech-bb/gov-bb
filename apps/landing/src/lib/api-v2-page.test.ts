@@ -137,16 +137,19 @@ describe('fetchApiV2Page', () => {
     expect(cancel).toHaveBeenCalled()
   })
 
-  it('treats a 500 as a miss and warns', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const result = await fetchApiV2Page(
-      BASE,
-      '/x',
-      stubFetch(jsonResponse(500, {})),
-    )
-    expect(result).toEqual({ kind: 'miss', reason: 'status' })
-    expect(warn).toHaveBeenCalled()
-  })
+  it.each([500, 408, 429])(
+    'treats a %i as a status miss and warns',
+    async (status) => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const result = await fetchApiV2Page(
+        BASE,
+        '/x',
+        stubFetch(jsonResponse(status, {})),
+      )
+      expect(result).toEqual({ kind: 'miss', reason: 'status' })
+      expect(warn).toHaveBeenCalled()
+    },
+  )
 
   it('treats a network error as a miss and warns', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})

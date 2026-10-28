@@ -47,6 +47,16 @@ describe('createApiV2Cache', () => {
     expect(resolve).toHaveBeenCalledTimes(2)
   })
 
+  it('keeps the cached page when a refetch is a status failure (e.g. a 429)', async () => {
+    const cache = createApiV2Cache()
+    const old = redirect('/old')
+    const resolve = resolver(old, { kind: 'miss', reason: 'status' })
+    await cache.get('/x', resolve, 0)
+    await cache.get('/x', resolve, 60_000)
+    await new Promise((r) => setTimeout(r)) // let the background refetch land
+    expect(await cache.get('/x', resolve, 60_001)).toBe(old)
+  })
+
   it('caches a 404 for its own max-age', async () => {
     const cache = createApiV2Cache()
     const resolve = resolver({
