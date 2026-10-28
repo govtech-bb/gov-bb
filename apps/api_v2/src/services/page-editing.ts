@@ -144,13 +144,6 @@ export class PageEditing {
     private readonly clock: Clock,
   ) {}
 
-  /** The page with this id, whatever its visibility. */
-  get(
-    id: PageId,
-  ): Promise<Result<PageDocument | null, ContentStoreUnavailable>> {
-    return this.records.find(id);
-  }
-
   /**
    * The page with this id as the editor works on it: with its pending
    * revision laid over it. Two reads rather than one snapshot: a save between
@@ -289,7 +282,15 @@ export class PageEditing {
           ? ok(workingCopy(current, proposed.value))
           : proposed;
       }
-      const revision = revisionOf(current, placed.value, this.clock());
+      // Past the pending revision's version too, which can run ahead of the
+      // clock, so no client holding it matches the page's new one.
+      const now = new Date(
+        Math.max(
+          this.clock().getTime(),
+          pending.value === null ? 0 : Date.parse(pending.value.updated_at) + 1,
+        ),
+      );
+      const revision = revisionOf(current, placed.value, now);
       const saved = await records.replace(id, revision);
       if (!saved.ok) return saved;
       if (saved.value.category_id !== null) {

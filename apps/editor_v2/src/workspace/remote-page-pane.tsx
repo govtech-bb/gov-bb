@@ -216,6 +216,9 @@ function RemotePageEditor({
     [draft.committed],
   );
 
+  // Only making a page public goes live at once; a public page's changes wait for an approver
+  const publishes = visibility === "public" && server.visibility !== "public";
+
   const outcome = save.isPending ? undefined : save.data;
   const unsaved = draft.committed !== base.markdown;
   const stale = server.updated_at !== base.page.updated_at;
@@ -276,11 +279,11 @@ function RemotePageEditor({
         onDownload: downloadMine,
       };
 
-    // A public page's saves wait for an approver, so a saved change isn't published
-    const live = visibility === "public" && !server.pending_revision;
+    // Live once saved only if the save publishes; otherwise while no change waits for an approver
+    const live = !server.pending_revision && visibility === "public";
 
     return {
-      status: unsaved ? (live ? "unpublished" : "unsaved") : live ? "published" : "saved",
+      status: unsaved ? (publishes ? "unpublished" : "unsaved") : live ? "published" : "saved",
       conflict,
     };
   };
@@ -399,8 +402,7 @@ function RemotePageEditor({
           }
           onClick={saveDraft}
         >
-          {/* Only making a page public goes live at once; a public page's changes wait for review */}
-          {visibility === "public" && server.visibility !== "public" ? "Publish changes" : "Save"}
+          {publishes ? "Publish changes" : "Save"}
         </Button>
       }
       notice={

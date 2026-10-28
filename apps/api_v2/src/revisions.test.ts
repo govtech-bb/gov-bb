@@ -9,8 +9,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import type { Database } from "./db";
 import type { Employee } from "./modules/auth";
+import { PostgresPages } from "./adapters/postgres-pages";
 import { withDefaults, type PageId } from "./modules/page";
 import { ok } from "./modules/result";
+import { PageEditing } from "./services/page-editing";
 import { categories, changeEvents, pageRevisions } from "./schema";
 import { IF_UPDATED_AT } from "./routes/contracts";
 import {
@@ -95,7 +97,8 @@ const seedPage = async (overrides: Record<string, unknown> = {}) => {
   );
 };
 
-const stored = async (id: PageId) => expectOk(await services.editing.get(id));
+const stored = async (id: PageId) =>
+  expectOk(await new PostgresPages(db).find(id));
 
 const save = (
   employee: Employee,
@@ -242,6 +245,32 @@ describe("a save to a public page", () => {
     }
     expect(await stored(page.id)).toEqual(page);
     expect(await revisions()).toEqual([]);
+  });
+});
+
+describe("a revision that moves a public page with sub-pages to another category", () => {
+  it("leaves the sub-pages' live rows and every public response unchanged", async () => {
+    const parent = await seedPage();
+    const child = await seedPage({
+      url: `${ENTRY}/start`,
+      parent_id: parent.id,
+    });
+    const [work] = await db
+      .insert(categories)
+      .values({ slug: "work-employment", title: "Work" })
+      .returning();
+    const before = await publicResponses();
+
+    // Storage checks the move by trying it, sub-pages cascading, and rolling back.
+    const response = await save(TEST_EDITOR, parent, {
+      category_id: work?.id,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().category_id).toBe(work?.id);
+    expect(await stored(child.id)).toEqual(child);
+    expect(await stored(parent.id)).toEqual(parent);
+    expect(await publicResponses()).toEqual(before);
   });
 });
 
@@ -403,5 +432,47 @@ describe("deleting a page", () => {
 
     expect(response.statusCode).toBe(204);
     expect(await revisions()).toEqual([]);
+  });
+});
+
+describe("an approver taking a page out of public view", () => {
+  it("moves its version past a revision that ran ahead of the clock, so a client holding that one conflicts", async () => {
+    const page = await seedPage();
+    // A clock behind the page's own version
+    const editing = new PageEditing(
+      new PostgresPages(db),
+      () => new Date(Date.parse(page.updated_at) - 60_000),
+    );
+    const fields = (overrides: Record<string, unknown>) =>
+      withDefaults(aPage({ category_id: page.category_id, ...overrides }));
+    const pending = expectOk(
+      await editing.save(
+        page.id,
+        fields({ title: "Waiting" }),
+        new Date(page.updated_at),
+        TEST_EDITOR,
+      ),
+    );
+    expect(Date.parse(pending.updated_at)).toBe(
+      Date.parse(page.updated_at) + 1,
+    );
+
+    expectOk(
+      await editing.save(
+        page.id,
+        fields({ title: "Waiting", visibility: "preview" }),
+        new Date(pending.updated_at),
+        TEST_EMPLOYEE,
+      ),
+    );
+    const stale = await editing.save(
+      page.id,
+      fields({ title: "Stale", visibility: "preview" }),
+      new Date(pending.updated_at),
+      TEST_EDITOR,
+    );
+
+    expect(stale.ok ? null : stale.error._tag).toBe("PageConflict");
+    expect((await stored(page.id))?.title).toBe("Waiting");
   });
 });

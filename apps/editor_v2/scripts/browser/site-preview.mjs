@@ -53,6 +53,7 @@ let current = {
   published_at: "2026-01-13T12:00:00.000Z",
   created_at: "2026-01-13T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
+  pending_revision: null,
 };
 
 const writes = [];
@@ -77,6 +78,13 @@ await context.route("**/*", async (route) => {
     [`/pages/${service.id}`]: current,
     "/editor/categories": { categories: [category] },
     "/version": { count: 1, latest: current.updated_at },
+    // An approver, so the page's visibility can be changed
+    "/editor/me": {
+      id: "test-user",
+      email: "employee@govtech.bb",
+      name: "Test employee",
+      roles: ["editor", "approver"],
+    },
   };
 
   if (!(path in values)) return route.fallback();
@@ -101,10 +109,13 @@ await context.route("**/*", async (route) => {
       await new Promise((resolve) => {
         releaseSave = resolve;
       });
+    // As api_v2 does: a save that keeps a public page public waits for an approver as a revision
+    const reviewed = current.visibility === "public" && fields.visibility === "public";
     current = {
       ...current,
       ...fields,
       updated_at: new Date(Date.parse(current.updated_at) + 1000).toISOString(),
+      pending_revision: reviewed ? { status: "draft" } : null,
     };
 
     return route.fulfill({ json: current, headers });
@@ -332,10 +343,12 @@ try {
     .waitFor();
   assert.equal(await page.locator('[contenteditable="true"]').count(), 0);
   assert.deepEqual(writes, []);
-  await button("Publish changes").click();
+  // A public page's save waits for an approver rather than publishing
+  await button("Save").click();
+  await page.locator("[data-document-bar]:visible").getByText("Saved", { exact: true }).waitFor();
   await page
-    .locator("[data-document-bar]:visible")
-    .getByText("Published", { exact: true })
+    .getByText("Your changes are saved but not live. An approver needs to publish them.")
+    .first()
     .waitFor();
   assert.equal(writes.length, 1);
   assert.equal(writes[0].title, "Explicitly published from preview");
@@ -481,10 +494,10 @@ try {
   await title.fill("Submitted inline title");
   holdSave = true;
   const submitted = page.waitForRequest((request) => request.method() === "PUT");
-  await button("Publish changes").click();
+  await button("Save").click();
   await submitted;
   await page.locator("[data-document-bar]:visible").getByText("Saving…", { exact: true }).waitFor();
-  assert.equal(await button("Publish changes").isDisabled(), true);
+  assert.equal(await button("Save").isDisabled(), true);
   await title.fill("Typed during publication");
   await page.evaluate(() => history.back());
   await question.getByRole("heading", { name: "A save is in progress", exact: true }).waitFor();
@@ -493,7 +506,7 @@ try {
   releaseSave();
   await page
     .locator("[data-document-bar]:visible")
-    .getByText("Unpublished changes", { exact: true })
+    .getByText("Unsaved changes", { exact: true })
     .waitFor();
   assert.equal(writes.length, 2);
   assert.equal(writes[1].title, "Submitted inline title");
@@ -504,7 +517,7 @@ try {
     title: "Another employee's version",
     updated_at: new Date(Date.parse(current.updated_at) + 1000).toISOString(),
   };
-  await button("Publish changes").click();
+  await button("Save").click();
   await page
     .getByText("A newer version of this page has been saved since you opened it.")
     .first()
@@ -537,9 +550,30 @@ try {
   await page.waitForURL(new URL("/services", url).href);
   assert.equal(await page.locator("style[data-cms-preview-styles]").count(), 0);
   assert.equal(await page.locator("[data-cms-preview-host]").count(), 0);
+
+  // Making a page public is what still publishes at once
+  current = {
+    ...current,
+    visibility: "preview",
+    pending_revision: null,
+    updated_at: new Date(Date.parse(current.updated_at) + 1000).toISOString(),
+  };
+  await page.goto(url.href);
+  await title.waitFor();
+
+  if ((await button("Page settings").getAttribute("aria-expanded")) !== "true")
+    await button("Page settings").click();
+  await page.getByLabel("Visibility", { exact: true }).selectOption({ label: "Public" });
+  await button("Publish changes").click();
+  await page
+    .locator("[data-document-bar]:visible")
+    .getByText("Published", { exact: true })
+    .waitFor();
+  assert.equal(writes.at(-1).visibility, "public");
+  assert.equal(current.pending_revision, null);
   assert.deepEqual(errors, []);
   console.log(
-    "CMS/public parity; inline/undo; failure cleanup; menus; leave guard; pending save/conflict; narrow reflow: passed",
+    "CMS/public parity; inline/undo; failure cleanup; menus; leave guard; pending save/conflict; narrow reflow; publishing: passed",
   );
 } catch (error) {
   console.error("Browser errors:", errors);

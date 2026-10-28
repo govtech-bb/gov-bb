@@ -16,7 +16,8 @@ import pino from "pino";
 import { IF_UPDATED_AT } from "./routes/contracts";
 import { PUBLIC_READ } from "./routes/responses";
 import type { Database } from "./db";
-import { withDefaults, type Visibility } from "./modules/page";
+import { PostgresPages } from "./adapters/postgres-pages";
+import { withDefaults, type PageId, type Visibility } from "./modules/page";
 import { categories, changeEvents, searchChunks } from "./schema";
 import {
   aPage,
@@ -66,6 +67,9 @@ const seedCategory = async () => {
   if (!category) throw new Error("The category insert returned no row");
   return category;
 };
+
+/** The live row, as storage holds it. */
+const live = (id: PageId) => new PostgresPages(db).find(id);
 
 const read = (url: string) =>
   inject({ url: `/pages?url=${encodeURIComponent(url)}` });
@@ -635,9 +639,7 @@ describe("PUT /pages/:id", () => {
     });
 
     expect(response.statusCode).toBe(409);
-    expect(expectOk(await services.editing.get(created.id))?.title).toBe(
-      "First writer wins",
-    );
+    expect(expectOk(await live(created.id))?.title).toBe("First writer wins");
   });
 
   it("400s a save that leaves a field out, rather than resetting it", async () => {
@@ -651,7 +653,7 @@ describe("PUT /pages/:id", () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(expectOk(await services.editing.get(created.id))?.form_id).toBe(
+    expect(expectOk(await live(created.id))?.form_id).toBe(
       "severance-calculator",
     );
   });
@@ -666,9 +668,7 @@ describe("PUT /pages/:id", () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(expectOk(await services.editing.get(created.id))?.title).toBe(
-      created.title,
-    );
+    expect(expectOk(await live(created.id))?.title).toBe(created.title);
   });
 
   it("404s a page that is not there", async () => {
@@ -817,12 +817,8 @@ describe("PUT /pages/:id", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(expectOk(await services.editing.get(start.id))?.category_id).toBe(
-      to.id,
-    );
-    expect(expectOk(await services.editing.get(below.id))?.category_id).toBe(
-      to.id,
-    );
+    expect(expectOk(await live(start.id))?.category_id).toBe(to.id);
+    expect(expectOk(await live(below.id))?.category_id).toBe(to.id);
   });
 
   it("files an uncategorised parent's sub-pages when it gets a category", async () => {
@@ -839,12 +835,8 @@ describe("PUT /pages/:id", () => {
       payload: { ...parent, category_id: category.id },
     });
 
-    expect(expectOk(await services.editing.get(start.id))?.category_id).toBe(
-      category.id,
-    );
-    expect(expectOk(await services.editing.get(below.id))?.category_id).toBe(
-      category.id,
-    );
+    expect(expectOk(await live(start.id))?.category_id).toBe(category.id);
+    expect(expectOk(await live(below.id))?.category_id).toBe(category.id);
     expect((await readPreview(START)).json().breadcrumbs[0]).toEqual({
       name: "Money and financial support",
       url: "/money-financial-support",
@@ -895,7 +887,7 @@ describe("DELETE /pages/:id", () => {
     });
 
     expect(response.statusCode).toBe(204);
-    expect(expectOk(await services.editing.get(created.id))).toBeNull();
+    expect(expectOk(await live(created.id))).toBeNull();
   });
 
   it("records who deleted the page, which moves the version", async () => {
@@ -924,7 +916,7 @@ describe("DELETE /pages/:id", () => {
 
     expect(response.statusCode).toBe(422);
     expect(response.json().errors[0].field).toBe("id");
-    expect(expectOk(await services.editing.get(parent.id))).not.toBeNull();
+    expect(expectOk(await live(parent.id))).not.toBeNull();
   });
 });
 

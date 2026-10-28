@@ -450,6 +450,9 @@ test("a change saved to a public page waits for an approver: the editor keeps it
   expect(document.body.textContent).not.toContain(PENDING);
   const source = h.session().store.getSnapshot().source + "\n\nWaiting for review";
   await applySource(h.session(), source);
+  // Saving won't publish it, so the edit is unsaved rather than unpublished
+  expect(document.body.textContent).toContain("Unsaved changes");
+  expect(document.body.textContent).not.toContain("Unpublished changes");
   // A public page's save doesn't publish, so it isn't offered as publishing
   await savePage();
   await act(async () => {
@@ -465,4 +468,25 @@ test("a public page opened with a change waiting for an approver says so", async
   await mountPage(async () => Response.json({ ...live, pending_revision: { status: "draft" } }));
 
   await vi.waitFor(() => expect(document.body.textContent).toContain(PENDING));
+});
+
+test("making a page public is offered as publishing, and its edit is unpublished until then", async () => {
+  await mountPage(async () => Response.json(page));
+  // The control waits for the roles
+  await vi.waitFor(() => expect(visibilitySelect()).toBeDefined());
+
+  const select = visibilitySelect()!;
+
+  await act(async () => {
+    // "Public" is the empty option
+    select.value = "";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
+  await vi.waitFor(() =>
+    expect([...document.querySelectorAll("button")].map((item) => item.textContent)).toContain(
+      "Publish changes",
+    ),
+  );
+  expect(document.body.textContent).toContain("Unpublished changes");
 });
