@@ -186,6 +186,20 @@ describe('fetchApiV2Page', () => {
     expect(result).toEqual({ kind: 'miss' })
   })
 
+  it('treats a 200 with malformed breadcrumbs as a miss', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const result = await fetchApiV2Page(
+      BASE,
+      '/x',
+      stubFetch(
+        jsonResponse(200, { ...pageBody(), breadcrumbs: [{ name: 1 }] }),
+      ),
+    )
+
+    expect(result).toEqual({ kind: 'miss' })
+  })
+
   it('maps a 301 to a redirect from the body', async () => {
     const result = await fetchApiV2Page(
       BASE,
@@ -210,6 +224,7 @@ describe('fetchApiV2Page', () => {
 
   it('treats a 301 with no target as a miss', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {})
+
     const result = await fetchApiV2Page(
       BASE,
       '/old',
@@ -217,9 +232,75 @@ describe('fetchApiV2Page', () => {
     )
     expect(result).toEqual({ kind: 'miss' })
   })
+
+  it.each([
+    '//evil.example',
+    '/\\evil.example',
+    '\\/evil.example',
+    'https://evil.example',
+    'http://evil.example/x',
+    'javascript:alert(1)',
+    '/\t/evil.example',
+    '/ evil',
+    '%2F%2Fevil.example',
+    'https://www.alpha.gov.bb/x',
+  ])('refuses a 301 to the off-site target %j and warns', async (target) => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const result = await fetchApiV2Page(
+      BASE,
+      '/old',
+      stubFetch(jsonResponse(301, { redirect: target })),
+    )
+    expect(result).toEqual({ kind: 'miss' })
+    expect(warn).toHaveBeenCalled()
+  })
+
+  it('refuses an off-site Location header on a 301 with no body redirect', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const result = await fetchApiV2Page(
+      BASE,
+      '/x',
+      stubFetch(
+        new Response(null, {
+          status: 301,
+          headers: { Location: 'https://api-v2.example/pages?url=%2Fx' },
+        }),
+      ),
+    )
+    expect(result).toEqual({ kind: 'miss' })
+    expect(warn).toHaveBeenCalled()
+  })
+
+  it.each([
+    '/x',
+    '/',
+    '/a/b?c=1#d',
+    '/%2F%2Fevil.example',
+    '/work-employment/new-service',
+  ])('follows a 301 to the same-site path %j', async (to) => {
+    const result = await fetchApiV2Page(
+      BASE,
+      '/old',
+      stubFetch(jsonResponse(301, { redirect: to })),
+    )
+    expect(result).toEqual({ kind: 'redirect', to })
+  })
 })
 
 describe('fromApiV2', () => {
+  it("keeps api_v2's breadcrumb trail for the visible trail and JSON-LD", async () => {
+    const breadcrumbs = [
+      { name: 'Family (renamed)', url: '/family-birth-relationships' },
+      {
+        name: 'Register a birth',
+        url: '/family-birth-relationships/register-a-birth',
+      },
+    ]
+
+    const page = await fromApiV2(pageBody({ breadcrumbs }))
+    expect(page.breadcrumbs).toEqual(breadcrumbs)
+  })
+
   it('maps url, slug, categories, visibility and frontmatter', async () => {
     const page = await fromApiV2(
       pageBody({
@@ -350,6 +431,7 @@ describe('resolveApiV2Page', () => {
         jsonResponse(200, pageBody({ body_markdown: '::not-a-directive' })),
       ),
     )
+
     expect(result).toEqual({ kind: 'miss' })
     expect(warn).toHaveBeenCalled()
   })

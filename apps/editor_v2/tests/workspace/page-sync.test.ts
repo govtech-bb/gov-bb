@@ -20,6 +20,7 @@ const page: ApiPage = {
   published_at: null,
   created_at: "2026-10-07T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
+  pending_revision: null,
 };
 
 const newer: ApiPage = {
@@ -104,8 +105,20 @@ describe("saving a page", () => {
       { kind: "invalid", errors: [{ field: "url", message: "Taken" }] },
     ],
     [new ApiFailure(409), { kind: "conflict" }],
+    [
+      new ApiFailure(409, [], "This change is waiting for review.", "under_review"),
+      { kind: "under-review", message: "This change is waiting for review." },
+    ],
     [new ApiFailure(404), { kind: "missing" }],
     [new ApiFailure(401), { kind: "signed-out" }],
+    [
+      new ApiFailure(403, [], "Only approvers can change who can see a page."),
+      { kind: "forbidden", message: "Only approvers can change who can see a page." },
+    ],
+    [
+      new ApiFailure(403),
+      { kind: "forbidden", message: "You don't have permission to save this change." },
+    ],
     [new ApiFailure(503), { kind: "failed" }],
     [new ApiFailure(0), { kind: "failed" }],
   ])("turns a %s refusal into what the editor does about it", async (failure, expected) => {

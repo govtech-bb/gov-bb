@@ -1,5 +1,6 @@
 import type { FastifyBaseLogger } from "fastify";
 import type { ContentStoreUnavailable, PageRejected } from "../modules/page";
+import type { Viewer } from "../modules/page-visibility";
 
 /** Public content may be shared by the site and its caches. */
 export const PUBLIC_READ =
@@ -8,6 +9,14 @@ export const PUBLIC_READ =
 export const EDITOR_READ = "no-store";
 /** A short negative cache keeps missing public URLs inexpensive. */
 export const NOT_FOUND_READ = "public, max-age=10";
+
+/** The public's reads are shared-cacheable; a reviewer's are never stored. */
+export const siteReadCache = (viewer: Viewer) =>
+  viewer === "preview" ? EDITOR_READ : PUBLIC_READ;
+
+/** Missing preview content must not enter the public negative cache. */
+export const siteNotFoundCache = (viewer: Viewer) =>
+  viewer === "preview" ? EDITOR_READ : NOT_FOUND_READ;
 
 /** Database errors can carry SQL parameters, so only the failed operation is logged. */
 export function storageFailed(

@@ -14,11 +14,29 @@ import {
   CategoryListing,
   CategoryNode,
   SearchDocument,
-  TaxonomyEntry,
 } from "../modules/navigation";
-import { NewPage, PageDocument, PageId, SaveFields } from "../modules/page";
+import { EmployeeView, Role } from "../modules/auth";
+import {
+  EditorPage,
+  NewPage,
+  PageId,
+  RevisionComment,
+  RevisionView,
+  SaveFields,
+} from "../modules/page";
+import {
+  CategoryBlockers,
+  CategoryFields,
+  CategoryId,
+  CategoryOrder,
+  CategoryStamp,
+  EditorCategory,
+} from "../modules/category";
 import { PublicPage } from "../modules/page-visibility";
 import { EstateVersion } from "../services/editor-index";
+
+/** The editor sends the exact millisecond timestamp from its last read. */
+export const IF_UPDATED_AT = "if-updated-at";
 
 /** No credentials, or the preview token. */
 const previewSecurity: Array<Record<string, string[]>> = [
@@ -57,10 +75,48 @@ const conflict = z.looseObject({
   documentId: z.guid(),
 });
 
+/** A review step refused because the revision is not in the state it needs. */
+const revisionState = z.object({
+  error: z.enum(["under_review", "not_submitted"]),
+  message: z.string(),
+});
+
 const idParams = z.object({ id: PageId });
+
+/** The version a write was made against; a 409 when it has moved on. */
+const ifUpdatedAt = (read: string) =>
+  z.object({
+    "if-updated-at": z.iso
+      .datetime({ offset: true })
+      .transform((value) => new Date(value))
+      .optional()
+      .describe(
+        `The \`updated_at\` this client last read${read}. Omit to accept ` +
+          "whatever is stored.",
+      ),
+  });
 
 const editorSecurity = [{ editorSession: [] }];
 const authErrors = { 401: error, 403: error, 503: error };
+const categoryConflict = z.object({
+  error: z.literal("conflict"),
+  message: z.string(),
+});
+const categoryInUse = z.object({
+  error: z.literal("category_in_use"),
+  message: z.string(),
+  blockers: CategoryBlockers,
+});
+const roleParams = z.object({ id: z.string().min(1), role: Role });
+
+const categoryHeaders = z.object({ "if-updated-at": CategoryStamp });
+const categoryParams = z.object({ id: CategoryId });
+const categoryErrors = {
+  400: error,
+  422: validationFailed.extend({ message: z.string() }),
+  500: error,
+  ...authErrors,
+};
 
 /** Request and response contracts shared by serving and documentation. */
 export const SCHEMAS = {
@@ -158,12 +214,14 @@ export const SCHEMAS = {
 
   getPage: {
     summary: "Get a page by id",
-    description: "The editor's read: any visibility, markdown included.",
+    description:
+      "The editor's read: any visibility, markdown included. A public page " +
+      "with a pending revision is read with the revision laid over it.",
     tags: ["pages"],
     params: idParams,
     security: editorSecurity,
     response: {
-      200: PageDocument,
+      200: EditorPage,
       400: error,
       404: error,
       500: error,
@@ -173,12 +231,15 @@ export const SCHEMAS = {
 
   createPage: {
     summary: "Create a page",
-    description: "Requires an employee session and the editor's Origin header.",
+    description:
+      "Requires an employee session, the editor's Origin header and the " +
+      "editor role (403 otherwise). " +
+      "Creating a page as `public` needs the approver role (403 otherwise).",
     tags: ["pages"],
     body: NewPage,
     security: editorSecurity,
     response: {
-      201: PageDocument,
+      201: EditorPage,
       422: validationFailed,
       500: error,
       ...authErrors,
@@ -188,33 +249,129 @@ export const SCHEMAS = {
   savePage: {
     summary: "Save a page",
     description:
-      "Requires an employee session and the editor's Origin header. " +
+      "Requires an employee session, the editor's Origin header and the " +
+      "editor role (403 otherwise). " +
       "Send every field: a save replaces the page and defaults none, except " +
       "that leaving `parent_id` out keeps the page's parent. " +
       "Send the `updated_at` you last read in the `if-updated-at` header. " +
-      "If the stored row has moved on since, the save is refused with a 409 " +
-      "rather than silently discarding whoever wrote first. Changing `url` " +
+      "If the stored row, or the page's pending revision, has moved on since, " +
+      "the save is refused with a 409 rather than silently discarding " +
+      "whoever wrote first. Changing `url` " +
       "moves this page alone: its sub-pages keep their urls and stay beneath " +
-      "it by `parent_id`, and nothing redirects from the old url.",
+      "it by `parent_id`, and nothing redirects from the old url. " +
+      "Changing `visibility` needs the approver role (403 otherwise). " +
+      "A save that keeps a `public` page public, whoever sends it, goes into " +
+      "the page's pending revision: citizens keep seeing the live page until " +
+      "an approver publishes it. An approver's save that takes a `public` " +
+      "page out of public view writes the whole page and closes its pending " +
+      "revision. Returns the page as the editor now works on it. " +
+      "A save to a page whose revision is waiting for review is refused " +
+      "(409 `under_review`) until an approver publishes or rejects it.",
     tags: ["pages"],
     params: idParams,
-    headers: z.object({
-      "if-updated-at": z.iso
-        .datetime({ offset: true })
-        .transform((value) => new Date(value))
-        .optional()
-        .describe(
-          "The `updated_at` this client last read. Omit to accept " +
-            "whatever is stored.",
-        ),
-    }),
+    headers: ifUpdatedAt(""),
     body: SaveFields,
     security: editorSecurity,
     response: {
-      200: PageDocument,
+      200: EditorPage,
       400: error,
       404: error,
-      409: conflict,
+      409: z.union([conflict, revisionState]),
+      422: validationFailed,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  getRevision: {
+    summary: "Get a page's pending revision",
+    description:
+      "The change to a `public` page that is waiting for an approver: a " +
+      "draft, or one submitted for review. A rejected one is returned " +
+      "until a save starts a new draft, or the live page changes. " +
+      "`changes` lists the fields it changes against the live page. 404 " +
+      "when the page has none.",
+    tags: ["pages"],
+    params: idParams,
+    security: editorSecurity,
+    response: {
+      200: RevisionView,
+      400: error,
+      404: error,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  submitRevision: {
+    summary: "Submit a page's draft revision for review",
+    description:
+      "Needs the editor role (403 otherwise). Records the submitter, who " +
+      "may not then approve it. 404 when the page has no draft revision; " +
+      "409 `under_review` when it is already submitted, or `conflict` when " +
+      "the draft has been saved since `if-updated-at`. Saving the page is " +
+      "refused while it waits.",
+    tags: ["pages"],
+    params: idParams,
+    headers: ifUpdatedAt(" for the revision"),
+    security: editorSecurity,
+    response: {
+      200: RevisionView,
+      400: error,
+      404: error,
+      409: z.union([conflict, revisionState]),
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  rejectRevision: {
+    summary: "Reject a submitted revision with a comment",
+    description:
+      "Needs the approver role, and the approver must not have changed or " +
+      "submitted the revision (403 otherwise). The live page is unchanged; " +
+      "the revision is kept with the comment, and the next save starts a " +
+      "new draft from it. 404 when nothing is waiting for review; 409 " +
+      "`not_submitted` for a draft, or `conflict` when the revision has " +
+      "been saved since `if-updated-at`.",
+    tags: ["pages"],
+    params: idParams,
+    headers: ifUpdatedAt(" for the revision"),
+    body: z.object({
+      comment: RevisionComment.describe("Why, for the editor."),
+    }),
+    security: editorSecurity,
+    response: {
+      200: RevisionView,
+      400: error,
+      404: error,
+      409: z.union([conflict, revisionState]),
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  publishRevision: {
+    summary: "Approve a submitted revision and publish it",
+    description:
+      "Needs the approver role, and the approver must not have changed or " +
+      "submitted the revision (403 otherwise). Writes the revision to the " +
+      "live page as a save would, re-indexes it and records the approver " +
+      "in `change_events`, all in one transaction. A revision that has gone " +
+      "stale while it waited (its parent or category gone, or its url " +
+      "taken) is refused with a 422 naming the field, and nothing changes. " +
+      "404 when nothing is waiting for review; 409 `not_submitted` for a " +
+      "draft, or `conflict` when the revision has been saved since " +
+      "`if-updated-at`. Returns the page as it now stands.",
+    tags: ["pages"],
+    params: idParams,
+    headers: ifUpdatedAt(" for the revision"),
+    security: editorSecurity,
+    response: {
+      200: EditorPage,
+      400: error,
+      404: error,
+      409: z.union([conflict, revisionState]),
       422: validationFailed,
       500: error,
       ...authErrors,
@@ -224,8 +381,11 @@ export const SCHEMAS = {
   deletePage: {
     summary: "Delete a page",
     description:
-      "Requires an employee session and the editor's Origin header. A page " +
-      "with sub-pages is refused (422) until they are moved or deleted.",
+      "Requires an employee session, the editor's Origin header and the " +
+      "editor role (403 otherwise). A page with sub-pages is refused (422) " +
+      "until they are moved or deleted. " +
+      "Deleting a `public` page needs the approver role (403 otherwise). " +
+      "Its pending revision goes with it.",
     tags: ["pages"],
     params: idParams,
     security: editorSecurity,
@@ -266,26 +426,120 @@ export const SCHEMAS = {
     },
   },
 
-  getTaxonomy: {
-    summary: "Every category a page can be filed under",
-    description:
-      "Each category with its id, followed by its subcategories, whether or " +
-      "not it lists anything yet: what a page's `category_id` can name.",
+  editorCategories: {
+    summary:
+      "Every shared category, including empty categories and private service counts",
     tags: ["categories"],
     security: editorSecurity,
     response: {
-      200: z.object({ categories: z.array(TaxonomyEntry) }),
+      200: z.object({ categories: z.array(EditorCategory) }),
+      500: error,
+      ...authErrors,
+    },
+  },
+  createCategory: {
+    summary: "Append a category or subcategory",
+    description: "Needs the editor role (403 otherwise).",
+    tags: ["categories"],
+    security: editorSecurity,
+    body: CategoryFields,
+    response: { 201: EditorCategory, ...categoryErrors },
+  },
+  updateCategory: {
+    summary: "Edit a category using its last-read version",
+    description: "Needs the editor role (403 otherwise).",
+    tags: ["categories"],
+    security: editorSecurity,
+    params: categoryParams,
+    headers: categoryHeaders,
+    body: CategoryFields,
+    response: {
+      200: EditorCategory,
+      404: error,
+      409: categoryConflict,
+      ...categoryErrors,
+    },
+  },
+  orderCategories: {
+    summary: "Atomically reorder a complete, versioned sibling snapshot",
+    description: "Needs the editor role (403 otherwise).",
+    tags: ["categories"],
+    security: editorSecurity,
+    body: CategoryOrder,
+    response: {
+      200: z.object({ categories: z.array(EditorCategory) }),
+      409: categoryConflict,
+      ...categoryErrors,
+    },
+  },
+  deleteCategory: {
+    summary: "Delete an empty, unanchored category using its last-read version",
+    description: "Needs the editor role (403 otherwise).",
+    tags: ["categories"],
+    security: editorSecurity,
+    params: categoryParams,
+    headers: categoryHeaders,
+    response: {
+      204: z.undefined(),
+      400: error,
+      404: error,
+      409: z.union([categoryConflict, categoryInUse]),
       500: error,
       ...authErrors,
     },
   },
 
-  version: {
-    summary: "A version token for the whole estate",
+  me: {
+    summary: "The signed-in employee and their roles",
+    tags: ["auth"],
+    security: editorSecurity,
+    response: { 200: EmployeeView, ...authErrors },
+  },
+
+  listEmployees: {
+    summary: "Everyone who has signed in, with their roles",
+    description: "Needs the admin role (403 otherwise).",
+    tags: ["admin"],
+    security: editorSecurity,
+    response: {
+      200: z.object({ employees: z.array(EmployeeView) }),
+      500: error,
+      ...authErrors,
+    },
+  },
+  grantRole: {
+    summary: "Grant an employee a role",
     description:
-      "`change_events` is append-only and gets a row on every write, so its " +
-      "count and newest timestamp identify the state of everything without " +
-      "reading any of it. Clients poll this and refetch only when it moves.",
+      "Needs the admin role (403 otherwise). Records the admin as the " +
+      "grantor; a role already held is left as it was. 404 for someone " +
+      "who has never signed in.",
+    tags: ["admin"],
+    security: editorSecurity,
+    params: roleParams,
+    response: {
+      204: z.undefined(),
+      400: error,
+      404: error,
+      500: error,
+      ...authErrors,
+    },
+  },
+  revokeRole: {
+    summary: "Revoke an employee's role",
+    description:
+      "Needs the admin role (403 otherwise). It applies to their next " +
+      "request. A role they do not hold is not an error.",
+    tags: ["admin"],
+    security: editorSecurity,
+    params: roleParams,
+    response: { 204: z.undefined(), 400: error, 500: error, ...authErrors },
+  },
+
+  version: {
+    summary: "A version token for recorded content changes",
+    description:
+      "`change_events` records every page and category change. Its count " +
+      "and newest timestamp identify those changes without reading the content.",
     tags: ["meta"],
     security: editorSecurity,
     response: {

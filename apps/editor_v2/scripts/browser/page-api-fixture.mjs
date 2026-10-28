@@ -21,6 +21,21 @@ export const fixturePage = (id, fields) => ({
   ...fields,
 });
 
+/** A row of `GET /editor/categories`, as the content API answers it; a subcategory takes its parent's row. */
+export const fixtureCategory = (id, slug, title, fields = {}, parent) => ({
+  id,
+  parent_id: parent?.id ?? null,
+  slug,
+  title,
+  description: null,
+  url: parent ? `${parent.url}/${slug}` : `/${slug}`,
+  position: 0,
+  services: 0,
+  reserved_route: false,
+  updated_at: stamp,
+  ...fields,
+});
+
 /** HTTP-only page/service fixture. The real app still owns queries, working copies, guards and saves. */
 export async function installPageApi(context, service, initialPages) {
   const pages = new Map(initialPages.map((page) => [page.id, page]));
@@ -29,13 +44,12 @@ export async function installPageApi(context, service, initialPages) {
   const writes = [];
   let version = Date.parse(stamp);
 
-  const category = {
-    id: "category-1",
-    title: service.category.title,
-    slug: service.category.slug,
-    url: "/" + service.category.slug,
-    subcategories: [],
-  };
+  const category = fixtureCategory(
+    "55555555-5555-4555-8555-555555555551",
+    service.category.slug,
+    service.category.title,
+    { services: 1 },
+  );
 
   const belongs = (page, id) => page.id === id || page.parent_id === id;
 
@@ -59,7 +73,7 @@ export async function installPageApi(context, service, initialPages) {
 
     if (
       request.resourceType() === "document" ||
-      !/^\/(services(?:\/[^?]+)?|pages(?:\/[^?]+)?|taxonomy|version)$/.test(path)
+      !/^\/(services(?:\/[^?]+)?|pages(?:\/[^?]+)?|editor\/categories|version)$/.test(path)
     )
       return route.fallback();
 
@@ -75,7 +89,7 @@ export async function installPageApi(context, service, initialPages) {
 
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers });
 
-    if (path === "/taxonomy") return reply({ categories: [category] });
+    if (path === "/editor/categories") return reply({ categories: [category] });
 
     if (path === "/version")
       return reply({ count: pages.size, latest: new Date(version).toISOString() });

@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { useRuntimeConfig } from 'nitro/runtime-config'
+import { z } from 'zod'
 import type { ContentPage } from '../content/registry'
 import { bakeStartLinkFormId } from '../utils/markdown/plugins'
 import type { Frontmatter } from './frontmatter'
@@ -8,10 +9,13 @@ import type { Frontmatter } from './frontmatter'
  * Pages from api_v2 (#2944). When `VITE_API_V2_URL` is set, the catch-all asks
  * api_v2 for a page first and falls back to the static markdown on any miss;
  * unset, landing serves static content only. Unlike the forms API, a missing
- * URL is not an error.
+ * URL is not an error. A 301 is followed only to a same-site path.
  */
 
 export const API_V2_TIMEOUT_MS = 5_000
+
+/** Copied from apps/api_v2/src/modules/page-visibility.ts (`breadcrumbs`). */
+const PageBreadcrumbs = z.array(z.object({ name: z.string(), url: z.string() }))
 
 /** Copied from apps/api_v2/src/store.ts (`PageResponse`) and schema.ts (`Frontmatter`). */
 export interface PageResponse {
@@ -33,7 +37,7 @@ export interface PageResponse {
   /** True when the `/start` sub-page is hidden from this viewer; the form's
    * own state still comes from the forms API. */
   hide_start_links: boolean
-  breadcrumbs: Array<{ name: string; url: string }>
+  breadcrumbs: z.infer<typeof PageBreadcrumbs>
   /** When the page first went public; null until it has. */
   published_at: string | null
   /** The page's last save — also bumped by a visibility-only change, so not
@@ -47,7 +51,11 @@ export type SerializedContentPage = Omit<
   'Component' | 'selfRendered'
 >
 
-export type ApiV2Page = SerializedContentPage & { hideStartLinks: boolean }
+export type ApiV2Page = SerializedContentPage & {
+  hideStartLinks: boolean
+  /** api_v2's trail, current page last, Home not (ADR 0078). */
+  breadcrumbs: PageResponse['breadcrumbs']
+}
 
 /** First non-empty source, trailing slashes trimmed; null when neither is set. */
 export function resolveApiV2Base(
@@ -59,7 +67,7 @@ export function resolveApiV2Base(
 }
 
 /** Same dual-source as `formsApiBase`: build-baked runtimeConfig, then process.env. */
-function apiV2Base(): string | null {
+export function apiV2Base(): string | null {
   const config = useRuntimeConfig() as { apiV2Url?: string }
   return resolveApiV2Base(config.apiV2Url, process.env.VITE_API_V2_URL)
 }
@@ -70,8 +78,15 @@ function isPageResponse(body: unknown): body is PageResponse {
     typeof page?.url === 'string' &&
     typeof page.frontmatter?.title === 'string' &&
     typeof page.body_markdown === 'string' &&
+    PageBreadcrumbs.safeParse(page.breadcrumbs).success &&
     typeof page.hide_start_links === 'boolean'
   )
+}
+
+/** `/…` only: not `//`, no backslash, no whitespace — the three ways a
+ *  browser's URL parser turns a "path" into another origin (#3126). */
+function isSitePath(to: string): boolean {
+  return /^\/(?!\/)[^\\\s]*$/.test(to)
 }
 
 /**
@@ -108,8 +123,11 @@ export async function fetchApiV2Page(
         typeof body?.redirect === 'string'
           ? body.redirect
           : response.headers.get('Location')
-      if (to) return { kind: 'redirect', to }
-      console.warn(`[api-v2] 301 for ${url} with no target`)
+      // Same-site paths only (#3126): a 301 here may come from a proxy, not
+      // api_v2, and the browser caches it, so an off-site target would outlive
+      // the misconfiguration that produced it.
+      if (to && isSitePath(to)) return { kind: 'redirect', to }
+      console.warn(`[api-v2] 301 for ${url} with no same-site target: ${to}`)
       return { kind: 'miss' }
     }
     if (response.status !== 200) {
@@ -165,6 +183,7 @@ export async function fromApiV2(body: PageResponse): Promise<ApiV2Page> {
     body: body.body_markdown,
     hast,
     hideStartLinks: body.hide_start_links,
+    breadcrumbs: body.breadcrumbs,
   }
 }
 

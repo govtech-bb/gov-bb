@@ -1,10 +1,6 @@
-import {
-  ApiFailure,
-  type ApiPage,
-  type EditorApi,
-  type FieldError,
-  type TaxonomyCategory,
-} from "../api/client";
+import type { Category } from "../api/categories";
+import { ApiFailure, type ApiPage, type EditorApi, type FieldError } from "../api/client";
+import { apiMessage } from "../api/failure-messages";
 import { markdownToPageSaveInput } from "../api/page-markdown";
 import type { DraftStore } from "../persistence/draft-store";
 
@@ -33,6 +29,7 @@ export function pageHasUnsavedChanges(session: PageSession) {
 export type PageSaveOutcome =
   | { kind: "saved"; base: ServerPageBaseline }
   | { kind: "invalid"; errors: readonly FieldError[] }
+  | { kind: "forbidden" | "under-review"; message: string }
   | { kind: "conflict" | "missing" | "signed-out" | "failed" };
 
 /** Save a draft over the version it was edited from; the API refuses it if that version has moved on. */
@@ -40,7 +37,7 @@ export async function savePageDraft(
   api: Pick<EditorApi, "savePage">,
   base: ServerPageBaseline,
   markdown: string,
-  categories: readonly TaxonomyCategory[],
+  categories: readonly Category[],
 ): Promise<PageSaveOutcome> {
   const fields = markdownToPageSaveInput(markdown, base.page, categories);
 
@@ -57,11 +54,22 @@ export async function savePageDraft(
       case 422:
         return { kind: "invalid", errors: error.errors };
       case 409:
-        return { kind: "conflict" };
+        // Until #3203, a change waiting for review can't be saved over
+        return error.code === "under_review"
+          ? {
+              kind: "under-review",
+              message: apiMessage(error) ?? "This change is waiting for review.",
+            }
+          : { kind: "conflict" };
       case 404:
         return { kind: "missing" };
       case 401:
         return { kind: "signed-out" };
+      case 403:
+        return {
+          kind: "forbidden",
+          message: apiMessage(error) ?? "You don't have permission to save this change.",
+        };
       default:
         return { kind: "failed" };
     }

@@ -11,7 +11,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiFailure, type EditorApi } from "../api/client";
-import { serviceQuery, servicesQuery, estateVersionQuery } from "../api/queries";
+import { rolesQuery, serviceQuery, servicesQuery, estateVersionQuery } from "../api/queries";
 import {
   CreateRemotePageDialog,
   CreateRemoteServiceDialog,
@@ -50,6 +50,10 @@ const SIDEBAR_KEY = "govbb-editor:sidebar-collapsed";
 // The bar's trail of links, light on dark
 const crumb =
   "rounded-sm px-2 py-2 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-focus";
+
+/** What someone without the editor role is told, on every screen. */
+const READ_ONLY =
+  "You can read pages and categories but not change them, because you don't have the editor role. Ask an admin to give it to you.";
 
 /** Authenticated API services and page editors; no browser-local workspace is loaded. */
 export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { api: EditorApi }) {
@@ -146,6 +150,13 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
   const listed = useQuery({ ...servicesQuery(api), enabled: false }).data?.find(
     (item) => item.id === location?.serviceId,
   );
+
+  const roles = useQuery(rolesQuery(api)).data;
+  // Until the roles load, deleting a public page waits rather than offering what the API may refuse
+  const approver = roles?.includes("approver") ?? false;
+  // Without the editor role everything still reads, but nothing can be changed. Until the roles load everyone is
+  // offered the changes, since nearly everyone is an editor; the API refuses anyone who isn't
+  const readOnly = !!roles && !roles.includes("editor");
 
   const rows = useMemo(() => (remote.data ? remoteServiceRows(remote.data) : []), [remote.data]);
   const selected = rows.find((row) => row.document.id === documentId)?.document;
@@ -279,6 +290,11 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
           {error}
         </Banner>
       )}
+      {readOnly && (
+        <Banner tone="info" layout="strip">
+          {READ_ONLY}
+        </Banner>
+      )}
       <div className="flex flex-1">
         <AppNav sidebar={appNav} rail={!!location} servicesSearch={servicesSearch} />
         {location && !missing && (remote.data || remote.isPending) && (
@@ -291,10 +307,15 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
             stores={stores}
             onAdd={() => setDialog("page")}
             onDelete={() => setDialog("delete")}
+            readOnly={readOnly ? "You need the editor role to add or delete pages." : undefined}
             deleteBlocked={
               selected && remote.data?.pages.some((page) => page.parent_id === selected.id)
                 ? "Delete or move the pages under this page first."
-                : undefined
+                : !approver &&
+                    remote.data?.pages.find((page) => page.id === selected?.id)?.visibility ===
+                      "public"
+                  ? "Only approvers can delete a public page."
+                  : undefined
             }
           />
         )}
@@ -345,7 +366,7 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
           )}
           {!location && onCategories && (
             <section className="mx-auto w-full max-w-300 px-6 py-10">
-              <CategoriesScreen api={api} />
+              <CategoriesScreen api={api} readOnly={readOnly} />
             </section>
           )}
           {!location && !onCategories && (
@@ -358,6 +379,7 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
                   void routerNavigate({ to: "/services", search, replace: true });
                 }}
                 onCreate={() => setDialog("service")}
+                readOnly={readOnly}
               />
             </section>
           )}
@@ -368,7 +390,7 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
               title={remote.data.service.title}
               description="Choose a document or add one to this service."
               actions={
-                <Button variant="accent" onClick={() => setDialog("page")}>
+                <Button variant="accent" disabled={readOnly} onClick={() => setDialog("page")}>
                   Add document
                 </Button>
               }

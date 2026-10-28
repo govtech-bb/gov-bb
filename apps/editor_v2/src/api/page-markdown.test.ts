@@ -3,19 +3,30 @@ import estate from "../../../api_v2/src/seed-data/estate.json";
 import { createHeadlessEditor } from "../editor/core/create-editor";
 import { $setPageMetadata } from "../pages/metadata";
 import { govbbPageCodec, govbbPageEditor } from "../presets/govbb-page";
-import type { ApiPage, TaxonomyCategory } from "./client";
-import { markdownToPageSaveInput, pageToMarkdown, suggestedUrl } from "./page-markdown";
+import type { Category } from "./categories";
+import type { ApiPage } from "./client";
+import {
+  markdownToPageSaveInput,
+  pageToMarkdown,
+  pickerCategories,
+  suggestedUrl,
+} from "./page-markdown";
 
 const VISIBILITIES = ["public", "preview", "draft"] as const;
 
 const idOf = (key: string) => `id:${key}`;
 
-const categories: TaxonomyCategory[] = estate.categories.map((category) => ({
+const categories: Category[] = estate.categories.map((category, position) => ({
   id: idOf(category.slug),
   parent_id: category.parent ? idOf(category.parent) : null,
   slug: category.slug,
   url: category.parent ? `/${category.parent}/${category.slug}` : `/${category.slug}`,
   title: category.title,
+  description: null,
+  position,
+  services: 0,
+  reserved_route: false,
+  updated_at: "2026-10-26T12:00:00.000Z",
 }));
 
 const pages: ApiPage[] = estate.pages.map((page) => ({
@@ -33,6 +44,7 @@ const pages: ApiPage[] = estate.pages.map((page) => ({
   published_at: page.published_at,
   created_at: "2026-10-07T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
+  pending_revision: null,
 }));
 
 const entry = pages.find((page) => page.url === "/money-financial-support/calculate-severance-pay");
@@ -198,6 +210,47 @@ describe("page markdown", () => {
     );
 
     expect(saved.ok ? [] : saved.errors.map((error) => error.field)).toEqual([field]);
+  });
+
+  it("names categories that share a name by their addresses in page details' picker", () => {
+    const row = (slug: string, title: string, parent?: string): Category => ({
+      id: idOf(slug),
+      parent_id: parent ? idOf(parent) : null,
+      slug,
+      title,
+      url: parent ? `/${parent}/${slug}` : `/${slug}`,
+      description: null,
+      position: 0,
+      services: 0,
+      reserved_route: false,
+      updated_at: "2026-10-26T12:00:00.000Z",
+    });
+
+    const picked = pickerCategories([
+      row("health", "Health"),
+      row("health-care", "Health"),
+      row("grants", "Grants", "health"),
+      row("money", "Money"),
+      row("money-grants", "Grants", "money"),
+      row("pensions", "Pensions", "money"),
+    ]);
+
+    expect(picked).toEqual([
+      {
+        slug: "health",
+        title: "Health (/health)",
+        subcategories: [{ slug: "grants", title: "Grants (/health/grants)" }],
+      },
+      { slug: "health-care", title: "Health (/health-care)", subcategories: [] },
+      {
+        slug: "money",
+        title: "Money",
+        subcategories: [
+          { slug: "money-grants", title: "Grants (/money/money-grants)" },
+          { slug: "pensions", title: "Pensions" },
+        ],
+      },
+    ]);
   });
 
   it("suggests a new page's path from its title, beneath its prefix", () => {

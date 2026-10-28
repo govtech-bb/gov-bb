@@ -6,11 +6,6 @@ import {
   type ServiceDetail,
   type ServiceSummary,
 } from "../modules/estate-services";
-import {
-  taxonomyOf,
-  type CategoryRecord,
-  type TaxonomyEntry,
-} from "../modules/navigation";
 import type { ContentStoreUnavailable, PageId } from "../modules/page";
 import { ok, type Result } from "../modules/result";
 
@@ -29,8 +24,6 @@ export interface IndexReads {
   indexedPages(): Promise<
     Result<readonly IndexedPage[], ContentStoreUnavailable>
   >;
-  /** Every category, in the order the site lists them. */
-  categories(): Promise<Result<CategoryRecord[], ContentStoreUnavailable>>;
   /** The change log's size and newest timestamp. */
   changeLogVersion(): Promise<Result<EstateVersion, ContentStoreUnavailable>>;
 }
@@ -56,16 +49,9 @@ export class EditorIndex {
     return pages.ok ? ok(serviceAt(pages.value, id)) : pages;
   }
 
-  /** Every category a page can be filed under, each before its subcategories. */
-  async taxonomy(): Promise<Result<TaxonomyEntry[], ContentStoreUnavailable>> {
-    const categories = await this.reads.categories();
-    return categories.ok ? ok(taxonomyOf(categories.value)) : categories;
-  }
-
   /**
    * A cheap token for "has anything changed". `change_events` is append-only
-   * and gets a row on every write, so its count plus its newest timestamp
-   * identify the state of the whole estate without reading any of it.
+   * and gets a row on every page and category change.
    * Clients poll this and refetch only when it moves.
    */
   version(): Promise<Result<EstateVersion, ContentStoreUnavailable>> {

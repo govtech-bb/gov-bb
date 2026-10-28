@@ -6,7 +6,6 @@ import {
   pageQuery,
   serviceQuery,
   servicesQuery,
-  taxonomyQuery,
 } from "../api/queries";
 
 // Ahead of a screen, a service is only fetched from the content API when the services list or an earlier visit
@@ -34,7 +33,7 @@ export function primePage(client: QueryClient, api: EditorApi, serviceId: string
 
   if (!page) return;
   void client.prefetchQuery({ ...pageQuery(api, pageId), staleTime: PRELOAD_FRESH });
-  void client.prefetchQuery({ ...taxonomyQuery(api), staleTime: PRELOAD_FRESH });
+  void client.prefetchQuery({ ...categoriesQuery(api), staleTime: PRELOAD_FRESH });
 }
 
 /** Starts loading the categories before their screen opens. */

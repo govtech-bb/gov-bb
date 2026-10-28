@@ -30,6 +30,13 @@ try {
     localStorage.setItem("govbb-editor:draft:markdown:v2", "Old browser-only form");
   });
   const firstRead = Promise.withResolvers();
+  // Services filters start the shared category read before a page is opened.
+  const categoriesRead = Promise.withResolvers();
+  await context.route("**/editor/categories", async (route) => {
+    if (route.request().method() === "GET") await categoriesRead.promise;
+
+    return route.fallback();
+  });
   await context.route("**/services", async (route) => {
     if (route.request().resourceType() !== "document" && route.request().method() === "GET")
       await firstRead.promise;
@@ -68,12 +75,10 @@ try {
 
   const detailRead = Promise.withResolvers();
   const pageRead = Promise.withResolvers();
-  const taxonomyRead = Promise.withResolvers();
 
   for (const [path, held] of [
     [`/services/${service.id}`, detailRead],
     [`/pages/${service.id}`, pageRead],
-    ["/taxonomy", taxonomyRead],
   ]) {
     await context.route(`**${path}`, async (route) => {
       if (route.request().resourceType() !== "document" && route.request().method() === "GET")
@@ -107,9 +112,9 @@ try {
   assert.equal(
     await title.count(),
     0,
-    "taxonomy required for the initial document has not arrived",
+    "the categories the initial document needs have not arrived",
   );
-  taxonomyRead.resolve();
+  categoriesRead.resolve();
   await title.waitFor();
   assert.equal(await title.inputValue(), service.title);
   assert.equal(await header.evaluate((element) => element.isConnected), true);
@@ -130,14 +135,16 @@ try {
     )
     .waitFor();
   await create.getByLabel("Service name", { exact: true }).fill("API workspace checks");
-  await create.getByLabel("Category", { exact: true }).selectOption("category-1");
+  await create
+    .getByLabel("Category", { exact: true })
+    .selectOption({ label: service.category.title });
   await create.getByRole("button", { name: "Create service", exact: true }).click();
   await title.waitFor();
   assert.equal(await title.inputValue(), "API workspace checks");
   const created = api.writes.find((write) => write.method === "POST");
   assert.equal(created.fields.visibility, "preview");
   assert.equal(created.fields.body_markdown, "");
-  assert.equal(created.fields.category_id, "category-1");
+  assert.equal(created.fields.category_id, "55555555-5555-4555-8555-555555555551");
   assert.equal(new URL(page.url()).pathname, `/services/${created.id}/${created.id}`);
   assert.equal(await page.getByRole("link", { name: "Application form", exact: true }).count(), 0);
 

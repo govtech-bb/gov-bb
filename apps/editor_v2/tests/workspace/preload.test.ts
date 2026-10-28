@@ -46,7 +46,11 @@ const detail: ServiceDetail = {
 const asked: string[] = [];
 
 const answer = (path: string) =>
-  path === "/taxonomy" ? { categories: [] } : path.startsWith("/services/") ? detail : { id: path };
+  path === "/editor/categories"
+    ? { categories: [] }
+    : path.startsWith("/services/")
+      ? detail
+      : { id: path };
 
 afterEach(() => {
   asked.length = 0;
@@ -76,9 +80,9 @@ test("a service the services list shows starts loading, with its entry page", as
   await settled();
 
   expect(asked.toSorted()).toEqual([
+    "/editor/categories",
     `/pages/${summary.id}`,
     `/services/${summary.id}`,
-    "/taxonomy",
   ]);
   expect(client.getQueryData(serviceQuery(api, summary.id).queryKey)).toEqual(detail);
 });
@@ -105,11 +109,11 @@ test("a page of a loaded service starts loading, unless it was fetched just now"
 
   primePage(client, api, summary.id, fees);
   await settled();
-  expect(asked).toEqual([`/pages/${fees}`, "/taxonomy"]);
+  expect(asked).toEqual([`/pages/${fees}`, "/editor/categories"]);
 
   primeService(client, api, summary.id);
   primePage(client, api, summary.id, fees);
   await settled();
-  expect(asked).toEqual([`/pages/${fees}`, "/taxonomy"]);
+  expect(asked).toEqual([`/pages/${fees}`, "/editor/categories"]);
   expect(client.getQueryData(pageQuery(api, fees).queryKey)).toEqual({ id: `/pages/${fees}` });
 });

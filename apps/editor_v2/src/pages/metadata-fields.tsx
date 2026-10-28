@@ -319,6 +319,8 @@ export type PageSettingsOptions = {
   savedVisibility?: string;
   /** Why the host refused each field, keyed by field name. */
   errors?: Readonly<Record<string, string>>;
+  /** Visibility shown but not offered, for someone who isn't an approver. */
+  visibilityLocked?: boolean;
 };
 
 /** The page's settings, in sections for its side panel: how it's published, its details and where it's filed. */
@@ -328,6 +330,7 @@ export function PageSettings({
   publishedAt,
   savedVisibility,
   errors = {},
+  visibilityLocked = false,
 }: PageSettingsOptions) {
   const { metadata, yaml, editable, update, historyKeys } = useMetadataUpdate();
   const document = parseDocument(yaml);
@@ -388,6 +391,16 @@ export function PageSettings({
       <SidePanel.Section title="Publishing">
         {unsupported("visibility") ? (
           <Preserved label="Visibility" error={errors.visibility} />
+        ) : visibilityLocked ? (
+          <FieldText label="Visibility" error={errors.visibility}>
+            <span className="flex items-center gap-2">
+              <StatusDot tone={visibilityTones.get(visibility) ?? "neutral"} />
+              {visibilityLabels.get(visibility) ?? visibility}
+            </span>
+            <span className="block text-muted">
+              Only approvers can change who can see this page.
+            </span>
+          </FieldText>
         ) : (
           <Field
             label="Visibility"

@@ -28,6 +28,7 @@ const pages = new Map(
       published_at: null,
       created_at: stamp,
       updated_at: stamp,
+      pending_revision: null,
     } satisfies ApiPage,
   ]),
 );
@@ -56,7 +57,13 @@ afterEach(() => {
   clients.splice(0).forEach((client) => client.clear());
 });
 
-async function mountWorkspace(path = "/services/service/fees") {
+async function mountWorkspace(
+  path = "/services/service/fees",
+  {
+    roles = ["editor", "approver"],
+    publicIds = [],
+  }: { roles?: readonly string[]; publicIds?: readonly string[] } = {},
+) {
   vi.stubGlobal("matchMedia", (query: string) => ({
     matches: true,
     media: query,
@@ -85,9 +92,18 @@ async function mountWorkspace(path = "/services/service/fees") {
 
       if (path === "/services") return Response.json([detail.service]);
 
-      if (path === "/services/service") return Response.json(detail);
+      if (path === "/services/service")
+        return Response.json({
+          ...detail,
+          pages: detail.pages.map((page) =>
+            publicIds.includes(page.id) ? { ...page, visibility: "public" } : page,
+          ),
+        });
 
-      if (path === "/taxonomy") return Response.json({ categories: [] });
+      if (path === "/editor/me")
+        return Response.json({ id: "me", email: "author@govtech.bb", name: "Author", roles });
+
+      if (path === "/editor/categories") return Response.json({ categories: [] });
 
       if (path === "/version") return Response.json({ count: 1, latest: stamp });
       const page = pages.get(path.replace("/pages/", ""));
@@ -189,6 +205,59 @@ test.each([0, 503, 401, 403, 404])(
     await until(() => expect(activeTitle().value).toBe("Keep during refresh"));
   },
 );
+
+test.each([
+  [["editor"], true],
+  [["editor", "approver"], false],
+])(
+  "Delete page on a public page, for someone with roles %j, is held back with the reason: %s",
+  async (roles, blocked) => {
+    await mountWorkspace("/services/service/fees", { roles, publicIds: ["fees"] });
+
+    const deleteButton = () =>
+      [...document.querySelectorAll("button")].find(
+        (button) => button.textContent === "Delete page",
+      )!;
+
+    await until(() => expect(deleteButton().disabled).toBe(blocked));
+    const reason = deleteButton().getAttribute("aria-describedby");
+    expect(reason && document.getElementById(reason)?.textContent).toBe(
+      blocked ? "Only approvers can delete a public page." : null,
+    );
+  },
+);
+
+test("someone without the editor role is told why, and can't add, delete or create", async () => {
+  const h = await mountWorkspace("/services/service/fees", { roles: [] });
+
+  const button = (name: string) =>
+    [...document.querySelectorAll("button")].find((item) => item.textContent === name)!;
+
+  await until(() => expect(document.body.textContent).toContain("you don't have the editor role"));
+  await until(() => expect(button("Delete page").disabled).toBe(true));
+  expect(button("Add document").disabled).toBe(true);
+  const reason = button("Add document").getAttribute("aria-describedby");
+  expect(reason && document.getElementById(reason)?.textContent).toBe(
+    "You need the editor role to add or delete pages.",
+  );
+  expect(button("Delete page").getAttribute("aria-describedby")).toBe(reason);
+
+  await act(async () => {
+    await h.router.navigate({ to: "/services" });
+  });
+  await until(() => expect(button("Create service").disabled).toBe(true));
+});
+
+test("an editor is offered adding and creating, with no read-only notice", async () => {
+  await mountWorkspace("/services/service/fees", { roles: ["editor"] });
+
+  const button = (name: string) =>
+    [...document.querySelectorAll("button")].find((item) => item.textContent === name)!;
+
+  await until(() => expect(button("Delete page").disabled).toBe(false));
+  expect(button("Add document").disabled).toBe(false);
+  expect(document.body.textContent).not.toContain("you don't have the editor role");
+});
 
 test("malformed old workspaces and drafts cannot shadow API pages or create browser-only flows", async () => {
   localStorage.setItem("govbb-editor:workspace:v1", "{broken");

@@ -12,6 +12,7 @@ import Header from '../components/Header'
 import { CATEGORY_BY_SLUG, isCategoryVisible } from '../content/registry'
 import { ErrorPage } from '../components/ErrorPage'
 import { trackEvent } from '../lib/analytics'
+import { categoryTreeQuery } from '../lib/api-v2-categories'
 import { COOKIE_MAX_AGE_SECONDS, resolveViewLevel } from '../lib/preview'
 import {
   deriveVisibilityOverlay,
@@ -81,15 +82,22 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   // side-effects, and must never be cached under the shared query key.
   beforeLoad: async ({ context, location }) => {
     const search = location.search as Record<string, unknown>
+    const { queryClient } = context
+    // The public category tree (api_v2 mode) holds no grant, so even a token
+    // navigation reads it through the shared query. It never rejects: an
+    // outage is a value the routes that list categories show, and every other
+    // route ignores.
+    const categoryTree = queryClient.fetchQuery(categoryTreeQuery())
+
     if (search.preview !== undefined || search.draft !== undefined) {
       const { level, redirectTo } = await resolveViewLevel()
       if (redirectTo) throw redirect({ href: redirectTo })
       const serviceStatuses = await getServiceStatuses()
-      return { level, serviceStatuses }
+
+      return { level, serviceStatuses, categoryTree: await categoryTree }
     }
 
-    const { queryClient } = context
-    const [level, serviceStatuses] = await Promise.all([
+    const [level, serviceStatuses, tree] = await Promise.all([
       // The grant only changes via a token (handled above, with a full
       // redirect), so within a document it's effectively fixed — but it's capped
       // at the cookie's lifetime so an expired grant can't linger in a tab left
@@ -108,8 +116,10 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         staleTime: ROOT_SERVICE_STATUSES_STALE_MS,
         gcTime: ROOT_SERVICE_STATUSES_STALE_MS,
       }),
+      categoryTree,
     ])
-    return { level, serviceStatuses }
+
+    return { level, serviceStatuses, categoryTree: tree }
   },
   head: () => ({
     meta: [
@@ -236,12 +246,20 @@ function ServerErrorPage() {
 }
 
 function RootLayout() {
-  const { level, serviceStatuses } = Route.useRouteContext()
-  const showAboutBarbados = isCategoryVisible(
-    CATEGORY_BY_SLUG['about-barbados'],
-    level,
-    deriveVisibilityOverlay(serviceStatuses),
-  )
+  const { level, serviceStatuses, categoryTree } = Route.useRouteContext()
+  // api_v2 mode (ADR 0078): listed only when the public tree lists it. An
+  // unreadable tree hides it too, never falling back to the static category.
+  const showAboutBarbados =
+    categoryTree.kind === 'disabled'
+      ? isCategoryVisible(
+          CATEGORY_BY_SLUG['about-barbados'],
+          level,
+          deriveVisibilityOverlay(serviceStatuses),
+        )
+      : categoryTree.kind === 'found' &&
+        categoryTree.categories.some(
+          (category) => category.url === '/about-barbados',
+        )
 
   return (
     <>

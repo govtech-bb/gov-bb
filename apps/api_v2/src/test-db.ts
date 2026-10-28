@@ -12,16 +12,19 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Client, Pool } from "pg";
 import { inject } from "vitest";
 import { PostgresPages } from "./adapters/postgres-pages";
+import { PostgresRoles } from "./adapters/postgres-roles";
 import { buildApp, type AppOptions } from "./app";
 import type { Database } from "./db";
-import { type Employee } from "./modules/auth";
+import { ROLES, UserId, type Employee } from "./modules/auth";
 import { ok, type Result } from "./modules/result";
 import { EditorAccess, type SessionReader } from "./services/editor-access";
 import { EditorIndex } from "./services/editor-index";
+import { CategoryEditing } from "./services/category-editing";
 import { PageEditing } from "./services/page-editing";
 import { PageResolution } from "./services/page-resolution";
 import { SiteNavigation } from "./services/site-navigation";
@@ -109,8 +112,11 @@ export function createTestServices(db: Database) {
   return {
     resolution: new PageResolution(pages),
     navigation: new SiteNavigation(pages),
-    editing: new PageEditing(pages, () => new Date()),
+    editing: new PageEditing(pages, () => new Date(), {
+      allowSelfApproval: false,
+    }),
     index: new EditorIndex(pages),
+    categories: new CategoryEditing(pages, () => new Date()),
   };
 }
 
@@ -120,12 +126,36 @@ export function expectOk<T>(result: Result<T, Error>): T {
   return result.value;
 }
 
-/** An employee fixture, never accepted by the production session adapter. */
+/** An employee fixture holding every role, never accepted by the production session adapter. */
 export const TEST_EMPLOYEE: Employee = {
-  id: "employee-test",
+  id: UserId.parse("employee-test"),
   email: "editor@govtech.bb",
   name: "Test editor",
+  roles: ROLES,
 };
+/** An employee who edits but neither approves nor administers. */
+export const TEST_EDITOR: Employee = {
+  id: UserId.parse("editor-test"),
+  email: "editor-only@govtech.bb",
+  name: "Test editor without approval",
+  roles: ["editor"],
+};
+
+/** Make the fixtures users holding their roles, as a real sign-in and grants would. */
+async function registerTestEmployees(db: Database) {
+  for (const employee of [TEST_EMPLOYEE, TEST_EDITOR]) {
+    await db.execute(
+      sql`insert into auth_user (id, name, email, "emailVerified")
+          values (${employee.id}, ${employee.name}, ${employee.email}, true)
+          on conflict do nothing`,
+    );
+    for (const role of employee.roles)
+      await db.execute(
+        sql`insert into user_roles (user_id, role) values (${employee.id}, ${role})
+            on conflict do nothing`,
+      );
+  }
+}
 /** Explicit origins used by HTTP integration tests. */
 export const TEST_HTTP_CONFIG = {
   apiOrigin: "http://localhost:3020",
@@ -137,8 +167,11 @@ export const TEST_HEADERS = {
   origin: TEST_HTTP_CONFIG.editorOrigin,
 };
 
-/** Compose the production HTTP adapter with an explicit session test double. */
-export function createTestApp(
+/**
+ * Compose the production HTTP adapter with an explicit session test double.
+ * Roles are read from the database, where the fixtures hold theirs.
+ */
+export async function createTestApp(
   db: Database,
   options: Partial<
     Pick<AppOptions, "auth" | "config" | "logger" | "previewSecret">
@@ -146,11 +179,15 @@ export function createTestApp(
     sessions?: SessionReader;
   } = {},
 ) {
+  await registerTestEmployees(db);
+  const roles = new PostgresRoles(db);
   return buildApp({
     ...createTestServices(db),
     access: new EditorAccess(
       options.sessions ?? { findSession: async () => ok(TEST_EMPLOYEE) },
+      roles,
     ),
+    roles,
     auth: options.auth ?? {
       handle: async () =>
         Response.json({ error: "test_auth_not_configured" }, { status: 404 }),

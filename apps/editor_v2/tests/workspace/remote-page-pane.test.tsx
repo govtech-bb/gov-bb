@@ -9,7 +9,7 @@ import {
 import { act } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { createEditorApi, type ApiPage, type SavePageInput } from "../../src/api/client";
-import { pageQuery, taxonomyQuery } from "../../src/api/queries";
+import { categoriesQuery, pageQuery } from "../../src/api/queries";
 import { govbbPageCodec } from "../../src/presets/govbb-page";
 import { Toaster } from "../../src/ui/toast";
 import { RemotePagePane } from "../../src/workspace/remote-page-pane";
@@ -31,6 +31,7 @@ const page: ApiPage = {
   published_at: null,
   created_at: "2026-10-07T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
+  pending_revision: null,
 };
 
 const router = createRouter({
@@ -49,11 +50,20 @@ beforeEach(() => {
   }));
 });
 
-async function mountPage(request: (url: string, init?: RequestInit) => Promise<Response>) {
+async function mountPage(
+  request: (url: string, init?: RequestInit) => Promise<Response>,
+  roles = ["editor", "approver"],
+) {
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string, init?: RequestInit) => {
-      if (url.endsWith("/taxonomy")) return Promise.resolve(Response.json({ categories: [] }));
+      if (url.endsWith("/editor/me"))
+        return Promise.resolve(
+          Response.json({ id: "me", email: "me@govtech.bb", name: "Me", roles }),
+        );
+
+      if (url.endsWith("/editor/categories"))
+        return Promise.resolve(Response.json({ categories: [] }));
 
       if (url.endsWith("/services")) return Promise.resolve(Response.json([]));
 
@@ -98,7 +108,7 @@ const draftOption = () => visibility().querySelector<HTMLOptionElement>('option[
 
 async function chooseVisibility(value: string) {
   await act(async () => {
-    const select = visibility();
+    const select = await vi.waitFor(visibility);
     select.value = value;
     select.dispatchEvent(new Event("change", { bubbles: true }));
     select.blur();
@@ -134,7 +144,7 @@ test.each(["", "preview"])(
       return Response.json(current);
     });
 
-    expect(draftOption()?.disabled).toBe(true);
+    await vi.waitFor(() => expect(draftOption()?.disabled).toBe(true));
     await chooseVisibility(value);
     expect(draftOption()?.disabled).toBe(false);
     const title = pageControl<HTMLTextAreaElement>('textarea[aria-label="Page title"]');
@@ -192,6 +202,41 @@ test("a background visibility change does not remove the accepted draft baseline
   await chooseVisibility("draft");
   expect(visibility().value).toBe("draft");
   expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
+});
+
+// The visibility control is the select offering the visibilities
+const visibilitySelect = () =>
+  [...document.querySelectorAll("select")].find((select) =>
+    select.textContent?.includes("Preview link only"),
+  );
+
+const LOCKED = "Only approvers can change who can see this page.";
+
+test("an approver is offered the page's visibility", async () => {
+  await mountPage(async () => Response.json(page));
+
+  await vi.waitFor(() => expect(visibilitySelect()).toBeDefined());
+  expect(document.body.textContent).not.toContain(LOCKED);
+});
+
+test("someone who isn't an approver sees the page's visibility, and why they can't change it", async () => {
+  await mountPage(async () => Response.json(page), ["editor"]);
+
+  await vi.waitFor(() => expect(document.body.textContent).toContain(LOCKED));
+  expect(visibilitySelect()).toBeUndefined();
+});
+
+test("someone without the editor role can't save", async () => {
+  const h = await mountPage(async () => Response.json(page), []);
+
+  await applySource(h.session(), h.session().store.getSnapshot().source + "\n\nKeep this");
+  await vi.waitFor(() => expect(document.body.textContent).toContain(LOCKED));
+
+  const save = [...document.querySelectorAll("button")].find(
+    (item) => item.textContent === "Save",
+  )!;
+
+  expect(save.disabled).toBe(true);
 });
 
 test("a visual page stays editable without history controls or requests", async () => {
@@ -288,7 +333,7 @@ test("a page preloaded just now, as its link was pointed at, opens without waiti
   const api = createEditorApi("http://localhost:3020");
   const client = new QueryClient();
   client.setQueryData(pageQuery(api, page.id).queryKey, page);
-  client.setQueryData(taxonomyQuery(api).queryKey, []);
+  client.setQueryData(categoriesQuery(api).queryKey, []);
 
   await renderInPage(
     <RouterContextProvider router={router}>
@@ -457,3 +502,186 @@ test.each([401, 404, 409, 422, 503, 0])(
     expect(h.session().store.getSnapshot().committed).toContain("Keep this");
   },
 );
+
+test("a save the API refuses (403) says why and offers no retry, keeping the working copy", async () => {
+  const h = await mountPage(async (_url, init) =>
+    init?.method === "PUT"
+      ? Response.json(
+          { error: "forbidden", message: "Only approvers can change who can see a page." },
+          { status: 403 },
+        )
+      : Response.json(page),
+  );
+
+  const source = h.session().store.getSnapshot().source + "\n\nKeep this";
+  await applySource(h.session(), source);
+  await savePage();
+  await act(async () => {
+    await vi.waitFor(() =>
+      expect(document.querySelector('[role="alert"]')?.textContent).toContain(
+        "Only approvers can change who can see a page.",
+      ),
+    );
+  });
+  const names = [...document.querySelectorAll("button")].map((button) => button.textContent);
+  expect(names).not.toContain("Retry");
+  expect(document.body.textContent).not.toContain("We could not save this page");
+  expect(pageHasUnsavedChanges(h.session())).toBe(true);
+});
+
+const PENDING = "Your changes are saved but not live. Submit them for review when they're ready.";
+
+const WAITING =
+  "Waiting for review. Citizens will see these changes once an approver publishes them.";
+
+const live: ApiPage = { ...page, visibility: "public", published_at: "2026-10-01T12:00:00.000Z" };
+
+test("a change saved to a public page waits for an approver: the editor keeps it and says it isn't live", async () => {
+  let current = live;
+
+  const h = await mountPage(async (_url, init) => {
+    // The API answers with the working copy: the revision laid over the live page
+    if (init?.method === "PUT")
+      current = {
+        ...live,
+        ...JSON.parse(String(init.body)),
+        updated_at: "2026-10-07T13:00:00.000Z",
+        pending_revision: { status: "draft", comment: null },
+      };
+
+    return Response.json(current);
+  });
+
+  expect(document.body.textContent).not.toContain(PENDING);
+  const source = h.session().store.getSnapshot().source + "\n\nWaiting for review";
+  await applySource(h.session(), source);
+  // Saving won't publish it, so the edit is unsaved rather than unpublished
+  expect(document.body.textContent).toContain("Unsaved changes");
+  expect(document.body.textContent).not.toContain("Unpublished changes");
+  // A public page's save doesn't publish, so it isn't offered as publishing
+  await savePage();
+  await act(async () => {
+    await vi.waitFor(() => expect(document.body.textContent).toContain(PENDING));
+  });
+  expect(h.session().getBaseline().page.updated_at).toBe("2026-10-07T13:00:00.000Z");
+  expect(h.session().store.getSnapshot().committed).toBe(source);
+  expect(pageHasUnsavedChanges(h.session())).toBe(false);
+  expect(document.body.textContent).not.toContain("A newer version");
+});
+
+test("a public page opened with a change waiting for an approver says so", async () => {
+  await mountPage(async () =>
+    Response.json({ ...live, pending_revision: { status: "draft", comment: null } }),
+  );
+
+  await vi.waitFor(() => expect(document.body.textContent).toContain(PENDING));
+});
+
+const button = (name: string) =>
+  [...document.querySelectorAll("button")].find((item) => item.textContent === name);
+
+test("a saved draft is submitted for review at the version the editor holds, and then says it's waiting", async () => {
+  const drafted: ApiPage = { ...live, pending_revision: { status: "draft", comment: null } };
+  let sent: { url: string; init?: RequestInit } | undefined;
+
+  await mountPage(async (url, init) => {
+    if (init?.method === "POST") {
+      sent = { url, init };
+
+      return Response.json({ status: "submitted", comment: null, changes: [] });
+    }
+
+    return Response.json(
+      sent ? { ...drafted, pending_revision: { status: "submitted", comment: null } } : drafted,
+    );
+  });
+
+  await vi.waitFor(() => expect(button("Submit for review")?.disabled).toBe(false));
+  await act(async () => button("Submit for review")!.click());
+  await act(async () => {
+    await vi.waitFor(() => expect(document.body.textContent).toContain(WAITING));
+  });
+  expect(sent?.url).toBe(`http://localhost:3020/pages/${page.id}/revision/submit`);
+  expect(new Headers(sent?.init?.headers).get("if-updated-at")).toBe(live.updated_at);
+  expect(button("Submit for review")).toBeUndefined();
+});
+
+test("a draft with unsaved edits can't be submitted until they're saved", async () => {
+  const h = await mountPage(async () =>
+    Response.json({ ...live, pending_revision: { status: "draft", comment: null } }),
+  );
+
+  await applySource(h.session(), h.session().store.getSnapshot().source + "\n\nNot saved yet");
+
+  await vi.waitFor(() => expect(button("Submit for review")?.disabled).toBe(true));
+});
+
+test("someone without the editor role isn't offered a submission", async () => {
+  await mountPage(
+    async () => Response.json({ ...live, pending_revision: { status: "draft", comment: null } }),
+    [],
+  );
+
+  await vi.waitFor(() => expect(document.body.textContent).toContain(PENDING));
+  await vi.waitFor(() => expect(button("Submit for review")).toBeUndefined());
+});
+
+test("a rejected change shows the approver's comment", async () => {
+  await mountPage(async () =>
+    Response.json({
+      ...live,
+      pending_revision: { status: "rejected", comment: "The fee is wrong." },
+    }),
+  );
+
+  await vi.waitFor(() =>
+    expect(document.body.textContent).toContain("An approver rejected these changes"),
+  );
+  expect(document.body.textContent).toContain("The fee is wrong.");
+  expect(button("Submit for review")).toBeUndefined();
+});
+
+test("saving a change that's waiting for review says why it can't, and keeps the working copy", async () => {
+  const message =
+    "This change is waiting for review. You can save more changes once an approver publishes or rejects it.";
+
+  const h = await mountPage(async (_url, init) =>
+    init?.method === "PUT"
+      ? Response.json({ error: "under_review", message }, { status: 409 })
+      : Response.json({ ...live, pending_revision: { status: "submitted", comment: null } }),
+  );
+
+  await vi.waitFor(() => expect(document.body.textContent).toContain(WAITING));
+  const source = h.session().store.getSnapshot().source + "\n\nOne more thing";
+  await applySource(h.session(), source);
+  await savePage();
+  await act(async () => {
+    await vi.waitFor(() =>
+      expect(document.querySelector('[role="alert"]')?.textContent).toContain(message),
+    );
+  });
+  expect(document.body.textContent).not.toContain("A newer version");
+  expect(h.session().store.getSnapshot().committed).toBe(source);
+  expect(pageHasUnsavedChanges(h.session())).toBe(true);
+});
+
+test("making a page public is offered as publishing, and its edit is unpublished until then", async () => {
+  await mountPage(async () => Response.json(page));
+  // The control waits for the roles
+  await vi.waitFor(() => expect(visibilitySelect()).toBeDefined());
+
+  const select = visibilitySelect()!;
+
+  await act(async () => {
+    // "Public" is the empty option
+    select.value = "";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
+  await vi.waitFor(() =>
+    expect([...document.querySelectorAll("button")].map((item) => item.textContent)).toContain(
+      "Publish changes",
+    ),
+  );
+  expect(document.body.textContent).toContain("Unpublished changes");
+});

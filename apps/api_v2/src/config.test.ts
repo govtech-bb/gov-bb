@@ -8,6 +8,7 @@ const required = {
   BETTER_AUTH_SECRET: "test-only-secret-with-at-least-32-characters",
   GITHUB_CLIENT_ID: "test-client",
   GITHUB_CLIENT_SECRET: "test-client-secret",
+  API_V2_ADMIN_EMAILS: "admin@govtech.bb",
 };
 
 describe("auth configuration", () => {
@@ -122,5 +123,49 @@ describe("auth bypass", () => {
         BETTER_AUTH_URL: "https://api.example",
       }),
     ).toBe("refused");
+  });
+});
+
+describe("admin emails", () => {
+  const admins = (input: Record<string, string>) => {
+    const parsed = parseConfig({ ...required, ...input });
+    return parsed.ok ? parsed.value.adminEmails : parsed.error.fields;
+  };
+
+  it("refuses to start without one, since nobody could grant approver", () => {
+    for (const unset of [
+      { API_V2_ADMIN_EMAILS: "" },
+      { API_V2_ADMIN_EMAILS: " , " },
+    ]) {
+      const parsed = parseConfig({ ...required, ...unset });
+      expect(parsed.ok).toBe(false);
+      if (!parsed.ok) {
+        expect(parsed.error.fields).toEqual(["API_V2_ADMIN_EMAILS"]);
+        expect(parsed.error.reasons).toEqual([
+          expect.stringContaining("ADR 0079"),
+        ]);
+      }
+    }
+    const withoutAdmins: Record<string, string> = { ...required };
+    delete withoutAdmins.API_V2_ADMIN_EMAILS;
+    expect(parseConfig(withoutAdmins).ok).toBe(false);
+  });
+
+  it("needs none under AUTH_BYPASS, whose developer holds every role", () => {
+    expect(admins({ API_V2_ADMIN_EMAILS: "", AUTH_BYPASS: "true" })).toEqual(
+      [],
+    );
+  });
+
+  it("reads a comma-separated list, lowercased", () => {
+    expect(
+      admins({ API_V2_ADMIN_EMAILS: " Ada@govtech.bb, ,grace@govtech.bb" }),
+    ).toEqual(["ada@govtech.bb", "grace@govtech.bb"]);
+  });
+
+  it("refuses something that is not an email", () => {
+    expect(admins({ API_V2_ADMIN_EMAILS: "ada" })).toEqual([
+      "API_V2_ADMIN_EMAILS",
+    ]);
   });
 });

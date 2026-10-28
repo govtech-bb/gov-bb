@@ -1,5 +1,5 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
-import type { EditorApi, EstateVersion } from "./client";
+import { ApiFailure, CategoryAnswerMalformed, type EditorApi, type EstateVersion } from "./client";
 
 // Every content read sits under "content", so one invalidation refreshes them all.
 
@@ -8,6 +8,15 @@ import type { EditorApi, EstateVersion } from "./client";
  * long as the router counts its own preloads fresh.
  */
 export const PRELOAD_FRESH = 30_000;
+
+/**
+ * Whether a failed content read is asked again: up to three times, except for a refusal or a malformed category list,
+ * which answer the same way however often they're asked.
+ */
+export const retryContentRead = (failures: number, error: Error) =>
+  failures < 3 &&
+  !(error instanceof ApiFailure && error.status >= 400 && error.status < 500) &&
+  !(error instanceof CategoryAnswerMalformed);
 
 export const servicesQuery = (api: EditorApi) =>
   queryOptions({ queryKey: ["content", "services"], queryFn: () => api.services() });
@@ -18,11 +27,35 @@ export const serviceQuery = (api: EditorApi, id: string) =>
 export const pageQuery = (api: EditorApi, id: string) =>
   queryOptions({ queryKey: ["content", "page", id], queryFn: () => api.page(id) });
 
-export const taxonomyQuery = (api: EditorApi) =>
-  queryOptions({ queryKey: ["content", "taxonomy"], queryFn: () => api.taxonomy() });
-
+/**
+ * The one shared category list for Categories, Services filters, page settings and Create service. A failed read
+ * is thrown here, where React Query keeps it as the query's error for the screen to show.
+ */
 export const categoriesQuery = (api: EditorApi) =>
-  queryOptions({ queryKey: ["content", "categories"], queryFn: () => api.categories() });
+  queryOptions({
+    queryKey: ["content", "categories"],
+    queryFn: async () => {
+      const listed = await api.categories();
+
+      if (!listed.ok) throw listed.error;
+
+      return listed.value;
+    },
+  });
+
+/**
+ * The signed-in employee's roles, which decide what the editor offers them. An answer without a list of roles holds
+ * none, so the editor offers less rather than more; the API enforces roles either way.
+ */
+export const rolesQuery = (api: Pick<EditorApi, "me">) =>
+  queryOptions({
+    queryKey: ["me"],
+    queryFn: async (): Promise<readonly string[]> => {
+      const me: unknown = await api.me();
+
+      return me instanceof Object && "roles" in me && Array.isArray(me.roles) ? me.roles : [];
+    },
+  });
 
 const VERSION_KEY = ["version"];
 

@@ -1,14 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { ApiFailure, type ApiPage, type EditorApi, type TaxonomyCategory } from "../api/client";
+import type { Category } from "../api/categories";
+import { ApiFailure, type ApiPage, type EditorApi } from "../api/client";
+import { apiMessage } from "../api/failure-messages";
 import { pageToMarkdown, pickerCategories, pageFieldLabel } from "../api/page-markdown";
 import {
   PRELOAD_FRESH,
+  categoriesQuery,
+  rolesQuery,
   pageQuery,
   serviceQuery,
   servicesQuery,
-  taxonomyQuery,
 } from "../api/queries";
 import { PageDraftEditor } from "../host/page-editor";
 import { download } from "../host/source-ui";
@@ -43,9 +46,9 @@ export function RemotePagePane({
 }) {
   const opened = useRef(false);
   const page = useQuery({ ...pageQuery(api, id), staleTime: PRELOAD_FRESH });
-  const taxonomy = useQuery(taxonomyQuery(api));
+  const categories = useQuery(categoriesQuery(api));
 
-  if (!opened.current && (page.isError || taxonomy.isError))
+  if (!opened.current && (page.isError || categories.isError))
     return active ? (
       <EmptyState
         kind="failed"
@@ -57,7 +60,7 @@ export function RemotePagePane({
             variant="secondary"
             onClick={() => {
               void page.refetch();
-              void taxonomy.refetch();
+              void categories.refetch();
             }}
           >
             Try again
@@ -66,7 +69,7 @@ export function RemotePagePane({
       />
     ) : null;
 
-  if (!page.data || !taxonomy.data || (!opened.current && page.isFetching && page.isStale))
+  if (!page.data || !categories.data || (!opened.current && page.isFetching && page.isStale))
     return active ? <LoadingState size="page" label="Loading page…" /> : null;
 
   opened.current = true;
@@ -76,14 +79,14 @@ export function RemotePagePane({
       key={id}
       api={api}
       page={page.data}
-      categories={taxonomy.data}
+      categories={categories.data}
       active={active}
       onSession={onSession}
-      readError={page.error ?? taxonomy.error}
-      reading={page.isFetching || taxonomy.isFetching}
+      readError={page.error ?? categories.error}
+      reading={page.isFetching || categories.isFetching}
       retryRead={() => {
         void page.refetch();
-        void taxonomy.refetch();
+        void categories.refetch();
       }}
     />
   );
@@ -106,7 +109,7 @@ function RemotePageEditor({
 }: {
   api: EditorApi;
   page: ApiPage;
-  categories: readonly TaxonomyCategory[];
+  categories: readonly Category[];
   active: boolean;
   onSession: SessionListener;
   readError: Error | null;
@@ -133,6 +136,11 @@ function RemotePageEditor({
   const draft = useSyncExternalStore(store.subscribe, store.getSnapshot);
   // Links find the site's services by name; the content API lists their entry pages
   const services = useQuery(servicesQuery(api)).data;
+  const roles = useQuery(rolesQuery(api)).data;
+  // Until the roles load, the visibility control waits rather than offering what the API may refuse
+  const approver = roles?.includes("approver") ?? false;
+  // Someone without the editor role can't save; the workspace says why
+  const readOnly = !!roles && !roles.includes("editor");
 
   const service = services?.find(
     (item) => server.id === item.id || server.url.startsWith(`${item.url}/`),
@@ -181,12 +189,31 @@ function RemotePageEditor({
         rebase(outcome.base);
         client.setQueryData(pageQuery(api, server.id).queryKey, outcome.base.page);
         void client.invalidateQueries({ queryKey: ["content"] });
-      } else if (outcome.kind === "conflict")
+      } else if (outcome.kind === "conflict" || outcome.kind === "under-review")
         void client.invalidateQueries({ queryKey: pageQuery(api, server.id).queryKey });
     },
     onSettled: () => {
       saving.current = false;
     },
+  });
+
+  // Sends the saved draft for review; the page's version doesn't move, only its review state
+  const submit = useMutation({
+    mutationFn: () => api.submitRevision(server.id, server.updated_at),
+    onSuccess: () => {
+      client.setQueryData(pageQuery(api, server.id).queryKey, {
+        ...server,
+        pending_revision: { status: "submitted", comment: null },
+      });
+      void client.invalidateQueries({ queryKey: ["content"] });
+    },
+    onError: (error) =>
+      toast("This change couldn't be submitted for review", {
+        tone: "error",
+        description:
+          (error instanceof ApiFailure && apiMessage(error)) ||
+          "Check you are still signed in, then try again.",
+      }),
   });
 
   const session = useMemo<PageSession>(
@@ -208,6 +235,9 @@ function RemotePageEditor({
     () => readPageMetadata(draft.committed).visibility || "public",
     [draft.committed],
   );
+
+  // Only making a page public goes live at once; a public page's changes wait for an approver
+  const publishes = visibility === "public" && server.visibility !== "public";
 
   const outcome = save.isPending ? undefined : save.data;
   const unsaved = draft.committed !== base.markdown;
@@ -269,10 +299,11 @@ function RemotePageEditor({
         onDownload: downloadMine,
       };
 
-    const live = visibility === "public";
+    // Live once saved only if the save publishes; otherwise while no change waits for an approver
+    const live = !server.pending_revision && visibility === "public";
 
     return {
-      status: unsaved ? (live ? "unpublished" : "unsaved") : live ? "published" : "saved",
+      status: unsaved ? (publishes ? "unpublished" : "unsaved") : live ? "published" : "saved",
       conflict,
     };
   };
@@ -357,10 +388,42 @@ function RemotePageEditor({
         ))}
       </ul>
     </Banner>
+  ) : outcome?.kind === "forbidden" || outcome?.kind === "under-review" ? (
+    // A refusal, not a failure: saving again won't change the answer, so nothing offers a retry
+    <Banner tone="error" layout="strip" role="alert">
+      {outcome.message}
+    </Banner>
   ) : outcome?.kind === "signed-out" ? (
     <Banner tone="warning" layout="strip" role="alert" actions={signInAction}>
       Your session has ended. Download your changes before signing in again; unsaved work will be
       lost when you leave.
+    </Banner>
+  ) : server.pending_revision?.status === "submitted" ? (
+    <Banner tone="info" layout="strip">
+      Waiting for review. Citizens will see these changes once an approver publishes them.
+    </Banner>
+  ) : server.pending_revision?.status === "rejected" ? (
+    <Banner tone="warning" layout="strip" title="An approver rejected these changes">
+      {server.pending_revision.comment} Save your edits to start a new change.
+    </Banner>
+  ) : server.pending_revision ? (
+    <Banner
+      tone="info"
+      layout="strip"
+      actions={
+        !readOnly && (
+          <Button
+            variant="secondary"
+            pending={submit.isPending}
+            disabled={unsaved || stale || submit.isPending}
+            onClick={() => submit.mutate()}
+          >
+            Submit for review
+          </Button>
+        )
+      }
+    >
+      Your changes are saved but not live. Submit them for review when they're ready.
     </Banner>
   ) : undefined;
 
@@ -372,10 +435,17 @@ function RemotePageEditor({
       publish={
         <Button
           variant="accent"
-          disabled={!unsaved || stale || blocked || save.isPending || outcome?.kind === "missing"}
+          disabled={
+            !unsaved ||
+            stale ||
+            blocked ||
+            readOnly ||
+            save.isPending ||
+            outcome?.kind === "missing"
+          }
           onClick={saveDraft}
         >
-          {visibility === "public" ? "Publish changes" : "Save"}
+          {publishes ? "Publish changes" : "Save"}
         </Button>
       }
       notice={
@@ -397,6 +467,7 @@ function RemotePageEditor({
         }),
         publishedAt: server.published_at,
         savedVisibility: base.page.visibility,
+        visibilityLocked: !approver,
         errors: Object.fromEntries(errors.map((error) => [error.field, error.message])),
       }}
     />
