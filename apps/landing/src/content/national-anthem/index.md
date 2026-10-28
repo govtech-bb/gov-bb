@@ -1,6 +1,7 @@
 ---
-title: The National Anthem
+title: National anthem of Barbados
 category: about-barbados
+subcategory: national-symbols
 source_url: https://www.gov.bb/Visit-Barbados/national-anthem
 visibility: preview
 ---
