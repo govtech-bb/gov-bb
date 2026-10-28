@@ -11,6 +11,7 @@ import {
   PageConflict,
   PageNotFound,
   pendingRevisionOf,
+  fieldsOf,
   placedUnder,
   revisionOf,
   RevisionNotFound,
@@ -133,7 +134,7 @@ export interface PageRecords {
   ): Promise<Result<PendingRevision, ContentStoreUnavailable>>;
   /** Discard a page's open revision, if it has one. */
   dropRevision(pageId: PageId): Promise<Result<void, ContentStoreUnavailable>>;
-  /** Move a revision to a review status, recording who moved it. Its version stays. */
+  /** Move a revision to a review status, recording who moved it; a rejection moves its version to its time. */
   markRevision(
     revisionId: string,
     mark: RevisionMark,
@@ -236,10 +237,14 @@ export class PageEditing {
    * is its pending revision's, when it has one.
    *
    * A save that keeps a public page public goes into its pending revision.
-   * Any other save writes the page, as it always has: one to a page that is
-   * not public, and an approver's that takes a page out of public view. That
-   * one sends the whole working copy, so it closes the pending revision
-   * rather than leaving it over a page citizens no longer see.
+   * A save to a page that is not public writes the page, as it always has.
+   *
+   * An approver's save that takes a public page out of public view changes
+   * only its visibility: every other field it sends is ignored and the live
+   * content stays, so no unreviewed content reaches the page that way, to be
+   * made public again without review. It discards the page's draft revision,
+   * keeping #3198's rule that only a public page has an open one; a rejected
+   * revision is retired by the live page moving on.
    *
    * A revision waiting for review is refused until an approver decides on
    * it, so the approver publishes what they reviewed. #3203 lifts this.
@@ -287,6 +292,26 @@ export class PageEditing {
       )
         return err(new NotApprover());
 
+      // Past the pending revision's version too, which can run ahead of the
+      // clock, so no client holding it matches the page's new one.
+      const now = new Date(
+        Math.max(
+          this.clock().getTime(),
+          pending.value === null ? 0 : Date.parse(pending.value.updated_at) + 1,
+        ),
+      );
+      if (current.visibility === "public" && fields.visibility !== "public") {
+        const hidden = await writeLive(
+          records,
+          current,
+          { ...fieldsOf(current), visibility: fields.visibility },
+          now,
+        );
+        if (!hidden.ok) return hidden;
+        const dropped = await records.dropRevision(id);
+        return dropped.ok ? ok(workingCopy(hidden.value, null)) : dropped;
+      }
+
       if (fields.url !== current.url) {
         const available = await records.checkPageUrl(fields.url);
         if (!available.ok) return available;
@@ -322,21 +347,9 @@ export class PageEditing {
           ? ok(workingCopy(current, proposed.value))
           : proposed;
       }
-      // Past the pending revision's version too, which can run ahead of the
-      // clock, so no client holding it matches the page's new one.
-      const now = new Date(
-        Math.max(
-          this.clock().getTime(),
-          pending.value === null ? 0 : Date.parse(pending.value.updated_at) + 1,
-        ),
-      );
+      // Only a public page has a revision, so there is none to close here.
       const saved = await writeLive(records, current, placed.value, now);
-      if (!saved.ok) return saved;
-      if (pending.value !== null) {
-        const dropped = await records.dropRevision(id);
-        if (!dropped.ok) return dropped;
-      }
-      return ok(workingCopy(saved.value, null));
+      return saved.ok ? ok(workingCopy(saved.value, null)) : saved;
     });
   }
 
@@ -344,6 +357,10 @@ export class PageEditing {
    * Send a page's draft revision for review. The submitter is recorded, and
    * none may approve their own submission. With `expectedUpdatedAt`, a draft
    * saved since the caller read it is refused.
+   *
+   * A rejected revision can be submitted again as it is: it is copied into a
+   * new revision with the same contributors and version, since its content
+   * is unchanged, and the rejected one is kept with its comment.
    */
   submit(
     id: PageId,
@@ -364,11 +381,23 @@ export class PageEditing {
         records,
         id,
         expectedUpdatedAt,
-        "draft",
+        "submit",
       );
       if (!reviewing.ok) return reviewing;
       const { live, revision } = reviewing.value;
-      const marked = await records.markRevision(revision.id, {
+      let draft = revision;
+      if (revision.status === "rejected") {
+        const again = await records.writeRevision(id, {
+          fields: revision.fields,
+          liveUpdatedAt: new Date(live.updated_at),
+          updatedAt: new Date(revision.updated_at),
+          createdBy: actor.id,
+          contributors: revision.contributors,
+        });
+        if (!again.ok) return again;
+        draft = again.value;
+      }
+      const marked = await records.markRevision(draft.id, {
         status: "submitted",
         by: actor.id,
         at: this.clock(),
@@ -380,12 +409,14 @@ export class PageEditing {
   /**
    * Reject a submitted revision with the approver's comment. The live page is
    * unchanged and the rejected revision is kept; the next save starts a new
-   * draft from it.
+   * draft from it. The approver names the version they reviewed. Rejecting
+   * moves the revision's version, so an editor still holding the earlier one
+   * reloads and sees the rejection rather than saving over it.
    */
   reject(
     id: PageId,
     comment: string,
-    expectedUpdatedAt: Date | null,
+    expectedUpdatedAt: Date,
     actor: Employee,
   ): Promise<
     Result<
@@ -403,7 +434,7 @@ export class PageEditing {
         records,
         id,
         expectedUpdatedAt,
-        "submitted",
+        "decide",
       );
       if (!reviewing.ok) return reviewing;
       const { live, revision } = reviewing.value;
@@ -411,7 +442,9 @@ export class PageEditing {
       const marked = await records.markRevision(revision.id, {
         status: "rejected",
         by: actor.id,
-        at: this.clock(),
+        at: new Date(
+          Math.max(this.clock().getTime(), Date.parse(revision.updated_at) + 1),
+        ),
         comment,
       });
       return marked.ok ? ok(viewOf(live, marked.value)) : marked;
@@ -424,11 +457,12 @@ export class PageEditing {
    * is, with the approver as the actor, and the revision is marked published.
    * The revision is checked again as a save would check it, since the
    * estate can have moved on while it waited; a stale one is refused with
-   * the field to fix, and nothing changes.
+   * the field to fix, and nothing changes. The approver names the version
+   * they reviewed, so a revision changed since is a conflict.
    */
   publish(
     id: PageId,
-    expectedUpdatedAt: Date | null,
+    expectedUpdatedAt: Date,
     actor: Employee,
   ): Promise<
     Result<
@@ -447,7 +481,7 @@ export class PageEditing {
         records,
         id,
         expectedUpdatedAt,
-        "submitted",
+        "decide",
       );
       if (!reviewing.ok) return reviewing;
       const { live, revision } = reviewing.value;
@@ -509,14 +543,16 @@ function viewOf(live: PageDocument, revision: PendingRevision): RevisionView {
 }
 
 /**
- * The locked live page and its open revision, when the revision is in
- * `status` and, with `expectedUpdatedAt`, still the version the caller read.
+ * The locked live page and the revision a review step acts on, when it is in
+ * the state the step needs and, with `expectedUpdatedAt`, still the version
+ * the caller read. Submitting takes a draft, or a rejected revision to send
+ * again; deciding takes a submitted one.
  */
 async function underReview(
   records: PageRecords,
   id: PageId,
   expectedUpdatedAt: Date | null,
-  status: "draft" | "submitted",
+  step: "submit" | "decide",
 ): Promise<
   Result<
     { live: PageDocument; revision: PendingRevision },
@@ -532,10 +568,13 @@ async function underReview(
   if (locked.value === null) return err(new PageNotFound(id));
   const revision = await records.currentRevision(id);
   if (!revision.ok) return revision;
-  if (revision.value === null || revision.value.status === "rejected")
+  if (
+    revision.value === null ||
+    (step === "decide" && revision.value.status === "rejected")
+  )
     return err(
       new RevisionNotFound(
-        status === "draft"
+        step === "submit"
           ? "This page has no saved change to submit."
           : "This page has no change waiting for review.",
       ),
@@ -545,17 +584,19 @@ async function underReview(
     revision.value.updated_at !== expectedUpdatedAt.toISOString()
   )
     return err(new PageConflict(id));
-  if (revision.value.status !== status)
+  if (step === "submit" && revision.value.status === "submitted")
     return err(
-      status === "draft"
-        ? new RevisionStateConflict(
-            "under_review",
-            "This change is already waiting for review.",
-          )
-        : new RevisionStateConflict(
-            "not_submitted",
-            "This change hasn't been submitted for review yet.",
-          ),
+      new RevisionStateConflict(
+        "under_review",
+        "This change is already waiting for review.",
+      ),
+    );
+  if (step === "decide" && revision.value.status !== "submitted")
+    return err(
+      new RevisionStateConflict(
+        "not_submitted",
+        "This change hasn't been submitted for review yet.",
+      ),
     );
   return ok({ live: locked.value, revision: revision.value });
 }

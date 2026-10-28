@@ -202,20 +202,26 @@ async function pageWrite(
     sql`insert into content_pages (id, url, slug, title, body_markdown)
         values (${id}, ${`/existing-${n}`}, 'existing', 'Existing', '')`,
   );
-  // Publishing needs a submitted revision, by someone else, to publish.
-  if (url.endsWith("/revision/publish"))
-    await db.execute(
-      sql`insert into page_revisions
-            (page_id, status, fields, live_updated_at, created_by, contributors, submitted_by)
-          select id, 'submitted', ${JSON.stringify(fields)}::jsonb, updated_at,
-                 'other-author', '{other-author}', 'other-author'
-          from content_pages where id = ${id}`,
-    );
+  // Publishing needs a submitted revision, by someone else, and the version reviewed.
+  const reviewed = url.endsWith("/revision/publish")
+    ? (
+        await db.execute<{ version: string }>(
+          sql`insert into page_revisions
+                (page_id, status, fields, live_updated_at, created_by, contributors, submitted_by)
+              select id, 'submitted', ${JSON.stringify(fields)}::jsonb, updated_at,
+                     'other-author', '{other-author}', 'other-author'
+              from content_pages where id = ${id}
+              returning to_json(updated_at)#>>'{}' as version`,
+        )
+      ).rows[0]?.version
+    : undefined;
   return {
     method: method as InjectOptions["method"],
     url: url.replace(/:\w+/g, id),
     payload: fields,
-    headers: TEST_HEADERS,
+    headers: reviewed
+      ? { ...TEST_HEADERS, "if-updated-at": reviewed }
+      : TEST_HEADERS,
   };
 }
 
@@ -373,21 +379,28 @@ async function routesChangingWhatCitizensSee(employee: Employee) {
           sql`insert into content_pages (id, url, slug, title, visibility, body_markdown)
               values (${target}, ${`/existing-${n}`}, 'existing', 'Existing', ${from}, '')`,
         );
-        if (url.includes("/revision/"))
-          await db.execute(
-            sql`insert into page_revisions
-                  (page_id, status, fields, live_updated_at, created_by, contributors, submitted_by)
-                select id, ${url.endsWith("/submit") ? "draft" : "submitted"},
-                       ${JSON.stringify(fields)}::jsonb, updated_at,
-                       'probe-author', '{probe-author}', 'probe-author'
-                from content_pages where id = ${target}`,
-          );
+        // A decision names the version reviewed, so the probe sends the revision's.
+        const reviewed = url.includes("/revision/")
+          ? (
+              await db.execute<{ version: string }>(
+                sql`insert into page_revisions
+                      (page_id, status, fields, live_updated_at, created_by, contributors, submitted_by)
+                    select id, ${url.endsWith("/submit") ? "draft" : "submitted"},
+                           ${JSON.stringify(fields)}::jsonb, updated_at,
+                           'probe-author', '{probe-author}', 'probe-author'
+                    from content_pages where id = ${target}
+                    returning to_json(updated_at)#>>'{}' as version`,
+              )
+            ).rows[0]?.version
+          : undefined;
         const before = await citizenView();
         const response = await signedIn.inject({
           method: method as InjectOptions["method"],
           url: url.replace(/:\w+/g, target).replace("*", "x"),
           payload: { ...fields, comment: "Probed" },
-          headers: TEST_HEADERS,
+          headers: reviewed
+            ? { ...TEST_HEADERS, "if-updated-at": reviewed }
+            : TEST_HEADERS,
         });
         const route = `${method} ${url}`;
         if (response.statusCode >= 300 && !(route in NOT_PAGE_VISIBILITY))

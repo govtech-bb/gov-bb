@@ -96,6 +96,21 @@ const ifUpdatedAt = (read: string) =>
       ),
   });
 
+/**
+ * The revision version an approver reviewed. Optional in the schema only so
+ * that leaving it out is a 428, as the route answers, rather than a 400.
+ */
+const reviewedVersion = z.object({
+  "if-updated-at": z.iso
+    .datetime({ offset: true })
+    .transform((value) => new Date(value))
+    .optional()
+    .describe(
+      "Required: the revision's `updated_at` the approver reviewed. " +
+        "Without it the decision is refused with a 428.",
+    ),
+});
+
 const editorSecurity = [{ editorSession: [] }];
 const authErrors = { 401: error, 403: error, 503: error };
 const categoryConflict = z.object({
@@ -262,9 +277,10 @@ export const SCHEMAS = {
       "Changing `visibility` needs the approver role (403 otherwise). " +
       "A save that keeps a `public` page public, whoever sends it, goes into " +
       "the page's pending revision: citizens keep seeing the live page until " +
-      "an approver publishes it. An approver's save that takes a `public` " +
-      "page out of public view writes the whole page and closes its pending " +
-      "revision. Returns the page as the editor now works on it. " +
+      "an approver publishes it. An approver's save that takes a `public` page out of " +
+      "public view changes only its `visibility`: the other fields sent " +
+      "are ignored, the live content stays, and a draft revision is " +
+      "discarded. Returns the page as the editor now works on it. " +
       "A save to a page whose revision is waiting for review is refused " +
       "(409 `under_review`) until an approver publishes or rejects it.",
     tags: ["pages"],
@@ -310,7 +326,10 @@ export const SCHEMAS = {
       "may not then approve it. 404 when the page has no draft revision; " +
       "409 `under_review` when it is already submitted, or `conflict` when " +
       "the draft has been saved since `if-updated-at`. Saving the page is " +
-      "refused while it waits.",
+      "refused while it waits. A rejected revision can be submitted again " +
+      "as it is: it is copied into a new submitted revision with the same " +
+      "contributors and `updated_at`, and the rejected one keeps its " +
+      "comment.",
     tags: ["pages"],
     params: idParams,
     headers: ifUpdatedAt(" for the revision"),
@@ -331,12 +350,14 @@ export const SCHEMAS = {
       "Needs the approver role, and the approver must not have changed or " +
       "submitted the revision (403 otherwise). The live page is unchanged; " +
       "the revision is kept with the comment, and the next save starts a " +
-      "new draft from it. 404 when nothing is waiting for review; 409 " +
-      "`not_submitted` for a draft, or `conflict` when the revision has " +
-      "been saved since `if-updated-at`.",
+      "new draft from it. Rejecting moves the revision's `updated_at`, so " +
+      "an editor holding the earlier one reloads and sees why. " +
+      "`if-updated-at` is required (428 without it). 404 when nothing is " +
+      "waiting for review; 409 `not_submitted` for a draft, or `conflict` " +
+      "when the revision is no longer the version in `if-updated-at`.",
     tags: ["pages"],
     params: idParams,
-    headers: ifUpdatedAt(" for the revision"),
+    headers: reviewedVersion,
     body: z.object({
       comment: RevisionComment.describe("Why, for the editor."),
     }),
@@ -346,6 +367,7 @@ export const SCHEMAS = {
       400: error,
       404: error,
       409: z.union([conflict, revisionState]),
+      428: error,
       500: error,
       ...authErrors,
     },
@@ -360,18 +382,20 @@ export const SCHEMAS = {
       "in `change_events`, all in one transaction. A revision that has gone " +
       "stale while it waited (its parent or category gone, or its url " +
       "taken) is refused with a 422 naming the field, and nothing changes. " +
-      "404 when nothing is waiting for review; 409 `not_submitted` for a " +
-      "draft, or `conflict` when the revision has been saved since " +
-      "`if-updated-at`. Returns the page as it now stands.",
+      "`if-updated-at` is required (428 without it). 404 when nothing is " +
+      "waiting for review; 409 `not_submitted` for a draft, or `conflict` " +
+      "when the revision is no longer the version in `if-updated-at`. " +
+      "Returns the page as it now stands.",
     tags: ["pages"],
     params: idParams,
-    headers: ifUpdatedAt(" for the revision"),
+    headers: reviewedVersion,
     security: editorSecurity,
     response: {
       200: EditorPage,
       400: error,
       404: error,
       409: z.union([conflict, revisionState]),
+      428: error,
       422: validationFailed,
       500: error,
       ...authErrors,

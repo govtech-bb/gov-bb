@@ -119,22 +119,34 @@ const save = (
     payload: withDefaults(aPage({ category_id: page.category_id, ...fields })),
   });
 
-/** A review step on a page's revision. */
-const review = (
+/** The page's current revision's version, as an approver who has just read it holds it. */
+const currentVersion = async (pageId: string) =>
+  (await as(APPROVER, { url: `/pages/${pageId}/revision` })).json()
+    .updated_at as string | undefined;
+
+/**
+ * A review step on a page's revision. A decision sends the version just read
+ * unless the test names one; `null` sends none.
+ */
+const review = async (
   employee: Employee,
   pageId: string,
   step: "submit" | "reject" | "publish",
-  options: { version?: string; comment?: string } = {},
-) =>
-  as(employee, {
+  options: { version?: string | null; comment?: string } = {},
+) => {
+  const version =
+    options.version === undefined && step !== "submit"
+      ? await currentVersion(pageId)
+      : options.version;
+  return as(employee, {
     method: "POST",
     url: `/pages/${pageId}/revision/${step}`,
-    headers:
-      options.version === undefined ? {} : { [IF_UPDATED_AT]: options.version },
+    headers: version ? { [IF_UPDATED_AT]: version } : {},
     ...(step === "reject"
       ? { payload: { comment: options.comment ?? "Check the fees." } }
       : {}),
   });
+};
 
 /** A public page with a draft revision by the editor, and the revision's version. */
 const drafted = async (fields: Record<string, unknown> = {}) => {
@@ -304,7 +316,13 @@ describe("publishing a revision", () => {
   it("404s with nothing waiting, and 409s for a draft not yet submitted", async () => {
     const { page: drafty } = await drafted();
     const page = await seedPage({ url: "/money-financial-support/other" });
-    expect((await review(APPROVER, page.id, "publish")).statusCode).toBe(404);
+    expect(
+      (
+        await review(APPROVER, page.id, "publish", {
+          version: page.updated_at,
+        })
+      ).statusCode,
+    ).toBe(404);
 
     const response = await review(APPROVER, drafty.id, "publish");
     expect(response.statusCode).toBe(409);
@@ -327,22 +345,42 @@ describe("rejecting a revision", () => {
       status: "rejected",
       comment: "The fee is wrong.",
       decided_by: APPROVER.id,
-      updated_at: version,
     });
+    // Rejecting moves the version, so an editor holding the old one reloads.
+    const rejected = response.json().updated_at;
+    expect(rejected > version).toBe(true);
     expect(await publicResponses()).toEqual(before);
     expect(await stored(page.id)).toEqual(page);
     expect(await events()).toHaveLength(1);
     const opened = await as(TEST_EDITOR, { url: `/pages/${page.id}` });
     expect(opened.json()).toMatchObject({
       title: "Severance pay",
-      updated_at: version,
+      updated_at: rejected,
       pending_revision: { status: "rejected", comment: "The fee is wrong." },
     });
   });
 
-  it("keeps the rejected revision when the next save starts a new draft from it", async () => {
+  it("refuses a save from a tab opened before the rejection, so it sees why", async () => {
     const { page, version } = await submitted();
     await review(APPROVER, page.id, "reject");
+
+    const stale = await save(
+      TEST_EDITOR,
+      { ...page, updated_at: version },
+      { title: "Unaware" },
+    );
+
+    expect(stale.statusCode).toBe(409);
+    expect(stale.json().error).toBe("conflict");
+    expect((await revisions()).map(({ status }) => status)).toEqual([
+      "rejected",
+    ]);
+  });
+
+  it("keeps the rejected revision when the next save starts a new draft from it", async () => {
+    const { page } = await submitted();
+    const version = (await review(APPROVER, page.id, "reject")).json()
+      .updated_at as string;
 
     const response = await save(
       TEST_EMPLOYEE,
@@ -372,22 +410,90 @@ describe("rejecting a revision", () => {
     });
   });
 
-  it("stops showing the rejection once the live page changes", async () => {
-    const { page, version } = await submitted();
-    await review(APPROVER, page.id, "reject");
+  it("stops showing the rejection once the live page changes, and its content never goes live", async () => {
+    const { page } = await submitted();
+    const version = (await review(APPROVER, page.id, "reject")).json()
+      .updated_at as string;
 
+    // The editor sends the working copy, the rejected content, with the new visibility.
     const unpublished = await save(
       TEST_EMPLOYEE,
       { ...page, updated_at: version },
-      { title: "Severance pay", visibility: "preview" },
+      {
+        title: "Severance pay",
+        body_markdown: "Rewritten\n\n## Costs\n\nTwenty dollars",
+        visibility: "preview",
+      },
     );
 
     expect(unpublished.statusCode).toBe(200);
     expect(unpublished.json().pending_revision).toBeNull();
+    expect(await stored(page.id)).toEqual({
+      ...page,
+      visibility: "preview",
+      updated_at: unpublished.json().updated_at,
+    });
     expect(
       (await as(TEST_EDITOR, { url: `/pages/${page.id}/revision` })).statusCode,
     ).toBe(404);
     expect((await revisions())[0]?.status).toBe("rejected");
+  });
+
+  it("can't put rejected content live by taking the page out of view and back", async () => {
+    const { page } = await submitted();
+    const rejected = (await review(APPROVER, page.id, "reject")).json();
+    const proposed = {
+      title: "Severance pay",
+      body_markdown: "Rewritten\n\n## Costs\n\nTwenty dollars",
+    };
+
+    const hidden = await save(
+      TEST_EMPLOYEE,
+      { ...page, updated_at: rejected.updated_at },
+      { ...proposed, visibility: "preview" },
+    );
+    const shown = await save(TEST_EMPLOYEE, hidden.json(), {
+      title: hidden.json().title,
+      body_markdown: hidden.json().body_markdown,
+      visibility: "public",
+    });
+
+    expect(shown.statusCode).toBe(200);
+    expect(await stored(page.id)).toMatchObject({
+      title: page.title,
+      body_markdown: page.body_markdown,
+      visibility: "public",
+    });
+    const site = await app.inject({ url: `/pages?url=${ENTRY}` });
+    expect(site.json().body_markdown).toBe(page.body_markdown);
+  });
+
+  it("can be submitted again as it is, keeping the rejection and its comment", async () => {
+    const { page } = await submitted();
+    const rejected = (await review(APPROVER, page.id, "reject")).json();
+
+    const response = await review(TEST_EDITOR, page.id, "submit", {
+      version: rejected.updated_at,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      status: "submitted",
+      submitted_by: TEST_EDITOR.id,
+      comment: null,
+      fields: rejected.fields,
+      contributors: rejected.contributors,
+    });
+    expect(response.json().updated_at).toBe(rejected.updated_at);
+    const rows = await revisions();
+    expect(rows.map(({ status, comment }) => ({ status, comment }))).toEqual([
+      { status: "rejected", comment: "Check the fees." },
+      { status: "submitted", comment: null },
+    ]);
+    const published = await review(APPROVER, page.id, "publish", {
+      version: response.json().updated_at,
+    });
+    expect(published.statusCode).toBe(200);
   });
 
   it.each([
@@ -452,9 +558,15 @@ describe("self-approval (ADR 0079)", () => {
       aPage({ category_id: page.category_id, title: "Mine" }),
     );
     expectOk(await bypassed.save(page.id, fields, null, TEST_EMPLOYEE));
-    expectOk(await bypassed.submit(page.id, null, TEST_EMPLOYEE));
+    const submitted = expectOk(
+      await bypassed.submit(page.id, null, TEST_EMPLOYEE),
+    );
 
-    const published = await bypassed.publish(page.id, null, TEST_EMPLOYEE);
+    const published = await bypassed.publish(
+      page.id,
+      new Date(submitted.updated_at),
+      TEST_EMPLOYEE,
+    );
 
     expect(expectOk(published).title).toBe("Mine");
     expect((await stored(page.id))?.title).toBe("Mine");
@@ -527,6 +639,53 @@ describe("a revision that went stale while it waited", () => {
       "parent_id",
       "A sub-page must be in the same category as its parent page.",
     );
+  });
+});
+
+describe("a decision without the version reviewed", () => {
+  it.each(["publish", "reject"] as const)(
+    "is refused to %s with a 428, and nothing changes",
+    async (step) => {
+      const { page } = await submitted();
+      const before = await revisions();
+
+      const response = await review(APPROVER, page.id, step, {
+        version: null,
+      });
+
+      expect(response.statusCode).toBe(428);
+      expect(response.json()).toMatchObject({
+        error: "precondition_required",
+      });
+      expect(await revisions()).toEqual(before);
+      expect(await stored(page.id)).toEqual(page);
+    },
+  );
+});
+
+describe("an approver acting on a revision replaced since they read it", () => {
+  it("409s, rather than publishing the replacement unseen", async () => {
+    // A1 reads R1; A2 rejects it; the editor saves R2 and submits it.
+    const { page } = await submitted();
+    const read = await currentVersion(page.id);
+    const rejected = (
+      await review(TEST_EMPLOYEE, page.id, "reject", { version: read })
+    ).json();
+    await save(
+      TEST_EDITOR,
+      { ...page, updated_at: rejected.updated_at },
+      { title: "R2" },
+    );
+    await review(TEST_EDITOR, page.id, "submit");
+
+    const response = await review(APPROVER, page.id, "publish", {
+      version: read,
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe("conflict");
+    expect(await stored(page.id)).toEqual(page);
+    expect((await revisions()).at(-1)?.status).toBe("submitted");
   });
 });
 

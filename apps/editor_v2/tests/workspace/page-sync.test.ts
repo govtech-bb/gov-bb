@@ -76,6 +76,54 @@ describe("saving a page", () => {
     });
   });
 
+  it("refuses to take a public page out of view along with other edits, which api_v2 would ignore", async () => {
+    let called = false;
+
+    const outcome = await savePageDraft(
+      {
+        savePage: async () => {
+          called = true;
+
+          return page;
+        },
+      },
+      { page, markdown },
+      pageToMarkdown({ ...page, visibility: "preview", title: "Renamed" }, []),
+      [],
+    );
+
+    expect(called).toBe(false);
+    expect(outcome).toEqual({
+      kind: "invalid",
+      errors: [
+        { field: "title", message: "Save this change before you change who can see the page" },
+      ],
+    });
+  });
+
+  it("takes the live content as saved when taking a page out of view discards its waiting change", async () => {
+    const waiting: ApiPage = {
+      ...page,
+      title: "Waiting for review",
+      pending_revision: { status: "draft", comment: null },
+    };
+
+    const hidden: ApiPage = { ...page, visibility: "preview", updated_at: newer.updated_at };
+
+    const outcome = await savePageDraft(
+      { savePage: async () => hidden },
+      { page: waiting, markdown: pageToMarkdown(waiting, []) },
+      pageToMarkdown({ ...waiting, visibility: "preview" }, []),
+      [],
+    );
+
+    expect(outcome).toEqual({
+      kind: "saved",
+      base: { page: hidden, markdown: pageToMarkdown(hidden, []) },
+      discarded: true,
+    });
+  });
+
   it("sends nothing when the draft cannot be saved", async () => {
     let called = false;
 

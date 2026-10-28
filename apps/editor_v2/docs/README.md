@@ -22,7 +22,7 @@ The editor supports GovBB Markdown pages and native v2 forms. Start with the [ap
 Run `pnpm dev:editor_v2` and open `http://localhost:3000`. Sign in to open the API Services list; old browser drafts are not restored.
 
 - Create a service to get an entry page. Edit its title and body, and open **Preview page**.
-- Choose **Add document** for an API start or supporting page. Save explicitly. Publish changes makes a page public; a change to a page that is already public is saved for an approver to publish. Choose **Submit for review** when it is ready; until an approver publishes or rejects it, the page can't be saved again, and a rejection shows the approver's comment.
+- Choose **Add document** for an API start or supporting page. Save explicitly. Publish changes makes a page public; a change to a page that is already public is saved for an approver to publish. Choose **Submit for review** when it is ready; until an approver publishes or rejects it, the page can't be saved again. A rejection shows the approver's comment: save your edits to start a new change, or choose **Submit again** to send it back as it is. Changing who can see a public page changes nothing else, so save other edits first; taking it out of public view discards a change still waiting for review, and the page then shows its last published content.
 - Reusable form capabilities are shown in the examples and test-only browser host; they are not a workspace workflow.
 
 [workspace.tsx](../src/workspace/workspace.tsx) composes API navigation and leave protection. [RemotePagePane](../src/workspace/remote-page-pane.tsx) owns server baselines/saves; [PageDraftEditor](../src/host/page-editor.tsx) connects the in-memory writer and editable site preview.

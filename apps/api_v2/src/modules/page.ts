@@ -355,11 +355,23 @@ export function workingCopy(
   };
 }
 
+/** A page's own fields, without what storage records. */
+export function fieldsOf(page: PageDocument): PageFields {
+  return {
+    url: page.url,
+    category_id: page.category_id,
+    parent_id: page.parent_id,
+    title: page.title,
+    description: page.description,
+    visibility: page.visibility,
+    form_id: page.form_id,
+    body_markdown: page.body_markdown,
+    frontmatter: page.frontmatter,
+  };
+}
+
 /** The fields a revision changes against the live page, in field order. */
-export function changesOf(
-  live: PageDocument,
-  fields: PageFields,
-): FieldChange[] {
+export function changesOf(live: PageFields, fields: PageFields): FieldChange[] {
   return PageFields.keyof()
     .options.filter((field) => !isDeepStrictEqual(live[field], fields[field]))
     .map((field) => ({ field, live: live[field], proposed: fields[field] }));

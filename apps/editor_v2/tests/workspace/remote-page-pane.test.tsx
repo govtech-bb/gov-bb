@@ -486,7 +486,12 @@ test("a saved draft is submitted for review at the version the editor holds, and
     if (init?.method === "POST") {
       sent = { url, init };
 
-      return Response.json({ status: "submitted", comment: null, changes: [] });
+      return Response.json({
+        status: "submitted",
+        comment: null,
+        updated_at: live.updated_at,
+        changes: [],
+      });
     }
 
     return Response.json(
@@ -524,19 +529,73 @@ test("someone without the editor role isn't offered a submission", async () => {
   await vi.waitFor(() => expect(button("Submit for review")).toBeUndefined());
 });
 
-test("a rejected change shows the approver's comment", async () => {
-  await mountPage(async () =>
-    Response.json({
-      ...live,
-      pending_revision: { status: "rejected", comment: "The fee is wrong." },
-    }),
-  );
+const rejected: ApiPage = {
+  ...live,
+  pending_revision: { status: "rejected", comment: "The fee is wrong." },
+};
+
+test("a rejected change shows the approver's comment, and can be submitted again as it is", async () => {
+  let sent: RequestInit | undefined;
+
+  await mountPage(async (_url, init) => {
+    if (init?.method === "POST") {
+      sent = init;
+
+      return Response.json({ status: "submitted", comment: null, updated_at: rejected.updated_at });
+    }
+
+    return Response.json(
+      sent ? { ...rejected, pending_revision: { status: "submitted", comment: null } } : rejected,
+    );
+  });
 
   await vi.waitFor(() =>
     expect(document.body.textContent).toContain("An approver rejected these changes"),
   );
   expect(document.body.textContent).toContain("The fee is wrong.");
+  expect(document.body.textContent).toContain("Save your edits to start a new change");
   expect(button("Submit for review")).toBeUndefined();
+
+  await act(async () => button("Submit again")!.click());
+  await act(async () => {
+    await vi.waitFor(() => expect(document.body.textContent).toContain(WAITING));
+  });
+  expect(new Headers(sent?.headers).get("if-updated-at")).toBe(rejected.updated_at);
+  expect(document.body.textContent).not.toContain("A newer version");
+});
+
+test("someone without the editor role sees a rejection's comment, but not how to act on it", async () => {
+  await mountPage(async () => Response.json(rejected), []);
+
+  await vi.waitFor(() => expect(document.body.textContent).toContain("The fee is wrong."));
+  await vi.waitFor(() => expect(button("Submit again")).toBeUndefined());
+  expect(document.body.textContent).not.toContain("Save your edits");
+});
+
+test.each([409, 404])("a submission refused with %s reads the page again", async (status) => {
+  let reads = 0;
+
+  await mountPage(async (url, init) => {
+    if (init?.method === "POST")
+      return Response.json({ error: "conflict", message: "Changed elsewhere." }, { status });
+
+    if (url.endsWith(`/pages/${page.id}`)) reads++;
+
+    return Response.json({ ...live, pending_revision: { status: "draft", comment: null } });
+  });
+
+  await vi.waitFor(() => expect(button("Submit for review")?.disabled).toBe(false));
+  const before = reads;
+  await act(async () => button("Submit for review")!.click());
+  await act(async () => {
+    await vi.waitFor(() => expect(reads).toBeGreaterThan(before));
+  });
+  await act(async () => {
+    await vi.waitFor(() => expect(document.body.textContent).toContain("Changed elsewhere."));
+  });
+  await act(async () =>
+    document.querySelector<HTMLButtonElement>('[aria-label="Dismiss"]')?.click(),
+  );
 });
 
 test("saving a change that's waiting for review says why it can't, and keeps the working copy", async () => {
@@ -582,4 +641,39 @@ test("making a page public is offered as publishing, and its edit is unpublished
     ),
   );
   expect(document.body.textContent).toContain("Unpublished changes");
+});
+
+test("taking a public page with a waiting change out of view shows its live content, saying the change was discarded", async () => {
+  const waiting: ApiPage = {
+    ...live,
+    body_markdown: "Unreviewed rewrite.",
+    pending_revision: { status: "draft", comment: null },
+  };
+
+  const h = await mountPage(async (_url, init) =>
+    init?.method === "PUT"
+      ? // api_v2 changes only the visibility; the live content stays
+        Response.json({ ...live, visibility: "preview", updated_at: "2026-10-07T13:00:00.000Z" })
+      : Response.json(waiting),
+  );
+
+  await vi.waitFor(() => expect(visibilitySelect()).toBeDefined());
+  await act(async () => {
+    const select = visibilitySelect()!;
+    select.value = "preview";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await savePage();
+  await act(async () => {
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain("The page is no longer public"),
+    );
+  });
+
+  expect(h.session().store.getSnapshot().committed).toContain(live.body_markdown);
+  expect(h.session().store.getSnapshot().committed).not.toContain("Unreviewed rewrite.");
+  expect(pageHasUnsavedChanges(h.session())).toBe(false);
+  await act(async () =>
+    document.querySelector<HTMLButtonElement>('[aria-label="Dismiss"]')?.click(),
+  );
 });

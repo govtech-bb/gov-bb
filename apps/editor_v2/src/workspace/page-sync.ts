@@ -1,7 +1,13 @@
 import type { Category } from "../api/categories";
-import { ApiFailure, type ApiPage, type EditorApi, type FieldError } from "../api/client";
+import {
+  ApiFailure,
+  type ApiPage,
+  type EditorApi,
+  type FieldError,
+  type SavePageInput,
+} from "../api/client";
 import { apiMessage } from "../api/failure-messages";
-import { markdownToPageSaveInput } from "../api/page-markdown";
+import { markdownToPageSaveInput, pageToMarkdown } from "../api/page-markdown";
 import type { DraftStore } from "../persistence/draft-store";
 
 /** The exact page version and submitted Markdown last loaded or saved in this session. */
@@ -27,7 +33,8 @@ export function pageHasUnsavedChanges(session: PageSession) {
 }
 
 export type PageSaveOutcome =
-  | { kind: "saved"; base: ServerPageBaseline }
+  /** `discarded`: taking the page out of public view discarded its unreviewed change, so `base` is the live page. */
+  | { kind: "saved"; base: ServerPageBaseline; discarded?: true }
   | { kind: "invalid"; errors: readonly FieldError[] }
   | { kind: "forbidden" | "under-review"; message: string }
   | { kind: "conflict" | "missing" | "signed-out" | "failed" };
@@ -43,8 +50,40 @@ export async function savePageDraft(
 
   if (!fields.ok) return { kind: "invalid", errors: fields.errors };
 
+  // Taking a public page out of view changes only who can see it (api_v2 ignores the rest), so other edits wait
+  if (base.page.visibility === "public" && fields.value.visibility !== "public") {
+    const before = markdownToPageSaveInput(base.markdown, base.page, categories);
+    const after = fields.value;
+
+    // SAFETY: Object.keys of a parsed SavePageInput yields only its own field names.
+    const edited = before.ok
+      ? (Object.keys(before.value) as (keyof SavePageInput)[]).filter(
+          (field) =>
+            field !== "visibility" &&
+            JSON.stringify(before.value[field]) !== JSON.stringify(after[field]),
+        )
+      : [];
+
+    if (edited.length > 0)
+      return {
+        kind: "invalid",
+        errors: edited.map((field) => ({
+          field,
+          message: "Save this change before you change who can see the page",
+        })),
+      };
+  }
+
   try {
     const page = await api.savePage(base.page.id, fields.value, base.page.updated_at);
+
+    // The unreviewed change was discarded, so the saved version is the live content
+    if (base.page.pending_revision && page.visibility !== "public")
+      return {
+        kind: "saved",
+        base: { page, markdown: pageToMarkdown(page, categories) },
+        discarded: true,
+      };
 
     return { kind: "saved", base: { page, markdown } };
   } catch (error) {

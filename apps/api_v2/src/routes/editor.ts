@@ -37,8 +37,15 @@ const NEEDS_ROLE: Readonly<Record<Role, string>> = {
   admin: "Only admins can see or change who has which role.",
 };
 
-/** Why a review step was refused, as its response. */
-function reviewRefused(
+/** A decision on a revision must name the version the approver reviewed. */
+const VERSION_REQUIRED = {
+  error: "precondition_required",
+  message:
+    "Send the revision's updated_at you reviewed in the if-updated-at header.",
+} as const;
+
+/** Why a page write or review step was refused, as its response. */
+function pageRefused(
   request: FastifyRequest,
   reply: FastifyReply,
   error:
@@ -280,36 +287,11 @@ export const editorRoutes: FastifyPluginAsyncZod<{
         actor(request),
       );
       if (saved.ok) return saved.value;
-      switch (saved.error._tag) {
-        case "PageRejected":
-          return reply.status(422).send(rejected(saved.error));
-        case "PageNotFound":
-          return reply
-            .status(404)
-            .send({ error: "not_found", message: saved.error.message });
-        case "NotApprover":
-          return reply
-            .status(403)
-            .send({ error: "forbidden", message: saved.error.message });
-        case "PageConflict":
-          return reply.status(409).send({
-            error: "conflict",
-            message: saved.error.message,
-            documentId: saved.error.documentId,
-          });
-        case "RevisionStateConflict":
-          return reply
-            .status(409)
-            .send({ error: saved.error.reason, message: saved.error.message });
-        case "ContentStoreUnavailable":
-          return reply
-            .status(500)
-            .send(storageFailed(request.log, saved.error));
-        default: {
-          const unexpected: never = saved.error;
-          throw unexpected;
-        }
-      }
+      if (saved.error._tag === "NotApprover")
+        return reply
+          .status(403)
+          .send({ error: "forbidden", message: saved.error.message });
+      return pageRefused(request, reply, saved.error);
     },
   });
   editor.route({
@@ -325,7 +307,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
       );
       return submitted.ok
         ? submitted.value
-        : reviewRefused(request, reply, submitted.error);
+        : pageRefused(request, reply, submitted.error);
     },
   });
   editor.route({
@@ -334,15 +316,18 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     schema: SCHEMAS.rejectRevision,
     config: { role: "approver" },
     handler: async (request, reply) => {
+      const reviewed = request.headers[IF_UPDATED_AT];
+      if (reviewed === undefined)
+        return reply.status(428).send(VERSION_REQUIRED);
       const decided = await editing.reject(
         request.params.id,
         request.body.comment,
-        request.headers[IF_UPDATED_AT] ?? null,
+        reviewed,
         actor(request),
       );
       return decided.ok
         ? decided.value
-        : reviewRefused(request, reply, decided.error);
+        : pageRefused(request, reply, decided.error);
     },
   });
   editor.route({
@@ -351,14 +336,17 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     schema: SCHEMAS.publishRevision,
     config: { role: "approver" },
     handler: async (request, reply) => {
+      const reviewed = request.headers[IF_UPDATED_AT];
+      if (reviewed === undefined)
+        return reply.status(428).send(VERSION_REQUIRED);
       const published = await editing.publish(
         request.params.id,
-        request.headers[IF_UPDATED_AT] ?? null,
+        reviewed,
         actor(request),
       );
       return published.ok
         ? published.value
-        : reviewRefused(request, reply, published.error);
+        : pageRefused(request, reply, published.error);
     },
   });
   editor.route({

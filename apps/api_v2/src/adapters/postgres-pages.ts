@@ -823,7 +823,7 @@ export class PostgresPages
     });
   }
 
-  /** Move a revision to a review status, recording who moved it. Its version stays. */
+  /** Move a revision to a review status, recording who moved it; a rejection moves its version to its time. */
   async markRevision(
     revisionId: string,
     mark: RevisionMark,
@@ -838,12 +838,16 @@ export class PostgresPages
                 submittedBy: mark.by,
                 submittedAt: mark.at,
               }
-            : {
-                status: mark.status,
-                decidedBy: mark.by,
-                decidedAt: mark.at,
-                comment: mark.status === "rejected" ? mark.comment : null,
-              },
+            : mark.status === "rejected"
+              ? {
+                  status: mark.status,
+                  decidedBy: mark.by,
+                  decidedAt: mark.at,
+                  comment: mark.comment,
+                  // So an editor holding the earlier version reloads and sees why.
+                  updatedAt: mark.at,
+                }
+              : { status: mark.status, decidedBy: mark.by, decidedAt: mark.at },
         )
         .where(eq(pageRevisions.id, revisionId))
         .returning(),
