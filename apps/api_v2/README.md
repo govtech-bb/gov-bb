@@ -164,6 +164,14 @@ erDiagram
     text actor FK
     timestamptz(3) occurred_at
   }
+  collection_records {
+    uuid id PK
+    varchar(100) collection_key FK "unique (collection_key, record_key)"
+    varchar(200) record_key
+    jsonb data
+    timestamptz(3) created_at
+    timestamptz(3) updated_at
+  }
   content_pages {
     uuid id PK "unique (id, category_id)"
     varchar(512) url UK
@@ -179,6 +187,16 @@ erDiagram
     jsonb frontmatter
     timestamptz(3) published_at "nullable"
     uuid parent_id FK "nullable"
+  }
+  data_collections {
+    uuid id PK
+    varchar(100) key UK
+    varchar(200) title
+    varchar(100) record_key
+    jsonb schema
+    int4 schema_version
+    timestamptz(3) created_at
+    timestamptz(3) updated_at
   }
   page_revisions {
     uuid id PK
@@ -214,6 +232,7 @@ erDiagram
   auth_user ||--o{ auth_session : "userId -> id"
   categories |o--o{ categories : "parent_id -> id"
   auth_user ||--o{ change_events : "actor -> id"
+  data_collections ||--o{ collection_records : "collection_key -> key"
   categories |o--o{ content_pages : "category_id -> id"
   content_pages |o--o{ content_pages : "parent_id, category_id -> id, category_id"
   content_pages |o--o{ content_pages : "parent_id -> id"

@@ -37,6 +37,7 @@ const ALL = [
   "011_revision_review",
   "012_change_action_review",
   "013_review_history_trigger",
+  "014_data_collections",
 ];
 
 /** Tables whose rows are not content, so the history does not record them. */
@@ -77,7 +78,9 @@ describe("migrate", () => {
       "auth_verification",
       "categories",
       "change_events",
+      "collection_records",
       "content_pages",
+      "data_collections",
       "page_revisions",
       "schema_migrations",
       "search_chunks",
@@ -136,6 +139,7 @@ describe("migrate", () => {
       "011_revision_review",
       "012_change_action_review",
       "013_review_history_trigger",
+      "014_data_collections",
     ]);
     const pages = await exec("select count(*)::int as n from content_pages");
     expect(pages.rows).toEqual([{ n: 0 }]);
@@ -170,6 +174,7 @@ describe("migrate", () => {
       "011_revision_review",
       "012_change_action_review",
       "013_review_history_trigger",
+      "014_data_collections",
     ]);
     await exec(
       `insert into categories (slug, title) values ('c', 'C');
@@ -343,12 +348,13 @@ describe("migrate", () => {
       insert into page_revisions (page_id, fields, live_updated_at, created_by, contributors)
         select id, '{}', updated_at, 'a', '{a}' from content_pages;
       delete from schema_migrations
-        where name in ('012_change_action_review', '013_review_history_trigger');
+        where name in ('012_change_action_review', '013_review_history_trigger', '014_data_collections');
     `);
 
     expect(await migrate(db, exec)).toEqual([
       "012_change_action_review",
       "013_review_history_trigger",
+      "014_data_collections",
     ]);
     await exec("update page_revisions set status = 'submitted'");
 
@@ -362,6 +368,44 @@ describe("migrate", () => {
       { version_no: 1, action: "created", actor: "system" },
       { version_no: 2, action: "submitted", actor: "system" },
     ]);
+    await close();
+  });
+
+  it("keeps collections and their records, and their history, when 014 is replayed", async () => {
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+    await exec(`
+      insert into data_collections (key, title, record_key, schema)
+        values ('contacts', 'Contacts', 'key', '{"fields":[]}');
+      insert into collection_records (collection_key, record_key, data)
+        values ('contacts', 'a', '{"key":"a"}');
+      delete from schema_migrations where name = '014_data_collections';
+    `);
+
+    expect(await migrate(db, exec)).toEqual(["014_data_collections"]);
+    expect(
+      (await exec("select collection_key, record_key from collection_records"))
+        .rows,
+    ).toEqual([{ collection_key: "contacts", record_key: "a" }]);
+    await exec(
+      `update collection_records set data = '{"key":"b"}';
+       delete from collection_records;`,
+    );
+    expect(
+      (
+        await exec(
+          "select entity_kind, action from change_events order by entity_kind, version_no",
+        )
+      ).rows,
+    ).toEqual([
+      { entity_kind: "collection_record", action: "created" },
+      { entity_kind: "collection_record", action: "updated" },
+      { entity_kind: "collection_record", action: "deleted" },
+      { entity_kind: "data_collection", action: "created" },
+    ]);
+    await expect(
+      exec("delete from data_collections where key = 'contacts'"),
+    ).resolves.toBeDefined();
     await close();
   });
 

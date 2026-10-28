@@ -24,6 +24,11 @@ export const OPENAPI_DOCUMENT = {
       name: "categories",
       description: "The categories and subcategories the site lists",
     },
+    {
+      name: "collections",
+      description:
+        "Data collections: facts many pages repeat, such as a department's phone number, kept once as records",
+    },
     { name: "search", description: "The text search indexes" },
     { name: "meta", description: "Freshness" },
     {

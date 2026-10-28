@@ -32,6 +32,14 @@ import {
   CategoryStamp,
   EditorCategory,
 } from "../modules/category";
+import {
+  CollectionKey,
+  CollectionRecord,
+  CollectionSummary,
+  CollectionView,
+  RecordBody,
+  RecordKey,
+} from "../modules/collection";
 import { PublicPage } from "../modules/page-visibility";
 import { EstateVersion } from "../services/editor-index";
 
@@ -129,6 +137,19 @@ const categoryParams = z.object({ id: CategoryId });
 const categoryErrors = {
   400: error,
   422: validationFailed.extend({ message: z.string() }),
+  500: error,
+  ...authErrors,
+};
+
+const collectionParams = z.object({ key: CollectionKey });
+const recordParams = z.object({ key: CollectionKey, recordKey: RecordKey });
+const recordConflict = z.object({
+  error: z.enum(["conflict", "record_exists"]),
+  message: z.string(),
+});
+const recordErrors = {
+  400: z.union([validationFailed.extend({ message: z.string() }), error]),
+  404: error,
   500: error,
   ...authErrors,
 };
@@ -514,6 +535,89 @@ export const SCHEMAS = {
     },
   },
 
+  listCollections: {
+    summary: "Every data collection, with its field list and record count",
+    description:
+      "A collection keeps facts many pages repeat, such as a department's " +
+      "phone number, as records. `schema.fields` is what a record may hold. " +
+      "Field lists are set by developers; editors change records.",
+    tags: ["collections"],
+    security: editorSecurity,
+    response: {
+      200: z.object({ collections: z.array(CollectionSummary) }),
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  getCollectionRecords: {
+    summary: "A data collection and its records",
+    description:
+      "Public: the site and the editor both read it. Records are ordered by " +
+      "`record_key`. 404 when there is no such collection.",
+    tags: ["collections"],
+    ...siteRead,
+    params: collectionParams,
+    response: {
+      200: z.object({
+        collection: CollectionView,
+        records: z.array(CollectionRecord),
+      }),
+      400: error,
+      401: error,
+      404: error,
+      500: error,
+    },
+  },
+
+  createRecord: {
+    summary: "Add a record to a collection",
+    description:
+      "Needs the editor role (403 otherwise). `data` is checked against the " +
+      "collection's field list: a field it does not have, or a value of the " +
+      "wrong kind, is a 400 `validation_failed` naming the field. 404 when " +
+      "there is no such collection; 409 `record_exists` when the record key " +
+      "is taken.",
+    tags: ["collections"],
+    security: editorSecurity,
+    params: recordParams,
+    body: RecordBody,
+    response: { 201: CollectionRecord, 409: recordConflict, ...recordErrors },
+  },
+
+  saveRecord: {
+    summary: "Replace a record's data",
+    description:
+      "Needs the editor role (403 otherwise). Send every field to keep: " +
+      "the record becomes `data`. Checked as a create is. Send the " +
+      "`updated_at` you last read in `if-updated-at`; if the record has " +
+      "changed since, the save is refused with a 409 `conflict`. 404 when " +
+      "there is no such collection or record.",
+    tags: ["collections"],
+    security: editorSecurity,
+    params: recordParams,
+    headers: ifUpdatedAt(""),
+    body: RecordBody,
+    response: { 200: CollectionRecord, 409: recordConflict, ...recordErrors },
+  },
+
+  deleteRecord: {
+    summary: "Delete a record",
+    description:
+      "Needs the editor role (403 otherwise). With `if-updated-at`, a " +
+      "record that has changed since is refused with a 409 `conflict`. 404 " +
+      "when there is no such collection or record.",
+    tags: ["collections"],
+    security: editorSecurity,
+    params: recordParams,
+    headers: ifUpdatedAt(""),
+    response: {
+      204: z.undefined(),
+      409: recordConflict,
+      ...recordErrors,
+    },
+  },
+
   me: {
     summary: "The signed-in employee and their roles",
     tags: ["auth"],
@@ -563,7 +667,8 @@ export const SCHEMAS = {
   version: {
     summary: "A version token for recorded content changes",
     description:
-      "`change_events` records every page and category change, and each " +
+      "`change_events` records every page, category and collection record " +
+      "change, and each " +
       "review step of a page's revision. Its count " +
       "and newest timestamp identify those changes without reading the content.",
     tags: ["meta"],
